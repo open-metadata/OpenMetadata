@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -61,12 +62,7 @@ describe('Roles page should work properly', () => {
 
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 
-    cy.sidebarClick('app-bar-item-settings');
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Roles')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.ROLES);
 
     verifyResponseStatusCode('@getRoles', 200);
 

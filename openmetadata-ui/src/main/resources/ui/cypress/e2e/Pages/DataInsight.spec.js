@@ -12,6 +12,7 @@
  */
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -126,8 +127,7 @@ describe('Data Insight feature', () => {
       '/api/v1/apps/trigger/DataInsightsApplication',
       'triggerPipeline'
     );
-    cy.sidebarClick('app-bar-item-settings');
-    cy.get('[data-menu-id*="integrations.apps"]').scrollIntoView().click();
+    cy.settingClick(GlobalSettingOptions.APPLICATIONS);
     verifyResponseStatusCode('@apps', 200);
     cy.get(
       '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'

@@ -27,6 +27,7 @@ declare global {
       clickOutside(): void;
       sidebarClick(id: string, parentId?: string): void;
       sidebarHoverOutside(): void;
+      settingClick(dataTestId: string, isCustomProperty?: boolean): void;
     }
   }
 }

@@ -32,19 +32,9 @@ export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
 export const goToServiceListingPage = (services: Services) => {
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-  // Click on settings page
-  cy.sidebarClick('app-bar-item-settings');
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
-  cy.get(`[data-testid="global-setting-left-panel"]`)
-    .contains(services)
-    .click();
+  cy.settingClick(services);
 
   verifyResponseStatusCode('@getServiceList', 200);
 };

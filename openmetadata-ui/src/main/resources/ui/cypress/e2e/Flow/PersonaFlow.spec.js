@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -76,15 +77,10 @@ describe('Persona operations', () => {
 
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-    cy.sidebarClick('app-bar-item-settings');
-
-    verifyResponseStatusCode('@settingsPage', 200);
-    cy.get('[data-testid="settings-left-panel"]').should('be.visible');
 
     interceptURL('GET', '/api/v1/personas*', 'getPersonas');
-    cy.get(`[data-menu-id*="members.persona"]`).scrollIntoView().click();
+
+    cy.settingClick(GlobalSettingOptions.PERSONA);
 
     verifyResponseStatusCode('@getPersonas', 200);
   });

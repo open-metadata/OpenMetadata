@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -100,12 +101,7 @@ describe('Policy page should work properly', () => {
     cy.login();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
 
-    cy.sidebarClick('app-bar-item-settings');
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Policies')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.POLICIES);
 
     cy.wait('@getPolicies', { timeout: 15000 })
       .its('response.statusCode')

@@ -39,16 +39,10 @@ export const createCustomPropertyForEntity = ({
   property: CustomProperty;
   type: EntityType;
 }) => {
-  interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@settingsPage', 200);
-
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
 
   // Selecting the entity
-  cy.get(`[data-menu-id*="customAttributes.${type}"]`).scrollIntoView().click();
+  cy.settingClick(type, true);
 
   verifyResponseStatusCode('@getEntity', 200);
 
@@ -81,15 +75,10 @@ export const deleteCustomPropertyForEntity = ({
   property: CustomProperty;
   type: EntityType;
 }) => {
-  cy.sidebarClick('app-bar-item-settings');
-
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
   interceptURL('PATCH', `/api/v1/metadata/types/*`, 'patchEntity');
   // Selecting the entity
-  cy.get(`[data-menu-id*="customAttributes.${type}"]`)
-    .first()
-    .scrollIntoView()
-    .click();
+  cy.settingClick(type, true);
 
   verifyResponseStatusCode('@getEntity', 200);
 

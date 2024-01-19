@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 
 const config = {
@@ -26,18 +27,12 @@ describe('Custom Logo Config', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.sidebarClick('app-bar-item-settings');
-
     interceptURL(
       'GET',
       'api/v1/system/settings/customLogoConfiguration',
       'customLogoConfiguration'
     );
-
-    cy.get('[data-testid="global-setting-left-panel"]')
-      .contains('Custom Logo')
-      .scrollIntoView()
-      .click();
+    cy.settingClick(GlobalSettingOptions.CUSTOM_LOGO);
 
     verifyResponseStatusCode('@customLogoConfiguration', 200);
   });

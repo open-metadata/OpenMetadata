@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   addTeam,
   interceptURL,
@@ -40,7 +41,8 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
-    cy.sidebarClick('app-bar-item-settings');
+
+    cy.settingClick(GlobalSettingOptions.TEAMS);
 
     verifyResponseStatusCode('@getOrganization', 200);
   });

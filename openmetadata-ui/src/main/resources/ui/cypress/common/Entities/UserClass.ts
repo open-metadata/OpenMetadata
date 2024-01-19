@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -31,9 +32,8 @@ class UsersTestClass {
   }
 
   visitUserListPage() {
-    cy.sidebarClick('app-bar-item-settings');
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
-    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
   }
 
   softDeleteUser(name) {
@@ -78,9 +78,7 @@ class UsersTestClass {
   checkStewardServicesPermissions() {
     cy.sidebarClick('app-bar-item-explore');
     Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
-      cy.sidebarClick('app-bar-item-settings');
-
-      cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
+      cy.settingClick(service.settingsMenuId);
       cy.get('[data-testid="add-service-button"] > span').should('not.exist');
     });
     cy.sidebarClick('app-bar-item-explore');

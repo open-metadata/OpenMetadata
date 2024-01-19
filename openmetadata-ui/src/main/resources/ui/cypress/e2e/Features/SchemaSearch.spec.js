@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 
@@ -81,19 +82,11 @@ describe('Schema search', () => {
 
   it('Search schema in database page', () => {
     // Click on settings page
-    interceptURL(
-      'GET',
-      'api/v1/teams/name/Organization?fields=*',
-      'getSettingsPage'
-    );
 
-    cy.sidebarClick('app-bar-item-settings');
-
-    verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-    cy.get('.ant-menu-title-content').contains('Databases').click();
+    cy.settingClick(GlobalSettingOptions.DATABASES);
 
     verifyResponseStatusCode('@getServices', 200);
 

@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   deleteCreatedService,
   descriptionBox,
@@ -201,9 +202,8 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.clickOnLogo();
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.settingClick(GlobalSettingOptions.DATABASES);
 
-    cy.get('[data-menu-id*="services.databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
       'GET',

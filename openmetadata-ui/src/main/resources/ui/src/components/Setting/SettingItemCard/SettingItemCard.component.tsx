@@ -25,7 +25,10 @@ const SettingItemCard = ({ data, onClick }: SettingMenuItemProps) => {
   const handleOnClick = useCallback(() => onClick(data.key), []);
 
   return (
-    <Card className="setting-card-item" onClick={handleOnClick}>
+    <Card
+      className="setting-card-item"
+      data-testid={data.key}
+      onClick={handleOnClick}>
       <div className="setting-card-icon-container">
         <Icon className="setting-card-icon" component={data.icon} />
       </div>

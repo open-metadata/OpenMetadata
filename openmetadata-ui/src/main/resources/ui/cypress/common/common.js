@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -419,22 +420,10 @@ export const deleteCreatedService = (
   serviceCategory
 ) => {
   // Click on settings page
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-  cy.get('.ant-menu-title-content')
-    .contains(typeOfService)
-    .should('be.visible')
-    .click();
+  cy.settingClick(typeOfService);
 
   verifyResponseStatusCode('@getServices', 200);
 
@@ -505,22 +494,9 @@ export const deleteCreatedService = (
 };
 
 export const goToAddNewServicePage = (service_type) => {
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-  // Click on settings page
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
-  cy.get('[data-testid="global-setting-left-panel"]')
-    .contains(service_type)
-    .should('be.visible')
-    .click();
-
+  cy.settingClick(service_type);
   verifyResponseStatusCode('@getServiceList', 200);
 
   cy.get('[data-testid="add-service-button"]').should('be.visible').click();
@@ -967,10 +943,9 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@updateEntity', 200);
 
   // re-run ingestion flow
-  cy.sidebarClick('app-bar-item-settings');
-
   // Services page
-  cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
+  cy.settingClick(type);
+
   interceptURL(
     'GET',
     'api/v1/search/query?q=*&from=0&size=15&index=*',
@@ -1139,16 +1114,8 @@ export const visitServiceDetailsPage = (
     `/api/v1/search/query?q=*${isServiceDeleted ? 'deleted=true' : ''}`,
     'searchService'
   );
-  interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
-
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getOrganization', 200);
-
   interceptURL('GET', `/api/v1/services/${serviceCategory}*`, 'getServices');
-
-  cy.get(`[data-menu-id*="${settingsMenuId}"]`).scrollIntoView().click();
-
+  cy.settingClick(settingsMenuId);
   verifyResponseStatusCode('@getServices', 200);
 
   if (isServiceDeleted) {
@@ -1171,16 +1138,8 @@ export const visitServiceDetailsPage = (
 };
 
 export const visitDataModelPage = (dataModelFQN, dataModelName) => {
-  interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
-
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getOrganization', 200);
-
   interceptURL('GET', '/api/v1/services/dashboardServices*', 'getServices');
-
-  cy.get('[data-menu-id*="services.dashboards"]').scrollIntoView().click();
-
+  cy.settingClick(GlobalSettingOptions.DASHBOARDS);
   verifyResponseStatusCode('@getServices', 200);
 
   interceptURL(

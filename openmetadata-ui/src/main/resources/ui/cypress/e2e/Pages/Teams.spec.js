@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   addTeam,
   descriptionBox,
@@ -53,10 +54,8 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
 
-    cy.sidebarClick('app-bar-item-settings');
-
     // Clicking on teams
-    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
+    cy.settingClick(GlobalSettingOptions.TEAMS);
   });
 
   it('Add new team', () => {

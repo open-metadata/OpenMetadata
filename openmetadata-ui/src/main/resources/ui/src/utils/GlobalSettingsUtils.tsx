@@ -12,7 +12,6 @@
  */
 
 import i18next from 'i18next';
-import { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
@@ -64,21 +63,6 @@ import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
 import { getSettingPath } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
-
-export interface MenuListItem {
-  label: string;
-  isProtected: boolean;
-  icon: ReactNode;
-  key: string;
-  description: string;
-}
-export interface MenuList {
-  category: string;
-  items: MenuListItem[];
-  isBeta?: boolean;
-  key: string;
-  description: string;
-}
 
 export interface SettingMenuItem {
   key: string;

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
@@ -92,11 +93,6 @@ describe('RedShift Ingestion', () => {
 
   it('Add DBT ingestion', () => {
     interceptURL(
-      'GET',
-      'api/v1/teams/name/Organization?fields=*',
-      'getSettingsPage'
-    );
-    interceptURL(
       'POST',
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
@@ -106,15 +102,11 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
       'pipelineStatus'
     );
-    cy.sidebarClick('app-bar-item-settings');
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains(SERVICE_TYPE.Database)
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.DATABASE);
 
     verifyResponseStatusCode('@getServices', 200);
     interceptURL(

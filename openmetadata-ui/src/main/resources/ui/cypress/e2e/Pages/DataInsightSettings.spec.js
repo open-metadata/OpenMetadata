@@ -11,20 +11,16 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 
 describe('Data Insight settings page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-    cy.sidebarClick('app-bar-item-settings');
-
-    verifyResponseStatusCode('@settingsPage', 200);
-    cy.get('[data-testid="settings-left-panel"]').should('be.visible');
 
     interceptURL('GET', '/api/v1/apps?limit=*', 'getApplications');
-    cy.get(`[data-menu-id*="integrations.apps"]`).scrollIntoView().click();
+
+    cy.settingClick(GlobalSettingOptions.APPLICATIONS);
 
     verifyResponseStatusCode('@getApplications', 200);
   });

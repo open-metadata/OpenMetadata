@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   addTableFieldTags,
   deleteEntity,
@@ -190,11 +191,9 @@ describe('Prerequisite for data steward role tests', () => {
 
     // Assign data steward role to the created user
 
-    cy.sidebarClick('app-bar-item-settings');
-
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
 
     verifyResponseStatusCode('@getUsersList', 200);
 

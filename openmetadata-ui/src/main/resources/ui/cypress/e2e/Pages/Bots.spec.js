@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
@@ -70,17 +71,12 @@ const revokeToken = () => {
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    cy.sidebarClick('app-bar-item-settings');
     interceptURL(
       'GET',
       'api/v1/bots?limit=*&include=non-deleted',
       'getBotsList'
     );
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Bots')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.BOTS);
     verifyResponseStatusCode('@getBotsList', 200);
   });
 

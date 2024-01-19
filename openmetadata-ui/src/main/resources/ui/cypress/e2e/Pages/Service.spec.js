@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -39,13 +40,10 @@ describe('Services page should work properly', () => {
     cy.login();
     // redirecting to services page
 
-    cy.sidebarClick('app-bar-item-settings');
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Database')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.DATABASE);
   });
+
+  cy.settingClick(GlobalSettingOptions.DATABASE);
 
   it('Update service description', () => {
     searchServiceFromSettingPage(service.name);
