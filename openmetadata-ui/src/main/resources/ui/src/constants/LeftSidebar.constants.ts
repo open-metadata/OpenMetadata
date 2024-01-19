@@ -16,10 +16,11 @@ import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/globalsearch.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as DataContractIcon } from '../assets/svg/ic-data-contract.svg';
+import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
+import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as QualityIcon } from '../assets/svg/ic-quality-v1.svg';
+import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lampcharge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
@@ -36,17 +37,17 @@ export const SIDEBAR_LIST = [
     dataTestId: 'app-bar-item-explore',
   },
   {
-    key: 'data-quality',
-    label: i18next.t('label.quality'),
-    icon: QualityIcon,
-    dataTestId: 'data-quality',
+    key: ROUTES.OBSERVABILITY,
+    label: i18next.t('label.observability'),
+    icon: ObservabilityIcon,
+    dataTestId: 'observability',
     children: [
       {
         key: ROUTES.DATA_QUALITY,
-        label: i18next.t('label.data-contract-plural'),
+        label: i18next.t('label.data-quality'),
         redirect_url: ROUTES.DATA_QUALITY,
-        icon: DataContractIcon,
-        dataTestId: 'app-bar-item-data-contract',
+        icon: DataQualityIcon,
+        dataTestId: 'app-bar-item-data-quality',
       },
       {
         key: ROUTES.INCIDENT_MANAGER,
@@ -55,6 +56,13 @@ export const SIDEBAR_LIST = [
         icon: IncidentMangerIcon,
         dataTestId: 'app-bar-item-incident-manager',
         isBeta: true,
+      },
+      {
+        key: ROUTES.OBSERVABILITY,
+        label: i18next.t('label.alert-plural'),
+        redirect_url: ROUTES.OBSERVABILITY_ALERTS,
+        icon: AlertIcon,
+        dataTestId: 'app-bar-item-observability-alert',
       },
     ],
   },

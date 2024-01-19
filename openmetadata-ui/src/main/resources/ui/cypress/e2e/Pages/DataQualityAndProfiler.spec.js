@@ -106,9 +106,9 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
 
   cy.sidebarHover();
 
-  cy.get('[data-testid="data-quality"]').click();
+  cy.get('[data-testid="observability"]').click();
 
-  cy.sidebarClick('app-bar-item-data-contract');
+  cy.sidebarClick('app-bar-item-data-quality');
 
   cy.sidebarHoverOutside();
 
@@ -535,9 +535,9 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.sidebarHover();
 
-    cy.get('[data-testid="data-quality"]').click();
+    cy.get('[data-testid="observability"]').click();
 
-    cy.sidebarClick('app-bar-item-data-contract');
+    cy.sidebarClick('app-bar-item-data-quality');
 
     cy.sidebarHoverOutside();
 
@@ -802,9 +802,9 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.sidebarHover();
 
-    cy.get('[data-testid="data-quality"]').click();
+    cy.get('[data-testid="observability"]').click();
 
-    cy.sidebarClick('app-bar-item-data-contract');
+    cy.sidebarClick('app-bar-item-data-quality');
 
     cy.sidebarHoverOutside();
 
