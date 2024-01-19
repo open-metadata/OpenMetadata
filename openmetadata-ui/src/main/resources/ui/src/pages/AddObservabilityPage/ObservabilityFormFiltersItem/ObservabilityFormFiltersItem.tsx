@@ -24,8 +24,26 @@ import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
 import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getSearchIndexFromEntityType } from '../../../utils/Explore.utils';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
+
+export const getSearchIndexFromEntityType = (type: string) => {
+  switch (type) {
+    case 'table':
+      return SearchIndex.TABLE;
+    case 'topic':
+      return SearchIndex.TOPIC;
+    case 'pipeline':
+      return SearchIndex.PIPELINE;
+    case 'container':
+      return SearchIndex.CONTAINER;
+    case 'testCase':
+      return SearchIndex.TEST_CASE;
+    case 'testSuite':
+      return SearchIndex.TEST_SUITE;
+    default:
+      return SearchIndex.TABLE;
+  }
+};
 
 function ObservabilityFormFiltersItem({
   heading,
@@ -44,14 +62,11 @@ function ObservabilityFormFiltersItem({
     () => form.getFieldValue(['resources']),
     [triggerValue, form]
   );
-  const selectedDescriptor = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
-  );
-
   const supportedFilters = useMemo(
-    () => selectedDescriptor?.supportedFilters,
-    [selectedDescriptor]
+    () =>
+      filterResources.find((resource) => resource.name === selectedTrigger)
+        ?.supportedFilters,
+    [filterResources, selectedTrigger]
   );
 
   const searchEntity = useCallback(
@@ -110,14 +125,21 @@ function ObservabilityFormFiltersItem({
     [searchEntity]
   );
 
+  const getOwnerOptions = useCallback(
+    async (searchText: string) => {
+      return searchEntity(searchText, SearchIndex.USER);
+    },
+    [searchEntity]
+  );
+
   // Run time values needed for conditional rendering
   const functions = useMemo(
     () =>
-      selectedDescriptor?.supportedFilters?.map((func) => ({
+      supportedFilters?.map((func) => ({
         label: getEntityName(func),
         value: func.name,
       })),
-    [selectedDescriptor]
+    [supportedFilters]
   );
 
   const getFieldByArgumentType = useCallback(
@@ -167,7 +189,7 @@ function ObservabilityFormFiltersItem({
                 </Form.Item>
               </Col>
               <Form.Item
-                className="d-none"
+                hidden
                 initialValue="domainList"
                 name={[fieldName, 'arguments', 'name']}
               />
@@ -192,13 +214,37 @@ function ObservabilityFormFiltersItem({
                 </Form.Item>
               </Col>
               <Form.Item
-                className="d-none"
+                hidden
                 initialValue="tableNameList"
                 name={[fieldName, 'arguments', 'name']}
               />
             </>
           );
 
+        case 'ownerNameList':
+          return (
+            <>
+              <Col key="owner-select" span={11}>
+                <Form.Item
+                  className="w-full"
+                  name={[fieldName, 'arguments', 'input']}>
+                  <AsyncSelect
+                    api={getOwnerOptions}
+                    data-testid="owner-select"
+                    mode="multiple"
+                    placeholder={t('label.search-by-type', {
+                      type: t('label.owner-lowercase'),
+                    })}
+                  />
+                </Form.Item>
+              </Col>
+              <Form.Item
+                hidden
+                initialValue="ownerNameList"
+                name={[fieldName, 'arguments', 'name']}
+              />
+            </>
+          );
         default:
           return <></>;
       }
@@ -261,7 +307,7 @@ function ObservabilityFormFiltersItem({
                           />
                         </Form.Item>
                       </Col>
-                      {!isNil(selectedDescriptor) &&
+                      {!isNil(supportedFilters) &&
                         !isEmpty(filters) &&
                         filters[name] &&
                         getConditionField(filters[name].name ?? '', name)}

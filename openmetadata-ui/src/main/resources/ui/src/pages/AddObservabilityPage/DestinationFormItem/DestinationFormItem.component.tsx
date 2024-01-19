@@ -47,32 +47,38 @@ function DestinationFormItem({
           <Form.List name="destinations">
             {(fields, { add, remove }) => {
               return (
-                <div>
+                <Row gutter={[16, 16]}>
                   {fields.map((field, index) => (
-                    <div className="d-flex gap-4" key={field.key}>
-                      <Form.Item
-                        required
-                        messageVariables={{
-                          fieldName: t('label.data-asset-plural'),
-                        }}
-                        name={[index, 'type']}>
-                        <Select
-                          className="w-full"
-                          data-testid="triggerConfig-type"
-                          options={filterResources}
-                          placeholder={t('label.select-field', {
-                            field: t('label.data-asset-plural'),
-                          })}
+                    <>
+                      <Col span={11}>
+                        <Form.Item
+                          required
+                          messageVariables={{
+                            fieldName: t('label.data-asset-plural'),
+                          }}
+                          name={[index, 'type']}>
+                          <Select
+                            className="w-full"
+                            data-testid="triggerConfig-type"
+                            options={filterResources}
+                            placeholder={t('label.select-field', {
+                              field: t('label.data-asset-plural'),
+                            })}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={11}>
+                        <Form.Item
+                          hidden
+                          initialValue={SubscriptionCategory.External}
+                          name={[index, 'category']}
                         />
-                      </Form.Item>
-                      <Form.Item
-                        hidden
-                        initialValue={SubscriptionCategory.External}
-                        name={[index, 'category']}
-                      />
-                      <Form.Item label="" name={[index, 'config', 'receivers']}>
-                        <Input placeholder="EndPoint URL" />
-                      </Form.Item>
+                        <Form.Item
+                          label=""
+                          name={[index, 'config', 'receivers']}>
+                          <Input placeholder="EndPoint URL" />
+                        </Form.Item>
+                      </Col>
                       <Col span={2}>
                         <Button
                           data-testid={`remove-action-rule-${name}`}
@@ -80,7 +86,7 @@ function DestinationFormItem({
                           onClick={() => remove(field.name)}
                         />
                       </Col>
-                    </div>
+                    </>
                   ))}
 
                   <Form.Item>
@@ -88,7 +94,7 @@ function DestinationFormItem({
                       {buttonLabel}
                     </Button>
                   </Form.Item>
-                </div>
+                </Row>
               );
             }}
           </Form.List>

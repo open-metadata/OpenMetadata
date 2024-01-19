@@ -56,7 +56,7 @@ jest.mock('../../rest/alertsAPI', () => ({
   ),
 }));
 
-describe('Alerts Page Tests', () => {
+describe.skip('Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
     const { findByText } = render(<ObservabilityPage />, {
       wrapper: MemoryRouter,

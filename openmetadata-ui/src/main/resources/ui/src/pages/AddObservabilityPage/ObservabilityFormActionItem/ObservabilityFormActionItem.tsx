@@ -24,7 +24,7 @@ import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
 import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getSearchIndexFromEntityType } from '../../../utils/Explore.utils';
+import { getSearchIndexFromEntityType } from '../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import { ObservabilityFormActionItemProps } from './ObservabilityFormActionItem.interface';
 
 function ObservabilityFormActionItem({
