@@ -25,6 +25,7 @@ import {
   FieldGroup,
   ImmutableTree,
   JsonTree,
+  SelectFieldSettings,
   Utils as QbUtils,
   ValueSource,
 } from 'react-awesome-query-builder';
@@ -240,9 +241,10 @@ export const AdvanceSearchProvider = ({
     }
 
     if (!isEmpty(tierFieldOptions)) {
-      (actualConfig.fields[TIER_FQN_KEY] as Field).fieldSettings = {
-        listValues: tierFieldOptions,
-      };
+      (
+        (actualConfig.fields[TIER_FQN_KEY] as Field)
+          .fieldSettings as SelectFieldSettings
+      ).listValues = tierFieldOptions;
     }
 
     setConfig(actualConfig);

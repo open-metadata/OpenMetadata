@@ -355,6 +355,9 @@ const getCommonQueryBuilderFields = (
       label: t('label.tier'),
       type: 'select',
       mainWidgetProps,
+      fieldSettings: {
+        showSearch: false,
+      },
     },
     extension: {
       label: t('label.custom-property-plural'),
