@@ -145,7 +145,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
             and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
         ):
             raise WorkflowExecutionError(
-                f"{self.source.name} reported errors: {Summary.from_step(self.source)}"
+                f"{self.runner.name} reported errors: {Summary.from_step(self.source)}"
             )
 
         if raise_warnings and self.runner.get_status().warnings:
