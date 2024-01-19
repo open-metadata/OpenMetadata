@@ -18,25 +18,6 @@ import {
   useAdvanceSearch,
 } from './AdvanceSearchProvider.component';
 
-// jest.mock('qs', () => ({
-//   parse: jest.fn().mockReturnValue('{"some":"value"}'),
-// }));
-
-// jest.mock('react-awesome-query-builder', () => ({
-//   ...jest.requireActual('react-awesome-query-builder'),
-//   Utils: {
-//     checkTree: jest.fn(),
-//     loadTree: jest.fn(),
-//     isValidTree: jest.fn().mockReturnValue(true),
-//     sqlFormat: jest.fn(),
-//   },
-// }));
-
-// jest.mock('../../../constants/AdvancedSearch.constants', () => ({
-//   emptyJsonTree: {} as Config,
-//   getQbConfigs: jest.fn(),
-// }));
-
 jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockResolvedValue({}),
 }));
