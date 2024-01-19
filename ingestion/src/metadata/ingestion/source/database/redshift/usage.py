@@ -23,8 +23,6 @@ class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
         AND querytxt NOT ILIKE 'fetch%%'
         AND querytxt NOT ILIKE 'padb_fetch_sample:%%'
         AND querytxt NOT ILIKE 'Undoing%%transactions%%on%%table%%with%%current%%xid%%'
-        AND querytxt NOT ILIKE '%%create%%table%%as%%select%%'
-        AND querytxt NOT ILIKE '%%insert%%'
     """
 
     sql_stmt = REDSHIFT_SQL_STATEMENT

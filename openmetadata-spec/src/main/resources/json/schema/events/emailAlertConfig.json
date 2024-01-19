@@ -9,6 +9,10 @@
     "org.openmetadata.schema.SubscriptionAction"
   ],
   "properties": {
+    "references": {
+      "description": "List of References for internal System Users or Teams",
+      "$ref": "../type/entityReferenceList.json"
+    },
     "receivers": {
       "description": "List of receivers to send mail to",
       "type": "array",

@@ -14,6 +14,7 @@ Handle big query usage extraction
 from abc import ABC
 from copy import deepcopy
 from datetime import datetime
+from typing import Optional
 
 from google import auth
 
@@ -86,3 +87,15 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
                 yield inspector_details.engine
         else:
             yield self.engine
+
+    def check_life_cycle_query(
+        self, query_type: Optional[str], query_text: Optional[str]
+    ) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        if query_type != "SELECT":
+            return True
+        return False

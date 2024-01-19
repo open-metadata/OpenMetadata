@@ -35,7 +35,7 @@ import { compare } from 'fast-json-patch';
 import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../assets/svg/ic-restore.svg';
@@ -54,6 +54,7 @@ import {
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
 import { Include } from '../../../generated/type/include';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   configureApp,
   deployApp,
@@ -82,7 +83,7 @@ import applicationSchemaClassBase from './ApplicationSchemaClassBase';
 const AppDetails = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
   const [appData, setAppData] = useState<App>();
   const [showActions, setShowActions] = useState(false);

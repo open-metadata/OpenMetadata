@@ -46,7 +46,7 @@ import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -63,6 +63,7 @@ export const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
+  const decodedFqn = getDecodedFqn(entityFQN);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const { cachedEntityData, updateCachedEntityData } =
@@ -79,7 +80,7 @@ export const PopoverContent: React.FC<{
             displayName: getEntityName(data),
             id: data.id ?? '',
             description: data.description ?? '',
-            fullyQualifiedName: getDecodedFqn(entityFQN),
+            fullyQualifiedName: decodedFqn,
             tags: (data as Table)?.tags,
             entityType: entityType,
             serviceType: (data as Table)?.serviceType,
@@ -98,10 +99,9 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.TEST_CASE:
-        promise = getTableDetailsByFQN(
-          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
-          { fields }
-        );
+        promise = getTableDetailsByFQN(getTableFQNFromColumnFQN(decodedFqn), {
+          fields,
+        });
 
         break;
       case EntityType.TOPIC:
@@ -135,7 +135,7 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), {
+        promise = getGlossaryTermByFQN(entityFQN, {
           fields: 'owner',
         });
 
@@ -226,12 +226,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={
-        <PopoverContent
-          entityFQN={getEncodedFqn(entityFQN)}
-          entityType={entityType}
-        />
-      }
+      content={<PopoverContent entityFQN={entityFQN} entityType={entityType} />}
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>

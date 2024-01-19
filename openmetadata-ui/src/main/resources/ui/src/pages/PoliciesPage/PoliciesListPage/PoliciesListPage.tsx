@@ -55,7 +55,6 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-list.less';
 
@@ -119,7 +118,7 @@ const PoliciesListPage = () => {
             data-testid="policy-name"
             to={
               record.fullyQualifiedName
-                ? getPolicyWithFqnPath(getEncodedFqn(record.fullyQualifiedName))
+                ? getPolicyWithFqnPath(record.fullyQualifiedName)
                 : ''
             }>
             {getEntityName(record)}
