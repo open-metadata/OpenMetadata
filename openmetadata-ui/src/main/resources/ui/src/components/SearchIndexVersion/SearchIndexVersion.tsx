@@ -38,7 +38,6 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
 
@@ -64,8 +63,8 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const encodedFQN = useMemo(
-    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+  const entityFqn = useMemo(
+    () => currentVersionData.fullyQualifiedName ?? '',
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
@@ -89,7 +88,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.SEARCH_INDEX,
-        encodedFQN,
+        entityFqn,
         String(version),
         activeKey
       )
@@ -143,7 +142,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 <Col span={24}>
                   <VersionTable
                     columnName={getPartialNameFromTableFQN(
-                      encodedFQN,
+                      entityFqn,
                       [FqnPart.SearchIndexField],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -196,7 +195,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         ),
       },
     ],
-    [description, encodedFQN, fields, currentVersionData, entityPermissions]
+    [description, entityFqn, fields, currentVersionData, entityPermissions]
   );
 
   return (

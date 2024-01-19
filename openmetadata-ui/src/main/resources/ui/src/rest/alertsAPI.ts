@@ -21,6 +21,7 @@ import {
 } from '../generated/events/eventSubscription';
 import { SubscriptionResourceDescriptor } from '../generated/events/subscriptionResourceDescriptor';
 import { Function } from '../generated/type/function';
+import { getEncodedFqn } from '../utils/StringsUtils';
 
 const BASE_URL = '/events/subscriptions';
 
@@ -55,7 +56,7 @@ export const getAlertsFromName = async (
   params?: Pick<ListAlertsRequestParams, 'include'>
 ) => {
   const response = await axiosClient.get<EventSubscription>(
-    `${BASE_URL}/name/${name}`,
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
     {
       params: {
         ...params,

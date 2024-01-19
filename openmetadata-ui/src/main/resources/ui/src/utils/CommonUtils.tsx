@@ -78,7 +78,6 @@ import { history } from './HistoryUtils';
 import { getIncidentManagerDetailPagePath } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getEncodedFqn } from './StringsUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -796,11 +795,10 @@ export const getEntityDetailLink = (
   subTab?: string
 ) => {
   let path = '';
-  const encodedFQN = getEncodedFqn(fqn);
   switch (entityType) {
     default:
     case EntityType.TABLE:
-      path = getTableTabPath(encodedFQN, tab, subTab);
+      path = getTableTabPath(fqn, tab, subTab);
 
       break;
 
@@ -829,7 +827,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.SEARCH_INDEX:
-      path = getSearchIndexTabPath(encodedFQN, tab, subTab);
+      path = getSearchIndexTabPath(fqn, tab, subTab);
 
       break;
 
@@ -849,7 +847,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.USER:
-      path = getUserPath(encodedFQN, tab, subTab);
+      path = getUserPath(fqn, tab, subTab);
 
       break;
 

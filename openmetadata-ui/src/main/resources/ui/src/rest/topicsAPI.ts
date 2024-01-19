@@ -22,6 +22,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/topics';
@@ -63,12 +64,15 @@ export const getTopics = async (
 };
 
 export const getTopicByFqn = async (fqn: string, params?: ListParams) => {
-  const response = await APIClient.get<Topic>(`${BASE_URL}/name/${fqn}`, {
-    params: {
-      ...params,
-      include: params?.include ?? Include.All,
-    },
-  });
+  const response = await APIClient.get<Topic>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+      },
+    }
+  );
 
   return response.data;
 };
