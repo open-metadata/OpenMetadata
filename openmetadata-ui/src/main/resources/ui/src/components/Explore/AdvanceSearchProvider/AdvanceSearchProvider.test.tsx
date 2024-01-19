@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {
@@ -36,6 +36,14 @@ import {
 //   emptyJsonTree: {} as Config,
 //   getQbConfigs: jest.fn(),
 // }));
+
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getTypeByFQN: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../rest/tagAPI', () => ({
+  getTags: jest.fn().mockResolvedValue({}),
+}));
 
 jest.mock('../AdvanceSearchModal.component', () => ({
   AdvancedSearchModal: jest
@@ -104,5 +112,17 @@ describe('AdvanceSearchProvider component', () => {
     userEvent.click(screen.getByText('Apply Advance Search'));
 
     expect(mockPush).toHaveBeenCalled();
+  });
+
+  it('should open the AdvanceSearchModal on call of toggleModal with true', async () => {
+    await act(async () => {
+      render(<ComponentWithProvider />);
+    });
+
+    expect(screen.getByText('AdvanceSearchModal Close')).toBeInTheDocument();
+
+    userEvent.click(screen.getByText('Open AdvanceSearch Modal'));
+
+    expect(screen.getByText('AdvanceSearchModal Open')).toBeInTheDocument();
   });
 });
