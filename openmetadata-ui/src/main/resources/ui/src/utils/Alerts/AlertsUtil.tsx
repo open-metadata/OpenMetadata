@@ -25,15 +25,15 @@ import { SubscriptionType } from '../../generated/events/eventSubscription';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
-    case SubscriptionType.SlackWebhook:
+    case SubscriptionType.Slack:
       return <SlackIcon height={16} width={16} />;
-    case SubscriptionType.MSTeamsWebhook:
+    case SubscriptionType.MSTeams:
       return <MSTeamsIcon height={16} width={16} />;
     case SubscriptionType.Email:
       return <MailIcon height={16} width={16} />;
     case SubscriptionType.ActivityFeed:
       return <AllActivityIcon height={16} width={16} />;
-    case SubscriptionType.GenericWebhook:
+    case SubscriptionType.Generic:
     default:
       return <WebhookIcon height={16} width={16} />;
   }
@@ -115,13 +115,13 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.activity-feed-plural');
     case SubscriptionType.Email:
       return i18next.t('label.email');
-    case SubscriptionType.GenericWebhook:
+    case SubscriptionType.Generic:
       return i18next.t('label.webhook');
-    case SubscriptionType.SlackWebhook:
+    case SubscriptionType.Slack:
       return i18next.t('label.slack');
-    case SubscriptionType.MSTeamsWebhook:
+    case SubscriptionType.MSTeams:
       return i18next.t('label.ms-team-plural');
-    case SubscriptionType.GChatWebhook:
+    case SubscriptionType.GChat:
       return i18next.t('label.g-chat');
     default:
       return '';
