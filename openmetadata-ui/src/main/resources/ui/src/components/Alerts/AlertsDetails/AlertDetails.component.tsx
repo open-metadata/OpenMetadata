@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Card, Col, Divider, Row, Space, Tag, Typography } from 'antd';
+import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isArray } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,16 +22,12 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import {
   Effect,
   EventSubscription,
-  SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import {
   EDIT_LINK_PATH,
-  getAlertActionTypeDisplayName,
-  getAlertsActionTypeIcon,
   getDisplayNameForEntities,
   getFunctionDisplayName,
 } from '../../../utils/Alerts/AlertsUtil';
-import { getHostNameFromURL } from '../../../utils/CommonUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -122,108 +117,7 @@ export const AlertDetailsComponent = ({
           <Typography.Title level={5}>
             {t('label.destination')}
           </Typography.Title>
-          <Row gutter={[16, 16]}>
-            <Col key={alerts.name} span={8}>
-              {alerts.subscriptionType === SubscriptionType.ActivityFeed ? (
-                <Space size={16}>
-                  {getAlertsActionTypeIcon(alerts.subscriptionType)}
-
-                  {getAlertActionTypeDisplayName(
-                    alerts.subscriptionType ?? SubscriptionType.GenericWebhook
-                  )}
-                </Space>
-              ) : (
-                <Card
-                  className="h-full"
-                  title={
-                    <Space size={16}>
-                      {getAlertsActionTypeIcon(alerts.subscriptionType)}
-
-                      {getAlertActionTypeDisplayName(
-                        alerts.subscriptionType ??
-                          SubscriptionType.GenericWebhook
-                      )}
-                    </Space>
-                  }>
-                  <Space direction="vertical" size={8}>
-                    {alerts.subscriptionType === SubscriptionType.Email && (
-                      <>
-                        <Typography.Text>
-                          {t('label.send-to')}:{' '}
-                          <div>
-                            {alerts.subscriptionConfig?.receivers?.map(
-                              (rec) => (
-                                <Tag key={rec}>{rec}</Tag>
-                              )
-                            )}
-                          </div>
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Space size={16}>
-                            <span>
-                              {alerts?.subscriptionConfig?.sendToAdmins ? (
-                                <CheckCircleOutlined />
-                              ) : (
-                                <CloseCircleOutlined />
-                              )}{' '}
-                              {t('label.admin-plural')}
-                            </span>
-                            <span>
-                              {alerts?.subscriptionConfig?.sendToOwners ? (
-                                <CheckCircleOutlined />
-                              ) : (
-                                <CloseCircleOutlined />
-                              )}{' '}
-                              {t('label.owner-plural')}
-                            </span>
-                            <span>
-                              {alerts?.subscriptionConfig?.sendToFollowers ? (
-                                <CheckCircleOutlined />
-                              ) : (
-                                <CloseCircleOutlined />
-                              )}{' '}
-                              {t('label.follower-plural')}
-                            </span>
-                          </Space>
-                        </Typography.Text>
-                      </>
-                    )}
-                    {alerts.subscriptionType !== SubscriptionType.Email && (
-                      <>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('label.webhook')}:{' '}
-                          </Typography.Text>
-                          {getHostNameFromURL(
-                            alerts.subscriptionConfig?.endpoint ?? '-'
-                          )}
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('label.batch-size')}:{' '}
-                          </Typography.Text>
-                          {alerts.batchSize}
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('message.field-timeout-description')}:{' '}
-                          </Typography.Text>
-                          {alerts.timeout}
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('label.secret-key')}:{' '}
-                          </Typography.Text>
-
-                          {alerts.subscriptionConfig?.secretKey ? '****' : '-'}
-                        </Typography.Text>
-                      </>
-                    )}
-                  </Space>
-                </Card>
-              )}
-            </Col>
-          </Row>
+          <Row gutter={[16, 16]} />
         </Card>
       </Col>
     </Row>
