@@ -60,7 +60,6 @@ export const SIDEBAR_LIST = [
       {
         key: ROUTES.OBSERVABILITY,
         label: i18next.t('label.alert-plural'),
-        redirect_url: ROUTES.OBSERVABILITY_ALERTS,
         icon: AlertIcon,
         dataTestId: 'app-bar-item-observability-alert',
       },

@@ -359,10 +359,6 @@ const IncidentManagerDetailPage = withSuspenseFallback(
   )
 );
 
-const ObservabilityAlertsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/Observability/Alerts/AlertsPage'))
-);
-
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { routeElements } = useApplicationConfigContext();
@@ -945,12 +941,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DataInsightPage}
         path={ROUTES.DATA_INSIGHT_WITH_TAB}
-      />
-
-      <Route
-        exact
-        component={ObservabilityAlertsPage}
-        path={ROUTES.OBSERVABILITY_ALERTS}
       />
 
       <Route exact component={AddKPIPage} path={ROUTES.ADD_KPI} />
