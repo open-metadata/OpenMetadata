@@ -84,6 +84,7 @@ def _(elements, compiler, **kwargs):
     )
 
 
+@compiles(MedianFn, Dialects.Vertica)
 @compiles(MedianFn, Dialects.MSSQL)
 def _(elements, compiler, **kwargs):
     """Median computation for MSSQL"""
