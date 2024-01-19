@@ -84,9 +84,10 @@ def _(elements, compiler, **kwargs):
     )
 
 
+@compiles(MedianFn, Dialects.Vertica)
 @compiles(MedianFn, Dialects.MSSQL)
 def _(elements, compiler, **kwargs):
-    """Median computation for MSSQL"""
+    """Median computation for MSSQL & Vertica"""
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
     return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC) OVER()" % (
