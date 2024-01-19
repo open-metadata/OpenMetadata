@@ -54,6 +54,8 @@ public interface SearchClient {
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
+  String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
+
   boolean isClientAvailable();
 
   ElasticSearchConfiguration.SearchType getSearchType();
@@ -128,22 +130,26 @@ public interface SearchClient {
       throws IOException, ParseException;
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default es.org.elasticsearch.action.bulk.BulkResponse bulk(
       es.org.elasticsearch.action.bulk.BulkRequest data,
       es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default int getSuccessFromBulkResponse(BulkResponse response) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   void close();
