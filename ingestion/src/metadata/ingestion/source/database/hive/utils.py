@@ -26,6 +26,7 @@ _type_map.update(
         "binary": types.BINARY,
         "char": types.CHAR,
         "varchar": types.VARCHAR,
+        "decimal": types.DECIMAL
     }
 )
 
@@ -58,6 +59,9 @@ def get_columns(
         charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
         if charlen:
             charlen = charlen.group(1)
+            match = re.search(r"struct<b:(\w+)>", attype)
+            if match:
+                attype = match.group(1)
             if attype == "decimal":
                 prec, scale = charlen.split(",")
                 args = (int(prec), int(scale))
