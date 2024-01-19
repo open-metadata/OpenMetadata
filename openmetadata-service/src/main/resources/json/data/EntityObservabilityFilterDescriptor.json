@@ -66,7 +66,7 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Table Name",
+        "displayName": "Filter By Topic Name",
         "description" : "Filter A Change Event By Topic Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
@@ -108,9 +108,6 @@
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
         "condition": "matchAnyFieldChange({'messageSchema'})",
-        "arguments": [
-          "fieldList"
-        ],
         "inputType": "none"
       }
     ]
@@ -121,7 +118,7 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Table Name",
+        "displayName": "Filter By Container Name",
         "description" : "Filter A Change Event By Container Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
@@ -163,9 +160,6 @@
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
         "condition": "matchAnyFieldChange({'parent','children'})",
-        "arguments": [
-          "fieldList"
-        ],
         "inputType": "none"
       }
     ]
@@ -176,7 +170,7 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Table Name",
+        "displayName": "Filter By Pipeline Name",
         "description" : "Filter A Change Event By Pipeline Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
@@ -218,9 +212,6 @@
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
         "condition": "matchAnyFieldChange({'sourceUrl','pipelineLocation'})",
-        "arguments": [
-          "fieldList"
-        ],
         "inputType": "none"
       },
       {
@@ -233,7 +224,7 @@
         "arguments": [
           "pipelineStateList"
         ],
-        "inputType": "none"
+        "inputType": "runtime"
       }
     ]
   },
@@ -297,9 +288,6 @@
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
         "condition": "matchAnyFieldChange({'testDefinition','parameterValues'})",
-        "arguments": [
-          "fieldList"
-        ],
         "inputType": "none"
       },
       {
@@ -376,9 +364,6 @@
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
         "condition": "matchAnyFieldChange({'connection','pipelines'})",
-        "arguments": [
-          "fieldList"
-        ],
         "inputType": "none"
       },
       {
