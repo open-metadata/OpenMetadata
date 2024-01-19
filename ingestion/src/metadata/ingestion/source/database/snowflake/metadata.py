@@ -29,7 +29,6 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
-    Table,
     TablePartition,
     TableType,
 )
@@ -45,7 +44,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -145,6 +143,7 @@ class SnowflakeSource(
 
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
+        self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -475,38 +474,6 @@ class SnowflakeSource(
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
         return None
-
-    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
-        """
-        Get the life cycle data of the table
-        """
-        try:
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=self.context.database_schema,
-                table_name=self.context.table,
-                skip_es_search=True,
-            )
-            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            if table:
-                yield from self.get_life_cycle_data(
-                    entity=table,
-                    query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
-                        database_name=table.database.name,
-                        schema_name=table.databaseSchema.name,
-                    ),
-                )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name="lifeCycle",
-                    error=f"Error Processing life cycle data: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
 
     def query_view_names_and_types(
         self, schema_name: str

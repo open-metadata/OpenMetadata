@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     IntervalType,
-    Table,
     TableConstraint,
     TablePartition,
     TableType,
@@ -50,7 +49,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -123,6 +121,7 @@ class RedshiftSource(
     def __init__(self, config, metadata):
         super().__init__(config, metadata)
         self.partition_details = {}
+        self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -313,35 +312,3 @@ class RedshiftSource(
         )
 
         return queries_dict
-
-    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
-        """
-        Get the life cycle data of the table
-        """
-        try:
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=self.context.database_schema,
-                table_name=self.context.table,
-                skip_es_search=True,
-            )
-            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            if table:
-                yield from self.get_life_cycle_data(
-                    entity=table,
-                    query=REDSHIFT_LIFE_CYCLE_QUERY.format(
-                        database_name=table.database.name,
-                        schema_name=table.databaseSchema.name,
-                    ),
-                )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name="lifeCycle",
-                    error=f"Error Processing life cycle data: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
