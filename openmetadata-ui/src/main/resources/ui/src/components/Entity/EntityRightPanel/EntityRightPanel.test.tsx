@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
@@ -26,18 +27,45 @@ jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <div>TagsContainerV2</div>);
 });
 
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
+    )),
+}));
+
 jest.mock('../../../utils/EntityRightPanelClassBase');
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    fqn: 'fqn',
+    tab: 'tab',
+    version: 'version',
+  })),
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
+}));
 
 describe('EntityRightPanel component test', () => {
   const mockDataProducts: EntityReference[] = [];
   const mockSelectedTags: EntityTags[] = [];
   const mockOnTagSelectionChange = jest.fn();
   const mockOnThreadLinkSelect = jest.fn();
+  const mockCustomProperties = {
+    extension: {
+      test1: 'test',
+      test2: '',
+    },
+  } as Table;
 
   it('Component should render', () => {
     render(
       <EntityRightPanel
         editTagPermission
+        customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
         entityId="testEntityId"
@@ -56,6 +84,7 @@ describe('EntityRightPanel component test', () => {
     render(
       <EntityRightPanel
         editTagPermission
+        customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
         entityId="testEntityId"
@@ -76,6 +105,7 @@ describe('EntityRightPanel component test', () => {
         editTagPermission
         afterSlot={<div>afterSlot</div>}
         beforeSlot={<div>beforeSlot</div>}
+        customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
         entityId="testEntityId"
@@ -95,6 +125,7 @@ describe('EntityRightPanel component test', () => {
     render(
       <EntityRightPanel
         editTagPermission
+        customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
         entityId="testEntityId"
@@ -120,6 +151,7 @@ describe('EntityRightPanel component test', () => {
     render(
       <EntityRightPanel
         editTagPermission
+        customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
         entityId="testEntityId"
@@ -143,6 +175,7 @@ describe('EntityRightPanel component test', () => {
     render(
       <EntityRightPanel
         editTagPermission
+        customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
         entityId="testEntityId"
@@ -157,5 +190,50 @@ describe('EntityRightPanel component test', () => {
     expect(spy).toHaveBeenCalled();
 
     expect(screen.queryByText('KnowledgeArticles')).not.toBeInTheDocument();
+  });
+
+  it('should render CustomPropertyTable when mockCustomProperties is not null', () => {
+    render(
+      <EntityRightPanel
+        editTagPermission
+        viewAllPermission
+        customProperties={mockCustomProperties}
+        dataProducts={mockDataProducts}
+        entityFQN="testEntityFQN"
+        entityId="testEntityId"
+        entityType={EntityType.TABLE}
+        selectedTags={mockSelectedTags}
+        showDataProductContainer={false}
+        onTagSelectionChange={mockOnTagSelectionChange}
+        onThreadLinkSelect={mockOnThreadLinkSelect}
+      />
+    );
+
+    expect(
+      screen.getByText('label.custom-property-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-access-placeholder')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should not render CustomPropertyTable when no custom properties', () => {
+    render(
+      <EntityRightPanel
+        editTagPermission
+        viewAllPermission
+        customProperties={{} as Table}
+        dataProducts={mockDataProducts}
+        entityFQN="testEntityFQN"
+        entityId="testEntityId"
+        entityType={EntityType.TABLE}
+        selectedTags={mockSelectedTags}
+        showDataProductContainer={false}
+        onTagSelectionChange={mockOnTagSelectionChange}
+        onThreadLinkSelect={mockOnThreadLinkSelect}
+      />
+    );
+
+    expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
   });
 });

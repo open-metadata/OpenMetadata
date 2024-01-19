@@ -133,6 +133,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           TabSpecificField.DOMAIN,
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
+          TabSpecificField.EXTENSION,
         ].join(','),
       });
       const { id, fullyQualifiedName, serviceType } = res;

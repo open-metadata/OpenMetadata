@@ -26,6 +26,7 @@ import {
   deleteCustomPropertyForEntity,
   generateCustomProperty,
   setValueForProperty,
+  validateValueForProperty,
 } from '../Utils/CustomProperty';
 import { addDomainToEntity, removeDomainFromEntity } from '../Utils/Domain';
 import {
@@ -483,9 +484,12 @@ class EntityClass {
 
   setCustomProperty(propertydetails: CustomProperty, value: string) {
     setValueForProperty(propertydetails.name, value);
+    validateValueForProperty(propertydetails.name, value);
   }
+
   updateCustomProperty(propertydetails: CustomProperty, value: string) {
     setValueForProperty(propertydetails.name, value);
+    validateValueForProperty(propertydetails.name, value);
   }
 }
 

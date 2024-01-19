@@ -106,6 +106,29 @@ const GlossaryTermsV1 = ({
     );
   };
 
+  const fetchGlossaryTermAssets = async () => {
+    if (glossaryTerm) {
+      try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
+        );
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(tags.tagFQN:"${encodedFqn}")`,
+          '',
+          '',
+          SearchIndex.ALL
+        );
+
+        setAssetCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setAssetCount(0);
+      }
+    }
+  };
+
   const handleAssetSave = useCallback(() => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
@@ -223,18 +246,20 @@ const GlossaryTermsV1 = ({
                 />
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
-              children: (
-                <CustomPropertyTable
-                  entityDetails={isVersionView ? glossaryTerm : undefined}
-                  entityType={EntityType.GLOSSARY_TERM}
-                  handleExtensionUpdate={onExtensionUpdate}
-                  hasEditAccess={
-                    !isVersionView &&
-                    (permissions.EditAll || permissions.EditCustomFields)
-                  }
-                  hasPermission={permissions.ViewAll}
-                  isVersionView={isVersionView}
-                />
+              children: glossaryTerm && (
+                <div className="m-sm">
+                  <CustomPropertyTable<EntityType.GLOSSARY_TERM>
+                    entityDetails={glossaryTerm}
+                    entityType={EntityType.GLOSSARY_TERM}
+                    handleExtensionUpdate={onExtensionUpdate}
+                    hasEditAccess={
+                      !isVersionView &&
+                      (permissions.EditAll || permissions.EditCustomFields)
+                    }
+                    hasPermission={permissions.ViewAll}
+                    isVersionView={isVersionView}
+                  />
+                </div>
               ),
             },
           ]
@@ -255,29 +280,6 @@ const GlossaryTermsV1 = ({
     handleAssetSave,
     onExtensionUpdate,
   ]);
-
-  const fetchGlossaryTermAssets = async () => {
-    if (glossaryTerm) {
-      try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
-        );
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(tags.tagFQN:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
-
-        setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
-        setAssetCount(0);
-      }
-    }
-  };
 
   useEffect(() => {
     fetchGlossaryTermAssets();

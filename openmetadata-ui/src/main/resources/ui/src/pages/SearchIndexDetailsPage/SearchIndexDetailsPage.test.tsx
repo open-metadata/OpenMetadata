@@ -148,7 +148,7 @@ describe('SearchIndexDetailsPage component', () => {
     });
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
-      fields: 'fields,followers,tags,owner,domain,votes,dataProducts',
+      fields: 'fields,followers,tags,owner,domain,votes,dataProducts,extension',
     });
   });
 
@@ -164,7 +164,7 @@ describe('SearchIndexDetailsPage component', () => {
     });
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
-      fields: 'fields,followers,tags,owner,domain,votes,dataProducts',
+      fields: 'fields,followers,tags,owner,domain,votes,dataProducts,extension',
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('SearchIndexDetailsPage component', () => {
     });
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
-      fields: 'fields,followers,tags,owner,domain,votes,dataProducts',
+      fields: 'fields,followers,tags,owner,domain,votes,dataProducts,extension',
     });
 
     expect(
