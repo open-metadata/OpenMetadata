@@ -30,6 +30,7 @@ import {
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { useFqn } from '../../../hooks/useFqn';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
@@ -38,7 +39,6 @@ import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
-  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -70,11 +70,8 @@ const GlossaryTermsV1 = ({
   isVersionView,
   onThreadLinkSelect,
 }: GlossaryTermsV1Props) => {
-  const {
-    fqn: glossaryFqn,
-    tab,
-    version,
-  } = useParams<{ fqn: string; tab: string; version: string }>();
+  const { tab, version } = useParams<{ tab: string; version: string }>();
+  const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
@@ -97,7 +94,7 @@ const GlossaryTermsV1 = ({
     history.push({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(getDecodedFqn(glossaryFqn), tab),
+        : getGlossaryTermDetailsPath(glossaryFqn, tab),
     });
   };
 
@@ -107,6 +104,29 @@ const GlossaryTermsV1 = ({
       glossaryTerm.fullyQualifiedName ?? '',
       setFeedCount
     );
+  };
+
+  const fetchGlossaryTermAssets = async () => {
+    if (glossaryTerm) {
+      try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
+        );
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(tags.tagFQN:"${encodedFqn}")`,
+          '',
+          '',
+          SearchIndex.ALL
+        );
+
+        setAssetCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setAssetCount(0);
+      }
+    }
   };
 
   const handleAssetSave = useCallback(() => {
@@ -226,18 +246,20 @@ const GlossaryTermsV1 = ({
                 />
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
-              children: (
-                <CustomPropertyTable
-                  entityDetails={isVersionView ? glossaryTerm : undefined}
-                  entityType={EntityType.GLOSSARY_TERM}
-                  handleExtensionUpdate={onExtensionUpdate}
-                  hasEditAccess={
-                    !isVersionView &&
-                    (permissions.EditAll || permissions.EditCustomFields)
-                  }
-                  hasPermission={permissions.ViewAll}
-                  isVersionView={isVersionView}
-                />
+              children: glossaryTerm && (
+                <div className="m-sm">
+                  <CustomPropertyTable<EntityType.GLOSSARY_TERM>
+                    entityDetails={glossaryTerm}
+                    entityType={EntityType.GLOSSARY_TERM}
+                    handleExtensionUpdate={onExtensionUpdate}
+                    hasEditAccess={
+                      !isVersionView &&
+                      (permissions.EditAll || permissions.EditCustomFields)
+                    }
+                    hasPermission={permissions.ViewAll}
+                    isVersionView={isVersionView}
+                  />
+                </div>
               ),
             },
           ]
@@ -258,29 +280,6 @@ const GlossaryTermsV1 = ({
     handleAssetSave,
     onExtensionUpdate,
   ]);
-
-  const fetchGlossaryTermAssets = async () => {
-    if (glossaryTerm) {
-      try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
-        );
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(tags.tagFQN:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
-
-        setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
-        setAssetCount(0);
-      }
-    }
-  };
 
   useEffect(() => {
     fetchGlossaryTermAssets();

@@ -17,7 +17,6 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -27,14 +26,12 @@ import {
   Type,
 } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import {
@@ -59,32 +56,16 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
+  maxDataCap,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [extentionDetails, setExtentionDetails] =
-    useState<ExtentionEntities[T]>();
+
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
-  const { fqn } = useParams<{ fqn: string; tab: string; version: string }>();
-  const decodedeFqn = getDecodedFqn(fqn);
-
-  const fetchExtentiondetails = async () => {
-    const response = await getEntityExtentionDetailsFromEntityType<T>(
-      entityType,
-      decodedeFqn
-    );
-
-    setExtentionDetails(response as ExtentionEntities[T]);
-  };
-
-  useEffect(() => {
-    fetchExtentiondetails();
-  }, [decodedeFqn]);
 
   const [typePermission, setPermission] = useState<OperationPermission>();
-  const versionDetails = entityDetails ?? extentionDetails;
 
   const fetchTypeDetail = async () => {
     setEntityTypeDetailLoading(true);
@@ -121,16 +102,15 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   const onExtensionUpdate = useCallback(
     async (updatedExtension: ExtentionEntities[T]) => {
-      if (!isUndefined(handleExtensionUpdate) && versionDetails) {
+      if (!isUndefined(handleExtensionUpdate) && entityDetails) {
         const updatedData = {
-          ...versionDetails,
+          ...entityDetails,
           extension: updatedExtension,
         };
         await handleExtensionUpdate(updatedData);
-        setExtentionDetails(updatedData);
       }
     },
-    [versionDetails, handleExtensionUpdate]
+    [entityDetails, handleExtensionUpdate]
   );
 
   const extensionObject: {
@@ -138,7 +118,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     addedKeysList?: string[];
   } = useMemo(() => {
     if (isVersionView) {
-      const changeDescription = versionDetails?.changeDescription;
+      const changeDescription = entityDetails?.changeDescription;
       const extensionDiff = getDiffByFieldName(
         EntityField.EXTENSION,
         changeDescription as ChangeDescription
@@ -150,19 +130,19 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         const addedFields = JSON.parse(newValues ? newValues : [])[0];
         if (addedFields) {
           return {
-            extensionObject: versionDetails?.extension,
+            extensionObject: entityDetails?.extension,
             addedKeysList: Object.keys(addedFields),
           };
         }
       }
 
-      if (versionDetails && extensionDiff.updated) {
-        return getUpdatedExtensionDiffFields(versionDetails, extensionDiff);
+      if (entityDetails && extensionDiff.updated) {
+        return getUpdatedExtensionDiffFields(entityDetails, extensionDiff);
       }
     }
 
-    return { extensionObject: versionDetails?.extension };
-  }, [isVersionView, versionDetails?.extension]);
+    return { extensionObject: entityDetails?.extension };
+  }, [isVersionView, entityDetails?.extension]);
 
   const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
     return [
@@ -170,7 +150,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 200,
+        ellipsis: true,
+        width: '50%',
         render: (_, record) => getEntityName(record),
         sorter: columnSorter,
       },
@@ -192,7 +173,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       },
     ];
   }, [
-    versionDetails?.extension,
+    entityDetails,
+    entityDetails?.extension,
     hasEditAccess,
     extensionObject,
     isVersionView,
@@ -203,7 +185,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();
     }
-  }, [typePermission]);
+  }, [typePermission, entityDetails?.extension]);
 
   useEffect(() => {
     fetchResourcePermission(entityType);
@@ -223,7 +205,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    isUndefined(versionDetails?.extension)
+    isUndefined(entityDetails?.extension)
   ) {
     return (
       <div className="flex-center tab-content-height">
@@ -239,15 +221,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(versionDetails?.extension) ? (
-    <ExtensionTable extension={versionDetails?.extension} />
+    !isUndefined(entityDetails?.extension) ? (
+    <ExtensionTable extension={entityDetails?.extension} />
   ) : (
     <Table
       bordered
-      className="m-md"
       columns={tableColumn}
       data-testid="custom-properties-table"
-      dataSource={entityTypeDetail.customProperties ?? []}
+      dataSource={entityTypeDetail.customProperties?.slice(0, maxDataCap)}
       loading={entityTypeDetailLoading}
       pagination={false}
       rowKey="name"

@@ -13,17 +13,12 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
-import java.util.List;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
-import org.openmetadata.service.util.FeedUtils;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   @Override
@@ -64,24 +59,24 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildMessage(ChangeEvent event) {
-    EmailMessage emailMessage = new EmailMessage();
-    emailMessage.setUserName(event.getUserName());
-    EntityInterface entityInterface = getEntity(event);
-    if (event.getEntity() != null) {
-      emailMessage.setUpdatedBy(event.getUserName());
-      if (event.getEntityType().equals(Entity.QUERY)) {
-        emailMessage.setEntityUrl(Entity.QUERY);
-      } else {
-        emailMessage.setEntityUrl(this.buildEntityUrl(event.getEntityType(), entityInterface));
-      }
+  public EmailMessage buildEntityMessage(ChangeEvent event) {
+    return getEmailMessage(createEntityMessage(event));
+  }
+
+  @Override
+  public EmailMessage buildThreadMessage(ChangeEvent event) {
+    return getEmailMessage(createThreadMessage(event));
+  }
+
+  public EmailMessage getEmailMessage(OutgoingMessage outgoingMessage) {
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      EmailMessage emailMessage = new EmailMessage();
+      emailMessage.setUserName(outgoingMessage.getUserName());
+      emailMessage.setEntityUrl(outgoingMessage.getEntityUrl());
+      emailMessage.setUpdatedBy(outgoingMessage.getUserName());
+      emailMessage.setChangeMessage(new ArrayList<>(outgoingMessage.getMessages()));
+      return emailMessage;
     }
-    List<Thread> thread = FeedUtils.getThreads(event, "admin");
-    List<String> changeMessage = new ArrayList<>();
-    for (Thread entry : thread) {
-      changeMessage.add(entry.getMessage());
-    }
-    emailMessage.setChangeMessage(changeMessage);
-    return emailMessage;
+    throw new UnhandledServerException("No messages found for the event");
   }
 }

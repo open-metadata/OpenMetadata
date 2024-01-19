@@ -27,7 +27,6 @@ import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import Loader from '../../Loader/Loader';
 import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
@@ -107,7 +106,7 @@ const EdgeInfoDrawer = ({
           data?.edge?.pipeline &&
           entityUtilClassBase.getEntityLink(
             data?.edge?.pipeline.type,
-            getEncodedFqn(data?.edge?.pipeline.fullyQualifiedName)
+            data?.edge?.pipeline.fullyQualifiedName
           ),
       },
       functionInfo: {

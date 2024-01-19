@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { isEmpty, isEqual } from 'lodash';
+import { DateRangeObject } from 'Models';
 import React, {
   createContext,
   useContext,
@@ -20,7 +21,6 @@ import React, {
 } from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import Loader from '../../components/Loader/Loader';
-import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE } from '../../constants/constants';

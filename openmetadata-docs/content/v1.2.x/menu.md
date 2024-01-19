@@ -277,6 +277,8 @@ site_menu:
     url: /how-to-guides/data-collaboration/announcements
   - category: How-to Guides / Data Collaboration / How to Create an Announcement
     url: /how-to-guides/data-collaboration/add-announcement
+  - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
+    url: /how-to-guides/data-collaboration/knowledge-center
 
   - category: How-to Guides / Data Quality and Profiler
     url: /how-to-guides/data-quality-profiler
@@ -765,9 +767,6 @@ site_menu:
 
   - category: Features / Discovery & Collaboration
     url: /features/discovery-collaboration
-
-  - category: Features / Teams & Users
-    url: /features/users
 
   - category: Features / Integrations
     url: /features/integrations

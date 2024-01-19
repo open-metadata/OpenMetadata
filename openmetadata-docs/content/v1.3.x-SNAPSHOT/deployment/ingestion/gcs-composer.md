@@ -3,10 +3,17 @@ title: Run the ingestion from GCS Composer
 slug: /deployment/ingestion/gcs-composer
 ---
 
+{% partial file="/v1.3/deployment/external-ingestion.md" /%}
+
 # Run the ingestion from GCS Composer
 
-**Note:** This approach has been tested against Airflow 2.1.4 & 2.2.5 If you have any issues or questions,
-please do not hesitate to reach out!
+## Requirements
+
+This approach has been last tested against:
+- Composer version 2.5.4
+- Airflow version 2.6.3
+
+It also requires the ingestion package to be at least `openmetadata-ingestion==1.2.4.3`.
 
 ## Using the Python Operator
 
@@ -19,8 +26,6 @@ In your environment you will need to install the following packages:
 
 - `openmetadata-ingestion[<plugins>]==x.y.z`.
 - `sqlalchemy==1.4.27`: This is needed to align OpenMetadata version with the Composer internal requirements.
-- `flask-appbuilder==3.4.5`: Again, this is just an alignment of versions so that `openmetadata-ingestion` can
-  work with GCS Composer internals.
 
 Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.1.0, then the ingestion package needs to also be 1.1.0.
 

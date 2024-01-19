@@ -16,10 +16,11 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { SummaryPanel } from '../../../components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DataQualityTab from '../../../components/ProfilerDashboard/component/DataQualityTab';
 import TestSuitePipelineTab from '../../../components/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { getTableTabPath } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
   TEST_CASE_STATUS_OPTION,
@@ -31,11 +32,16 @@ import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityType as TestType } from '../../../generated/tests/testDefinition';
+import { useFqn } from '../../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import {
+  getBreadcrumbForTable,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PageHeader from '../../PageHeader/PageHeader.component';
+import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import { useTableProfiler } from '../TableProfilerProvider';
 
@@ -51,15 +57,32 @@ export const QualityTab = () => {
   } = useTableProfiler();
 
   const editTest = permissions.EditAll || permissions.EditTests;
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
   const { t } = useTranslation();
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [testSuite, setTestSuite] = useState<Table['testSuite']>();
+  const [table, setTable] = useState<Table>();
   const [isTestSuiteLoading, setIsTestSuiteLoading] = useState(true);
+  const testSuite = useMemo(() => table?.testSuite, [table]);
+
+  const tableBreadcrumb = useMemo(() => {
+    return table
+      ? [
+          ...getBreadcrumbForTable(table),
+          {
+            name: getEntityName(table),
+            url:
+              getTableTabPath(
+                table.fullyQualifiedName ?? '',
+                EntityTabs.PROFILER
+              ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
+          },
+        ]
+      : undefined;
+  }, [table]);
 
   const filteredTestCase = useMemo(() => {
     let tests: TestCase[] = allTestCases ?? [];
@@ -84,6 +107,7 @@ export const QualityTab = () => {
           <div className="p-t-md">
             <DataQualityTab
               afterDeleteAction={fetchAllTests}
+              breadcrumbData={tableBreadcrumb}
               isLoading={isTestsLoading}
               showTableColumn={false}
               testCases={filteredTestCase}
@@ -105,6 +129,7 @@ export const QualityTab = () => {
       onTestCaseUpdate,
       testSuite,
       fetchAllTests,
+      tableBreadcrumb,
     ]
   );
 
@@ -121,9 +146,7 @@ export const QualityTab = () => {
   };
 
   const handleAddTestClick = (type: ProfilerDashboardType) => {
-    history.push(
-      getAddDataQualityTableTestPath(type, getDecodedFqn(datasetFQN))
-    );
+    history.push(getAddDataQualityTableTestPath(type, datasetFQN));
   };
 
   const addButtonContent = useMemo(
@@ -148,7 +171,7 @@ export const QualityTab = () => {
       const details = await getTableDetailsByFQN(datasetFQN, {
         fields: TabSpecificField.TESTSUITE,
       });
-      setTestSuite(details.testSuite);
+      setTable(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

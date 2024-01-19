@@ -614,6 +614,7 @@ const PipelineDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={pipelineDetails}
                 dataProducts={pipelineDetails?.dataProducts ?? []}
                 domain={pipelineDetails?.domain}
                 editTagPermission={editTagsPermission}
@@ -621,6 +622,7 @@ const PipelineDetails = ({
                 entityId={pipelineDetails.id}
                 entityType={EntityType.PIPELINE}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -684,13 +686,16 @@ const PipelineDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.PIPELINE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: pipelineDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.PIPELINE>
+              entityDetails={pipelineDetails}
+              entityType={EntityType.PIPELINE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

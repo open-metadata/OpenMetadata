@@ -10,19 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
+import { Space, Typography } from 'antd';
+import { t } from 'i18next';
 import { EntityTags } from 'Models';
-import React, { FC } from 'react';
-import { EntityType } from '../../../enums/entity.enum';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import type {
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DataProductsContainer from '../../DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
-interface EntityRightPanelProps {
+interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   dataProducts: EntityReference[];
   editTagPermission: boolean;
   entityType: EntityType;
@@ -36,9 +44,11 @@ interface EntityRightPanelProps {
   domain?: EntityReference;
   onTagSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  viewAllPermission?: boolean;
+  customProperties?: ExtentionEntities[T];
 }
 
-const EntityRightPanel: FC<EntityRightPanelProps> = ({
+const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   domain,
   dataProducts,
   entityFQN,
@@ -52,7 +62,9 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
   entityId,
   showTaskHandler = true,
   showDataProductContainer = true,
-}) => {
+  viewAllPermission,
+  customProperties,
+}: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
 
@@ -93,6 +105,30 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
         />
         {KnowledgeArticles && (
           <KnowledgeArticles entityId={entityId} entityType={entityType} />
+        )}
+        {customProperties?.extension && (
+          <>
+            <div className="d-flex justify-between">
+              <Typography.Text className="right-panel-label">
+                {t('label.custom-property-plural')}
+              </Typography.Text>
+              <Link
+                to={getEntityDetailLink(
+                  entityType,
+                  entityFQN,
+                  EntityTabs.CUSTOM_PROPERTIES
+                )}>
+                {t('label.view-all')}
+              </Link>
+            </div>
+            <CustomPropertyTable
+              entityDetails={customProperties}
+              entityType={entityType as ExtentionEntitiesKeys}
+              hasEditAccess={false}
+              hasPermission={viewAllPermission ?? false}
+              maxDataCap={5}
+            />
+          </>
         )}
       </Space>
       {afterSlot}

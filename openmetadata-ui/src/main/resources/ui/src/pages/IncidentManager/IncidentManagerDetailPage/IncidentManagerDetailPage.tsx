@@ -14,16 +14,17 @@ import { Col, Row, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import IncidentManagerPageHeader from '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
-import TestCaseIssueTab from '../../../components/IncidentManager/TestCaseIssuesTab/TestCaseIssueTab.component';
+import TestCaseIncidentTab from '../../../components/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -32,30 +33,43 @@ import { ResourceEntity } from '../../../components/PermissionProvider/Permissio
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { useFqn } from '../../../hooks/useFqn';
+import { getFeedCount } from '../../../rest/feedsAPI';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
-import IncidentManagerProvider from '../IncidentManagerProvider/IncidentManagerProvider';
 import { TestCaseData } from './IncidentManagerDetailPage.interface';
 
 const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const location =
+    useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
 
-  const {
-    fqn: testCaseFQN,
-    tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS,
-  } = useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
+    useParams<{ tab: EntityTabs }>();
+
+  const { fqn: testCaseFQN } = useFqn();
+
+  const decodedTestCaseFQN = useMemo(
+    () => getDecodedFqn(testCaseFQN),
+    [testCaseFQN]
+  );
 
   const [testCaseData, setTestCaseData] = useState<TestCaseData>({
     data: undefined,
     isLoading: true,
   });
+  const [taskCount, setTaskCount] = useState(0);
 
   const { permissions } = usePermissionProvider();
   const hasViewPermission = useMemo(() => {
@@ -85,22 +99,24 @@ const IncidentManagerDetailPage = () => {
         key: IncidentManagerTabs.TEST_CASE_RESULTS,
       },
       {
-        label: <TabsLabel id="issue" name={t('label.issue-plural')} />,
-        key: IncidentManagerTabs.ISSUES,
-        children: (
-          <ActivityFeedProvider>
-            <TestCaseIssueTab owner={testCaseData.data?.owner} />
-          </ActivityFeedProvider>
+        label: (
+          <TabsLabel
+            count={taskCount}
+            id="incident"
+            name={t('label.incident')}
+          />
         ),
+        key: IncidentManagerTabs.ISSUES,
+        children: <TestCaseIncidentTab owner={testCaseData.data?.owner} />,
       },
     ],
-    [testCaseData]
+    [testCaseData, taskCount]
   );
 
   const fetchTestCaseData = async () => {
     setTestCaseData((prev) => ({ ...prev, isLoading: true }));
     try {
-      const response = await getTestCaseByFqn(testCaseFQN, {
+      const response = await getTestCaseByFqn(decodedTestCaseFQN, {
         fields: [
           'testSuite',
           'testCaseResult',
@@ -121,11 +137,18 @@ const IncidentManagerDetailPage = () => {
   };
 
   const breadcrumb = useMemo(() => {
+    const data: TitleBreadcrumbProps['titleLinks'] = location.state
+      ?.breadcrumbData
+      ? location.state.breadcrumbData
+      : [
+          {
+            name: t('label.incident-manager'),
+            url: ROUTES.INCIDENT_MANAGER,
+          },
+        ];
+
     return [
-      {
-        name: t('label.incident-manager'),
-        url: ROUTES.INCIDENT_MANAGER,
-      },
+      ...data,
       {
         name: testCaseData?.data?.name ?? '',
         url: '',
@@ -138,7 +161,7 @@ const IncidentManagerDetailPage = () => {
     if (activeKey !== activeTab) {
       history.push(
         getIncidentManagerDetailPagePath(
-          testCaseFQN,
+          decodedTestCaseFQN,
           activeKey as IncidentManagerTabs
         )
       );
@@ -165,13 +188,27 @@ const IncidentManagerDetailPage = () => {
     }
   };
 
+  const getEntityFeedCount = useCallback(async () => {
+    try {
+      const response = await getFeedCount(
+        getEntityFeedLink(EntityType.TEST_CASE, decodedTestCaseFQN),
+        ThreadType.Task,
+        ThreadTaskStatus.Open
+      );
+      setTaskCount(response.totalCount);
+    } catch (err) {
+      setTaskCount(0);
+    }
+  }, [decodedTestCaseFQN]);
+
   useEffect(() => {
-    if (hasViewPermission && testCaseFQN) {
+    if (hasViewPermission && decodedTestCaseFQN) {
       fetchTestCaseData();
+      getEntityFeedCount();
     } else {
       setTestCaseData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [testCaseFQN, hasViewPermission]);
+  }, [decodedTestCaseFQN, hasViewPermission]);
 
   if (testCaseData.isLoading) {
     return <Loader />;
@@ -187,7 +224,7 @@ const IncidentManagerDetailPage = () => {
 
   return (
     <PageLayoutV1 pageTitle="Incident Manager Detail Page">
-      <IncidentManagerProvider testCaseData={testCaseData.data}>
+      <ActivityFeedProvider>
         <Row
           data-testid="incident-manager-details-page-container"
           gutter={[0, 12]}>
@@ -203,7 +240,11 @@ const IncidentManagerDetailPage = () => {
             />
           </Col>
           <Col className="p-x-lg">
-            <IncidentManagerPageHeader onOwnerUpdate={handleOwnerChange} />
+            <IncidentManagerPageHeader
+              fetchTaskCount={getEntityFeedCount}
+              testCaseData={testCaseData.data}
+              onOwnerUpdate={handleOwnerChange}
+            />
           </Col>
           <Col span={24}>
             <Tabs
@@ -216,7 +257,7 @@ const IncidentManagerDetailPage = () => {
             />
           </Col>
         </Row>
-      </IncidentManagerProvider>
+      </ActivityFeedProvider>
     </PageLayoutV1>
   );
 };

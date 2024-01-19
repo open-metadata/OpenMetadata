@@ -170,14 +170,18 @@ export const getThreadField = (
 
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
   if (entityType === EntityType.GLOSSARY_TERM) {
-    return `${document.location.protocol}//${document.location.host}/glossary/${entityFqn}`;
+    return `${document.location.protocol}//${
+      document.location.host
+    }/glossary/${getEncodedFqn(entityFqn)}`;
   } else if (entityType === EntityType.TAG) {
     const classificationFqn = Fqn.split(entityFqn);
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
   }
 
-  return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
+  return `${document.location.protocol}//${
+    document.location.host
+  }/${entityType}/${getEncodedFqn(entityFqn)}`;
 };
 
 export async function suggestions(
@@ -231,7 +235,7 @@ export async function suggestions(
             value: name,
             link: buildMentionLink(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
-              getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+              hit._source.fullyQualifiedName ?? ''
             ),
             type:
               hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
@@ -262,7 +266,7 @@ export async function suggestions(
           value: `#${entityType}/${hit._source.name}`,
           link: buildMentionLink(
             entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+            hit._source.fullyQualifiedName ?? ''
           ),
           type: entityType,
           name: hit._source.displayName || hit._source.name,
@@ -286,7 +290,7 @@ export async function suggestions(
           value: `#${entityType}/${hit._source.name}`,
           link: buildMentionLink(
             entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+            hit._source.fullyQualifiedName ?? ''
           ),
           type: entityType,
           name: hit._source.displayName || hit._source.name,

@@ -38,16 +38,19 @@ const mockProps = {
     },
   ],
 };
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM'),
+}));
 
 describe('Test AddServicePage component', () => {
   it('AddServicePage component should render', async () => {
     render(<TestSummaryCustomTooltip {...mockProps} />);
 
     expect(
-      await screen.findByTestId('test-summary-tool-tip-container')
+      await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
     expect(
-      await screen.findByTestId('test-summary-tool-tip-container')
+      await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
     expect((await screen.findByTestId('status')).textContent).toEqual('Failed');
     expect((await screen.findByTestId('minValueLength')).textContent).toEqual(

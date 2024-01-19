@@ -13,8 +13,11 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent;
 
+import java.util.UUID;
 import org.openmetadata.service.events.errors.EventPublisherException;
 
 public interface Alert<T> {
-  void sendAlert(T event) throws EventPublisherException;
+  void sendAlert(UUID receiverId, T event) throws EventPublisherException;
+
+  boolean getEnabled();
 }

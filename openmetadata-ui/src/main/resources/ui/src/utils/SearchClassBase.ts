@@ -47,6 +47,34 @@ import i18n from './i18next/LocalUtil';
 import { getServiceIcon } from './TableUtils';
 
 class SearchClassBase {
+  public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
+    return {
+      [EntityType.ALL]: SearchIndex.ALL,
+      [EntityType.TABLE]: SearchIndex.TABLE,
+      [EntityType.PIPELINE]: SearchIndex.PIPELINE,
+      [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
+      [EntityType.MLMODEL]: SearchIndex.MLMODEL,
+      [EntityType.TOPIC]: SearchIndex.TOPIC,
+      [EntityType.CONTAINER]: SearchIndex.CONTAINER,
+      [EntityType.TAG]: SearchIndex.TAG,
+      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
+      [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
+      [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
+      [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
+      [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
+      [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
+      [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
+      [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
+      [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
+      [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
+      [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
+      [EntityType.DOMAIN]: SearchIndex.DOMAIN,
+      [EntityType.DATA_PRODUCT]: SearchIndex.DATA_PRODUCT,
+      [EntityType.DATABASE]: SearchIndex.DATABASE,
+      [EntityType.DATABASE_SCHEMA]: SearchIndex.DATABASE_SCHEMA,
+    };
+  }
+
   public getTabsInfo() {
     return {
       [SearchIndex.TABLE]: {
