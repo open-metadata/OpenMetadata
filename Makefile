@@ -133,7 +133,12 @@ export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 .PHONY: build-ingestion-base-local
 build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
-	docker build -f ingestion/operators/docker/Dockerfile-dev . -t openmetadata/ingestion-base:local
+	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base:local
+
+.PHONY: build-ingestion-base-slim-local
+build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
+	$(MAKE) install_dev generate
+	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base-slim:local --build-arg INGESTION_DEPENDENCY=slim
 
 .PHONY: generate-schema-docs
 generate-schema-docs:  ## Generates markdown files for documenting the JSON Schemas
