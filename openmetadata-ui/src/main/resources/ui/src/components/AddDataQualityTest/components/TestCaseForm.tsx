@@ -33,6 +33,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   FieldProp,
   FieldTypes,
@@ -45,7 +46,6 @@ import {
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields } from '../../../utils/formUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -59,8 +59,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   table,
 }) => {
   const history = useHistory();
-  const { entityTypeFQN, dashboardType } =
-    useParams<{ entityTypeFQN: string; dashboardType: string }>();
+  const { dashboardType } = useParams<{ dashboardType: string }>();
+
+  const { fqn: decodedEntityFQN } = useFqn();
   const { activeColumnFqn } = useMemo(() => {
     const param = location.search;
     const searchData = Qs.parse(
@@ -69,7 +70,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
     return searchData as { activeColumnFqn: string };
   }, [location.search]);
-  const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
+
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
