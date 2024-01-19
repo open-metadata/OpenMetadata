@@ -79,6 +79,7 @@ source:
     config:
       type: Profiler
       generateSampleData: true
+      computeMetrics: true
       # schemaFilterPattern:
       #   includes:
       #   # - .*mydatabase.*

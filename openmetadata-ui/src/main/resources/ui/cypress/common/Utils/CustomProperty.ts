@@ -134,3 +134,16 @@ export const setValueForProperty = (propertyName, value: string) => {
     value.replace(/\*|_/gi, '')
   );
 };
+export const validateValueForProperty = (propertyName, value: string) => {
+  cy.get('.ant-tabs-tab').first().click();
+  cy.get(
+    '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"]',
+    {
+      timeout: 10000,
+    }
+  ).scrollIntoView();
+  cy.get(`[data-row-key="${propertyName}"]`).should(
+    'contain',
+    value.replace(/\*|_/gi, '')
+  );
+};
