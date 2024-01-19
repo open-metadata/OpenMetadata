@@ -89,15 +89,17 @@ const mockWithAdvanceSearch =
     );
   };
 
+const ComponentWithProvider = mockWithAdvanceSearch(Children);
+
 describe('AdvanceSearchProvider component', () => {
   it('should render the AdvanceSearchModal as close by default', () => {
-    render(mockWithAdvanceSearch(Children)({}));
+    render(<ComponentWithProvider />);
 
     expect(screen.getByText('AdvanceSearchModal Close')).toBeInTheDocument();
   });
 
   it('should call mockPush after submit advance search form', async () => {
-    render(mockWithAdvanceSearch(Children)({}));
+    render(<ComponentWithProvider />);
 
     userEvent.click(screen.getByText('Apply Advance Search'));
 
