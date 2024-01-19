@@ -13,22 +13,25 @@
 import { Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { EntityTags } from 'Models';
-import React, { FC } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import type { ExtentionEntitiesKeys as ExtensionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import type {
+  ExtentionEntities,
+  ExtentionEntitiesKeys as ExtensionEntitiesKeys,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DataProductsContainer from '../../DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
-interface EntityRightPanelProps {
+interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   dataProducts: EntityReference[];
   editTagPermission: boolean;
   entityType: EntityType;
@@ -43,10 +46,10 @@ interface EntityRightPanelProps {
   onTagSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   viewAllPermission?: boolean;
-  customProperties?: Table['extension'];
+  customProperties?: ExtentionEntities[T];
 }
 
-const EntityRightPanel: FC<EntityRightPanelProps> = ({
+const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   domain,
   dataProducts,
   entityFQN,
@@ -62,7 +65,7 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
   showDataProductContainer = true,
   viewAllPermission,
   customProperties,
-}) => {
+}: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
 
@@ -120,11 +123,11 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
               </Link>
             </div>
             <CustomPropertyTable
-              isInRightPanel
               entityDetails={customProperties}
               entityType={entityType as ExtensionEntitiesKeys}
               hasEditAccess={false}
               hasPermission={viewAllPermission ?? false}
+              maxDataCap={5}
             />
           </>
         )}

@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
@@ -58,7 +59,7 @@ describe('EntityRightPanel component test', () => {
       test1: 'test',
       test2: '',
     },
-  };
+  } as Table;
 
   it('Component should render', () => {
     render(
@@ -221,7 +222,7 @@ describe('EntityRightPanel component test', () => {
       <EntityRightPanel
         editTagPermission
         viewAllPermission
-        customProperties={{}}
+        customProperties={{} as Table}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
         entityId="testEntityId"

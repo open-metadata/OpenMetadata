@@ -578,15 +578,17 @@ const DatabaseDetails: FunctionComponent = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={database}
-            entityType={EntityType.DATABASE}
-            handleExtensionUpdate={settingsUpdateHandler}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
+        children: database && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.DATABASE>
+              entityDetails={database}
+              entityType={EntityType.DATABASE}
+              handleExtensionUpdate={settingsUpdateHandler}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+              isVersionView={false}
+            />
+          </div>
         ),
       },
     ],

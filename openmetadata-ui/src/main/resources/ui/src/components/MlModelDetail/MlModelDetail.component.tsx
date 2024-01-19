@@ -488,14 +488,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={mlModelDetail}
-            entityType={EntityType.MLMODEL}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: mlModelDetail && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.MLMODEL>
+              entityDetails={mlModelDetail}
+              entityType={EntityType.MLMODEL}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

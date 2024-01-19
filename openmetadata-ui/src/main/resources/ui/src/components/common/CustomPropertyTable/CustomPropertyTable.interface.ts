@@ -43,10 +43,10 @@ export type ExtentionEntitiesKeys = keyof ExtentionEntities;
 export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   isVersionView?: boolean;
   entityType: T;
-  entityDetails: Table['extension'];
+  entityDetails: ExtentionEntities[T];
   handleExtensionUpdate?: (updatedTable: Table['extension']) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;
   hasPermission: boolean;
-  isInRightPanel?: boolean;
+  maxDataCap?: number;
 }

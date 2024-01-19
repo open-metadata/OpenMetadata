@@ -723,14 +723,16 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={tableDetails}
-            entityType={EntityType.TABLE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: tableDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.TABLE>
+              entityDetails={tableDetails}
+              entityType={EntityType.TABLE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ];

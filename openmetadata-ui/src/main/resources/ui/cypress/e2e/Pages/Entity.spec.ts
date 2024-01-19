@@ -113,7 +113,6 @@ entities.forEach((entity) => {
 
       it(`Set ${properties} Custom Property `, () => {
         Object.values(CustomPropertyType).forEach((type) => {
-          // set and validate
           entity.setCustomProperty(
             entity.customPropertyValue[type].property,
             entity.customPropertyValue[type].value
@@ -123,7 +122,6 @@ entities.forEach((entity) => {
 
       it(`Update ${properties} Custom Property`, () => {
         Object.values(CustomPropertyType).forEach((type) => {
-          // update and validate
           entity.updateCustomProperty(
             entity.customPropertyValue[type].property,
             entity.customPropertyValue[type].newValue

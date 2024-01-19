@@ -691,14 +691,16 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={containerData}
-            entityType={EntityType.CONTAINER}
-            handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: containerData && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.CONTAINER>
+              entityDetails={containerData}
+              entityType={EntityType.CONTAINER}
+              handleExtensionUpdate={handleExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

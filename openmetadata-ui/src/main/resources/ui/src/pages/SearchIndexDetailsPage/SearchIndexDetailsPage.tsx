@@ -493,14 +493,16 @@ function SearchIndexDetailsPage() {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={searchIndexDetails}
-            entityType={EntityType.SEARCH_INDEX}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: searchIndexDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.SEARCH_INDEX>
+              entityDetails={searchIndexDetails}
+              entityType={EntityType.SEARCH_INDEX}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ];

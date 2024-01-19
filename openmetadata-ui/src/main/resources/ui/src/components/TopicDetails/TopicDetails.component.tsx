@@ -413,14 +413,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={topicDetails}
-            entityType={EntityType.TOPIC}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: topicDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.TOPIC>
+              entityDetails={topicDetails}
+              entityType={EntityType.TOPIC}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

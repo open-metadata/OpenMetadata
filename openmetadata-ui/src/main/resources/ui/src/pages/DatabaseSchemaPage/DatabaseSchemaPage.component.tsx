@@ -647,16 +647,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: (
-        <CustomPropertyTable
-          className=""
-          entityDetails={databaseSchema}
-          entityType={EntityType.DATABASE_SCHEMA}
-          handleExtensionUpdate={handleExtensionUpdate}
-          hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
-          isVersionView={false}
-        />
+      children: databaseSchema && (
+        <div className="m-sm">
+          <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
+            className=""
+            entityDetails={databaseSchema}
+            entityType={EntityType.DATABASE_SCHEMA}
+            handleExtensionUpdate={handleExtensionUpdate}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
+            isVersionView={false}
+          />
+        </div>
       ),
     },
   ];

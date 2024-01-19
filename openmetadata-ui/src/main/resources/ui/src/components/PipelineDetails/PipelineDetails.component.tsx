@@ -686,14 +686,16 @@ const PipelineDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={pipelineDetails}
-            entityType={EntityType.PIPELINE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: pipelineDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.PIPELINE>
+              entityDetails={pipelineDetails}
+              entityType={EntityType.PIPELINE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

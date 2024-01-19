@@ -678,14 +678,16 @@ const DashboardDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={dashboardDetails}
-            entityType={EntityType.DASHBOARD}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: dashboardDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.DASHBOARD>
+              entityDetails={dashboardDetails}
+              entityType={EntityType.DASHBOARD}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

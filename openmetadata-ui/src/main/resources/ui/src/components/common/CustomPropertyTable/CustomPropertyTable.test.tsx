@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
@@ -118,13 +119,14 @@ const mockProp = {
     serviceType: 'Mysql',
     default: false,
     deleted: false,
+    columns: [],
     votes: {
       upVotes: 0,
       downVotes: 0,
       upVoters: [],
       downVoters: [],
     },
-  },
+  } as Table,
 };
 
 describe('Test CustomProperty Table Component', () => {

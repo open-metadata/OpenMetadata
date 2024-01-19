@@ -56,7 +56,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
-  isInRightPanel,
+  maxDataCap,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -181,20 +181,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onExtensionUpdate,
   ]);
 
-  const classNameValue = useMemo(() => {
-    return isInRightPanel ? '' : 'm-sm';
-  }, [isInRightPanel]);
-
-  const dataSourceValue = useMemo(() => {
-    return isInRightPanel
-      ? entityTypeDetail.customProperties?.slice(0, 5)
-      : entityTypeDetail.customProperties ?? [];
-  }, [
-    entityType,
-    entityTypeDetail,
-    entityTypeDetail.customProperties,
-    onExtensionUpdate,
-  ]);
+  //   const classNameValue = useMemo(() => {
+  //     return isInRightPanel ? '' : 'm-sm';
+  //   }, [isInRightPanel]);
 
   useEffect(() => {
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
@@ -241,10 +230,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   ) : (
     <Table
       bordered
-      className={classNameValue}
       columns={tableColumn}
       data-testid="custom-properties-table"
-      dataSource={dataSourceValue}
+      dataSource={entityTypeDetail.customProperties?.slice(0, maxDataCap)}
       loading={entityTypeDetailLoading}
       pagination={false}
       rowKey="name"
