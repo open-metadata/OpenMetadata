@@ -103,8 +103,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
 
   const onDateChange: RangePickerProps['onChange'] = (values) => {
     if (values) {
-      const startTime = values[0]?.valueOf() ?? 0;
-      const endTime = values[1]?.valueOf() ?? 0;
+      const startTime = values[0]?.startOf('day').valueOf() ?? 0;
+      const endTime = values[1]?.endOf('day').valueOf() ?? 0;
 
       if (!isNaN(startTime) && !isNaN(endTime)) {
         setStartTime(startTime);
