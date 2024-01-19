@@ -120,6 +120,7 @@ export interface TestCaseSearchSource
     Exclude<TestCase, 'testSuite'> {
   testSuites: TestSuite[];
 } // extends EntityInterface
+export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
 
 export interface DatabaseServiceSearchSource
   extends SearchSourceBase,
@@ -201,6 +202,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
   [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
+  [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
 };
 
 export type SearchRequest<
