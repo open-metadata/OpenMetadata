@@ -296,7 +296,7 @@ EXPECTED_COMPLEX_COL_TYPE = [
     },
     {
         "name": "data",
-        "type": String(length=20, collation=0),
+        "type": String(),
         "comment": None,
         "nullable": True,
         "default": None,
@@ -305,7 +305,7 @@ EXPECTED_COMPLEX_COL_TYPE = [
     },
     {
         "name": "data2",
-        "type": String(length=20, collation=0),
+        "type": String(),
         "comment": None,
         "nullable": True,
         "default": None,

@@ -59,12 +59,11 @@ def get_columns(
         charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
         if charlen:
             charlen = charlen.group(1)
-            match = re.search(r"struct<([a-zA-Z0-9]+):([a-zA-Z0-9]+)>", attype)
-            if match:
-                attype = match.group(2)
             if attype == "decimal":
                 prec, scale = charlen.split(",")
                 args = (int(prec), int(scale))
+            elif attype.startswith("struct"):
+                args = []
             else:
                 args = (int(charlen),)
             coltype = coltype(*args)
