@@ -123,7 +123,6 @@ class DatabricksClient:
                     result = response.get("res") or []
                     data = {}
 
-                print(result)
                 yield from result
                 yield from self._run_query_paginator(
                     data=data, result=result, end_time=end_time, response=response
