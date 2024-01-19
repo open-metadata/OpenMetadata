@@ -24,7 +24,6 @@ import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase'
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import type {
   ExtentionEntities,
-  ExtentionEntitiesKeys as ExtensionEntitiesKeys,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DataProductsContainer from '../../DataProductsContainer/DataProductsContainer.component';
@@ -124,7 +123,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             </div>
             <CustomPropertyTable
               entityDetails={customProperties}
-              entityType={entityType as ExtensionEntitiesKeys}
+              entityType={entityType as ExtentionEntitiesKeys}
               hasEditAccess={false}
               hasPermission={viewAllPermission ?? false}
               maxDataCap={5}

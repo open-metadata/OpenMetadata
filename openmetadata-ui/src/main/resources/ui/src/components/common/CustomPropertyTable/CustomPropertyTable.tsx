@@ -181,10 +181,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onExtensionUpdate,
   ]);
 
-  //   const classNameValue = useMemo(() => {
-  //     return isInRightPanel ? '' : 'm-sm';
-  //   }, [isInRightPanel]);
-
   useEffect(() => {
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();

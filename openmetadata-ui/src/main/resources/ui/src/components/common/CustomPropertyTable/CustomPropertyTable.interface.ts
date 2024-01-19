@@ -44,7 +44,7 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   isVersionView?: boolean;
   entityType: T;
   entityDetails: ExtentionEntities[T];
-  handleExtensionUpdate?: (updatedTable: Table['extension']) => Promise<void>;
+  handleExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;
   hasPermission: boolean;
