@@ -12,14 +12,12 @@
  */
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined, upperCase } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Connection,
   Edge,
@@ -71,48 +69,11 @@ import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
-  prepareLabel,
 } from './CommonUtils';
-import entityUtilClassBase from './EntityUtilClassBase';
 import { getDecodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
-
-export const getHeaderLabel = (
-  name = '',
-  fqn = '',
-  type: string,
-  isMainNode: boolean
-) => {
-  return (
-    <Fragment>
-      {isMainNode ? (
-        <Typography.Text
-          className="description-text text-left text-md font-medium w-68"
-          data-testid="lineage-entity"
-          ellipsis={{ tooltip: true }}>
-          {name || prepareLabel(type, fqn, false)}
-        </Typography.Text>
-      ) : (
-        <Typography.Title
-          ellipsis
-          className="m-b-0 text-base"
-          level={5}
-          title={name || prepareLabel(type, fqn, false)}>
-          <Link className="" to={entityUtilClassBase.getEntityLink(type, fqn)}>
-            <Button
-              className="text-base font-semibold p-0"
-              data-testid="link-button"
-              type="link">
-              {name || prepareLabel(type, fqn, false)}
-            </Button>
-          </Link>
-        </Typography.Title>
-      )}
-    </Fragment>
-  );
-};
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();

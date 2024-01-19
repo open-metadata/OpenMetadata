@@ -166,9 +166,12 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const onCollapse = useCallback(
     (direction = EdgeTypeEnum.DOWN_STREAM) => {
-      onNodeCollapse(props, direction);
+      const node = getActiveNode(id);
+      if (node) {
+        onNodeCollapse(node, direction);
+      }
     },
-    [loadChildNodesHandler, props]
+    [loadChildNodesHandler, props, id]
   );
 
   const nodeLabel = useMemo(() => {

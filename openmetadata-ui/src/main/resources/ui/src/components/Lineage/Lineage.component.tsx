@@ -12,7 +12,7 @@
  */
 import { Card } from 'antd';
 import classNames from 'classnames';
-import { debounce } from 'lodash';
+import { debounce, isEmpty } from 'lodash';
 import Qs from 'qs';
 import React, {
   DragEvent,
@@ -41,6 +41,7 @@ import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { useLineageProvider } from '../LineageProvider/LineageProvider';
+import Loader from '../Loader/Loader';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -112,6 +113,10 @@ const Lineage = ({
   useEffect(() => {
     updateEntityType(entityType);
   }, [entityType]);
+
+  if (isEmpty(entityLineage.entity)) {
+    return <Loader />;
+  }
 
   return (
     <Card

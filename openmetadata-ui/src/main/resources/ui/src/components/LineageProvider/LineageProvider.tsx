@@ -206,7 +206,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       try {
         const res = await getLineageDataByFQN(
           node.fullyQualifiedName ?? '',
-          (node as SourceType).entityType ?? '',
+          node.entityType ?? '',
           {
             upstreamDepth: direction === EdgeTypeEnum.UP_STREAM ? 1 : 0,
             downstreamDepth: direction === EdgeTypeEnum.DOWN_STREAM ? 1 : 0,
@@ -510,7 +510,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
-    onLoad(reactFlowInstance);
+    setTimeout(() => {
+      onLoad(reactFlowInstance);
+    }, 0);
+
     setReactFlowInstance(reactFlowInstance);
   };
 
@@ -825,6 +828,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         edges,
         direction
       );
+
+      setActiveNode(node as Node);
 
       const updatedNodes = (entityLineage.nodes ?? []).filter(
         (item) => !nodeFqn.includes(item.fullyQualifiedName ?? '')
