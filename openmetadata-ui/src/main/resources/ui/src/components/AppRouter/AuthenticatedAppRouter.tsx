@@ -942,7 +942,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={DataInsightPage}
         path={ROUTES.DATA_INSIGHT_WITH_TAB}
       />
-
       <Route exact component={AddKPIPage} path={ROUTES.ADD_KPI} />
       <Route exact component={EditKPIPage} path={ROUTES.EDIT_KPI} />
       <Route exact component={AddTestSuitePage} path={ROUTES.ADD_TEST_SUITES} />
