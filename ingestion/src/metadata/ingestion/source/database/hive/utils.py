@@ -26,7 +26,7 @@ _type_map.update(
         "binary": types.BINARY,
         "char": types.CHAR,
         "varchar": types.VARCHAR,
-        "decimal": types.DECIMAL
+        "decimal": types.DECIMAL,
     }
 )
 
