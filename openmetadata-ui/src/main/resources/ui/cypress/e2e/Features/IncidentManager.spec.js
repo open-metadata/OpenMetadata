@@ -149,7 +149,7 @@ describe('Incident Manager', () => {
 
     it('Assign incident to user', () => {
       cy.sidebarHover();
-      cy.get("[data-testid='data-quality'").click();
+      cy.get("[data-testid='observability'").click();
       cy.sidebarClick('app-bar-item-incident-manager');
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).should(
         'be.visible'
@@ -188,7 +188,7 @@ describe('Incident Manager', () => {
       );
       interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
       cy.sidebarHover();
-      cy.get("[data-testid='data-quality'").click();
+      cy.get("[data-testid='observability'").click();
       cy.sidebarClick('app-bar-item-incident-manager');
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
       verifyResponseStatusCode('@getTestCase', 200);
@@ -227,7 +227,7 @@ describe('Incident Manager', () => {
       );
       interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
       cy.sidebarHover();
-      cy.get("[data-testid='data-quality'").click();
+      cy.get("[data-testid='observability'").click();
       cy.sidebarClick('app-bar-item-incident-manager');
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
       verifyResponseStatusCode('@getTestCase', 200);
@@ -339,7 +339,7 @@ describe('Incident Manager', () => {
         'getIncidentList'
       );
       cy.sidebarHover();
-      cy.get("[data-testid='data-quality'").click();
+      cy.get("[data-testid='observability'").click();
       cy.sidebarClick('app-bar-item-incident-manager');
       verifyResponseStatusCode('@getIncidentList', 200);
 
