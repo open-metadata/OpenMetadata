@@ -15,6 +15,10 @@ import { Button, Card, Col, Form, Row, Select, Space, Typography } from 'antd';
 import { startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as PipelineIcon } from '../../../assets/svg/ic-pipeline.svg';
+import { ReactComponent as ContainerIcon } from '../../../assets/svg/ic-storage.svg';
+import { ReactComponent as TableIcon } from '../../../assets/svg/ic-table.svg';
+import { ReactComponent as TopicIcon } from '../../../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTestSuite } from '../../../assets/svg/icon-test-suite.svg';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import './observability-form-trigger-item.less';
@@ -32,10 +36,18 @@ function ObservabilityFormTriggerItem({
   const getIconForEntity = (type: string) => {
     switch (type) {
       case 'container':
+        return <ContainerIcon height={16} width={16} />;
       case 'pipeline':
+        return <PipelineIcon height={16} width={16} />;
       case 'topic':
+        return <TopicIcon height={16} width={16} />;
       case 'table':
-        return getEntityIcon(type);
+        return <TableIcon height={16} width={16} />;
+      // return (
+      //   <span className="entity-button-icon" style={{ color: '#292929' }}>
+      //     {getEntityIcon(type)}
+      //   </span>
+      // );
       case 'testCase':
       case 'testSuite':
         return <IconTestSuite height={16} width={16} />;
@@ -54,9 +66,10 @@ function ObservabilityFormTriggerItem({
         label: (
           <Space align="center" size={4}>
             {getIconForEntity(resource.name ?? '')}
-            {startCase(resource.name)}
+            <span>{startCase(resource.name)}</span>
           </Space>
         ),
+        icon: getEntityIcon(resource.name ?? ''),
         value: resource.name,
       })),
     [filterResources]

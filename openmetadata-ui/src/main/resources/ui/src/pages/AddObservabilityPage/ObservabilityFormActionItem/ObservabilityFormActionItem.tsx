@@ -13,12 +13,13 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Form, Row, Select, Switch, Typography } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, map, startCase } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Effect } from '../../../generated/events/eventSubscription';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
@@ -39,18 +40,11 @@ function ObservabilityFormActionItem({
   const filters = Form.useWatch(['input', 'actions'], form);
   const triggerValue = Form.useWatch(['resources'], form);
 
-  const selectedTrigger = useMemo(
-    () => form.getFieldValue(['resources']),
-    [triggerValue, form]
-  );
-  const selectedDescriptor = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
-  );
-
   const supportedActions = useMemo(
-    () => selectedDescriptor?.supportedActions,
-    [selectedDescriptor]
+    () =>
+      filterResources.find((resource) => resource.name === triggerValue)
+        ?.supportedActions,
+    [filterResources, triggerValue]
   );
 
   const searchEntity = useCallback(
@@ -82,13 +76,13 @@ function ObservabilityFormActionItem({
       try {
         return searchEntity(
           searchText,
-          getSearchIndexFromEntityType(selectedTrigger)
+          getSearchIndexFromEntityType(triggerValue)
         );
       } catch {
         return [];
       }
     },
-    [searchEntity, selectedTrigger]
+    [searchEntity, triggerValue]
   );
 
   const getTableSuggestions = useCallback(
@@ -99,7 +93,7 @@ function ObservabilityFormActionItem({
         return [];
       }
     },
-    [searchEntity, selectedTrigger]
+    [searchEntity, triggerValue]
   );
 
   const getDomainOptions = useCallback(
@@ -112,11 +106,11 @@ function ObservabilityFormActionItem({
   // Run time values needed for conditional rendering
   const functions = useMemo(
     () =>
-      selectedDescriptor?.supportedActions?.map((func) => ({
+      supportedActions?.map((func) => ({
         label: getEntityName(func),
         value: func.name,
       })),
-    [selectedDescriptor]
+    [supportedActions]
   );
 
   const getFieldByArgumentType = useCallback(
@@ -141,7 +135,7 @@ function ObservabilityFormActionItem({
                 </Form.Item>
               </Col>
               <Form.Item
-                className="d-none"
+                hidden
                 initialValue="fqnList"
                 name={[fieldName, 'arguments', 'name']}
               />
@@ -198,8 +192,42 @@ function ObservabilityFormActionItem({
             </>
           );
 
+        case 'pipelineStateList':
+          return (
+            <>
+              <Col key="pipeline-state-select" span={11}>
+                <Form.Item
+                  className="w-full"
+                  name={[fieldName, 'arguments', 'input']}>
+                  <Select
+                    data-testid="table-select"
+                    mode="multiple"
+                    options={map(PipelineState, (state) => ({
+                      label: startCase(state),
+                      value: state,
+                    }))}
+                    placeholder={t('label.search-by-type', {
+                      type: t('label.table-lowercase'),
+                    })}
+                  />
+                </Form.Item>
+              </Col>
+              <Form.Item
+                hidden
+                initialValue={[]}
+                name={[fieldName, 'arguments']}
+              />
+            </>
+          );
+
         default:
-          return <></>;
+          return (
+            <Form.Item
+              hidden
+              initialValue={[]}
+              name={[fieldName, 'arguments']}
+            />
+          );
       }
     },
     [getEntityByFQN, getDomainOptions]
@@ -213,9 +241,9 @@ function ObservabilityFormActionItem({
     const requireInput = selectedAction?.inputType === InputType.Runtime;
     const requiredArguments = selectedAction?.arguments;
 
-    if (!requireInput) {
-      return <></>;
-    }
+    // if (!requireInput) {
+    //   return <></>;
+    // }
 
     return (
       <>
@@ -260,7 +288,7 @@ function ObservabilityFormActionItem({
                           />
                         </Form.Item>
                       </Col>
-                      {!isNil(selectedDescriptor) &&
+                      {!isNil(supportedActions) &&
                         !isEmpty(filters) &&
                         filters[name] &&
                         getConditionField(filters[name].name ?? '', name)}

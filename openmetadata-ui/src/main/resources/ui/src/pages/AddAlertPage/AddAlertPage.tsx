@@ -485,7 +485,7 @@ const AddAlertPage = () => {
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <Typography.Title level={5}>
-          {!isEmpty(fqn)
+          {isEditMode
             ? t('label.edit-entity', { entity: t('label.alert-plural') })
             : t('label.create-entity', { entity: t('label.alert-plural') })}
         </Typography.Title>

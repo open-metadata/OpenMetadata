@@ -15,9 +15,14 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
 import Input from 'antd/lib/input/Input';
 import { DefaultOptionType } from 'antd/lib/select';
+import { isEmpty } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { SubscriptionCategory } from '../../../generated/events/eventSubscription';
+import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
+import {
+  SubscriptionCategory,
+  SubscriptionType,
+} from '../../../generated/events/eventSubscription';
 
 function DestinationFormItem({
   heading,
@@ -31,6 +36,40 @@ function DestinationFormItem({
   filterResources: DefaultOptionType[];
 }>) {
   const { t } = useTranslation();
+  const form = Form.useFormInstance();
+
+  const selectedDestinations = Form.useWatch<
+    CreateEventSubscription['destinations']
+  >('destinations', form);
+
+  const filteredOptions = filterResources.filter((o) => {
+    return !selectedDestinations?.some((d) => d.type === o.value);
+  });
+
+  const getConfigField = (type: SubscriptionType, fieldName: number) => {
+    switch (type) {
+      case SubscriptionType.Slack:
+      case SubscriptionType.MSTeams:
+      case SubscriptionType.GChat:
+      case SubscriptionType.Generic:
+        return (
+          <Form.Item
+            label=""
+            name={[fieldName, 'config', 'endpoint']}
+            rules={[{ required: true }]}>
+            <Input placeholder="EndPoint URL" />
+          </Form.Item>
+        );
+      case SubscriptionType.Email:
+        return (
+          <Form.Item label="" name={[fieldName, 'config', 'receivers']}>
+            <Select mode="tags" open={false} placeholder="EMails" />
+          </Form.Item>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <Card className="trigger-item-container">
@@ -43,24 +82,24 @@ function DestinationFormItem({
             {subHeading}
           </Typography.Text>
         </Col>
-        <Col span={12}>
-          <Form.List name="destinations">
-            {(fields, { add, remove }) => {
+        <Col span={24}>
+          <Form.List name={['destinations']}>
+            {(fields, { add, remove }, { errors }) => {
               return (
                 <Row gutter={[16, 16]}>
-                  {fields.map((field, index) => (
-                    <>
+                  {fields.map((field) => (
+                    <React.Fragment key={field.key}>
                       <Col span={11}>
                         <Form.Item
                           required
                           messageVariables={{
                             fieldName: t('label.data-asset-plural'),
                           }}
-                          name={[index, 'type']}>
+                          name={[field.name, 'type']}>
                           <Select
                             className="w-full"
                             data-testid="triggerConfig-type"
-                            options={filterResources}
+                            options={filteredOptions}
                             placeholder={t('label.select-field', {
                               field: t('label.data-asset-plural'),
                             })}
@@ -71,13 +110,15 @@ function DestinationFormItem({
                         <Form.Item
                           hidden
                           initialValue={SubscriptionCategory.External}
-                          name={[index, 'category']}
+                          name={[field.name, 'category']}
                         />
-                        <Form.Item
-                          label=""
-                          name={[index, 'config', 'receivers']}>
-                          <Input placeholder="EndPoint URL" />
-                        </Form.Item>
+                        {selectedDestinations &&
+                          !isEmpty(selectedDestinations[field.name]) &&
+                          selectedDestinations[field.name] &&
+                          getConfigField(
+                            selectedDestinations[field.name]?.type,
+                            field.name
+                          )}
                       </Col>
                       <Col span={2}>
                         <Button
@@ -86,14 +127,17 @@ function DestinationFormItem({
                           onClick={() => remove(field.name)}
                         />
                       </Col>
-                    </>
+                    </React.Fragment>
                   ))}
 
-                  <Form.Item>
+                  <Col span={24}>
                     <Button type="primary" onClick={add}>
                       {buttonLabel}
                     </Button>
-                  </Form.Item>
+                  </Col>
+                  <Col span={24}>
+                    <Form.ErrorList errors={errors} />
+                  </Col>
                 </Row>
               );
             }}

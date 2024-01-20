@@ -14,7 +14,7 @@
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { map, startCase } from 'lodash';
+import { filter, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -53,6 +53,7 @@ function AddObservabilityPage() {
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
   >([]);
+  //   const [alertFormData, setAlertFormData] = useState<string>('{}');
 
   const notificationsPath = getSettingPath(
     GlobalSettingsMenuCategory.NOTIFICATIONS,
@@ -90,9 +91,20 @@ function AddObservabilityPage() {
   const handleSave = async (data: CreateEventSubscription) => {
     try {
       const resources = [data.resources as unknown as string];
+      const destinations = data.destinations?.map((d) => ({
+        type: d.type,
+        config: d.config,
+        category: d.category,
+      }));
+
+      //   setAlertFormData(
+      //     JSON.stringify({ ...data, resources, destinations }, null, 2)
+      //   );
+
       await createObservabilityAlert({
         ...data,
         resources,
+        destinations,
       });
 
       showSuccessToast(
@@ -130,6 +142,14 @@ function AddObservabilityPage() {
       }
     }
   };
+
+  const destinationResources = filter(
+    SubscriptionType,
+    (value) => value !== SubscriptionType.ActivityFeed
+  ).map((value) => ({
+    label: startCase(value),
+    value,
+  }));
 
   return (
     <Row className="add-notification-container" gutter={[24, 24]}>
@@ -215,22 +235,36 @@ function AddObservabilityPage() {
                 buttonLabel={t('label.add-entity', {
                   entity: t('label.destination'),
                 })}
-                filterResources={map(SubscriptionType, (type) => ({
-                  label: startCase(type),
-                  value: type,
-                }))}
+                filterResources={destinationResources}
                 heading={t('label.destination')}
                 subHeading={t('message.alerts-destination-description')}
               />
             </Col>
             <Col span={24}>
-              <Button className="m-r-sm" htmlType="submit">
+              <Button className="m-r-sm" htmlType="submit" type="primary">
                 {t('label.save')}
               </Button>
               <Button onClick={() => history.goBack()}>
                 {t('label.cancel')}
               </Button>
             </Col>
+
+            {/* <Col span={24}>
+              <ReactCodeMirror
+                options={{
+                  mode: 'json',
+                  lineNumbers: true,
+                  readOnly: true,
+                }}
+                value={alertFormData}
+                onBeforeChange={(_, _S, value) => {
+                  console.log(value);
+                }}
+                onChange={(editor, data, value) => {
+                  console.log(editor, data, value);
+                }}
+              />
+            </Col> */}
           </Row>
         </Form>
       </Col>
