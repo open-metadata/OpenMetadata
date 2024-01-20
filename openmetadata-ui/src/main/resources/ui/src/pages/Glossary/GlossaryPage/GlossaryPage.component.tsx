@@ -142,7 +142,8 @@ const GlossaryPage = () => {
     setIsRightPanelLoading(true);
     try {
       const response = await getGlossaryTermByFQN(glossaryFqn, {
-        fields: 'relatedTerms,reviewers,tags,owner,children,votes,domain',
+        fields:
+          'relatedTerms,reviewers,tags,owner,children,votes,domain,extension',
       });
       setSelectedData(response);
     } catch (error) {
