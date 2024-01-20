@@ -13,43 +13,35 @@
 
 import i18next from 'i18next';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
+import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
-
-import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
-
-import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
-import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
-import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedure-colored.svg';
-
-import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-colored.svg';
-import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
-import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
-
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
+import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
+import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-colored.svg';
+import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
+import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
+import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
 import { ReactComponent as IntegrationIcon } from '../assets/svg/setting-integration.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
-
-import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
-
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
-import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
-import { ReactComponent as MetadataIcon } from '../assets/svg/logo-monogram.svg';
-import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-colored.svg';
-import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored.svg';
-
+import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedure-colored.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-colored.svg';
+import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
+import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import {
   ResourceEntity,
   UIPermission,
@@ -164,7 +156,7 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
-          icon: MetadataIcon,
+          icon: OpenMetadataIcon,
         },
       ],
     },
