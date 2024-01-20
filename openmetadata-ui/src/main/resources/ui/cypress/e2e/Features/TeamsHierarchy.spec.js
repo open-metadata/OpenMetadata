@@ -62,10 +62,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
   it('Check hierarchy in Add User page', () => {
     // Clicking on users
-    cy.get('[data-menu-id*="users"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.USERS);
 
     cy.get('[data-testid="add-user"]').should('be.visible').click();
 

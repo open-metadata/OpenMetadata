@@ -25,6 +25,7 @@ declare global {
       goToHomePage(doNotNavigate: boolean): void;
       clickOnLogo(): void;
       clickOutside(): void;
+      sidebarHover(): void;
       sidebarClick(id: string, parentId?: string): void;
       sidebarHoverOutside(): void;
       settingClick(dataTestId: string, isCustomProperty?: boolean): void;

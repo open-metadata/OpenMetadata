@@ -171,10 +171,12 @@ Cypress.Commands.add('logout', () => {
 // This command is used to click on the sidebar item
 // id: data-testid of the sidebar item
 // parentId: data-testid of the parent sidebar item to close after click if present
-Cypress.Commands.add('sidebarClick', (id, parentId) => {
+// isForced: whether the click is forced or not
+Cypress.Commands.add('sidebarClick', (id, parentId, isForced) => {
   cy.get(`[data-testid="${id}"]`).click({
     animationDistanceThreshold: 20,
     waitForAnimations: true,
+    force: isForced,
   });
 
   if (parentId) {

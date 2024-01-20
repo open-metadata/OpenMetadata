@@ -287,7 +287,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   return (
     <PageLayoutV1 className="user-layout h-full" pageTitle={t('label.user')}>
-      <div data-testid="user-profile ">
+      <div data-testid="user-profile">
         <Collapse
           accordion
           bordered={false}

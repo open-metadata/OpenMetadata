@@ -324,7 +324,7 @@ describe('Teams flow should work properly', () => {
     // Verify the toast message
     toastNotification('Team deleted successfully!');
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
+    cy.settingClick(GlobalSettingOptions.TEAMS);
 
     // Check if soft deleted team is shown when 'Deleted Teams' switch is on
     cy.get('table').should('not.contain', TEAM_DETAILS.name);

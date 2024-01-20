@@ -467,14 +467,14 @@ export const service = {
 };
 
 export const SERVICE_TYPE = {
-  Database: 'Database',
-  Messaging: 'Messaging',
-  Dashboard: 'Dashboard',
-  Pipeline: 'Pipeline',
-  MLModels: 'ML Models',
-  Storage: 'Storage',
-  StoredProcedure: 'StoredProcedure',
-  Search: 'Search',
+  Database: GlobalSettingOptions.DATABASES,
+  Messaging: GlobalSettingOptions.MESSAGING,
+  Dashboard: GlobalSettingOptions.DASHBOARDS,
+  Pipeline: GlobalSettingOptions.PIPELINES,
+  MLModels: GlobalSettingOptions.MLMODELS,
+  Storage: GlobalSettingOptions.STORAGES,
+  Search: GlobalSettingOptions.SEARCH,
+  StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
 };
 
 export const ENTITIES = {

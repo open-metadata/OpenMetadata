@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { DELETE_TERM } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import {
@@ -19,13 +20,13 @@ import {
 } from '../common';
 
 export enum Services {
-  Database = 'Databases',
-  Messaging = 'Messaging',
-  Dashboard = 'Dashboards',
-  Pipeline = 'Pipelines',
-  MLModels = 'ML Models',
-  Storage = 'Storages',
-  Search = 'Search',
+  Database = GlobalSettingOptions.DATABASES,
+  Messaging = GlobalSettingOptions.MESSAGING,
+  Dashboard = GlobalSettingOptions.DASHBOARDS,
+  Pipeline = GlobalSettingOptions.PIPELINES,
+  MLModels = GlobalSettingOptions.MLMODELS,
+  Storage = GlobalSettingOptions.STORAGES,
+  Search = GlobalSettingOptions.SEARCH,
 }
 
 export const RETRY_TIMES = 4;

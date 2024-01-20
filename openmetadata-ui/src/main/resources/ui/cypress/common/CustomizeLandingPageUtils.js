@@ -48,7 +48,7 @@ export const navigateToCustomizeLandingPage = ({
 }) => {
   interceptURL('GET', '/api/v1/personas*', 'getPersonas');
 
-  cy.settingClick(GlobalSettingOptions.PERSONA);
+  cy.settingClick(GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE);
 
   verifyResponseStatusCode('@getPersonas', 200);
 

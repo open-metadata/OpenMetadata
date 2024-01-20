@@ -159,7 +159,11 @@ describe('Query Entity', () => {
     verifyResponseStatusCode('@patchQuery', 200);
 
     // Update Tags
-    cy.get('[data-testid="entity-tags"] .ant-tag').click();
+    cy.get(
+      '[id="tablequeries"] [data-testid="tags-container"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+    )
+      .scrollIntoView()
+      .click();
     cy.get('[data-testid="tag-selector"]').type(DATA.tag);
     cy.get('[data-testid="tag-PersonalData.Personal"]').click();
     cy.clickOutside();

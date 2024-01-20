@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import {
   createEntityTableViaREST,
   deleteEntityViaREST,
 } from '../../common/Utils/Entity';
-import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import EntityClass from './EntityClass';
@@ -41,7 +41,7 @@ class DatabaseClass extends EntityClass {
     visitServiceDetailsPage(
       {
         name: DATABASE_SERVICE.service.name,
-        type: SERVICE_TYPE.Database,
+        type: GlobalSettingOptions.DATABASES,
       },
       false
     );

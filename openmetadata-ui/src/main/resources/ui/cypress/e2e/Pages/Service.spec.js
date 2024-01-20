@@ -40,10 +40,8 @@ describe('Services page should work properly', () => {
     cy.login();
     // redirecting to services page
 
-    cy.settingClick(GlobalSettingOptions.DATABASE);
+    cy.settingClick(GlobalSettingOptions.DATABASES);
   });
-
-  cy.settingClick(GlobalSettingOptions.DATABASE);
 
   it('Update service description', () => {
     searchServiceFromSettingPage(service.name);

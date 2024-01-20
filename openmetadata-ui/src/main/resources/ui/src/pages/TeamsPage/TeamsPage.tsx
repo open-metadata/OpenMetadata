@@ -44,7 +44,7 @@ import {
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
@@ -464,9 +464,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(
-          getSettingPath(getTeamsWithFqnPath(TeamType.Organization))
-        );
+      : history.push(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {

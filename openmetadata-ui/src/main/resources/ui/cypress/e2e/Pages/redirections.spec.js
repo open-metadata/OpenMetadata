@@ -14,7 +14,7 @@
 import { BASE_URL } from '../../constants/constants';
 import {
   NAVBAR_DETAILS,
-  SETTINGS_LEFT_PANEL,
+  SETTINGS_PAGE_OPTIONS,
 } from '../../constants/redirections.constants';
 
 const validateURL = (url) => {
@@ -28,14 +28,12 @@ describe('Redirection link should work properly', () => {
 
   it('Check mydata redirection links on navbar', () => {
     Object.values(NAVBAR_DETAILS).map((navbar) => {
-      cy.get(navbar.testid)
-        .should('be.visible')
-        .click({ animationDistanceThreshold: 10 });
+      cy.sidebarClick(navbar.testid);
+
       if (navbar.subMenu) {
-        cy.get(navbar.subMenu).should('be.visible').click({ force: true });
+        cy.sidebarHover();
+        cy.sidebarClick(navbar.subMenu, navbar.testid, true);
       }
-      //
-      cy.get('body').click();
       validateURL(navbar.url);
       cy.clickOnLogo();
       validateURL(`${BASE_URL}/my-data`);
@@ -43,15 +41,12 @@ describe('Redirection link should work properly', () => {
   });
 
   it('Check redirection links on settings page', () => {
-    cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
-    Object.values(SETTINGS_LEFT_PANEL).map((settingsLeftPanel) => {
-      cy.sidebarHoverOutside();
-      cy.get(settingsLeftPanel.testid)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-      cy.wait(200);
-      validateURL(settingsLeftPanel.url);
-    });
+    cy.sidebarClick(NAVBAR_DETAILS.settings.testid);
+    Object.values(SETTINGS_PAGE_OPTIONS).forEach(
+      ({ testid, url, isCustomProperty }) => {
+        cy.settingClick(testid, isCustomProperty);
+        validateURL(url);
+      }
+    );
   });
 });
