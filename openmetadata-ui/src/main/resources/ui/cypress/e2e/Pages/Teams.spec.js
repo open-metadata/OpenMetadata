@@ -323,7 +323,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@softDeleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(`"${TEAM_DETAILS.name}" deleted successfully!`);
 
     cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
 
@@ -382,7 +382,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(`"${TEAM_DETAILS.name}" deleted successfully!`);
 
     // Validating the deleted team
 
@@ -435,7 +435,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(`${HARD_DELETE_TEAM_DETAILS.name} deleted successfully!`);
 
     // Validating the deleted team
 

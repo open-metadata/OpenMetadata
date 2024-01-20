@@ -240,28 +240,17 @@ describe('Common prerequisite for service version test', () => {
         it(`${serviceType} version page should show version details after soft deleted`, () => {
           visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
 
-          cy.get('[data-testid="manage-button"]')
-            .should('exist')
-            .should('be.visible')
-            .click();
+          cy.get('[data-testid="manage-button"]').click();
 
-          cy.get('[data-menu-id*="delete-button"]')
-            .should('exist')
-            .should('be.visible');
-          cy.get('[data-testid="delete-button-title"]')
-            .should('be.visible')
-            .click()
-            .as('deleteBtn');
+          cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+          cy.get('[data-testid="delete-button-title"]').click();
 
           // Clicking on soft delete radio button and checking the service name
           cy.get('[data-testid="soft-delete-option"]')
             .contains(serviceName)
-            .should('be.visible')
             .click();
 
-          cy.get('[data-testid="confirmation-text-input"]')
-            .should('be.visible')
-            .type(DELETE_TERM);
+          cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
           interceptURL(
             'DELETE',
             `/api/v1/services/${serviceCategory}/*hardDelete=false*`,
@@ -277,9 +266,7 @@ describe('Common prerequisite for service version test', () => {
           verifyResponseStatusCode('@deleteService', 200);
 
           // Closing the toast notification
-          toastNotification(
-            `${successMessageEntityName} Service deleted successfully!`
-          );
+          toastNotification(`${serviceName}  deleted successfully!`);
 
           navigateToVersionPageFromServicePage(
             serviceCategory,

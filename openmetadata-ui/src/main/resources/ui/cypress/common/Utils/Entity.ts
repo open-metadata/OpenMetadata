@@ -417,7 +417,7 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${entityName}`
+    entityName
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -487,7 +487,7 @@ export const hardDeleteEntity = (entityName: string, endPoint: EntityType) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${entityName}`
+    entityName
   );
 
   cy.get('[data-testid="hard-delete-option"]').click();

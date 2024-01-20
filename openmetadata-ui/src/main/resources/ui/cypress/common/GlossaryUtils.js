@@ -92,10 +92,7 @@ export const deleteGlossary = (glossary) => {
     cy.get('[data-testid="modal-header"]').should('be.visible');
   });
 
-  cy.get('[data-testid="modal-header"]').should(
-    'contain',
-    `Delete ${glossary}`
-  );
+  cy.get('[data-testid="modal-header"]').should('contain', glossary);
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 
@@ -105,5 +102,5 @@ export const deleteGlossary = (glossary) => {
 
   verifyResponseStatusCode('@getGlossary', 200);
 
-  toastNotification('Glossary deleted successfully!');
+  toastNotification(`"${glossary}" deleted successfully!`);
 };

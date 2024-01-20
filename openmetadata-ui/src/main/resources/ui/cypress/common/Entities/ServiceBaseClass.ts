@@ -23,9 +23,9 @@ import {
 import { visitEntityDetailsPage } from '../Utils/Entity';
 import {
   deleteService,
-  getEntityTypeFromService,
   retryIngestionRun,
   Services,
+  ServicesEntityMap,
   testConnection,
 } from '../Utils/Services';
 
@@ -343,7 +343,7 @@ class ServiceBaseClass {
     visitEntityDetailsPage({
       term: this.entityName,
       serviceName: this.serviceName,
-      entity: getEntityTypeFromService(this.category),
+      entity: ServicesEntityMap[this.category],
     });
 
     // update description
@@ -397,7 +397,7 @@ class ServiceBaseClass {
     visitEntityDetailsPage({
       term: this.entityName,
       serviceName: this.serviceName,
-      entity: getEntityTypeFromService(this.category),
+      entity: ServicesEntityMap[this.category],
     });
     cy.get('[data-testid="markdown-parser"]')
       .first()

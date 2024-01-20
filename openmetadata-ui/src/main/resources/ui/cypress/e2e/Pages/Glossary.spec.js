@@ -373,7 +373,7 @@ const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
     });
   cy.get('[data-testid="modal-header"]')
     .should('be.visible')
-    .should('contain', `Delete ${name}`);
+    .should('contain', name);
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
     .type(DELETE_TERM);
@@ -383,7 +383,7 @@ const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
     .should('not.disabled')
     .click();
 
-  toastNotification('Glossary Term deleted successfully!');
+  toastNotification(`"${name}" deleted successfully!`);
   cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
   cy.get('[data-testid="glossary-left-panel"]')
     .should('be.visible')

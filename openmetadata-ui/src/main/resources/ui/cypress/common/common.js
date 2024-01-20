@@ -469,19 +469,11 @@ export const deleteCreatedService = (
     .should('be.visible')
     .click();
 
-  cy.get('[data-menu-id*="delete-button"]')
-    .should('exist')
-    .should('be.visible');
-  cy.get('[data-testid="delete-button-title"]')
-    .should('be.visible')
-    .click()
-    .as('deleteBtn');
+  cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+  cy.get('[data-testid="delete-button-title"]').click();
 
   // Clicking on permanent delete radio button and checking the service name
-  cy.get('[data-testid="hard-delete-option"]')
-    .contains(serviceName)
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="hard-delete-option"]').contains(serviceName).click();
 
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
@@ -497,9 +489,7 @@ export const deleteCreatedService = (
   verifyResponseStatusCode('@deleteService', 200);
 
   // Closing the toast notification
-  toastNotification(
-    `${serviceCategory ?? typeOfService} Service deleted successfully!`
-  );
+  toastNotification(`"${serviceName}" deleted successfully!`);
 
   cy.get(`[data-testid="service-name-${serviceName}"]`).should('not.exist');
 };
@@ -1109,7 +1099,7 @@ export const deleteEntity = (
 
   cy.get('[data-testid="delete-button-title"]').click();
 
-  cy.get('.ant-modal-header').should('contain', `Delete ${entityName}`);
+  cy.get('.ant-modal-header').should('contain', entityName);
 
   cy.get(`[data-testid="${deletionType}-delete-option"]`).click();
 
@@ -1125,7 +1115,7 @@ export const deleteEntity = (
   cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode(`@${deletionType}DeleteTable`, 200);
 
-  toastNotification(`${successMessageEntityName} deleted successfully!`);
+  toastNotification(`"${entityName}" deleted successfully!`);
 };
 
 export const visitServiceDetailsPage = (
