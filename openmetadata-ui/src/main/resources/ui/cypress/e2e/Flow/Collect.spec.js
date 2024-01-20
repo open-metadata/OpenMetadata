@@ -25,12 +25,12 @@ describe('Collect end point should work properly', () => {
     },
     dataQuality: {
       name: 'Quality',
-      mainMenuId: `[data-testid="data-quality"]`,
-      subMenu: `[data-testid="app-bar-item-data-contract"]`,
+      mainMenuId: `[data-testid="observability"]`,
+      subMenu: `[data-testid="app-bar-item-data-quality"]`,
     },
     incidentManager: {
       name: 'Incident Manager',
-      mainMenuId: `[data-testid="data-quality"]`,
+      mainMenuId: `[data-testid="observability"]`,
       subMenu: `[data-testid="app-bar-item-incident-manager"]`,
     },
     insight: {
