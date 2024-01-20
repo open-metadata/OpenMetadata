@@ -521,7 +521,7 @@ describe('Data Quality and Profiler should work properly', () => {
         cy.get('[data-testid="confirm-button"]').click();
         verifyResponseStatusCode('@deleteTest', 200);
         verifyResponseStatusCode('@getTestCase', 200);
-        toastNotification(`"${test}" Test Case deleted successfully!`);
+        toastNotification(`"${test}" deleted successfully!`);
       }
     );
   });

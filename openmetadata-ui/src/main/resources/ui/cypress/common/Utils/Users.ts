@@ -100,7 +100,7 @@ export const softDeleteUser = (username: string, displayName: string) => {
   verifyResponseStatusCode('@softdeleteUser', 200);
   verifyResponseStatusCode('@userDeleted', 200);
 
-  toastNotification(`"${displayName}" User deleted successfully!`);
+  toastNotification(`"${displayName}" deleted successfully!`);
 
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
 

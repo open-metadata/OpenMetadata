@@ -102,5 +102,5 @@ export const deleteGlossary = (glossary) => {
 
   verifyResponseStatusCode('@getGlossary', 200);
 
-  toastNotification(`"${glossary}" deleted successfully!`);
+  toastNotification('Glossary deleted successfully!');
 };

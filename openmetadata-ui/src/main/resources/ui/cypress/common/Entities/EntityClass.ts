@@ -435,7 +435,7 @@ class EntityClass {
   // Delete
 
   softDeleteEntity() {
-    deleteEntity(this.entityName, this.endPoint);
+    deleteEntity(this.entityName, this.endPoint, `Cypress ${this.name} updated`);
   }
 
   restoreEntity() {

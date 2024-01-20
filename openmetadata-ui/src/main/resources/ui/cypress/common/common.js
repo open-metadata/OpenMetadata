@@ -1115,7 +1115,7 @@ export const deleteEntity = (
   cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode(`@${deletionType}DeleteTable`, 200);
 
-  toastNotification(`"${entityName}" deleted successfully!`);
+  toastNotification(`deleted successfully!`);
 };
 
 export const visitServiceDetailsPage = (

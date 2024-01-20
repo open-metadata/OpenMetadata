@@ -134,7 +134,7 @@ entities.forEach((entity) => {
       entity.followUnfollowEntity();
     });
 
-    it.skip(`Update displayName`, () => {
+    it(`Update displayName`, () => {
       entity.renameEntity();
     });
 

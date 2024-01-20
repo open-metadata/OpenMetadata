@@ -406,7 +406,7 @@ export const restoreEntity = () => {
   cy.get('[data-testid="deleted-badge"]').should('not.exist');
 };
 
-export const deleteEntity = (entityName: string, endPoint: EntityType) => {
+export const deleteEntity = (entityName: string, endPoint: EntityType, displayName: string) => {
   deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
 
   cy.get('[data-testid="manage-button"]').click();
@@ -417,7 +417,7 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    entityName
+    displayName
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -478,7 +478,7 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
   deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
 };
 
-export const hardDeleteEntity = (entityName: string, endPoint: EntityType) => {
+export const hardDeleteEntity = (entityName: string, endPoint: EntityType, displayName: string) => {
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
   cy.get('[data-testid="delete-modal"]').then(() => {
@@ -487,7 +487,7 @@ export const hardDeleteEntity = (entityName: string, endPoint: EntityType) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    entityName
+    displayName
   );
 
   cy.get('[data-testid="hard-delete-option"]').click();

@@ -297,7 +297,7 @@ export const deleteDomain = (domainObj) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    domainObj.name
+    domainObj.updatedDisplayName
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -308,7 +308,7 @@ export const deleteDomain = (domainObj) => {
 
   verifyResponseStatusCode('@getDomains', 200);
 
-  toastNotification(`"${domainObj.name}" deleted successfully!`);
+  toastNotification(`"${domainObj.updatedDisplayName}" deleted successfully!`);
 };
 
 export const verifyDomain = (domainObj) => {

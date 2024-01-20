@@ -228,7 +228,7 @@ const deleteCustomMetric = ({
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
   cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@deleteCustomMetric', 200);
-  toastNotification(`${metric.name} deleted successfully!`);
+  toastNotification(`"${metric.name}" deleted successfully!`);
 };
 
 describe('Custom Metric', () => {
