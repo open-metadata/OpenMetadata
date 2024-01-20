@@ -431,10 +431,13 @@ const TableDetailsPageV1 = () => {
 
   const onExtensionUpdate = async (updatedData: Table) => {
     tableDetails &&
-      (await saveUpdatedTableData({
-        ...tableDetails,
-        extension: updatedData.extension,
-      }));
+      (await onTableUpdate(
+        {
+          ...tableDetails,
+          extension: updatedData.extension,
+        },
+        'extension'
+      ));
   };
 
   const {
@@ -545,6 +548,7 @@ const TableDetailsPageV1 = () => {
                 <FrequentlyJoinedTables joinedTables={joinedTables} />
               ) : null
             }
+            customProperties={tableDetails}
             dataProducts={tableDetails?.dataProducts ?? []}
             domain={tableDetails?.domain}
             editTagPermission={editTagsPermission}
@@ -552,6 +556,7 @@ const TableDetailsPageV1 = () => {
             entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}
+            viewAllPermission={viewAllPermission}
             onTagSelectionChange={handleTagSelection}
             onThreadLinkSelect={onThreadLinkSelect}
           />
@@ -718,13 +723,16 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.TABLE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: tableDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.TABLE>
+              entityDetails={tableDetails}
+              entityType={EntityType.TABLE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ];
@@ -969,7 +977,6 @@ const TableDetailsPageV1 = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={
               isTourOpen
                 ? activeTabForTourDatasetPage
