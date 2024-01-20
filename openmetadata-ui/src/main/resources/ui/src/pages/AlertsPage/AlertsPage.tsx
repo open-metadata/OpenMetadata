@@ -142,9 +142,9 @@ const AlertsPage = () => {
       },
       {
         title: t('label.action-plural'),
-        dataIndex: 'id',
+        dataIndex: 'fullyQualifiedName',
         width: 120,
-        key: 'id',
+        key: 'fullyQualifiedName',
         render: (id: string, record: EventSubscription) => {
           return (
             <div className="d-flex items-center">

@@ -321,7 +321,11 @@ export const ROUTES = {
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
+  // Observability
   OBSERVABILITY: '/observability',
+  OBERVABILITY_ALERTS: '/observability/alerts',
+  ADD_OBERVABILITY_ALERTS: '/observability/alerts/add',
+  EDIT_OBERVABILITY_ALERTS: '/observability/alerts/edit/:fqn',
 };
 
 export const SOCKET_EVENTS = {

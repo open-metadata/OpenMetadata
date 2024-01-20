@@ -36,12 +36,6 @@ const AddAlertPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/AddAlertPage/AddAlertPage'))
 );
 
-const AddObservabilityPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
-  )
-);
-
 const ImportTeamsPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
@@ -60,10 +54,6 @@ const AlertsActivityFeedPage = withSuspenseFallback(
 
 const AlertsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/AlertsPage/AlertsPage'))
-);
-
-const ObservabilityPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ObservabilityPage/ObservabilityPage'))
 );
 
 const TeamsPage = withSuspenseFallback(
@@ -319,16 +309,6 @@ const GlobalSettingRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={ObservabilityPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.OBSERVABILITY
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
         component={AddAlertPage}
         hasPermission={false}
         path={getSettingPath(
@@ -344,15 +324,6 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ADD_ALERTS
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddObservabilityPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_OBSERVABILITY
         )}
       />
 

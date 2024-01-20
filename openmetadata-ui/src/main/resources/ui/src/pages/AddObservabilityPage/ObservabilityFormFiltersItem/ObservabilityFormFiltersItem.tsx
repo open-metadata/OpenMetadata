@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import {
   Effect,
   EventFilterRule,
@@ -59,7 +60,9 @@ function ObservabilityFormFiltersItem({
 
   // Watchers
   const filters = Form.useWatch<EventFilterRule[]>(['input', 'filters'], form);
-  const selectedTrigger = Form.useWatch(['resources'], form);
+  const [selectedTrigger] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
 
   const supportedFilters = useMemo(
     () =>
@@ -134,15 +137,17 @@ function ObservabilityFormFiltersItem({
   // Run time values needed for conditional rendering
   const functions = useMemo(
     () =>
-      supportedFilters
-        ?.filter((func) => {
-          return !filters?.some((d) => d.name === func.name);
-        })
-        .map((func) => ({
-          label: getEntityName(func),
-          value: func.name,
-        })),
+      supportedFilters?.map((func) => ({
+        label: getEntityName(func),
+        value: func.name,
+        disabled: filters?.some((d) => d.name === func.name),
+      })),
     [supportedFilters, filters]
+  );
+
+  const showAddFilter = useMemo(
+    () => functions?.some((f) => !f.disabled) || filters?.length !== 0,
+    [functions]
   );
 
   const getFieldByArgumentType = useCallback(
@@ -337,7 +342,7 @@ function ObservabilityFormFiltersItem({
                     </Form.Item>
                   </Col>
                 ))}
-                {functions?.length ? (
+                {showAddFilter ? (
                   <Col span={24}>
                     <Button
                       data-testid="add-filters"

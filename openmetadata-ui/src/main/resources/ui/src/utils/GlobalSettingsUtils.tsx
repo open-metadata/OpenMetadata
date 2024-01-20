@@ -239,12 +239,6 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'notifications.alerts',
           icon: <BellIcon className="side-panel-icons" />,
         },
-        {
-          label: i18next.t('label.observability'),
-          isProtected: Boolean(isAdminUser),
-          key: 'notifications.observability',
-          icon: <BellIcon className="side-panel-icons" />,
-        },
       ],
     },
     {

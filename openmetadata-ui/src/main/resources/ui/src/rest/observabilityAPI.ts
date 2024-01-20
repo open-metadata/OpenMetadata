@@ -15,32 +15,26 @@
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
-import {
-  EventSubscription,
-  Status,
-  SubscriptionType,
-} from '../generated/events/eventSubscription';
+import { EventSubscription } from '../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
+import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 
-const BASE_URL = '/events/subscriptions/observability';
+const BASE_URL = '/events/subscriptions';
 
-interface ListAlertsRequestParams {
-  status?: Status;
-  alertType?: SubscriptionType;
-  before?: string;
-  after?: string;
-  include?: string;
-  limit?: number;
-}
-
-export const getAlertsFromId = async (
-  id: string,
-  params?: Pick<ListAlertsRequestParams, 'include'>
+/**
+ *
+ * @param fqn -- Decoded FQN
+ * @param params -- ListParams
+ * @returns - EventSubscription
+ */
+export const getObervabilityAlertByFQN = async (
+  fqn: string,
+  params?: ListParams
 ) => {
   const response = await axiosClient.get<EventSubscription>(
-    `${BASE_URL}/${id}`,
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
         ...params,
@@ -52,24 +46,7 @@ export const getAlertsFromId = async (
   return response.data;
 };
 
-export const getAlertsFromName = async (
-  name: string,
-  params?: Pick<ListAlertsRequestParams, 'include'>
-) => {
-  const response = await axiosClient.get<EventSubscription>(
-    `${BASE_URL}/name/${getEncodedFqn(name)}`,
-    {
-      params: {
-        ...params,
-        include: 'all',
-      },
-    }
-  );
-
-  return response.data;
-};
-
-export const getAllAlerts = async (params: ListAlertsRequestParams) => {
+export const getAllAlerts = async (params: ListParams) => {
   const response = await axiosClient.get<PagingResponse<EventSubscription[]>>(
     BASE_URL,
     {
@@ -85,10 +62,7 @@ export const getAllAlerts = async (params: ListAlertsRequestParams) => {
 export const createObservabilityAlert = async (
   alert: CreateEventSubscription
 ) => {
-  const response = await axiosClient.post<EventSubscription>(
-    `/events/subscriptions`,
-    alert
-  );
+  const response = await axiosClient.post<EventSubscription>(BASE_URL, alert);
 
   return response.data;
 };
@@ -106,7 +80,9 @@ export const deleteObservabilityAlert = async (id: string) => {
 };
 
 export const getFilterFunctions = async () => {
-  const response = await axiosClient.get<Function[]>(`${BASE_URL}/functions`);
+  const response = await axiosClient.get<Function[]>(
+    `${BASE_URL}/observability/functions`
+  );
 
   return response.data;
 };
@@ -114,7 +90,7 @@ export const getFilterFunctions = async () => {
 export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
     PagingResponse<FilterResourceDescriptor[]>
-  >(`${BASE_URL}/resources`);
+  >(`${BASE_URL}/observability/resources`);
 
   return response.data;
 };

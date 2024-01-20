@@ -24,7 +24,6 @@ import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observabil
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lampcharge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
-
 import { getDataInsightPathWithFqn } from '../utils/DataInsightUtils';
 import { ROUTES } from './constants';
 
@@ -60,6 +59,7 @@ export const SIDEBAR_LIST = [
       {
         key: ROUTES.OBSERVABILITY,
         label: i18next.t('label.alert-plural'),
+        redirect_url: ROUTES.OBERVABILITY_ALERTS,
         icon: AlertIcon,
         dataTestId: 'app-bar-item-observability-alert',
       },

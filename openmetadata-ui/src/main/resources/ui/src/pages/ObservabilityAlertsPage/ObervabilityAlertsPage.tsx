@@ -23,6 +23,8 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { ROUTES } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -38,11 +40,14 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import {
+  getObervabilityAlertsEditPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const ObservabilityPage = () => {
+const ObservabilityAlertsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
@@ -142,17 +147,17 @@ const ObservabilityPage = () => {
       },
       {
         title: t('label.action-plural'),
-        dataIndex: 'id',
+        dataIndex: 'fullyQualifiedName',
         width: 120,
-        key: 'id',
-        render: (id: string, record: EventSubscription) => {
+        key: 'fullyQualifiedName',
+        render: (fqn: string, record: EventSubscription) => {
           return (
             <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link to={`edit-alert/${id}`}>
+                <Link to={getObervabilityAlertsEditPath(fqn)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
-                    data-testid={`alert-edit-${record.name}`}
+                    data-testid={`edit-${record.name}`}
                     icon={<EditIcon width={16} />}
                     type="text"
                   />
@@ -160,7 +165,7 @@ const ObservabilityPage = () => {
               </Tooltip>
               <Tooltip placement="bottom" title={t('label.delete')}>
                 <Button
-                  data-testid={`alert-delete-${record.name}`}
+                  data-testid={`delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
                   icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
                   type="text"
@@ -184,76 +189,74 @@ const ObservabilityPage = () => {
   );
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <div className="d-flex justify-between">
-          <PageHeader data={pageHeaderData} />
-          <Link
-            to={getSettingPath(
-              GlobalSettingsMenuCategory.NOTIFICATIONS,
-              GlobalSettingOptions.ADD_OBSERVABILITY
-            )}>
-            <Button data-testid="create-observability" type="primary">
-              {t('label.create-entity', { entity: t('label.observability') })}
-            </Button>
-          </Link>
-        </div>
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          dataSource={alerts}
-          loading={loading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                permission
-                className="p-y-md"
-                doc={ALERTS_DOCS}
-                heading={t('label.alert')}
-                type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                onClick={() =>
-                  history.push(
-                    getSettingPath(
-                      GlobalSettingsMenuCategory.NOTIFICATIONS,
-                      GlobalSettingOptions.ADD_OBSERVABILITY
+    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+      <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
+        <Col span={24}>
+          <div className="d-flex justify-between">
+            <PageHeader data={pageHeaderData} />
+            <Link to={ROUTES.ADD_OBERVABILITY_ALERTS}>
+              <Button data-testid="create" type="primary">
+                {t('label.create-entity', { entity: t('label.observability') })}
+              </Button>
+            </Link>
+          </div>
+        </Col>
+        <Col span={24}>
+          <Table
+            bordered
+            columns={columns}
+            dataSource={alerts}
+            loading={loading}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  permission
+                  className="p-y-md"
+                  doc={ALERTS_DOCS}
+                  heading={t('label.alert')}
+                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                  onClick={() =>
+                    history.push(
+                      getSettingPath(
+                        GlobalSettingsMenuCategory.NOTIFICATIONS,
+                        GlobalSettingOptions.ADD_OBSERVABILITY
+                      )
                     )
-                  )
-                }
-              />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={onPageChange}
-            onShowSizeChange={handlePageSizeChange}
+                  }
+                />
+              ),
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
           />
-        )}
+        </Col>
+        <Col span={24}>
+          {showPagination && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={onPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
 
-        <DeleteWidgetModal
-          afterDeleteAction={handleAlertDelete}
-          allowSoftDelete={false}
-          entityId={selectedAlert?.id ?? ''}
-          entityName={getEntityName(selectedAlert)}
-          entityType={EntityType.SUBSCRIPTION}
-          visible={Boolean(selectedAlert)}
-          onCancel={() => {
-            setSelectedAlert(undefined);
-          }}
-        />
-      </Col>
-    </Row>
+          <DeleteWidgetModal
+            afterDeleteAction={handleAlertDelete}
+            allowSoftDelete={false}
+            entityId={selectedAlert?.id ?? ''}
+            entityName={getEntityName(selectedAlert)}
+            entityType={EntityType.SUBSCRIPTION}
+            visible={Boolean(selectedAlert)}
+            onCancel={() => {
+              setSelectedAlert(undefined);
+            }}
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 
-export default ObservabilityPage;
+export default ObservabilityAlertsPage;

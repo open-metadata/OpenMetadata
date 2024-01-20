@@ -630,3 +630,11 @@ export const getPersonaDetailsPath = (fqn: string) => {
 
   return path;
 };
+
+export const getObervabilityAlertsEditPath = (fqn: string) => {
+  let path = ROUTES.EDIT_OBERVABILITY_ALERTS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Select, Space, Typography } from 'antd';
+import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
 import { startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,7 @@ import { ReactComponent as ContainerIcon } from '../../../assets/svg/ic-storage.
 import { ReactComponent as TableIcon } from '../../../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../../../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTestSuite } from '../../../assets/svg/icon-test-suite.svg';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import { useFqn } from '../../../hooks/useFqn';
 import './observability-form-trigger-item.less';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
@@ -30,8 +30,11 @@ function ObservabilityFormTriggerItem({
   buttonLabel,
   filterResources,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
-  const [editMode, setEditMode] = useState<boolean>(false);
   const { t } = useTranslation();
+  const form = Form.useFormInstance();
+  const { fqn } = useFqn();
+
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const getIconForEntity = (type: string) => {
     switch (type) {
@@ -43,11 +46,6 @@ function ObservabilityFormTriggerItem({
         return <TopicIcon height={16} width={16} />;
       case 'table':
         return <TableIcon height={16} width={16} />;
-      // return (
-      //   <span className="entity-button-icon" style={{ color: '#292929' }}>
-      //     {getEntityIcon(type)}
-      //   </span>
-      // );
       case 'testCase':
       case 'testSuite':
         return <IconTestSuite height={16} width={16} />;
@@ -57,23 +55,27 @@ function ObservabilityFormTriggerItem({
   };
 
   const handleAddTriggerClick = useCallback(() => {
-    setEditMode(true);
+    setIsEditMode(true);
   }, []);
 
   const resourcesOptions = useMemo(
     () =>
       filterResources.map((resource) => ({
         label: (
-          <Space align="center" size={4}>
-            {getIconForEntity(resource.name ?? '')}
+          <div className="d-flex items-center gap-2">
+            <span>{getIconForEntity(resource.name ?? '')}</span>
             <span>{startCase(resource.name)}</span>
-          </Space>
+          </div>
         ),
-        icon: getEntityIcon(resource.name ?? ''),
         value: resource.name,
       })),
     [filterResources]
   );
+
+  const handleTriggerChange = (value: string) => {
+    form.resetFields(['input']);
+    form.setFieldValue('resources', [value]);
+  };
 
   return (
     <Card className="trigger-item-container">
@@ -87,13 +89,14 @@ function ObservabilityFormTriggerItem({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {editMode ? (
+          {isEditMode || fqn ? (
             <Form.Item
               required
               messageVariables={{
                 fieldName: t('label.data-asset-plural'),
               }}
-              name={['resources']}>
+              name={['resources']}
+              valuePropName="0">
               <Select
                 className="w-full"
                 data-testid="triggerConfig-type"
@@ -101,6 +104,7 @@ function ObservabilityFormTriggerItem({
                 placeholder={t('label.select-field', {
                   field: t('label.data-asset-plural'),
                 })}
+                onChange={handleTriggerChange}
               />
             </Form.Item>
           ) : (

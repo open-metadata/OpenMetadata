@@ -16,7 +16,7 @@ import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
 import Input from 'antd/lib/input/Input';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import {
@@ -42,9 +42,29 @@ function DestinationFormItem({
     CreateEventSubscription['destinations']
   >('destinations', form);
 
-  const filteredOptions = filterResources.filter((o) => {
-    return !selectedDestinations?.some((d) => d.type === o.value);
+  const filteredOptions = filterResources.map((o) => {
+    return {
+      ...o,
+      disabled: selectedDestinations?.some((d) => d.type === o.value),
+    };
   });
+
+  const getPlaceholder = (type: SubscriptionType) => {
+    switch (type) {
+      case SubscriptionType.Slack:
+        return 'https://hooks.slack.com/services/XXXXX/XXXXX/XXXXX';
+      case SubscriptionType.MSTeams:
+        return 'https://outlook.office.com/webhook/XXXXX/XXXXX/XXXXX';
+      case SubscriptionType.GChat:
+        return 'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX';
+      case SubscriptionType.Generic:
+        return 'https://example.com';
+      case SubscriptionType.Email:
+        return 'Add ↵ seprated Email addresses';
+      default:
+        return '';
+    }
+  };
 
   const getConfigField = (type: SubscriptionType, fieldName: number) => {
     switch (type) {
@@ -54,22 +74,30 @@ function DestinationFormItem({
       case SubscriptionType.Generic:
         return (
           <Form.Item
-            label=""
             name={[fieldName, 'config', 'endpoint']}
             rules={[{ required: true }]}>
-            <Input placeholder="EndPoint URL" />
+            <Input placeholder={getPlaceholder(type)} />
           </Form.Item>
         );
       case SubscriptionType.Email:
         return (
           <Form.Item label="" name={[fieldName, 'config', 'receivers']}>
-            <Select mode="tags" open={false} placeholder="EMails" />
+            <Select
+              mode="tags"
+              open={false}
+              placeholder={getPlaceholder(type)}
+            />
           </Form.Item>
         );
       default:
         return null;
     }
   };
+
+  const showAddDestination = useMemo(
+    () => filteredOptions.some((o) => !o.disabled),
+    [filteredOptions]
+  );
 
   return (
     <Card className="trigger-item-container">
@@ -100,9 +128,7 @@ function DestinationFormItem({
                             className="w-full"
                             data-testid="triggerConfig-type"
                             options={filteredOptions}
-                            placeholder={t('label.select-field', {
-                              field: t('label.data-asset-plural'),
-                            })}
+                            placeholder={t('label.select-destination')}
                           />
                         </Form.Item>
                       </Col>
@@ -130,11 +156,13 @@ function DestinationFormItem({
                     </React.Fragment>
                   ))}
 
-                  <Col span={24}>
-                    <Button type="primary" onClick={add}>
-                      {buttonLabel}
-                    </Button>
-                  </Col>
+                  {showAddDestination && (
+                    <Col span={24}>
+                      <Button type="primary" onClick={add}>
+                        {buttonLabel}
+                      </Button>
+                    </Col>
+                  )}
                   <Col span={24}>
                     <Form.ErrorList errors={errors} />
                   </Col>

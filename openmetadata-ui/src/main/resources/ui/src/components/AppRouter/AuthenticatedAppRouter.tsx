@@ -359,6 +359,18 @@ const IncidentManagerDetailPage = withSuspenseFallback(
   )
 );
 
+const ObervabilityAlertsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/ObservabilityAlertsPage/ObervabilityAlertsPage')
+  )
+);
+
+const AddObservabilityPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { routeElements } = useApplicationConfigContext();
@@ -925,6 +937,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ObervabilityAlertsPage}
+        path={ROUTES.OBERVABILITY_ALERTS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddObservabilityPage}
+        path={ROUTES.ADD_OBERVABILITY_ALERTS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddObservabilityPage}
+        path={ROUTES.EDIT_OBERVABILITY_ALERTS}
       />
 
       <AdminProtectedRoute

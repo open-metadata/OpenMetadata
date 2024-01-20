@@ -20,6 +20,7 @@ import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import { Effect } from '../../../generated/events/eventSubscription';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
@@ -38,7 +39,9 @@ function ObservabilityFormActionItem({
 
   // Watchers
   const filters = Form.useWatch(['input', 'actions'], form);
-  const triggerValue = Form.useWatch(['resources'], form);
+  const [triggerValue] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
 
   const supportedActions = useMemo(
     () =>
@@ -200,23 +203,37 @@ function ObservabilityFormActionItem({
                   className="w-full"
                   name={[fieldName, 'arguments', 'input']}>
                   <Select
-                    data-testid="table-select"
+                    data-testid="pipeline-status-select"
                     mode="multiple"
                     options={map(PipelineState, (state) => ({
                       label: startCase(state),
                       value: state,
                     }))}
-                    placeholder={t('label.search-by-type', {
-                      type: t('label.table-lowercase'),
-                    })}
+                    placeholder={t('label.select-pipeline-status')}
                   />
                 </Form.Item>
               </Col>
-              <Form.Item
-                hidden
-                initialValue={[]}
-                name={[fieldName, 'arguments']}
-              />
+            </>
+          );
+
+        case 'testResultList':
+          return (
+            <>
+              <Col key="test-result-select" span={11}>
+                <Form.Item
+                  className="w-full"
+                  name={[fieldName, 'arguments', 'input']}>
+                  <Select
+                    data-testid="test-result-select"
+                    mode="multiple"
+                    options={map(['success', 'aborted', 'failed'], (state) => ({
+                      label: startCase(state),
+                      value: state,
+                    }))}
+                    placeholder={t('label.select-test-result')}
+                  />
+                </Form.Item>
+              </Col>
             </>
           );
 
@@ -241,9 +258,9 @@ function ObservabilityFormActionItem({
     const requireInput = selectedAction?.inputType === InputType.Runtime;
     const requiredArguments = selectedAction?.arguments;
 
-    // if (!requireInput) {
-    //   return <></>;
-    // }
+    if (!requireInput) {
+      return <></>;
+    }
 
     return (
       <>

@@ -13,7 +13,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import ObservabilityPage from './ObservabilityPage';
+import ObervabilityAlertsPage from './ObervabilityAlertsPage';
 
 const MOCK_DATA = [
   {
@@ -58,7 +58,7 @@ jest.mock('../../rest/alertsAPI', () => ({
 
 describe.skip('Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
-    const { findByText } = render(<ObservabilityPage />, {
+    const { findByText } = render(<ObervabilityAlertsPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -66,7 +66,7 @@ describe.skip('Alerts Page Tests', () => {
   });
 
   it('SubTitle should be rendered', async () => {
-    const { findByText } = render(<ObservabilityPage />, {
+    const { findByText } = render(<ObervabilityAlertsPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -74,7 +74,7 @@ describe.skip('Alerts Page Tests', () => {
   });
 
   it('Add alert button should be rendered', async () => {
-    const { findByText } = render(<ObservabilityPage />, {
+    const { findByText } = render(<ObervabilityAlertsPage />, {
       wrapper: MemoryRouter,
     });
 
