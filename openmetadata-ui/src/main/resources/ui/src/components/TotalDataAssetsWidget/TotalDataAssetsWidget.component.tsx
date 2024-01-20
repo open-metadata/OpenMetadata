@@ -22,6 +22,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   Area,
   AreaChart,
@@ -34,6 +35,7 @@ import {
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../assets/svg/data-insight-no-data-placeholder.svg';
 import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
+import { DATA_INSIGHT_GUIDE_DOCS } from '../../constants/docs.constants';
 import { SIZE } from '../../enums/common.enum';
 import { WidgetWidths } from '../../enums/CustomizablePage.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -43,6 +45,7 @@ import {
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { axisTickFormatter } from '../../utils/ChartUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
 import {
   getCurrentMillis,
@@ -146,6 +149,21 @@ const TotalDataAssetsWidget = ({
                 <TotalDataAssetsEmptyIcon
                   height={SIZE.X_SMALL}
                   width={SIZE.X_SMALL}
+                />
+              }
+              message={
+                <Transi18next
+                  i18nKey="message.no-total-data-assets"
+                  renderElement={
+                    <Link
+                      rel="noreferrer"
+                      target="_blank"
+                      to={{ pathname: DATA_INSIGHT_GUIDE_DOCS }}
+                    />
+                  }
+                  values={{
+                    setup: 'how to set up Data Insights',
+                  }}
                 />
               }
             />

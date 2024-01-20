@@ -26,6 +26,7 @@ export interface ErrorPlaceholderProps {
   icon?: ReactElement;
   onClick?: () => void;
   permission?: boolean;
+  placeholderText?: string | JSX.Element;
 }
 
 export interface NoDataPlaceholderProps {
@@ -33,6 +34,7 @@ export interface NoDataPlaceholderProps {
   className?: string;
   children?: React.ReactNode;
   icon?: ReactElement;
+  placeholderText?: string | JSX.Element;
 }
 
 export interface CreatePlaceholderProps {

@@ -585,7 +585,10 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
         />
       ) : (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+        <ErrorPlaceHolder
+          placeholderText={t('message.no-table-pipeline')}
+          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        />
       ),
     [testSuiteFQN]
   );

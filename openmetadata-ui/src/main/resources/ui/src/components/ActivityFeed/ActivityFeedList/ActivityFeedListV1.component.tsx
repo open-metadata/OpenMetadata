@@ -12,8 +12,7 @@
  */
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/Loader/Loader';
@@ -32,7 +31,7 @@ interface ActivityFeedListV1Props {
   activeFeedId?: string;
   hidePopover: boolean;
   isForFeedTab?: boolean;
-  emptyPlaceholderText: string;
+  emptyPlaceholderText: string | JSX.Element;
   tab: ActivityFeedTabs;
 }
 
@@ -45,12 +44,8 @@ const ActivityFeedListV1 = ({
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
-  tab,
 }: ActivityFeedListV1Props) => {
-  const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
-
-  const isTaskTab = useMemo(() => tab === ActivityFeedTabs.TASKS, [tab]);
 
   useEffect(() => {
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
@@ -78,11 +73,6 @@ const ActivityFeedListV1 = ({
         <Typography.Paragraph
           className="tw-max-w-md"
           style={{ marginBottom: '0' }}>
-          {isTaskTab && (
-            <Typography.Text strong>
-              {t('message.no-open-tasks')} <br />
-            </Typography.Text>
-          )}
           {emptyPlaceholderText}
         </Typography.Paragraph>
       </ErrorPlaceHolder>

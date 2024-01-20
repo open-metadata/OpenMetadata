@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from 'antd';
+import { Skeleton } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -26,6 +28,7 @@ import {
   Type,
 } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -209,13 +212,24 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   ) {
     return (
       <div className="flex-center tab-content-height">
-        <ErrorPlaceHolder className={className}>
-          <Typography.Paragraph>
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: t('label.custom-property-plural'),
-            })}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          className={className}
+          placeholderText={
+            <Transi18next
+              i18nKey="message.no-custom-properties-table"
+              renderElement={
+                <Link
+                  rel="noreferrer"
+                  target="_blank"
+                  to={{ pathname: CUSTOM_PROPERTIES_DOCS }}
+                />
+              }
+              values={{
+                docs: 'docs',
+              }}
+            />
+          }
+        />
       </div>
     );
   }
