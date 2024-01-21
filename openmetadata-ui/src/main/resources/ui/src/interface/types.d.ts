@@ -279,5 +279,7 @@ declare module 'Models' {
   export interface DateRangeObject {
     startTs: number;
     endTs: number;
+    key?: string;
+    title?: string;
   }
 }

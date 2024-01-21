@@ -19,23 +19,27 @@ import org.openmetadata.sdk.exception.WebServiceException;
 public class IngestionPipelineDeploymentException extends WebServiceException {
 
   private static final String BY_NAME_MESSAGE = "Failed to deploy pipeline [%s] due to [%s].";
+  private static final String ERROR_TYPE = "DEPLOYMENT_ERROR";
 
   public IngestionPipelineDeploymentException(String message) {
-    super(Response.Status.BAD_REQUEST, message);
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 
-  private IngestionPipelineDeploymentException(Response.Status status, String message) {
-    super(status, message);
+  private IngestionPipelineDeploymentException(
+      Response.Status status, String errorType, String message) {
+    super(status, errorType, message);
   }
 
   public static IngestionPipelineDeploymentException byMessage(
-      String name, String errorMessage, Response.Status status) {
-    return new IngestionPipelineDeploymentException(status, buildMessageByName(name, errorMessage));
+      String name, String errorType, String errorMessage, Response.Status status) {
+    return new IngestionPipelineDeploymentException(
+        status, errorType, buildMessageByName(name, errorMessage));
   }
 
-  public static IngestionPipelineDeploymentException byMessage(String name, String errorMessage) {
+  public static IngestionPipelineDeploymentException byMessage(
+      String name, String errorType, String errorMessage) {
     return new IngestionPipelineDeploymentException(
-        Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+        Response.Status.BAD_REQUEST, errorType, buildMessageByName(name, errorMessage));
   }
 
   public static String buildMessageByName(String name, String errorMessage) {

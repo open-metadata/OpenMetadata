@@ -22,6 +22,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -65,6 +66,7 @@ import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.index.reindex.BulkByScrollResponse;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
+import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.script.Script;
 import es.org.elasticsearch.script.ScriptType;
 import es.org.elasticsearch.search.SearchModule;
@@ -115,6 +117,8 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.sdk.exception.SearchException;
+import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -422,14 +426,23 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client
-            .search(
-                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT)
-            .toString();
-    return Response.status(OK).entity(response).build();
+    try {
+      String response =
+          client
+              .search(
+                  new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                      .source(searchSourceBuilder),
+                  RequestOptions.DEFAULT)
+              .toString();
+      return Response.status(OK).entity(response).build();
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find index %s", request.getIndex()));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
   }
 
   @Override
