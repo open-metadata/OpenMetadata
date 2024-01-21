@@ -68,9 +68,12 @@ describe('Advance search', () => {
           checkmustPaths(
             condition.name,
             field.testid,
-            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaFirstGroup
+              : Cypress._.toLower(field.searchCriteriaFirstGroup),
             0,
-            field.responseValueFirstGroup
+            field.responseValueFirstGroup,
+            field.isLocalSearch
           );
         });
 
@@ -78,9 +81,12 @@ describe('Advance search', () => {
           checkmust_notPaths(
             condition.name,
             field.testid,
-            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaFirstGroup
+              : Cypress._.toLower(field.searchCriteriaFirstGroup),
             0,
-            field.responseValueFirstGroup
+            field.responseValueFirstGroup,
+            field.isLocalSearch
           );
         });
       });
