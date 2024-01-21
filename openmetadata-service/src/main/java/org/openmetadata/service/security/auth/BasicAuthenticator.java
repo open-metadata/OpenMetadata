@@ -22,10 +22,18 @@ import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.USE
 import static org.openmetadata.schema.auth.TokenType.EMAIL_VERIFICATION;
 import static org.openmetadata.schema.auth.TokenType.PASSWORD_RESET;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.FAILED_SEND_EMAIL;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.INCORRECT_OLD_PASSWORD;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_TOKEN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USERNAME_PASSWORD;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USER_OR_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_ERROR;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
@@ -126,7 +134,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       registeredUser.setAuthenticationMechanism(null);
       return registeredUser;
     } else {
-      throw new CustomExceptionMessage(NOT_IMPLEMENTED, SELF_SIGNUP_ERROR);
+      throw new CustomExceptionMessage(NOT_IMPLEMENTED, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_ERROR);
     }
   }
 
@@ -146,6 +154,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (emailVerificationToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
+          TOKEN_EXPIRED,
           String.format(TOKEN_EXPIRY_ERROR, emailVerificationToken.getToken()));
     }
 
@@ -180,7 +189,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         EmailUtil.sendEmailVerification(emailVerificationLink, user);
       } catch (TemplateException e) {
         LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
-        throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
+        throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
       }
       // insert the token
       tokenRepository.insertToken(emailVerificationToken);
@@ -204,7 +213,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
     } catch (TemplateException e) {
       LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
-      throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
+      throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
     }
     // don't persist tokens delete existing
     tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
@@ -226,7 +235,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             new EntityUtil.Fields(fields, String.join(",", fields)));
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
-      throw new CustomExceptionMessage(BAD_REQUEST, "Token does not belong to the user.");
+      throw new CustomExceptionMessage(BAD_REQUEST, INVALID_TOKEN, "Invalid Token.");
     }
     verifyPasswordResetTokenExpiry(passwordResetToken);
     // passwords validity
@@ -252,7 +261,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       EmailUtil.sendAccountStatus(storedUser, "Update Password", "Change Successful");
     } catch (TemplateException ex) {
       LOG.error("Error in sending Password Change Mail to User. Reason : " + ex.getMessage(), ex);
-      throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
+      throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
     }
     loginAttemptCache.recordSuccessfulLogin(request.getUsername());
   }
@@ -291,7 +300,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         && !BCrypt.verifyer()
             .verify(request.getOldPassword().toCharArray(), storedHashPassword)
             .verified) {
-      throw new CustomExceptionMessage(BAD_REQUEST, "Old Password is not correct");
+      throw new CustomExceptionMessage(
+          BAD_REQUEST, INCORRECT_OLD_PASSWORD, "Old Password is not correct");
     }
 
     storedBasicAuthMechanism.setPassword(newHashedPassword);
@@ -393,6 +403,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (token.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
+          PASSWORD_RESET_TOKEN_EXPIRED,
           String.format(
               "Password Reset Token %s Expired token. Please issue a new request",
               token.getToken()));
@@ -400,6 +411,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (Boolean.FALSE.equals(token.getIsActive())) {
       throw new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
+          PASSWORD_RESET_TOKEN_EXPIRED,
           String.format("Password Reset Token %s Token was marked inactive", token.getToken()));
     }
   }
@@ -412,6 +424,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new CustomExceptionMessage(
           BAD_REQUEST,
+          PASSWORD_RESET_TOKEN_EXPIRED,
           "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
     }
     // TODO: currently allow single login from a place, later multiple login can be added
@@ -449,7 +462,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   public void validateEmailAlreadyExists(String email) {
     if (userRepository.checkEmailAlreadyExists(email)) {
-      throw new CustomExceptionMessage(BAD_REQUEST, "User with Email Already Exists");
+      throw new CustomExceptionMessage(BAD_REQUEST, EMAIL_EXISTS, "User with Email Already Exists");
     }
   }
 
@@ -523,10 +536,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       }
 
       if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {
-        throw new CustomExceptionMessage(BAD_REQUEST, INVALID_USERNAME_PASSWORD);
+        throw new CustomExceptionMessage(
+            BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
       }
     } catch (Exception ex) {
-      throw new CustomExceptionMessage(BAD_REQUEST, INVALID_USERNAME_PASSWORD);
+      throw new CustomExceptionMessage(
+          BAD_REQUEST, INVALID_USER_OR_PASSWORD, INVALID_USERNAME_PASSWORD);
     }
     return storedUser;
   }

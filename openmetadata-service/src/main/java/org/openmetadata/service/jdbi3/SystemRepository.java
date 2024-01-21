@@ -171,7 +171,10 @@ public class SystemRepository {
       SettingsCache.invalidateSettings(setting.getConfigType().value());
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
-      throw new CustomExceptionMessage(Response.Status.INTERNAL_SERVER_ERROR, ex.getMessage());
+      throw new CustomExceptionMessage(
+          Response.Status.INTERNAL_SERVER_ERROR,
+          "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
+          ex.getMessage());
     }
   }
 

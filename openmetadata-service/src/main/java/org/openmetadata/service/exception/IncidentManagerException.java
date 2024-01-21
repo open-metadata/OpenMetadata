@@ -5,13 +5,14 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class IncidentManagerException extends WebServiceException {
+  private static final String ERROR_TYPE = "INCIDENT_INVALID_STATUS";
 
   protected IncidentManagerException(Response.Status status, String message) {
-    super(status.getStatusCode(), message);
+    super(status.getStatusCode(), ERROR_TYPE, message);
   }
 
   public IncidentManagerException(String message) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR, ERROR_TYPE, message);
   }
 
   public static IncidentManagerException invalidStatus(

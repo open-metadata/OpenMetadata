@@ -130,11 +130,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
-          ingestionPipeline.getName(), e.getMessage());
+          ingestionPipeline.getName(), DEPLOYEMENT_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw IngestionPipelineDeploymentException.byMessage(
-          ingestionPipeline.getName(), e.getMessage());
+          ingestionPipeline.getName(), DEPLOYEMENT_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(
@@ -181,14 +181,17 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          pipelineName, TRIGGER_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          pipelineName, TRIGGER_ERROR, e.getMessage());
     }
 
     throw IngestionPipelineDeploymentException.byMessage(
         pipelineName,
+        TRIGGER_ERROR,
         "Failed to trigger IngestionPipeline",
         Response.Status.fromStatusCode(response.statusCode()));
   }
@@ -318,10 +321,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflow.getName(), TRIGGER_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflow.getName(), TRIGGER_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(
@@ -354,10 +359,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(workflowPayload, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflowPayload, DEPLOYEMENT_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(workflowPayload, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflowPayload, DEPLOYEMENT_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(
