@@ -50,7 +50,7 @@ const FilterErrorPlaceHolder = ({
                 />
               }
               values={{
-                explore: 'explore our guide here.',
+                explore: 'message.explore-our-guide-here',
               }}
             />
           </Typography.Paragraph>

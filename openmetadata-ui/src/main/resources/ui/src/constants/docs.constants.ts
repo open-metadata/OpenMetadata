@@ -77,16 +77,16 @@ export const CUSTOM_LOGO_DOCS =
   'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-logo';
 
 export const FOLLOW_DATA_ASSET =
-  'https://docs.open-metadata.org/v1.2.x/how-to-guides/guide-for-data-users/follow-data-asset';
+  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/follow-data-asset';
 
 export const RECENTLY_VIEWED =
-  'https://docs.open-metadata.org/v1.2.x/how-to-guides/data-discovery/discover';
+  'https://docs.open-metadata.org/how-to-guides/data-discovery/discover';
 
 export const DATA_INSIGHT_GUIDE_DOCS =
-  'https://docs.open-metadata.org/v1.2.x/how-to-guides/data-insights';
+  'https://docs.open-metadata.org/how-to-guides/data-insights';
 
 export const DATA_QUALITY_PROFILER_DOCS =
-  'https://docs.open-metadata.org/v1.2.x/how-to-guides/data-quality-profiler';
+  'https://docs.open-metadata.org/how-to-guides/data-quality-profiler';
 
 export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/v1.2.x/how-to-guides/guide-for-data-users/custom';
+  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom';

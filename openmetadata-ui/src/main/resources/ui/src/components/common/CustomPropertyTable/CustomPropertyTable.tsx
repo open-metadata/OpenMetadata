@@ -225,7 +225,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
                 />
               }
               values={{
-                docs: 'docs',
+                docs: 'label.doc-plural-lowercase',
               }}
             />
           }
