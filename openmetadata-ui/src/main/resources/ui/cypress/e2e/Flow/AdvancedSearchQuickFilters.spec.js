@@ -76,14 +76,36 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
   });
 });
 
-const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
+const openAdvanceSearchModal = (asset) => {
   cy.sidebarClick('app-bar-item-explore');
-  const asset = QUICK_FILTERS_BY_ASSETS[0];
   cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
+
   cy.get('[data-testid="advance-search-button"]').click();
+};
+
+const openDropdown = (dropdownSelector) => {
+  cy.get(`${dropdownSelector} > .ant-select > .ant-select-selector`)
+    .as(dropdownSelector.split('--')[1]) // create alias for field | operator | widget
+    .click();
+};
+
+/*
+    @param virtualListIndex {number} - used to track which virtual list we want to query
+            expectedLength {number} - expected options count
+*/
+const checkDropdownOptionCount = (virtualListIndex, expectedLength) => {
+  cy.get('.rc-virtual-list-holder-inner')
+    .eq(virtualListIndex)
+    .children()
+    .should('have.length', expectedLength);
+};
+
+const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
+  const asset = QUICK_FILTERS_BY_ASSETS[0];
+  openAdvanceSearchModal(asset);
 
   // Check Is Null or Is Not Null
-  cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(0).click();
+  openDropdown('.rule--operator');
   cy.get(`[title="${operatorTitle}"]`).click();
 
   cy.intercept('GET', '/api/v1/search/query?*', (req) => {
@@ -148,5 +170,31 @@ describe(`Advanced Search Modal`, () => {
       isNotNullQuery,
       'newSearchAPI'
     );
+  });
+
+  it('should filter option for tier properly', () => {
+    // table
+    const asset = QUICK_FILTERS_BY_ASSETS[0];
+    openAdvanceSearchModal(asset);
+
+    // Select Tier Field
+    openDropdown('.rule--field');
+    cy.get('@field').type('Tier{enter}');
+
+    // Select widget and search
+    openDropdown('.widget--widget');
+
+    // virtual list index is 1 because after clicking each select box a new virtual list added in DOM
+    // here clicked field select then clicked tier select
+    checkDropdownOptionCount(1, 5);
+
+    const TierNameForSearch = 'Tier2';
+
+    cy.get('@widget').type(TierNameForSearch);
+
+    checkDropdownOptionCount(1, 1);
+
+    cy.get('@widget').type('{enter}');
+    cy.get('[data-testid="apply-btn"]').click();
   });
 });
