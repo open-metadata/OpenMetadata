@@ -116,25 +116,23 @@ describe('User with different Roles', () => {
 
     // Check CRUD for Glossary
     cy.sidebarHover();
-
-    cy.get(glossary.testid)
+    cy.get(`[data-testid=${glossary.testid}]`)
       .should('be.visible')
-      .click({ animationDistanceThreshold: 10, waitForAnimations: true });
-    if (glossary.subMenu) {
-      cy.get(glossary.subMenu).should('be.visible').click({ force: true });
-    }
-    cy.clickOutside();
+      .click({ animationDistanceThreshold: 20, waitForAnimations: true });
 
+    if (glossary.subMenu) {
+      cy.sidebarClick(glossary.subMenu);
+    }
     cy.clickOnLogo();
 
     // Check CRUD for Tags
-    cy.get(tag.testid)
+    cy.get(`[data-testid=${tag.testid}]`)
       .should('be.visible')
-      .click({ animationDistanceThreshold: 10, waitForAnimations: true });
+      .click({ animationDistanceThreshold: 20, waitForAnimations: true });
     if (tag.subMenu) {
-      cy.get(tag.subMenu).should('be.visible').click({ force: true });
+      cy.sidebarClick(tag.subMenu);
     }
-    cy.get('body').click();
+    cy.sidebarHoverOutside();
     cy.wait(200);
     cy.get('[data-testid="add-new-tag-button"]').should('not.exist');
 

@@ -293,6 +293,8 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
+    cy.get(`[data-testid="${GLOSSARY_TERM_NAME_FOR_VERSION_TEST2}"]`).click();
+
     removeOwner('glossaryTerms', true);
 
     addReviewer(REVIEWER, 'glossaryTerms');
@@ -316,6 +318,8 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
+
+    cy.get(`[data-testid="${GLOSSARY_TERM_NAME_FOR_VERSION_TEST2}"]`).click();
 
     removeReviewer('glossaryTerms');
   });

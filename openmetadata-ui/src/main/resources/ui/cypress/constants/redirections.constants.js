@@ -84,12 +84,12 @@ export const NAVBAR_DETAILS = {
     url: `${BASE_URL}/data-insights`,
   },
   glossary: {
-    testid: `governance`,
+    testid: 'governance',
     subMenu: `app-bar-item-glossary`,
     url: `${BASE_URL}/glossary`,
   },
   tags: {
-    testid: `governance`,
+    testid: 'governance',
     subMenu: 'app-bar-item-tags',
     url: `${BASE_URL}/tags/`,
   },
