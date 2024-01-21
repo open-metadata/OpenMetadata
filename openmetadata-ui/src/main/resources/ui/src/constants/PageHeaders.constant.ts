@@ -182,4 +182,8 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.login'),
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
+  NOTIFICATION: {
+    header: i18n.t('label.notification-plural'),
+    subHeader: i18n.t('message.alerts-description'),
+  },
 };

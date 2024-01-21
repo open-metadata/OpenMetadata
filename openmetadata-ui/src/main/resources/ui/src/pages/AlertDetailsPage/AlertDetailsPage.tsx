@@ -19,10 +19,7 @@ import { useParams } from 'react-router-dom';
 import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   EventFilterRule,
@@ -90,11 +87,8 @@ const AlertDetailsPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.alert-plural'),
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERTS
-        ),
+        name: t('label.notification-plural'),
+        url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
       },
       {
         name: getEntityName(alerts),

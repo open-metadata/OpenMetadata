@@ -26,11 +26,13 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { PLACEHOLDER_ROUTE_FQN } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -159,7 +161,12 @@ const AlertsPage = () => {
           return (
             <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link to={`edit-alert/${id}`}>
+                <Link
+                  to={getSettingPath(
+                    GlobalSettingsMenuCategory.NOTIFICATIONS,
+                    GlobalSettingOptions.EDIT_ALERTS,
+                    true
+                  ).replace(PLACEHOLDER_ROUTE_FQN, id)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
                     data-testid={`alert-edit-${record.name}`}
@@ -185,14 +192,6 @@ const AlertsPage = () => {
     [handleAlertDelete]
   );
 
-  const pageHeaderData = useMemo(
-    () => ({
-      header: t('label.alert-plural'),
-      subHeader: t('message.alerts-description'),
-    }),
-    []
-  );
-
   return (
     <PageLayoutV1 pageTitle={t('label.alert-plural')}>
       <Row className="page-container" gutter={[16, 16]}>
@@ -201,7 +200,7 @@ const AlertsPage = () => {
         </Col>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <PageHeader data={pageHeaderData} />
+            <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
             <Link
               to={getSettingPath(
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
