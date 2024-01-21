@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DateRangeObject } from 'Models';
 import { ReactNode } from 'react';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
@@ -50,6 +51,8 @@ export interface TableProfilerContextInterface {
   onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
   splitTestCases: SplitTestCasesType;
+  dateRangeObject: DateRangeObject;
+  onDateRangeChange: (dateRange: DateRangeObject) => void;
 }
 
 export type SplitTestCasesType = {

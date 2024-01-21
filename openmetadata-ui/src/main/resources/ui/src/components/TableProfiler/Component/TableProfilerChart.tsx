@@ -24,7 +24,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEqual } from 'lodash';
+import { isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,6 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
-  DEFAULT_RANGE_DATA,
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../constants/profiler.constant';
@@ -80,6 +79,8 @@ const TableProfilerChart = ({
     onSettingButtonClick,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
+    dateRangeObject,
+    onDateRangeChange,
   } = useTableProfiler();
 
   const { fqn: datasetFQN } = useFqn();
@@ -91,8 +92,6 @@ const TableProfilerChart = ({
   );
 
   const editDataProfile = permissions?.EditAll || permissions?.EditDataProfile;
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
   );
@@ -135,7 +134,7 @@ const TableProfilerChart = ({
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
-      setDateRangeObject(value);
+      onDateRangeChange(value);
     }
   };
 
@@ -172,9 +171,10 @@ const TableProfilerChart = ({
     fqn: string,
     dateRangeObj: DateRangeObject
   ) => {
+    const dateRange = pick(dateRangeObj, ['startTs', 'endTs']);
     setIsLoading(true);
-    await fetchTableProfiler(fqn, dateRangeObj);
-    await fetchSystemProfiler(fqn, dateRangeObj);
+    await fetchTableProfiler(fqn, dateRange);
+    await fetchSystemProfiler(fqn, dateRange);
     setIsLoading(false);
   };
 
@@ -199,6 +199,7 @@ const TableProfilerChart = ({
                 <Space align="center" className="w-full justify-end">
                   <DatePickerMenu
                     showSelectedCustomRange
+                    defaultDateRange={dateRangeObject}
                     handleDateRangeChange={handleDateRangeChange}
                   />
 

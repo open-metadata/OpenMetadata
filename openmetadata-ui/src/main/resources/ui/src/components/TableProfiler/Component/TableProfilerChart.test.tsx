@@ -53,6 +53,17 @@ jest.mock('../../common/SummaryCard/SummaryCard.component', () => {
     SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
   };
 });
+jest.mock('../TableProfilerProvider', () => ({
+  useTableProfiler: jest.fn().mockReturnValue({
+    dateRangeObject: DEFAULT_RANGE_DATA,
+    isProfilerDataLoading: false,
+    permissions: {
+      EditAll: true,
+      EditDataProfile: true,
+    },
+    isTableDeleted: false,
+  }),
+}));
 
 describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {

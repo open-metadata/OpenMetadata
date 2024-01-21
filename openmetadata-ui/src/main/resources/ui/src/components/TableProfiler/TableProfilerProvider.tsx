@@ -13,6 +13,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
+import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, {
   createContext,
@@ -26,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { Table } from '../../generated/entity/data/table';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../generated/tests/testCase';
@@ -74,6 +76,8 @@ export const TableProfilerProvider = ({
     column: [],
     table: [],
   });
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const {
     activeTab = isTourOpen
@@ -149,6 +153,10 @@ export const TableProfilerProvider = ({
       },
     ];
   }, [tableProfiler]);
+
+  const handleDateRangeChange = (data: DateRangeObject) => {
+    setDateRangeObject(data);
+  };
 
   const splitTableAndColumnTest = (data: TestCase[]) => {
     const columnTestsCase: TestCase[] = [];
@@ -279,6 +287,8 @@ export const TableProfilerProvider = ({
       splitTestCases,
       customMetric,
       onCustomMetricUpdate: handleUpdateCustomMetrics,
+      onDateRangeChange: handleDateRangeChange,
+      dateRangeObject,
     };
   }, [
     isTestsLoading,
@@ -291,6 +301,7 @@ export const TableProfilerProvider = ({
     onTestCaseUpdate,
     splitTestCases,
     customMetric,
+    dateRangeObject,
   ]);
 
   return (

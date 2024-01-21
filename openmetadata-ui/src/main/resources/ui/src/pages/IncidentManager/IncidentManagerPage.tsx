@@ -237,7 +237,7 @@ const IncidentManagerPage = () => {
     };
 
     if (!isEqual(value, dateRangeObject)) {
-      setFilters((pre) => ({ ...pre, ...value }));
+      setFilters((pre) => ({ ...pre, ...dateRangeObject }));
     }
   };
 

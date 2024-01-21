@@ -38,7 +38,6 @@ import { TableProfilerTab } from '../../../components/ProfilerDashboard/profiler
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
-  DEFAULT_RANGE_DATA,
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
@@ -88,6 +87,8 @@ const ColumnProfileTable = () => {
     isProfilingEnabled,
     tableProfiler,
     splitTestCases,
+    dateRangeObject,
+    onDateRangeChange,
   } = useTableProfiler();
   const isLoading = isTestsLoading || isProfilerDataLoading;
   const columnTests = splitTestCases.column ?? [];
@@ -96,8 +97,6 @@ const ColumnProfileTable = () => {
   const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =
     useState<columnTestResultType>();
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const { activeColumnFqn, activeTab } = useMemo(() => {
     const param = location.search;
@@ -337,7 +336,7 @@ const ColumnProfileTable = () => {
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
-      setDateRangeObject(value);
+      onDateRangeChange(value);
     }
   };
 
@@ -393,6 +392,7 @@ const ColumnProfileTable = () => {
               {!isEmpty(activeColumnFqn) && (
                 <DatePickerMenu
                   showSelectedCustomRange
+                  defaultDateRange={dateRangeObject}
                   handleDateRangeChange={handleDateRangeChange}
                 />
               )}

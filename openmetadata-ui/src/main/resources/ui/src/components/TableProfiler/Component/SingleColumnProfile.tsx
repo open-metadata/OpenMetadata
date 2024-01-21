@@ -12,7 +12,7 @@
  */
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { first, isString, last } from 'lodash';
+import { first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,12 +77,12 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     fqn: string,
     dateRangeObject?: DateRangeObject
   ) => {
+    const dateRange = dateRangeObject
+      ? pick(dateRangeObject, ['startTs', 'endTs'])
+      : DEFAULT_RANGE_DATA;
     try {
       setIsLoading(true);
-      const { data } = await getColumnProfilerList(
-        fqn,
-        dateRangeObject ?? DEFAULT_RANGE_DATA
-      );
+      const { data } = await getColumnProfilerList(fqn, dateRange);
       setColumnProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
