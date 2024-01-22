@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
@@ -354,7 +355,7 @@ class ServiceBaseClass {
     verifyResponseStatusCode('@updateEntity', 200);
 
     // re-run ingestion flow
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     // Services page
     cy.get('.ant-menu-title-content').contains(this.category).click();

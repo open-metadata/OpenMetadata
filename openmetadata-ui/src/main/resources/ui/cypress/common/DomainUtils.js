@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../src/enums/sidebar.enum';
 import {
   DELETE_TERM,
   INVALID_NAMES,
@@ -145,7 +146,7 @@ export const updateAssets = (domainObj) => {
 
   cy.get('[data-testid="domain-link"]').should('contain', domainObj.name);
 
-  cy.sidebarClick('app-bar-item-domain');
+  cy.sidebarClick(SidebarItem.DOMAIN);
 
   goToAssetsTab(domainObj);
 
@@ -179,7 +180,7 @@ export const removeAssets = (domainObj) => {
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchDomain', 200);
 
-  cy.sidebarClick('app-bar-item-domain');
+  cy.sidebarClick(SidebarItem.DOMAIN);
 
   goToAssetsTab(domainObj);
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(

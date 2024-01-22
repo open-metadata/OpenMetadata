@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../src/enums/sidebar.enum';
 import {
   DELETE_TERM,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
@@ -59,13 +60,7 @@ export const validateForm = () => {
 export const visitClassificationPage = () => {
   interceptURL('GET', '/api/v1/tags*', 'getTags');
 
-  cy.sidebarHover();
-  cy.get('[data-testid="governance"]').click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-  });
-
-  cy.sidebarClick('app-bar-item-tags');
+  cy.sidebarClick(SidebarItem.TAGS);
 
   verifyResponseStatusCode('@getTags', 200);
 };

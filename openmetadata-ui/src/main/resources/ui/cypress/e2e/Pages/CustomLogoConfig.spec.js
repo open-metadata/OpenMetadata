@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 
 const config = {
@@ -26,7 +27,7 @@ describe('Custom Logo Config', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     interceptURL(
       'GET',

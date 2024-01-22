@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -28,7 +29,7 @@ describe('Test Add role and assign it to the user', () => {
     cy.login();
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
     interceptURL('GET', '/api/v1/users?*', 'usersPage');
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
   });
 
   it('Create role', () => {

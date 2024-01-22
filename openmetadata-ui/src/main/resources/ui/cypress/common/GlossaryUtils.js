@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { SidebarItem } from '../../src/enums/sidebar.enum';
 import { DELETE_TERM } from '../constants/constants';
 import {
   interceptURL,
@@ -23,15 +24,7 @@ import {
 export const visitGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'getGlossaries');
 
-  cy.sidebarHover();
-  cy.get('[data-testid="governance"]').click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-  });
-
-  // Applying force true as the hover over tooltip
-
-  cy.sidebarClick('app-bar-item-glossary');
+  cy.sidebarClick(SidebarItem.GLOSSARY);
 
   verifyResponseStatusCode('@getGlossaries', 200);
 };

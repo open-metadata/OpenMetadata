@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { SidebarItem } from '../../src/enums/sidebar.enum';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -425,7 +426,7 @@ export const deleteCreatedService = (
     'getSettingsPage'
   );
 
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
@@ -511,7 +512,7 @@ export const goToAddNewServicePage = (service_type) => {
     'getSettingsPage'
   );
   // Click on settings page
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
@@ -967,7 +968,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@updateEntity', 200);
 
   // re-run ingestion flow
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   // Services page
   cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
@@ -1141,7 +1142,7 @@ export const visitServiceDetailsPage = (
   );
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   verifyResponseStatusCode('@getOrganization', 200);
 
@@ -1173,7 +1174,7 @@ export const visitServiceDetailsPage = (
 export const visitDataModelPage = (dataModelFQN, dataModelName) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
 
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   verifyResponseStatusCode('@getOrganization', 200);
 

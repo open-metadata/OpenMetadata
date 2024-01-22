@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 // eslint-disable-next-line spaced-comment
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
@@ -110,16 +111,7 @@ describe('User with different Roles', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Check CRUD for Glossary
-    cy.sidebarHover();
-
-    cy.get(glossary.testid)
-      .should('be.visible')
-      .click({ animationDistanceThreshold: 10, waitForAnimations: true });
-    if (glossary.subMenu) {
-      cy.get(glossary.subMenu).should('be.visible').click({ force: true });
-    }
-    cy.clickOutside();
-
+    cy.sidebarClick(SidebarItem.GLOSSARY);
     cy.clickOnLogo();
 
     // Check CRUD for Tags

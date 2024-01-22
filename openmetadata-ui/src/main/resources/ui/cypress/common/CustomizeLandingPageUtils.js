@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { SidebarItem } from '../../src/enums/sidebar.enum';
 import {
   interceptURL,
   toastNotification,
@@ -47,7 +48,7 @@ export const navigateToCustomizeLandingPage = ({
 }) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   verifyResponseStatusCode('@settingsPage', 200);
   cy.get('[data-testid="settings-left-panel"]').should('be.visible');

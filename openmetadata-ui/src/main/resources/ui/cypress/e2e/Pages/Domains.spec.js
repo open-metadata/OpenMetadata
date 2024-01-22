@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   addAssetsToDataProduct,
@@ -33,8 +34,7 @@ import { DOMAIN_1, DOMAIN_2, DOMAIN_3 } from '../../constants/constants';
 describe('Domain page should work properly', () => {
   beforeEach(() => {
     cy.login();
-
-    cy.sidebarClick('app-bar-item-domain');
+    cy.sidebarClick(SidebarItem.DOMAIN);
   });
 
   it('Create new domain flow should work properly', () => {
@@ -59,14 +59,14 @@ describe('Domain page should work properly', () => {
   it('Create new data product should work properly', () => {
     DOMAIN_1.dataProducts.forEach((dataProduct) => {
       createDataProducts(dataProduct, DOMAIN_1);
-      cy.sidebarClick('app-bar-item-domain');
+      cy.sidebarClick(SidebarItem.DOMAIN);
     });
   });
 
   it('Add data product assets using asset selection modal should work properly', () => {
     DOMAIN_2.dataProducts.forEach((dp) => {
       createDataProducts(dp, DOMAIN_2);
-      cy.sidebarClick('app-bar-item-domain');
+      cy.sidebarClick(SidebarItem.DOMAIN);
     });
 
     addAssetsToDataProduct(DOMAIN_2.dataProducts[0], DOMAIN_2);
@@ -75,7 +75,7 @@ describe('Domain page should work properly', () => {
   it('Add data product assets using asset selection modal with separate domain and dp having space', () => {
     DOMAIN_3.dataProducts.forEach((dp) => {
       createDataProducts(dp, DOMAIN_3);
-      cy.sidebarClick('app-bar-item-domain');
+      cy.sidebarClick(SidebarItem.DOMAIN);
     });
 
     addAssetsToDataProduct(DOMAIN_3.dataProducts[0], DOMAIN_3);
@@ -96,7 +96,7 @@ describe('Domain page should work properly', () => {
       'tableSearchQuery'
     );
 
-    cy.sidebarClick('app-bar-item-explore');
+    cy.sidebarClick(SidebarItem.EXPLORE);
 
     verifyResponseStatusCode('@tableSearchQuery', 200);
   });

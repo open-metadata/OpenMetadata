@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -61,7 +62,7 @@ describe('Roles page should work properly', () => {
 
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Roles')

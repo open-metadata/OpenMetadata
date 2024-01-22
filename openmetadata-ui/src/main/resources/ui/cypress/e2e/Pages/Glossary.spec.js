@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   deleteUser,
   descriptionBox,
@@ -584,14 +585,7 @@ const voteGlossary = (isGlossary) => {
 const goToGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
-
-  cy.sidebarHover();
-  cy.get('[data-testid="governance"]').click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-  });
-
-  cy.sidebarClick('app-bar-item-glossary', 'governance');
+  cy.sidebarClick(SidebarItem.GLOSSARY);
 };
 
 const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {

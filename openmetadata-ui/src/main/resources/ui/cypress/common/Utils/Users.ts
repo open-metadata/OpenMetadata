@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
@@ -170,7 +171,7 @@ export const permanentDeleteUser = (username: string) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
 };
 export const visitUserListPage = () => {
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
   cy.get('[data-testid="settings-left-panel"]').contains('Users').click();

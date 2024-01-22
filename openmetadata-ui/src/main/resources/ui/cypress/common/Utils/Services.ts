@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { DELETE_TERM } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import {
@@ -38,7 +39,7 @@ export const goToServiceListingPage = (services: Services) => {
     'getSettingsPage'
   );
   // Click on settings page
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');

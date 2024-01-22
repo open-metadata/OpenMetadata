@@ -25,6 +25,7 @@ import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg
 import { ReactComponent as InsightsIcon } from '../assets/svg/lampcharge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 
+import { SidebarItem } from '../enums/sidebar.enum';
 import { getDataInsightPathWithFqn } from '../utils/DataInsightUtils';
 import { ROUTES } from './constants';
 
@@ -116,4 +117,21 @@ export const LOGOUT_ITEM = {
   label: i18next.t('label.logout'),
   icon: LogoutIcon,
   dataTestId: 'app-bar-item-logout',
+};
+
+export const SIDEBAR_LIST_ITEMS = {
+  [SidebarItem.DATA_QUALITY]: [
+    SidebarItem.OBSERVABILITY,
+    SidebarItem.DATA_QUALITY,
+  ],
+  [SidebarItem.INCIDENT_MANAGER]: [
+    SidebarItem.OBSERVABILITY,
+    SidebarItem.INCIDENT_MANAGER,
+  ],
+  [SidebarItem.OBSERVABILITY_ALERT]: [
+    SidebarItem.OBSERVABILITY,
+    SidebarItem.OBSERVABILITY_ALERT,
+  ],
+  [SidebarItem.GLOSSARY]: [SidebarItem.GOVERNANCE, SidebarItem.GLOSSARY],
+  [SidebarItem.TAGS]: [SidebarItem.GOVERNANCE, SidebarItem.TAGS],
 };

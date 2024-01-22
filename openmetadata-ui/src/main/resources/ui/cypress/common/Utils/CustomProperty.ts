@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { EntityType } from '../../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
@@ -41,7 +42,7 @@ export const createCustomPropertyForEntity = ({
 }) => {
   interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   verifyResponseStatusCode('@settingsPage', 200);
 
@@ -81,7 +82,7 @@ export const deleteCustomPropertyForEntity = ({
   property: CustomProperty;
   type: EntityType;
 }) => {
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
   interceptURL('PATCH', `/api/v1/metadata/types/*`, 'patchEntity');

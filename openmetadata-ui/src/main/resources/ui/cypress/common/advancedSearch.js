@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../src/enums/sidebar.enum';
 import { SEARCH_ENTITY_TABLE } from '../constants/constants';
 import {
   DATABASE_DETAILS,
@@ -229,7 +230,7 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
 
 export const goToAdvanceSearch = () => {
   // Navigate to explore page
-  cy.sidebarClick('app-bar-item-explore');
+  cy.sidebarClick(SidebarItem.EXPLORE);
   cy.get('[data-testid="advance-search-button"]').click();
   cy.get('[data-testid="reset-btn"]').click();
 };

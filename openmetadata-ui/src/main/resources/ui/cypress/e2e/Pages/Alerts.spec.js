@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -62,7 +63,7 @@ describe.skip('Alerts page should work properly', () => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')

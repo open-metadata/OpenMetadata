@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   addTableFieldTags,
   deleteEntity,
@@ -190,7 +191,7 @@ describe('Prerequisite for data steward role tests', () => {
 
     // Assign data steward role to the created user
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 

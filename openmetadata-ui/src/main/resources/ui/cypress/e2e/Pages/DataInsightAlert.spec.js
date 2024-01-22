@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -30,8 +31,7 @@ const dataInsightReport = {
 describe.skip('Data Insight Alert', () => {
   beforeEach(() => {
     cy.login();
-    cy.sidebarClick('app-bar-item-settings');
-
+    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL(
       'GET',
       'api/v1/events/subscriptions/name/DataInsightReport?include=all',

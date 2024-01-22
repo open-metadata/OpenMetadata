@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 
@@ -87,7 +88,7 @@ describe('Schema search', () => {
       'getSettingsPage'
     );
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page

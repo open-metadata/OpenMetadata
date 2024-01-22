@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
@@ -70,7 +71,7 @@ const revokeToken = () => {
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL(
       'GET',
       'api/v1/bots?limit=*&include=non-deleted',

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 export const searchServiceFromSettingPage = (service) => {
@@ -24,7 +25,7 @@ export const searchServiceFromSettingPage = (service) => {
 };
 
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');

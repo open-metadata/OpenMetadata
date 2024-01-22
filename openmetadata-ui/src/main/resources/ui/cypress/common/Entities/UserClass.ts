@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -31,7 +32,7 @@ class UsersTestClass {
   }
 
   visitUserListPage() {
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   }
@@ -76,14 +77,14 @@ class UsersTestClass {
   }
 
   checkStewardServicesPermissions() {
-    cy.sidebarClick('app-bar-item-explore');
+    cy.sidebarClick(SidebarItem.EXPLORE);
     Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
-      cy.sidebarClick('app-bar-item-settings');
+      cy.sidebarClick(SidebarItem.SETTINGS);
 
       cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
       cy.get('[data-testid="add-service-button"] > span').should('not.exist');
     });
-    cy.sidebarClick('app-bar-item-explore');
+    cy.sidebarClick(SidebarItem.EXPLORE);
     cy.get('[data-testid="tables-tab"]').click();
     cy.get(
       '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'

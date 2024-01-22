@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -39,7 +40,7 @@ describe('Services page should work properly', () => {
     cy.login();
     // redirecting to services page
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Database')

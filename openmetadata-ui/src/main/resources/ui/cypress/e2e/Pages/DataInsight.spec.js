@@ -12,6 +12,7 @@
  */
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -93,13 +94,13 @@ describe('Data Insight feature', () => {
   });
 
   it('Initial setup', () => {
-    cy.sidebarClick('app-bar-item-data-insight');
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     deleteKpiRequest();
   });
 
   it('Create description and owner KPI', () => {
-    cy.sidebarClick('app-bar-item-data-insight');
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
     KPI_DATA.map((data) => {
@@ -144,7 +145,7 @@ describe('Data Insight feature', () => {
   });
 
   it('Verifying Data assets tab', () => {
-    cy.sidebarClick('app-bar-item-data-insight');
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-testid="search-dropdown-Team"]').should('be.visible');
     cy.get('[data-testid="search-dropdown-Tier"]').should('be.visible');
@@ -170,7 +171,7 @@ describe('Data Insight feature', () => {
   });
 
   it('Verifying App analytics tab', () => {
-    cy.sidebarClick('app-bar-item-data-insight');
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="app-analytics"]').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);
@@ -192,7 +193,7 @@ describe('Data Insight feature', () => {
   });
 
   it('Verifying KPI tab', () => {
-    cy.sidebarClick('app-bar-item-data-insight');
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);
@@ -210,7 +211,7 @@ describe('Data Insight feature', () => {
   it('Update KPI', () => {
     interceptURL('GET', '/api/v1/kpi/name/*', 'fetchKpiByName');
     interceptURL('PATCH', '/api/v1/kpi/*', 'updateKpi');
-    cy.sidebarClick('app-bar-item-data-insight');
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);
@@ -233,7 +234,7 @@ describe('Data Insight feature', () => {
       '/api/v1/kpi/*?hardDelete=true&recursive=false',
       'deleteKpi'
     );
-    cy.sidebarClick('app-bar-item-data-insight');
+    cy.sidebarClick(SidebarItem.DATA_INSIGHT);
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-menu-id*="kpi"]').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);

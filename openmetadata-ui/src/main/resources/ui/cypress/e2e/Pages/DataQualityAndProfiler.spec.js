@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   deleteCreatedService,
   descriptionBox,
@@ -114,13 +115,7 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
 
-  cy.sidebarHover();
-
-  cy.get('[data-testid="observability"]').click();
-
-  cy.sidebarClick('app-bar-item-data-quality');
-
-  cy.sidebarHoverOutside();
+  cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
@@ -214,11 +209,8 @@ describe('Data Quality and Profiler should work properly', () => {
     goToProfilerTab();
 
     cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
-
     cy.clickOnLogo();
-
-    cy.sidebarClick('app-bar-item-settings');
-
+    cy.sidebarClick(SidebarItem.SETTINGS);
     cy.get('[data-menu-id*="services.databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
@@ -549,13 +541,7 @@ describe('Data Quality and Profiler should work properly', () => {
       'getTestCase'
     );
 
-    cy.sidebarHover();
-
-    cy.get('[data-testid="observability"]').click();
-
-    cy.sidebarClick('app-bar-item-data-quality');
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
@@ -865,13 +851,7 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Update displayName of test case', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
 
-    cy.sidebarHover();
-
-    cy.get('[data-testid="observability"]').click();
-
-    cy.sidebarClick('app-bar-item-data-quality');
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
     cy.get('[data-testid="by-test-cases"]').click();
     verifyResponseStatusCode('@getTestCase', 200);

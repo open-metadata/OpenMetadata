@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   addTeam,
   interceptURL,
@@ -40,7 +41,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     verifyResponseStatusCode('@getOrganization', 200);
   });

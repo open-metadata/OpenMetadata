@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -148,9 +149,7 @@ describe('Incident Manager', () => {
     });
 
     it('Assign incident to user', () => {
-      cy.sidebarHover();
-      cy.get("[data-testid='observability'").click();
-      cy.sidebarClick('app-bar-item-incident-manager');
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).should(
         'be.visible'
       );
@@ -187,9 +186,9 @@ describe('Incident Manager', () => {
         'getTestCase'
       );
       interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
-      cy.sidebarHover();
-      cy.get("[data-testid='observability'").click();
-      cy.sidebarClick('app-bar-item-incident-manager');
+
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
+
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
@@ -226,9 +225,7 @@ describe('Incident Manager', () => {
         'getTestCase'
       );
       interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
-      cy.sidebarHover();
-      cy.get("[data-testid='observability'").click();
-      cy.sidebarClick('app-bar-item-incident-manager');
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
       cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
@@ -338,9 +335,8 @@ describe('Incident Manager', () => {
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*',
         'getIncidentList'
       );
-      cy.sidebarHover();
-      cy.get("[data-testid='observability'").click();
-      cy.sidebarClick('app-bar-item-incident-manager');
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
+
       verifyResponseStatusCode('@getIncidentList', 200);
 
       cy.get(`[data-testid="test-case-${testName}"]`).should('be.visible');
