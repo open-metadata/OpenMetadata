@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
 )
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -164,12 +163,6 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
                 use_cache=True,
-            ),
-            NodeStage(
-                type_=User,
-                context="owner",
-                processor="process_owner",
-                consumer=["dashboard_service"],
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -400,34 +393,16 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 params={"service": self.context.dashboard_service},
             )
 
-    def process_owner(self, dashboard_details):
+    def process_owner(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details
+    ) -> Optional[EntityReference]:
         """
         Method to process the dashboard owners
         """
-        try:
-            if self.source_config.includeOwners:
-                owner = self.get_owner_details(  # pylint: disable=assignment-from-none
-                    dashboard_details=dashboard_details
-                )
-                if owner:
-                    dashboard_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Dashboard,
-                        service_name=self.context.dashboard_service,
-                        dashboard_name=self.context.dashboard,
-                    )
-                    dashboard_entity = self.metadata.get_by_name(
-                        entity=Dashboard, fqn=dashboard_fqn
-                    )
-                    self.metadata.patch_owner(
-                        entity=Dashboard,
-                        source=dashboard_entity,
-                        owner=owner,
-                        force=False,
-                    )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )
+        return None
 
     def register_record(self, dashboard_request: CreateDashboardRequest) -> None:
         """
@@ -456,21 +431,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.datamodel_source_state.add(datamodel_fqn)
-
-    def get_owner_details(  # pylint: disable=useless-return
-        self, dashboard_details  # pylint: disable=unused-argument
-    ) -> Optional[EntityReference]:
-        """Get dashboard owner
-
-        Args:
-            dashboard_details:
-        Returns:
-            Optional[EntityReference]
-        """
-        logger.debug(
-            f"Processing ownership is not supported for {self.service_connection.type.name}"
-        )
-        return None
 
     @staticmethod
     def _get_add_lineage_request(

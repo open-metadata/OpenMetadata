@@ -106,7 +106,7 @@ class RedashSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: dict) -> dict:
         return self.client.get_dashboard(dashboard["slug"])
 
-    def get_owner_details(self, dashboard_details) -> Optional[EntityReference]:
+    def process_owner(self, dashboard_details) -> Optional[EntityReference]:
         """Get owner from mail"""
         if dashboard_details.get("user") and dashboard_details["user"].get("email"):
             return self.metadata.get_reference_by_email(
@@ -160,6 +160,7 @@ class RedashSource(DashboardServiceSource):
                     classification_name=REDASH_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
+                owner=self.process_owner(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

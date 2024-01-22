@@ -116,7 +116,7 @@ class TableauSource(DashboardServiceSource):
 
         return dashboard
 
-    def get_owner_details(
+    def process_owner(
         self, dashboard_details: TableauDashboard
     ) -> Optional[EntityReference]:
         """Get dashboard owner from email"""
@@ -224,6 +224,7 @@ class TableauSource(DashboardServiceSource):
                 ),
                 sourceUrl=dashboard_url,
                 service=self.context.dashboard_service,
+                owner=self.process_owner(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

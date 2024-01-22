@@ -246,7 +246,7 @@ class LookerUnitTest(TestCase):
                 MOCK_LOOKER_DASHBOARD,
             )
 
-    def test_get_owner_details(self):
+    def test_process_owner(self):
         """
         Check how we pick or not the owner
         """
@@ -257,13 +257,13 @@ class LookerUnitTest(TestCase):
             "get_reference_by_email",
             return_value=ref,
         ):
-            self.assertEqual(self.looker.get_owner_details(MOCK_LOOKER_DASHBOARD), ref)
+            self.assertEqual(self.looker.process_owner(MOCK_LOOKER_DASHBOARD), ref)
 
         def raise_something_bad():
             raise RuntimeError("Something bad")
 
         with patch.object(Looker40SDK, "user", side_effect=raise_something_bad):
-            self.assertRaises(Exception, LookerSource.get_owner_details)
+            self.assertRaises(Exception, LookerSource.process_owner)
 
     def test_yield_dashboard(self):
         """
@@ -272,7 +272,7 @@ class LookerUnitTest(TestCase):
         """
         # If we don't have context, then charts are empty
         # We already tested the ownership, mocking as None for simplicity
-        with patch.object(LookerSource, "get_owner_details", return_value=None):
+        with patch.object(LookerSource, "process_owner", return_value=None):
             create_dashboard_request = CreateDashboardRequest(
                 name="1",
                 displayName="title1",
