@@ -6,13 +6,14 @@ import org.openmetadata.sdk.exception.WebServiceException;
 public class InvalidServiceConnectionException extends WebServiceException {
   private static final String BY_NAME_MESSAGE =
       "InvalidServiceConnectionException for service [%s] due to [%s].";
+  private static final String ERROR_TYPE = "INVALID_SERVICE_EXCEPTION";
 
   public InvalidServiceConnectionException(String message) {
-    super(Response.Status.BAD_REQUEST, message);
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 
   private InvalidServiceConnectionException(Response.Status status, String message) {
-    super(status, message);
+    super(status, ERROR_TYPE, message);
   }
 
   public static InvalidServiceConnectionException byMessage(

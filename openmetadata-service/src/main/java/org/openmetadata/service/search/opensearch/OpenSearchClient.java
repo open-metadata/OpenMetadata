@@ -22,6 +22,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.org.elasticsearch.index.IndexNotFoundException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -48,6 +49,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -418,14 +420,19 @@ public class OpenSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client
-            .search(
-                new os.org.opensearch.action.search.SearchRequest(request.getIndex())
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT)
-            .toString();
-    return Response.status(OK).entity(response).build();
+    try {
+      String response =
+          client
+              .search(
+                  new os.org.opensearch.action.search.SearchRequest(request.getIndex())
+                      .source(searchSourceBuilder),
+                  RequestOptions.DEFAULT)
+              .toString();
+      return Response.status(OK).entity(response).build();
+    } catch (IndexNotFoundException e) {
+      throw new SearchIndexNotFoundException(
+          String.format("Failed to to find index %s", request.getIndex()));
+    }
   }
 
   @Override
