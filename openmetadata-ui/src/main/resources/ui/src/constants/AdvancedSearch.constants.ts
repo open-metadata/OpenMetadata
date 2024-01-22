@@ -357,6 +357,7 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         showSearch: false,
+        allowCustomValues: true,
       },
     },
     extension: {
