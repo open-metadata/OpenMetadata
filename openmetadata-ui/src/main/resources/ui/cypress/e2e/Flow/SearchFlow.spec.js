@@ -114,15 +114,20 @@ describe('Advance search', () => {
             CONDITIONS_MUST.equalTo.name,
             CONDITIONS_MUST_NOT.notEqualTo.name,
             field.testid,
-            Cypress._.toLower(field.searchCriteriaFirstGroup),
-            Cypress._.toLower(field.searchCriteriaSecondGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaFirstGroup
+              : Cypress._.toLower(field.searchCriteriaFirstGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaSecondGroup
+              : Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
             CONDITIONS_MUST.equalTo.filter,
             CONDITIONS_MUST_NOT.notEqualTo.filter,
             field.responseValueFirstGroup,
-            val
+            val,
+            field.isLocalSearch
           );
         });
       });
@@ -137,15 +142,20 @@ describe('Advance search', () => {
             CONDITIONS_MUST.anyIn.name,
             CONDITIONS_MUST_NOT.notIn.name,
             field.testid,
-            Cypress._.toLower(field.searchCriteriaFirstGroup),
-            Cypress._.toLower(field.searchCriteriaSecondGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaFirstGroup
+              : Cypress._.toLower(field.searchCriteriaFirstGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaSecondGroup
+              : Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
             CONDITIONS_MUST.anyIn.filter,
             CONDITIONS_MUST_NOT.notIn.filter,
             field.responseValueFirstGroup,
-            val
+            val,
+            field.isLocalSearch
           );
         });
       });
@@ -158,15 +168,20 @@ describe('Advance search', () => {
             CONDITIONS_MUST.contains.name,
             CONDITIONS_MUST_NOT.notContains.name,
             field.testid,
-            Cypress._.toLower(field.searchCriteriaFirstGroup),
-            Cypress._.toLower(field.searchCriteriaSecondGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaFirstGroup
+              : Cypress._.toLower(field.searchCriteriaFirstGroup),
+            field.isLocalSearch
+              ? field.searchCriteriaSecondGroup
+              : Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
             CONDITIONS_MUST.contains.filter,
             CONDITIONS_MUST_NOT.notContains.filter,
             field.responseValueFirstGroup,
-            val
+            val,
+            field.isLocalSearch
           );
         });
       });

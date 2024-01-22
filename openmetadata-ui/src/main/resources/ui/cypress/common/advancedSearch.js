@@ -443,7 +443,8 @@ export const checkAddGroupWithOperator = (
   filter_1,
   filter_2,
   response_1,
-  response_2
+  response_2,
+  isLocalSearch = false
 ) => {
   goToAdvanceSearch();
   // Click on field dropdown
@@ -473,13 +474,17 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
-      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      if (!isLocalSearch) {
+        interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      }
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
 
-      verifyResponseStatusCode('@suggestApi', 200);
+      if (!isLocalSearch) {
+        verifyResponseStatusCode('@suggestApi', 200);
+      }
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[title="${searchCriteria_1}"]`)
@@ -526,12 +531,17 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
-      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      if (!isLocalSearch) {
+        interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      }
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-      verifyResponseStatusCode('@suggestApi', 200);
+
+      if (!isLocalSearch) {
+        verifyResponseStatusCode('@suggestApi', 200);
+      }
 
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
