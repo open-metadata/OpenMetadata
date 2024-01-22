@@ -35,34 +35,34 @@ export const SIDEBAR_LIST = [
     label: i18next.t('label.explore'),
     redirect_url: '/explore/tables',
     icon: ExploreIcon,
-    dataTestId: 'app-bar-item-explore',
+    dataTestId: `app-bar-item-${SidebarItem.EXPLORE}}`,
   },
   {
     key: ROUTES.OBSERVABILITY,
     label: i18next.t('label.observability'),
     icon: ObservabilityIcon,
-    dataTestId: 'observability',
+    dataTestId: SidebarItem.OBSERVABILITY,
     children: [
       {
         key: ROUTES.DATA_QUALITY,
         label: i18next.t('label.data-quality'),
         redirect_url: ROUTES.DATA_QUALITY,
         icon: DataQualityIcon,
-        dataTestId: 'app-bar-item-data-quality',
+        dataTestId: `app-bar-item-${SidebarItem.DATA_QUALITY}}`,
       },
       {
         key: ROUTES.INCIDENT_MANAGER,
         label: i18next.t('label.incident-manager'),
         redirect_url: ROUTES.INCIDENT_MANAGER,
         icon: IncidentMangerIcon,
-        dataTestId: 'app-bar-item-incident-manager',
+        dataTestId: `app-bar-item-${SidebarItem.INCIDENT_MANAGER}}`,
         isBeta: true,
       },
       {
         key: ROUTES.OBSERVABILITY,
         label: i18next.t('label.alert-plural'),
         icon: AlertIcon,
-        dataTestId: 'app-bar-item-observability-alert',
+        dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}}`,
       },
     ],
   },
@@ -71,34 +71,34 @@ export const SIDEBAR_LIST = [
     label: i18next.t('label.insight-plural'),
     redirect_url: getDataInsightPathWithFqn(),
     icon: InsightsIcon,
-    dataTestId: 'app-bar-item-data-insight',
+    dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}}`,
   },
   {
     key: ROUTES.DOMAIN,
     label: i18next.t('label.domain-plural'),
     redirect_url: ROUTES.DOMAIN,
     icon: DomainsIcon,
-    dataTestId: 'app-bar-item-domain',
+    dataTestId: `app-bar-item-${SidebarItem.DOMAIN}}`,
   },
   {
     key: 'governance',
     label: i18next.t('label.govern'),
     icon: GovernIcon,
-    dataTestId: 'governance',
+    dataTestId: SidebarItem.GOVERNANCE,
     children: [
       {
         key: ROUTES.GLOSSARY,
         label: i18next.t('label.glossary'),
         redirect_url: ROUTES.GLOSSARY,
         icon: GlossaryIcon,
-        dataTestId: 'app-bar-item-glossary',
+        dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}}`,
       },
       {
         key: ROUTES.TAGS,
         label: i18next.t('label.classification'),
         redirect_url: ROUTES.TAGS,
         icon: ClassificationIcon,
-        dataTestId: 'app-bar-item-tags',
+        dataTestId: `app-bar-item-${SidebarItem.TAGS}}`,
       },
     ],
   },
@@ -109,14 +109,14 @@ export const SETTING_ITEM = {
   label: i18next.t('label.setting-plural'),
   redirect_url: ROUTES.SETTINGS,
   icon: SettingsIcon,
-  dataTestId: 'app-bar-item-settings',
+  dataTestId: `app-bar-item-${SidebarItem.SETTINGS}}`,
 };
 
 export const LOGOUT_ITEM = {
   key: 'logout',
   label: i18next.t('label.logout'),
   icon: LogoutIcon,
-  dataTestId: 'app-bar-item-logout',
+  dataTestId: `app-bar-item-${SidebarItem.LOGOUT}}`,
 };
 
 export const SIDEBAR_LIST_ITEMS = {
