@@ -107,11 +107,18 @@ class RedashSource(DashboardServiceSource):
         return self.client.get_dashboard(dashboard["slug"])
 
     def process_owner(self, dashboard_details) -> Optional[EntityReference]:
-        """Get owner from mail"""
-        if dashboard_details.get("user") and dashboard_details["user"].get("email"):
-            return self.metadata.get_reference_by_email(
-                dashboard_details["user"].get("email")
-            )
+        """
+        Get owner from email
+        """
+        try:
+            if dashboard_details.get("user") and dashboard_details["user"].get("email"):
+                return self.metadata.get_reference_by_email(
+                    dashboard_details["user"].get("email")
+                )
+            return None
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def get_dashboard_url(self, dashboard_details: dict) -> str:

@@ -119,9 +119,17 @@ class TableauSource(DashboardServiceSource):
     def process_owner(
         self, dashboard_details: TableauDashboard
     ) -> Optional[EntityReference]:
-        """Get dashboard owner from email"""
-        if dashboard_details.owner and dashboard_details.owner.email:
-            return self.metadata.get_reference_by_email(dashboard_details.owner.email)
+        """
+        Get dashboard owner from email
+        """
+        try:
+            if dashboard_details.owner and dashboard_details.owner.email:
+                return self.metadata.get_reference_by_email(
+                    dashboard_details.owner.email
+                )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def yield_tags(
