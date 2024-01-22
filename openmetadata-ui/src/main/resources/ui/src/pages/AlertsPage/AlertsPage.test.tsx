@@ -81,7 +81,7 @@ describe('Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
     const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });
 
-    expect(await findByText('label.alert-plural')).toBeInTheDocument();
+    expect(await findByText('label.notification-plural')).toBeInTheDocument();
   });
 
   it('SubTitle should be rendered', async () => {

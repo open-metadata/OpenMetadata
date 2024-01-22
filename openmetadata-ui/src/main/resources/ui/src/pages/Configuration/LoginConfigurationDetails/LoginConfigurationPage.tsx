@@ -54,7 +54,7 @@ const LoginConfigurationPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.OPEN_METADATA,
-        t('label.login')
+        t('label.login-configuration')
       ),
     []
   );

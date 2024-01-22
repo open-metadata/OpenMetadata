@@ -14,7 +14,7 @@
 import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { capitalize, isUndefined } from 'lodash';
+import { isUndefined, startCase } from 'lodash';
 import {
   default as React,
   useCallback,
@@ -77,9 +77,9 @@ const CustomEntityDetailV1 = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-        capitalize(tabAttributePath)
+        startCase(tab)
       ),
-    [tabAttributePath]
+    [tab]
   );
 
   const fetchPermission = async () => {
