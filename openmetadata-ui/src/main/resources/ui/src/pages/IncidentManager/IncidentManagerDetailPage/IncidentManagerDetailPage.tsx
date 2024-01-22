@@ -233,6 +233,7 @@ const IncidentManagerDetailPage = () => {
           </Col>
           <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
             <EntityHeaderTitle
+              className="w-max-full-45"
               displayName={testCaseData.data?.displayName}
               icon={<TestCaseIcon className="h-9" />}
               name={testCaseData.data?.name ?? ''}
