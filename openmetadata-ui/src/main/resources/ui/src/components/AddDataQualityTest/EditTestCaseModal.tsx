@@ -16,7 +16,7 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { Table } from '../../generated/entity/data/table';
@@ -50,6 +50,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const tableFqn = useMemo(
+    () => getEntityFqnFromEntityLink(testCase?.entityLink ?? ''),
+    [testCase]
+  );
   const [selectedDefinition, setSelectedDefinition] =
     useState<TestDefinition>();
   const [isLoading, setIsLoading] = useState(true);
@@ -80,27 +84,13 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     },
   ];
 
-  const GenerateParamsField = useCallback(() => {
+  const paramsField = useMemo(() => {
     if (selectedDefinition?.parameterDefinition) {
       return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
-    return;
-  }, [testCase, selectedDefinition, table]);
-
-  const fetchTestDefinitionById = async () => {
-    setIsLoading(true);
-    try {
-      const definition = await getTestDefinitionById(
-        testCase.testDefinition.id || ''
-      );
-      setSelectedDefinition(definition);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return <></>;
+  }, [selectedDefinition, table]);
 
   const createTestCaseObj = (value: {
     testName: string;
@@ -161,7 +151,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   };
 
-  const getParamsValue = () => {
+  const getParamsValue = (selectedDefinition: TestDefinition) => {
     return testCase?.parameterValues?.reduce(
       (acc, curr) => ({
         ...acc,
@@ -186,21 +176,34 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (testCase) {
-      fetchTestDefinitionById();
-      const tableFqn = getEntityFqnFromEntityLink(testCase?.entityLink);
+  const fetchTestDefinitionById = async () => {
+    setIsLoading(true);
+    try {
+      const definition = await getTestDefinitionById(
+        testCase.testDefinition.id || ''
+      );
       form.setFieldsValue({
         name: testCase?.name,
         testDefinition: testCase?.testDefinition?.name,
         displayName: testCase?.displayName,
-        params: getParamsValue(),
+        params: getParamsValue(definition),
         table: getNameFromFQN(tableFqn),
         column: getNameFromFQN(
           getEntityFqnFromEntityLink(testCase?.entityLink, isColumn)
         ),
         computePassedFailedRowCount: testCase?.computePassedFailedRowCount,
       });
+      setSelectedDefinition(definition);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (testCase) {
+      fetchTestDefinitionById();
 
       const isContainsColumnName = testCase.parameterValues?.find(
         (value) => value.name === 'columnName'
@@ -281,7 +284,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             </>
           )}
 
-          {GenerateParamsField()}
+          {paramsField}
 
           {!showOnlyParameter && (
             <>
