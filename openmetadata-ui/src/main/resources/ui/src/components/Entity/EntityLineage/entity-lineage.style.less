@@ -221,3 +221,35 @@
     color: inherit;
   }
 }
+
+.generate-blink-animation(@color) {
+  @keyframes blink {
+    0%,
+    100% {
+      border: 1px solid @color;
+    }
+    50% {
+      border: 3px solid @color;
+    }
+  }
+}
+
+.generate-blink-animation(@green-7);
+.blinking-green-border {
+  animation: blink 1s infinite;
+}
+
+.generate-blink-animation(@yellow-6);
+.blinking-amber-border {
+  animation: blink 1s infinite;
+}
+
+.generate-blink-animation(@red-7);
+.blinking-red-border {
+  animation: blink 1s infinite;
+}
+
+.generate-blink-animation(@primary-color);
+.blinking-border {
+  animation: blink 1s infinite;
+}

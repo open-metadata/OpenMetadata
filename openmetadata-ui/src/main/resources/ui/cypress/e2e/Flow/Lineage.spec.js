@@ -237,4 +237,18 @@ describe('Lineage verification', () => {
     cy.get('[data-testid="edit-lineage"]').click();
     deleteNode(targetEntity);
   });
+
+  it('Verify pipeline lineage', () => {
+    const entity = PIPELINE_ITEMS[1];
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
+    cy.get('[data-testid="lineage"]').click();
+    cy.get('.custom-edge-pipeline-button').should(
+      'have.class',
+      'blinking-border'
+    );
+  });
 });

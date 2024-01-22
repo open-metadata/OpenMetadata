@@ -67,7 +67,14 @@ export const CustomEdge = ({
   selected,
 }: EdgeProps) => {
   const { t } = useTranslation();
-  const { edge, isColumnLineage, sourceHandle, targetHandle, ...rest } = data;
+  const {
+    edge,
+    isColumnLineage,
+    sourceHandle,
+    targetHandle,
+    isPipelineRootNode,
+    ...rest
+  } = data;
   const offset = 4;
 
   const {
@@ -174,6 +181,33 @@ export const CustomEdge = ({
     );
   };
 
+  const currentPipelineStatus = useMemo(() => {
+    const pipelineData = pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
+    if (pipelineData) {
+      switch (pipelineData.executionStatus) {
+        case StatusType.Failed:
+          return 'red';
+        case StatusType.Skipped:
+        case StatusType.Pending:
+          return 'amber';
+        case StatusType.Successful:
+          return 'green';
+      }
+    } else {
+      return '';
+    }
+  }, [data, pipelineStatus]);
+
+  const blinkingClass = useMemo(() => {
+    if (isPipelineRootNode && currentPipelineStatus) {
+      return `blinking-${currentPipelineStatus}-border`;
+    } else if (isPipelineRootNode) {
+      return 'blinking-border';
+    } else {
+      return '';
+    }
+  }, [currentPipelineStatus, isPipelineRootNode]);
+
   const getLineageEdgeIcon = useCallback(
     (icon: React.ReactNode, dataTestId: string, pipelineClass?: string) => {
       const pipelineData =
@@ -210,7 +244,8 @@ export const CustomEdge = ({
                 <Button
                   className={classNames(
                     'flex-center custom-edge-pipeline-button',
-                    pipelineClass
+                    pipelineClass,
+                    blinkingClass
                   )}
                   data-testid={dataTestId}
                   icon={icon}
@@ -222,7 +257,8 @@ export const CustomEdge = ({
             <Button
               className={classNames(
                 'flex-center custom-edge-pipeline-button',
-                pipelineClass
+                pipelineClass,
+                blinkingClass
               )}
               data-testid={dataTestId}
               icon={icon}
@@ -232,7 +268,7 @@ export const CustomEdge = ({
         </LineageEdgeIcon>
       );
     },
-    [edgeCenterX, edgeCenterY, rest, data, pipelineStatus]
+    [edgeCenterX, edgeCenterY, rest, data, pipelineStatus, blinkingClass]
   );
 
   const getEditLineageIcon = useCallback(
@@ -283,23 +319,6 @@ export const CustomEdge = ({
       fetchPipelineStatus(data.edge.pipeline?.fullyQualifiedName);
     }
   }, [data.edge.pipeline]);
-
-  const currentPipelineStatus = useMemo(() => {
-    const pipelineData = pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
-    if (pipelineData) {
-      switch (pipelineData.executionStatus) {
-        case StatusType.Failed:
-          return 'red';
-        case StatusType.Skipped:
-        case StatusType.Pending:
-          return 'amber';
-        case StatusType.Successful:
-          return 'green';
-      }
-    } else {
-      return '';
-    }
-  }, [data, pipelineStatus]);
 
   return (
     <Fragment>

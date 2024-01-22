@@ -874,7 +874,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         lineageData.edges ?? [],
         decodedFqn
       );
-      const updatedEdges = createEdges(allNodes, lineageData.edges ?? []);
+      const updatedEdges = createEdges(
+        allNodes,
+        lineageData.edges ?? [],
+        decodedFqn
+      );
       setNodes(updatedNodes);
       setEdges(updatedEdges);
 

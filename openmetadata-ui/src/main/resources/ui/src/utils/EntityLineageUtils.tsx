@@ -611,7 +611,11 @@ export const createNodes = (
   });
 };
 
-export const createEdges = (nodes: EntityReference[], edges: EdgeDetails[]) => {
+export const createEdges = (
+  nodes: EntityReference[],
+  edges: EdgeDetails[],
+  entityFqn: string
+) => {
   const lineageEdgesV1: Edge[] = [];
 
   edges.forEach((edge) => {
@@ -663,6 +667,9 @@ export const createEdges = (nodes: EntityReference[], edges: EdgeDetails[]) => {
       data: {
         edge,
         isColumnLineage: false,
+        isPipelineRootNode: !isNil(edge.pipeline)
+          ? getDecodedFqn(entityFqn) === edge.pipeline?.fullyQualifiedName
+          : false,
       },
     });
   });
