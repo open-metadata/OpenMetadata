@@ -956,7 +956,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .not('.ant-select-dropdown-hidden')
       .find(`[title="${profilerSetting.partitionIntervalType}"]`)
       .click();
-    cy.get('[data-testid="column-name"]').click();
+    cy.get('#includeColumnsProfiler_partitionColumnName').click();
     cy.get('.ant-select-dropdown')
       .not('.ant-select-dropdown-hidden')
       .find(`[title="${profilerSetting.partitionColumnName}"]`)
