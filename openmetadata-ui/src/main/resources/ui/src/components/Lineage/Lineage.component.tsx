@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import classNames from 'classnames';
 import { debounce } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -119,17 +118,15 @@ const Lineage = ({
   // considerably. So added an init state for showing loader.
   return (
     <Card
-      className={classNames('lineage-card card-body-full w-auto border-none', {
-        'full-screen-lineage': isFullScreen,
-      })}
+      className="lineage-card card-body-full w-auto border-none"
       data-testid="lineage-details">
+      {isFullScreen && (
+        <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
+      )}
       <div
-        className="h-full"
+        className="h-full relative lineage-container"
         data-testid="lineage-container"
         ref={reactFlowWrapper}>
-        {isFullScreen && (
-          <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
-        )}
         {entityLineage && (
           <CustomControlsComponent
             className="absolute top-1 right-1 p-xs"
@@ -190,7 +187,9 @@ const Lineage = ({
             </ReactFlow>
           </ReactFlowProvider>
         ) : (
-          <Loader />
+          <div className="loading-card">
+            <Loader />
+          </div>
         )}
       </div>
     </Card>

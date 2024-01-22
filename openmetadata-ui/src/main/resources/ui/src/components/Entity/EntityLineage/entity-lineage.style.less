@@ -15,6 +15,7 @@
 
 @lineage-sidebar-width: 110px;
 @lineage-breadcrumb-panel: 50px;
+@lineage-toolbar-height: 54px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -175,12 +176,44 @@
   padding-top: 20px;
 }
 
-.lineage-card.full-screen-lineage {
+.loading-card {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+// lineage
+.lineage-card {
+  > .ant-card-body {
+    padding: 0;
+  }
+}
+
+.lineage-card {
+  height: calc(100vh - 240px);
+}
+
+.full-screen-lineage {
   top: @navbar-height;
   left: @sidebar-width;
   position: fixed !important;
   width: calc(100vw - @sidebar-width);
-  height: calc(100vh - (@navbar-height + @lineage-breadcrumb-panel));
+  height: calc(100vh - @navbar-height);
+  .lineage-card {
+    height: calc(100vh - @navbar-height);
+  }
+  .entity-lineage.sidebar {
+    top: @lineage-breadcrumb-panel;
+  }
+  .entity-panel-container {
+    top: calc(@lineage-breadcrumb-panel + @lineage-toolbar-height);
+    margin-top: 0;
+  }
+  .lineage-container {
+    height: calc(100vh - @navbar-height - @lineage-breadcrumb-panel);
+  }
 }
 
 .lineage-node-remove-btn {

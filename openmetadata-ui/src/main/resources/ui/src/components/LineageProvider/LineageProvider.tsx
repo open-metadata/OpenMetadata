@@ -69,6 +69,7 @@ import {
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 
+import classNames from 'classnames';
 import { PipelineStatus } from '../../generated/entity/data/pipeline';
 import { useFqn } from '../../hooks/useFqn';
 import { getPipelineStatus } from '../../rest/pipelineAPI';
@@ -156,6 +157,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     Record<string, PipelineStatus>
   >({});
   const [entityType, setEntityType] = useState('');
+  const queryParams = new URLSearchParams(location.search);
+  const isFullScreen = queryParams.get('fullscreen') === 'true';
 
   const fetchLineageData = async (
     fqn: string,
@@ -1033,61 +1036,66 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   return (
     <LineageContext.Provider value={activityFeedContextValues}>
-      {children}
-      <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
+      <div
+        className={classNames({
+          'full-screen-lineage': isFullScreen,
+        })}>
+        {children}
+        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
-      {isDrawerOpen &&
-        !isEditMode &&
-        (selectedEdge ? (
-          <EdgeInfoDrawer
-            hasEditAccess
-            edge={selectedEdge} // handle this access
-            nodes={nodes}
-            visible={isDrawerOpen}
-            onClose={() => {
-              setIsDrawerOpen(false);
-              setSelectedEdge(undefined);
+        {isDrawerOpen &&
+          !isEditMode &&
+          (selectedEdge ? (
+            <EdgeInfoDrawer
+              hasEditAccess
+              edge={selectedEdge} // handle this access
+              nodes={nodes}
+              visible={isDrawerOpen}
+              onClose={() => {
+                setIsDrawerOpen(false);
+                setSelectedEdge(undefined);
+              }}
+              onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+            />
+          ) : (
+            <EntityInfoDrawer
+              selectedNode={selectedNode}
+              show={isDrawerOpen}
+              onCancel={() => setIsDrawerOpen(false)}
+            />
+          ))}
+
+        {showDeleteModal && (
+          <Modal
+            data-testid="delete-edge-confirmation-modal"
+            maskClosable={false}
+            okText={getLoadingStatusValue(
+              t('label.confirm'),
+              deletionState.loading,
+              deletionState.status
+            )}
+            open={showDeleteModal}
+            title={t('message.remove-lineage-edge')}
+            onCancel={() => {
+              setShowDeleteModal(false);
             }}
-            onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+            onOk={onRemove}>
+            {getModalBodyText(selectedEdge as Edge)}
+          </Modal>
+        )}
+        {showAddEdgeModal && (
+          <AddPipeLineModal
+            selectedEdge={selectedEdge}
+            showAddEdgeModal={showAddEdgeModal}
+            onModalCancel={handleModalCancel}
+            onRemoveEdgeClick={() => {
+              setShowDeleteModal(true);
+              setShowAddEdgeModal(false);
+            }}
+            onSave={onAddPipelineModalSave}
           />
-        ) : (
-          <EntityInfoDrawer
-            selectedNode={selectedNode}
-            show={isDrawerOpen}
-            onCancel={() => setIsDrawerOpen(false)}
-          />
-        ))}
-
-      {showDeleteModal && (
-        <Modal
-          data-testid="delete-edge-confirmation-modal"
-          maskClosable={false}
-          okText={getLoadingStatusValue(
-            t('label.confirm'),
-            deletionState.loading,
-            deletionState.status
-          )}
-          open={showDeleteModal}
-          title={t('message.remove-lineage-edge')}
-          onCancel={() => {
-            setShowDeleteModal(false);
-          }}
-          onOk={onRemove}>
-          {getModalBodyText(selectedEdge as Edge)}
-        </Modal>
-      )}
-      {showAddEdgeModal && (
-        <AddPipeLineModal
-          selectedEdge={selectedEdge}
-          showAddEdgeModal={showAddEdgeModal}
-          onModalCancel={handleModalCancel}
-          onRemoveEdgeClick={() => {
-            setShowDeleteModal(true);
-            setShowAddEdgeModal(false);
-          }}
-          onSave={onAddPipelineModalSave}
-        />
-      )}
+        )}
+      </div>
     </LineageContext.Provider>
   );
 };
