@@ -48,9 +48,6 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as MetadataDashboard,
-)
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
@@ -759,12 +756,12 @@ class LookerSource(DashboardServiceSource):
                 if cached_explore:
                     dashboard_fqn = fqn.build(
                         self.metadata,
-                        entity_type=MetadataDashboard,
+                        entity_type=Dashboard,
                         service_name=self.context.dashboard_service,
                         dashboard_name=self.context.dashboard,
                     )
                     dashboard_entity = self.metadata.get_by_name(
-                        entity=MetadataDashboard, fqn=dashboard_fqn
+                        entity=Dashboard, fqn=dashboard_fqn
                     )
                     yield Either(
                         right=AddLineageRequest(
@@ -797,7 +794,7 @@ class LookerSource(DashboardServiceSource):
         self,
         source: str,
         db_service_name: str,
-        to_entity: Union[MetadataDashboard, DashboardDataModel],
+        to_entity: Union[Dashboard, DashboardDataModel],
     ) -> Optional[Either[AddLineageRequest]]:
         """
         Once we have a list of origin data sources, check their components
@@ -942,7 +939,7 @@ class LookerSource(DashboardServiceSource):
         :return: UsageRequest, if not computed
         """
 
-        dashboard_name: MetadataDashboard = self.context.dashboard
+        dashboard_name = self.context.dashboard
 
         try:
 
