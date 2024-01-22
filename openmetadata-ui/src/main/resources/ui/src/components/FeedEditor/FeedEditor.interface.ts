@@ -20,6 +20,7 @@ export interface MentionSuggestionsItem {
   type?: string;
   avatarEle?: HTMLDivElement;
   breadcrumbs: Array<{ name: string }>;
+  displayName?: string;
 }
 
 export interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {

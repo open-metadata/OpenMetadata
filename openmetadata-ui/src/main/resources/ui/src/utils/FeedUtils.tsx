@@ -69,7 +69,11 @@ import {
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
+import {
+  ENTITY_LINK_SEPARATOR,
+  getEntityBreadcrumbs,
+  getEntityName,
+} from './EntityUtils';
 import Fqn from './Fqn';
 import {
   getImageWithResolutionAndFallback,
@@ -209,6 +213,7 @@ export async function suggestions(
             type:
               hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
             name: hit._source.name,
+            displayName: hit._source.displayName,
           };
         })
       );
@@ -221,7 +226,7 @@ export async function suggestions(
         hits.map(async (hit: any) => {
           const entityType = hit._source.entityType;
           const name = getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.display_name}`,
+            `@${hit._source.name ?? hit._source.displayName}`,
             hit._source.deleted
           );
 
@@ -235,6 +240,7 @@ export async function suggestions(
             type:
               hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
             name: hit._source.name,
+            displayName: hit._source.displayName,
           };
         })
       );
@@ -335,7 +341,9 @@ export const userMentionItemWithAvatar = (
           </div>
         )}
       </div>
-      <span className="d-flex items-center truncate w-56">{item.name}</span>
+      <span className="d-flex items-center truncate w-56">
+        {getEntityName(item)}
+      </span>
     </div>,
     wrapper
   );

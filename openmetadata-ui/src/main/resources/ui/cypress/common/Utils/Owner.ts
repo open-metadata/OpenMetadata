@@ -15,7 +15,7 @@ import { interceptURL, verifyResponseStatusCode } from '../common';
 const userURL =
   '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
 const teamURL =
-  '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index';
+  '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index&sort_field=displayName.keyword&sort_order=asc';
 
 export const validateOwnerAndTeamCounts = () => {
   cy.getAllLocalStorage().then((data) => {
@@ -122,7 +122,7 @@ export const removeOwner = (ownerName: string) => {
 export const addTeamAsOwner = (teamName: string) => {
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index',
+    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc',
     'getTeams'
   );
 

@@ -80,7 +80,7 @@ describe('Services page should work properly', () => {
     verifyResponseStatusCode('@pipelineServiceClient', 200);
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=*&index=team_search_index',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc',
       'editOwner'
     );
     cy.get('[data-testid="edit-owner"]')
