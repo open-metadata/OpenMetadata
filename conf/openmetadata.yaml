@@ -99,6 +99,8 @@ logging:
           timeZone: UTC
         - type: file
           logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+          layout:
+            type: json
           currentLogFilename: ./logs/openmetadata-operations.log
           archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
           archivedFileCount: 7
@@ -110,6 +112,9 @@ logging:
       logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       timeZone: UTC
     - type: file
+      layout:
+        type: json
+        appendLineSeparator: true
       filterFactories:
         - type: audit-exclude-filter-factory
       threshold: TRACE
@@ -120,6 +125,9 @@ logging:
       timeZone: UTC
       maxFileSize: 50MB
     - type: file
+      layout:
+        type: json
+        appendLineSeparator: true
       filterFactories:
         - type: audit-only-filter-factory
       threshold: TRACE
