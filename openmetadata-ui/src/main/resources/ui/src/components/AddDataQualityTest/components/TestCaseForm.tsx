@@ -306,6 +306,13 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             message: t('message.entity-name-validation'),
           },
           {
+            max: 256,
+            message: t('message.entity-maximum-size', {
+              entity: t('label.name'),
+              max: 256,
+            }),
+          },
+          {
             validator: (_, value) => {
               if (testCases.some((test) => test.name === value)) {
                 return Promise.reject(
