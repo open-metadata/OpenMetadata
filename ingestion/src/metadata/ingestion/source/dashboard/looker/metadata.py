@@ -47,6 +47,7 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as MetadataDashboard,
 )
@@ -941,9 +942,23 @@ class LookerSource(DashboardServiceSource):
         :return: UsageRequest, if not computed
         """
 
-        dashboard: MetadataDashboard = self.context.dashboard
+        dashboard_name: MetadataDashboard = self.context.dashboard
 
         try:
+
+            dashboard_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.dashboard_service,
+                dashboard_name=dashboard_name,
+            )
+
+            dashboard: Dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,
+                fields=["usageSummary"],
+            )
+
             current_views = dashboard_details.view_count
 
             if not current_views:
@@ -995,8 +1010,8 @@ class LookerSource(DashboardServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=f"{dashboard.name} Usage",
-                    error=f"Exception computing dashboard usage for {dashboard.fullyQualifiedName.__root__}: {exc}",
+                    name=f"{dashboard_name} Usage",
+                    error=f"Exception computing dashboard usage for {dashboard_name}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
