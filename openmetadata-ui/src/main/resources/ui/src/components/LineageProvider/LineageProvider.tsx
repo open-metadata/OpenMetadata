@@ -140,6 +140,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(true);
+  const [init, setInit] = useState(false);
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
   const [tracedNodes, setTracedNodes] = useState<string[]>([]);
   const [tracedColumns, setTracedColumns] = useState<string[]>([]);
@@ -165,6 +166,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setEntityLineage(mockDatasetData.entityLineage);
     } else {
       setLoading(true);
+      setInit(false);
       try {
         const res = await getLineageDataByFQN(
           fqn,
@@ -196,6 +198,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           })
         );
       } finally {
+        setInit(true);
         setLoading(false);
       }
     }
@@ -854,11 +857,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const selectNode = (node: Node) => {
     const { position } = node;
     // moving selected node in center
-    reactFlowInstance &&
-      reactFlowInstance.setCenter(position.x, position.y, {
-        duration: ZOOM_TRANSITION_DURATION,
-        zoom: zoomValue,
-      });
+    reactFlowInstance?.setCenter(position.x, position.y, {
+      duration: ZOOM_TRANSITION_DURATION,
+      zoom: zoomValue,
+    });
   };
 
   const redrawLineage = useCallback(
@@ -955,6 +957,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       expandAllColumns,
       pipelineStatus,
       upstreamDownstreamData,
+      init,
       onInitReactFlow,
       onPaneClick,
       onConnect,
@@ -998,6 +1001,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     expandAllColumns,
     pipelineStatus,
     upstreamDownstreamData,
+    init,
     onInitReactFlow,
     onPaneClick,
     onConnect,

@@ -56,6 +56,7 @@ export interface LineageContextType {
   zoomValue: number;
   isDrawerOpen: boolean;
   loading: boolean;
+  init: boolean;
   status: LoadingState;
   isEditMode: boolean;
   entityLineage: EntityLineageReponse;

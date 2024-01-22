@@ -12,7 +12,7 @@
  */
 import { Card } from 'antd';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { debounce } from 'lodash';
 import Qs from 'qs';
 import React, {
   DragEvent,
@@ -58,6 +58,7 @@ const Lineage = ({
     nodes,
     edges,
     isEditMode,
+    init,
     onNodeClick,
     onEdgeClick,
     onNodeDrop,
@@ -114,7 +115,7 @@ const Lineage = ({
     updateEntityType(entityType);
   }, [entityType]);
 
-  if (isEmpty(entityLineage.entity)) {
+  if (!init) {
     return <Loader />;
   }
 

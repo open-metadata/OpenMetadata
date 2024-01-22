@@ -99,6 +99,22 @@ export const CustomEdge = ({
     targetY,
     targetPosition,
   });
+  const [invisibleEdgePath] = getBezierPath({
+    sourceX: sourceX + offset,
+    sourceY: sourceY + offset,
+    sourcePosition,
+    targetX: targetX + offset,
+    targetY: targetY + offset,
+    targetPosition,
+  });
+  const [invisibleEdgePath1] = getBezierPath({
+    sourceX: sourceX - offset,
+    sourceY: sourceY - offset,
+    sourcePosition,
+    targetX: targetX - offset,
+    targetY: targetY - offset,
+    targetPosition,
+  });
 
   const updatedStyle = useMemo(() => {
     const isNodeTraced =
@@ -144,6 +160,19 @@ export const CustomEdge = ({
 
   const isSelectedEditMode = selected && isEditMode;
   const isSelected = selected;
+
+  const getInvisiblePath = (path: string) => {
+    return (
+      <path
+        className="react-flow__edge-path"
+        d={path}
+        data-testid="react-flow-edge-path"
+        id={id}
+        markerEnd={markerEnd}
+        style={{ ...style, strokeWidth: '6px', opacity: 0 }}
+      />
+    );
+  };
 
   const getLineageEdgeIcon = useCallback(
     (icon: React.ReactNode, dataTestId: string, pipelineClass?: string) => {
@@ -282,6 +311,8 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={updatedStyle}
       />
+      {getInvisiblePath(invisibleEdgePath)}
+      {getInvisiblePath(invisibleEdgePath1)}
 
       {isColumnLineageAllowed &&
         hasLabel &&
