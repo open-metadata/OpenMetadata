@@ -400,6 +400,7 @@
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id-match": "根据ID匹配",
     "entity-index": "{{entity}}索引",
+    "entity-list": "{{entity}} List",
     "entity-name": "{{entity}}名称",
     "entity-plural": "实体",
     "entity-proportion": "{{entity}}比例",

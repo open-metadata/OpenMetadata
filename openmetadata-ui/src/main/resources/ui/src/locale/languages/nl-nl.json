@@ -400,6 +400,7 @@
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id-match": "Overeenkomen op ID",
     "entity-index": "{{entity}}-index",
+    "entity-list": "{{entity}} List",
     "entity-name": "{{entity}}-naam",
     "entity-plural": "Entiteiten",
     "entity-proportion": "{{entity}}-verhouding",

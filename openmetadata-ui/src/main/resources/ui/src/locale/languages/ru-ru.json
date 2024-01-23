@@ -400,6 +400,7 @@
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id-match": "Совпадение по Id",
     "entity-index": "{{entity}} индекс",
+    "entity-list": "{{entity}} List",
     "entity-name": "{{entity}} Имя",
     "entity-plural": "Сущности",
     "entity-proportion": "Доля \"{{entity}}\"",

@@ -400,6 +400,7 @@
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id-match": "Entitäts-ID-Übereinstimmung",
     "entity-index": "{{entity}}-Index",
+    "entity-list": "{{entity}} List",
     "entity-name": "{{entity}}-Name",
     "entity-plural": "Entitäten",
     "entity-proportion": "{{entity}}-Anteil",

@@ -400,6 +400,7 @@
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id-match": "התאם לפי זיהוי",
     "entity-index": "אינדקס {{entity}}",
+    "entity-list": "{{entity}} List",
     "entity-name": "שם {{entity}}",
     "entity-plural": "ישויות",
     "entity-proportion": "יחס {{entity}}",

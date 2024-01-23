@@ -400,6 +400,7 @@
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id-match": "IDによるマッチング",
     "entity-index": "{{entity}} インデックス",
+    "entity-list": "{{entity}} List",
     "entity-name": "{{entity}} 名",
     "entity-plural": "エンティティ",
     "entity-proportion": "{{entity}} Proportion",
