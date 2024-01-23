@@ -15,7 +15,7 @@ generate the _run based on their topology.
 import traceback
 from collections import defaultdict
 from functools import singledispatchmethod
-from typing import Any, Generic, Iterable, List, Type, TypeVar, Union
+from typing import Any, Generic, Iterable, List, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -267,20 +267,46 @@ class TopologyRunnerMixin(Generic[C]):
             *context_names, entity_name
         )
 
-    def update_context(
-        self, stage: NodeStage, context: Union[str, OMetaTagAndClassification]
-    ):
+    def update_context(self, stage: NodeStage, right: C):
         """
         Append or update context
 
-        We'll store the entity_name in the topology context instead of the entity_fqn
-        and build the FQN on-the-fly wherever required.
-        This is mainly because we need the context in other places
+        We'll store the entity name or FQN in the topology context.
+        If we store the name, the FQN will be built in the source itself when needed.
         """
+
+        if stage.store_fqn:
+            new_context = self._build_new_context_fqn(right)
+        else:
+            new_context = model_str(right.name)
+
         if stage.context and not stage.store_all_in_context:
-            self._replace_context(key=stage.context, value=context)
+            self._replace_context(key=stage.context, value=new_context)
         if stage.context and stage.store_all_in_context:
-            self._append_context(key=stage.context, value=context)
+            self._append_context(key=stage.context, value=new_context)
+
+    @singledispatchmethod
+    def _build_new_context_fqn(self, right: C) -> str:
+        """Build context fqn string"""
+        raise NotImplementedError(f"Missing implementation for [{type(C)}]")
+
+    @_build_new_context_fqn.register
+    def _(self, right: CreateStoredProcedureRequest) -> str:
+        """
+        Implement FQN context building for Stored Procedures.
+
+        We process the Stored Procedures lineage at the very end of the service. If we
+        just store the SP name, we lose the information of which db/schema the SP belongs to.
+        """
+
+        return fqn.build(
+            metadata=self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            procedure_name=right.name.__root__,
+        )
 
     def create_patch_request(
         self, original_entity: Entity, create_request: C
@@ -379,7 +405,7 @@ class TopologyRunnerMixin(Generic[C]):
                     "for the service connection."
                 )
 
-        self.update_context(stage=stage, context=entity_name)
+        self.update_context(stage=stage, right=right)
 
     @yield_and_update_context.register
     def _(
@@ -395,7 +421,7 @@ class TopologyRunnerMixin(Generic[C]):
         lineage has been properly drawn. We'll skip the process for now.
         """
         yield entity_request
-        self.update_context(stage=stage, context=right.edge.fromEntity.name.__root__)
+        self.update_context(stage=stage, right=right.edge.fromEntity.name.__root__)
 
     @yield_and_update_context.register
     def _(
@@ -408,7 +434,7 @@ class TopologyRunnerMixin(Generic[C]):
         yield entity_request
 
         # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, context=right)
+        self.update_context(stage=stage, right=right)
 
     @yield_and_update_context.register
     def _(
@@ -421,29 +447,7 @@ class TopologyRunnerMixin(Generic[C]):
         yield entity_request
 
         # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, context=right)
-
-    @yield_and_update_context.register
-    def _(
-        self,
-        right: CreateStoredProcedureRequest,
-        stage: NodeStage,
-        entity_request: Either[C],
-    ) -> Iterable[Either[Entity]]:
-        """Tag implementation for the context information"""
-        yield entity_request
-
-        procedure_fqn = fqn.build(
-            metadata=self.metadata,
-            entity_type=StoredProcedure,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
-            procedure_name=right.name.__root__,
-        )
-
-        # We'll keep the proc fqn in the context and use if required
-        self.update_context(stage=stage, context=procedure_fqn)
+        self.update_context(stage=stage, right=right)
 
     def sink_request(
         self, stage: NodeStage, entity_request: Either[C]

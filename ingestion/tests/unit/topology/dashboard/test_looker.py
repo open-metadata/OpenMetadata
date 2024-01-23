@@ -397,26 +397,28 @@ class LookerUnitTest(TestCase):
         Validate the logic for existing or new usage
         """
 
+        self.looker.context.__dict__["dashboard"] = "dashboard_name"
+        MOCK_LOOKER_DASHBOARD.view_count = 10
+
         # Start checking dashboard without usage
         # and a view count
-        self.looker.context.__dict__["dashboard"] = Dashboard(
+        return_value = Dashboard(
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         )
-        MOCK_LOOKER_DASHBOARD.view_count = 10
-
-        self.assertEqual(
-            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
-            DashboardUsage(
-                dashboard=self.looker.context.dashboard,
-                usage=UsageRequest(date=self.looker.today, count=10),
-            ),
-        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.looker.today, count=10),
+                ),
+            )
 
         # Now check what happens if we already have some summary data for today
-        self.looker.context.__dict__["dashboard"] = Dashboard(
+        return_value = Dashboard(
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
@@ -425,14 +427,14 @@ class LookerUnitTest(TestCase):
                 dailyStats=UsageStats(count=10), date=self.looker.today
             ),
         )
-
-        # Nothing is returned
-        self.assertEqual(
-            len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
-        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            # Nothing is returned
+            self.assertEqual(
+                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
+            )
 
         # But if we have usage for today but the count is 0, we'll return the details
-        self.looker.context.__dict__["dashboard"] = Dashboard(
+        return_value = Dashboard(
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
@@ -441,16 +443,17 @@ class LookerUnitTest(TestCase):
                 dailyStats=UsageStats(count=0), date=self.looker.today
             ),
         )
-        self.assertEqual(
-            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
-            DashboardUsage(
-                dashboard=self.looker.context.dashboard,
-                usage=UsageRequest(date=self.looker.today, count=10),
-            ),
-        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.looker.today, count=10),
+                ),
+            )
 
         # But if we have usage for another day, then we do the difference
-        self.looker.context.__dict__["dashboard"] = Dashboard(
+        return_value = Dashboard(
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
@@ -460,17 +463,18 @@ class LookerUnitTest(TestCase):
                 date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
             ),
         )
-        self.assertEqual(
-            next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
-            DashboardUsage(
-                dashboard=self.looker.context.dashboard,
-                usage=UsageRequest(date=self.looker.today, count=5),
-            ),
-        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                next(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD)).right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.looker.today, count=5),
+                ),
+            )
 
         # If the past usage is higher than what we have today, something weird is going on
         # we don't return usage but don't explode
-        self.looker.context.__dict__["dashboard"] = Dashboard(
+        return_value = Dashboard(
             id=uuid.uuid4(),
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
@@ -480,11 +484,11 @@ class LookerUnitTest(TestCase):
                 date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
             ),
         )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 1
+            )
 
-        self.assertEqual(
-            len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 1
-        )
-
-        self.assertIsNotNone(
-            list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
-        )
+            self.assertIsNotNone(
+                list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
+            )
