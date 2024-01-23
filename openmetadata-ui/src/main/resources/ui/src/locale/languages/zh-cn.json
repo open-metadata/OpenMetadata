@@ -1239,7 +1239,7 @@
     "app-uninstalled-successfully": "Application uninstalled successfully",
     "application-action-successfully": "Application {{action}} successfully",
     "application-disabled-message": "Application is currently disabled. Click on the ellipsis menu in header to enable it.",
-    "application-to-improve-data": "Find applications to improve your data",
+    "application-to-improve-data": "Improve your data using Applications for MetaPilot, Data Insights, and Search Indexing",
     "are-you-sure": "您确定吗？",
     "are-you-sure-action-property": "Are you sure you want to {{action}} {{propertyName}}?",
     "are-you-sure-delete-entity": "您确定要删除属性{{entity}}吗？",

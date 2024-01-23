@@ -155,6 +155,7 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
+  SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB_FQN_ACTION: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ACTION}`,
@@ -757,7 +758,7 @@ export const getUsersPagePath = () => {
 };
 
 export const getBotsPagePath = () => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.INTEGRATIONS}/bots`;
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`;
 };
 
 export const getKpiPath = (kpiName: string) => {

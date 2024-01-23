@@ -12,10 +12,10 @@
  */
 import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty, uniqueId } from 'lodash';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -40,9 +40,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const ApplicationPage = () => {
   const { t } = useTranslation();
-  const { tab: settingService } =
-    useParams<{ settingCategory: string; tab: string }>();
-
   const {
     currentPage,
     paging,
@@ -59,11 +56,8 @@ const ApplicationPage = () => {
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
-      getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        capitalize(settingService)
-      ),
-    [settingService]
+      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.APPLICATIONS),
+    []
   );
 
   const fetchApplicationList = useCallback(

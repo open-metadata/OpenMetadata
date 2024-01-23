@@ -33,7 +33,6 @@ import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
-import { ReactComponent as IntegrationIcon } from '../assets/svg/setting-integration.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
@@ -161,26 +160,11 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: i18next.t('label.integration-plural'),
-      key: GlobalSettingsMenuCategory.INTEGRATIONS,
-      icon: IntegrationIcon,
-      description: i18next.t('message.integration-description'),
-      items: [
-        {
-          label: i18next.t('label.application-plural'),
-          description: i18next.t('message.application-to-improve-data'),
-          isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.INTEGRATIONS}.${GlobalSettingOptions.APPLICATIONS}`,
-          icon: ApplicationIcon,
-        },
-        {
-          label: i18next.t('label.bot-plural'),
-          description: i18next.t('message.page-sub-header-for-bots'),
-          isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.INTEGRATIONS}.${GlobalSettingOptions.BOTS}`,
-          icon: BotIcon,
-        },
-      ],
+      category: i18next.t('label.application-plural'),
+      isProtected: Boolean(isAdminUser),
+      key: GlobalSettingOptions.APPLICATIONS,
+      icon: ApplicationIcon,
+      description: i18next.t('message.application-to-improve-data'),
     },
     {
       category: i18next.t('label.notification-plural'),
@@ -404,7 +388,14 @@ export const getGlobalSettingsMenuWithPermission = (
           key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
           icon: GlossaryIcon,
         },
-      ],
+      ].sort((a, b) => a.label.localeCompare(b.label)),
+    },
+    {
+      category: i18next.t('label.bot-plural'),
+      description: i18next.t('message.page-sub-header-for-bots'),
+      isProtected: Boolean(isAdminUser),
+      key: GlobalSettingOptions.BOTS,
+      icon: BotIcon,
     },
   ];
 };
@@ -456,10 +447,6 @@ export const settingCategories = {
     name: i18next.t('label.service-plural'),
     url: GlobalSettingsMenuCategory.SERVICES,
   },
-  [GlobalSettingsMenuCategory.INTEGRATIONS]: {
-    name: i18next.t('label.integration-plural'),
-    url: GlobalSettingsMenuCategory.INTEGRATIONS,
-  },
   [GlobalSettingsMenuCategory.NOTIFICATIONS]: {
     name: i18next.t('label.notification-plural'),
     url: GlobalSettingsMenuCategory.NOTIFICATIONS,
@@ -479,6 +466,14 @@ export const settingCategories = {
   [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
     name: i18next.t('label.custom-property-plural'),
     url: GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+  },
+  [GlobalSettingsMenuCategory.BOTS]: {
+    name: i18next.t('label.bot-plural'),
+    url: GlobalSettingsMenuCategory.BOTS,
+  },
+  [GlobalSettingsMenuCategory.APPLICATIONS]: {
+    name: i18next.t('label.application-plural'),
+    url: GlobalSettingsMenuCategory.APPLICATIONS,
   },
 };
 

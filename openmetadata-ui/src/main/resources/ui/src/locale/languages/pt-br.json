@@ -1239,7 +1239,7 @@
     "app-uninstalled-successfully": "Aplicativo desinstalado com sucesso",
     "application-action-successfully": "Aplicativo {{action}} com sucesso",
     "application-disabled-message": "O aplicativo está atualmente desativado. Clique no menu de reticências no cabeçalho para ativá-lo.",
-    "application-to-improve-data": "Encontre aplicativos para melhorar seus dados",
+    "application-to-improve-data": "Improve your data using Applications for MetaPilot, Data Insights, and Search Indexing",
     "are-you-sure": "Você tem certeza?",
     "are-you-sure-action-property": "Você tem certeza que deseja {{action}} {{propertyName}}?",
     "are-you-sure-delete-entity": "Você tem certeza que deseja deletar a propriedade {{entity}}",

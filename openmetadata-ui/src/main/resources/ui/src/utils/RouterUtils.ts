@@ -172,14 +172,13 @@ export const getGlossaryPath = (fqn?: string) => {
 };
 
 export const getApplicationDetailsPath = (fqn: string) => {
-  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  let path = ROUTES.SETTINGS_WITH_CATEGORY_FQN;
 
   path = path
     .replace(
       PLACEHOLDER_SETTING_CATEGORY,
-      GlobalSettingsMenuCategory.INTEGRATIONS
+      GlobalSettingsMenuCategory.APPLICATIONS
     )
-    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.APPLICATIONS)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
@@ -219,7 +218,10 @@ export const getSettingPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   } else if (category) {
-    path = ROUTES.SETTINGS_WITH_CATEGORY;
+    path = withFqn
+      ? ROUTES.SETTINGS_WITH_CATEGORY_FQN
+      : ROUTES.SETTINGS_WITH_CATEGORY;
+
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
 

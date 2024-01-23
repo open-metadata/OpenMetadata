@@ -18,9 +18,10 @@ export enum GlobalSettingsMenuCategory {
   NOTIFICATIONS = 'notifications',
   CUSTOM_PROPERTIES = 'customProperties',
   OPEN_METADATA = 'openMetadata',
-  INTEGRATIONS = 'integrations',
   MEMBERS = 'members',
   SERVICES = 'services',
+  BOTS = 'bots',
+  APPLICATIONS = 'apps',
 }
 
 export enum GlobalSettingOptions {
@@ -119,16 +120,13 @@ export const SETTINGS_OPTIONS_PATH = {
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
   ],
 
-  // Integrations
+  // Applications
 
-  [GlobalSettingOptions.APPLICATIONS]: [
-    GlobalSettingsMenuCategory.INTEGRATIONS,
-    `${GlobalSettingsMenuCategory.INTEGRATIONS}.${GlobalSettingOptions.APPLICATIONS}`,
-  ],
-  [GlobalSettingOptions.BOTS]: [
-    GlobalSettingsMenuCategory.INTEGRATIONS,
-    `${GlobalSettingsMenuCategory.INTEGRATIONS}.${GlobalSettingOptions.BOTS}`,
-  ],
+  [GlobalSettingOptions.APPLICATIONS]: [GlobalSettingOptions.APPLICATIONS],
+
+  // Bots
+
+  [GlobalSettingOptions.BOTS]: [GlobalSettingOptions.BOTS],
 
   // Notification
 

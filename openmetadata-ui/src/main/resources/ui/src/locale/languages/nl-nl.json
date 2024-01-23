@@ -1239,7 +1239,7 @@
     "app-uninstalled-successfully": "Applicatie succesvol gedeïnstalleerd",
     "application-action-successfully": "Applicatie {{action}} succesvol",
     "application-disabled-message": "De applicatie is momenteel uitgeschakeld. Klik op het ellipsis-menu in de kop om het in te schakelen.",
-    "application-to-improve-data": "Vind applicaties om uw gegevens te verbeteren",
+    "application-to-improve-data": "Improve your data using Applications for MetaPilot, Data Insights, and Search Indexing",
     "are-you-sure": "Weet u het zeker?",
     "are-you-sure-action-property": "Weet u zeker dat u {{action}} {{propertyName}} wilt?",
     "are-you-sure-delete-entity": "Weet u zeker dat u de eigenschap {{entity}} wilt verwijderen",

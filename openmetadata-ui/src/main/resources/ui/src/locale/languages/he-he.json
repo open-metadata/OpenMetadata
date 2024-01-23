@@ -1239,7 +1239,7 @@
     "app-uninstalled-successfully": "האפליקציה הוסרה בהצלחה",
     "application-action-successfully": "האפליקציה {{action}} בהצלחה",
     "application-disabled-message": "האפליקציה מושבתת כרגע. לחץ על תפריט הנקודות התלתול בכותרת כדי להפעיל אותה.",
-    "application-to-improve-data": "מצא אפליקציות לשדרג את הנתונים שלך",
+    "application-to-improve-data": "Improve your data using Applications for MetaPilot, Data Insights, and Search Indexing",
     "are-you-sure": "האם אתה בטוח?",
     "are-you-sure-action-property": "האם אתה בטוח שברצונך {{action}} {{propertyName}}?",
     "are-you-sure-delete-entity": "האם אתה בטוח שברצונך למחוק את המאפיין {{entity}}",

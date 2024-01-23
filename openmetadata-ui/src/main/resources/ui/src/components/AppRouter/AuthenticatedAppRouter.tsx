@@ -1105,6 +1105,28 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           true
         )}
       />
+      <AdminProtectedRoute
+        exact
+        component={BotsPageV1}
+        hasPermission={false}
+        path={getSettingPath(GlobalSettingOptions.BOTS)}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ApplicationPageV1}
+        hasPermission={false}
+        path={getSettingPath(GlobalSettingOptions.APPLICATIONS)}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AppDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingOptions.APPLICATIONS,
+          undefined,
+          true
+        )}
+      />
 
       {/* Setting Page Routes with categories */}
 
@@ -1219,17 +1241,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
       />
-
-      <AdminProtectedRoute
-        exact
-        component={BotsPageV1}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.BOTS
-        )}
-      />
-
       <AdminProtectedRoute
         exact
         component={EmailConfigSettingsPage}
@@ -1288,24 +1299,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={ApplicationPageV1}
-        hasPermission={false}
-        path={getSettingCategoryPath(GlobalSettingsMenuCategory.INTEGRATIONS)}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AppDetailsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.APPLICATIONS,
-          true
         )}
       />
       {routeElements}

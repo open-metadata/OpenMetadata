@@ -72,11 +72,7 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () =>
-      getSettingPageEntityBreadCrumb(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        t('label.bot-plural')
-      ),
+    () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
     []
   );
 
