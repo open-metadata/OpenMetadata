@@ -35,7 +35,7 @@ class DatabricksLineageLegacySource(DatabricksQueryParserSource, LineageSource):
             start_date=self.start,
             end_date=self.end,
         )
-        for row in data:
+        for row in data or []:
             try:
                 if self.client.is_query_valid(row):
                     yield TableQuery(
