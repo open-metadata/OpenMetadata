@@ -266,7 +266,7 @@ describe('Common prerequisite for service version test', () => {
           verifyResponseStatusCode('@deleteService', 200);
 
           // Closing the toast notification
-          toastNotification(`${serviceName}  deleted successfully!`);
+          toastNotification(`"${serviceName}"  deleted successfully!`);
 
           navigateToVersionPageFromServicePage(
             serviceCategory,

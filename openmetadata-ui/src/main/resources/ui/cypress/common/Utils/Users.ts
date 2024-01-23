@@ -253,7 +253,10 @@ export const editTeams = (teamName: string) => {
   verifyResponseStatusCode('@updateTeams', 200);
   cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
   cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
-  cy.get(`[data-testid="${teamName}"]`).should('exist').and('be.visible');
+  cy.get(`[data-testid="${teamName}"]`)
+    .should('exist')
+    .scrollIntoView()
+    .and('be.visible');
 };
 
 export const handleUserUpdateDetails = (

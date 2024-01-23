@@ -382,7 +382,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification(`${TEAM_DETAILS.name} deleted successfully!`);
+    toastNotification(`"${TEAM_DETAILS.name}" deleted successfully!`);
 
     // Validating the deleted team
 
@@ -435,7 +435,9 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification(`${HARD_DELETE_TEAM_DETAILS.name} deleted successfully!`);
+    toastNotification(
+      `"${HARD_DELETE_TEAM_DETAILS.name}" deleted successfully!`
+    );
 
     // Validating the deleted team
 

@@ -92,11 +92,7 @@ const updateOwner = (newOwner) => {
   cy.get(`.ant-popover [title="${newOwner}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get(`[data-testid="domain-owner-name"]`)
-    .invoke('text')
-    .then((text) => {
-      expect(text).to.contain(newOwner);
-    });
+  cy.get(`[data-testid="domain-owner-name"]`).should('contain', newOwner);
 };
 
 const goToAssetsTab = (domainObj) => {

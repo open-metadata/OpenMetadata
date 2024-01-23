@@ -411,7 +411,6 @@ const UserListPageV1 = () => {
             type: t('label.user'),
           })}...`}
           searchValue={searchValue}
-          typingInterval={500}
           onSearch={handleSearch}
         />
       </Col>
