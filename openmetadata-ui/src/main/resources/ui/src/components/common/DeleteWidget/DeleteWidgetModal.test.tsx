@@ -80,6 +80,24 @@ describe('Test DeleteWidgetV1 Component', () => {
     });
   });
 
+  it('Delete click should work properly regardless of capitalization', async () => {
+    await act(async () => {
+      render(<DeleteWidgetModal {...mockProps} />);
+
+      const inputBox = await screen.findByTestId('confirmation-text-input');
+      const confirmButton = await screen.findByTestId('confirm-button');
+      const hardDelete = await screen.findByTestId('hard-delete');
+
+      userEvent.click(hardDelete);
+
+      userEvent.type(inputBox, 'delete');
+
+      expect(confirmButton).not.toBeDisabled();
+
+      userEvent.click(confirmButton);
+    });
+  });
+
   it('Discard click should work properly', async () => {
     await act(async () => {
       render(<DeleteWidgetModal {...mockProps} />);
