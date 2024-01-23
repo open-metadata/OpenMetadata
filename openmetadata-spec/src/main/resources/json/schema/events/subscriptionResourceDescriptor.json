@@ -18,7 +18,8 @@
         "filterByEventType",
         "filterByUpdaterName",
         "filterByFieldChange",
-        "filterByDomain"
+        "filterByDomain",
+        "filterByMentionedName"
       ]
     }
   },

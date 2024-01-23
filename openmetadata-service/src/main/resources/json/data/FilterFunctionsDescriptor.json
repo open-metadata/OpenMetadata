@@ -94,5 +94,17 @@
       "domainList"
     ],
     "inputType": "runtime"
+  },
+  {
+    "name": "filterByMentionedName",
+    "fullyQualifiedName": "eventSubscription.filterByMentionedName",
+    "displayName": "Filter By Mentioned Users",
+    "description" : "Filter An Conversation User Mentioned",
+    "effect" : "include",
+    "condition": "matchConversationUser(${userList})",
+    "arguments": [
+      "userList"
+    ],
+    "inputType": "runtime"
   }
 ]

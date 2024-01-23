@@ -263,5 +263,11 @@
     "name" : "task",
     "supportedFilters" : [
     ]
+  },
+  {
+    "name" : "conversation",
+    "supportedFilters" : [
+      "filterByMentionedName"
+    ]
   }
 ]
