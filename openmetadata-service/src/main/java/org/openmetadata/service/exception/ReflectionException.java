@@ -18,7 +18,9 @@ import org.openmetadata.sdk.exception.WebServiceException;
 
 public class ReflectionException extends WebServiceException {
 
+  public static final String REFLECTION_ERROR = "REFLECTION_ERROR";
+
   public ReflectionException(String message) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR, REFLECTION_ERROR, message);
   }
 }
