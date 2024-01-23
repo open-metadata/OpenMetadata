@@ -186,6 +186,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
                 store_all_in_context=True,
+                store_fqn=True,
                 use_cache=True,
             ),
         ],
