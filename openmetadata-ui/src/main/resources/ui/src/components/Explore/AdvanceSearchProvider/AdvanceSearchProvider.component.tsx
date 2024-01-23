@@ -20,12 +20,11 @@ import React, {
   useState,
 } from 'react';
 import {
+  AsyncFetchListValues,
   Config,
-  Field,
   FieldGroup,
   ImmutableTree,
   JsonTree,
-  SelectFieldSettings,
   Utils as QbUtils,
   ValueSource,
 } from 'react-awesome-query-builder';
@@ -34,10 +33,9 @@ import {
   emptyJsonTree,
   getQbConfigs,
 } from '../../../constants/AdvancedSearch.constants';
-import { TIER_FQN_KEY } from '../../../constants/explore.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { getTags } from '../../../rest/tagAPI';
+import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
 import { EntitiesSupportedCustomProperties } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -57,6 +55,11 @@ const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
 export const AdvanceSearchProvider = ({
   children,
 }: AdvanceSearchProviderProps) => {
+  const tierOptions = useMemo(
+    getTierOptions,
+    []
+  ) as Promise<AsyncFetchListValues>;
+
   const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
   const history = useHistory();
@@ -72,7 +75,9 @@ export const AdvanceSearchProvider = ({
 
     return tabInfo[0] as ExploreSearchIndex;
   }, [tab]);
-  const [config, setConfig] = useState<Config>(getQbConfigs(searchIndex));
+  const [config, setConfig] = useState<Config>(
+    getQbConfigs(searchIndex, tierOptions)
+  );
   const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
@@ -122,7 +127,7 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
-    setConfig(getQbConfigs(searchIndex));
+    setConfig(getQbConfigs(searchIndex, tierOptions));
   }, [searchIndex]);
 
   const handleChange = useCallback(
@@ -210,41 +215,14 @@ export const AdvanceSearchProvider = ({
     }
   }
 
-  async function getTierFields() {
-    try {
-      const { data: tiers } = await getTags({
-        parent: 'Tier',
-      });
-
-      const tierFields = tiers.map((tier) => ({
-        title: tier.name,
-        value: tier.fullyQualifiedName,
-      }));
-
-      return tierFields;
-    } catch (error) {
-      return [];
-    }
-  }
-
   const loadData = async () => {
-    const actualConfig = getQbConfigs(searchIndex);
+    const actualConfig = getQbConfigs(searchIndex, tierOptions);
 
-    const [extensionSubField, tierFieldOptions] = await Promise.all([
-      getCustomAttributesSubfields(),
-      getTierFields(),
-    ]);
+    const extensionSubField = await getCustomAttributesSubfields();
 
     if (!isEmpty(extensionSubField)) {
       (actualConfig.fields.extension as FieldGroup).subfields =
         extensionSubField;
-    }
-
-    if (!isEmpty(tierFieldOptions)) {
-      (
-        (actualConfig.fields[TIER_FQN_KEY] as Field)
-          .fieldSettings as SelectFieldSettings
-      ).listValues = tierFieldOptions;
     }
 
     setConfig(actualConfig);

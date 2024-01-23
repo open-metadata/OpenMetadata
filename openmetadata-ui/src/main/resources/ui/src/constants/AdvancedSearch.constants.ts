@@ -13,9 +13,12 @@
 
 import { t } from 'i18next';
 import {
+  AsyncFetchListValues,
+  AsyncFetchListValuesResult,
   BasicConfig,
   Fields,
   JsonTree,
+  ListItem,
   SelectFieldSettings,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
@@ -304,6 +307,23 @@ export const autocomplete: (args: {
   };
 };
 
+export const autoCompleteTier: (
+  tierOptions: Promise<AsyncFetchListValues>
+) => SelectFieldSettings['asyncFetch'] = (tierOptions) => {
+  return async (search) => {
+    const resolvedTierOptions = (await tierOptions) as ListItem[];
+
+    return {
+      values: !search
+        ? resolvedTierOptions
+        : resolvedTierOptions.filter((tier) =>
+            tier.title?.toLowerCase()?.includes(search.toLowerCase())
+          ),
+      hasMore: false,
+    } as AsyncFetchListValuesResult;
+  };
+};
+
 const mainWidgetProps = {
   fullWidth: true,
   valueLabel: t('label.criteria') + ':',
@@ -313,7 +333,8 @@ const mainWidgetProps = {
  * Common fields that exit for all searchable entities
  */
 const getCommonQueryBuilderFields = (
-  entitySearchIndex: SearchIndex = SearchIndex.TABLE
+  entitySearchIndex: SearchIndex = SearchIndex.TABLE,
+  tierOptions: Promise<AsyncFetchListValues> = Promise.resolve([])
 ) => {
   const commonQueryBuilderFields: Fields = {
     deleted: {
@@ -356,8 +377,8 @@ const getCommonQueryBuilderFields = (
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
-        showSearch: false,
-        allowCustomValues: true,
+        asyncFetch: autoCompleteTier(tierOptions),
+        useAsyncSearch: true,
       },
     },
     extension: {
@@ -519,15 +540,16 @@ const getInitialConfigWithoutFields = () => {
 /**
  * Builds search index specific configuration for the query builder
  */
-export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
-  searchIndex
-) => {
+export const getQbConfigs: (
+  searchIndex: SearchIndex,
+  tierOptions: Promise<AsyncFetchListValues>
+) => BasicConfig = (searchIndex, tierOptions) => {
   switch (searchIndex) {
     case SearchIndex.MLMODEL:
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...getCommonQueryBuilderFields(SearchIndex.MLMODEL),
+          ...getCommonQueryBuilderFields(SearchIndex.MLMODEL, tierOptions),
           ...getServiceQueryBuilderFields(SearchIndex.MLMODEL),
         },
       };
@@ -536,7 +558,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...getCommonQueryBuilderFields(SearchIndex.PIPELINE),
+          ...getCommonQueryBuilderFields(SearchIndex.PIPELINE, tierOptions),
           ...getServiceQueryBuilderFields(SearchIndex.PIPELINE),
         },
       };
@@ -545,7 +567,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...getCommonQueryBuilderFields(SearchIndex.DASHBOARD),
+          ...getCommonQueryBuilderFields(SearchIndex.DASHBOARD, tierOptions),
           ...getServiceQueryBuilderFields(SearchIndex.DASHBOARD),
         },
       };
@@ -554,7 +576,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...getCommonQueryBuilderFields(SearchIndex.TABLE),
+          ...getCommonQueryBuilderFields(SearchIndex.TABLE, tierOptions),
           ...getServiceQueryBuilderFields(SearchIndex.TABLE),
           ...tableQueryBuilderFields,
         },
@@ -564,7 +586,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...getCommonQueryBuilderFields(SearchIndex.TOPIC),
+          ...getCommonQueryBuilderFields(SearchIndex.TOPIC, tierOptions),
           ...getServiceQueryBuilderFields(SearchIndex.TOPIC),
         },
       };
