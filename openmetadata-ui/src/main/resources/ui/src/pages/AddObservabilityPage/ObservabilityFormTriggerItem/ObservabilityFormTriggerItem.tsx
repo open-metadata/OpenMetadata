@@ -33,6 +33,7 @@ function ObservabilityFormTriggerItem({
   const { t } = useTranslation();
   const form = Form.useFormInstance();
   const { fqn } = useFqn();
+  const [selectedResource, setSelectedResource] = useState<string[]>([]);
 
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -74,6 +75,7 @@ function ObservabilityFormTriggerItem({
 
   const handleTriggerChange = (value: string) => {
     form.resetFields(['input']);
+    setSelectedResource([value]);
     form.setFieldValue('resources', [value]);
   };
 
@@ -95,8 +97,7 @@ function ObservabilityFormTriggerItem({
               messageVariables={{
                 fieldName: t('label.data-asset-plural'),
               }}
-              name={['resources']}
-              valuePropName="0">
+              name={['resources']}>
               <Select
                 className="w-full"
                 data-testid="triggerConfig-type"
@@ -104,6 +105,7 @@ function ObservabilityFormTriggerItem({
                 placeholder={t('label.select-field', {
                   field: t('label.data-asset-plural'),
                 })}
+                value={selectedResource[0]}
                 onChange={handleTriggerChange}
               />
             </Form.Item>

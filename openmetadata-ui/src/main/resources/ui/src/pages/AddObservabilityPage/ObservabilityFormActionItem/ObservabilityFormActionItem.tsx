@@ -212,6 +212,12 @@ function ObservabilityFormActionItem({
                     placeholder={t('label.select-pipeline-status')}
                   />
                 </Form.Item>
+
+                <Form.Item
+                  hidden
+                  initialValue="pipelineStateList"
+                  name={[fieldName, 'arguments', 'name']}
+                />
               </Col>
             </>
           );
@@ -326,7 +332,8 @@ function ObservabilityFormActionItem({
                       label={
                         <Typography.Text>{t('label.include')}</Typography.Text>
                       }
-                      name={[name, 'effect']}>
+                      name={[name, 'effect']}
+                      valuePropName="checked">
                       <Switch defaultChecked />
                     </Form.Item>
                   </Col>

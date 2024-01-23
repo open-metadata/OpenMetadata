@@ -301,7 +301,7 @@ function ObservabilityFormFiltersItem({
               },
             ]}>
             {(fields, { add, remove }, { errors }) => (
-              <Row gutter={[16, 16]}>
+              <Row gutter={[16, 16]} key="filters">
                 {fields.map(({ key, name }) => (
                   <Col key={`observability-${key}`} span={24}>
                     <Row gutter={[8, 8]}>
