@@ -37,7 +37,7 @@ export const getStatusBadgeIcon = (status?: StatusType) => {
       return Icons.FAIL_BADGE;
 
     case StatusType.Pending:
-      return Icons.PENDING_BADGE;
+      return Icons.SKIPPED_BADGE;
 
     case StatusType.Skipped:
       return Icons.SKIPPED_BADGE;

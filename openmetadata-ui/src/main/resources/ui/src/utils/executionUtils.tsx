@@ -13,7 +13,7 @@
 
 import { Col, Row, Space, Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
-import { groupBy, isUndefined, map, toLower, uniqueId } from 'lodash';
+import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React, { ReactNode } from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
@@ -188,12 +188,12 @@ export const getTreeData = (
   const viewElements = map(viewData, (value, key) => ({
     key,
     value: (
-      <Row gutter={16} key={uniqueId()}>
+      <Row gutter={16} key={key}>
         <Col>
           <div className="execution-node-container">
             {value.map((status) => (
               <Tooltip
-                key={uniqueId()}
+                key={`${status.timestamp}-${status.executionStatus}`}
                 placement="top"
                 title={
                   <Space direction="vertical">
