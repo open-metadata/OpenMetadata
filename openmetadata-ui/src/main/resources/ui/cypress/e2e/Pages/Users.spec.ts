@@ -151,7 +151,7 @@ describe('User with different Roles', () => {
       if (id.testid === GlobalSettingOptions.METADATA) {
         cy.settingClick(id.testid);
       } else {
-        cy.sidebarClick('app-bar-item-settings');
+        cy.sidebarClick(SidebarItem.SETTINGS);
         let paths = SETTINGS_OPTIONS_PATH[id.testid];
 
         if (id.isCustomProperty) {

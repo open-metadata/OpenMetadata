@@ -477,6 +477,17 @@ export const SERVICE_TYPE = {
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
 };
 
+export const ENTITY_SERVICE_TYPE = {
+  Database: 'Database',
+  Messaging: 'Messaging',
+  Dashboard: 'Dashboard',
+  Pipeline: 'Pipeline',
+  MLModels: 'ML Models',
+  Storage: 'Storage',
+  StoredProcedure: 'StoredProcedure',
+  Search: 'Search',
+};
+
 export const ENTITIES = {
   entity_table: {
     name: 'table',

@@ -52,16 +52,19 @@ const GlobalSettingCategoryPage = () => {
   );
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
-    const category = getGlobalSettingsMenuWithPermission(
+    let categoryItem = getGlobalSettingsMenuWithPermission(
       permissions,
       isAdminUser
     ).find((item) => item.key === settingCategory);
 
-    if (category) {
-      category.items?.filter((item) => item.isProtected);
+    if (categoryItem) {
+      categoryItem = {
+        ...categoryItem,
+        items: categoryItem?.items?.filter((item) => item.isProtected),
+      };
     }
 
-    return category;
+    return categoryItem;
   }, [settingCategory, permissions, isAdminUser]);
 
   const handleSettingItemClick = useCallback((key: string) => {

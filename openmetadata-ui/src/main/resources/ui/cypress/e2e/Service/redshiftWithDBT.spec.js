@@ -28,6 +28,7 @@ import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
   DBT,
+  ENTITY_SERVICE_TYPE,
   HTTP_CONFIG_SOURCE,
   SERVICE_TYPE,
 } from '../../constants/constants';
@@ -78,7 +79,7 @@ describe('RedShift Ingestion', () => {
       serviceName: REDSHIFT.serviceName,
       type: 'database',
       testIngestionButton: true,
-      serviceCategory: SERVICE_TYPE.Database,
+      serviceCategory: ENTITY_SERVICE_TYPE.Database,
     });
   });
 
@@ -87,7 +88,7 @@ describe('RedShift Ingestion', () => {
       REDSHIFT.serviceName,
       REDSHIFT.tableName,
       REDSHIFT.description,
-      SERVICE_TYPE.Database,
+      ENTITY_SERVICE_TYPE.Database,
       'tables'
     );
   });
