@@ -20,6 +20,7 @@ import {
   isEqual,
   isUndefined,
   omitBy,
+  pick,
   round,
   uniqueId,
 } from 'lodash';
@@ -254,7 +255,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     try {
       const { data: chartData } = await getListTestCaseResults(
         data.fullyQualifiedName || '',
-        dateRangeObj
+        pick(dateRangeObj, ['startTs', 'endTs'])
       );
 
       setResults(chartData);
@@ -476,7 +477,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <Col>
                   <DatePickerMenu
                     showSelectedCustomRange
-                    defaultValue={defaultRange.key}
+                    defaultDateRange={pick(defaultRange, ['key', 'title'])}
                     handleDateRangeChange={handleDateRangeChange}
                     handleSelectedTimeRange={handleSelectedTimeRange}
                   />
