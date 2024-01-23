@@ -15,7 +15,7 @@ import { Col, Row, Space, Typography } from 'antd';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
@@ -31,6 +31,7 @@ import {
 } from '../../../enums/common.enum';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { getApplicationDetailsPath } from '../../../utils/RouterUtils';
 import { useDomainProvider } from '../../Domain/DomainProvider/DomainProvider';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
@@ -38,6 +39,7 @@ type Props = {
   type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   errorMessage?: string;
   query?: Qs.ParsedQs;
+  showSearchIndexLink?: string;
 };
 
 const stepsData = [
@@ -67,7 +69,12 @@ const stepsData = [
   },
 ];
 
-const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
+const ErrorPlaceHolderES = ({
+  type,
+  errorMessage,
+  query,
+  showSearchIndexLink,
+}: Props) => {
   const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
@@ -186,9 +193,30 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
 
   return (
     <div className="mt-12 text-base font-medium">
-      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
-        ? noRecordForES
-        : elasticSearchError}
+      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA ? (
+        noRecordForES
+      ) : showSearchIndexLink ? (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <Typography.Paragraph className="text-danger">
+            {showSearchIndexLink}
+          </Typography.Paragraph>
+          <Typography.Paragraph>
+            <Transi18next
+              i18nKey="message.configure-search-re-index"
+              renderElement={
+                <Link
+                  to={getApplicationDetailsPath('SearchIndexingApplication')}
+                />
+              }
+              values={{
+                settings: t('label.search-index-setting-plural'),
+              }}
+            />
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      ) : (
+        elasticSearchError
+      )}
     </div>
   );
 };
