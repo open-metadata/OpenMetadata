@@ -138,16 +138,15 @@ export const FIELDS = {
     searchCriteriaSecondGroup: 'PersonalData.SpecialCategory',
     responseValueSecondGroup: '"tagFQN":"PersonalData.SpecialCategory"',
   },
-  // skipping tier for now, as it is not working, BE need to fix it
-
-  // Tiers: {
-  //   name: 'Tier',
-  //   testid: '[title="Tier"]',
-  //   searchCriteriaFirstGroup: 'Tier.Tier1',
-  //   responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
-  //   searchCriteriaSecondGroup: 'Tier.Tier2',
-  //   responseValueSecondGroup: '"tagFQN":"Tier.Tier2"',
-  // },
+  Tiers: {
+    name: 'Tier',
+    testid: '[title="Tier"]',
+    searchCriteriaFirstGroup: 'Tier.Tier1',
+    responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
+    searchCriteriaSecondGroup: 'Tier.Tier2',
+    responseValueSecondGroup: '"tagFQN":"Tier.Tier2"',
+    isLocalSearch: true,
+  },
   Service: {
     name: 'Service',
     testid: '[title="Service"]',
@@ -193,12 +192,21 @@ export const OPERATOR = {
   },
 };
 
-export const searchForField = (condition, fieldid, searchCriteria, index) => {
-  interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+export const searchForField = (
+  condition,
+  fieldId,
+  searchCriteria,
+  index,
+  isLocalSearch = false
+) => {
+  if (!isLocalSearch) {
+    interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+  }
+
   // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector').eq(index).click();
   // Select owner fields
-  cy.get(`${fieldid}`).eq(index).click();
+  cy.get(`${fieldId}`).eq(index).click();
   // Select the condition
   cy.get('.rule--operator > .ant-select > .ant-select-selector')
     .eq(index)
@@ -219,8 +227,16 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index)
         .type(searchCriteria);
+
+      // checking filter is working
+      cy.get(
+        `.ant-select-item-option-active[title="${searchCriteria}"]`
+      ).should('be.visible');
+
       // select value from dropdown
-      verifyResponseStatusCode('@suggestApi', 200);
+      if (!isLocalSearch) {
+        verifyResponseStatusCode('@suggestApi', 200);
+      }
       cy.get(`.ant-select-dropdown [title = '${searchCriteria}']`)
         .trigger('mouseover')
         .trigger('click');
@@ -240,12 +256,13 @@ export const checkmustPaths = (
   field,
   searchCriteria,
   index,
-  responseSearch
+  responseSearch,
+  isLocalSearch
 ) => {
   goToAdvanceSearch();
 
   // Search with advance search
-  searchForField(condition, field, searchCriteria, index);
+  searchForField(condition, field, searchCriteria, index, isLocalSearch);
 
   interceptURL(
     'GET',
@@ -271,12 +288,13 @@ export const checkmust_notPaths = (
   field,
   searchCriteria,
   index,
-  responseSearch
+  responseSearch,
+  isLocalSearch
 ) => {
   goToAdvanceSearch();
 
   // Search with advance search
-  searchForField(condition, field, searchCriteria, index);
+  searchForField(condition, field, searchCriteria, index, isLocalSearch);
   interceptURL(
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*must_not*${encodeURI(
@@ -417,16 +435,17 @@ export const addTag = ({ tag, term, serviceName, entity }) => {
 export const checkAddGroupWithOperator = (
   condition_1,
   condition_2,
-  fieldid,
+  fieldId,
   searchCriteria_1,
   searchCriteria_2,
   index_1,
   index_2,
-  operatorindex,
+  operatorIndex,
   filter_1,
   filter_2,
   response_1,
-  response_2
+  response_2,
+  isLocalSearch = false
 ) => {
   goToAdvanceSearch();
   // Click on field dropdown
@@ -435,7 +454,7 @@ export const checkAddGroupWithOperator = (
     .should('be.visible')
     .click();
   // Select owner fields
-  cy.get(fieldid).eq(0).should('be.visible').click();
+  cy.get(fieldId).eq(0).should('be.visible').click();
   // Select the condition
   cy.get('.rule--operator > .ant-select > .ant-select-selector')
     .eq(index_1)
@@ -456,13 +475,17 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
-      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      if (!isLocalSearch) {
+        interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      }
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
 
-      verifyResponseStatusCode('@suggestApi', 200);
+      if (!isLocalSearch) {
+        verifyResponseStatusCode('@suggestApi', 200);
+      }
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[title="${searchCriteria_1}"]`)
@@ -484,13 +507,13 @@ export const checkAddGroupWithOperator = (
 
   // Select the AND/OR condition
   cy.get(
-    `.group--conjunctions > .ant-btn-group > :nth-child(${operatorindex})`
+    `.group--conjunctions > .ant-btn-group > :nth-child(${operatorIndex})`
   ).click();
 
   // Click on field dropdown
   cy.get('.rule--field').eq(index_2).should('be.visible').click();
 
-  cy.get(fieldid).eq(2).should('be.visible').click();
+  cy.get(fieldId).eq(2).should('be.visible').click();
 
   // Select the condition
   cy.get('.rule--operator').eq(index_2).should('be.visible').click();
@@ -509,12 +532,17 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
-      interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      if (!isLocalSearch) {
+        interceptURL('GET', '/api/v1/search/aggregate?*', 'suggestApi');
+      }
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-      verifyResponseStatusCode('@suggestApi', 200);
+
+      if (!isLocalSearch) {
+        verifyResponseStatusCode('@suggestApi', 200);
+      }
 
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
@@ -547,12 +575,12 @@ export const checkAddGroupWithOperator = (
 export const checkAddRuleWithOperator = (
   condition_1,
   condition_2,
-  fieldid,
+  fieldId,
   searchCriteria_1,
   searchCriteria_2,
   index_1,
   index_2,
-  operatorindex,
+  operatorIndex,
   filter_1,
   filter_2,
   response_1,
@@ -562,7 +590,7 @@ export const checkAddRuleWithOperator = (
   // Click on field dropdown
   cy.get('.rule--field').eq(index_1).should('be.visible').click();
   // Select owner fields
-  cy.get(fieldid).eq(0).should('be.visible').click();
+  cy.get(fieldId).eq(0).should('be.visible').click();
   // Select the condition
   cy.get('.rule--operator').eq(index_1).should('be.visible').click();
 
@@ -604,13 +632,13 @@ export const checkAddRuleWithOperator = (
 
   // Select the AND/OR condition
   cy.get(
-    `.group--conjunctions > .ant-btn-group > :nth-child(${operatorindex})`
+    `.group--conjunctions > .ant-btn-group > :nth-child(${operatorIndex})`
   ).click();
 
   // Click on field dropdown
   cy.get('.rule--field').eq(index_2).should('be.visible').click();
 
-  cy.get(fieldid).eq(2).should('be.visible').click();
+  cy.get(fieldId).eq(2).should('be.visible').click();
 
   // Select the condition
   cy.get('.rule--operator').eq(index_2).should('be.visible').click();
