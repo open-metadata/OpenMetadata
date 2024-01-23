@@ -87,6 +87,12 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     EntityReference ownerReference = entity.getOwner();
+    if (ownerReference == null) {
+      entity =
+          Entity.getEntity(
+              changeEvent.getEntityType(), entity.getId(), "owner", Include.NON_DELETED);
+      ownerReference = entity.getOwner();
+    }
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
         User user = Entity.getEntity(Entity.USER, ownerReference.getId(), "", Include.NON_DELETED);

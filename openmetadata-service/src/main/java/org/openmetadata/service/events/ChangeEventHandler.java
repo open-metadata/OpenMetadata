@@ -81,7 +81,6 @@ public class ChangeEventHandler implements EventHandler {
         // every change event
         // for the event to appear in activity feeds
         if (!changeEvent.getEntityType().equals(Entity.THREAD)
-            && Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())
             && (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))) {
           for (Thread thread :
               listOrEmpty(FeedUtils.getThreadWithMessage(changeEvent, loggedInUserName))) {
