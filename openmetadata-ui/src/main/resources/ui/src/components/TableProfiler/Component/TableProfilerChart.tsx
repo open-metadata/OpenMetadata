@@ -32,6 +32,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
+  DEFAULT_RANGE_DATA,
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../constants/profiler.constant';
@@ -79,7 +80,7 @@ const TableProfilerChart = ({
     onSettingButtonClick,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
-    dateRangeObject,
+    dateRangeObject = DEFAULT_RANGE_DATA,
     onDateRangeChange,
   } = useTableProfiler();
 
