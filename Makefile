@@ -46,7 +46,7 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 .PHONY: install_antlr_cli
 install_antlr_cli:  ## Install antlr CLI locally
 	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
-	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
+	curl https://www.antlr.org/download/antlr-4.13.1-complete.jar >> /usr/local/bin/antlr4
 	chmod 755 /usr/local/bin/antlr4
 
 .PHONY: docker-docs-local

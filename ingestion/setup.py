@@ -91,7 +91,7 @@ pii_requirements = {
 }
 
 base_requirements = {
-    "antlr4-python3-runtime==4.9.2",
+    "antlr4-python3-runtime==4.13.1",
     VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",
