@@ -14,13 +14,13 @@
 /// <reference types="Cypress" />
 
 import {
-  addOwner,
-  addTier,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitDataModelPage,
 } from '../../common/common';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { visitDataModelVersionPage } from '../../common/VersionUtils';
 import { DELETE_TERM } from '../../constants/constants';
 import {
@@ -108,7 +108,7 @@ describe('Data model version page should work properly', () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addOwner(OWNER, 'dashboard/datamodels');
+    addOwner(OWNER);
 
     interceptURL(
       'GET',
@@ -144,7 +144,7 @@ describe('Data model version page should work properly', () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addTier(TIER, 'dashboard/datamodels');
+    addTier(TIER);
 
     interceptURL(
       'GET',

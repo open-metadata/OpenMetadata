@@ -14,14 +14,14 @@
 /// <reference types="Cypress" />
 
 import {
-  addOwner,
-  addTier,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitServiceDetailsPage,
 } from '../../common/common';
 import { hardDeleteService } from '../../common/EntityUtils';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
 import {
   DOMAIN_CREATION_DETAILS,
@@ -92,8 +92,6 @@ describe('Common prerequisite for service version test', () => {
   Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
     ([serviceType, serviceDetails]) => {
       describe(`${serviceType} service version page`, () => {
-        const successMessageEntityName =
-          serviceType === 'ML Model' ? 'Mlmodel' : serviceType;
         let serviceId;
         const {
           serviceCategory,
@@ -202,7 +200,7 @@ describe('Common prerequisite for service version test', () => {
 
           cy.get('@versionButton').contains('0.2');
 
-          addOwner(OWNER, `services/${serviceCategory}`);
+          addOwner(OWNER);
 
           navigateToVersionPageFromServicePage(
             serviceCategory,
@@ -266,7 +264,7 @@ describe('Common prerequisite for service version test', () => {
           verifyResponseStatusCode('@deleteService', 200);
 
           // Closing the toast notification
-          toastNotification(`"${serviceName}"  deleted successfully!`);
+          toastNotification(`"${serviceName}" deleted successfully!`);
 
           navigateToVersionPageFromServicePage(
             serviceCategory,

@@ -14,13 +14,13 @@
 /// <reference types="Cypress" />
 
 import {
-  addOwner,
-  addTier,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitDatabaseSchemaDetailsPage,
 } from '../../common/common';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
 import {
   COMMON_PATCH_PAYLOAD,
@@ -194,7 +194,7 @@ describe(`Database schema version page should work properly`, () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addOwner(OWNER, `databaseSchemas`);
+    addOwner(OWNER);
 
     interceptURL(
       'GET',
@@ -238,7 +238,7 @@ describe(`Database schema version page should work properly`, () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addTier(TIER, `databaseSchemas`);
+    addTier(TIER);
 
     interceptURL(
       'GET',
