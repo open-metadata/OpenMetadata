@@ -14,13 +14,13 @@
 /// <reference types="Cypress" />
 
 import {
-  addOwner,
-  addTier,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitDatabaseSchemaDetailsPage,
 } from '../../common/common';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
 import {
   COMMON_PATCH_PAYLOAD,
@@ -194,7 +194,7 @@ describe(`Database schema version page should work properly`, () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addOwner(OWNER, `databaseSchemas`);
+    addOwner(OWNER);
 
     interceptURL(
       'GET',
@@ -238,7 +238,7 @@ describe(`Database schema version page should work properly`, () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addTier(TIER, `databaseSchemas`);
+    addTier(TIER);
 
     interceptURL(
       'GET',
@@ -279,28 +279,17 @@ describe(`Database schema version page should work properly`, () => {
     });
 
     // Clicking on permanent delete radio button and checking the service name
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-menu-id*="delete-button"]')
-      .should('exist')
-      .should('be.visible');
-    cy.get('[data-testid="delete-button-title"]')
-      .should('be.visible')
-      .click()
-      .as('deleteBtn');
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+    cy.get('[data-testid="delete-button-title"]').click();
 
     // Clicking on permanent delete radio button and checking the service name
     cy.get('[data-testid="soft-delete-option"]')
       .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .should('be.visible')
       .click();
 
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
+    cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
     interceptURL('DELETE', `/api/v1/databaseSchemas/*`, 'deleteSchema');
 
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
@@ -308,7 +297,9 @@ describe(`Database schema version page should work properly`, () => {
     verifyResponseStatusCode('@deleteSchema', 200);
 
     // Closing the toast notification
-    toastNotification(`Database Schema deleted successfully!`);
+    toastNotification(
+      `"${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}" deleted successfully!`
+    );
 
     interceptURL(
       'GET',
@@ -371,23 +362,14 @@ describe(`Database schema version page should work properly`, () => {
     });
 
     // Clicking on permanent delete radio button and checking the service name
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-menu-id*="delete-button"]')
-      .should('exist')
-      .should('be.visible');
-    cy.get('[data-testid="delete-button-title"]')
-      .should('be.visible')
-      .click()
-      .as('deleteBtn');
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+    cy.get('[data-testid="delete-button-title"]').click();
 
     // Clicking on permanent delete radio button and checking the service name
     cy.get('[data-testid="hard-delete-option"]')
       .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .should('be.visible')
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]')
@@ -404,7 +386,9 @@ describe(`Database schema version page should work properly`, () => {
     verifyResponseStatusCode('@deleteService', 200);
 
     // Closing the toast notification
-    toastNotification(`Database Schema deleted successfully!`);
+    toastNotification(
+      `"${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}" deleted successfully!`
+    );
 
     cy.get(
       `[data-testid="service-name-${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`

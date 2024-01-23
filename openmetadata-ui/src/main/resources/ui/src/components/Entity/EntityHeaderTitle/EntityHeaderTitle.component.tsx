@@ -87,10 +87,10 @@ const EntityHeaderTitle = ({
       )}
       {deleted && (
         <Col className="text-xs">
-          <div className="deleted-badge-button" data-testid="deleted-badge">
+          <span className="deleted-badge-button" data-testid="deleted-badge">
             <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
             {t('label.deleted')}
-          </div>
+          </span>
         </Col>
       )}
       {badge && <Col>{badge}</Col>}

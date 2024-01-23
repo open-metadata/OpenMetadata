@@ -14,14 +14,14 @@
 /// <reference types="Cypress" />
 
 import {
-  addOwner,
-  addTier,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitServiceDetailsPage,
 } from '../../common/common';
 import { hardDeleteService } from '../../common/EntityUtils';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
 import {
   DOMAIN_CREATION_DETAILS,
@@ -92,8 +92,6 @@ describe('Common prerequisite for service version test', () => {
   Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
     ([serviceType, serviceDetails]) => {
       describe(`${serviceType} service version page`, () => {
-        const successMessageEntityName =
-          serviceType === 'ML Model' ? 'Mlmodel' : serviceType;
         let serviceId;
         const {
           serviceCategory,
@@ -202,7 +200,7 @@ describe('Common prerequisite for service version test', () => {
 
           cy.get('@versionButton').contains('0.2');
 
-          addOwner(OWNER, `services/${serviceCategory}`);
+          addOwner(OWNER);
 
           navigateToVersionPageFromServicePage(
             serviceCategory,
@@ -240,28 +238,17 @@ describe('Common prerequisite for service version test', () => {
         it(`${serviceType} version page should show version details after soft deleted`, () => {
           visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
 
-          cy.get('[data-testid="manage-button"]')
-            .should('exist')
-            .should('be.visible')
-            .click();
+          cy.get('[data-testid="manage-button"]').click();
 
-          cy.get('[data-menu-id*="delete-button"]')
-            .should('exist')
-            .should('be.visible');
-          cy.get('[data-testid="delete-button-title"]')
-            .should('be.visible')
-            .click()
-            .as('deleteBtn');
+          cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+          cy.get('[data-testid="delete-button-title"]').click();
 
           // Clicking on soft delete radio button and checking the service name
           cy.get('[data-testid="soft-delete-option"]')
             .contains(serviceName)
-            .should('be.visible')
             .click();
 
-          cy.get('[data-testid="confirmation-text-input"]')
-            .should('be.visible')
-            .type(DELETE_TERM);
+          cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
           interceptURL(
             'DELETE',
             `/api/v1/services/${serviceCategory}/*hardDelete=false*`,
@@ -277,9 +264,7 @@ describe('Common prerequisite for service version test', () => {
           verifyResponseStatusCode('@deleteService', 200);
 
           // Closing the toast notification
-          toastNotification(
-            `${successMessageEntityName} Service deleted successfully!`
-          );
+          toastNotification(`"${serviceName}" deleted successfully!`);
 
           navigateToVersionPageFromServicePage(
             serviceCategory,

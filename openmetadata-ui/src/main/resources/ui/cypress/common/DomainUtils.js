@@ -93,11 +93,7 @@ const updateOwner = (newOwner) => {
   cy.get(`.ant-popover [title="${newOwner}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get(`[data-testid="domain-owner-name"]`)
-    .invoke('text')
-    .then((text) => {
-      expect(text).to.contain(newOwner);
-    });
+  cy.get(`[data-testid="domain-owner-name"]`).should('contain', newOwner);
 };
 
 const goToAssetsTab = (domainObj) => {
@@ -298,7 +294,7 @@ export const deleteDomain = (domainObj) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${domainObj.name}`
+    domainObj.updatedDisplayName
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -309,7 +305,7 @@ export const deleteDomain = (domainObj) => {
 
   verifyResponseStatusCode('@getDomains', 200);
 
-  toastNotification('Domain deleted successfully!');
+  toastNotification(`"${domainObj.updatedDisplayName}" deleted successfully!`);
 };
 
 export const verifyDomain = (domainObj) => {

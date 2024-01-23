@@ -224,11 +224,11 @@ const deleteCustomMetric = ({
     .should('be.visible');
   cy.get(`[data-testid="${metric.name}-custom-metrics-menu"]`).click();
   cy.get(`[data-menu-id*="delete"]`).click();
-  cy.get('.ant-modal-header').should('contain', `Delete ${metric.name}`);
+  cy.get('.ant-modal-header').should('contain', metric.name);
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
   cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@deleteCustomMetric', 200);
-  toastNotification(`${metric.name} deleted successfully!`);
+  toastNotification(`"${metric.name}" deleted successfully!`);
 };
 
 describe('Custom Metric', () => {

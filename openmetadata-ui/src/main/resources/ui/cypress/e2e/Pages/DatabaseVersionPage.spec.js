@@ -15,13 +15,13 @@
 /// <reference types="Cypress" />
 
 import {
-  addOwner,
-  addTier,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitDatabaseDetailsPage,
 } from '../../common/common';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
 import {
   COMMON_PATCH_PAYLOAD,
@@ -179,7 +179,7 @@ describe(`Database version page should work properly`, () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addOwner(OWNER, `databases`);
+    addOwner(OWNER);
 
     interceptURL(
       'GET',
@@ -221,7 +221,7 @@ describe(`Database version page should work properly`, () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addTier(TIER, `databases`);
+    addTier(TIER);
 
     interceptURL(
       'GET',
@@ -260,23 +260,14 @@ describe(`Database version page should work properly`, () => {
     });
 
     // Clicking on permanent delete radio button and checking the service name
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-menu-id*="delete-button"]')
-      .should('exist')
-      .should('be.visible');
-    cy.get('[data-testid="delete-button-title"]')
-      .should('be.visible')
-      .click()
-      .as('deleteBtn');
+    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+    cy.get('[data-testid="delete-button-title"]').click();
 
     // Clicking on permanent delete radio button and checking the service name
     cy.get('[data-testid="soft-delete-option"]')
       .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .should('be.visible')
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]')
@@ -290,7 +281,9 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@deleteDatabase', 200);
 
     // Closing the toast notification
-    toastNotification(`Database deleted successfully!`);
+    toastNotification(
+      `"${DATABASE_DETAILS_FOR_VERSION_TEST.name}" deleted successfully!`
+    );
 
     interceptURL(
       'GET',
@@ -384,7 +377,9 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@deleteService', 200);
 
     // Closing the toast notification
-    toastNotification(`Database deleted successfully!`);
+    toastNotification(
+      `"${DATABASE_DETAILS_FOR_VERSION_TEST.name}" deleted successfully!`
+    );
 
     cy.get(
       `[data-testid="service-name-${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`
