@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
 import Input from 'antd/lib/input/Input';
 import { DefaultOptionType } from 'antd/lib/select';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
@@ -23,6 +23,7 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
+import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
 
 function DestinationFormItem({
   heading,
@@ -41,6 +42,10 @@ function DestinationFormItem({
   const selectedDestinations = Form.useWatch<
     CreateEventSubscription['destinations']
   >('destinations', form);
+
+  const [selectedTrigger] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
 
   const filteredOptions = filterResources.map((o) => {
     return {
@@ -75,13 +80,30 @@ function DestinationFormItem({
         return (
           <Form.Item
             name={[fieldName, 'config', 'endpoint']}
-            rules={[{ required: true }]}>
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.endpoint-url'),
+                }),
+              },
+            ]}>
             <Input placeholder={getPlaceholder(type)} />
           </Form.Item>
         );
       case SubscriptionType.Email:
         return (
-          <Form.Item label="" name={[fieldName, 'config', 'receivers']}>
+          <Form.Item
+            label=""
+            name={[fieldName, 'config', 'receivers']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.email'),
+                }),
+              },
+            ]}>
             <Select
               mode="tags"
               open={false}
@@ -111,24 +133,32 @@ function DestinationFormItem({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <Form.List name={['destinations']}>
+          <Form.List
+            name={['destinations']}
+            rules={[
+              {
+                validator: listLengthValidator(t('label.destination')),
+              },
+            ]}>
             {(fields, { add, remove }, { errors }) => {
               return (
                 <Row gutter={[16, 16]}>
-                  {fields.map((field) => (
-                    <React.Fragment key={field.key}>
+                  {fields.map(({ key, name }) => (
+                    <React.Fragment key={key}>
                       <Col span={11}>
                         <Form.Item
                           required
                           messageVariables={{
                             fieldName: t('label.data-asset-plural'),
                           }}
-                          name={[field.name, 'type']}>
+                          name={[name, 'type']}>
                           <Select
                             className="w-full"
                             data-testid="triggerConfig-type"
                             options={filteredOptions}
-                            placeholder={t('label.select-destination')}
+                            placeholder={t('label.select-field', {
+                              field: t('label.destination'),
+                            })}
                           />
                         </Form.Item>
                       </Col>
@@ -136,21 +166,21 @@ function DestinationFormItem({
                         <Form.Item
                           hidden
                           initialValue={SubscriptionCategory.External}
-                          name={[field.name, 'category']}
+                          name={[name, 'category']}
                         />
                         {selectedDestinations &&
-                          !isEmpty(selectedDestinations[field.name]) &&
-                          selectedDestinations[field.name] &&
+                          !isEmpty(selectedDestinations[name]) &&
+                          selectedDestinations[name] &&
                           getConfigField(
-                            selectedDestinations[field.name]?.type,
-                            field.name
+                            selectedDestinations[name]?.type,
+                            name
                           )}
                       </Col>
                       <Col span={2}>
                         <Button
                           data-testid={`remove-action-rule-${name}`}
                           icon={<CloseOutlined />}
-                          onClick={() => remove(field.name)}
+                          onClick={() => remove(name)}
                         />
                       </Col>
                     </React.Fragment>
@@ -158,7 +188,12 @@ function DestinationFormItem({
 
                   {showAddDestination && (
                     <Col span={24}>
-                      <Button type="primary" onClick={add}>
+                      <Button
+                        disabled={
+                          isEmpty(selectedTrigger) || isNil(selectedTrigger)
+                        }
+                        type="primary"
+                        onClick={add}>
                         {buttonLabel}
                       </Button>
                     </Col>

@@ -29,7 +29,7 @@ const BASE_URL = '/events/subscriptions';
  * @param params -- ListParams
  * @returns - EventSubscription
  */
-export const getObervabilityAlertByFQN = async (
+export const getObservabilityAlertByFQN = async (
   fqn: string,
   params?: ListParams
 ) => {

@@ -12,7 +12,17 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Form, Row, Select, Switch, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  FormListFieldData,
+  Row,
+  Select,
+  Switch,
+  Typography,
+} from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,13 +82,13 @@ function ObservabilityFormFiltersItem({
   );
 
   const searchEntity = useCallback(
-    async (search: string, searchIndex: SearchIndex) => {
+    async (search: string, searchIndex: SearchIndex, filters?: string) => {
       try {
         const response = await searchData(
           search,
           1,
           PAGE_SIZE_LARGE,
-          '',
+          filters ?? '',
           '',
           '',
           searchIndex
@@ -97,25 +107,17 @@ function ObservabilityFormFiltersItem({
 
   const getEntityByFQN = useCallback(
     async (searchText: string) => {
-      try {
-        return searchEntity(
-          searchText,
-          getSearchIndexFromEntityType(selectedTrigger)
-        );
-      } catch {
-        return [];
-      }
+      return searchEntity(
+        searchText,
+        getSearchIndexFromEntityType(selectedTrigger)
+      );
     },
     [searchEntity, selectedTrigger]
   );
 
   const getTableSuggestions = useCallback(
     async (searchText: string) => {
-      try {
-        return searchEntity(searchText, SearchIndex.TABLE);
-      } catch {
-        return [];
-      }
+      return searchEntity(searchText, SearchIndex.TABLE);
     },
     [searchEntity]
   );
@@ -129,7 +131,7 @@ function ObservabilityFormFiltersItem({
 
   const getOwnerOptions = useCallback(
     async (searchText: string) => {
-      return searchEntity(searchText, SearchIndex.USER);
+      return searchEntity(searchText, SearchIndex.USER, 'isBot:false');
     },
     [searchEntity]
   );
@@ -145,9 +147,10 @@ function ObservabilityFormFiltersItem({
     [supportedFilters, filters]
   );
 
-  const showAddFilter = useMemo(
-    () => functions?.some((f) => !f.disabled) || filters?.length !== 0,
-    [functions]
+  const showAddFilter = useCallback(
+    (fields: FormListFieldData[]) =>
+      fields.length < (supportedFilters?.length ?? 1),
+    [supportedFilters]
   );
 
   const getFieldByArgumentType = useCallback(
@@ -159,7 +162,17 @@ function ObservabilityFormFiltersItem({
               <Col key="fqn-list-select" span={11}>
                 <Form.Item
                   className="w-full"
-                  name={[fieldName, 'arguments', index, 'input']}>
+                  name={[fieldName, 'arguments', index, 'input']}
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.entity-list', {
+                          entity: t('label.fqn-uppercase'),
+                        }),
+                      }),
+                    },
+                  ]}>
                   <AsyncSelect
                     api={getEntityByFQN}
                     data-testid="fqn-list-select"
@@ -185,7 +198,17 @@ function ObservabilityFormFiltersItem({
               <Col key="domain-select" span={11}>
                 <Form.Item
                   className="w-full"
-                  name={[fieldName, 'arguments', index, 'input']}>
+                  name={[fieldName, 'arguments', index, 'input']}
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.entity-list', {
+                          entity: t('label.domain'),
+                        }),
+                      }),
+                    },
+                  ]}>
                   <AsyncSelect
                     api={getDomainOptions}
                     data-testid="domain-select"
@@ -210,7 +233,19 @@ function ObservabilityFormFiltersItem({
               <Col key="domain-select" span={11}>
                 <Form.Item
                   className="w-full"
-                  name={[fieldName, 'arguments', index, 'input']}>
+                  name={[fieldName, 'arguments', index, 'input']}
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.entity-list', {
+                          entity: t('label.entity-name', {
+                            entity: t('label.table'),
+                          }),
+                        }),
+                      }),
+                    },
+                  ]}>
                   <AsyncSelect
                     api={getTableSuggestions}
                     data-testid="table-select"
@@ -235,7 +270,19 @@ function ObservabilityFormFiltersItem({
               <Col key="owner-select" span={11}>
                 <Form.Item
                   className="w-full"
-                  name={[fieldName, 'arguments', index, 'input']}>
+                  name={[fieldName, 'arguments', index, 'input']}
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.entity-list', {
+                          entity: t('label.entity-name', {
+                            entity: t('label.owner'),
+                          }),
+                        }),
+                      }),
+                    },
+                  ]}>
                   <AsyncSelect
                     api={getOwnerOptions}
                     data-testid="owner-select"
@@ -297,7 +344,7 @@ function ObservabilityFormFiltersItem({
             name={['input', 'filters']}
             rules={[
               {
-                validator: listLengthValidator(t('label.filter-plural')),
+                validator: listLengthValidator(t('label.filter')),
               },
             ]}>
             {(fields, { add, remove }, { errors }) => (
@@ -306,7 +353,17 @@ function ObservabilityFormFiltersItem({
                   <Col key={`observability-${key}`} span={24}>
                     <Row gutter={[8, 8]}>
                       <Col span={11}>
-                        <Form.Item key={`filter-${key}`} name={[name, 'name']}>
+                        <Form.Item
+                          key={`filter-${key}`}
+                          name={[name, 'name']}
+                          rules={[
+                            {
+                              required: true,
+                              message: t('message.field-text-is-required', {
+                                fieldText: t('label.filter'),
+                              }),
+                            },
+                          ]}>
                           <Select
                             options={functions}
                             placeholder={t('label.select-field', {
@@ -342,10 +399,13 @@ function ObservabilityFormFiltersItem({
                     </Form.Item>
                   </Col>
                 ))}
-                {showAddFilter ? (
+                {showAddFilter(fields) ? (
                   <Col span={24}>
                     <Button
                       data-testid="add-filters"
+                      disabled={
+                        isEmpty(selectedTrigger) || isNil(selectedTrigger)
+                      }
                       type="primary"
                       onClick={() => add({})}>
                       {t('label.add-entity', {

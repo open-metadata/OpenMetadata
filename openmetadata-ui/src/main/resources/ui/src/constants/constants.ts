@@ -323,9 +323,9 @@ export const ROUTES = {
 
   // Observability
   OBSERVABILITY: '/observability',
-  OBERVABILITY_ALERTS: '/observability/alerts',
-  ADD_OBERVABILITY_ALERTS: '/observability/alerts/add',
-  EDIT_OBERVABILITY_ALERTS: '/observability/alerts/edit/:fqn',
+  OBSERVABILITY_ALERTS: '/observability/alerts',
+  ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
+  EDIT_OBSERVABILITY_ALERTS: '/observability/alerts/edit/:fqn',
 };
 
 export const SOCKET_EVENTS = {

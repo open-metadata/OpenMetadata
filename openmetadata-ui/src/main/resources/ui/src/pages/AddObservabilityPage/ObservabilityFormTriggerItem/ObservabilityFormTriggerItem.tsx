@@ -64,7 +64,7 @@ function ObservabilityFormTriggerItem({
       filterResources.map((resource) => ({
         label: (
           <div className="d-flex items-center gap-2">
-            <span>{getIconForEntity(resource.name ?? '')}</span>
+            {getIconForEntity(resource.name ?? '')}
             <span>{startCase(resource.name)}</span>
           </div>
         ),
@@ -91,13 +91,21 @@ function ObservabilityFormTriggerItem({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {isEditMode || fqn ? (
-            <Form.Item
-              required
-              messageVariables={{
-                fieldName: t('label.data-asset-plural'),
-              }}
-              name={['resources']}>
+          <Form.Item
+            required
+            messageVariables={{
+              fieldName: t('label.data-asset-plural'),
+            }}
+            name={['resources']}
+            rules={[
+              {
+                required: true,
+                message: t('label.please-select-entity', {
+                  entity: t('label.data-asset'),
+                }),
+              },
+            ]}>
+            {isEditMode || fqn ? (
               <Select
                 className="w-full"
                 data-testid="triggerConfig-type"
@@ -108,12 +116,12 @@ function ObservabilityFormTriggerItem({
                 value={selectedResource[0]}
                 onChange={handleTriggerChange}
               />
-            </Form.Item>
-          ) : (
-            <Button type="primary" onClick={handleAddTriggerClick}>
-              {buttonLabel}
-            </Button>
-          )}
+            ) : (
+              <Button type="primary" onClick={handleAddTriggerClick}>
+                {buttonLabel}
+              </Button>
+            )}
+          </Form.Item>
         </Col>
       </Row>
     </Card>

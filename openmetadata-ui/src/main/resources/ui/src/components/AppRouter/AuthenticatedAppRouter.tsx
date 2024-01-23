@@ -359,9 +359,9 @@ const IncidentManagerDetailPage = withSuspenseFallback(
   )
 );
 
-const ObervabilityAlertsPage = withSuspenseFallback(
+const ObservabilityAlertsPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/ObservabilityAlertsPage/ObervabilityAlertsPage')
+    () => import('../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage')
   )
 );
 
@@ -941,20 +941,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <AdminProtectedRoute
         exact
-        component={ObervabilityAlertsPage}
-        path={ROUTES.OBERVABILITY_ALERTS}
+        component={ObservabilityAlertsPage}
+        path={ROUTES.OBSERVABILITY_ALERTS}
       />
 
       <AdminProtectedRoute
         exact
         component={AddObservabilityPage}
-        path={ROUTES.ADD_OBERVABILITY_ALERTS}
+        path={ROUTES.ADD_OBSERVABILITY_ALERTS}
       />
 
       <AdminProtectedRoute
         exact
         component={AddObservabilityPage}
-        path={ROUTES.EDIT_OBERVABILITY_ALERTS}
+        path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
       />
 
       <AdminProtectedRoute

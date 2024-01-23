@@ -26,10 +26,6 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -40,10 +36,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getObervabilityAlertsEditPath,
-  getSettingPath,
-} from '../../utils/RouterUtils';
+import { getObservabilityAlertsEditPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -154,7 +147,7 @@ const ObservabilityAlertsPage = () => {
           return (
             <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link to={getObervabilityAlertsEditPath(fqn)}>
+                <Link to={getObservabilityAlertsEditPath(fqn)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
                     data-testid={`edit-${record.name}`}
@@ -194,7 +187,7 @@ const ObservabilityAlertsPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
-            <Link to={ROUTES.ADD_OBERVABILITY_ALERTS}>
+            <Link to={ROUTES.ADD_OBSERVABILITY_ALERTS}>
               <Button data-testid="create" type="primary">
                 {t('label.create-entity', { entity: t('label.observability') })}
               </Button>
@@ -215,14 +208,7 @@ const ObservabilityAlertsPage = () => {
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() =>
-                    history.push(
-                      getSettingPath(
-                        GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_OBSERVABILITY
-                      )
-                    )
-                  }
+                  onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}
                 />
               ),
             }}

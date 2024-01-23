@@ -36,7 +36,7 @@ import { FilterResourceDescriptor } from '../../generated/events/filterResourceD
 import { useFqn } from '../../hooks/useFqn';
 import {
   createObservabilityAlert,
-  getObervabilityAlertByFQN,
+  getObservabilityAlertByFQN,
   getResourceFunctions,
 } from '../../rest/observabilityAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -62,7 +62,7 @@ function AddObservabilityPage() {
 
   const fetchAlerts = async () => {
     try {
-      const observabilityAlert = await getObervabilityAlertByFQN(fqn);
+      const observabilityAlert = await getObservabilityAlertByFQN(fqn);
 
       setAlert(observabilityAlert);
     } catch (error) {
@@ -102,7 +102,7 @@ function AddObservabilityPage() {
       },
       {
         name: t('label.alert-plural'),
-        url: ROUTES.OBERVABILITY_ALERTS,
+        url: ROUTES.OBSERVABILITY_ALERTS,
       },
       {
         name: t('label.create-entity', { entity: t('label.alert') }),
@@ -132,7 +132,7 @@ function AddObservabilityPage() {
           entity: t('label.alert-plural'),
         })
       );
-      history.push(ROUTES.OBERVABILITY_ALERTS);
+      history.push(ROUTES.OBSERVABILITY_ALERTS);
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
