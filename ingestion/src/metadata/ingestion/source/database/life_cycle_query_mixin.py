@@ -15,11 +15,12 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 from functools import lru_cache
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -32,6 +33,7 @@ from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
@@ -118,3 +120,35 @@ class LifeCycleQueryMixin:
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
+        try:
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
+                schema_name=self.context.database_schema,
+                table_name=self.context.table,
+                skip_es_search=True,
+            )
+            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            if table:
+                yield from self.get_life_cycle_data(
+                    entity=table,
+                    query=self.life_cycle_query.format(
+                        database_name=table.database.name,
+                        schema_name=table.databaseSchema.name,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="lifeCycle",
+                    error=f"Error Processing life cycle data: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
