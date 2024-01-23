@@ -5,6 +5,7 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_EMAIL_PASSWORD;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_USER_OR_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
@@ -200,14 +201,16 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           && Objects.equals(
               bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
         recordFailedLoginAttempt(providedIdentity, storedUser);
-        throw new CustomExceptionMessage(UNAUTHORIZED, INVALID_EMAIL_PASSWORD);
+        throw new CustomExceptionMessage(
+            UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
       }
     }
     if (bindingResult != null) {
       throw new CustomExceptionMessage(
-          INTERNAL_SERVER_ERROR, bindingResult.getResultCode().getName());
+          INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, bindingResult.getResultCode().getName());
     } else {
-      throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, INVALID_EMAIL_PASSWORD);
+      throw new CustomExceptionMessage(
+          INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
     }
   }
 
@@ -234,15 +237,17 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
           return getUserForLdap(email).withName(userDN);
         } else {
-          throw new CustomExceptionMessage(FORBIDDEN, LDAP_MISSING_ATTR);
+          throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
       } else if (result.getSearchEntries().size() > 1) {
-        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES);
+        throw new CustomExceptionMessage(
+            INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, MULTIPLE_EMAIL_ENTRIES);
       } else {
-        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, INVALID_EMAIL_PASSWORD);
+        throw new CustomExceptionMessage(
+            INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, INVALID_EMAIL_PASSWORD);
       }
     } catch (LDAPException ex) {
-      throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, ex.getMessage());
+      throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, "LDAP_ERROR", ex.getMessage());
     }
   }
 

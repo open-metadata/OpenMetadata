@@ -53,7 +53,7 @@ const testSuite = {
   name: `${tableFqn}.testSuite`,
   executableEntityReference: tableFqn,
 };
-const testCase = {
+const testCase1 = {
   name: `user_tokens_table_column_name_to_exist_${uuid()}`,
   entityLink: `<#E::table::${testSuite.executableEntityReference}>`,
   parameterValues: [{ name: 'columnName', value: 'id' }],
@@ -61,6 +61,16 @@ const testCase = {
   description: 'test case description',
   testSuite: testSuite.name,
 };
+const testCase2 = {
+  name: `email_column_values_to_be_in_set_${uuid()}`,
+  entityLink: `<#E::table::${testSuite.executableEntityReference}::columns::email>`,
+  parameterValues: [
+    { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
+  ],
+  testDefinition: 'columnValuesToBeInSet',
+  testSuite: testSuite.name,
+};
+
 let testCaseId = '';
 
 const OWNER1 = 'Aaron Johnson';
@@ -106,9 +116,9 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
 
   cy.sidebarHover();
 
-  cy.get('[data-testid="data-quality"]').click();
+  cy.get('[data-testid="observability"]').click();
 
-  cy.sidebarClick('app-bar-item-data-contract');
+  cy.sidebarClick('app-bar-item-data-quality');
 
   cy.sidebarHoverOutside();
 
@@ -139,9 +149,15 @@ describe('Data Quality and Profiler should work properly', () => {
           method: 'POST',
           url: `/api/v1/dataQuality/testCases`,
           headers: { Authorization: `Bearer ${token}` },
-          body: testCase,
+          body: testCase1,
         }).then((response) => {
           testCaseId = response.body.id;
+        });
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/dataQuality/testCases`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: testCase2,
         });
       });
     });
@@ -535,9 +551,9 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.sidebarHover();
 
-    cy.get('[data-testid="data-quality"]').click();
+    cy.get('[data-testid="observability"]').click();
 
-    cy.sidebarClick('app-bar-item-data-contract');
+    cy.sidebarClick('app-bar-item-data-quality');
 
     cy.sidebarHoverOutside();
 
@@ -797,14 +813,63 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains(sqlQuery);
   });
 
+  it('Array params value should be visible while editing the test case', () => {
+    const tableName = DATABASE_SERVICE.entity.name;
+    interceptURL(
+      'GET',
+      `api/v1/tables/name/${DATABASE_SERVICE.service.name}.*.${tableName}?fields=*&include=all`,
+      'waitForPageLoad'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/dataQuality/testDefinitions/*',
+      'testCaseDefinition'
+    );
+    visitEntityDetailsPage({
+      term: tableName,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: DATA_ASSETS.tables,
+    });
+    verifyResponseStatusCode('@waitForPageLoad', 200);
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      tableName
+    );
+
+    cy.get('[data-testid="profiler"]').click();
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
+    cy.get(`[data-testid="${testCase2.name}"]`)
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get(`[data-testid="edit-${testCase2.name}"]`)
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@testCaseDefinition', 200);
+
+    cy.get('#tableTestForm_params_allowedValues_0_value')
+      .scrollIntoView()
+      .should('have.value', 'gmail');
+    cy.get('#tableTestForm_params_allowedValues_1_value')
+      .scrollIntoView()
+      .should('have.value', 'yahoo');
+    cy.get('#tableTestForm_params_allowedValues_2_value')
+      .scrollIntoView()
+      .should('have.value', 'collate');
+  });
+
   it('Update displayName of test case', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
 
     cy.sidebarHover();
 
-    cy.get('[data-testid="data-quality"]').click();
+    cy.get('[data-testid="observability"]').click();
 
-    cy.sidebarClick('app-bar-item-data-contract');
+    cy.sidebarClick('app-bar-item-data-quality');
 
     cy.sidebarHoverOutside();
 
@@ -812,23 +877,23 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@getTestCase', 200);
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*${testCase.name}*&index=test_case_search_index*`,
+      `/api/v1/search/query?q=*${testCase1.name}*&index=test_case_search_index*`,
       'searchTestCase'
     );
     cy.get(
       '[data-testid="test-case-container"] [data-testid="searchbar"]'
-    ).type(testCase.name);
+    ).type(testCase1.name);
     verifyResponseStatusCode('@searchTestCase', 200);
-    cy.get(`[data-testid="${testCase.name}"]`)
+    cy.get(`[data-testid="${testCase1.name}"]`)
       .scrollIntoView()
       .should('be.visible');
-    cy.get(`[data-testid="edit-${testCase.name}"]`).click();
+    cy.get(`[data-testid="edit-${testCase1.name}"]`).click();
     cy.get('.ant-modal-body').should('be.visible');
     cy.get('#tableTestForm_displayName').type('Table test case display name');
     interceptURL('PATCH', '/api/v1/dataQuality/testCases/*', 'updateTestCase');
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@updateTestCase', 200);
-    cy.get(`[data-testid="${testCase.name}"]`)
+    cy.get(`[data-testid="${testCase1.name}"]`)
       .scrollIntoView()
       .invoke('text')
       .then((text) => {
@@ -891,7 +956,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .not('.ant-select-dropdown-hidden')
       .find(`[title="${profilerSetting.partitionIntervalType}"]`)
       .click();
-    cy.get('[data-testid="column-name"]').click();
+    cy.get('#includeColumnsProfiler_partitionColumnName').click();
     cy.get('.ant-select-dropdown')
       .not('.ant-select-dropdown-hidden')
       .find(`[title="${profilerSetting.partitionColumnName}"]`)

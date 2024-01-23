@@ -183,7 +183,14 @@ const mockParams = {
   tab: 'table',
 };
 
-const API_FIELDS = ['owner', 'usageSummary', 'tags', 'domain', 'votes'];
+const API_FIELDS = [
+  'owner',
+  'usageSummary',
+  'tags',
+  'domain',
+  'votes',
+  'extension',
+];
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

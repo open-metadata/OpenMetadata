@@ -132,6 +132,10 @@
       <artifactId>dropwizard-micrometer-jdbi</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-json-logging</artifactId>
+    </dependency>
+    <dependency>
       <groupId>commons-lang</groupId>
       <artifactId>commons-lang</artifactId>
       <version>${commons-lang.version}</version>
@@ -615,7 +619,7 @@
                 <argLine>-Xmx1G</argLine>
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                  <jdbcContainerImage>mysql:8</jdbcContainerImage>
+                  <jdbcContainerImage>mysql:8.2.0</jdbcContainerImage>
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>

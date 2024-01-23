@@ -77,6 +77,9 @@ public abstract class PipelineServiceClient {
   public static final String STATUS_KEY = "status";
   public static final String APP_TRIGGER = "run_application";
   public static final String APP_VALIDATE = "validate_registration";
+
+  public static final String DEPLOYEMENT_ERROR = "DEPLOYMENT_ERROR";
+  public static final String TRIGGER_ERROR = "TRIGGER_ERROR";
   public static final Map<String, String> TYPE_TO_TASK =
       Map.of(
           PipelineType.METADATA.toString(),
