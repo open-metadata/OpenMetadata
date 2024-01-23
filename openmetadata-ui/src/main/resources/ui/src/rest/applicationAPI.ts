@@ -18,6 +18,7 @@ import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps';
@@ -46,9 +47,12 @@ export const getApplicationByName = async (
   appName: string,
   params?: AppListParams
 ) => {
-  const response = await APIClient.get<App>(`${BASE_URL}/name/${appName}`, {
-    params,
-  });
+  const response = await APIClient.get<App>(
+    `${BASE_URL}/name/${getEncodedFqn(appName)}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
@@ -58,7 +62,7 @@ export const getApplicationRuns = async (
   params?: AppListParams
 ) => {
   const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
-    `${BASE_URL}/name/${appName}/status`,
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/status`,
     {
       params,
     }
@@ -69,14 +73,14 @@ export const getApplicationRuns = async (
 
 export const getLatestApplicationRuns = async (appName: string) => {
   const response = await APIClient.get<DataInsightLatestRun>(
-    `${BASE_URL}/name/${appName}/logs`
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/logs`
   );
 
   return response.data;
 };
 
 export const uninstallApp = (appName: string, hardDelete = false) => {
-  return APIClient.delete(`${BASE_URL}/name/${appName}`, {
+  return APIClient.delete(`${BASE_URL}/name/${getEncodedFqn(appName)}`, {
     params: { hardDelete },
   });
 };
@@ -96,18 +100,21 @@ export const patchApplication = async (id: string, patch: Operation[]) => {
 };
 
 export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/trigger/${appName}`, {});
+  return APIClient.post(`${BASE_URL}/trigger/${getEncodedFqn(appName)}`, {});
 };
 
 export const deployApp = (appName: string): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/deploy/${appName}`);
+  return APIClient.post(`${BASE_URL}/deploy/${getEncodedFqn(appName)}`);
 };
 
 export const configureApp = (
   appName: string,
   data: Record<string, unknown>
 ): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/configure/${appName}`, data);
+  return APIClient.post(
+    `${BASE_URL}/configure/${getEncodedFqn(appName)}`,
+    data
+  );
 };
 
 export const restoreApp = async (id: string) => {

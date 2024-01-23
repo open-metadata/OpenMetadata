@@ -34,12 +34,12 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
+import { useFqn } from '../../hooks/useFqn';
 import { restoreMlmodel } from '../../rest/mlModelAPI';
 import { getEmptyPlaceholder, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -75,8 +75,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { currentUser } = useAuthContext();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: mlModelFqn, tab: activeTab } =
-    useParams<{ tab: EntityTabs; fqn: string }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+
+  const { fqn: decodedMlModelFqn } = useFqn();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -91,11 +92,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [threadLink, setThreadLink] = useState<string>('');
 
   const { getEntityPermission } = usePermissionProvider();
-
-  const decodedMlModelFqn = useMemo(
-    () => getDecodedFqn(mlModelFqn),
-    [mlModelFqn]
-  );
 
   const mlModelName = useMemo(
     () => getEntityName(mlModelDetail),
@@ -423,6 +419,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={mlModelDetail}
                 dataProducts={mlModelDetail?.dataProducts ?? []}
                 domain={mlModelDetail?.domain}
                 editTagPermission={editTagsPermission}
@@ -430,6 +427,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 entityId={mlModelDetail.id}
                 entityType={EntityType.MLMODEL}
                 selectedTags={mlModelTags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={handleThreadLinkSelect}
               />
@@ -490,13 +488,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.MLMODEL}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: mlModelDetail && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.MLMODEL>
+              entityDetails={mlModelDetail}
+              entityType={EntityType.MLMODEL}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

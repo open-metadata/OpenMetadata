@@ -43,7 +43,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { TableVersionProp } from './TableVersion.interface';
 
@@ -69,8 +68,8 @@ const TableVersion: React.FC<TableVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const encodedFQN = useMemo(
-    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+  const entityFqn = useMemo(
+    () => currentVersionData.fullyQualifiedName ?? '',
     [currentVersionData.fullyQualifiedName]
   );
 
@@ -96,7 +95,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.TABLE,
-        encodedFQN,
+        entityFqn,
         String(version),
         activeKey
       )
@@ -167,7 +166,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
                     addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     addedTableConstraintDiffs={addedTableConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
-                      encodedFQN,
+                      entityFqn,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -225,7 +224,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     ],
     [
       description,
-      encodedFQN,
+      entityFqn,
       columns,
       deletedColumnConstraintDiffs,
       deletedTableConstraintDiffs,

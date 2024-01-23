@@ -13,7 +13,11 @@ for any type of workflow that is supported in the platform: Metadata, Lineage, U
 In this guide, we will present the different alternatives to run and manage your ingestion workflows. There are mainly
 2 ways of running the ingestion:
 1. Internally, by managing the workflows from OpenMetadata.
-2. Externally, by using any other tool capable or running Python code.
+2. Externally, by using any other tool capable of running Python code.
+
+Note that the end result is going to be the same. The only difference is that running the workflows internally,
+OpenMetadata will dynamically generate the processes that will perform the metadata extraction. If configuring
+the ingestion externally, you will be managing this processes directly on your platform of choice.
 
 ### Option 1 - From OpenMetadata
 
@@ -31,9 +35,10 @@ If you want to learn how to configure your setup to run them from OpenMetadata, 
 
 ### Option 2 - Externally
 
-If, instead, you want to manage them from any other system, you would need a bit more background:
-1. How does the Ingestion Framework work?
-2. Ingestion Configuration
+Any tool capable of running Python code can be used to configure the metadata extraction from your sources.
+
+In this section, we are going to give you some background on how the Ingestion Framework works, how to configure
+the metadata extraction, and some examples on how to host the ingestion in different platforms.
 
 ### 1. How does the Ingestion Framework work?
 
@@ -118,6 +123,41 @@ workflowConfig:
 
 If you need to get the YAML shape of any connector, you can pick it up from its doc [page](/connectors).
 
+Additionally, if you want to see your runs logged in the `Ingestions` tab of the connectors page as you would
+when running the connectors natively with OpenMetadata, you can add the following configuration on your YAMLs:
+
+```yaml
+source:
+  type: mysql
+  serviceName: mysql
+[...]
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ...
+ingestionPipelineFQN: <serviceName>.<pipelineName>  # E.g., mysql.marketing_metadata`
+```
+
+Adding the `ingestionPipelineFQN` - the Ingestion Pipeline Fully Qualified Name - will tell the Ingestion Framework
+to log the executions and update the ingestion status, which will appear on the UI. Note that the action buttons
+will be disabled, since OpenMetadata won't be able to interact with external systems.
+
+### 3. (Optional) Disable the Pipeline Service Client
+
+If you want to run your workflows **ONLY externally** without relying on OpenMetadata for any workflow management
+or scheduling, you can update the following server configuration:
+
+```yaml
+pipelineServiceClientConfiguration:
+  enabled: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
+```
+
+by setting `enabled: false` or setting the `PIPELINE_SERVICE_CLIENT_ENABLED=false` as an environment variable.
+
+This will stop certain APIs and monitors related to the Pipeline Service Client (e.g., Airflow) from being operative.
+
 ### Examples
 
 {% note %}
@@ -159,3 +199,6 @@ don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or di
     Run the ingestion process externally from GitHub Actions
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
+
+
+### 

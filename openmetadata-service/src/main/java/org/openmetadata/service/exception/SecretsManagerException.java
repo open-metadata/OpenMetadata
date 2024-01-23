@@ -20,12 +20,14 @@ public class SecretsManagerException extends WebServiceException {
   private static final String BY_NAME_MESSAGE =
       "SecretsManagerException for secret manager [%s] when using the secret name [%s] due to [%s].";
 
+  public static final String SECRETS_MANAGER_ERROR = "SECRETS_MANAGER_ERROR";
+
   public SecretsManagerException(String message) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR, SECRETS_MANAGER_ERROR, message);
   }
 
   public SecretsManagerException(Response.Status status, String message) {
-    super(status.getStatusCode(), message);
+    super(status.getStatusCode(), SECRETS_MANAGER_ERROR, message);
   }
 
   public static SecretsManagerException byMessage(
