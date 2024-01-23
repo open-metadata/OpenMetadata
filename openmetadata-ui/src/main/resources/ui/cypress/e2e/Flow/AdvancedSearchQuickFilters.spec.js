@@ -80,17 +80,11 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
   });
 });
 
-const openDropdown = (dropdownSelector) => {
-  cy.get(`${dropdownSelector} > .ant-select > .ant-select-selector`)
-    .as(dropdownSelector.split('--')[1]) // create alias for field | operator | widget
-    .click();
-};
-
 const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
   goToAdvanceSearch();
 
   // Check Is Null or Is Not Null
-  openDropdown('.rule--operator');
+  cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(0).click();
   cy.get(`[title="${operatorTitle}"]`).click();
 
   cy.intercept('GET', '/api/v1/search/query?*', (req) => {
