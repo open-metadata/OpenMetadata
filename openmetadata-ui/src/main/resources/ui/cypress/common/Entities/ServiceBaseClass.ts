@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   interceptURL,
   replaceAllSpacialCharWith_,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
@@ -31,6 +30,7 @@ import {
   HTTP_CONFIG_SOURCE,
   SERVICE_TYPE,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { REDSHIFT } from '../../constants/service.constants';
 
 const dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(

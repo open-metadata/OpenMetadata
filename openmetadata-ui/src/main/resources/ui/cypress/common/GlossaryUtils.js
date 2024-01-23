@@ -13,8 +13,8 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { SidebarItem } from '../../src/enums/sidebar.enum';
 import { DELETE_TERM } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import {
   interceptURL,
   toastNotification,

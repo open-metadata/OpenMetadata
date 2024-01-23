@@ -13,7 +13,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -21,6 +20,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { PERSONA_DETAILS, USER_DETAILS } from '../../constants/EntityConstant';
 
 const updatePersonaDisplayName = (displayName) => {

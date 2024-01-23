@@ -1,4 +1,4 @@
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 /*
  *  Copyright 2023 Collate.

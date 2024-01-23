@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -19,6 +18,7 @@ import {
 } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { service } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {

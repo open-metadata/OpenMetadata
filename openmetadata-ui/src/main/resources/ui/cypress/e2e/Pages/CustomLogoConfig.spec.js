@@ -13,8 +13,8 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const config = {
   logo: 'https://custom-logo.png',

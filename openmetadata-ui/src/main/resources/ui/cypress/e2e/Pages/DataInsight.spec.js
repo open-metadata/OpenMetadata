@@ -12,7 +12,6 @@
  */
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -24,6 +23,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const KPI_DATA = [
   {

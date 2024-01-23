@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   deleteUser,
   descriptionBox,
@@ -45,6 +44,7 @@ import {
   NEW_GLOSSARY_TERMS,
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const userName = `test_dataconsumer${uuid()}`;
 

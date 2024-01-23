@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
@@ -20,6 +19,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { ENTITIES, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {

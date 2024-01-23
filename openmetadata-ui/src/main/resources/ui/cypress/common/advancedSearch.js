@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../src/enums/sidebar.enum';
 import { SEARCH_ENTITY_TABLE } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import {
   DATABASE_DETAILS,
   DATABASE_SERVICE_DETAILS,

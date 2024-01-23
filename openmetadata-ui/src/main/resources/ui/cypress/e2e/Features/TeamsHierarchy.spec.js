@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   addTeam,
   interceptURL,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const buTeamName = `bu-${uuid()}`;
 const divTeamName = `div-${uuid()}`;

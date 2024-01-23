@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SidebarItem } from '../../src/enums/sidebar.enum';
 import {
   DELETE_TERM,
   INVALID_NAMES,
@@ -18,6 +17,7 @@ import {
   NAME_VALIDATION_ERROR,
   SEARCH_ENTITY_TABLE,
 } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import {
   descriptionBox,
   interceptURL,

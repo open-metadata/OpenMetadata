@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
@@ -22,6 +21,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;

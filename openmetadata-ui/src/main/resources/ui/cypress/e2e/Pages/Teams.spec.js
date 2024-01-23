@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   addTeam,
   descriptionBox,
@@ -24,6 +23,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const updatedDescription = 'This is updated description';
 

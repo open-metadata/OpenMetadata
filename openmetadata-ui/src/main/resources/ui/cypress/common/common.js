@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { SidebarItem } from '../../src/enums/sidebar.enum';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -31,6 +30,7 @@ import {
   NAME_VALIDATION_ERROR,
   SEARCH_INDEX,
 } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';

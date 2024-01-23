@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SidebarItem } from '../../src/enums/sidebar.enum';
+import { SidebarItem } from '../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 export const searchServiceFromSettingPage = (service) => {

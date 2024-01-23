@@ -36,9 +36,9 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-import { SIDEBAR_LIST_ITEMS } from '../../src/constants/LeftSidebar.constants';
 import { interceptURL, verifyResponseStatusCode } from '../common/common';
 import { BASE_URL, LOGIN } from '../constants/constants';
+import { SIDEBAR_LIST_ITEMS } from '../constants/sidebar.constant';
 
 Cypress.Commands.add('loginByGoogleApi', () => {
   cy.log('Logging in to Google');

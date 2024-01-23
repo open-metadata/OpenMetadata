@@ -13,9 +13,9 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
 let serviceId;

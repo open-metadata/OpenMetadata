@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../src/enums/sidebar.enum';
 import {
   DELETE_TERM,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   TAG_INVALID_NAMES,
 } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 export const submitForm = () => {

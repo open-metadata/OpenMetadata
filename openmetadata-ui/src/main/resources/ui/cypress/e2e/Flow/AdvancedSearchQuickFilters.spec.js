@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { addOwner, removeOwner } from '../../common/advancedSearch';
 import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 const ownerName = 'Aaron Johnson';
 
 describe(`Advanced search quick filters should work properly for assets`, () => {

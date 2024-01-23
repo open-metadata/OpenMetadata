@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../../constants/service.constants';
 import {
   permanentDeleteUser,

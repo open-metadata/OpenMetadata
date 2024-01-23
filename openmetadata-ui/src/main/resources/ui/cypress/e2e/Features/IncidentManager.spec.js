@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -20,6 +19,7 @@ import {
 } from '../../common/common';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
 import { DATA_ASSETS, NEW_TABLE_TEST_CASE } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 const TABLE_NAME = DATABASE_SERVICE.entity.name;
 

@@ -13,7 +13,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   addTableFieldTags,
   deleteEntity,
@@ -25,6 +24,7 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import { BASE_URL, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
   SEARCH_INDEX_DISPLAY_NAME,

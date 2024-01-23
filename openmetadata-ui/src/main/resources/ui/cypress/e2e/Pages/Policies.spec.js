@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import {
   descriptionBox,
   interceptURL,
@@ -19,6 +18,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const roles = {
   dataConsumer: 'Data Consumer',

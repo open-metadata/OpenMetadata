@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 // eslint-disable-next-line spaced-comment
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
@@ -33,7 +32,7 @@ import {
   ID,
   uuid,
 } from '../../constants/constants';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 
 const entity = new UsersTestClass();

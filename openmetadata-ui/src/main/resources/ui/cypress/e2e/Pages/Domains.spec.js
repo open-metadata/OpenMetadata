@@ -13,7 +13,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   addAssetsToDataProduct,
@@ -30,6 +29,7 @@ import {
   verifyDomain,
 } from '../../common/DomainUtils';
 import { DOMAIN_1, DOMAIN_2, DOMAIN_3 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Domain page should work properly', () => {
   beforeEach(() => {

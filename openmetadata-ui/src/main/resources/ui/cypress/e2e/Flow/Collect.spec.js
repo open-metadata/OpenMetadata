@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { SidebarItem } from '../../../src/enums/sidebar.enum';
 import { interceptURL } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Collect end point should work properly', () => {
   const PAGES = {
