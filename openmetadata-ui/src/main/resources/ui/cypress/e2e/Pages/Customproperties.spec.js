@@ -19,12 +19,13 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { ENTITIES, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.login();
     interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
   });
@@ -57,7 +58,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.sidebarClick('app-bar-item-settings');
+        cy.sidebarClick(SidebarItem.SETTINGS);
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .click();
@@ -128,7 +129,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.sidebarClick('app-bar-item-settings');
+        cy.sidebarClick(SidebarItem.SETTINGS);
         // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
@@ -202,7 +203,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.sidebarClick('app-bar-item-settings');
+        cy.sidebarClick(SidebarItem.SETTINGS);
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -273,7 +274,7 @@ describe('Custom Properties should work properly', () => {
       );
 
       // Navigating to explore page
-      cy.sidebarClick('app-bar-item-explore');
+      cy.sidebarClick(SidebarItem.EXPLORE);
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/glossaryTerm*`,
