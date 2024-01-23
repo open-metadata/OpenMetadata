@@ -24,6 +24,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const updatedDescription = 'This is updated description';
 
@@ -53,6 +54,8 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
+
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     // Clicking on teams
     cy.settingClick(GlobalSettingOptions.TEAMS);

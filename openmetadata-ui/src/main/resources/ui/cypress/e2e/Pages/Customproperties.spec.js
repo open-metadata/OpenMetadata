@@ -19,6 +19,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { ENTITIES, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
@@ -226,7 +227,7 @@ describe('Custom Properties should work properly', () => {
       );
 
       // Navigating to explore page
-      cy.sidebarClick('app-bar-item-explore');
+      cy.sidebarClick(SidebarItem.EXPLORE);
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/glossaryTerm*`,

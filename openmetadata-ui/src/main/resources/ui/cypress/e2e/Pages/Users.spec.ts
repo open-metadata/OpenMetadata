@@ -37,7 +37,7 @@ import {
   ID,
   uuid,
 } from '../../constants/constants';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 
 const entity = new UsersTestClass();
@@ -115,14 +115,7 @@ describe('User with different Roles', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Check CRUD for Glossary
-    cy.sidebarHover();
-    cy.get(`[data-testid=${glossary.testid}]`)
-      .should('be.visible')
-      .click({ animationDistanceThreshold: 20, waitForAnimations: true });
-
-    if (glossary.subMenu) {
-      cy.sidebarClick(glossary.subMenu);
-    }
+    cy.sidebarClick(SidebarItem.GLOSSARY);
     cy.clickOnLogo();
 
     // Check CRUD for Tags

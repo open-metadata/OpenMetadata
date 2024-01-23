@@ -44,6 +44,7 @@ import {
   SERVICE_TYPE,
   TEAM_ENTITY,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
@@ -115,13 +116,7 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
 
-  cy.sidebarHover();
-
-  cy.get('[data-testid="observability"]').click();
-
-  cy.sidebarClick('app-bar-item-data-quality');
-
-  cy.sidebarHoverOutside();
+  cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
@@ -215,7 +210,6 @@ describe('Data Quality and Profiler should work properly', () => {
     goToProfilerTab();
 
     cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
-
     cy.clickOnLogo();
 
     cy.settingClick(GlobalSettingOptions.DATABASES);
@@ -549,13 +543,7 @@ describe('Data Quality and Profiler should work properly', () => {
       'getTestCase'
     );
 
-    cy.sidebarHover();
-
-    cy.get('[data-testid="observability"]').click();
-
-    cy.sidebarClick('app-bar-item-data-quality');
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
@@ -865,13 +853,7 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Update displayName of test case', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
 
-    cy.sidebarHover();
-
-    cy.get('[data-testid="observability"]').click();
-
-    cy.sidebarClick('app-bar-item-data-quality');
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
     cy.get('[data-testid="by-test-cases"]').click();
     verifyResponseStatusCode('@getTestCase', 200);

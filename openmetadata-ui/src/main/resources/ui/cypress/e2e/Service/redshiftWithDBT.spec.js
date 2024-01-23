@@ -31,6 +31,7 @@ import {
   HTTP_CONFIG_SOURCE,
   SERVICE_TYPE,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { REDSHIFT } from '../../constants/service.constants';
 
 const dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
@@ -102,6 +103,7 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
       'pipelineStatus'
     );
+    cy.sidebarClick(SidebarItem.SETTINGS);
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
@@ -215,10 +217,8 @@ describe('RedShift Ingestion', () => {
       `/api/v1/tags?*parent=${DBT.classification}*`,
       'getTagList'
     );
-    cy.sidebarHover();
-    cy.get('[data-testid="governance"]').click();
 
-    cy.sidebarClick('app-bar-item-tags');
+    cy.sidebarClick(SidebarItem.TAGS);
 
     verifyResponseStatusCode('@fetchClassifications', 200);
 

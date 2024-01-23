@@ -42,6 +42,7 @@ import {
 } from '../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../common/common';
 import { BASE_URL, LOGIN } from '../constants/constants';
+import { SIDEBAR_LIST_ITEMS } from '../constants/sidebar.constant';
 
 Cypress.Commands.add('loginByGoogleApi', () => {
   cy.log('Logging in to Google');
@@ -168,19 +169,24 @@ Cypress.Commands.add('logout', () => {
   Cypress.session.clearAllSavedSessions();
 });
 
-// This command is used to click on the sidebar item
-// id: data-testid of the sidebar item
-// parentId: data-testid of the parent sidebar item to close after click if present
-// isForced: whether the click is forced or not
-Cypress.Commands.add('sidebarClick', (id, parentId, isForced) => {
-  cy.get(`[data-testid="${id}"]`).click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-    force: isForced,
-  });
+/* 
+  This command is used to click on the sidebar item
+  id: data-testid of the sidebar item to be clicked
+  */
+Cypress.Commands.add('sidebarClick', (id) => {
+  const items = SIDEBAR_LIST_ITEMS[id];
+  if (items) {
+    cy.sidebarHover();
+    cy.get(`[data-testid="${items[0]}"]`).click({
+      animationDistanceThreshold: 20,
+      waitForAnimations: true,
+    });
 
-  if (parentId) {
-    cy.get(`[data-testid="${parentId}"]`).click();
+    cy.get(`[data-testid="app-bar-item-${items[1]}"]`).click();
+
+    cy.get(`[data-testid="${items[0]}"]`).click();
+  } else {
+    cy.get(`[data-testid="app-bar-item-${id}"]`).click();
   }
 
   cy.sidebarHoverOutside();

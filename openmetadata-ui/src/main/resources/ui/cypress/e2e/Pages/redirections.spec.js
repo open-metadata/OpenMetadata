@@ -34,6 +34,7 @@ describe('Redirection link should work properly', () => {
         cy.sidebarHover();
         cy.sidebarClick(navbar.subMenu, navbar.testid, true);
       }
+      cy.get('body').click();
       validateURL(navbar.url);
       cy.clickOnLogo();
       validateURL(`${BASE_URL}/my-data`);

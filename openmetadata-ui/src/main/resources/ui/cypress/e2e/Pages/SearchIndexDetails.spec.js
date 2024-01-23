@@ -25,6 +25,7 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import { BASE_URL, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
   SEARCH_INDEX_DISPLAY_NAME,
@@ -190,6 +191,8 @@ describe('Prerequisite for data steward role tests', () => {
     cy.login();
 
     // Assign data steward role to the created user
+
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 

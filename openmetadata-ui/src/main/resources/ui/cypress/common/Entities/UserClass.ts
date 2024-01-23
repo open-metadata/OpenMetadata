@@ -17,6 +17,7 @@ import {
   interceptURL,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../../constants/service.constants';
 import {
   permanentDeleteUser,
@@ -76,12 +77,12 @@ class UsersTestClass {
   }
 
   checkStewardServicesPermissions() {
-    cy.sidebarClick('app-bar-item-explore');
+    cy.sidebarClick(SidebarItem.EXPLORE);
     Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
       cy.settingClick(service.settingsMenuId);
       cy.get('[data-testid="add-service-button"] > span').should('not.exist');
     });
-    cy.sidebarClick('app-bar-item-explore');
+    cy.sidebarClick(SidebarItem.EXPLORE);
     cy.get('[data-testid="tables-tab"]').click();
     cy.get(
       '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
