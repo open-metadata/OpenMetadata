@@ -16,7 +16,10 @@ import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import i18next from 'i18next';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
-import { RenderSettings } from 'react-awesome-query-builder';
+import {
+  AsyncFetchListValues,
+  RenderSettings,
+} from 'react-awesome-query-builder';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -39,6 +42,7 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from '../interface/search.interface';
+import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
 import { getEntityName } from './EntityUtils';
 import searchClassBase from './SearchClassBase';
@@ -395,4 +399,21 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     label: option.key,
     count: option.doc_count ?? 0,
   }));
+};
+
+export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
+  try {
+    const { data: tiers } = await getTags({
+      parent: 'Tier',
+    });
+
+    const tierFields = tiers.map((tier) => ({
+      title: tier.fullyQualifiedName, // tier.name,
+      value: tier.fullyQualifiedName,
+    }));
+
+    return tierFields;
+  } catch (error) {
+    return [];
+  }
 };
