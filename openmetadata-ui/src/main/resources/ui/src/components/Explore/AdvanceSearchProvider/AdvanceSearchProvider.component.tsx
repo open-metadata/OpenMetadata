@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { cloneDeep, isNil, isString } from 'lodash';
+import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -35,6 +34,8 @@ import {
 } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
+import { EntitiesSupportedCustomProperties } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
@@ -53,6 +54,8 @@ const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
 export const AdvanceSearchProvider = ({
   children,
 }: AdvanceSearchProviderProps) => {
+  const tierOptions = useMemo(getTierOptions, []);
+
   const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
   const history = useHistory();
@@ -68,7 +71,10 @@ export const AdvanceSearchProvider = ({
 
     return tabInfo[0] as ExploreSearchIndex;
   }, [tab]);
-  const [config, setConfig] = useState<Config>(getQbConfigs(searchIndex));
+  const [config, setConfig] = useState<Config>(
+    getQbConfigs(searchIndex, tierOptions)
+  );
+  const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
     () => QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
@@ -117,7 +123,7 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
-    setConfig(getQbConfigs(searchIndex));
+    setConfig(getQbConfigs(searchIndex, tierOptions));
   }, [searchIndex]);
 
   const handleChange = useCallback(
@@ -150,7 +156,7 @@ export const AdvanceSearchProvider = ({
     setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
     setQueryFilter(undefined);
     setSQLQuery('');
-  }, []);
+  }, [config]);
 
   const handleConfigUpdate = (updatedConfig: Config) => {
     setConfig(updatedConfig);
@@ -171,19 +177,23 @@ export const AdvanceSearchProvider = ({
   }, [history, location.pathname]);
 
   async function getCustomAttributesSubfields() {
-    const updatedConfig = cloneDeep(config);
+    const subfields: Record<
+      string,
+      { type: string; valueSources: ValueSource[] }
+    > = {};
+
     try {
+      if (!EntitiesSupportedCustomProperties.includes(searchIndex)) {
+        return subfields;
+      }
+
       const entityType = getEntityTypeFromSearchIndex(searchIndex);
       if (!entityType) {
-        return;
+        return subfields;
       }
+
       const res = await getTypeByFQN(entityType);
       const customAttributes = res.customProperties;
-
-      const subfields: Record<
-        string,
-        { type: string; valueSources: ValueSource[] }
-      > = {};
 
       if (customAttributes) {
         customAttributes.forEach((attr) => {
@@ -193,30 +203,55 @@ export const AdvanceSearchProvider = ({
           };
         });
       }
-      (updatedConfig.fields.extension as FieldGroup).subfields = subfields;
 
-      return updatedConfig;
+      return subfields;
     } catch (error) {
       // Error
-      return updatedConfig;
+      return subfields;
     }
   }
 
+  const loadData = async () => {
+    const actualConfig = getQbConfigs(searchIndex, tierOptions);
+
+    const extensionSubField = await getCustomAttributesSubfields();
+
+    if (!isEmpty(extensionSubField)) {
+      (actualConfig.fields.extension as FieldGroup).subfields =
+        extensionSubField;
+    }
+
+    setConfig(actualConfig);
+    setInitialised(true);
+  };
+
   const loadTree = useCallback(
     async (treeObj: JsonTree) => {
-      const updatedConfig = (await getCustomAttributesSubfields()) ?? config;
+      const updatedConfig = config;
       const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
+
       setTreeInternal(tree);
       const qFilter = {
         query: elasticSearchFormat(tree, updatedConfig),
       };
+      if (isEqual(qFilter, queryFilter)) {
+        return;
+      }
+
       setQueryFilter(qFilter);
       setSQLQuery(QbUtils.sqlFormat(tree, updatedConfig) ?? '');
     },
-    [config]
+    [config, queryFilter]
   );
 
   useEffect(() => {
+    loadData();
+  }, [searchIndex]);
+
+  useEffect(() => {
+    if (!initialised) {
+      return;
+    }
     if (jsonTree) {
       loadTree(jsonTree);
     } else {
@@ -224,7 +259,7 @@ export const AdvanceSearchProvider = ({
     }
 
     setLoading(false);
-  }, [jsonTree]);
+  }, [jsonTree, initialised]);
 
   const handleSubmit = useCallback(() => {
     const qFilter = {

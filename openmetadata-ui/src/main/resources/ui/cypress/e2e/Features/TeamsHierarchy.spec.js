@@ -17,6 +17,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const buTeamName = `bu-${uuid()}`;
 const divTeamName = `div-${uuid()}`;
@@ -40,7 +41,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     verifyResponseStatusCode('@getOrganization', 200);
   });

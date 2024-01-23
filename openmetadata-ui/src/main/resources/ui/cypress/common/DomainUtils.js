@@ -17,6 +17,7 @@ import {
   NAME_VALIDATION_ERROR,
   SEARCH_ENTITY_TABLE,
 } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import {
   descriptionBox,
   interceptURL,
@@ -141,7 +142,7 @@ export const updateAssets = (domainObj) => {
 
   cy.get('[data-testid="domain-link"]').should('contain', domainObj.name);
 
-  cy.sidebarClick('app-bar-item-domain');
+  cy.sidebarClick(SidebarItem.DOMAIN);
 
   goToAssetsTab(domainObj);
 
@@ -175,7 +176,7 @@ export const removeAssets = (domainObj) => {
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchDomain', 200);
 
-  cy.sidebarClick('app-bar-item-domain');
+  cy.sidebarClick(SidebarItem.DOMAIN);
 
   goToAssetsTab(domainObj);
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(
