@@ -22,6 +22,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM, DESTINATION, TEST_CASE } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const alertForAllAssets = `Alert-ct-test-${uuid()}`;
 const description = 'This is alert description';
@@ -62,7 +63,7 @@ describe.skip('Alerts page should work properly', () => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
