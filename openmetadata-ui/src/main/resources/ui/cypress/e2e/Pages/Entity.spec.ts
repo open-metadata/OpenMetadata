@@ -130,12 +130,12 @@ entities.forEach((entity) => {
       });
     }
 
-    it(`follow unfollow entity`, () => {
-      entity.followUnfollowEntity();
-    });
-
     it(`Update displayName`, () => {
       entity.renameEntity();
+    });
+
+    it(`follow unfollow entity`, () => {
+      entity.followUnfollowEntity();
     });
 
     it(`Soft delete`, () => {
