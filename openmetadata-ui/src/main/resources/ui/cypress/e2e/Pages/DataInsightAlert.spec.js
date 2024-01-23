@@ -16,6 +16,7 @@ import {
   toastNotification,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const dataInsightReport = {
   triggerType: 'Scheduled',
@@ -30,8 +31,7 @@ const dataInsightReport = {
 describe.skip('Data Insight Alert', () => {
   beforeEach(() => {
     cy.login();
-    cy.sidebarClick('app-bar-item-settings');
-
+    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL(
       'GET',
       'api/v1/events/subscriptions/name/DataInsightReport?include=all',

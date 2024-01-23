@@ -18,6 +18,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const roleName = `Role-test-${uuid()}`;
 const userName = `usercttest${uuid()}`;
@@ -28,7 +29,7 @@ describe('Test Add role and assign it to the user', () => {
     cy.login();
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
     interceptURL('GET', '/api/v1/users?*', 'usersPage');
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
   });
 
   it('Create role', () => {

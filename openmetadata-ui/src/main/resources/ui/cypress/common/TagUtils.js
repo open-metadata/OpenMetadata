@@ -17,6 +17,7 @@ import {
   NAME_VALIDATION_ERROR,
   TAG_INVALID_NAMES,
 } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 export const submitForm = () => {
@@ -59,13 +60,7 @@ export const validateForm = () => {
 export const visitClassificationPage = () => {
   interceptURL('GET', '/api/v1/tags*', 'getTags');
 
-  cy.sidebarHover();
-  cy.get('[data-testid="governance"]').click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-  });
-
-  cy.sidebarClick('app-bar-item-tags');
+  cy.sidebarClick(SidebarItem.TAGS);
 
   verifyResponseStatusCode('@getTags', 200);
 };

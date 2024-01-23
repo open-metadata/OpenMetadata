@@ -18,6 +18,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -100,7 +101,7 @@ describe('Policy page should work properly', () => {
     cy.login();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Policies')

@@ -15,6 +15,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
 let serviceId;
@@ -87,7 +88,7 @@ describe('Schema search', () => {
       'getSettingsPage'
     );
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page

@@ -14,6 +14,7 @@
 /// <reference types="cypress" />
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const config = {
   logo: 'https://custom-logo.png',
@@ -26,7 +27,7 @@ describe('Custom Logo Config', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     interceptURL(
       'GET',

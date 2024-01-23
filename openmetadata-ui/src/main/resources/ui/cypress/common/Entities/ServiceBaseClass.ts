@@ -14,6 +14,7 @@ import {
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   interceptURL,
   replaceAllSpacialCharWith_,
@@ -354,7 +355,7 @@ class ServiceBaseClass {
     verifyResponseStatusCode('@updateEntity', 200);
 
     // re-run ingestion flow
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     // Services page
     cy.get('.ant-menu-title-content').contains(this.category).click();

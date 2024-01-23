@@ -12,13 +12,14 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Data Insight settings page should work properly', () => {
   beforeEach(() => {
     cy.login();
     interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');

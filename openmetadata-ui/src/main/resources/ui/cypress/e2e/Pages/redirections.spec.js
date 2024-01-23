@@ -34,7 +34,6 @@ describe('Redirection link should work properly', () => {
       if (navbar.subMenu) {
         cy.get(navbar.subMenu).should('be.visible').click({ force: true });
       }
-      //
       cy.get('body').click();
       validateURL(navbar.url);
       cy.clickOnLogo();

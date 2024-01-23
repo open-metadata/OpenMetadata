@@ -21,6 +21,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
@@ -70,7 +71,7 @@ const revokeToken = () => {
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL(
       'GET',
       'api/v1/bots?limit=*&include=non-deleted',

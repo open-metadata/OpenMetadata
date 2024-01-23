@@ -94,3 +94,19 @@ export const SEARCH_INDEX: Record<
   [EntityType.Glossary]: 'glossary_search_index',
   [EntityType.Domain]: 'domain_search_index',
 } as const;
+
+export enum SidebarItem {
+  EXPLORE = 'explore',
+  OBSERVABILITY = 'observability',
+  DATA_QUALITY = 'data-quality',
+  INCIDENT_MANAGER = 'incident-manager',
+  OBSERVABILITY_ALERT = 'observability-alert',
+  DATA_INSIGHT = 'data-insight',
+  DOMAIN = 'domain',
+  GOVERNANCE = 'governance',
+  GLOSSARY = 'glossary',
+  TAGS = 'tags',
+  INSIGHTS = 'insights',
+  SETTINGS = 'settings',
+  LOGOUT = 'logout',
+}

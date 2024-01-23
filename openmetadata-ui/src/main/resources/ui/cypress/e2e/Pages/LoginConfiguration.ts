@@ -1,3 +1,5 @@
+import { SidebarItem } from '../../constants/Entity.interface';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +15,7 @@
 describe('template spec', () => {
   beforeEach(() => {
     cy.login();
-
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Login Configuration')
