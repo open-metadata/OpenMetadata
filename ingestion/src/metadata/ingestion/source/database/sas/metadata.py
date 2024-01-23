@@ -72,7 +72,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sas.client import SASClient
@@ -133,6 +133,13 @@ class SasSource(
         return cls(config, metadata)
 
     def _iter(self) -> Iterable[Either[Entity]]:
+        # For debug purpose (when ingesting locally)
+        # yield Either(
+        #     right=self.metadata.get_create_service_from_source(
+        #         entity=DatabaseService, config=self.config
+        #     )
+        # )
+
         # create tables from sas dataSets
         if self.sas_client.enable_datatables:
             for table in self.sas_client.list_assets("datasets"):
@@ -500,10 +507,6 @@ class SasSource(
                     if attr in custom_attributes
                 }
 
-                # create table request
-                logger.info(
-                    f"schema: {table['id']}, {self.db_service_name}, {self.db_name}, {self.db_schema_name}"
-                )
                 table_request = CreateTableRequest(
                     name=table_name,
                     sourceUrl=table_url,
@@ -906,3 +909,7 @@ class SasSource(
 
     def close(self) -> None:
         pass
+
+    def test_connection(self) -> None:
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)

@@ -69,6 +69,13 @@ The workflow is modeled around the following
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=15 %}
+
+**filter**: A filter expression specifying items for import. For more information [see](https://developer.sas.com/apis/rest/DataManagement/#catalog-search)
+
+{% /codeInfo %}
+
+
 #### Sink Configuration
 
 {% codeInfo srNumber=18 %}
@@ -99,6 +106,15 @@ source:
 ```yaml {% srNumber=14 %}
       password: password
 ```
+```yaml {% srNumber=15 %}
+      datatables: True
+      dataTablesCustomFilter: None
+      reports: False
+      reportsCustomFilter: None
+      dataflows: False
+      dataflowsCustomFilter: None
+```
+```yaml
   sourceConfig:
     config:
       type: DatabaseMetadata

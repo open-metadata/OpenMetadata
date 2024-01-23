@@ -1,0 +1,43 @@
+[
+  {
+    "id": "0063116c-577c-0f44-8116-3924506c8f4a",
+    "version": 1,
+    "name": "WATER_CLUSTER.sashdat",
+    "type": "casTable",
+    "owner": "sas",
+    "created": "2023-12-20T08:28:18.000Z",
+    "modified": "2023-12-20T08:28:18.500Z",
+    "registeredType": "dataTable",
+    "displayType": "CAS",
+    "score": 24.40445,
+    "attributes": {
+      "analysisTimeStamp": "2023-12-20T20:52:01.453Z",
+      "columnCount": 21,
+      "completenessPercent": 95,
+      "dataSize": 10091520,
+      "extension": "sashdat",
+      "informationPrivacy": "candidate",
+      "library": "Samples",
+      "region": "",
+      "reviewStatus": "none",
+      "rowCount": 46720,
+      "sourceSystem": "CAS"
+    },
+    "links": [
+      {
+        "method": "GET",
+        "rel": "self",
+        "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+        "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+        "type": "application/vnd.sas.metadata.instance"
+      },
+      {
+        "method": "GET",
+        "rel": "resource",
+        "href": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat",
+        "uri": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat",
+        "type": "application/json"
+      }
+    ]
+  }
+]

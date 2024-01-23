@@ -1,0 +1,496 @@
+{
+  "version": 1,
+  "entities": [
+    {
+      "creationTimeStamp": "2023-12-20T20:51:57.437Z",
+      "createdBy": "admin",
+      "modifiedTimeStamp": "2023-12-20T20:51:57.437Z",
+      "modifiedBy": "admin",
+      "id": "a278a7b0-48f2-314b-a2be-fd2753dc7465",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "uri": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "type": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "uri": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "type": "application/vnd.sas.summary"
+        },
+        {
+          "method": "GET",
+          "rel": "up",
+          "href": "/catalog/instances",
+          "uri": "/catalog/instances",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance"
+        },
+        {
+          "method": "PATCH",
+          "rel": "patch",
+          "href": "/catalog/updates/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "uri": "/catalog/updates/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "type": "application/json-patch",
+          "responseType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "uri": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "type": "application/vnd.sas.metadata.instance.entity",
+          "responseType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "uri": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465"
+        },
+        {
+          "method": "GET",
+          "rel": "definition",
+          "href": "/catalog/definitions/87d48d12-53c0-473c-ab34-531817319e79",
+          "uri": "/catalog/definitions/87d48d12-53c0-473c-ab34-531817319e79",
+          "type": "application/vnd.sas.metadata.definition.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "history",
+          "href": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465/history",
+          "uri": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465/history",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "resource",
+          "href": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER/columns/Address",
+          "uri": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER/columns/Address",
+          "type": "application/json"
+        }
+      ],
+      "version": 1,
+      "instanceType": "entity",
+      "definitionId": "87d48d12-53c0-473c-ab34-531817319e79",
+      "name": "Address",
+      "type": "casColumn",
+      "attributes": {
+        "actualDataType": "String",
+        "analysisTimeStamp": "2023-12-20T20:52:01.453Z",
+        "bestChartType": "frequency",
+        "blankValueCount": 0,
+        "cardinalityCount": 63,
+        "casDataType": "char",
+        "charsMaxCount": 25,
+        "charsMinCount": 11,
+        "completenessPercent": 100,
+        "dataType": "char",
+        "hasUniqueField": false,
+        "informationPrivacy": "candidate",
+        "leastCommonValue": "1650 FEDERAL RD",
+        "mismatchedCount": 0,
+        "missingCount": 0,
+        "mode": "1980 OIST OAK BLVD",
+        "mostCommonValue": "1980 OIST OAK BLVD",
+        "ordinalPosition": 7,
+        "rawLength": 28,
+        "sasDataType": "char",
+        "sasFormat": "$CHAR",
+        "sasFormatFull": "$CHAR28.",
+        "semanticTypeId": "ADDRESS",
+        "semanticTypeScore": 201,
+        "statisticalScale": "nominal",
+        "uniquenessPercent": 0.1348458904
+      },
+      "resourceId": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER/columns/Address"
+    },
+    {
+      "creationTimeStamp": "2023-12-20T20:51:57.405Z",
+      "createdBy": "admin",
+      "modifiedTimeStamp": "2023-12-20T20:51:57.405Z",
+      "modifiedBy": "admin",
+      "id": "5569fb65-c6df-484a-897e-7a087665cd6c",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "uri": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "type": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "uri": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "type": "application/vnd.sas.summary"
+        },
+        {
+          "method": "GET",
+          "rel": "up",
+          "href": "/catalog/instances",
+          "uri": "/catalog/instances",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance"
+        },
+        {
+          "method": "PATCH",
+          "rel": "patch",
+          "href": "/catalog/updates/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "uri": "/catalog/updates/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "type": "application/json-patch",
+          "responseType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "uri": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "type": "application/vnd.sas.metadata.instance.entity",
+          "responseType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "uri": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c"
+        },
+        {
+          "method": "GET",
+          "rel": "definition",
+          "href": "/catalog/definitions/87d48d12-53c0-473c-ab34-531817319e79",
+          "uri": "/catalog/definitions/87d48d12-53c0-473c-ab34-531817319e79",
+          "type": "application/vnd.sas.metadata.definition.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "history",
+          "href": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c/history",
+          "uri": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c/history",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "resource",
+          "href": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER/columns/US%20Holiday",
+          "uri": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER/columns/US%20Holiday",
+          "type": "application/json"
+        }
+      ],
+      "version": 1,
+      "instanceType": "entity",
+      "definitionId": "87d48d12-53c0-473c-ab34-531817319e79",
+      "name": "US Holiday",
+      "type": "casColumn",
+      "attributes": {
+        "actualDataType": "String",
+        "analysisTimeStamp": "2023-12-20T20:52:01.453Z",
+        "bestChartType": "frequency",
+        "blankValueCount": 0,
+        "cardinalityCount": 15,
+        "casDataType": "char",
+        "charsMaxCount": 27,
+        "charsMinCount": 8,
+        "completenessPercent": 3,
+        "dataType": "char",
+        "hasUniqueField": false,
+        "leastCommonValue": "Independence Day",
+        "mismatchedCount": 0,
+        "missingCount": 45056,
+        "mode": "Veteran's Day",
+        "mostCommonValue": "Veteran's Day",
+        "ordinalPosition": 20,
+        "rawLength": 27,
+        "sasDataType": "char",
+        "sasFormat": "$CHAR",
+        "sasFormatFull": "$CHAR27.",
+        "semanticTypeScore": 7.12,
+        "statisticalScale": "nominal",
+        "uniquenessPercent": 0.0321061644
+      },
+      "resourceId": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER/columns/US%20Holiday"
+    },
+    {
+      "creationTimeStamp": "2023-12-20T20:51:57.347Z",
+      "createdBy": "admin",
+      "modifiedTimeStamp": "2023-12-20T20:51:57.347Z",
+      "modifiedBy": "admin",
+      "id": "0063116c-577c-0f44-8116-3924506c8f4a",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "type": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "type": "application/vnd.sas.summary"
+        },
+        {
+          "method": "GET",
+          "rel": "up",
+          "href": "/catalog/instances",
+          "uri": "/catalog/instances",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance"
+        },
+        {
+          "method": "PATCH",
+          "rel": "patch",
+          "href": "/catalog/updates/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "uri": "/catalog/updates/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "type": "application/json-patch",
+          "responseType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "type": "application/vnd.sas.metadata.instance.entity",
+          "responseType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a"
+        },
+        {
+          "method": "GET",
+          "rel": "definition",
+          "href": "/catalog/definitions/3a0d5d7b-a1c5-44c6-bfad-0d2174236172",
+          "uri": "/catalog/definitions/3a0d5d7b-a1c5-44c6-bfad-0d2174236172",
+          "type": "application/vnd.sas.metadata.definition.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "history",
+          "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a/history",
+          "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a/history",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "resource",
+          "href": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat",
+          "uri": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat",
+          "type": "application/json"
+        }
+      ],
+      "version": 1,
+      "instanceType": "entity",
+      "definitionId": "3a0d5d7b-a1c5-44c6-bfad-0d2174236172",
+      "name": "WATER_CLUSTER.sashdat",
+      "type": "casTable",
+      "attributes": {
+        "analysisTimeStamp": "2023-12-20T20:52:01.453Z",
+        "columnCount": 21,
+        "completenessPercent": 95,
+        "creator": "sas",
+        "dataLocale": "EN",
+        "dataSize": 10091520,
+        "dateCreated": "2023-12-20T08:28:18.000Z",
+        "dateFieldCount": 1,
+        "dateModified": "2023-12-20T08:28:18.500Z",
+        "encoding": "utf-8",
+        "extension": "sashdat",
+        "informationPrivacy": "candidate",
+        "isLoaded": false,
+        "isView": false,
+        "maxTimeStamp": "2015-12-31T00:00:00.000Z",
+        "minTimeStamp": "2014-01-01T00:00:00.000Z",
+        "mostImportantFields": "\"Property\",\"Lat\",\"Long\"",
+        "nlpTags": "DATE,INDIVIDUAL",
+        "nlpTerms": "st patrick,christmas,memorial day,labor day,martin luther king,new year's day,thanksgiving,veteran's day,friday",
+        "observationFrequency": "hourly",
+        "observationFrequencyField": "Date",
+        "reviewStatus": "none",
+        "rowCount": 46720,
+        "runId": "cebf0b96-594f-4c83-b4d8-49f8cac78e20",
+        "runStatus": "changed",
+        "sourceSystem": "CAS"
+      },
+      "resourceId": "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat"
+    }
+  ],
+  "relationships": [
+    {
+      "creationTimeStamp": "2023-12-20T20:51:58.19Z",
+      "createdBy": "admin",
+      "modifiedTimeStamp": "2023-12-20T20:51:58.19Z",
+      "modifiedBy": "admin",
+      "id": "1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "uri": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "type": "application/vnd.sas.metadata.instance.relationship"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "uri": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "type": "application/vnd.sas.summary"
+        },
+        {
+          "method": "GET",
+          "rel": "up",
+          "href": "/catalog/instances",
+          "uri": "/catalog/instances",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance"
+        },
+        {
+          "method": "PATCH",
+          "rel": "patch",
+          "href": "/catalog/updates/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "uri": "/catalog/updates/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "type": "application/json-patch",
+          "responseType": "application/vnd.sas.metadata.instance.relationship"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "uri": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "type": "application/vnd.sas.metadata.instance.relationship",
+          "responseType": "application/vnd.sas.metadata.instance.relationship"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab",
+          "uri": "/catalog/instances/1fdc5f84-8d4b-4976-a1bc-fd98ebd710ab"
+        },
+        {
+          "method": "GET",
+          "rel": "definition",
+          "href": "/catalog/definitions/4e7ee014-5234-422b-acf1-18ca08ff1c4e",
+          "uri": "/catalog/definitions/4e7ee014-5234-422b-acf1-18ca08ff1c4e",
+          "type": "application/vnd.sas.metadata.definition.relationship"
+        },
+        {
+          "method": "GET",
+          "rel": "endpoint1",
+          "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "type": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "endpoint2",
+          "href": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "uri": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465",
+          "type": "application/vnd.sas.metadata.instance.entity"
+        }
+      ],
+      "version": 1,
+      "instanceType": "relationship",
+      "definitionId": "4e7ee014-5234-422b-acf1-18ca08ff1c4e",
+      "type": "dataSetDataFields",
+      "endpoint1Id": "0063116c-577c-0f44-8116-3924506c8f4a",
+      "endpoint1Uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+      "endpoint2Id": "a278a7b0-48f2-314b-a2be-fd2753dc7465",
+      "endpoint2Uri": "/catalog/instances/a278a7b0-48f2-314b-a2be-fd2753dc7465"
+    },
+    {
+      "creationTimeStamp": "2023-12-20T20:51:58.008Z",
+      "createdBy": "admin",
+      "modifiedTimeStamp": "2023-12-20T20:51:58.008Z",
+      "modifiedBy": "admin",
+      "id": "2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+      "links": [
+        {
+          "method": "GET",
+          "rel": "self",
+          "href": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "uri": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "type": "application/vnd.sas.metadata.instance.relationship"
+        },
+        {
+          "method": "GET",
+          "rel": "alternate",
+          "href": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "uri": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "type": "application/vnd.sas.summary"
+        },
+        {
+          "method": "GET",
+          "rel": "up",
+          "href": "/catalog/instances",
+          "uri": "/catalog/instances",
+          "type": "application/vnd.sas.collection",
+          "itemType": "application/vnd.sas.metadata.instance"
+        },
+        {
+          "method": "PATCH",
+          "rel": "patch",
+          "href": "/catalog/updates/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "uri": "/catalog/updates/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "type": "application/json-patch",
+          "responseType": "application/vnd.sas.metadata.instance.relationship"
+        },
+        {
+          "method": "PUT",
+          "rel": "update",
+          "href": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "uri": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "type": "application/vnd.sas.metadata.instance.relationship",
+          "responseType": "application/vnd.sas.metadata.instance.relationship"
+        },
+        {
+          "method": "DELETE",
+          "rel": "delete",
+          "href": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7",
+          "uri": "/catalog/instances/2e523ca1-3346-4a9c-9fb2-22627f895fc7"
+        },
+        {
+          "method": "GET",
+          "rel": "definition",
+          "href": "/catalog/definitions/4e7ee014-5234-422b-acf1-18ca08ff1c4e",
+          "uri": "/catalog/definitions/4e7ee014-5234-422b-acf1-18ca08ff1c4e",
+          "type": "application/vnd.sas.metadata.definition.relationship"
+        },
+        {
+          "method": "GET",
+          "rel": "endpoint1",
+          "href": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+          "type": "application/vnd.sas.metadata.instance.entity"
+        },
+        {
+          "method": "GET",
+          "rel": "endpoint2",
+          "href": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "uri": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c",
+          "type": "application/vnd.sas.metadata.instance.entity"
+        }
+      ],
+      "version": 1,
+      "instanceType": "relationship",
+      "definitionId": "4e7ee014-5234-422b-acf1-18ca08ff1c4e",
+      "type": "dataSetDataFields",
+      "endpoint1Id": "0063116c-577c-0f44-8116-3924506c8f4a",
+      "endpoint1Uri": "/catalog/instances/0063116c-577c-0f44-8116-3924506c8f4a",
+      "endpoint2Id": "5569fb65-c6df-484a-897e-7a087665cd6c",
+      "endpoint2Uri": "/catalog/instances/5569fb65-c6df-484a-897e-7a087665cd6c"
+    }
+  ]
+}

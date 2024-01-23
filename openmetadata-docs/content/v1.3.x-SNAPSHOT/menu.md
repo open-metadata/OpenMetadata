@@ -500,6 +500,10 @@ site_menu:
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAS
+    url: /connectors/database/sas
+  - category: Connectors / Database / SAS / Run Externally
+    url: /connectors/database/sas/yaml
   - category: Connectors / Database / SingleStore
     url: /connectors/database/singlestore
   - category: Connectors / Database / SingleStore / Run Externally
