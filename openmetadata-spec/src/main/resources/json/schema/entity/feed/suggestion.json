@@ -1,10 +1,9 @@
 {
   "$id": "https://open-metadata.org/schema/entity/feed/thread.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Thread",
-  "description": "This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.",
+  "title": "Suggestion",
+  "description": "This schema defines the Suggestion entity. A suggestion can be applied to an asset to give the owner context about possible changes or improvements to descriptions, tags,...",
   "type": "object",
-
   "definitions": {
     "suggestionType": {
       "javaType": "org.openmetadata.schema.type.SuggestionType",

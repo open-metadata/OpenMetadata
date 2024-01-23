@@ -28,6 +28,7 @@ from metadata.data_quality.runner.test_suite_source_factory import (
     test_suite_source_factory,
 )
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -196,8 +197,9 @@ class TestCaseRunner(Processor):
                         ),
                         entityLink=EntityLink(
                             __root__=entity_link.get_entity_link(
-                                table_fqn,
-                                test_case_to_create.columnName,
+                                Table,
+                                fqn=table_fqn,
+                                column_name=test_case_to_create.columnName,
                             )
                         ),
                         testSuite=test_suite_fqn,
@@ -248,8 +250,9 @@ class TestCaseRunner(Processor):
                 updated_test_case = self.metadata.patch_test_case_definition(
                     source=test_case,
                     entity_link=entity_link.get_entity_link(
-                        table_fqn,
-                        test_case_definition.columnName,
+                        Table,
+                        fqn=table_fqn,
+                        column_name=test_case_definition.columnName,
                     ),
                     test_case_parameter_values=test_case_definition.parameterValues,
                 )

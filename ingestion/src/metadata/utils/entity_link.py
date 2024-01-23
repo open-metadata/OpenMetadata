@@ -13,17 +13,23 @@ Handle Entity Link building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
-from typing import List, Optional
+from functools import singledispatch
+from typing import List, Optional, Type, TypeVar
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
+from pydantic import BaseModel
 from requests.compat import unquote_plus
 
 from metadata.antlr.split_listener import EntityLinkSplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
 from metadata.generated.antlr.EntityLinkParser import EntityLinkParser
+from metadata.generated.schema.entity.data.table import Table
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class EntityLinkBuildingException(Exception):
@@ -86,16 +92,24 @@ def get_table_or_column_fqn(entity_link: str) -> str:
     )
 
 
-def get_entity_link(table_fqn: str, column_name: Optional[str]) -> str:
+@singledispatch
+def get_entity_link(entity_type: Type[T], fqn: str, **__) -> str:
     """From table fqn and column name get the entity_link
 
     Args:
-        table_fqn: table fqn
-        column_name: Optional param to generate entity link with column name
+        entity_type: Entity being built
+        fqn: Entity fqn
     """
 
+    return f"<#E::{ENTITY_REFERENCE_TYPE_MAP[entity_type.__name__]}::{fqn}>"
+
+
+@get_entity_link.register(Table)
+def _(entity_type: Table, fqn: str, column_name: Optional[str]) -> str:
+    """From table fqn and column name get the entity_link"""
+
     if column_name:
-        entity_link = f"<#E::table::" f"{table_fqn}" f"::columns::" f"{column_name}>"
+        entity_link = f"<#E::{ENTITY_REFERENCE_TYPE_MAP[entity_type.__name__]}::{fqn}::columns::{column_name}>"
     else:
-        entity_link = f"<#E::table::" f"{table_fqn}>"
+        entity_link = f"<#E::{ENTITY_REFERENCE_TYPE_MAP[entity_type.__name__]}::{fqn}>"
     return entity_link
