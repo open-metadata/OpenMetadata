@@ -11,6 +11,7 @@
 """
 Add methods to the workflows for updating the IngestionPipeline status
 """
+import traceback
 import uuid
 from datetime import datetime
 from typing import Optional, Tuple
@@ -29,8 +30,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.step import Step, Summary
-from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
 
 SUCCESS_THRESHOLD_VALUE = 90
 
@@ -49,8 +52,6 @@ class WorkflowStatusMixin:
     _start_ts: int
     ingestion_pipeline: Optional[IngestionPipeline]
 
-    # All workflows require a source as a first step
-    source: Source
     # All workflows execute a series of steps, aside from the source
     steps: Tuple[Step]
 
@@ -86,24 +87,30 @@ class WorkflowStatusMixin:
         Method to set the pipeline status of current ingestion pipeline
         """
 
-        # if we don't have a related Ingestion Pipeline FQN, no status is set.
-        if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
-            pipeline_status = self.metadata.get_pipeline_status(
-                self.config.ingestionPipelineFQN, self.run_id
-            )
-            if not pipeline_status:
-                # We need to crete the status
-                pipeline_status = self._new_pipeline_status(state)
-            else:
-                # if workflow is ended then update the end date in status
-                pipeline_status.endDate = datetime.now().timestamp() * 1000
-                pipeline_status.pipelineState = state
+        try:
+            # if we don't have a related Ingestion Pipeline FQN, no status is set.
+            if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
+                pipeline_status = self.metadata.get_pipeline_status(
+                    self.ingestion_pipeline.fullyQualifiedName.__root__, self.run_id
+                )
+                if not pipeline_status:
+                    # We need to crete the status
+                    pipeline_status = self._new_pipeline_status(state)
+                else:
+                    # if workflow is ended then update the end date in status
+                    pipeline_status.endDate = datetime.now().timestamp() * 1000
+                    pipeline_status.pipelineState = state
 
-            pipeline_status.status = (
-                ingestion_status if ingestion_status else pipeline_status.status
-            )
-            self.metadata.create_or_update_pipeline_status(
-                self.config.ingestionPipelineFQN, pipeline_status
+                pipeline_status.status = (
+                    ingestion_status if ingestion_status else pipeline_status.status
+                )
+                self.metadata.create_or_update_pipeline_status(
+                    self.ingestion_pipeline.fullyQualifiedName.__root__, pipeline_status
+                )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unhandled error trying to update Ingestion Pipeline status [{err}]"
             )
 
     def raise_from_status(self, raise_warnings=False):
