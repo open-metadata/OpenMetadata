@@ -20,7 +20,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  AsyncFetchListValues,
   Config,
   FieldGroup,
   ImmutableTree,
@@ -55,10 +54,7 @@ const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
 export const AdvanceSearchProvider = ({
   children,
 }: AdvanceSearchProviderProps) => {
-  const tierOptions = useMemo(
-    getTierOptions,
-    []
-  ) as Promise<AsyncFetchListValues>;
+  const tierOptions = useMemo(getTierOptions, []);
 
   const tabsInfo = searchClassBase.getTabsInfo();
   const location = useLocation();
