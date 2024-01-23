@@ -183,6 +183,7 @@ DELETE FROM consumers_dlq;
 
 CREATE TABLE IF NOT EXISTS suggestions (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL,
     entityLink VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityLink') NOT NULL,
     suggestionType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.type') NOT NULL,
     json JSON NOT NULL,

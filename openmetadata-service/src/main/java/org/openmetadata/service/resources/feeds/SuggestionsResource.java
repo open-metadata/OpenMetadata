@@ -316,6 +316,9 @@ public class SuggestionsResource {
   }
 
   private void validate(CreateSuggestion suggestion) {
+    if (suggestion.getEntityLink() == null) {
+      throw new WebApplicationException("Suggestion's entityLink cannot be null.");
+    }
     MessageParser.EntityLink entityLink =
         MessageParser.EntityLink.parse(suggestion.getEntityLink());
     Entity.getEntityReferenceByName(

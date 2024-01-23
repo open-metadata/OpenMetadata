@@ -1,8 +1,14 @@
 package org.openmetadata.service.resources.feeds;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -20,6 +26,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CreateSuggestion;
+import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
@@ -104,7 +111,54 @@ public class SuggestionResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void post_validThreadAndList_200(TestInfo test) throws IOException {
+  void post_suggestionWithoutEntityLink_4xx() {
+    // Create thread without addressed to entity in the request
+    CreateSuggestion create = create().withEntityLink(null);
+    assertResponse(
+        () -> createSuggestion(create, USER_AUTH_HEADERS), BAD_REQUEST, "Suggestion's entityLink cannot be null.");
+  }
+
+  @Test
+  void post_suggestionWithInvalidAbout_4xx() {
+    // Create Suggestion without addressed to entity in the request
+    CreateSuggestion create = create().withEntityLink("<>"); // Invalid EntityLink
+
+    String failureReason = "[entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
+    assertResponseContains(
+        () -> createSuggestion(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+
+    create.withEntityLink("<#E::>"); // Invalid EntityLink - missing entityType and entityId
+    assertResponseContains(
+        () -> createSuggestion(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+
+    create.withEntityLink("<#E::table::>"); // Invalid EntityLink - missing entityId
+    assertResponseContains(
+        () -> createSuggestion(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+
+    create.withEntityLink("<#E::table::tableName"); // Invalid EntityLink - missing closing bracket ">"
+    assertResponseContains(
+        () -> createSuggestion(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
+  }
+
+  @Test
+  void post_suggestionWithoutDescriptionOrTags_4xx() {
+    CreateSuggestion create = create().withDescription(null);
+    assertResponseContains(
+        () -> createSuggestion(create, USER_AUTH_HEADERS), BAD_REQUEST, "Suggestion's description cannot be empty");
+  }
+
+  @Test
+  void post_feedWithNonExistentEntity_404() {
+    CreateSuggestion create = create().withEntityLink("<#E::table::invalidTableName>");
+    assertResponse(
+        () -> createSuggestion(create, USER_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TABLE, "invalidTableName"));
+  }
+
+
+  @Test
+  void post_validSuggestionAndList_200(TestInfo test) throws IOException {
     CreateSuggestion create = create();
     Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
     Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());

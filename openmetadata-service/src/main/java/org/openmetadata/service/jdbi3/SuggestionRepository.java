@@ -66,7 +66,9 @@ public class SuggestionRepository {
   @Transaction
   public void store(Suggestion suggestion) {
     // Insert a new Suggestion
-    dao.suggestionDAO().insert(JsonUtils.pojoToJson(suggestion));
+    MessageParser.EntityLink entityLink =
+        MessageParser.EntityLink.parse(suggestion.getEntityLink());
+    dao.suggestionDAO().insert(entityLink.getEntityFQN(), JsonUtils.pojoToJson(suggestion));
   }
 
   @Transaction

@@ -4320,12 +4320,12 @@ public interface CollectionDAO {
 
   interface SuggestionDAO {
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO suggestions(json) VALUES (:json)",
+        value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO suggestions(json) VALUES (:json :: jsonb)",
+        value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindFQN("fqnHash") String fullyQualifiedName, @Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE suggestions SET json = :json where id = :id",
@@ -4347,7 +4347,10 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM suggestions WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
 
-    @SqlQuery("SELECT json FROM thread_entity <condition> ORDER BY createdAt DESC LIMIT :limit")
+    @SqlUpdate("DELETE FROM suggestions WHERE fqnHash = :fqnHash")
+    void delete(@BindUUID("fqnHash") String fullyQualifiedName);
+
+    @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY createdAt DESC LIMIT :limit")
     List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
   }
 }
