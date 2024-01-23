@@ -168,3 +168,14 @@ where serviceType = 'Mssql';
 DELETE FROM event_subscription_entity;
 DELETE FROM change_event_consumers
 DELETE FROM consumers_dlq;
+
+CREATE TABLE IF NOT EXISTS suggestions (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    entityLink VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityLink') NOT NULL,
+    suggestionType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.type') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    status VARCHAR(256) GENERATED ALWAYS AS (json -> '$.status') NOT NULL,
+    PRIMARY KEY (id)
+);

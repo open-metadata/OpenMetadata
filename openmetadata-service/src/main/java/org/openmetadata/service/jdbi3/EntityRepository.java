@@ -109,6 +109,7 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -1927,6 +1928,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
     }
+  }
+
+  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(Suggestion suggestion) {
+    return new SuggestionRepository.SuggestionWorkflow(suggestion);
   }
 
   public final void validateTaskThread(ThreadContext threadContext) {

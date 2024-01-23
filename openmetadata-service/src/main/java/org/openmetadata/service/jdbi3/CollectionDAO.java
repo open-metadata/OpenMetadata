@@ -331,6 +331,9 @@ public interface CollectionDAO {
   @CreateSqlObject
   DocStoreDAO docStoreDAO();
 
+  @CreateSqlObject
+  SuggestionDAO suggestionDAO();
+
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
     default String getTableName() {
@@ -4313,5 +4316,38 @@ public interface CollectionDAO {
         @Define("table") String table,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond);
+  }
+
+  interface SuggestionDAO {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO suggestions(json) VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO suggestions(json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE suggestions SET json = :json where id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE suggestions SET json = (:json :: jsonb) where id = :id",
+        connectionType = POSTGRES)
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM suggestions WHERE id = :id")
+    String findById(@BindUUID("id") UUID id);
+
+    @SqlQuery("SELECT json FROM suggestions ORDER BY createdAt DESC")
+    List<String> list();
+
+    @SqlQuery("SELECT count(id) FROM suggestions <condition>")
+    int listCount(@Define("condition") String condition);
+
+    @SqlUpdate("DELETE FROM suggestions WHERE id = :id")
+    void delete(@BindUUID("id") UUID id);
+
+    @SqlQuery("SELECT json FROM thread_entity <condition> ORDER BY createdAt DESC LIMIT :limit")
+    List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
   }
 }
