@@ -225,3 +225,55 @@ class DatabricksClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(exc)
+
+    def get_table_lineage(self, table_name: str) -> LineageTableStreams:
+        """
+        Method returns table lineage details
+        """
+        try:
+            data = {
+                "table_name": table_name,
+            }
+
+            response = self.client.get(
+                f"{self.base_url}{TABLE_LINEAGE_PATH}",
+                headers=self.headers,
+                data=json.dumps(data),
+                timeout=API_TIMEOUT,
+            ).json()
+            if response:
+                return LineageTableStreams(**response)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(exc)
+
+        return LineageTableStreams()
+
+    def get_column_lineage(
+        self, table_name: str, column_name: str
+    ) -> LineageColumnStreams:
+        """
+        Method returns table lineage details
+        """
+        try:
+            data = {
+                "table_name": table_name,
+                "column_name": column_name,
+            }
+
+            response = self.client.get(
+                f"{self.base_url}{COLUMN_LINEAGE_PATH}",
+                headers=self.headers,
+                data=json.dumps(data),
+                timeout=API_TIMEOUT,
+            ).json()
+
+            if response:
+                return LineageColumnStreams(**response)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(exc)
+
+        return LineageColumnStreams()
