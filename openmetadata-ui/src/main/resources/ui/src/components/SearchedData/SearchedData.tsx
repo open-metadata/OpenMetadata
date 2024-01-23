@@ -123,7 +123,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <div data-testid="search-container">
+        <div
+          className={classNames({
+            'mt-36': totalValue <= 0,
+          })}
+          data-testid="search-container">
           {totalValue > 0 ? (
             <>
               {children}
