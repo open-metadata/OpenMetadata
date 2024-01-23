@@ -44,6 +44,7 @@ import {
   NEW_GLOSSARY_TERMS,
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const userName = `test_dataconsumer${uuid()}`;
 
@@ -584,14 +585,7 @@ const voteGlossary = (isGlossary) => {
 const goToGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
-
-  cy.sidebarHover();
-  cy.get('[data-testid="governance"]').click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-  });
-
-  cy.sidebarClick('app-bar-item-glossary', 'governance');
+  cy.sidebarClick(SidebarItem.GLOSSARY);
 };
 
 const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {

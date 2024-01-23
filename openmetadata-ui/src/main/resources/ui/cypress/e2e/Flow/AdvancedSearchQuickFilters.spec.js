@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { addOwner, removeOwner } from '../../common/advancedSearch';
+import {
+  addOwner,
+  goToAdvanceSearch,
+  removeOwner,
+} from '../../common/advancedSearch';
 import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 const ownerName = 'Aaron Johnson';
 
 describe(`Advanced search quick filters should work properly for assets`, () => {
@@ -35,7 +40,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 
   it(`should show the quick filters for respective assets`, () => {
     // Navigate to explore page
-    cy.sidebarClick('app-bar-item-explore');
+    cy.sidebarClick(SidebarItem.EXPLORE);
     QUICK_FILTERS_BY_ASSETS.map((asset) => {
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
@@ -52,7 +57,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
     const asset = QUICK_FILTERS_BY_ASSETS[0];
 
     // Navigate to explore page
-    cy.sidebarClick('app-bar-item-explore');
+    cy.sidebarClick(SidebarItem.EXPLORE);
     cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
     asset.filters
@@ -77,10 +82,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 });
 
 const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
-  cy.sidebarClick('app-bar-item-explore');
-  const asset = QUICK_FILTERS_BY_ASSETS[0];
-  cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
-  cy.get('[data-testid="advance-search-button"]').click();
+  goToAdvanceSearch();
 
   // Check Is Null or Is Not Null
   cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(0).click();
