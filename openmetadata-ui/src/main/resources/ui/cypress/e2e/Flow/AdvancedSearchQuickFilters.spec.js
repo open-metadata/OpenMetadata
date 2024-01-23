@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { addOwner, removeOwner } from '../../common/advancedSearch';
+import {
+  addOwner,
+  goToAdvanceSearch,
+  removeOwner,
+} from '../../common/advancedSearch';
 import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
@@ -78,10 +82,7 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 });
 
 const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
-  cy.sidebarClick(SidebarItem.EXPLORE);
-  const asset = QUICK_FILTERS_BY_ASSETS[0];
-  cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
-  cy.get('[data-testid="advance-search-button"]').click();
+  goToAdvanceSearch();
 
   // Check Is Null or Is Not Null
   cy.get('.rule--operator > .ant-select > .ant-select-selector').eq(0).click();

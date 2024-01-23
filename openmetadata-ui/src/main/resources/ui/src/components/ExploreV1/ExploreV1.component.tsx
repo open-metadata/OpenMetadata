@@ -219,7 +219,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       handleSummaryPanelDisplay(
         highlightEntityNameAndDescription(
           firstEntity._source,
-          firstEntity.highlight
+          firstEntity?.highlight
         )
       );
     } else {
@@ -356,7 +356,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       handleClosePanel={handleClosePanel}
                       highlights={omit(
                         {
-                          ...firstEntity.highlight, // highlights of firstEntity that we get from the query api
+                          ...firstEntity?.highlight, // highlights of firstEntity that we get from the query api
                           'tag.name': (
                             selectedQuickFilters?.find(
                               (filterOption) => filterOption.key === TAG_FQN_KEY
