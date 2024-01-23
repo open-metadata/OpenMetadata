@@ -21,6 +21,7 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { useFqn } from '../../../hooks/useFqn';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
@@ -52,6 +53,8 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { fqn: glossaryTermFqn } = useFqn();
+
   const { tab: activeTab } = useParams<{ tab: string }>();
   const [feedCount, setFeedCount] = useState<number>(0);
   const [isDescriptionEditable, setIsDescriptionEditable] =
@@ -167,9 +170,12 @@ const GlossaryDetails = ({
         <Col className="p-y-md" span={6}>
           <GlossaryDetailsRightPanel
             isGlossary
+            entityFQN={glossaryTermFqn}
+            entityType={EntityType.GLOSSARY_TERM}
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossary}
+            viewAllPermission={permissions.ViewAll}
             onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
           />
@@ -254,7 +260,6 @@ const GlossaryDetails = ({
       </Col>
       <Col span={24}>
         <Tabs
-          destroyInactiveTabPane
           activeKey={activeTab ?? GlossaryTabs.TERMS}
           className="glossary-details-page-tabs"
           data-testid="tabs"

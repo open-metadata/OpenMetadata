@@ -29,7 +29,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -37,6 +37,7 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -45,6 +46,8 @@ import {
   getDiffValue,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -57,6 +60,9 @@ type Props = {
   isGlossary: boolean;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onThreadLinkSelect: (value: string) => void;
+  viewAllPermission?: boolean;
+  entityType: EntityType;
+  entityFQN: string;
 };
 
 const GlossaryDetailsRightPanel = ({
@@ -66,6 +72,9 @@ const GlossaryDetailsRightPanel = ({
   onUpdate,
   isVersionView,
   onThreadLinkSelect,
+  viewAllPermission,
+  entityFQN,
+  entityType,
 }: Props) => {
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -321,6 +330,34 @@ const GlossaryDetailsRightPanel = ({
             />
           )}
         </div>
+      </Col>
+      <Col span="24">
+        {selectedData?.extension && (
+          <>
+            <div className="d-flex justify-between">
+              <Typography.Text className="right-panel-label">
+                {t('label.custom-property-plural')}
+              </Typography.Text>
+              <Link
+                to={getEntityDetailLink(
+                  entityType,
+                  entityFQN,
+                  EntityTabs.CUSTOM_PROPERTIES
+                )}>
+                {t('label.view-all')}
+              </Link>
+            </div>
+            {!isGlossary && (
+              <CustomPropertyTable
+                hasPermission
+                entityDetails={selectedData as GlossaryTerm}
+                entityType={entityType as ExtentionEntitiesKeys}
+                hasEditAccess={false}
+                maxDataCap={5}
+              />
+            )}
+          </>
+        )}
       </Col>
     </Row>
   );
