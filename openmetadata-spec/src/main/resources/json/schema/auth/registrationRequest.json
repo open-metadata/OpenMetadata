@@ -22,7 +22,7 @@
       "description": "Login Password",
       "type": "string",
       "minLength": 8,
-      "maxLength": 16
+      "maxLength": 56
     }
   },
   "required": [
