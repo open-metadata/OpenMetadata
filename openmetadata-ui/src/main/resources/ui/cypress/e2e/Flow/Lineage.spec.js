@@ -95,7 +95,12 @@ const applyPipelineFromModal = (fromNode, toNode, pipelineData) => {
   verifyResponseStatusCode('@lineageApi', 200);
 };
 
-const verifyPipelineDataInDrawer = (fromNode, toNode, pipelineData) => {
+const verifyPipelineDataInDrawer = (
+  fromNode,
+  toNode,
+  pipelineData,
+  bVerifyPipelineLineage
+) => {
   cy.get(
     `[data-testid="pipeline-label-${fromNode.fqn}-${toNode.fqn}"]`
   ).click();
@@ -103,10 +108,31 @@ const verifyPipelineDataInDrawer = (fromNode, toNode, pipelineData) => {
   cy.get('.edge-info-drawer [data-testid="Edge"] a').contains(
     pipelineData.name
   );
-  cy.get('.edge-info-drawer .ant-drawer-header .anticon-close').click();
+
+  if (bVerifyPipelineLineage) {
+    cy.get('.edge-info-drawer [data-testid="Edge"] a').click();
+    cy.get('[data-testid="lineage"]').click();
+    cy.get('.custom-edge-pipeline-button').should(
+      'have.class',
+      'blinking-border'
+    );
+    visitEntityDetailsPage({
+      term: fromNode.term,
+      serviceName: fromNode.serviceName,
+      entity: fromNode.entity,
+    });
+    cy.get('[data-testid="lineage"]').click();
+  } else {
+    cy.get('.edge-info-drawer .ant-drawer-header .anticon-close').click();
+  }
 };
 
-const addPipelineBetweenNodes = (sourceEntity, targetEntity, pipelineItem) => {
+const addPipelineBetweenNodes = (
+  sourceEntity,
+  targetEntity,
+  pipelineItem,
+  bVerifyPipeline
+) => {
   visitEntityDetailsPage({
     term: sourceEntity.term,
     serviceName: sourceEntity.serviceName,
@@ -119,7 +145,12 @@ const addPipelineBetweenNodes = (sourceEntity, targetEntity, pipelineItem) => {
   if (pipelineItem) {
     applyPipelineFromModal(sourceEntity, targetEntity, pipelineItem);
     cy.get('[data-testid="edit-lineage"]').click();
-    verifyPipelineDataInDrawer(sourceEntity, targetEntity, pipelineItem);
+    verifyPipelineDataInDrawer(
+      sourceEntity,
+      targetEntity,
+      pipelineItem,
+      bVerifyPipeline
+    );
   }
 };
 
@@ -215,7 +246,12 @@ describe('Lineage verification', () => {
   it('Lineage Add Pipeline Between Tables', () => {
     const sourceEntity = LINEAGE_ITEMS[0];
     const targetEntity = LINEAGE_ITEMS[1];
-    addPipelineBetweenNodes(sourceEntity, targetEntity, PIPELINE_ITEMS[0]);
+    addPipelineBetweenNodes(
+      sourceEntity,
+      targetEntity,
+      PIPELINE_ITEMS[0],
+      true
+    );
     cy.get('[data-testid="edit-lineage"]').click();
     deleteNode(targetEntity);
   });
@@ -223,7 +259,12 @@ describe('Lineage verification', () => {
   it('Lineage Add Pipeline Between Table and Topic', () => {
     const sourceEntity = LINEAGE_ITEMS[1];
     const targetEntity = LINEAGE_ITEMS[2];
-    addPipelineBetweenNodes(sourceEntity, targetEntity, PIPELINE_ITEMS[0]);
+    addPipelineBetweenNodes(
+      sourceEntity,
+      targetEntity,
+      PIPELINE_ITEMS[0],
+      true
+    );
     cy.get('[data-testid="edit-lineage"]').click();
     deleteNode(targetEntity);
   });
@@ -236,19 +277,5 @@ describe('Lineage verification', () => {
     addColumnLineage(sourceEntity, targetEntity);
     cy.get('[data-testid="edit-lineage"]').click();
     deleteNode(targetEntity);
-  });
-
-  it('Verify pipeline lineage', () => {
-    const entity = PIPELINE_ITEMS[1];
-    visitEntityDetailsPage({
-      term: entity.term,
-      serviceName: entity.serviceName,
-      entity: entity.entity,
-    });
-    cy.get('[data-testid="lineage"]').click();
-    cy.get('.custom-edge-pipeline-button').should(
-      'have.class',
-      'blinking-border'
-    );
   });
 });

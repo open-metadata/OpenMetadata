@@ -213,16 +213,7 @@ export const CustomEdge = ({
 
       return (
         <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-          <EntityPopOverCard
-            entityFQN={data.edge.pipeline?.fullyQualifiedName}
-            entityType={data.edge.pipeline?.type}
-            extraInfo={
-              pipelineData && (
-                <Tag className={pipelineClass}>
-                  {pipelineData?.executionStatus}
-                </Tag>
-              )
-            }>
+          {isEditMode ? (
             <Button
               className={classNames(
                 'flex-center custom-edge-pipeline-button',
@@ -233,11 +224,41 @@ export const CustomEdge = ({
               icon={icon}
               onClick={() => isEditMode && onAddPipelineClick()}
             />
-          </EntityPopOverCard>
+          ) : (
+            <EntityPopOverCard
+              entityFQN={data.edge.pipeline?.fullyQualifiedName}
+              entityType={data.edge.pipeline?.type}
+              extraInfo={
+                pipelineData && (
+                  <Tag className={pipelineClass}>
+                    {pipelineData?.executionStatus}
+                  </Tag>
+                )
+              }>
+              <Button
+                className={classNames(
+                  'flex-center custom-edge-pipeline-button',
+                  pipelineClass,
+                  blinkingClass
+                )}
+                data-testid={dataTestId}
+                icon={icon}
+                onClick={() => isEditMode && onAddPipelineClick()}
+              />
+            </EntityPopOverCard>
+          )}
         </LineageEdgeIcon>
       );
     },
-    [edgeCenterX, edgeCenterY, rest, data, pipelineStatus, blinkingClass]
+    [
+      edgeCenterX,
+      edgeCenterY,
+      rest,
+      data,
+      pipelineStatus,
+      blinkingClass,
+      isEditMode,
+    ]
   );
 
   const getEditLineageIcon = useCallback(
