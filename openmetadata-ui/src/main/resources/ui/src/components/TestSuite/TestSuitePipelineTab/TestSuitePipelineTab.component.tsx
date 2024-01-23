@@ -29,6 +29,7 @@ import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/Enti
 import KillIngestionModal from '../../../components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { ROUTES } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PipelineType } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -586,8 +587,10 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
         />
       ) : (
         <ErrorPlaceHolder
+          permission={createPermission}
           placeholderText={t('message.no-table-pipeline')}
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={() => history.push(ROUTES.ADD_PIPELINE)}
         />
       ),
     [testSuiteFQN]

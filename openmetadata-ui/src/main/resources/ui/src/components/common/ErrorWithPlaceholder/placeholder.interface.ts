@@ -45,6 +45,7 @@ export interface CreatePlaceholderProps {
   doc?: string;
   permission?: boolean;
   buttonId?: string;
+  placeholderText?: string | JSX.Element;
   onClick?: () => void;
 }
 

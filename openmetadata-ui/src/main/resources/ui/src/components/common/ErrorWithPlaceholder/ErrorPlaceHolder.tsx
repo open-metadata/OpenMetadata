@@ -46,6 +46,7 @@ const ErrorPlaceHolder = ({
             doc={doc}
             heading={heading}
             permission={permission}
+            placeholderText={placeholderText}
             size={size}
             onClick={onClick}
           />
