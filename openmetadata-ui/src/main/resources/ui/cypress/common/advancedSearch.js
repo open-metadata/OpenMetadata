@@ -140,9 +140,9 @@ export const FIELDS = {
   Tiers: {
     name: 'Tier',
     testid: '[title="Tier"]',
-    searchCriteriaFirstGroup: 'Tier1',
+    searchCriteriaFirstGroup: 'Tier.Tier1',
     responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
-    searchCriteriaSecondGroup: 'Tier2',
+    searchCriteriaSecondGroup: 'Tier.Tier2',
     responseValueSecondGroup: '"tagFQN":"Tier.Tier2"',
     isLocalSearch: true,
   },

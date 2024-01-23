@@ -405,7 +405,7 @@ export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
     });
 
     const tierFields = tiers.map((tier) => ({
-      title: tier.name,
+      title: tier.fullyQualifiedName, // tier.name,
       value: tier.fullyQualifiedName,
     }));
 
