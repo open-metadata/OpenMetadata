@@ -274,34 +274,66 @@
   margin: 0;
 }
 
-.generate-blink-animation(@color) {
-  @keyframes blink {
-    0%,
-    100% {
-      border: 1px solid @color;
-    }
-    50% {
-      border: 3px solid @color;
-    }
+@keyframes blink {
+  0% {
+    border: 1px solid @primary-color;
+  }
+  50% {
+    border: 3px solid @primary-color;
+  }
+  100% {
+    border: 1px solid @primary-color;
   }
 }
 
-.generate-blink-animation(@green-7);
-.blinking-green-border {
-  animation: blink 1s infinite;
+@keyframes blink-success {
+  0% {
+    border: 1px solid @green-7;
+  }
+  50% {
+    border: 3px solid @green-7;
+  }
+  100% {
+    border: 1px solid @green-7;
+  }
 }
 
-.generate-blink-animation(@yellow-6);
-.blinking-amber-border {
-  animation: blink 1s infinite;
+@keyframes blink-amber {
+  0% {
+    border: 1px solid @yellow-6;
+  }
+  50% {
+    border: 3px solid @yellow-6;
+  }
+  100% {
+    border: 1px solid @yellow-6;
+  }
 }
 
-.generate-blink-animation(@red-7);
-.blinking-red-border {
-  animation: blink 1s infinite;
+@keyframes blink-red {
+  0% {
+    border: 1px solid @red-7;
+  }
+  50% {
+    border: 3px solid @red-7;
+  }
+  100% {
+    border: 1px solid @red-7;
+  }
 }
 
-.generate-blink-animation(@primary-color);
 .blinking-border {
   animation: blink 1s infinite;
+}
+
+.blinking-green-border {
+  animation: blink-success 1s infinite;
+}
+
+.blinking-amber-border {
+  animation: blink-amber 1s infinite;
+}
+
+.blinking-red-border {
+  animation: blink-red 1s infinite;
 }

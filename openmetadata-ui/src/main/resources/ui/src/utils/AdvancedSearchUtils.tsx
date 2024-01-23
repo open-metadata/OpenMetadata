@@ -24,6 +24,7 @@ import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
+  LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -55,6 +56,8 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
 
     case AssetsOfEntity.GLOSSARY:
       return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
+    case AssetsOfEntity.LINEAGE:
+      return [...LINEAGE_DROPDOWN_ITEMS];
     default:
       return [...COMMON_DROPDOWN_ITEMS];
   }

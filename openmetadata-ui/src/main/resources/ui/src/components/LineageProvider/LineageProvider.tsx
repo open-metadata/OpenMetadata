@@ -46,7 +46,10 @@ import {
   EntityType,
 } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
-import { EntityReference } from '../../generated/type/entityLineage';
+import {
+  EntityReference,
+  LineageDetails,
+} from '../../generated/type/entityLineage';
 import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
@@ -628,10 +631,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         if (columnConnection && currentEdge) {
           const updatedColumns = getUpdatedColumnsFromEdge(params, currentEdge);
-          if (newEdgeWithoutFqn.edge.lineageDetails) {
-            newEdgeWithoutFqn.edge.lineageDetails.columnsLineage =
-              updatedColumns;
-          }
+
+          const lineageDetails: LineageDetails = {
+            pipeline: currentEdge.pipeline,
+            columnsLineage: [],
+            description: currentEdge?.description ?? '',
+            sqlQuery: currentEdge?.sqlQuery,
+          };
+          lineageDetails.columnsLineage = updatedColumns;
+          newEdgeWithoutFqn.edge.lineageDetails = lineageDetails;
           currentEdge.columns = updatedColumns; // update current edge with new columns
         }
 
@@ -813,6 +821,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           return {
             ...prev,
             edges: updatedEdges,
+          };
+        });
+        setSelectedEdge((pre) => {
+          if (!pre) {
+            return pre;
+          }
+
+          return {
+            ...pre,
+            data: {
+              ...pre?.data,
+              edge: {
+                ...pre?.data?.edge,
+                description,
+                sqlQuery,
+              },
+            },
           };
         });
       } catch (err) {
