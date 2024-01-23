@@ -15,7 +15,8 @@ Source connection handler
 
 from typing import Optional
 
-from pyiceberg.catalog import Catalog, load_catalog
+from pyiceberg.catalog import Catalog
+
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -25,14 +26,15 @@ from metadata.generated.schema.entity.services.connections.database.icebergConne
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.iceberg.catalog import IcebergCatalogFactory
 
 
 def get_connection(connection: IcebergConnection) -> Catalog:
     """
     Create connection
     """
-    return load_catalog(
-        connection.catalog.catalog_name, **connection.catalog.catalog_config.dict()
+    return IcebergCatalogFactory.from_connection(
+        connection.catalog,
     )
 
 

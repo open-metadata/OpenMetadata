@@ -9,53 +9,61 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Iceberg source assisting models.
+Iceberg source helpers.
 """
 from __future__ import annotations
+from typing import Optional, Tuple
 
 from itertools import takewhile
+
+
+import pyiceberg.partitioning
+import pyiceberg.table
+import pyiceberg.types
 
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
     DataType,
-    TableType,
 )
 
-# class IcebergDataType(Enum):
-#     BOOLEAN = "BOOLEAN"          # true or false
-#     INT = "INT"                  # 32-bit signed integers
-#     LONG = "LONG"                # 64-bit signed integers
-#     FLOAT = "FLOAT"              # 32-bit ieee 754 floating point
-#     DOUBLE = "DOUBLE"            # 64-bit ieee 754 floating point
-#     DECIMAL = "DECIMAL"          # decimal(P,S) - Fixed-point decimal; precision P, scale S
-#     DATE = "DATE"                # calendar date without timezone or time
-#     TIME = "TIME"                # time of day without date, timezone
-#     TIMESTAMP = "TIMESTAMP"      # timestamp without timezone
-#     TIMESTAMPTZ = "TIMESTAMPTZ"  # timestamp with timezone
-#     STRING = "STRING"            # arbitraty-length character sequences (utf-8)
-#     UUID = "UUID"                # uuid
-#     FIXED = "FIXED"              # fixed(L) - Fixed-length byte array of length L
-#     BINARY = "BINARY"            # arbitraty-length byte array
-#
-#     # A struct is a tuple of typed values.
-#     # Each field in the tuple is named and has an integer id that is unique in the table schema.
-#     # Each field can be either optional or required, meaning that values can (or cannot) be null.
-#     # Fields may be any type. Fields may have an optional comment or doc string.
-#     # Fields can have default values.
-#     STRUCT = "STRUCT"
-#
-#     # A list is a collection of values with some element type.
-#     # The element field has an integer id that is unique in the table schema.
-#     # Elements can be either optional or required.
-#     # Element types may be any type.
-#     LIST = "LIST"
-#
-#     # A map is a collection of key-value pairs with a key type and a value type.
-#     # Both the key field and value field each have an integer id that is unique in the table schema.
-#     # Map keys are required and map values can be either optional or required.
-#     # Both map keys and map values may be any type, including nested types.
-#     MAP = "MAP"
+def namespace_to_str(namespace: tuple[str]) -> str:
+    """ Turns a PyIceberg Namespace into a String.
+
+    The PyIceberg namespaces are returned as tuples and we turn them into a String
+    concatenating the items with a '.' in between.
+    """
+    return ".".join(namespace)
+
+
+def get_table_name_as_str(table: pyiceberg.table.Table) -> str:
+    """ Returns the Table Name as Tring from a PyIceberg Table.
+
+    The PyIceberg table name is returned as tuple and we turn them into a String
+    concatenating the items with a '.' in between.
+    """
+    # We are skipping the first item because it is the schema name.
+    return ".".join(table.name()[1:])
+
+
+def get_column_from_partition(
+    columns: Tuple[pyiceberg.types.NestedField, ...],
+    partition: pyiceberg.partitioning.PartitionField
+) -> str:
+    """ Returns the Column Name belonging to a partition. """
+    # A Partition in Iceberg has a Source Column to which a Transformation is applied.
+    # We need to return the Source Column name.
+    return [column.name for column in columns if column.field_id == partition.source_id][0]
+
+
+def get_owner_from_table(
+    table: pyiceberg.table.Table,
+    property: str
+) -> Optional[str]:
+    """ Retrives the owner information from given Table Property. """
+    return table.properties.get(property)
+
+
 
 
 class IcebergColumnParser:
@@ -83,6 +91,7 @@ class IcebergColumnParser:
 
     @classmethod
     def parse(cls, field: pyiceberg.types.NestedField) -> Column:
+        """ Parses a PyIceberg Field into an OpenMetadata Column. """
         data_type = cls.data_type_map.get(
             "".join(takewhile(lambda x: x.isalpha(), str(field.field_type))).upper(),
             DataType.UNKNOWN,
@@ -92,23 +101,21 @@ class IcebergColumnParser:
             "name": field.name,
             "description": field.doc,
             "dataType": data_type,
+            "dataTypeDisplay": str(field.field_type),
             "constraint": Constraint.NOT_NULL if field.required else None,
         }
 
         if data_type == DataType.ARRAY:
-            column_def["arrayDataType"] = cls.data_type_map.get(
+            array_data_type = cls.data_type_map.get(
                 "".join(
                     takewhile(lambda x: x.isalpha(), str(field.field_type.element_type))
                 ).upper(),
                 DataType.UNKNOWN,
             )
-        elif data_type == DataType.FIXED:
-            # FixedType has no attributes
-            # TODO: Understand if DataType.FIXED is the right type for this
-            column_def["dataLength"] = field.field_Type.__getnewargs__()[0]
-        # HACK: Just to make it work, using dummy dataLength of 1000
+            column_def["arrayDataType"] = array_data_type
+        # Iceberg Binary type has no length. Using a noop 0 value.
         elif data_type == DataType.BINARY:
-            column_def["dataLength"] = 1000
+            column_def["dataLength"] = 0
         elif data_type == DataType.DECIMAL:
             column_def["precision"] = field.field_type.precision
             column_def["scale"] = field.field_type.scale

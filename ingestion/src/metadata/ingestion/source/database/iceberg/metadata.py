@@ -15,6 +15,7 @@ import traceback
 from typing import Any, Iterable, Optional, Tuple, Union
 
 import pyiceberg
+import pyiceberg.exceptions
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -28,6 +29,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
     IcebergConnection,
@@ -47,7 +49,12 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.iceberg.helper import IcebergColumnParser
+from metadata.ingestion.source.database.iceberg.helper import (
+    get_owner_from_table,
+    get_table_name_as_str,
+    namespace_to_str,
+)
+from metadata.ingestion.source.database.iceberg.models import IcebergTable
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -89,8 +96,7 @@ class IcebergSource(DatabaseServiceSource):
         Prepares the database name to be sent to stage.
         Filtering happens here.
         """
-        # Iceberg Catalog doesn't support Databases
-        yield "default"
+        yield self.service_connection.catalog.databaseName or "default"
 
     def yield_database(
         self, database_name: str
@@ -114,8 +120,7 @@ class IcebergSource(DatabaseServiceSource):
         Filtering happens here.
         """
         for namespace in self.iceberg.list_namespaces():
-            # Namespace is a tuple
-            namespace_name = ".".join(namespace)
+            namespace_name = namespace_to_str(namespace)
             try:
                 schema_fqn = fqn.build(
                     self.metadata,
@@ -148,8 +153,6 @@ class IcebergSource(DatabaseServiceSource):
         """
         From topology.
         Prepare a database request and pass it to the sink.
-
-        Also, update the self.inspector value to the current db.
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
@@ -173,12 +176,7 @@ class IcebergSource(DatabaseServiceSource):
         for table_identifier in self.iceberg.list_tables(namespace):
             try:
                 table = self.iceberg.load_table(table_identifier)
-                logger.info(f"Iceberg Table: {table}")
-                # TODO: Not sure if iceberg catalogs allow them to have more than 3 levels
-                # catalog -> namespace -> table
-                logger.info(f"{table.name()}")
-                table_name = ".".join(table.name()[1:])
-                logger.info(f"Iceberg Table Name: {table_name}")
+                table_name = get_table_name_as_str(table)
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -202,10 +200,12 @@ class IcebergSource(DatabaseServiceSource):
                 self.context.iceberg_table = table
                 yield table_name, TableType.Regular
             # TODO: Implement the logging for these exceptions
-            except pyiceberg.exceptions.NoSuchTableError:
-                pass
             except pyiceberg.exceptions.NoSuchIcebergTableError:
-                pass
+                logger.warn(f"Table [{table_identifier}] is not an Iceberg Table. Skipped.")
+                continue
+            except pyiceberg.exceptions.NoSuchTableError:
+                logger.warn(f"Table [{table_identifier}] not Found. Skipped.")
+                continue
             except Exception as exc:
                 table_name = ".".join(table_identifier)
                 self.status.failed(
@@ -222,6 +222,17 @@ class IcebergSource(DatabaseServiceSource):
         """
         pass
 
+    def get_owner_details(self, schema_name: str, table_name: str) -> Optional[EntityReference]:
+        owner = get_owner_from_table(self.context.iceberg_table, self.service_connection.ownershipProperty)
+        try:
+            if owner:
+                owner_reference = self.metadata.get_reference_by_email(owner)
+                return owner_reference
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
+        return None
+
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -232,20 +243,22 @@ class IcebergSource(DatabaseServiceSource):
         Also, update the self.inspector value to the current db.
         """
         table_name, table_type = table_name_and_type
-        table = self.context.iceberg_table
+        iceberg_table = self.context.iceberg_table
         try:
+            owner = self.get_owner_details(self.context.database_schema, table_name)
+            table = IcebergTable.from_pyiceberg(
+                table_name,
+                table_type,
+                owner,
+                iceberg_table
+            )
             table_request = CreateTableRequest(
-                name=table_name,
-                tableType=table_type,
-                description=table.properties.get("comment"),
-                # TODO: Check What owner should be.
-                owner=self.context.iceberg_table.properties.get(
-                    self.service_connection.ownership_property
-                ),
-                columns=[
-                    IcebergColumnParser.parse(column)
-                    for column in table.schema().fields
-                ],
+                name=table.name,
+                tableType=table.tableType,
+                description=table.description,
+                owner=table.owner,
+                columns=table.columns,
+                tablePartition=table.tablePartition,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
@@ -257,6 +270,7 @@ class IcebergSource(DatabaseServiceSource):
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
         except Exception as exc:
+            raise(exc)
             yield Either(
                 left=StackTraceError(
                     name=table_name,
