@@ -81,6 +81,7 @@ const ExplorePageV1: FunctionComponent = () => {
 
   useEffect(() => {
     setShowIndexNotFoundAlert(false);
+    setSearchResults(undefined);
   }, [tab]);
 
   const [updatedAggregations, setUpdatedAggregations] =
