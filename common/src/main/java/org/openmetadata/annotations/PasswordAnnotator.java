@@ -51,9 +51,9 @@ public class PasswordAnnotator extends AbstractAnnotator {
   }
 
   /**
-   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If the {@link JMethod} is
-   * pointing to a field annotated with {@link PasswordField} then annotates the {@link JMethod} object with {@link
-   * PasswordField}
+   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If
+   * the {@link JMethod} is pointing to a field annotated with {@link PasswordField} then annotates
+   * the {@link JMethod} object with {@link PasswordField}
    */
   private void addMaskedFieldAnnotationIfApplies(JMethod jMethod, String propertyName) {
     try {
