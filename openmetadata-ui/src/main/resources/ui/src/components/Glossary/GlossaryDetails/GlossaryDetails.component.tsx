@@ -175,7 +175,6 @@ const GlossaryDetails = ({
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossary}
-            viewAllPermission={permissions.ViewAll}
             onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
           />

@@ -179,16 +179,20 @@ const GlossaryOverviewTab = ({
           </Col>
         </Row>
       </Col>
-      <Col className="p-t-md" span={6}>
-        <GlossaryDetailsRightPanel
-          isGlossary={false}
-          isVersionView={isVersionView}
-          permissions={permissions}
-          selectedData={selectedData}
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdate={onUpdate}
-        />
-      </Col>
+      {selectedData.fullyQualifiedName && (
+        <Col className="p-t-md" span={6}>
+          <GlossaryDetailsRightPanel
+            entityFQN={selectedData.fullyQualifiedName}
+            entityType={EntityType.GLOSSARY_TERM}
+            isGlossary={false}
+            isVersionView={isVersionView}
+            permissions={permissions}
+            selectedData={selectedData}
+            onThreadLinkSelect={onThreadLinkSelect}
+            onUpdate={onUpdate}
+          />
+        </Col>
+      )}
       {tagsUpdatating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={selectedData as GlossaryTerm}

@@ -17,15 +17,17 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   ChangeDescription,
   CustomProperty,
   Type,
 } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -224,15 +226,35 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isUndefined(entityDetails?.extension) ? (
     <ExtensionTable extension={entityDetails?.extension} />
   ) : (
-    <Table
-      bordered
-      columns={tableColumn}
-      data-testid="custom-properties-table"
-      dataSource={entityTypeDetail.customProperties?.slice(0, maxDataCap)}
-      loading={entityTypeDetailLoading}
-      pagination={false}
-      rowKey="name"
-      size="small"
-    />
+    <>
+      <div className="d-flex justify-between m-b-xs">
+        <Typography.Text className="right-panel-label">
+          {t('label.custom-property-plural')}
+        </Typography.Text>
+        {entityTypeDetail.customProperties &&
+          maxDataCap &&
+          entityTypeDetail.customProperties?.length >= maxDataCap &&
+          entityDetails.fullyQualifiedName && (
+            <Link
+              to={getEntityDetailLink(
+                entityType,
+                entityDetails.fullyQualifiedName,
+                EntityTabs.CUSTOM_PROPERTIES
+              )}>
+              {t('label.view-all')}
+            </Link>
+          )}
+      </div>
+      <Table
+        bordered
+        columns={tableColumn}
+        data-testid="custom-properties-table"
+        dataSource={entityTypeDetail.customProperties?.slice(0, maxDataCap)}
+        loading={entityTypeDetailLoading}
+        pagination={false}
+        rowKey="name"
+        size="small"
+      />
+    </>
   );
 };

@@ -29,7 +29,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -37,7 +37,6 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -60,9 +59,8 @@ type Props = {
   isGlossary: boolean;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onThreadLinkSelect: (value: string) => void;
-  viewAllPermission?: boolean;
   entityType: EntityType;
-  entityFQN: string;
+  entityFQN?: string;
 };
 
 const GlossaryDetailsRightPanel = ({
@@ -72,14 +70,15 @@ const GlossaryDetailsRightPanel = ({
   onUpdate,
   isVersionView,
   onThreadLinkSelect,
-  viewAllPermission,
-  entityFQN,
   entityType,
 }: Props) => {
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
   }, [permissions]);
 
+  const hasViewAllPermission = useMemo(() => {
+    return permissions.ViewAll;
+  }, [permissions]);
   const noReviewersSelected =
     selectedData.reviewers && selectedData.reviewers.length === 0;
 
@@ -315,9 +314,9 @@ const GlossaryDetailsRightPanel = ({
           )}
         </div>
       </Col>
-      <Col span="24">
-        <div data-testid="glossary-tags-name">
-          {isGlossary && (
+      {isGlossary && (
+        <Col span="24">
+          <div data-testid="glossary-tags-name">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
               entityFqn={selectedData.fullyQualifiedName}
@@ -328,35 +327,18 @@ const GlossaryDetailsRightPanel = ({
               onSelectionChange={handleTagsUpdate}
               onThreadLinkSelect={onThreadLinkSelect}
             />
-          )}
-        </div>
-      </Col>
-      <Col span="24">
-        {selectedData?.extension && (
-          <>
-            <div className="d-flex justify-between">
-              <Typography.Text className="right-panel-label">
-                {t('label.custom-property-plural')}
-              </Typography.Text>
-              <Link
-                to={getEntityDetailLink(
-                  entityType,
-                  entityFQN,
-                  EntityTabs.CUSTOM_PROPERTIES
-                )}>
-                {t('label.view-all')}
-              </Link>
-            </div>
-            {!isGlossary && (
-              <CustomPropertyTable
-                hasPermission
-                entityDetails={selectedData as GlossaryTerm}
-                entityType={entityType as ExtentionEntitiesKeys}
-                hasEditAccess={false}
-                maxDataCap={5}
-              />
-            )}
-          </>
+          </div>
+        </Col>
+      )}
+      <Col span="22">
+        {!isGlossary && selectedData && (
+          <CustomPropertyTable
+            entityDetails={selectedData as GlossaryTerm}
+            entityType={entityType as ExtentionEntitiesKeys}
+            hasEditAccess={false}
+            hasPermission={hasViewAllPermission}
+            maxDataCap={5}
+          />
         )}
       </Col>
     </Row>

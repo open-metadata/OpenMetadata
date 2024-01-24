@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
-import { t } from 'i18next';
+import { Space } from 'antd';
 import { EntityTags } from 'Models';
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import type {
@@ -106,29 +103,14 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {KnowledgeArticles && (
           <KnowledgeArticles entityId={entityId} entityType={entityType} />
         )}
-        {customProperties?.extension && (
-          <>
-            <div className="d-flex justify-between">
-              <Typography.Text className="right-panel-label">
-                {t('label.custom-property-plural')}
-              </Typography.Text>
-              <Link
-                to={getEntityDetailLink(
-                  entityType,
-                  entityFQN,
-                  EntityTabs.CUSTOM_PROPERTIES
-                )}>
-                {t('label.view-all')}
-              </Link>
-            </div>
-            <CustomPropertyTable
-              entityDetails={customProperties}
-              entityType={entityType as ExtentionEntitiesKeys}
-              hasEditAccess={false}
-              hasPermission={viewAllPermission ?? false}
-              maxDataCap={5}
-            />
-          </>
+        {customProperties && (
+          <CustomPropertyTable
+            entityDetails={customProperties}
+            entityType={entityType as ExtentionEntitiesKeys}
+            hasEditAccess={false}
+            hasPermission={viewAllPermission ?? false}
+            maxDataCap={5}
+          />
         )}
       </Space>
       {afterSlot}
