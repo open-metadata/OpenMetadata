@@ -98,6 +98,7 @@ const GlossaryHeader = ({
     version: string;
   }>();
   const { fqn } = useFqn();
+  const { id } = useParams<{ id: string }>();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -115,8 +116,8 @@ const GlossaryHeader = ({
   const fetchCurrentGlossaryInfo = async () => {
     try {
       const res = isGlossary
-        ? await getGlossariesById(fqn)
-        : await getGlossaryTermsById(fqn);
+        ? await getGlossariesById(id)
+        : await getGlossaryTermsById(id);
 
       setLatestGlossaryData(res);
     } catch (error) {
