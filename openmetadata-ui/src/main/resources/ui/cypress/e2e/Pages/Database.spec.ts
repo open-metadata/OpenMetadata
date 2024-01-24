@@ -14,13 +14,13 @@
 import { CustomPropertyType } from '../../common/Utils/CustomProperty';
 import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
+import StoreProcedureClass from './../../common/Entities/StoredProcedureClass';
 import TableClass from './../../common/Entities/TableClass';
 
 const entities = [
   new DatabaseClass(),
   new DatabaseSchemaClass(),
-  // ES Issue
-  //   new StoreProcedureClass(),
+  new StoreProcedureClass(),
   new TableClass(),
 ] as const;
 

@@ -23,8 +23,8 @@ import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from './common';
+import { visitEntityDetailsPage } from './Utils/Entity';
 
 export const validateDomainForm = () => {
   // error messages

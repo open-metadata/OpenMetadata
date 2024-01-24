@@ -15,7 +15,6 @@
 /// <reference types="Cypress" />
 
 import {
-  deleteUser,
   descriptionBox,
   interceptURL,
   login,
@@ -24,9 +23,9 @@ import {
   uuid,
   verifyMultipleResponseStatusCode,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
@@ -1209,7 +1208,15 @@ describe('Cleanup', () => {
   });
 
   it('delete user', () => {
-    deleteUser(createdUserId);
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
   });
 
   it('Delete glossary term should work properly', () => {
