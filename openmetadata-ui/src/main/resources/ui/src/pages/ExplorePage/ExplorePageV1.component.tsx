@@ -53,7 +53,6 @@ import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePag
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
@@ -75,6 +74,9 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
+    useState<boolean>(false);
 
   const [updatedAggregations, setUpdatedAggregations] =
     useState<Aggregations>();
@@ -364,8 +366,8 @@ const ExplorePageV1: FunctionComponent = () => {
         setSearchHitCounts(counts as SearchHitCounts);
       }),
     ])
-      .catch((err) => {
-        showErrorToast(err);
+      .catch(() => {
+        setShowIndexNotFoundAlert(true);
       })
       .finally(() => setIsLoading(false));
   };
@@ -401,6 +403,7 @@ const ExplorePageV1: FunctionComponent = () => {
     <ExploreV1
       activeTabKey={searchIndex}
       aggregations={updatedAggregations}
+      isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
       searchIndex={searchIndex}
