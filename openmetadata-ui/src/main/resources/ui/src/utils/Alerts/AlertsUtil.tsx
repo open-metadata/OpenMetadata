@@ -15,13 +15,14 @@ import { Typography } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import i18next from 'i18next';
 import { startCase } from 'lodash';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { SubscriptionType } from '../../generated/events/eventSubscription';
+import { getApplicationDetailsPath } from '../RouterUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -139,5 +140,43 @@ export const getDisplayNameForEntities = (entity: string) => {
   }
 };
 
+export const getAlertBody = ({
+  title,
+  icon,
+  description,
+  actions,
+}: {
+  title?: string | ReactNode;
+  icon?: ReactNode;
+  description?: string | ReactNode;
+  actions?: ReactNode;
+}) => {
+  return (
+    <div className="d-flex items-start gap-3">
+      {icon && icon}
+      <div className="d-flex flex-col gap-2">
+        {title ? (
+          <Typography.Text className="font-semibold text-xs">
+            {title}
+          </Typography.Text>
+        ) : (
+          <></>
+        )}
+        {description ? (
+          <Typography.Paragraph className="m-b-0 text-xs">
+            {description}
+          </Typography.Paragraph>
+        ) : (
+          <></>
+        )}
+        {actions ?? <></>}
+      </div>
+    </div>
+  );
+};
+
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;
+export const RE_INDEX_APPLICATION_PATH = getApplicationDetailsPath(
+  'SearchIndexingApplication'
+);
