@@ -17,12 +17,15 @@ import cronstrue from 'cronstrue';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../../components/common/Table/Table';
+import { DISABLED, NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import ButtonSkeleton from '../Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -47,6 +50,7 @@ function IngestionListTable({
   isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
+  const { isFetchingStatus, platform } = useAirflowStatus();
 
   const {
     currentPage,
@@ -60,6 +64,8 @@ function IngestionListTable({
   useEffect(() => {
     handlePagingChange(paging);
   }, [paging]);
+
+  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const ingestionPagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
@@ -99,7 +105,11 @@ function IngestionListTable({
   };
 
   const renderActionsField = (_: string, record: IngestionPipeline) => {
-    return (
+    return isFetchingStatus ? (
+      <ButtonSkeleton size="default" />
+    ) : isPlatFormDisabled ? (
+      NO_DATA_PLACEHOLDER
+    ) : (
       <PipelineActions
         deleteSelection={deleteSelection}
         deployIngestion={deployIngestion}
@@ -168,6 +178,7 @@ function IngestionListTable({
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
       ingestionData,
+      isFetchingStatus,
     ]
   );
 
@@ -187,6 +198,7 @@ function IngestionListTable({
           emptyText: getErrorPlaceHolder(
             isRequiredDetailsAvailable,
             ingestionData.length,
+            isPlatFormDisabled,
             pipelineType
           ),
         }}

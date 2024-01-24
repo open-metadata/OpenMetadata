@@ -27,6 +27,9 @@ export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
 export const WORKFLOWS_METADATA_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata';
 
+export const INGESTION_FRAMEWORK_DEPLOYMENT_DOCS =
+  'https://docs.open-metadata.org/v1.2.x/deployment/ingestion';
+
 export const BOTS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
 
