@@ -98,7 +98,7 @@ function ObservabilityAlertDetailsPage() {
     <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text>{heading}</Typography.Text>
+          <Typography.Text className="font-medium">{heading}</Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">
@@ -259,7 +259,7 @@ function ObservabilityAlertDetailsPage() {
 
               <Col span={24}>
                 <Space direction="vertical">
-                  <Typography.Text className="font-bold">
+                  <Typography.Text className="font-medium">
                     {`${t('label.name')} :`}
                   </Typography.Text>
                   <Typography.Text>
@@ -269,10 +269,11 @@ function ObservabilityAlertDetailsPage() {
               </Col>
               {alertDetails?.description && (
                 <Col span={24}>
-                  <Typography.Text className="font-bold">{`${t(
+                  <Typography.Text className="font-medium">{`${t(
                     'label.description'
                   )} :`}</Typography.Text>
                   <RichTextEditorPreviewer
+                    className="p-t-xs"
                     data-testid="description"
                     markdown={alertDetails.description}
                   />
@@ -290,20 +291,24 @@ function ObservabilityAlertDetailsPage() {
                   subHeading: t('message.alerts-trigger-description'),
                 })}
               </Col>
-              <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: getFilterDetails(true, filters),
-                  heading: t('label.filter-plural'),
-                  subHeading: t('message.alerts-filter-description'),
-                })}
-              </Col>
-              <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: getFilterDetails(false, actions),
-                  heading: t('label.action-plural'),
-                  subHeading: t('message.alerts-filter-description'),
-                })}
-              </Col>
+              {!isEmpty(filters) && !isNil(filters) && (
+                <Col span={24}>
+                  {getObservabilityDetailsItem({
+                    details: getFilterDetails(true, filters),
+                    heading: t('label.filter-plural'),
+                    subHeading: t('message.alerts-filter-description'),
+                  })}
+                </Col>
+              )}
+              {!isEmpty(actions) && !isNil(actions) && (
+                <Col span={24}>
+                  {getObservabilityDetailsItem({
+                    details: getFilterDetails(false, actions),
+                    heading: t('label.action-plural'),
+                    subHeading: t('message.alerts-filter-description'),
+                  })}
+                </Col>
+              )}
               <Col span={24}>
                 {getObservabilityDetailsItem({
                   details: destinationDetails,
