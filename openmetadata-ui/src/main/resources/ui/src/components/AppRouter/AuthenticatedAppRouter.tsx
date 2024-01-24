@@ -1111,7 +1111,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.EDIT_ALERTS,
+          GlobalSettingOptions.EDIT_NOTIFICATION,
           true
         )}
       />
@@ -1121,7 +1121,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_ALERTS
+          GlobalSettingOptions.ADD_NOTIFICATION
         )}
       />
 

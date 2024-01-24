@@ -36,6 +36,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
+  AlertType,
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
@@ -78,6 +79,7 @@ const AlertsPage = () => {
           after: params?.after,
           before: params?.before,
           limit: pageSize,
+          alertType: AlertType.Notification,
         });
 
         setAlerts(data.filter((d) => d.provider !== ProviderType.System));
@@ -164,7 +166,7 @@ const AlertsPage = () => {
                 <Link
                   to={getSettingPath(
                     GlobalSettingsMenuCategory.NOTIFICATIONS,
-                    GlobalSettingOptions.EDIT_ALERTS,
+                    GlobalSettingOptions.EDIT_NOTIFICATION,
                     true
                   ).replace(PLACEHOLDER_ROUTE_FQN, id)}>
                   <Button
@@ -204,7 +206,7 @@ const AlertsPage = () => {
             <Link
               to={getSettingPath(
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
-                GlobalSettingOptions.ADD_ALERTS
+                GlobalSettingOptions.ADD_NOTIFICATION
               )}>
               <Button data-testid="create-alert" type="primary">
                 {t('label.create-entity', { entity: 'alert' })}
@@ -230,7 +232,7 @@ const AlertsPage = () => {
                     history.push(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_ALERTS
+                        GlobalSettingOptions.ADD_NOTIFICATION
                       )
                     )
                   }

@@ -29,6 +29,7 @@ import { ALERTS_DOCS } from '../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
+  AlertType,
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
@@ -67,6 +68,7 @@ const ObservabilityAlertsPage = () => {
           after: params?.after,
           before: params?.before,
           limit: pageSize,
+          alertType: AlertType.Observability,
         });
 
         setAlerts(data.filter((d) => d.provider !== ProviderType.System));
