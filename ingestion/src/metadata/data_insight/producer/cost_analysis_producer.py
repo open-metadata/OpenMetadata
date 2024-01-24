@@ -41,22 +41,19 @@ class CostAnalysisProducer(ProducerInterface):
         database_services = self.metadata.list_all_entities(
             DatabaseService, limit=limit, fields=fields, skip_on_failure=True
         )
-        entities_list = []
         for database_service in database_services or []:
             try:
                 if self._check_profiler_and_usage_support(database_service):
-                    entities_list.extend(
-                        self.metadata.list_all_entities(
-                            Table,
-                            limit=limit,
-                            fields=fields,
-                            skip_on_failure=True,
-                            params={
-                                "database": database_service.fullyQualifiedName.__root__
-                            },
-                        )
+                    yield from self.metadata.list_all_entities(
+                        Table,
+                        limit=limit,
+                        fields=fields,
+                        skip_on_failure=True,
+                        params={
+                            "database": database_service.fullyQualifiedName.__root__
+                        },
                     )
             except Exception as err:
                 logger.error(f"Error trying to fetch entities -- {err}")
                 logger.debug(traceback.format_exc())
-        return entities_list
+        return None

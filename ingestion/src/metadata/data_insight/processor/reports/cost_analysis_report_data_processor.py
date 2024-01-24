@@ -29,8 +29,10 @@ from metadata.generated.schema.analytics.reportDataType.rawCostAnalysisReportDat
     RawCostAnalysisReportData,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import get_end_of_day_timestamp_mill
 
@@ -106,8 +108,9 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
 
         try:
             cost_analysis_data = RawCostAnalysisReportData(
-                entity=self.metadata.get_entity_reference(
-                    entity=type(entity), fqn=entity.fullyQualifiedName
+                entity=EntityReference(
+                    id=entity.id,
+                    type=ENTITY_REFERENCE_TYPE_MAP[entity.__name__],
                 )
             )
             if entity.lifeCycle:
@@ -247,7 +250,10 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
             # Iterate over the different time periods and update the data
             for days, key in DAYS:
                 days_before_timestamp = get_end_of_day_timestamp_mill(days=days)
-                if life_cycle.accessed.timestamp.__root__ <= days_before_timestamp:
+                if (
+                    life_cycle.accessed
+                    and life_cycle.accessed.timestamp.__root__ <= days_before_timestamp
+                ):
                     data[UNUSED_DATA_ASSETS][COUNT][key] += 1
                     data[UNUSED_DATA_ASSETS][SIZE][key] += size or 0
                 else:
