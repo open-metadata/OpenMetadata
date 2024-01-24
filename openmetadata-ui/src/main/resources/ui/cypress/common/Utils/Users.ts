@@ -14,6 +14,7 @@ import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   descriptionBox,
   interceptURL,
@@ -72,7 +73,7 @@ export const visitProfileSection = () => {
   });
   cy.get('[data-testid="access-token"] > .ant-space-item').click();
 };
-export const softDeleteUser = (username: string) => {
+export const softDeleteUser = (username: string, displayName: string) => {
   // Search the created user
   interceptURL(
     'GET',
@@ -100,7 +101,7 @@ export const softDeleteUser = (username: string) => {
   verifyResponseStatusCode('@softdeleteUser', 200);
   verifyResponseStatusCode('@userDeleted', 200);
 
-  toastNotification('User deleted successfully!');
+  toastNotification(`"${displayName}" deleted successfully!`);
 
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
 
@@ -134,7 +135,7 @@ export const restoreUser = (username: string, editedUserName: string) => {
   toastNotification('User restored successfully');
 };
 
-export const permanentDeleteUser = (username: string) => {
+export const permanentDeleteUser = (username: string, displayName: string) => {
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
   interceptURL('GET', '/api/v1/users/name/*', 'getUser');
   verifyResponseStatusCode('@getUsers', 200);
@@ -150,13 +151,10 @@ export const permanentDeleteUser = (username: string) => {
     'api/v1/users/*?hardDelete=true&recursive=false',
     'hardDeleteUser'
   );
-  cy.get('[data-testid="confirm-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@hardDeleteUser', 200);
 
-  toastNotification('User deleted successfully!');
+  toastNotification(`"${displayName}" deleted successfully!`);
 
   interceptURL(
     'GET',
@@ -170,7 +168,7 @@ export const permanentDeleteUser = (username: string) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
 };
 export const visitUserListPage = () => {
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
 
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
   cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
@@ -256,7 +254,10 @@ export const editTeams = (teamName: string) => {
   verifyResponseStatusCode('@updateTeams', 200);
   cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
   cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
-  cy.get(`[data-testid="${teamName}"]`).should('exist').and('be.visible');
+  cy.get(`[data-testid="${teamName}"]`)
+    .should('exist')
+    .scrollIntoView()
+    .and('be.visible');
 };
 
 export const handleUserUpdateDetails = (

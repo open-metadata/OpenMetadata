@@ -20,6 +20,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { PERSONA_DETAILS, USER_DETAILS } from '../../constants/EntityConstant';
 
 const updatePersonaDisplayName = (displayName) => {
@@ -78,7 +79,7 @@ describe('Persona operations', () => {
     cy.login();
     interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
@@ -260,10 +261,7 @@ describe('Persona operations', () => {
 
     cy.get('[data-testid="delete-button-title"]').click();
 
-    cy.get('.ant-modal-header').should(
-      'contain',
-      `Delete ${PERSONA_DETAILS.name}`
-    );
+    cy.get('.ant-modal-header').should('contain', PERSONA_DETAILS.displayName);
 
     cy.get(`[data-testid="hard-delete-option"]`).click();
 
@@ -279,6 +277,6 @@ describe('Persona operations', () => {
     cy.get('[data-testid="confirm-button"]').click();
     verifyResponseStatusCode(`@deletePersona`, 200);
 
-    toastNotification(`Persona deleted successfully!`);
+    toastNotification(`"${PERSONA_DETAILS.displayName}" deleted successfully!`);
   });
 });

@@ -23,6 +23,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const updatedDescription = 'This is updated description';
 
@@ -53,7 +54,7 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     // Clicking on teams
     cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
@@ -323,7 +324,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@softDeleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(`"${TEAM_DETAILS.updatedName}" deleted successfully!`);
 
     cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
 
@@ -382,7 +383,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(`"${TEAM_DETAILS.updatedName}" deleted successfully!`);
 
     // Validating the deleted team
 
@@ -435,7 +436,9 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(
+      `"${HARD_DELETE_TEAM_DETAILS.name}" deleted successfully!`
+    );
 
     // Validating the deleted team
 

@@ -29,40 +29,12 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
-import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
+import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
 
-interface Props {
-  allowSoftDelete?: boolean;
-  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
-  buttonClassName?: string;
-  entityName: string;
-  entityId?: string;
-  entityType: EntityType;
-  displayName?: string;
-  entityFQN?: string;
-  isRecursiveDelete?: boolean;
-  deleteMessage?: string;
-  softDeleteMessagePostFix?: string;
-  hardDeleteMessagePostFix?: string;
-  canDelete?: boolean;
-  extraDropdownContent?: ItemType[];
-  onAnnouncementClick?: () => void;
-  onRestoreEntity?: () => Promise<void>;
-  deleted?: boolean;
-  editDisplayNamePermission?: boolean;
-  onEditDisplayName?: (data: EntityName) => Promise<void>;
-  allowRename?: boolean;
-  prepareType?: boolean;
-  successMessage?: string;
-  deleteButtonDescription?: string;
-  deleteOptions?: DeleteOption[];
-  onProfilerSettingUpdate?: () => void;
-}
-
-const ManageButton: FC<Props> = ({
+const ManageButton: FC<ManageButtonProps> = ({
   allowSoftDelete,
   afterDeleteAction,
   buttonClassName,
@@ -313,7 +285,7 @@ const ManageButton: FC<Props> = ({
           deleteMessage={deleteMessage}
           deleteOptions={deleteOptions}
           entityId={entityId ?? ''}
-          entityName={entityName ?? ''}
+          entityName={displayName ?? entityName}
           entityType={entityType}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
           isRecursiveDelete={isRecursiveDelete}

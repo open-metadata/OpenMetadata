@@ -14,6 +14,7 @@ import {
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   interceptURL,
   replaceAllSpacialCharWith_,
@@ -23,9 +24,9 @@ import {
 import { visitEntityDetailsPage } from '../Utils/Entity';
 import {
   deleteService,
-  getEntityTypeFromService,
   retryIngestionRun,
   Services,
+  ServicesEntityMap,
   testConnection,
 } from '../Utils/Services';
 
@@ -343,7 +344,7 @@ class ServiceBaseClass {
     visitEntityDetailsPage({
       term: this.entityName,
       serviceName: this.serviceName,
-      entity: getEntityTypeFromService(this.category),
+      entity: ServicesEntityMap[this.category],
     });
 
     // update description
@@ -354,7 +355,7 @@ class ServiceBaseClass {
     verifyResponseStatusCode('@updateEntity', 200);
 
     // re-run ingestion flow
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     // Services page
     cy.get('.ant-menu-title-content').contains(this.category).click();
@@ -397,7 +398,7 @@ class ServiceBaseClass {
     visitEntityDetailsPage({
       term: this.entityName,
       serviceName: this.serviceName,
-      entity: getEntityTypeFromService(this.category),
+      entity: ServicesEntityMap[this.category],
     });
     cy.get('[data-testid="markdown-parser"]')
       .first()
