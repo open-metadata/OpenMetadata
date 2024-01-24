@@ -360,7 +360,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                 i18nKey="message.configure-search-re-index"
                                 renderElement={
                                   <Link
-                                    className="alert-link"
+                                    className="alert-link text-xs"
                                     to={getApplicationDetailsPath(
                                       'SearchIndexingApplication'
                                     )}
