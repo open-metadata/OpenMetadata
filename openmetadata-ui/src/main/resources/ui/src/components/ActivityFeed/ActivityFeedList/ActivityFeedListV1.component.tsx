@@ -20,7 +20,6 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
-import { ActivityFeedTabs } from '../ActivityFeedTab/ActivityFeedTab.interface';
 import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
@@ -32,7 +31,6 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
-  tab: ActivityFeedTabs;
 }
 
 const ActivityFeedListV1 = ({

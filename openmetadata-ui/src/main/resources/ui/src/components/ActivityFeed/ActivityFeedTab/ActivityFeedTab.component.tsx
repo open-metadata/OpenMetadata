@@ -403,7 +403,6 @@ export const ActivityFeedTab = ({
           isForFeedTab={isForFeedTab}
           isLoading={false}
           showThread={false}
-          tab={activeTab}
           onFeedClick={handleFeedClick}
         />
         {loader}

@@ -1615,6 +1615,7 @@
     "service-with-space-not-allowed": "Dienstname mit Leerzeichen ist nicht zulässig",
     "session-expired": "Ihre Sitzung ist abgelaufen! Bitte melden Sie sich erneut an, um auf OpenMetadata zuzugreifen.",
     "setup-custom-property": "OpenMetadata unterstützt benutzerdefinierte Eigenschaften in der Tabellenentität. Erstellen Sie eine benutzerdefinierte Eigenschaft, indem Sie einen eindeutigen Eigenschaftsnamen hinzufügen. Der Name muss mit einem Kleinbuchstaben beginnen, wie im camelCase-Format bevorzugt. Großbuchstaben und Zahlen können im Feldnamen enthalten sein; Leerzeichen, Unterstriche und Punkte werden jedoch nicht unterstützt. Wählen Sie den bevorzugten Eigenschaftstyp aus den angebotenen Optionen aus. Beschreiben Sie Ihre benutzerdefinierte Eigenschaft, um Ihrem Team mehr Informationen zu geben.",
+    "setup-data-insights": "how to set up Data Insights",
     "size-evolution-description": "Size evolution of assets in organization.",
     "soft-delete-message-for-entity": "Durch das Soft-Löschen wird {{entity}} deaktiviert. Dadurch werden alle Entdeckungs-, Lese- oder Schreibvorgänge auf {{entity}} deaktiviert.",
     "something-went-wrong": "Etwas ist schiefgelaufen",

@@ -1615,6 +1615,7 @@
     "service-with-space-not-allowed": "サービス名に空白は使えません",
     "session-expired": "セッションがタイムアウトしました。OpenMetadataにアクセスするには再度サインインしてください。",
     "setup-custom-property": "OpenMetadataはテーブル要素のカスタムプロパティをサポートしています。カスタムプロパティを作成するにはユニークなプロパティ名を追加してください。プロパティ名は小文字のアルファベットから始め、かつキャメルケースであることが望ましいです。フィールド名に大文字と数字を含めることはできますが、スペースやアンダースコア、ドットはサポートされていません。提供されたオプションの中から適切なプロパティタイプを選択してください。カスタムプロパティの説明はチームにより多くの情報を提供します。",
+    "setup-data-insights": "how to set up Data Insights",
     "size-evolution-description": "Size evolution of assets in organization.",
     "soft-delete-message-for-entity": "ソフトデリートは{{entity}}を非活性化します。これはデータの発見や、{{entity}}に対する読み込みや書き込みの操作を無効にします。",
     "something-went-wrong": "何らかの問題が発生しました",

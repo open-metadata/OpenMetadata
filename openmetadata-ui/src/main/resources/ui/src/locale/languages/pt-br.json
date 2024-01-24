@@ -1615,6 +1615,7 @@
     "service-with-space-not-allowed": "Nomes de serviço com espaços não são permitidos",
     "session-expired": "Sua sessão expirou! Por favor, faça login novamente para acessar o OpenMetadata.",
     "setup-custom-property": "O OpenMetadata suporta propriedades personalizadas na entidade Tabela. Crie uma propriedade personalizada adicionando um nome de propriedade exclusivo. O nome deve começar com uma letra minúscula, conforme preferido no formato camelCase. Letras maiúsculas e números podem ser incluídos no nome do campo; mas espaços, sublinhados e pontos não são suportados. Selecione o Tipo de propriedade preferido entre as opções fornecidas. Descreva sua propriedade personalizada para fornecer mais informações à sua equipe.",
+    "setup-data-insights": "how to set up Data Insights",
     "size-evolution-description": "Evolução do tamanho dos ativos na organização.",
     "soft-delete-message-for-entity": "A exclusão suave desativará o {{entity}}. Isso desabilitará qualquer operação de descoberta, leitura ou gravação no {{entity}}.",
     "something-went-wrong": "Algo deu errado",

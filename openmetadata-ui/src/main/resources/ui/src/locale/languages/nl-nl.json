@@ -1615,6 +1615,7 @@
     "service-with-space-not-allowed": "Servicenaam met spaties is niet toegestaan",
     "session-expired": "Je sessie is verlopen! Log opnieuw in om toegang te krijgen tot OpenMetadata.",
     "setup-custom-property": "OpenMetadata ondersteunt aangepaste eigenschappen in de Table-entiteit. Maak een aangepaste eigenschap door een unieke eigenschapsnaam toe te voegen. De naam moet beginnen met een kleine letter, zoals geprefereerd in het camelCase-formaat. Hoofdletters en cijfers kunnen worden opgenomen in de veldnaam; maar spaties, underscores en punten worden niet ondersteund. Selecteer het gewenste eigenschapstype uit de geboden opties. Beschrijf je aangepaste eigenschap om meer informatie aan je team te geven.",
+    "setup-data-insights": "how to set up Data Insights",
     "size-evolution-description": "Grootte-evolutie van activa in de organisatie.",
     "soft-delete-message-for-entity": "Zacht verwijderen zal de {{entity}} deactiveren. Hierdoor worden alle ontdekkings-, lees- of schrijfoperaties op {{entity}} uitgeschakeld.",
     "something-went-wrong": "Er is iets misgegaan",

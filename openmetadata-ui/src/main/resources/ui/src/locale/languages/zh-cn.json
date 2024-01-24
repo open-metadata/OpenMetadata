@@ -1615,6 +1615,7 @@
     "service-with-space-not-allowed": "服务名称不允许使用空格",
     "session-expired": "您的会话已超时，请重新登录！",
     "setup-custom-property": "OpenMetadata 支持数据表中的自定义属性。通过添加唯一的属性名称来创建自定义属性。名称必须以小写字母开头，以 camelCase 驼峰格式为首选。字段名称可以包含大写字母和数字，但不支持空格、下划线和标点符号。从提供的选项中指定一个属性类型，并通过描述您的自定义属性向团队提供更多信息。",
+    "setup-data-insights": "how to set up Data Insights",
     "size-evolution-description": "Size evolution of assets in organization.",
     "soft-delete-message-for-entity": "软删除将停用{{entity}}，这将禁用{{entity}}上的任何发现、读取或写入操作",
     "something-went-wrong": "出现了一些问题",

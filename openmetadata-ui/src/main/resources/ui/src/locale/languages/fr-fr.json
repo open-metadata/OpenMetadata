@@ -1615,6 +1615,7 @@
     "service-with-space-not-allowed": "Nom de service avec des espaces ne sont pas autorisés",
     "session-expired": "Votre session a expiré! Veuillez vous connecter à nouveau pour accéder à OpenMetadata.",
     "setup-custom-property": "OpenMetadata permet la création de propriétés custom dans les entités table. Créez une propriété custom en ajoutant un nom de propriété unique. Le nom doit commencer par une lettre minuscule, comme préféré dans le format camelCase. Les lettres majuscules et les chiffres peuvent être inclus dans le nom du champ; mais les espaces, les tirets bas et les points ne sont pas pris en charge. Sélectionnez le Type de propriété préféré parmi les options fournies. Décrivez votre propriété personnalisée pour fournir plus d'informations à votre équipe.",
+    "setup-data-insights": "how to set up Data Insights",
     "size-evolution-description": "Size evolution of assets in organization.",
     "soft-delete-message-for-entity": "La suppression logique désactivera le {{entity}}. Cela désactivera toute découverte, lecture ou écriture sur le {{entity}}.",
     "something-went-wrong": "Quelque chose s'est mal passé",
