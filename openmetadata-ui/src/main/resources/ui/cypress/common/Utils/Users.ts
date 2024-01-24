@@ -379,3 +379,15 @@ export const editRole = (username: string, role: string) => {
   cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
   cy.get(`[data-testid=chip-container]`).should('contain', role);
 };
+
+export const checkNoPermissionPlaceholder = (permission = false) => {
+  cy.get('[data-testid="permission-error-placeholder"]').should(
+    permission ? 'not.exist' : 'be.visible'
+  );
+  if (!permission) {
+    cy.get('[data-testid="permission-error-placeholder"]').should(
+      'contain',
+      'You don’t have access, please check with the admin to get permissions'
+    );
+  }
+};
