@@ -106,7 +106,8 @@ class DatalakeSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.temp_credentials_file_path = []
         self.connection = get_connection(self.service_connection)
-        self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
+        if GOOGLE_CREDENTIALS in os.environ:
+            self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = self.connection.client
         self.table_constraints = None
         self.database_source_state = set()
@@ -162,9 +163,10 @@ class DatalakeSource(DatabaseServiceSource):
                         self.client = set_gcs_datalake_client(
                             config=self.config_source, project_id=project_id
                         )
-                        self.temp_credentials_file_path.append(
-                            os.environ[GOOGLE_CREDENTIALS]
-                        )
+                        if GOOGLE_CREDENTIALS in os.environ:
+                            self.temp_credentials_file_path.append(
+                                os.environ[GOOGLE_CREDENTIALS]
+                            )
                         yield project_id
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
