@@ -67,6 +67,46 @@ import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
 
+const IndexNotFoundBanner = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Alert
+      closable
+      description={
+        <div className="d-flex items-start gap-3">
+          <ExclamationCircleOutlined
+            style={{
+              color: ERROR_COLOR,
+              fontSize: '16px',
+            }}
+          />
+          <div className="d-flex flex-col gap-2">
+            <Typography.Text className="font-semibold text-xs">
+              {t('server.indexing-error')}
+            </Typography.Text>
+            <Typography.Paragraph className="m-b-0 text-xs">
+              <Transi18next
+                i18nKey="message.configure-search-re-index"
+                renderElement={
+                  <Link
+                    className="alert-link text-xs"
+                    to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
+                  />
+                }
+                values={{
+                  settings: t('label.search-index-setting-plural'),
+                }}
+              />
+            </Typography.Paragraph>
+          </div>
+        </div>
+      }
+      type="error"
+    />
+  );
+};
+
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
   activeTabKey,
@@ -345,43 +385,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     </Col>
                     {isElasticSearchIssue ? (
                       <Col span={24}>
-                        <Alert
-                          closable
-                          description={
-                            <div className="d-flex items-start gap-3">
-                              <ExclamationCircleOutlined
-                                style={{
-                                  color: ERROR_COLOR,
-                                  fontSize: '16px',
-                                }}
-                              />
-                              <div className="d-flex flex-col gap-2">
-                                <Typography.Text className="font-semibold text-xs">
-                                  {t('server.indexing-error')}
-                                </Typography.Text>
-                                <Typography.Paragraph className="m-b-0 text-xs">
-                                  <Transi18next
-                                    i18nKey="message.configure-search-re-index"
-                                    renderElement={
-                                      <Link
-                                        className="alert-link text-xs"
-                                        to={getApplicationDetailsPath(
-                                          SEARCH_INDEXING_APPLICATION
-                                        )}
-                                      />
-                                    }
-                                    values={{
-                                      settings: t(
-                                        'label.search-index-setting-plural'
-                                      ),
-                                    }}
-                                  />
-                                </Typography.Paragraph>
-                              </div>
-                            </div>
-                          }
-                          type="error"
-                        />
+                        <IndexNotFoundBanner />
                       </Col>
                     ) : (
                       <></>
