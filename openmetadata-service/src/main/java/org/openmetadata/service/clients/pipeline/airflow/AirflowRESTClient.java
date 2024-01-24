@@ -292,7 +292,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       // APIs URL not found
       if (response.statusCode() == 404) {
         return buildUnhealthyStatus(
-            "Airflow APIs not found. Please follow the installation guide.");
+            "Airflow APIs not found. Please validate if the OpenMetadata Airflow plugin is installed correctly. Follow [this guide](https://docs.open-metadata.org/v1.2.x/deployment/ingestion/openmetadata) for further details.");
       }
 
       return buildUnhealthyStatus(
@@ -306,7 +306,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return buildUnhealthyStatus(
-          String.format("Failed to get REST status due to [%s].", e.getMessage()));
+          String.format(
+              "Failed to get REST status due to [%s] - Please validate if Airflow is up and running.",
+              e.getMessage()));
     }
   }
 
