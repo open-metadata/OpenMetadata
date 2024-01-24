@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "Fehler beim Abrufen der Tabelle Profiler-Konfiguration!",
     "fetch-updated-conversation-error": "Fehler beim Abrufen aktualisierter Konversationen!",
     "forgot-password-email-error": "Es gibt ein Problem beim Senden der E-Mail. Bitte kontaktieren Sie Ihren Administrator.",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "Fehler beim {{operation}} des Ingestions-Workflows {{displayName}}",
     "invalid-username-or-password": "Sie haben einen ungültigen Benutzernamen oder ein ungültiges Passwort eingegeben.",
     "join-team-error": "Fehler beim Beitritt zum Team!",

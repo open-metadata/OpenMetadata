@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "Ошибка при получении конфигурации профилировщика таблиц!",
     "fetch-updated-conversation-error": "Ошибка при получении обновленного разговора!",
     "forgot-password-email-error": "Возникла проблема с отправкой почты. Пожалуйста, свяжитесь с вашим администратором.",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "Ошибка во время {{operation}} рабочего процесса загрузки {{displayName}}",
     "invalid-username-or-password": "Вы ввели неверное имя пользователя или пароль.",
     "join-team-error": "Ошибка при вступлении в команду!",

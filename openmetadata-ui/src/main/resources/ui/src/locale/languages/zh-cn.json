@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "获取数据表分析器配置时发生错误！",
     "fetch-updated-conversation-error": "获取更新后对话时发生错误！",
     "forgot-password-email-error": "发送邮件时出现问题，请联系您的管理员。",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "{{operation}}提取工作流{{displayName}}信息时发生错误",
     "invalid-username-or-password": "您输入的用户名或密码无效。",
     "join-team-error": "加入团队时发生错误！",

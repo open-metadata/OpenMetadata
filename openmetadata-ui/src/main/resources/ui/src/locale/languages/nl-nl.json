@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "Fout bij het ophalen van de configuratie van de tabel-profiler!",
     "fetch-updated-conversation-error": "Fout bij het ophalen van bijgewerkt gesprek!",
     "forgot-password-email-error": "Er is een probleem met het verzenden van de e-mail. Neem contact op met uw beheerder.",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "Fout bij het uitvoeren van {{operation}}-inname-workflow {{displayName}}",
     "invalid-username-or-password": "U heeft een ongeldige gebruikersnaam of wachtwoord ingevoerd.",
     "join-team-error": "Fout bij het toetreden tot het team!",

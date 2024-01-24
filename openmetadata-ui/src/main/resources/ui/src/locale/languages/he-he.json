@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "שגיאה במהלך אחזור תצורת פרופילר הטבלה!",
     "fetch-updated-conversation-error": "שגיאה במהלך אחזור שיחה מעודכנת!",
     "forgot-password-email-error": "יש בעיה בשליחת הדוא\"ל. יש ליצור קשר עם מנהל המערכת.",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "שגיאה במהלך {{operation}} של תהליך קליטה {{displayName}}",
     "invalid-username-or-password": "הוזן שם משתמש או סיסמה לא תקינים.",
     "join-team-error": "שגיאה במהלך הצטרפות לקבוצה!",

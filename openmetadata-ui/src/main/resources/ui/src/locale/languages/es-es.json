@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "Error while fetching table profiler config!",
     "fetch-updated-conversation-error": "Error al recuperar conversación actualizada!",
     "forgot-password-email-error": "Hay algún problema para enviar el correo. Por favor contacta a tu administrador.",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "Error al {{operation}} del flujo de trabajo de ingesta {{displayName}}",
     "invalid-username-or-password": "Has ingresado un nombre de usuario o contraseña inválido.",
     "join-team-error": "¡Error al unirse al equipo!",

@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "Erreur lors de la récupération de la configuration du profileur de table !",
     "fetch-updated-conversation-error": "Erreur lors de la récupération de la conversation mise à jour !",
     "forgot-password-email-error": "Il y a un problème lors de l'envoi de l'e-mail. Veuillez contacter votre administrateur.",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "Erreur lors de l'opération {{operation}} dans le flux d'ingestion {{displayName}}",
     "invalid-username-or-password": "Vous avez saisi un nom d'utilisateur ou un mot de passe invalide.",
     "join-team-error": "Une erreur est survenue lorsque vous avez rejoint l'équipe !",

@@ -1731,6 +1731,7 @@
     "fetch-table-profiler-config-error": "Erro ao buscar configuração do examinador de tabela!",
     "fetch-updated-conversation-error": "Erro ao buscar conversa atualizada!",
     "forgot-password-email-error": "Há algum problema no envio do email. Por favor, entre em contato com o seu Administrador.",
+    "indexing-error": "Error while indexing!",
     "ingestion-workflow-operation-error": "Erro durante a operação de {{operation}} no fluxo de trabalho de ingestão {{displayName}}",
     "invalid-username-or-password": "Você digitou um nome de usuário ou senha inválido.",
     "join-team-error": "Erro ao entrar na equipe!",
