@@ -40,21 +40,22 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CreateSuggestion;
 import org.openmetadata.schema.entity.feed.Suggestion;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.SuggestionFilter;
 import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -78,6 +79,7 @@ public class SuggestionsResource {
   public static final String COLLECTION_PATH = "/v1/suggestions/";
   private final SuggestionRepository dao;
   private final Authorizer authorizer;
+  private final String INVALID_SUGGESTION_REQUEST = "INVALID_SUGGESTION_REQUEST";
 
   public static void addHref(UriInfo uriInfo, List<Suggestion> suggestions) {
     if (uriInfo != null) {
@@ -116,7 +118,7 @@ public class SuggestionsResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = SuggestionList.class)))
       })
-  public ResultList<Thread> list(
+  public ResultList<Suggestion> list(
       @Context UriInfo uriInfo,
       @Parameter(
               description =
@@ -136,13 +138,9 @@ public class SuggestionsResource {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(
-              description =
-                  "Filter threads by entity link of entity about which this thread is created",
-              schema =
-                  @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
-          @QueryParam("entityLink")
-          String entityLink,
+      @Parameter(description = "Filter suggestions by entityFQN", schema = @Schema(type = "string"))
+          @QueryParam("entityFQN")
+          String entityFQN,
       @Parameter(
               description =
                   "Filter threads by user id or bot id. This filter requires a 'filterType' query param.",
@@ -152,11 +150,30 @@ public class SuggestionsResource {
       @Parameter(
               description =
                   "Filter threads by whether they are accepted or rejected. By default status is OPEN.")
-          @DefaultValue("OPEN")
+          @DefaultValue("Open")
           @QueryParam("status")
           String status) {
     RestUtil.validateCursors(before, after);
-    return null;
+    SuggestionFilter filter =
+        SuggestionFilter.builder()
+            .suggestionStatus(SuggestionStatus.valueOf(status))
+            .entityFQN(entityFQN)
+            .createdBy(userId)
+            .paginationType(
+                before != null
+                    ? SuggestionRepository.PaginationType.BEFORE
+                    : SuggestionRepository.PaginationType.AFTER)
+            .before(before)
+            .after(after)
+            .build();
+    ResultList<Suggestion> suggestions;
+    if (before != null) {
+      suggestions = dao.listAfter(filter, limitParam, after);
+    } else {
+      suggestions = dao.listBefore(filter, limitParam, before);
+    }
+    addHref(uriInfo, suggestions.getData());
+    return suggestions;
   }
 
   @GET
@@ -209,8 +226,37 @@ public class SuggestionsResource {
           UUID id) {
     Suggestion suggestion = dao.get(id);
     dao.checkPermissionsForAcceptOrRejectSuggestion(
-        suggestion, suggestion.getStatus(), securityContext);
+        suggestion, SuggestionStatus.Accepted, securityContext);
     return dao.acceptSuggestion(uriInfo, suggestion, securityContext.getUserPrincipal().getName())
+        .toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/reject")
+  @Operation(
+      operationId = "rejectSuggestion",
+      summary = "Reject a Suggestion",
+      description = "Close a Suggestion without making any changes to the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Suggestion.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Suggestion.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response rejectSuggestion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the suggestion", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    Suggestion suggestion = dao.get(id);
+    dao.checkPermissionsForAcceptOrRejectSuggestion(
+        suggestion, SuggestionStatus.Rejected, securityContext);
+    return dao.rejectSuggestion(uriInfo, suggestion, securityContext.getUserPrincipal().getName())
         .toResponse();
   }
 
@@ -299,6 +345,37 @@ public class SuggestionsResource {
         .toResponse();
   }
 
+  @DELETE
+  @Path("/{entityType}/name/{entityFQN}")
+  @Operation(
+      operationId = "deleteSuggestions",
+      summary = "Delete a Suggestions by entityFQN",
+      description = "Delete an existing Suggestions and all its relationships.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "thread with {threadId} is not found"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteSuggestions(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "entity type", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType,
+      @Parameter(description = "fullyQualifiedName of entity", schema = @Schema(type = "string"))
+          @PathParam("entityFQN")
+          String entityFQN) {
+    // validate and get the thread
+    EntityInterface entity =
+        Entity.getEntityByName(entityType, entityFQN, "owner", Include.NON_DELETED);
+    // delete thread only if the admin/bot/author tries to delete it
+    OperationContext operationContext =
+        new OperationContext(Entity.SUGGESTION, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext = new PostResourceContext(entity.getOwner().getName());
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return dao.deleteSuggestionsForAnEntity(entity, securityContext.getUserPrincipal().getName())
+        .toResponse();
+  }
+
   private Suggestion getSuggestion(SecurityContext securityContext, CreateSuggestion create) {
     validate(create);
     return new Suggestion()
@@ -317,26 +394,37 @@ public class SuggestionsResource {
 
   private void validate(CreateSuggestion suggestion) {
     if (suggestion.getEntityLink() == null) {
-      throw new WebApplicationException("Suggestion's entityLink cannot be null.");
+      throw new SuggestionException(
+          Response.Status.BAD_REQUEST,
+          INVALID_SUGGESTION_REQUEST,
+          "Suggestion's entityLink cannot be null.");
     }
     MessageParser.EntityLink entityLink =
         MessageParser.EntityLink.parse(suggestion.getEntityLink());
     Entity.getEntityReferenceByName(
         entityLink.getEntityType(), entityLink.getEntityFQN(), Include.NON_DELETED);
+
     if (suggestion.getType() == SuggestionType.SuggestDescription) {
       if (suggestion.getDescription() == null || suggestion.getDescription().isEmpty()) {
-        throw new WebApplicationException("Suggestion's description cannot be empty.");
+        throw new SuggestionException(
+            Response.Status.BAD_REQUEST,
+            INVALID_SUGGESTION_REQUEST,
+            "Suggestion's description cannot be empty.");
       }
     } else if (suggestion.getType() == SuggestionType.SuggestTagLabel) {
       if (suggestion.getTagLabels().isEmpty()) {
-        throw new WebApplicationException("Suggestion's tag label's cannot be empty.");
+        throw new SuggestionException(
+            Response.Status.BAD_REQUEST,
+            INVALID_SUGGESTION_REQUEST,
+            "Suggestion's tag label's cannot be empty.");
       } else {
         for (TagLabel label : listOrEmpty(suggestion.getTagLabels())) {
           TagLabelUtil.applyTagCommonFields(label);
         }
       }
     } else {
-      throw new WebApplicationException("Invalid Suggestion Type.");
+      throw new SuggestionException(
+          Response.Status.BAD_REQUEST, INVALID_SUGGESTION_REQUEST, "Invalid Suggestion Type.");
     }
   }
 }

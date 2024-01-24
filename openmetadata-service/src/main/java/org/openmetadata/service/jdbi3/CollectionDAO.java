@@ -3528,8 +3528,7 @@ public interface CollectionDAO {
     }
 
     default int countOfTestCases(List<UUID> testCaseIds) {
-      return countOfTestCases(
-          getTableName(), testCaseIds.stream().map(Object::toString).collect(Collectors.toList()));
+      return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).toList());
     }
 
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
@@ -4319,6 +4318,10 @@ public interface CollectionDAO {
   }
 
   interface SuggestionDAO {
+    default String getTableName() {
+      return "suggestions";
+    }
+
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json)",
         connectionType = MYSQL)
@@ -4338,19 +4341,56 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM suggestions WHERE id = :id")
     String findById(@BindUUID("id") UUID id);
 
-    @SqlQuery("SELECT json FROM suggestions ORDER BY createdAt DESC")
-    List<String> list();
-
-    @SqlQuery("SELECT count(id) FROM suggestions <condition>")
-    int listCount(@Define("condition") String condition);
-
     @SqlUpdate("DELETE FROM suggestions WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
 
     @SqlUpdate("DELETE FROM suggestions WHERE fqnHash = :fqnHash")
-    void delete(@BindUUID("fqnHash") String fullyQualifiedName);
+    void deleteByFQN(@BindUUID("fqnHash") String fullyQualifiedName);
 
-    @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY createdAt DESC LIMIT :limit")
+    @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY updatedAt DESC LIMIT :limit")
     List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM suggestions <mysqlCond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM suggestions <postgresCond>",
+        connectionType = POSTGRES)
+    int listCount(
+        @Define("mysqlCond") String mysqlCond, @Define("postgresCond") String postgresCond);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT updatedAt, json FROM suggestions <mysqlCond> "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT updatedAt, json FROM suggestions <psqlCond> "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY updatedAt",
+        connectionType = POSTGRES)
+    List<String> listBefore(
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM suggestions <mysqlCond>  ORDER BY updatedAt LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM suggestions <psqlCond>  ORDER BY updatedAt LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listAfter(
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
   }
 }

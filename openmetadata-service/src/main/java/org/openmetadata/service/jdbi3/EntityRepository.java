@@ -1678,7 +1678,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final EntityReference getOwner(EntityReference ref) {
-    return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+    return !supportsOwner ? null : getFromEntityRef(ref.getId(), Relationship.OWNS, null, false);
   }
 
   public final void inheritDomain(T entity, Fields fields, EntityInterface parent) {
@@ -1932,6 +1932,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(Suggestion suggestion) {
     return new SuggestionRepository.SuggestionWorkflow(suggestion);
+  }
+
+  public EntityInterface applySuggestion(
+      EntityInterface entity, String childFQN, Suggestion suggestion) {
+    return entity;
   }
 
   public final void validateTaskThread(ThreadContext threadContext) {
