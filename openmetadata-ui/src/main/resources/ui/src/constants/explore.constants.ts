@@ -59,3 +59,5 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
 ];
 
 export const FAILED_TO_FIND_INDEX_ERROR = 'Failed to to find index';
+
+export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';

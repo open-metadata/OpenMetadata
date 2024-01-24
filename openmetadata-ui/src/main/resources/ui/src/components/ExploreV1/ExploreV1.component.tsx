@@ -41,7 +41,10 @@ import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/Enti
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import { ERROR_COLOR } from '../../constants/constants';
-import { TAG_FQN_KEY } from '../../constants/explore.constants';
+import {
+  SEARCH_INDEXING_APPLICATION,
+  TAG_FQN_KEY,
+} from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
@@ -363,7 +366,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                                       <Link
                                         className="alert-link text-xs"
                                         to={getApplicationDetailsPath(
-                                          'SearchIndexingApplication'
+                                          SEARCH_INDEXING_APPLICATION
                                         )}
                                       />
                                     }
