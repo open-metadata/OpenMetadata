@@ -63,6 +63,10 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 describe('Test Roles Details Page', () => {
   it('Should render the detail component', async () => {
     render(<RolesDetailPage />);

@@ -24,10 +24,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import Loader from '../../components/Loader/Loader';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Paging } from '../../generated/type/paging';
@@ -113,10 +110,7 @@ const MarketPlacePage = () => {
             titleLinks={[
               {
                 name: t('label.application-plural'),
-                url: getSettingPath(
-                  GlobalSettingsMenuCategory.INTEGRATIONS,
-                  GlobalSettingOptions.APPLICATIONS
-                ),
+                url: getSettingPath(GlobalSettingOptions.APPLICATIONS),
               },
               {
                 name: t('label.market-place'),
