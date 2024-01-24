@@ -1562,6 +1562,7 @@
     "permanently-delete-metadata-and-dependents": "Excluir permanentemente este(a) {{entityName}} removerá seus metadados, bem como os metadados de {{dependents}} do OpenMetadata permanentemente.",
     "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Descrição do pipeline.",
+    "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
     "pipeline-scheduler-message": "O Agendador de Ingestão não está respondendo. Entre em contato com o suporte da Collate. Obrigado.",
     "pipeline-trigger-failed-message": "Falha ao acionar o pipeline!",
     "pipeline-trigger-success-message": "Pipeline acionado com sucesso!",
