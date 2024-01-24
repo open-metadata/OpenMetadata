@@ -12,7 +12,7 @@
  */
 
 import { Typography } from 'antd';
-import React, { ReactElement } from 'react';
+import React, { ReactElement, ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
@@ -21,7 +21,7 @@ export const EmptyGraphPlaceholder = ({
   message,
 }: {
   icon?: ReactElement;
-  message?: JSX.Element | string;
+  message?: ReactNode;
 }) => {
   return (
     <ErrorPlaceHolder

@@ -162,7 +162,7 @@ const TotalDataAssetsWidget = ({
                     />
                   }
                   values={{
-                    setup: 'how to set up Data Insights',
+                    setup: t('message.setup-data-insights'),
                   }}
                 />
               }

@@ -1615,6 +1615,7 @@
     "service-with-space-not-allowed": "Service name with spaces are not allowed",
     "session-expired": "Your session has timed out! Please sign in again to access OpenMetadata.",
     "setup-custom-property": "OpenMetadata supports custom properties in the Table entity. Create a custom property by adding a unique property name. The name must start with a lowercase letter, as preferred in the camelCase format. Uppercase letters and numbers can be included in the field name; but spaces, underscores, and dots are not supported. Select the preferred property Type from among the options provided. Describe your custom property to provide more information to your team.",
+    "setup-data-insights": "how to set up Data Insights",
     "size-evolution-description": "Size evolution of assets in organization.",
     "soft-delete-message-for-entity": "Soft deleting will deactivate the {{entity}}. This will disable any discovery, read or write operations on {{entity}}.",
     "something-went-wrong": "Something went wrong",

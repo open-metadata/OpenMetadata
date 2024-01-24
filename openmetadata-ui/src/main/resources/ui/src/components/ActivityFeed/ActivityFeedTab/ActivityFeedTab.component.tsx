@@ -138,7 +138,7 @@ export const ActivityFeedTab = ({
             <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
           }
           values={{
-            explored: "Haven't explored yet?",
+            explored: t('message.have-not-explored-yet'),
           }}
         />
       );

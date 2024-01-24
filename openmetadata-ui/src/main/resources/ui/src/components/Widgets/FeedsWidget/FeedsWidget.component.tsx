@@ -163,7 +163,7 @@ const FeedsWidget = ({
                         />
                       }
                       values={{
-                        explored: 'message.have-not-explored-yet',
+                        explored: t('message.have-not-explored-yet'),
                       }}
                     />
                   }
