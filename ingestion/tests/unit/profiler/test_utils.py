@@ -54,18 +54,18 @@ class TestHistogramUtils(TestCase):
     def test_histogram_label_formatter_positive(self):
         """test label formatter for histogram"""
         formatted_label = self.histogram._format_bin_labels(18927, 23456)
-        assert formatted_label == "18.93K to 23.46K"
+        assert formatted_label == "18.927K to 23.456K"
 
         formatted_label = self.histogram._format_bin_labels(18927)
-        assert formatted_label == "18.93K and up"
+        assert formatted_label == "18.927K and up"
 
     def test_histogram_label_formatter_negative(self):
         """test label formatter for histogram for negative numbers"""
         formatted_label = self.histogram._format_bin_labels(-18927, -23456)
-        assert formatted_label == "-18.93K to -23.46K"
+        assert formatted_label == "-18.927K to -23.456K"
 
         formatted_label = self.histogram._format_bin_labels(-18927)
-        assert formatted_label == "-18.93K and up"
+        assert formatted_label == "-18.927K and up"
 
     def test_histogram_label_formatter_none(self):
         """test label formatter for histogram for None"""
@@ -80,12 +80,12 @@ class TestHistogramUtils(TestCase):
     def test_histogram_label_formatter_nines(self):
         """test label formatter for histogram for nines"""
         formatted_label = self.histogram._format_bin_labels(99999999)
-        assert formatted_label == "100.00M and up"
+        assert formatted_label == "100.000M and up"
 
     def test_histogram_label_formatter_floats(self):
         """test label formatter for histogram for floats"""
         formatted_label = self.histogram._format_bin_labels(167893.98542, 194993.98542)
-        assert formatted_label == "167.89K to 194.99K"
+        assert formatted_label == "167.894K to 194.994K"
 
 
 def test_is_array():

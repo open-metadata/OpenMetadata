@@ -176,7 +176,7 @@ class ProfilerTest(TestCase):
             interQuartileRange=1.0,
             nonParametricSkew=0.0,
             histogram=Histogram(
-                boundaries=["30.00 to 31.26", "31.26 and up"], frequencies=[3, 1]
+                boundaries=["30.000 to 31.260", "31.260 and up"], frequencies=[3, 1]
             ),
         )
 

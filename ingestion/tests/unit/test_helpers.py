@@ -24,6 +24,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.utils.helpers import (
     clean_up_starting_ending_double_quotes_in_string,
     deep_size_of_dict,
+    format_large_string_numbers,
     get_entity_tier_from_tags,
     is_safe_sql_query,
     list_to_dict,
@@ -145,3 +146,11 @@ class TestHelpers(TestCase):
         self.assertTrue(is_safe_sql_query(select_query))
         self.assertTrue(is_safe_sql_query(cte_query))
         self.assertFalse(is_safe_sql_query(transaction_query))
+
+    def test_format_large_string_numbers(self):
+        """test format_large_string_numbers"""
+        assert format_large_string_numbers(1000) == "1.000K"
+        assert format_large_string_numbers(1001) == "1.001K"
+        assert format_large_string_numbers(1000000) == "1.000M"
+        assert format_large_string_numbers(1000000000) == "1.000B"
+        assert format_large_string_numbers(1000000000000) == "1.000T"
