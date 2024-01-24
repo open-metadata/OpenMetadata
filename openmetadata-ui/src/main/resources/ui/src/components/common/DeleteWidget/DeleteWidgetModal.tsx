@@ -22,7 +22,6 @@ import {
 } from 'antd';
 import Input, { InputRef } from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
 import React, {
   ChangeEvent,
   useCallback,
@@ -124,7 +123,8 @@ const DeleteWidgetModal = ({
 
   const isDeleteTextPresent = useMemo(() => {
     return (
-      deleteConfirmationText === DELETE_CONFIRMATION_TEXT &&
+      deleteConfirmationText.toLowerCase() ===
+        DELETE_CONFIRMATION_TEXT.toLowerCase() &&
       (deletionType === DeleteType.SOFT_DELETE ||
         deletionType === DeleteType.HARD_DELETE)
     );
@@ -144,7 +144,7 @@ const DeleteWidgetModal = ({
           showSuccessToast(
             successMessage ??
               t('server.entity-deleted-successfully', {
-                entity: startCase(entityType),
+                entity: entityName,
               })
           );
           if (afterDeleteAction) {
@@ -261,7 +261,7 @@ const DeleteWidgetModal = ({
       maskClosable={false}
       okText={t('label.delete')}
       open={visible}
-      title={`${t('label.delete')} ${entityName}`}
+      title={`${t('label.delete')} ${entityType} “${entityName}”`}
       onCancel={handleOnEntityDeleteCancel}>
       <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
         <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
@@ -301,7 +301,7 @@ const DeleteWidgetModal = ({
               {
                 required: true,
                 message: t('message.please-type-text-to-confirm', {
-                  text: t('label.delete-uppercase'),
+                  text: DELETE_CONFIRMATION_TEXT,
                 }),
                 type: 'enum',
                 enum: [DELETE_CONFIRMATION_TEXT],
@@ -312,7 +312,7 @@ const DeleteWidgetModal = ({
               data-testid="confirmation-text-input"
               disabled={isLoading}
               name="entityName"
-              placeholder={t('label.delete-uppercase')}
+              placeholder={DELETE_CONFIRMATION_TEXT}
               ref={deleteTextInputRef}
               type="text"
               onChange={handleOnChange}

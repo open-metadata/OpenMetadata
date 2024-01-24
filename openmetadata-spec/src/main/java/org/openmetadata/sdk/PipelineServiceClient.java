@@ -46,15 +46,15 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
 /**
- * Client to make API calls to add, deleted, and deploy pipelines on a PipelineService, such as Airflow. Core
- * abstractions are as follows:
+ * Client to make API calls to add, deleted, and deploy pipelines on a PipelineService, such as
+ * Airflow. Core abstractions are as follows:
  *
  * <ul>
  *   <li>A PipelineService is a service such as AirFlow to which a pipeline can be deployed
- *   <li>A Pipeline is a workflow for performing certain tasks. Example - ingestion pipeline is a workflow that connects
- *       to a database service or other services and collect metadata.
- *   <li>Pipeline uses `Connection` to a service as dependency. A Pipeline might need to connection to database service
- *       to collect metadata, OpenMetadata to user metadata over APIs, etc.
+ *   <li>A Pipeline is a workflow for performing certain tasks. Example - ingestion pipeline is a
+ *       workflow that connects to a database service or other services and collect metadata.
+ *   <li>Pipeline uses `Connection` to a service as dependency. A Pipeline might need to connection
+ *       to database service to collect metadata, OpenMetadata to user metadata over APIs, etc.
  * </ul>
  */
 @Slf4j
@@ -212,7 +212,10 @@ public abstract class PipelineServiceClient {
     }
   }
 
-  /** Check the pipeline service status with an exception backoff to make sure we don't raise any false positives. */
+  /**
+   * Check the pipeline service status with an exception backoff to make sure we don't raise any
+   * false positives.
+   */
   public String getServiceStatusBackoff() {
     RetryConfig retryConfig =
         RetryConfig.<String>custom()
@@ -255,9 +258,9 @@ public abstract class PipelineServiceClient {
   public abstract PipelineServiceClientResponse getServiceStatusInternal();
 
   /**
-   * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the
-   * new Test Connection endpoint. The UI can create a new workflow and trigger it in the server, and keep polling the
-   * results.
+   * This workflow can be used to execute any necessary async automations from the pipeline service.
+   * This will be the new Test Connection endpoint. The UI can create a new workflow and trigger it
+   * in the server, and keep polling the results.
    */
   public abstract PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow);
 

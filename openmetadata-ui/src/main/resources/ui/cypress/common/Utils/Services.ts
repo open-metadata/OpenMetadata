@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DELETE_TERM } from '../../constants/constants';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import {
   interceptURL,
   toastNotification,
@@ -28,6 +28,16 @@ export enum Services {
   Search = 'Search',
 }
 
+export const ServicesEntityMap = {
+  [Services.Database]: EntityType.Table,
+  [Services.Messaging]: EntityType.Topic,
+  [Services.Dashboard]: EntityType.Dashboard,
+  [Services.Pipeline]: EntityType.Pipeline,
+  [Services.MLModels]: EntityType.MlModel,
+  [Services.Storage]: EntityType.Container,
+  [Services.Search]: EntityType.SeachIndex,
+};
+
 export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
@@ -38,7 +48,7 @@ export const goToServiceListingPage = (services: Services) => {
     'getSettingsPage'
   );
   // Click on settings page
-  cy.sidebarClick('app-bar-item-settings');
+  cy.sidebarClick(SidebarItem.SETTINGS);
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
@@ -158,7 +168,7 @@ export const deleteService = (typeOfService: Services, serviceName: string) => {
   verifyResponseStatusCode('@deleteService', 200);
 
   // Closing the toast notification
-  toastNotification(`Service deleted successfully!`);
+  toastNotification(`"${serviceName}" deleted successfully!`);
 
   cy.get(`[data-testid="service-name-${serviceName}"]`).should('not.exist');
 };

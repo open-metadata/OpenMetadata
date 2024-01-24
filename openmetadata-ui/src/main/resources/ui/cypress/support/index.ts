@@ -22,7 +22,7 @@ declare global {
        */
       login(email?: string, password?: string): void;
       logout(): void;
-      goToHomePage(doNotNavigate: boolean): void;
+      goToHomePage(doNotNavigate?: boolean): void;
       clickOnLogo(): void;
       clickOutside(): void;
       sidebarClick(id: string, parentId?: string): void;

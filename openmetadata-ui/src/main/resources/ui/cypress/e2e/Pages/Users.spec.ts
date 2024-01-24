@@ -32,7 +32,7 @@ import {
   ID,
   uuid,
 } from '../../constants/constants';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 
 const entity = new UsersTestClass();
@@ -110,16 +110,7 @@ describe('User with different Roles', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Check CRUD for Glossary
-    cy.sidebarHover();
-
-    cy.get(glossary.testid)
-      .should('be.visible')
-      .click({ animationDistanceThreshold: 10, waitForAnimations: true });
-    if (glossary.subMenu) {
-      cy.get(glossary.subMenu).should('be.visible').click({ force: true });
-    }
-    cy.clickOutside();
-
+    cy.sidebarClick(SidebarItem.GLOSSARY);
     cy.clickOnLogo();
 
     // Check CRUD for Tags
@@ -266,7 +257,7 @@ describe('User with different Roles', () => {
   it('Admin Soft delete user', () => {
     cy.login();
     visitUserListPage();
-    entity.softDeleteUser(user.name);
+    entity.softDeleteUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Restore soft deleted user', () => {
@@ -278,7 +269,7 @@ describe('User with different Roles', () => {
   it('Admin Permanent Delete User', () => {
     cy.login();
     visitUserListPage();
-    entity.permanentDeleteUser(user.name);
+    entity.permanentDeleteUser(user.name, user.updatedDisplayName);
   });
 
   it('Restore Admin Details', () => {

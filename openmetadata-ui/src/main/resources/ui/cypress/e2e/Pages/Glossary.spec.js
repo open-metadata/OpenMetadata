@@ -44,6 +44,7 @@ import {
   NEW_GLOSSARY_TERMS,
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const userName = `test_dataconsumer${uuid()}`;
 
@@ -373,7 +374,7 @@ const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
     });
   cy.get('[data-testid="modal-header"]')
     .should('be.visible')
-    .should('contain', `Delete ${name}`);
+    .should('contain', name);
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
     .type(DELETE_TERM);
@@ -383,7 +384,7 @@ const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
     .should('not.disabled')
     .click();
 
-  toastNotification('Glossary Term deleted successfully!');
+  toastNotification('"Glossary Term" deleted successfully!');
   cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
   cy.get('[data-testid="glossary-left-panel"]')
     .should('be.visible')
@@ -584,14 +585,7 @@ const voteGlossary = (isGlossary) => {
 const goToGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
-
-  cy.sidebarHover();
-  cy.get('[data-testid="governance"]').click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-  });
-
-  cy.sidebarClick('app-bar-item-glossary', 'governance');
+  cy.sidebarClick(SidebarItem.GLOSSARY);
 };
 
 const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
