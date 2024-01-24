@@ -12,7 +12,8 @@
  */
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/Loader/Loader';
@@ -20,6 +21,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
+import { ActivityFeedTabs } from '../ActivityFeedTab/ActivityFeedTab.interface';
 import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
@@ -31,6 +33,7 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
+  tab: ActivityFeedTabs;
 }
 
 const ActivityFeedListV1 = ({
@@ -42,8 +45,12 @@ const ActivityFeedListV1 = ({
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
+  tab,
 }: ActivityFeedListV1Props) => {
+  const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+
+  const isTaskTab = useMemo(() => tab === ActivityFeedTabs.TASKS, [tab]);
 
   useEffect(() => {
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
@@ -71,6 +78,11 @@ const ActivityFeedListV1 = ({
         <Typography.Paragraph
           className="tw-max-w-md"
           style={{ marginBottom: '0' }}>
+          {isTaskTab && (
+            <Typography.Text strong>
+              {t('message.no-open-tasks')} <br />
+            </Typography.Text>
+          )}
           {emptyPlaceholderText}
         </Typography.Paragraph>
       </ErrorPlaceHolder>
