@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { LazyLog } from 'react-lazylog';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-badge.svg';
@@ -46,6 +47,10 @@ const ConnectionStepCard = ({
   const isMandatoryStepsFailing = failed && testConnectionStepResult?.mandatory;
   const isNonMandatoryStepsFailing =
     failed && !testConnectionStepResult?.mandatory;
+
+  const logs =
+    testConnectionStepResult?.errorLog ??
+    t('label.no-entity', { entity: t('label.log-plural') });
 
   return (
     <div
@@ -127,12 +132,17 @@ const ConnectionStepCard = ({
               <Collapse ghost>
                 <Panel
                   className="connection-step-card-content-logs"
+                  data-testid="lazy-log"
                   header="Show logs"
                   key="show-log">
-                  <p className="text-grey-muted">
-                    {testConnectionStepResult?.errorLog ||
-                      t('label.no-entity', { entity: t('label.log-plural') })}
-                  </p>
+                  <LazyLog
+                    caseInsensitive
+                    enableSearch
+                    selectableLines
+                    extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                    height={300}
+                    text={logs}
+                  />
                 </Panel>
               </Collapse>
             </>
