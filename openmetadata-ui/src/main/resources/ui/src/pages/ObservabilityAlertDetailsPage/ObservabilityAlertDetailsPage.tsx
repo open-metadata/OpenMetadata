@@ -16,17 +16,22 @@ import { isEmpty, isNil, startCase, toString } from 'lodash';
 import React, {
   Fragment,
   ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   ArgumentsInput,
   EventSubscription,
@@ -41,9 +46,11 @@ import '../AddObservabilityPage/add-observability-page.less';
 function ObservabilityAlertDetailsPage() {
   const { t } = useTranslation();
   const { fqn } = useFqn();
+  const history = useHistory();
 
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [loading, setLoading] = useState<boolean>(true);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
 
   const { resource, filters, actions, destinations } = useMemo(
     () => ({
@@ -85,6 +92,10 @@ function ObservabilityAlertDetailsPage() {
     ],
     [alertDetails]
   );
+
+  const handleAlertDelete = useCallback(async () => {
+    history.push(ROUTES.OBSERVABILITY_ALERTS);
+  }, [history]);
 
   const getObservabilityDetailsItem = ({
     heading,
@@ -248,11 +259,21 @@ function ObservabilityAlertDetailsPage() {
                     </Space>
                   </Col>
                   <Col>
-                    <Link to={getObservabilityAlertsEditPath(fqn)}>
-                      <Button data-testid="edit-button" type="primary">
-                        {t('label.edit')}
-                      </Button>
-                    </Link>
+                    <Space size={8}>
+                      <Link to={getObservabilityAlertsEditPath(fqn)}>
+                        <Button
+                          className="flex flex-center"
+                          data-testid="edit-button"
+                          icon={<EditIcon height={16} width={16} />}
+                        />
+                      </Link>
+                      <Button
+                        className="flex flex-center"
+                        data-testid="delete-button"
+                        icon={<DeleteIcon height={16} width={16} />}
+                        onClick={() => setShowDeleteModal(true)}
+                      />
+                    </Space>
                   </Col>
                 </Row>
               </Col>
@@ -317,6 +338,17 @@ function ObservabilityAlertDetailsPage() {
                 })}
               </Col>
             </Row>
+            <DeleteWidgetModal
+              afterDeleteAction={handleAlertDelete}
+              allowSoftDelete={false}
+              entityId={alertDetails?.id ?? ''}
+              entityName={getEntityName(alertDetails)}
+              entityType={EntityType.SUBSCRIPTION}
+              visible={showDeleteModal}
+              onCancel={() => {
+                setShowDeleteModal(false);
+              }}
+            />
           </div>
         ),
         minWidth: 700,
