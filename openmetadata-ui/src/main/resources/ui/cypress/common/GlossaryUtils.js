@@ -14,6 +14,7 @@
 /// <reference types="cypress" />
 
 import { DELETE_TERM } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import {
   interceptURL,
   toastNotification,
@@ -23,15 +24,7 @@ import {
 export const visitGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'getGlossaries');
 
-  cy.sidebarHover();
-  cy.get('[data-testid="governance"]').click({
-    animationDistanceThreshold: 20,
-    waitForAnimations: true,
-  });
-
-  // Applying force true as the hover over tooltip
-
-  cy.sidebarClick('app-bar-item-glossary');
+  cy.sidebarClick(SidebarItem.GLOSSARY);
 
   verifyResponseStatusCode('@getGlossaries', 200);
 };
@@ -92,10 +85,7 @@ export const deleteGlossary = (glossary) => {
     cy.get('[data-testid="modal-header"]').should('be.visible');
   });
 
-  cy.get('[data-testid="modal-header"]').should(
-    'contain',
-    `Delete ${glossary}`
-  );
+  cy.get('[data-testid="modal-header"]').should('contain', glossary);
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 
@@ -105,5 +95,5 @@ export const deleteGlossary = (glossary) => {
 
   verifyResponseStatusCode('@getGlossary', 200);
 
-  toastNotification('Glossary deleted successfully!');
+  toastNotification('"Glossary" deleted successfully!');
 };

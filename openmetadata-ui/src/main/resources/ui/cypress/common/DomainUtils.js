@@ -17,6 +17,7 @@ import {
   NAME_VALIDATION_ERROR,
   SEARCH_ENTITY_TABLE,
 } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
 import {
   descriptionBox,
   interceptURL,
@@ -92,11 +93,7 @@ const updateOwner = (newOwner) => {
   cy.get(`.ant-popover [title="${newOwner}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get(`[data-testid="domain-owner-name"]`)
-    .invoke('text')
-    .then((text) => {
-      expect(text).to.contain(newOwner);
-    });
+  cy.get(`[data-testid="domain-owner-name"]`).should('contain', newOwner);
 };
 
 const goToAssetsTab = (domainObj) => {
@@ -145,7 +142,7 @@ export const updateAssets = (domainObj) => {
 
   cy.get('[data-testid="domain-link"]').should('contain', domainObj.name);
 
-  cy.sidebarClick('app-bar-item-domain');
+  cy.sidebarClick(SidebarItem.DOMAIN);
 
   goToAssetsTab(domainObj);
 
@@ -179,7 +176,7 @@ export const removeAssets = (domainObj) => {
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchDomain', 200);
 
-  cy.sidebarClick('app-bar-item-domain');
+  cy.sidebarClick(SidebarItem.DOMAIN);
 
   goToAssetsTab(domainObj);
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(
@@ -297,7 +294,7 @@ export const deleteDomain = (domainObj) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${domainObj.name}`
+    domainObj.updatedDisplayName
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -308,7 +305,7 @@ export const deleteDomain = (domainObj) => {
 
   verifyResponseStatusCode('@getDomains', 200);
 
-  toastNotification('Domain deleted successfully!');
+  toastNotification(`"${domainObj.updatedDisplayName}" deleted successfully!`);
 };
 
 export const verifyDomain = (domainObj) => {

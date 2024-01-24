@@ -24,6 +24,7 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import { BASE_URL, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
   SEARCH_INDEX_DISPLAY_NAME,
@@ -32,6 +33,7 @@ import {
   USER_CREDENTIALS,
   USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const policy = {
   name: `cy-data-steward-policy-${uuid()}`,
@@ -190,11 +192,11 @@ describe('Prerequisite for data steward role tests', () => {
 
     // Assign data steward role to the created user
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
 
     verifyResponseStatusCode('@getUsersList', 200);
 

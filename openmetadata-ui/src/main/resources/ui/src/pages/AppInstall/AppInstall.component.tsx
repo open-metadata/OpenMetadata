@@ -26,10 +26,7 @@ import IngestionStepper from '../../components/IngestionStepper/IngestionStepper
 import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
 import {
@@ -98,12 +95,7 @@ const AppInstall = () => {
   };
 
   const goToAppPage = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        GlobalSettingOptions.APPLICATIONS
-      )
-    );
+    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
   const onSubmit = async (repeatFrequency: string) => {

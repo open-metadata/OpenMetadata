@@ -18,6 +18,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -61,12 +62,7 @@ describe('Roles page should work properly', () => {
 
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 
-    cy.sidebarClick('app-bar-item-settings');
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Roles')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.ROLES);
 
     verifyResponseStatusCode('@getRoles', 200);
 

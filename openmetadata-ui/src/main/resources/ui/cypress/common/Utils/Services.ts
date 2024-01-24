@@ -12,6 +12,7 @@
  */
 import { DELETE_TERM } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   interceptURL,
   toastNotification,
@@ -19,32 +20,32 @@ import {
 } from '../common';
 
 export enum Services {
-  Database = 'Databases',
-  Messaging = 'Messaging',
-  Dashboard = 'Dashboards',
-  Pipeline = 'Pipelines',
-  MLModels = 'ML Models',
-  Storage = 'Storages',
-  Search = 'Search',
+  Database = GlobalSettingOptions.DATABASES,
+  Messaging = GlobalSettingOptions.MESSAGING,
+  Dashboard = GlobalSettingOptions.DASHBOARDS,
+  Pipeline = GlobalSettingOptions.PIPELINES,
+  MLModels = GlobalSettingOptions.MLMODELS,
+  Storage = GlobalSettingOptions.STORAGES,
+  Search = GlobalSettingOptions.SEARCH,
 }
+
+export const ServicesEntityMap = {
+  [Services.Database]: EntityType.Table,
+  [Services.Messaging]: EntityType.Topic,
+  [Services.Dashboard]: EntityType.Dashboard,
+  [Services.Pipeline]: EntityType.Pipeline,
+  [Services.MLModels]: EntityType.MlModel,
+  [Services.Storage]: EntityType.Container,
+  [Services.Search]: EntityType.SeachIndex,
+};
 
 export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
 export const goToServiceListingPage = (services: Services) => {
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-  // Click on settings page
-  cy.sidebarClick('app-bar-item-settings');
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
-  cy.get(`[data-testid="global-setting-left-panel"]`)
-    .contains(services)
-    .click();
+  cy.settingClick(services);
 
   verifyResponseStatusCode('@getServiceList', 200);
 };
@@ -158,7 +159,7 @@ export const deleteService = (typeOfService: Services, serviceName: string) => {
   verifyResponseStatusCode('@deleteService', 200);
 
   // Closing the toast notification
-  toastNotification(`Service deleted successfully!`);
+  toastNotification(`"${serviceName}" deleted successfully!`);
 
   cy.get(`[data-testid="service-name-${serviceName}"]`).should('not.exist');
 };
