@@ -1430,7 +1430,7 @@
     "kill-successfully": "Successfully killed running workflows for",
     "kpi-subtitle": "Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets.",
     "kpi-target-achieved": "Congratulations on achieving your goals!",
-    "kpi-target-achieved-before-time": "Awesome! You’ve reached your target well before time.",
+    "kpi-target-achieved-before-time": "Congratulations! Your teams have excelled in achieving the set KPI goal. Now, you have the option to archive this KPI or set a new goal to further enhance your data culture and continue on the path of improvement.",
     "kpi-target-overdue": "Notice: The Description KPI target hasn't been met yet, but there's still time – your organization has {{count}} days left. To stay on track, please enable the Data Insights Report. This will allow us to send weekly updates to all teams, fostering collaboration and focus towards achieving our organization's KPIs.",
     "leave-the-team-team-name": "Leave the team {{teamName}}",
     "length-validator-error": "At least {{length}} {{field}} required",
