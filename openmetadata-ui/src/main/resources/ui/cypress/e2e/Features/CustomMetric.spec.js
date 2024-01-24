@@ -96,7 +96,7 @@ const createCustomMetric = ({
   cy.get('[data-testid="custom-metric"]').click();
 
   // validate redirection and cancel button
-  cy.get('[data-testid="heading"]').should('be.visible');
+  cy.get('[data-testid="heading"]').first().should('be.visible');
   cy.get(
     `[data-testid=${
       isColumnMetric
@@ -108,6 +108,7 @@ const createCustomMetric = ({
   verifyResponseStatusCode('@getCustomMetric', 200);
   cy.url().should('include', 'profiler');
   cy.get('[data-testid="heading"]')
+    .first()
     .invoke('text')
     .should('equal', isColumnMetric ? 'Column Profile' : 'Table Profile');
 
@@ -133,6 +134,7 @@ const createCustomMetric = ({
   // verify the created custom metric
   cy.url().should('include', 'profiler');
   cy.get('[data-testid="heading"]')
+    .first()
     .invoke('text')
     .should('equal', isColumnMetric ? 'Column Profile' : 'Table Profile');
   cy.get(`[data-testid="${metric.name}-custom-metrics"]`)
