@@ -112,10 +112,10 @@ const LoginConfigurationPage = () => {
           <Row align="middle">
             <Col span={24}>
               <Typography.Text className="m-0 text-grey-muted">
-                {t('label.max-login-fail-attampt-plural')}
+                {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
                   placement="top"
-                  title={t('message.login-fail-attamp-message')}
+                  title={t('message.login-fail-attempt-message')}
                   trigger="hover">
                   <InfoCircleOutlined
                     className="m-x-xss"
