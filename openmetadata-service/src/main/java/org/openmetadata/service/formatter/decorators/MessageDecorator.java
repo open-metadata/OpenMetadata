@@ -154,7 +154,7 @@ public interface MessageDecorator<T> {
       }
       message.setHeader(headerText);
     }
-    List<Thread> thread = FeedUtils.getThreadWithMessage(event, "admin");
+    List<Thread> thread = FeedUtils.getThreadWithMessage(this, event, "admin");
     List<String> messages = new ArrayList<>();
     thread.forEach(entry -> messages.add(entry.getMessage()));
     message.setMessages(messages);

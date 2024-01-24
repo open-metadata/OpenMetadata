@@ -217,7 +217,7 @@ public class AlertsRuleEvaluator {
             JsonUtils.readOrConvertValue(fieldChange.getNewValue(), TestCaseResult.class);
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
         for (String givenStatus : testResults) {
-          if (givenStatus.equals(status.value())) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
             return true;
           }
         }
