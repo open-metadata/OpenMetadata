@@ -63,8 +63,8 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
+    TopologyContext,
     TopologyNode,
-    create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils import fqn
@@ -212,7 +212,7 @@ class DatabaseServiceSource(
     inspector: Inspector
 
     topology = DatabaseServiceTopology()
-    context = create_source_context(topology)
+    context = TopologyContext.create(topology)
 
     def prepare(self):
         """By default, there is no preparation needed"""
