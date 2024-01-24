@@ -60,10 +60,6 @@ import {
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
-export const SearchIndexNotFoundErrorSetter = React.createContext({
-  indexNotFoundError: null,
-});
-
 const ExplorePageV1: FunctionComponent = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
@@ -92,9 +88,9 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const [searchIndexNotFoundError, setSearchIndexNotFoundError] = useState<
-    string | null
-  >(null);
+  const [showSearchIndexLink, setShowSearchIndexLink] = useState<
+    string | undefined
+  >();
 
   const { queryFilter } = useAdvanceSearch();
 
@@ -374,7 +370,7 @@ const ExplorePageV1: FunctionComponent = () => {
     ])
       .catch((error) => {
         if (error.response.data.message.includes('Failed to to find index')) {
-          setSearchIndexNotFoundError(error.response.data.message);
+          setShowSearchIndexLink(error.response.data.message);
         } else {
           showErrorToast(error);
         }
@@ -410,39 +406,35 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 
   return (
-    <SearchIndexNotFoundErrorSetter.Provider
-      value={{ indexNotFoundError: searchIndexNotFoundError }}>
-      <ExploreV1
-        activeTabKey={searchIndex}
-        aggregations={updatedAggregations}
-        loading={isLoading && !isTourOpen}
-        quickFilters={advancesSearchQuickFilters}
-        searchIndex={searchIndex}
-        searchResults={
-          isTourOpen
-            ? (mockSearchData as unknown as SearchResponse<ExploreSearchIndex>)
-            : searchResults
-        }
-        showDeleted={showDeleted}
-        sortOrder={sortOrder}
-        sortValue={sortValue}
-        tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
-        tabItems={tabItems}
-        onChangeAdvancedSearchQuickFilters={
-          handleAdvanceSearchQuickFiltersChange
-        }
-        onChangePage={handlePageChange}
-        onChangeSearchIndex={handleSearchIndexChange}
-        onChangeShowDeleted={handleShowDeletedChange}
-        onChangeSortOder={(sort) => {
-          handlePageChange(1);
-          setSortOrder(sort);
-        }}
-        onChangeSortValue={(sortVal) => {
-          handleSortValueChange(1, sortVal);
-        }}
-      />
-    </SearchIndexNotFoundErrorSetter.Provider>
+    <ExploreV1
+      activeTabKey={searchIndex}
+      aggregations={updatedAggregations}
+      loading={isLoading && !isTourOpen}
+      quickFilters={advancesSearchQuickFilters}
+      searchIndex={searchIndex}
+      searchResults={
+        isTourOpen
+          ? (mockSearchData as unknown as SearchResponse<ExploreSearchIndex>)
+          : searchResults
+      }
+      showDeleted={showDeleted}
+      showSearchIndexLink={showSearchIndexLink}
+      sortOrder={sortOrder}
+      sortValue={sortValue}
+      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
+      tabItems={tabItems}
+      onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
+      onChangePage={handlePageChange}
+      onChangeSearchIndex={handleSearchIndexChange}
+      onChangeShowDeleted={handleShowDeletedChange}
+      onChangeSortOder={(sort) => {
+        handlePageChange(1);
+        setSortOrder(sort);
+      }}
+      onChangeSortValue={(sortVal) => {
+        handleSortValueChange(1, sortVal);
+      }}
+    />
   );
 };
 
