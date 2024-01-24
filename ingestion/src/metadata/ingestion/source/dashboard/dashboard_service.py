@@ -393,7 +393,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 params={"service": self.context.dashboard_service},
             )
 
-    def process_owner(  # pylint: disable=unused-argument, useless-return
+    def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
     ) -> Optional[EntityReference]:
         """

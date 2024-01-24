@@ -100,7 +100,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             return self.metadata.get_reference_by_email(email)
         return None
 
-    def process_owner(
+    def get_owner_ref(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
     ) -> EntityReference:
         try:
