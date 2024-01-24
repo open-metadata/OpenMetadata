@@ -12,9 +12,13 @@
 """
 Source connection handler
 """
+import os
+from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial, singledispatch
 from typing import Optional
+
+from google.cloud import storage
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -31,9 +35,13 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.security.credentials.gcpValues import (
+    MultipleProjectId,
+    SingleProjectId,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import GOOGLE_CREDENTIALS, set_google_credentials
 
 
 # Only import specific datalake dependencies if necessary
@@ -43,6 +51,12 @@ class DatalakeClient:
     def __init__(self, client, config) -> None:
         self.client = client
         self.config = config
+
+
+def _return_gcs_client(gcs_config: GCSConfig):
+    set_google_credentials(gcp_credentials=gcs_config.securityConfig)
+    gcs_client = storage.Client()
+    return gcs_client
 
 
 @singledispatch
@@ -65,11 +79,15 @@ def _(config: S3Config):
 
 @get_datalake_client.register
 def _(config: GCSConfig):
-    from google.cloud import storage
-
-    set_google_credentials(gcp_credentials=config.securityConfig)
-    gcs_client = storage.Client()
-    return gcs_client
+    gcs_config = deepcopy(config)
+    if hasattr(config.securityConfig, "gcpConfig") and isinstance(
+        config.securityConfig.gcpConfig.projectId, MultipleProjectId
+    ):
+        gcs_config: GCSConfig = deepcopy(config)
+        gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
+            gcs_config.securityConfig.gcpConfig.projectId.__root__[0]
+        )
+    return _return_gcs_client(gcs_config=gcs_config)
 
 
 @get_datalake_client.register
@@ -94,6 +112,15 @@ def _(config: AzureConfig):
         raise RuntimeError(
             f"Unknown error connecting with {config.securityConfig}: {exc}."
         )
+
+
+def set_gcs_datalake_client(config: GCSConfig, project_id: str):
+    gcs_config = deepcopy(config)
+    if hasattr(config.securityConfig, "gcpConfig"):
+        gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
+            project_id
+        )
+    return _return_gcs_client(gcs_config=gcs_config)
 
 
 def get_connection(connection: DatalakeConnection) -> DatalakeClient:
@@ -125,6 +152,10 @@ def test_connection(
             func = partial(connection.client.get_bucket, connection.config.bucketName)
         else:
             func = connection.client.list_buckets
+        os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
+        if GOOGLE_CREDENTIALS in os.environ:
+            os.remove(os.environ[GOOGLE_CREDENTIALS])
+            del os.environ[GOOGLE_CREDENTIALS]
 
     if isinstance(config, S3Config):
         if connection.config.bucketName:
