@@ -38,6 +38,7 @@ import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
+import { FAILED_TO_FIND_INDEX_ERROR } from '../../constants/ExplorePageV1.constants';
 import {
   mockSearchData,
   MOCK_EXPLORE_PAGE_COUNT,
@@ -373,7 +374,7 @@ const ExplorePageV1: FunctionComponent = () => {
       }),
     ])
       .catch((error) => {
-        if (error.response?.data.message.includes('Failed to to find index')) {
+        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error);
