@@ -35,7 +35,185 @@
             }
           },
           "lifeCycle": {
-            "type": "object"
+            "properties": {
+              "created": {
+                "properties": {
+                  "timestamp": {
+                    "type": "date",
+                    "format": "epoch_second"
+                  },
+                  "accessedBy": {
+                    "properties": {
+                      "id": {
+                        "type": "keyword",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "ignore_above": 36
+                          }
+                        }
+                      },
+                      "type": {
+                        "type": "keyword"
+                      },
+                      "name": {
+                        "type": "keyword",
+                        "normalizer": "lowercase_normalizer",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "ignore_above": 256
+                          }
+                        }
+                      },
+                      "displayName": {
+                        "type": "keyword",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "normalizer": "lowercase_normalizer",
+                            "ignore_above": 256
+                          }
+                        }
+                      },
+                      "fullyQualifiedName": {
+                        "type": "text"
+                      },
+                      "description": {
+                        "type": "text"
+                      },
+                      "deleted": {
+                        "type": "text"
+                      },
+                      "href": {
+                        "type": "text"
+                      }
+                    }
+                  },
+                  "accessedByAProcess": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "updated": {
+                "properties": {
+                  "timestamp": {
+                    "type": "date",
+                    "format": "epoch_second"
+                  },
+                  "accessedBy": {
+                    "properties": {
+                      "id": {
+                        "type": "keyword",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "ignore_above": 36
+                          }
+                        }
+                      },
+                      "type": {
+                        "type": "keyword"
+                      },
+                      "name": {
+                        "type": "keyword",
+                        "normalizer": "lowercase_normalizer",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "ignore_above": 256
+                          }
+                        }
+                      },
+                      "displayName": {
+                        "type": "keyword",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "normalizer": "lowercase_normalizer",
+                            "ignore_above": 256
+                          }
+                        }
+                      },
+                      "fullyQualifiedName": {
+                        "type": "text"
+                      },
+                      "description": {
+                        "type": "text"
+                      },
+                      "deleted": {
+                        "type": "text"
+                      },
+                      "href": {
+                        "type": "text"
+                      }
+                    }
+                  },
+                  "accessedByAProcess": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "accessed": {
+                "properties": {
+                  "timestamp": {
+                    "type": "date",
+                    "format": "epoch_second"
+                  },
+                  "accessedBy": {
+                    "properties": {
+                      "id": {
+                        "type": "keyword",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "ignore_above": 36
+                          }
+                        }
+                      },
+                      "type": {
+                        "type": "keyword"
+                      },
+                      "name": {
+                        "type": "keyword",
+                        "normalizer": "lowercase_normalizer",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "ignore_above": 256
+                          }
+                        }
+                      },
+                      "displayName": {
+                        "type": "keyword",
+                        "fields": {
+                          "keyword": {
+                            "type": "keyword",
+                            "normalizer": "lowercase_normalizer",
+                            "ignore_above": 256
+                          }
+                        }
+                      },
+                      "fullyQualifiedName": {
+                        "type": "text"
+                      },
+                      "description": {
+                        "type": "text"
+                      },
+                      "deleted": {
+                        "type": "text"
+                      },
+                      "href": {
+                        "type": "text"
+                      }
+                    }
+                  },
+                  "accessedByAProcess": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
           },
           "sizeInByte": {
             "type": "double"
