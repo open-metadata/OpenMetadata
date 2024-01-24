@@ -57,3 +57,5 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',
 ];
+
+export const FAILED_TO_FIND_INDEX_ERROR = 'Failed to to find index';

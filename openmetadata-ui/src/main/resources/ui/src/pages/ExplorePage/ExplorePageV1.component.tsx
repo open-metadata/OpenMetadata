@@ -36,9 +36,9 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
-import { FAILED_TO_FIND_INDEX_ERROR } from '../../constants/ExplorePageV1.constants';
 import {
   mockSearchData,
   MOCK_EXPLORE_PAGE_COUNT,
