@@ -43,6 +43,13 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock(
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
+  }
+);
+
 const onSave = jest.fn();
 const onCancel = jest.fn();
 

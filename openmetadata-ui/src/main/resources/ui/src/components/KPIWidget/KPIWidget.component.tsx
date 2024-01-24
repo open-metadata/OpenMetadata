@@ -61,9 +61,7 @@ const EmptyPlaceholder = () => {
       <KPIEmptyIcon width={SIZE.X_SMALL} />
       <div className="m-t-xs text-center">
         <Typography.Paragraph style={{ marginBottom: '0' }}>
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.data-insight'),
-          })}
+          {t('message.no-kpi')}
         </Typography.Paragraph>
         <Typography.Paragraph>
           <Transi18next

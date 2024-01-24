@@ -582,8 +582,9 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           }
           heading={t('label.pipeline')}
           permission={createPermission}
-          type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
-        />
+          type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
+          {t('message.no-table-pipeline')}
+        </ErrorPlaceHolder>
       ) : (
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
       ),

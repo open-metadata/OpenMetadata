@@ -34,6 +34,7 @@ const ErrorPlaceHolder = ({
   permission,
   buttonId,
   icon,
+  placeholderText,
 }: ErrorPlaceholderProps) => {
   const getErrorPlaceHolder = () => {
     switch (type) {
@@ -45,6 +46,7 @@ const ErrorPlaceHolder = ({
             doc={doc}
             heading={heading}
             permission={permission}
+            placeholderText={placeholderText}
             size={size}
             onClick={onClick}
           />
@@ -82,7 +84,10 @@ const ErrorPlaceHolder = ({
 
       default:
         return (
-          <NoDataPlaceholder className={className} size={size}>
+          <NoDataPlaceholder
+            className={className}
+            placeholderText={placeholderText}
+            size={size}>
             {children}
           </NoDataPlaceholder>
         );

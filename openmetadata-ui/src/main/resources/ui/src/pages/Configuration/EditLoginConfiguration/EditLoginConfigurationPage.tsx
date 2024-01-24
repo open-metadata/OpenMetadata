@@ -88,7 +88,7 @@ const EditLoginConfiguration = () => {
   const formFields: FieldProp[] = [
     {
       name: 'maxLoginFailAttempts',
-      label: t('label.max-login-fail-attampt-plural'),
+      label: t('label.max-login-fail-attempt-plural'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/maxLoginFailAttempts',

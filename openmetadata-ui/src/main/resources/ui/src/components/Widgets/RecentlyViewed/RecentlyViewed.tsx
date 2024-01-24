@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as RecentlyViewedEmptyIcon } from '../../../assets/svg/recently-viewed-no-data-placeholder.svg';
+import { RECENTLY_VIEWED } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -114,6 +115,13 @@ const RecentlyViewed = ({
                 <Typography.Paragraph>
                   {t('message.no-recently-viewed-date')}
                 </Typography.Paragraph>
+                <Link
+                  className="link-title"
+                  rel="noreferrer"
+                  target="_blank"
+                  to={RECENTLY_VIEWED}>
+                  {t('label.learn-more')}
+                </Link>
               </ErrorPlaceHolder>
             </div>
           ) : (

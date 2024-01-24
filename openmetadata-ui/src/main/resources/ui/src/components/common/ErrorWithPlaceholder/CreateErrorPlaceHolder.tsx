@@ -29,6 +29,7 @@ const CreateErrorPlaceHolder = ({
   heading,
   doc,
   buttonId,
+  placeholderText,
 }: CreatePlaceholderProps) => {
   const { t } = useTranslation();
 
@@ -48,26 +49,29 @@ const CreateErrorPlaceHolder = ({
         />
         <div className="text-center text-sm font-normal">
           <Typography.Paragraph style={{ marginBottom: '0' }}>
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: heading,
-            })}
+            {placeholderText ??
+              t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: heading,
+              })}
           </Typography.Paragraph>
-          <Typography.Paragraph>
-            <Transi18next
-              i18nKey="message.refer-to-our-doc"
-              renderElement={
-                <a
-                  href={doc}
-                  rel="noreferrer"
-                  style={{ color: '#1890ff' }}
-                  target="_blank"
-                />
-              }
-              values={{
-                doc: t('label.doc-plural-lowercase'),
-              }}
-            />
-          </Typography.Paragraph>
+          {!placeholderText && (
+            <Typography.Paragraph>
+              <Transi18next
+                i18nKey="message.refer-to-our-doc"
+                renderElement={
+                  <a
+                    href={doc}
+                    rel="noreferrer"
+                    style={{ color: '#1890ff' }}
+                    target="_blank"
+                  />
+                }
+                values={{
+                  doc: t('label.doc-plural-lowercase'),
+                }}
+              />
+            </Typography.Paragraph>
+          )}
 
           {onClick && (
             <Tooltip

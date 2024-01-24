@@ -661,7 +661,9 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   if (day > 0 && isTargetMet) {
     return t('message.kpi-target-achieved-before-time');
   } else if (day <= 0 && !isTargetMet) {
-    return t('message.kpi-target-overdue');
+    return t('message.kpi-target-overdue', {
+      count: day,
+    });
   } else if (isTargetMet) {
     return t('message.kpi-target-achieved');
   } else {

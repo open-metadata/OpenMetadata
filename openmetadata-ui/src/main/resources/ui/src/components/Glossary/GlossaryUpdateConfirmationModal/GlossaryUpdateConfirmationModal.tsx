@@ -185,7 +185,7 @@ export const GlossaryUpdateConfirmationModal = ({
                   />
                   <Alert
                     className="m-t-sm"
-                    message={t('message.glossary-tag-assignement-help-message')}
+                    message={t('message.glossary-tag-assignment-help-message')}
                     type="warning"
                   />
                 </>
