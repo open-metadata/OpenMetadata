@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
+    MariaDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
@@ -46,6 +49,9 @@ from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
 )
 from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
     DatabricksProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.mariadb.profiler_interface import (
+    MariaDBProfilerInterface,
 )
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -100,6 +106,7 @@ profilers = {
     BigQueryConnection.__name__: BigQueryProfilerInterface,
     SingleStoreConnection.__name__: SingleStoreProfilerInterface,
     DatalakeConnection.__name__: PandasProfilerInterface,
+    MariaDBConnection.__name__: MariaDBProfilerInterface,
     SnowflakeConnection.__name__: SnowflakeProfilerInterface,
     TrinoConnection.__name__: TrinoProfilerInterface,
     UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
