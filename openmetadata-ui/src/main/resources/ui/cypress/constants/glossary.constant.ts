@@ -11,5 +11,4 @@
  *  limitations under the License.
  */
 
-export const GLOSSARY_GLOSSARY_OWNER_LINK_TEST_ID =
-  'glossary-right-panel-owner-link';
+export const GLOSSARY_OWNER_LINK_TEST_ID = 'glossary-right-panel-owner-link';
