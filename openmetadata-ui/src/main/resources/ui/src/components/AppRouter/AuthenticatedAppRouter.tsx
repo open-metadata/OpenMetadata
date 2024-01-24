@@ -387,6 +387,15 @@ const ObservabilityAlertsPage = withSuspenseFallback(
   )
 );
 
+const ObservabilityAlertDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/ObservabilityAlertDetailsPage/ObservabilityAlertDetailsPage'
+      )
+  )
+);
+
 const AddObservabilityPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
@@ -1053,6 +1062,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={ObservabilityAlertsPage}
         path={ROUTES.OBSERVABILITY_ALERTS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ObservabilityAlertDetailsPage}
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS}
       />
 
       <AdminProtectedRoute

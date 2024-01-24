@@ -36,8 +36,8 @@ import {
   EventFilterRule,
 } from '../../../generated/events/eventSubscription';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
+import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
-import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getSearchIndexFromEntityType } from '../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import { ObservabilityFormActionItemProps } from './ObservabilityFormActionItem.interface';
@@ -49,6 +49,7 @@ function ObservabilityFormActionItem({
 }: Readonly<ObservabilityFormActionItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
+  const { fqn } = useFqn();
 
   // Watchers
   const actions = Form.useWatch<EventFilterRule[]>(['input', 'actions'], form);
@@ -344,13 +345,7 @@ function ObservabilityFormActionItem({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <Form.List
-            name={['input', 'actions']}
-            rules={[
-              {
-                validator: listLengthValidator(t('label.action')),
-              },
-            ]}>
+          <Form.List name={['input', 'actions']}>
             {(fields, { add, remove }, { errors }) => (
               <Row gutter={[16, 16]}>
                 {fields.map(({ key, name }) => {

@@ -52,7 +52,7 @@ function DestinationFormItem({
 }>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
-  const [destinationOptions, SetDestinationOptions] = useState(
+  const [destinationOptions, setDestinationOptions] = useState(
     DESTINATION_SOURCE_ITEMS.internal
   );
 
@@ -239,7 +239,7 @@ function DestinationFormItem({
   );
 
   const handleTabChange = useCallback((key) => {
-    SetDestinationOptions(
+    setDestinationOptions(
       DESTINATION_SOURCE_ITEMS[key as keyof typeof DESTINATION_SOURCE_ITEMS]
     );
   }, []);
@@ -315,7 +315,7 @@ function DestinationFormItem({
             ]}>
             {(fields, { add, remove }, { errors }) => {
               return (
-                <Row gutter={[16, 16]} justify="space-between">
+                <>
                   {fields.map(({ key, name }) => {
                     const destinationType =
                       form.getFieldValue([
@@ -328,7 +328,11 @@ function DestinationFormItem({
                       checkIfDestinationIsInternal(destinationType);
 
                     return (
-                      <React.Fragment key={key}>
+                      <Row
+                        className="p-b-md"
+                        gutter={[16, 16]}
+                        justify="space-between"
+                        key={key}>
                         <Col flex="1 1 auto">
                           <Form.Item
                             required
@@ -393,7 +397,7 @@ function DestinationFormItem({
                               </Form.Item>
                             </Col>
                           )}
-                      </React.Fragment>
+                      </Row>
                     );
                   })}
 
@@ -412,7 +416,7 @@ function DestinationFormItem({
                   <Col span={24}>
                     <Form.ErrorList errors={errors} />
                   </Col>
-                </Row>
+                </>
               );
             }}
           </Form.List>
