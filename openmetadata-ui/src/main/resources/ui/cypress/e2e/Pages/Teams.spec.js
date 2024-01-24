@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   addTeam,
   descriptionBox,
@@ -25,6 +24,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const updatedDescription = 'This is updated description';
 

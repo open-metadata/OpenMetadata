@@ -13,8 +13,8 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const config = {
   logo: 'https://custom-logo.png',

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   addTeam,
   interceptURL,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const buTeamName = `bu-${uuid()}`;
 const divTeamName = `div-${uuid()}`;

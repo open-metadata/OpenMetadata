@@ -12,11 +12,12 @@
  */
 
 import { CustomPropertyType } from '../../common/Utils/CustomProperty';
+import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
 import TableClass from './../../common/Entities/TableClass';
 
 const entities = [
-  new DatabaseSchemaClass(),
+  new DatabaseClass(),
   new DatabaseSchemaClass(),
   // ES Issue
   //   new StoreProcedureClass(),

@@ -36,13 +36,13 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-import {
-  SETTINGS_OPTIONS_PATH,
-  SETTING_CUSTOM_PROPERTIES_PATH,
-} from '../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../common/common';
 import { BASE_URL, LOGIN } from '../constants/constants';
 import { SidebarItem } from '../constants/Entity.interface';
+import {
+  SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+} from '../constants/settings.constant';
 import { SIDEBAR_LIST_ITEMS } from '../constants/sidebar.constant';
 
 Cypress.Commands.add('loginByGoogleApi', () => {

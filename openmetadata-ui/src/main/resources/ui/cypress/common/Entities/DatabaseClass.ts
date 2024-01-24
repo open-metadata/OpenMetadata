@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import {
@@ -19,6 +18,7 @@ import {
 } from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import EntityClass from './EntityClass';
 
 class DatabaseClass extends EntityClass {

@@ -13,7 +13,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   addTableFieldTags,
   deleteEntity,
@@ -34,6 +33,7 @@ import {
   USER_CREDENTIALS,
   USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const policy = {
   name: `cy-data-steward-policy-${uuid()}`,

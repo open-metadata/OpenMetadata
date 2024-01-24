@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -19,6 +18,7 @@ import {
 } from '../../common/common';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../../constants/service.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   permanentDeleteUser,
   restoreUser,

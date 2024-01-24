@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
@@ -34,6 +33,7 @@ import {
 } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { REDSHIFT } from '../../constants/service.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
   'redshiftDatabase'
@@ -88,7 +88,7 @@ describe('RedShift Ingestion', () => {
       REDSHIFT.serviceName,
       REDSHIFT.tableName,
       REDSHIFT.description,
-      ENTITY_SERVICE_TYPE.Database,
+      SERVICE_TYPE.Database,
       'tables'
     );
   });
@@ -105,11 +105,10 @@ describe('RedShift Ingestion', () => {
       'pipelineStatus'
     );
     cy.sidebarClick(SidebarItem.SETTINGS);
-    verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-    cy.settingClick(GlobalSettingOptions.DATABASE);
+    cy.settingClick(GlobalSettingOptions.DATABASES);
 
     verifyResponseStatusCode('@getServices', 200);
     interceptURL(

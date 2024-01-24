@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { DELETE_TERM } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   interceptURL,
   toastNotification,

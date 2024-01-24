@@ -89,7 +89,7 @@ describe('Postgres Ingestion', () => {
       serviceName,
       tableName,
       description,
-      ENTITY_SERVICE_TYPE.Database,
+      SERVICE_TYPE.Database,
       'tables'
     );
   });

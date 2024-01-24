@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe('Data Insight settings page should work properly', () => {
   beforeEach(() => {

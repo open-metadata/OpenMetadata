@@ -13,7 +13,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -22,6 +21,7 @@ import {
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
 import { PERSONA_DETAILS, USER_DETAILS } from '../../constants/EntityConstant';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const updatePersonaDisplayName = (displayName) => {
   interceptURL('PATCH', `/api/v1/personas/*`, 'updatePersona');

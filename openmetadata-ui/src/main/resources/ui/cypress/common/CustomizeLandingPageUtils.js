@@ -13,7 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../constants/settings.constant';
 import {
   interceptURL,
   toastNotification,

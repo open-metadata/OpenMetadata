@@ -1,4 +1,4 @@
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 /*
  *  Copyright 2023 Collate.

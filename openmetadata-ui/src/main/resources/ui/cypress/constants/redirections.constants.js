@@ -143,11 +143,11 @@ export const SETTINGS_PAGE_OPTIONS = {
   // Integrations
   applications: {
     testid: GlobalSettingOptions.APPLICATIONS,
-    url: `${BASE_URL}/settings/integrations/apps`,
+    url: `${BASE_URL}/settings/apps`,
   },
   bots: {
     testid: GlobalSettingOptions.BOTS,
-    url: `${BASE_URL}/settings/integrations/bots`,
+    url: `${BASE_URL}/settings/bots`,
   },
 
   // Notification

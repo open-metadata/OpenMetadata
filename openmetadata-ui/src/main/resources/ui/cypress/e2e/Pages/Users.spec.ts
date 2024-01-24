@@ -119,13 +119,7 @@ describe('User with different Roles', () => {
     cy.clickOnLogo();
 
     // Check CRUD for Tags
-    cy.get(`[data-testid=${tag.testid}]`)
-      .should('be.visible')
-      .click({ animationDistanceThreshold: 20, waitForAnimations: true });
-    if (tag.subMenu) {
-      cy.sidebarClick(tag.subMenu);
-    }
-    cy.sidebarHoverOutside();
+    cy.sidebarClick(SidebarItem.TAGS);
     cy.wait(200);
     cy.get('[data-testid="add-new-tag-button"]').should('not.exist');
 
@@ -243,7 +237,8 @@ describe('User with different Roles', () => {
       if (id.testid === GlobalSettingOptions.METADATA) {
         cy.settingClick(id.testid);
       } else {
-        cy.sidebarClick('app-bar-item-settings');
+        cy.sidebarClick(SidebarItem.SETTINGS);
+
         let paths = SETTINGS_OPTIONS_PATH[id.testid];
 
         if (id.isCustomProperty) {

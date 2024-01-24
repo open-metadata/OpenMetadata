@@ -12,7 +12,6 @@
  */
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -25,6 +24,7 @@ import {
 } from '../../common/common';
 import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
 import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const KPI_DATA = [
   {

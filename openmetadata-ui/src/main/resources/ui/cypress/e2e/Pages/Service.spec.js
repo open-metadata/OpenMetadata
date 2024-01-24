@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -19,6 +18,7 @@ import {
 } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { service } from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {

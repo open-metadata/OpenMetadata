@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import {
   descriptionBox,
   interceptURL,
@@ -19,6 +18,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const roles = {
   dataConsumer: 'Data Consumer',

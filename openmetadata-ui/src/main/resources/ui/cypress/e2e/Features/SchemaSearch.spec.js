@@ -13,9 +13,9 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { GlobalSettingOptions } from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
 let serviceId;
