@@ -45,6 +45,7 @@ import {
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
+import { OWNER_LINK_TEST_ID } from '../../constants/glossary.constant';
 
 const userName = `test_dataconsumer${uuid()}`;
 
@@ -712,7 +713,7 @@ describe('Glossary page should work properly', () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
-    addOwner(CREDENTIALS.username);
+    addOwner(CREDENTIALS.username, OWNER_LINK_TEST_ID);
   });
 
   it('Update Owner', () => {
@@ -721,7 +722,7 @@ describe('Glossary page should work properly', () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
-    addOwner('Aaron Johnson');
+    addOwner('Aaron Johnson', OWNER_LINK_TEST_ID);
   });
 
   it('Remove Owner', () => {
@@ -730,7 +731,7 @@ describe('Glossary page should work properly', () => {
       .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
-    removeOwner('Aaron Johnson');
+    removeOwner('Aaron Johnson', OWNER_LINK_TEST_ID);
   });
 
   it('Verify and Remove Tags from Glossary', () => {
@@ -834,7 +835,7 @@ describe('Glossary page should work properly', () => {
     checkDisplayName(NEW_GLOSSARY.name);
 
     // Updating owner
-    addOwner(CREDENTIALS.username);
+    addOwner(CREDENTIALS.username, OWNER_LINK_TEST_ID);
 
     // updating tags
     updateTags(false);

@@ -481,7 +481,7 @@ const GlossaryHeader = ({
     if (isVersionView) {
       fetchCurrentGlossaryInfo();
     }
-  }, []);
+  }, [id]);
 
   return (
     <>
