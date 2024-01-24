@@ -72,11 +72,12 @@ ENTITY_TYPE
     | 'app'
     | 'persona'
     | 'docStore'
-    | 'Page'
+    | 'page'
     | 'KnowLedgePanels'
     | 'govern'
     | 'all'
     | 'customMetric'
+    | 'eventsubscription'
     ;
 
 ENTITY_FIELD
@@ -108,6 +109,10 @@ ENTITY_FIELD
     | 'fields'
     | 'followers'
     | 'appConfiguration'
+    | 'appSchedule'
+    | 'votes'
+    | 'profile'
+    | 'roles'
     ;
 
     
