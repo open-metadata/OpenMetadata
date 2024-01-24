@@ -88,6 +88,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 describe('Test Policy details page', () => {
   it('Should render the policy details page component', async () => {
     render(<PoliciesDetailPage />);

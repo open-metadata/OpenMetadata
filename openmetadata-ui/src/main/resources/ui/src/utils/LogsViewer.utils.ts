@@ -14,10 +14,7 @@
 import { isUndefined, startCase } from 'lodash';
 import { TableProfilerTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { getTableTabPath } from '../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../constants/service-guide.constant';
 import { EntityTabs } from '../enums/entity.enum';
 import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -69,10 +66,7 @@ export const getLogBreadCrumbs = (
     return [
       {
         name: startCase(serviceType),
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.APPLICATIONS
-        ),
+        url: getSettingPath(GlobalSettingOptions.APPLICATIONS),
       },
       {
         name: ingestionName,

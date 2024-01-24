@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -419,22 +420,10 @@ export const deleteCreatedService = (
   serviceCategory
 ) => {
   // Click on settings page
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-  cy.get('.ant-menu-title-content')
-    .contains(typeOfService)
-    .should('be.visible')
-    .click();
+  cy.settingClick(typeOfService);
 
   verifyResponseStatusCode('@getServices', 200);
 
@@ -469,19 +458,11 @@ export const deleteCreatedService = (
     .should('be.visible')
     .click();
 
-  cy.get('[data-menu-id*="delete-button"]')
-    .should('exist')
-    .should('be.visible');
-  cy.get('[data-testid="delete-button-title"]')
-    .should('be.visible')
-    .click()
-    .as('deleteBtn');
+  cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+  cy.get('[data-testid="delete-button-title"]').click();
 
   // Clicking on permanent delete radio button and checking the service name
-  cy.get('[data-testid="hard-delete-option"]')
-    .contains(serviceName)
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="hard-delete-option"]').contains(serviceName).click();
 
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
@@ -497,30 +478,15 @@ export const deleteCreatedService = (
   verifyResponseStatusCode('@deleteService', 200);
 
   // Closing the toast notification
-  toastNotification(
-    `${serviceCategory ?? typeOfService} Service deleted successfully!`
-  );
+  toastNotification(`"${serviceName}" deleted successfully!`);
 
   cy.get(`[data-testid="service-name-${serviceName}"]`).should('not.exist');
 };
 
 export const goToAddNewServicePage = (service_type) => {
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-  // Click on settings page
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
-  cy.get('[data-testid="global-setting-left-panel"]')
-    .contains(service_type)
-    .should('be.visible')
-    .click();
-
+  cy.settingClick(service_type);
   verifyResponseStatusCode('@getServiceList', 200);
 
   cy.get('[data-testid="add-service-button"]').should('be.visible').click();
@@ -967,10 +933,9 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@updateEntity', 200);
 
   // re-run ingestion flow
-  cy.sidebarClick('app-bar-item-settings');
-
   // Services page
-  cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
+  cy.settingClick(type);
+
   interceptURL(
     'GET',
     'api/v1/search/query?q=*&from=0&size=15&index=*',
@@ -1020,78 +985,6 @@ export const updateDescriptionForIngestedTables = (
     .should('contain', description);
 };
 
-export const addOwner = (ownerName, entity) => {
-  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
-
-  cy.get('[data-testid="edit-owner"]').click();
-
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.log('/api/v1/users?limit=*&isBot=false*');
-  cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*${encodeURI(ownerName)}*`,
-    'searchOwner'
-  );
-
-  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
-
-  verifyResponseStatusCode('@searchOwner', 200);
-
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
-
-  cy.get(`.ant-popover [title="${ownerName}"]`).click();
-  verifyResponseStatusCode('@patchOwner', 200);
-
-  cy.get('[data-testid="owner-link"]').should('contain', ownerName);
-};
-
-export const removeOwner = (entity, isGlossaryPage) => {
-  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
-
-  cy.get('[data-testid="edit-owner"]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
-  verifyResponseStatusCode('@patchOwner', 200);
-
-  cy.get('[data-testid="owner-link"]').should(
-    'contain',
-    isGlossaryPage ? 'Add' : 'No Owner'
-  );
-};
-
-export const addTier = (tier, entity) => {
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTier');
-
-  interceptURL('GET', '/api/v1/tags?parent=Tier&limit=10', 'fetchTier');
-  cy.get('[data-testid="edit-tier"]').click();
-  verifyResponseStatusCode('@fetchTier', 200);
-  cy.get('[data-testid="radio-btn-Tier1"]').click({ waitForAnimations: true });
-  verifyResponseStatusCode('@patchTier', 200);
-  cy.get('[data-testid="radio-btn-Tier1"]').should('be.checked');
-
-  cy.clickOutside();
-  cy.get('[data-testid="Tier"]').should('contain', tier);
-
-  cy.get('.tier-card-popover').clickOutside();
-};
-
-export const removeTier = (entity) => {
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTier');
-
-  cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="clear-tier"]').should('be.visible').click();
-
-  verifyResponseStatusCode('@patchTier', 200);
-  cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
-
-  cy.get('.tier-card-popover').clickOutside();
-};
-
 export const deleteEntity = (
   entityName,
   serviceName,
@@ -1109,7 +1002,7 @@ export const deleteEntity = (
 
   cy.get('[data-testid="delete-button-title"]').click();
 
-  cy.get('.ant-modal-header').should('contain', `Delete ${entityName}`);
+  cy.get('.ant-modal-header').should('contain', entityName);
 
   cy.get(`[data-testid="${deletionType}-delete-option"]`).click();
 
@@ -1125,7 +1018,7 @@ export const deleteEntity = (
   cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode(`@${deletionType}DeleteTable`, 200);
 
-  toastNotification(`${successMessageEntityName} deleted successfully!`);
+  toastNotification(`deleted successfully!`);
 };
 
 export const visitServiceDetailsPage = (
@@ -1139,16 +1032,8 @@ export const visitServiceDetailsPage = (
     `/api/v1/search/query?q=*${isServiceDeleted ? 'deleted=true' : ''}`,
     'searchService'
   );
-  interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
-
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getOrganization', 200);
-
   interceptURL('GET', `/api/v1/services/${serviceCategory}*`, 'getServices');
-
-  cy.get(`[data-menu-id*="${settingsMenuId}"]`).scrollIntoView().click();
-
+  cy.settingClick(settingsMenuId);
   verifyResponseStatusCode('@getServices', 200);
 
   if (isServiceDeleted) {
@@ -1171,16 +1056,8 @@ export const visitServiceDetailsPage = (
 };
 
 export const visitDataModelPage = (dataModelFQN, dataModelName) => {
-  interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
-
-  cy.sidebarClick('app-bar-item-settings');
-
-  verifyResponseStatusCode('@getOrganization', 200);
-
   interceptURL('GET', '/api/v1/services/dashboardServices*', 'getServices');
-
-  cy.get('[data-menu-id*="services.dashboards"]').scrollIntoView().click();
-
+  cy.settingClick(GlobalSettingOptions.DASHBOARDS);
   verifyResponseStatusCode('@getServices', 200);
 
   interceptURL(

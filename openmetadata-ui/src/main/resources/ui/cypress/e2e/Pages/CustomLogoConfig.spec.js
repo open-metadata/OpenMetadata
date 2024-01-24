@@ -14,6 +14,7 @@
 /// <reference types="cypress" />
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const config = {
   logo: 'https://custom-logo.png',
@@ -26,18 +27,12 @@ describe('Custom Logo Config', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.sidebarClick('app-bar-item-settings');
-
     interceptURL(
       'GET',
       'api/v1/system/settings/customLogoConfiguration',
       'customLogoConfiguration'
     );
-
-    cy.get('[data-testid="global-setting-left-panel"]')
-      .contains('Custom Logo')
-      .scrollIntoView()
-      .click();
+    cy.settingClick(GlobalSettingOptions.CUSTOM_LOGO);
 
     verifyResponseStatusCode('@customLogoConfiguration', 200);
   });
