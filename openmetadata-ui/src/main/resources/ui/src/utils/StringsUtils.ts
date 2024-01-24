@@ -224,3 +224,34 @@ export const escapeESReservedCharacters = (text?: string) => {
     ? text.replace(reUnescapedHtml, getReplacedChar)
     : text ?? '';
 };
+
+/**
+ * @description Format JSON string to pretty print format with 2 spaces indentation.
+ * if the JSON string is invalid, return the original JSON string
+ * @param jsonString - JSON string to format
+ * @returns Formatted JSON string
+ * @example formatJsonString('{"a":1,"b":2}') => '{\n  "a": 1,\n  "b": 2\n}'
+ */
+export const formatJsonString = (jsonString: string) => {
+  try {
+    let formattedJson = '';
+    const jsonObj = JSON.parse(
+      // eslint-disable-next-line max-len
+      // '{"errorFrom":"sink","lastFailedReason":"[EsWriter][BulkItemResponse] Got Following Error Responses: \\n [ {\\n  \\"lastFailedAt\\" : 1705359843787,\\n  \\"lastFailedReason\\" : \\"Index Type: [stored_procedure_search_index], Reason: [OpenSearchException[OpenSearch exception [type=mapper_parsing_exception, reason=failed to parse field [followers] of type [keyword] in document with id \'86834f87-e166-4b49-9aec-c6f2278cece4\'. Preview of field\'s value: \'{deleted=false, displayName=Shilpa Vernekar, name=shilpa, id=220e8ac0-4809-4664-9a44-583a0a009b6f, type=user, fullyQualifiedName=shilpa}\']]; nested: OpenSearchException[OpenSearch exception [type=illegal_state_exception, reason=Can\'t get text on a START_OBJECT at 1:2175]];] \\\\n Trace : [OpenSearchException[OpenSearch exception [type=mapper_parsing_exception, reason=failed to parse field [followers] of type [keyword] in document with id \'86834f87-e166-4b49-9aec-c6f2278cece4\'. Preview of field\'s value: \'{deleted=false, displayName=Shilpa Vernekar, name=shilpa, id=220e8ac0-4809-4664-9a44-583a0a009b6f, type=user, fullyQualifiedName=shilpa}\']]; nested: OpenSearchException[OpenSearch exception [type=illegal_state_exception, reason=Can\'t get text on a START_OBJECT at 1:2175]];\\\\n\\\\tat os.org.opensearch.OpenSearchException.innerFromXContent(OpenSearchException.java:540)\\\\n\\\\tat os.org.opensearch.OpenSearchException.fromXContent(OpenSearchException.java:451)\\\\n\\\\tat os.org.opensearch.action.bulk.BulkItemResponse.fromXContent(BulkItemResponse.java:154)\\\\n\\\\tat os.org.opensearch.action.bulk.BulkResponse.fromXContent(BulkResponse.java:208)\\\\n\\\\tat os.org.opensearch.client.RestHighLevelClient.parseEntity(RestHighLevelClient.java:2228)\\\\n\\\\tat os.org.opensearch.client.RestHighLevelClient.lambda$performRequestAndParseEntity$12(RestHighLevelClient.java:1845)\\\\n\\\\tat os.org.opensearch.client.RestHighLevelClient.internalPerformRequest(RestHighLevelClient.java:1928)\\\\n\\\\tat os.org.opensearch.client.RestHighLevelClient.performRequest(RestHighLevelClient.java:1877)\\\\n\\\\tat os.org.opensearch.client.RestHighLevelClient.performRequestAndParseEntity(RestHighLevelClient.java:1845)\\\\n\\\\tat os.org.opensearch.client.RestHighLevelClient.bulk(RestHighLevelClient.java:364)\\\\n\\\\tat org.openmetadata.service.search.opensearch.OpenSearchClient.bulk(OpenSearchClient.java:1256)\\\\n\\\\tat org.openmetadata.service.search.opensearch.OpenSearchIndexSink.write(OpenSearchIndexSink.java:31)\\\\n\\\\tat org.openmetadata.service.search.opensearch.OpenSearchIndexSink.write(OpenSearchIndexSink.java:16)\\\\n\\\\tat org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.entitiesReIndex(SearchIndexApp.java:196)\\\\n\\\\tat org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.startApp(SearchIndexApp.java:131)\\\\n\\\\tat org.openmetadata.service.apps.AbstractNativeApplication.execute(AbstractNativeApplication.java:206)\\\\n\\\\tat org.quartz.core.JobRunShell.run(JobRunShell.java:202)\\\\n\\\\tat org.quartz.simpl.SimpleThreadPool$WorkerThread.run(SimpleThreadPool.java:573)\\\\nCaused by: OpenSearchException[OpenSearch exception [type=illegal_state_exception, reason=Can\'t get text on a START_OBJECT at 1:2175]]\\\\n\\\\tat os.org.opensearch.OpenSearchException.innerFromXContent(OpenSearchException.java:540)\\\\n\\\\tat os.org.opensearch.OpenSearchException.fromXContent(OpenSearchException.java:451)\\\\n\\\\tat os.org.opensearch.OpenSearchException.innerFromXContent(OpenSearchException.java:481)\\\\n\\\\t... 17 more\\\\n]\\",\\n  \\"context\\" : \\"EsWriterContext: Encountered Error While Writing Data \\\\n Entity \\\\n ID : [86834f87-e166-4b49-9aec-c6f2278cece4] \\"\\n} ] ","lastFailedAt":1705359843627}'
+      jsonString
+    );
+
+    // loop through the keys and values and format append the formatted string to formattedJson like [key]: [value]
+    for (const [key, value] of Object.entries(jsonObj)) {
+      formattedJson += `[${key}]: ${value}\n`;
+    }
+
+    // const formattedJson = JSON.stringify(jsonObj, null, 2);
+
+    // eslint-disable-next-line max-len
+    return formattedJson;
+  } catch (error) {
+    // Return the original JSON string if parsing fails
+    return jsonString;
+  }
+};
