@@ -29,6 +29,8 @@ import {
   getUpdateDescriptionPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
+import MetaPilotDescriptionAlert from '../../MetaPilot/MetaPilotDescriptionAlert/MetaPilotDescriptionAlert.component';
+import { useMetaPilotContext } from '../../MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 const { Text } = Typography;
@@ -73,6 +75,7 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
+  const { activeSuggestion } = useMetaPilotContext();
 
   const handleRequestDescription = useCallback(() => {
     history.push(
@@ -86,10 +89,19 @@ const DescriptionV1 = ({
     );
   }, [entityType, entityFqn]);
 
-  const entityLink = useMemo(
-    () => getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION),
-    [entityType, entityFqn]
-  );
+  const { entityLink, entityLinkWithoutField } = useMemo(() => {
+    const entityLink = getEntityFeedLink(
+      entityType,
+      entityFqn,
+      EntityField.DESCRIPTION
+    );
+    const entityLinkWithoutField = getEntityFeedLink(entityType, entityFqn);
+
+    return {
+      entityLink,
+      entityLinkWithoutField,
+    };
+  }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
     const hasDescription = Boolean(description.trim());
@@ -158,6 +170,10 @@ const DescriptionV1 = ({
       onThreadLinkSelect,
     ]
   );
+
+  if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+    return <MetaPilotDescriptionAlert />;
+  }
 
   const content = (
     <Space

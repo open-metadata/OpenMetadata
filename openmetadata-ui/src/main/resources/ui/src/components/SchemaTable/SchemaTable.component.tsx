@@ -228,6 +228,7 @@ const SchemaTable = ({
           columnData={{
             fqn: record.fullyQualifiedName ?? '',
             field: record.description,
+            record,
           }}
           entityFqn={decodedEntityFqn}
           entityType={EntityType.TABLE}

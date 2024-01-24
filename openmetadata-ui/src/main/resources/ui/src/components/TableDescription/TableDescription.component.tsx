@@ -12,13 +12,18 @@
  */
 
 import { Button, Space } from 'antd';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
+import { EntityType } from '../../enums/entity.enum';
 import EntityTasks from '../../pages/TasksPage/EntityTasks/EntityTasks.component';
+import EntityLink from '../../utils/EntityLink';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import MetaPilotDescriptionAlert from '../MetaPilot/MetaPilotDescriptionAlert/MetaPilotDescriptionAlert.component';
+import { useMetaPilotContext } from '../MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
 
 const TableDescription = ({
@@ -32,6 +37,22 @@ const TableDescription = ({
   onThreadLinkSelect,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
+  const { activeSuggestion } = useMetaPilotContext();
+
+  const entityLink = useMemo(
+    () =>
+      entityType === EntityType.TABLE
+        ? EntityLink.getTableEntityLink(
+            entityFqn,
+            columnData.record?.name ?? ''
+          )
+        : getEntityFeedLink(entityType, columnData.fqn),
+    [entityType, entityFqn]
+  );
+
+  if (activeSuggestion?.entityLink === entityLink) {
+    return <MetaPilotDescriptionAlert showHeading={false} />;
+  }
 
   return (
     <Space

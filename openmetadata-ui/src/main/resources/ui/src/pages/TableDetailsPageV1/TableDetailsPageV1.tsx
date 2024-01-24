@@ -33,6 +33,7 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import Lineage from '../../components/Lineage/Lineage.component';
 import LineageProvider from '../../components/LineageProvider/LineageProvider';
 import Loader from '../../components/Loader/Loader';
+import { useMetaPilotContext } from '../../components/MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -110,6 +111,8 @@ const TableDetailsPageV1 = () => {
     ThreadType.Conversation
   );
   const [queryCount, setQueryCount] = useState(0);
+  const { onMetaPilotEnableUpdate, onUpdateEntityFqn, resetMetaPilot } =
+    useMetaPilotContext();
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -276,7 +279,13 @@ const TableDetailsPageV1 = () => {
   useEffect(() => {
     if (tableFqn) {
       fetchResourcePermission(tableFqn);
+      onMetaPilotEnableUpdate(true);
+      onUpdateEntityFqn(tableFqn);
     }
+
+    return () => {
+      resetMetaPilot();
+    };
   }, [tableFqn]);
 
   const getEntityFeedCount = () => {
