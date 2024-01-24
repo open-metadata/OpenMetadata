@@ -12,7 +12,7 @@
  */
 import { Col, Row, Space, Steps, Typography } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TEST_CASE_STATUS } from '../../../constants/TestSuite.constant';
@@ -45,27 +45,41 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
     }
 
     return updatedData.map((status) => {
-      const assigneeDetail =
-        TestCaseResolutionStatusTypes.Assigned ===
-          status.testCaseResolutionStatusType &&
-        status.testCaseResolutionStatusDetails?.assignee ? (
-          <Typography.Text className="text-grey-muted text-xss">
-            {`To ${getEntityName(
-              status.testCaseResolutionStatusDetails?.assignee
-            )} on `}
-          </Typography.Text>
-        ) : null;
+      let details: ReactNode = null;
 
-      const resolvedDetail =
-        TestCaseResolutionStatusTypes.Resolved ===
-          status.testCaseResolutionStatusType &&
-        status.testCaseResolutionStatusDetails?.resolvedBy ? (
-          <Typography.Text className="text-grey-muted text-xss">
-            {`By ${getEntityName(
-              status.testCaseResolutionStatusDetails.resolvedBy
-            )} on `}
-          </Typography.Text>
-        ) : null;
+      switch (status.testCaseResolutionStatusType) {
+        case TestCaseResolutionStatusTypes.ACK:
+          details = status.updatedBy ? (
+            <Typography.Text className="text-grey-muted text-xss">
+              {`By ${getEntityName(status.updatedBy)} on `}
+            </Typography.Text>
+          ) : null;
+
+          break;
+        case TestCaseResolutionStatusTypes.Assigned:
+          details = status.testCaseResolutionStatusDetails?.assignee ? (
+            <Typography.Text className="text-grey-muted text-xss">
+              {`To ${getEntityName(
+                status.testCaseResolutionStatusDetails?.assignee
+              )} on `}
+            </Typography.Text>
+          ) : null;
+
+          break;
+        case TestCaseResolutionStatusTypes.Resolved:
+          details = status.testCaseResolutionStatusDetails?.resolvedBy ? (
+            <Typography.Text className="text-grey-muted text-xss">
+              {`By ${getEntityName(
+                status.testCaseResolutionStatusDetails.resolvedBy
+              )} on `}
+            </Typography.Text>
+          ) : null;
+
+          break;
+
+        default:
+          break;
+      }
 
       return {
         className: toLower(status.testCaseResolutionStatusType),
@@ -75,8 +89,7 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
               {status.testCaseResolutionStatusType}
             </Typography.Paragraph>
             <Typography.Paragraph className="m-b-0">
-              {assigneeDetail}
-              {resolvedDetail}
+              {details}
               {status.updatedAt && (
                 <Typography.Text className="text-grey-muted text-xss">
                   {formatDateTime(status.updatedAt)}

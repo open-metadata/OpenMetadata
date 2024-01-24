@@ -174,4 +174,9 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.incident-manager'),
     subHeader: i18n.t('message.page-sub-header-for-data-quality'),
   },
+  CUSTOM_METRICS: {
+    header: i18n.t('label.custom-metric'),
+    // Todo: need to update message once @harshach provides the message
+    subHeader: '',
+  },
 };

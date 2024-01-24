@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Menu, MenuProps, Row, Space } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +55,7 @@ const TableProfiler = (props: TableProfilerProps) => {
     };
   }, [props.permissions]);
 
-  const tabOptions = useMemo(
+  const tabOptions: ItemType[] = useMemo(
     () => [
       {
         label: t('label.table-entity-text', {
