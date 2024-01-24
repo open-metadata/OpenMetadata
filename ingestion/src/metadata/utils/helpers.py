@@ -354,7 +354,7 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     units = ["", "K", "M", "B", "T"]
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
-    return f"{number / constant_k**magnitude:.2f}{units[magnitude]}"
+    return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
 
 
 def clean_uri(uri: str) -> str:

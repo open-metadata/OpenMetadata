@@ -176,7 +176,7 @@ class ProfilerTest(TestCase):
             thirdQuartile=31.0,
             interQuartileRange=1.0,
             nonParametricSkew=2.0,
-            histogram=Histogram(boundaries=["30.00 and up"], frequencies=[2]),
+            histogram=Histogram(boundaries=["30.000 and up"], frequencies=[2]),
         )
 
     def test_required_metrics(self):

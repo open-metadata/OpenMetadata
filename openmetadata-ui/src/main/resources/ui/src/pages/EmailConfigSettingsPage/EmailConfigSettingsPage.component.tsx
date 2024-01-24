@@ -20,8 +20,12 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
@@ -30,6 +34,7 @@ import {
   testEmailConnection,
 } from '../../rest/settingConfigAPI';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EmailConfigSettingsPage() {
@@ -38,6 +43,15 @@ function EmailConfigSettingsPage() {
 
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.OPEN_METADATA,
+        t('label.email')
+      ),
+    []
+  );
 
   const fetchEmailConfigValues = useCallback(async () => {
     try {
@@ -142,40 +156,45 @@ function EmailConfigSettingsPage() {
   }, []);
 
   return (
-    <Row align="middle" gutter={[16, 16]}>
-      <Col span={24}>
-        <Row align="middle" justify="space-between">
-          <Col>
-            <PageHeader
-              data={{
-                header: t('label.email'),
-                subHeader: t('message.email-configuration-message'),
-              }}
-            />
-          </Col>
-          <Col>
-            <Space>
-              <Button type="primary" onClick={handleTestEmailConnection}>
-                {t('label.test-email')}
-              </Button>
+    <PageLayoutV1 pageTitle={t('label.email')}>
+      <Row align="middle" className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <Row align="middle" justify="space-between">
+            <Col>
+              <PageHeader
+                data={{
+                  header: t('label.email'),
+                  subHeader: t('message.email-configuration-message'),
+                }}
+              />
+            </Col>
+            <Col>
+              <Space>
+                <Button type="primary" onClick={handleTestEmailConnection}>
+                  {t('label.test-email')}
+                </Button>
 
-              <Button
-                icon={
-                  !isUndefined(emailConfigValues) && (
-                    <Icon component={IconEdit} size={12} />
-                  )
-                }
-                onClick={handleEditClick}>
-                {isUndefined(emailConfigValues)
-                  ? t('label.add')
-                  : t('label.edit')}
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>{configValuesContainer}</Col>
-    </Row>
+                <Button
+                  icon={
+                    !isUndefined(emailConfigValues) && (
+                      <Icon component={IconEdit} size={12} />
+                    )
+                  }
+                  onClick={handleEditClick}>
+                  {isUndefined(emailConfigValues)
+                    ? t('label.add')
+                    : t('label.edit')}
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </Col>
+        <Col span={24}>{configValuesContainer}</Col>
+      </Row>
+    </PageLayoutV1>
   );
 }
 
