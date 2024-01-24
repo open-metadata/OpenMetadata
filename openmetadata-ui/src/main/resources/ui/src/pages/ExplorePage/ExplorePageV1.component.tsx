@@ -88,10 +88,6 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const [showSearchIndexLink, setShowSearchIndexLink] = useState<
-    string | undefined
-  >();
-
   const { queryFilter } = useAdvanceSearch();
 
   const [parsedSearch, searchQueryParam, sortValue] = useMemo(() => {
@@ -368,12 +364,8 @@ const ExplorePageV1: FunctionComponent = () => {
         setSearchHitCounts(counts as SearchHitCounts);
       }),
     ])
-      .catch((error) => {
-        if (error.response.data.message.includes('Failed to to find index')) {
-          setShowSearchIndexLink(error.response.data.message);
-        } else {
-          showErrorToast(error);
-        }
+      .catch((err) => {
+        showErrorToast(err);
       })
       .finally(() => setIsLoading(false));
   };
@@ -418,7 +410,6 @@ const ExplorePageV1: FunctionComponent = () => {
           : searchResults
       }
       showDeleted={showDeleted}
-      showSearchIndexLink={showSearchIndexLink}
       sortOrder={sortOrder}
       sortValue={sortValue}
       tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
