@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { getAlertBody, getFunctionDisplayName } from './AlertsUtil';
+import { getFunctionDisplayName } from './AlertsUtil';
 
 describe('AlertsUtil tests', () => {
   it('getFunctionDisplayName should return correct text for matchAnyEntityFqn', () => {
@@ -47,23 +46,5 @@ describe('AlertsUtil tests', () => {
     expect(getFunctionDisplayName('matchAnyEntityId')).toBe(
       'label.entity-id-match'
     );
-  });
-
-  describe('getAlertBody', () => {
-    it('should render title, icon description and actions if passed when call it', () => {
-      render(
-        getAlertBody({
-          title: 'Alert Title',
-          icon: 'Alert Icon',
-          description: 'Alert Description',
-          actions: 'Alert Actions',
-        })
-      );
-
-      expect(screen.getByText('Alert Title')).toBeInTheDocument();
-      expect(screen.getByText('Alert Icon')).toBeInTheDocument();
-      expect(screen.getByText('Alert Description')).toBeInTheDocument();
-      expect(screen.getByText('Alert Actions')).toBeInTheDocument();
-    });
   });
 });

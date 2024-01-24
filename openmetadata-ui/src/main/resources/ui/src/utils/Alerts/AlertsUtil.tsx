@@ -22,6 +22,7 @@ import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { SubscriptionType } from '../../generated/events/eventSubscription';
+import { getApplicationDetailsPath } from '../RouterUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -141,3 +142,6 @@ export const getDisplayNameForEntities = (entity: string) => {
 
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;
+export const RE_INDEX_APPLICATION_PATH = getApplicationDetailsPath(
+  'SearchIndexingApplication'
+);
