@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
 import {
   BASE_URL,
   CUSTOM_PROPERTY_INVALID_NAMES,
@@ -23,6 +22,7 @@ import {
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
 } from '../constants/constants';
+import { GlobalSettingOptions } from '../constants/settings.constant';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
