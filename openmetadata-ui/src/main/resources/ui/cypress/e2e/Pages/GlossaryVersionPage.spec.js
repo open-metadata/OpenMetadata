@@ -13,18 +13,14 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import {
-  addOwner,
-  interceptURL,
-  removeOwner,
-  verifyResponseStatusCode,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   addReviewer,
   deleteGlossary,
   removeReviewer,
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
+import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   GLOSSARY_FOR_VERSION_TEST,
   GLOSSARY_PATCH_PAYLOAD,
@@ -143,7 +139,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaries');
+    addOwner(OWNER);
 
     interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
     interceptURL(
@@ -166,7 +162,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getGlossaryDetails', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-    removeOwner('glossaries', true);
+    removeOwner(OWNER);
 
     addReviewer(REVIEWER, 'glossaries');
 
@@ -270,7 +266,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaryTerms');
+    addOwner(OWNER);
 
     interceptURL('GET', `/api/v1/glossaryTerms/*/versions`, 'getVersionsList');
     interceptURL(
@@ -293,7 +289,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
-    removeOwner('glossaryTerms', true);
+    removeOwner(OWNER);
 
     addReviewer(REVIEWER, 'glossaryTerms');
 
@@ -316,6 +312,8 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
+
+    cy.get(`[data-testid="${GLOSSARY_TERM_NAME_FOR_VERSION_TEST2}"]`).click();
 
     removeReviewer('glossaryTerms');
   });

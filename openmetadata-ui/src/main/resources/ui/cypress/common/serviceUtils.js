@@ -24,12 +24,9 @@ export const searchServiceFromSettingPage = (service) => {
 };
 
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
-  cy.sidebarClick('app-bar-item-settings');
-
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
-
-  cy.get('.ant-menu-title-content').contains(service.type).click();
+  cy.settingClick(service.type);
 
   cy.wait('@getServices');
 

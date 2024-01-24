@@ -36,6 +36,7 @@ import {
   DATA_ASSETS,
   DATA_QUALITY_SAMPLE_DATA_TABLE,
   DELETE_TERM,
+  ENTITY_SERVICE_TYPE,
   NEW_COLUMN_TEST_CASE,
   NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE,
   NEW_TABLE_TEST_CASE,
@@ -43,8 +44,10 @@ import {
   SERVICE_TYPE,
   TEAM_ENTITY,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -114,13 +117,7 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
   );
   interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
 
-  cy.sidebarHover();
-
-  cy.get('[data-testid="observability"]').click();
-
-  cy.sidebarClick('app-bar-item-data-quality');
-
-  cy.sidebarHoverOutside();
+  cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
   cy.get('[data-testid="by-test-suites"]').click();
   verifyResponseStatusCode('@testSuite', 200);
@@ -200,7 +197,7 @@ describe('Data Quality and Profiler should work properly', () => {
       connectionInput: mySqlConnectionInput,
       addIngestionInput,
       serviceName,
-      serviceCategory: SERVICE_TYPE.Database,
+      serviceCategory: ENTITY_SERVICE_TYPE.Database,
     });
   });
 
@@ -214,12 +211,10 @@ describe('Data Quality and Profiler should work properly', () => {
     goToProfilerTab();
 
     cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
-
     cy.clickOnLogo();
 
-    cy.sidebarClick('app-bar-item-settings');
+    cy.settingClick(GlobalSettingOptions.DATABASES);
 
-    cy.get('[data-menu-id*="services.databases"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
       'GET',
@@ -509,29 +504,19 @@ describe('Data Quality and Profiler should work properly', () => {
     [NEW_COLUMN_TEST_CASE.name, NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name].map(
       (test) => {
         cy.get(`[data-testid="${test}"]`).scrollIntoView().should('be.visible');
-        cy.get(`[data-testid="delete-${test}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
-        cy.get('[data-testid="hard-delete-option"]')
-          .should('be.visible')
-          .click();
-        cy.get('[data-testid="confirmation-text-input"]')
-          .should('be.visible')
-          .type(DELETE_TERM);
+        cy.get(`[data-testid="delete-${test}"]`).scrollIntoView().click();
+        cy.get('[data-testid="hard-delete-option"]').click();
+        cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
         interceptURL(
           'DELETE',
           '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=false',
           'deleteTest'
         );
         interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
-        cy.get('[data-testid="confirm-button"]')
-          .should('be.visible')
-          .should('not.be.disabled')
-          .click();
+        cy.get('[data-testid="confirm-button"]').click();
         verifyResponseStatusCode('@deleteTest', 200);
         verifyResponseStatusCode('@getTestCase', 200);
-        toastNotification('Test Case deleted successfully!');
+        toastNotification(`"${test}" deleted successfully!`);
       }
     );
   });
@@ -549,13 +534,7 @@ describe('Data Quality and Profiler should work properly', () => {
       'getTestCase'
     );
 
-    cy.sidebarHover();
-
-    cy.get('[data-testid="observability"]').click();
-
-    cy.sidebarClick('app-bar-item-data-quality');
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuite', 200);
@@ -865,13 +844,7 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Update displayName of test case', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
 
-    cy.sidebarHover();
-
-    cy.get('[data-testid="observability"]').click();
-
-    cy.sidebarClick('app-bar-item-data-quality');
-
-    cy.sidebarHoverOutside();
+    cy.sidebarClick(SidebarItem.DATA_QUALITY);
 
     cy.get('[data-testid="by-test-cases"]').click();
     verifyResponseStatusCode('@getTestCase', 200);

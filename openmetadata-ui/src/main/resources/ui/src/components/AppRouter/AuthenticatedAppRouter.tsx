@@ -17,11 +17,24 @@ import DataProductsPage from '../../components/DataProducts/DataProductsPage/Dat
 import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
 import DomainPage from '../../components/Domain/DomainPage.component';
 import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { Operation } from '../../generated/entity/policies/policy';
+import { TeamType } from '../../generated/entity/teams/team';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
+import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
+import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
+import {
+  getSettingCategoryPath,
+  getSettingPath,
+  getTeamsWithFqnPath,
+} from '../../utils/RouterUtils';
 import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -30,6 +43,15 @@ import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/GlobalSettingPage/GlobalSettingPage'))
+);
+
+const GlobalSettingCategoryPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage'
+      )
+  )
 );
 
 const MyDataPage = withSuspenseFallback(
@@ -369,6 +391,110 @@ const AddObservabilityPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
   )
+);
+
+// Settings Page Routes
+
+const AddAlertPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/AddAlertPage/AddAlertPage'))
+);
+
+const ImportTeamsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
+  )
+);
+
+const AlertDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
+);
+
+const AlertsActivityFeedPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
+  )
+);
+
+const AlertsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/AlertsPage/AlertsPage'))
+);
+
+const TeamsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/TeamsPage/TeamsPage'))
+);
+
+const ServicesPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/ServicesPage/ServicesPage'))
+);
+const BotsPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../../pages/BotsPageV1/BotsPageV1.component'))
+);
+const CustomPropertiesPageV1 = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
+  )
+);
+
+const AppDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../components/Applications/AppDetails/AppDetails.component')
+  )
+);
+
+const RolesListPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
+);
+const RolesDetailPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/RolesPage/RolesDetailPage/RolesDetailPage')
+  )
+);
+
+const PoliciesDetailPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
+  )
+);
+const PoliciesListPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
+  )
+);
+
+const UserListPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
+);
+
+const EmailConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component'
+      )
+  )
+);
+const CustomLogoConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage'
+      )
+  )
+);
+
+const LoginConfigurationPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage'
+      )
+  )
+);
+
+const ApplicationPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../../pages/Application/ApplicationPage'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -858,22 +984,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 
-      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
-      <Route
-        exact
-        component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB_FQN}
-      />
-      <Route
-        exact
-        component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB_FQN_ACTION}
-      />
       <Route
         exact
         component={TestSuiteDetailsPage}
@@ -983,6 +1093,243 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={CustomizablePage}
         path={ROUTES.CUSTOMIZE_PAGE}
+      />
+
+      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
+
+      {/*  Setting routes without any category will be places here */}
+      <AdminProtectedRoute
+        exact
+        component={AlertsPage}
+        hasPermission={false}
+        path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddAlertPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.EDIT_ALERTS,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddAlertPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ADD_ALERTS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERT,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={BotsPageV1}
+        hasPermission={false}
+        path={getSettingPath(GlobalSettingOptions.BOTS)}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ApplicationPageV1}
+        hasPermission={false}
+        path={getSettingPath(GlobalSettingOptions.APPLICATIONS)}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AppDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingOptions.APPLICATIONS,
+          undefined,
+          true
+        )}
+      />
+
+      {/* Setting Page Routes with categories */}
+
+      <Route
+        exact
+        component={GlobalSettingCategoryPage}
+        path={ROUTES.SETTINGS_WITH_CATEGORY}
+      />
+
+      <Route exact path={getSettingPath()}>
+        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
+      </Route>
+      <AdminProtectedRoute
+        exact
+        component={TeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ImportTeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true,
+          true
+        )}
+      />
+      <Route
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS
+        )}>
+        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
+      </Route>
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={PersonaDetailsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA,
+          true
+        )}
+      />
+      {/* Roles route start
+       * Do not change the order of these route
+       */}
+      <AdminProtectedRoute
+        exact
+        component={RolesListPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.ROLES
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={RolesDetailPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.ROLES,
+          true
+        )}
+      />
+      {/* Roles route end
+       * Do not change the order of these route
+       */}
+
+      <AdminProtectedRoute
+        exact
+        component={PoliciesListPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.POLICIES
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={PoliciesDetailPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.POLICIES,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={UserListPageV1}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.USER,
+          permissions
+        )}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EmailConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.EMAIL
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomLogoConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={LoginConfigurationPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.LOGIN_CONFIGURATION
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomPageSettings}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
+        )}
+      />
+
+      <Route
+        exact
+        component={ServicesPage}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertsActivityFeedPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ACTIVITY_FEED
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={CustomPropertiesPageV1}
+        hasPermission={false}
+        path={getSettingCategoryPath(
+          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
+        )}
       />
       {routeElements}
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />

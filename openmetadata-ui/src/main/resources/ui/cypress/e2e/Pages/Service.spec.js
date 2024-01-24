@@ -18,6 +18,7 @@ import {
 } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { service } from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
@@ -39,12 +40,7 @@ describe('Services page should work properly', () => {
     cy.login();
     // redirecting to services page
 
-    cy.sidebarClick('app-bar-item-settings');
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Database')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.DATABASES);
   });
 
   it('Update service description', () => {

@@ -17,6 +17,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const buTeamName = `bu-${uuid()}`;
 const divTeamName = `div-${uuid()}`;
@@ -40,7 +41,8 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
     interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
-    cy.sidebarClick('app-bar-item-settings');
+
+    cy.settingClick(GlobalSettingOptions.TEAMS);
 
     verifyResponseStatusCode('@getOrganization', 200);
   });
@@ -60,10 +62,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
   it('Check hierarchy in Add User page', () => {
     // Clicking on users
-    cy.get('[data-menu-id*="users"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.USERS);
 
     cy.get('[data-testid="add-user"]').should('be.visible').click();
 
