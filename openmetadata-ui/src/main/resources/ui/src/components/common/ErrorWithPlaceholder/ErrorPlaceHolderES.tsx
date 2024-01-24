@@ -13,7 +13,7 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
@@ -29,6 +29,7 @@ import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
   ERROR_PLACEHOLDER_TYPE,
 } from '../../../enums/common.enum';
+import { SearchIndexNotFoundErrorSetter } from '../../../pages/ExplorePage/ExplorePageV1.component';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../../utils/RouterUtils';
@@ -39,7 +40,6 @@ type Props = {
   type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   errorMessage?: string;
   query?: Qs.ParsedQs;
-  showSearchIndexLink?: string;
 };
 
 const stepsData = [
@@ -69,12 +69,8 @@ const stepsData = [
   },
 ];
 
-const ErrorPlaceHolderES = ({
-  type,
-  errorMessage,
-  query,
-  showSearchIndexLink,
-}: Props) => {
+const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
+  const { indexNotFoundError } = useContext(SearchIndexNotFoundErrorSetter);
   const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
@@ -191,32 +187,34 @@ const ErrorPlaceHolderES = ({
     );
   }, [errorMessage]);
 
+  if (indexNotFoundError) {
+    return (
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph className="text-danger">
+          {indexNotFoundError}
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          <Transi18next
+            i18nKey="message.configure-search-re-index"
+            renderElement={
+              <Link
+                to={getApplicationDetailsPath('SearchIndexingApplication')}
+              />
+            }
+            values={{
+              settings: t('label.search-index-setting-plural'),
+            }}
+          />
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
+
   return (
     <div className="mt-12 text-base font-medium">
-      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA ? (
-        noRecordForES
-      ) : showSearchIndexLink ? (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph className="text-danger">
-            {showSearchIndexLink}
-          </Typography.Paragraph>
-          <Typography.Paragraph>
-            <Transi18next
-              i18nKey="message.configure-search-re-index"
-              renderElement={
-                <Link
-                  to={getApplicationDetailsPath('SearchIndexingApplication')}
-                />
-              }
-              values={{
-                settings: t('label.search-index-setting-plural'),
-              }}
-            />
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      ) : (
-        elasticSearchError
-      )}
+      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
+        ? noRecordForES
+        : elasticSearchError}
     </div>
   );
 };

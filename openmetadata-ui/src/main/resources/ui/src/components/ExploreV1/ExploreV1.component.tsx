@@ -76,7 +76,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
   quickFilters,
-  showSearchIndexLink,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -382,7 +381,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                         isSummaryPanelVisible={showSummaryPanel}
                         selectedEntityId={entityDetails?.id || ''}
-                        showSearchIndexLink={showSearchIndexLink}
                         totalValue={
                           tabCounts?.[searchIndex] ??
                           searchResults?.hits.total.value ??
