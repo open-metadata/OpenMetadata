@@ -52,8 +52,7 @@
               "created": {
                 "properties": {
                   "timestamp": {
-                    "type": "date",
-                    "format": "epoch_second"
+                    "type": "date"
                   },
                   "accessedBy": {
                     "properties": {
@@ -111,8 +110,7 @@
               "updated": {
                 "properties": {
                   "timestamp": {
-                    "type": "date",
-                    "format": "epoch_second"
+                    "type": "date"
                   },
                   "accessedBy": {
                     "properties": {
@@ -170,8 +168,7 @@
               "accessed": {
                 "properties": {
                   "timestamp": {
-                    "type": "date",
-                    "format": "epoch_second"
+                    "type": "date"
                   },
                   "accessedBy": {
                     "properties": {
