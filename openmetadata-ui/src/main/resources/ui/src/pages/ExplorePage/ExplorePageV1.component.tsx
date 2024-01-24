@@ -373,7 +373,7 @@ const ExplorePageV1: FunctionComponent = () => {
       }),
     ])
       .catch((error) => {
-        if (error.response.data.message.includes('Failed to to find index')) {
+        if (error.response?.data.message.includes('Failed to to find index')) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error);
