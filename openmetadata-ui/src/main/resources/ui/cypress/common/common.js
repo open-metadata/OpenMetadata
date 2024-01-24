@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -31,6 +30,7 @@ import {
   NAME_VALIDATION_ERROR,
   SEARCH_INDEX,
 } from '../constants/constants';
+import { GlobalSettingOptions } from '../constants/settings.constant';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';

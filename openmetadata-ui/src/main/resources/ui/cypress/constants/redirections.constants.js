@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { BASE_URL } from './constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../src/constants/GlobalSettings.constants';
-import { BASE_URL } from './constants';
+} from './settings.constant';
 
 export const LEFT_PANEL_DETAILS = {
   tables: {
