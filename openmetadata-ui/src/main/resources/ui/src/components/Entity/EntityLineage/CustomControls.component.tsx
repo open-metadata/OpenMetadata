@@ -46,6 +46,7 @@ import {
 } from '../../../utils/Explore.utils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
@@ -94,7 +95,7 @@ const CustomControls: FC<ControlProps> = ({
   }, [filters]);
 
   useEffect(() => {
-    const dropdownItems = getAssetsPageQuickFilters();
+    const dropdownItems = getAssetsPageQuickFilters(AssetsOfEntity.LINEAGE);
 
     setFilters(
       dropdownItems.map((item) => ({

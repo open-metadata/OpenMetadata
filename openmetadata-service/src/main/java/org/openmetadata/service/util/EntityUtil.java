@@ -326,12 +326,17 @@ public final class EntityUtil {
     }
   }
 
-  /** Entity version extension name formed by entityType.version.versionNumber. Example - `table.version.0.1` */
+  /**
+   * Entity version extension name formed by entityType.version.versionNumber. Example -
+   * `table.version.0.1`
+   */
   public static String getVersionExtension(String entityType, Double version) {
     return String.format("%s.%s", getVersionExtensionPrefix(entityType), version.toString());
   }
 
-  /** Entity version extension name prefix formed by `entityType.version`. Example - `table.version` */
+  /**
+   * Entity version extension name prefix formed by `entityType.version`. Example - `table.version`
+   */
   public static String getVersionExtensionPrefix(String entityType) {
     return String.format("%s.%s", entityType, "version");
   }
@@ -551,9 +556,10 @@ public final class EntityUtil {
   }
 
   /**
-   * This method is used to populate the entity with all details of EntityReference Users/Tools can send minimum details
-   * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
-   * fully populated object such that ElasticSearch index has all the details.
+   * This method is used to populate the entity with all details of EntityReference Users/Tools can
+   * send minimum details required to set relationship as id, type are the only required fields in
+   * entity reference, whereas we need to send fully populated object such that ElasticSearch index
+   * has all the details.
    */
   public static List<EntityReference> getEntityReferences(
       List<EntityReference> entities, Include include) {

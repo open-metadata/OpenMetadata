@@ -339,7 +339,7 @@ export const addOwner = ({ ownerName, term, serviceName, entity }) => {
 
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=**%20AND%20teamType:Group&from=0&size=25&index=team_search_index',
+    '/api/v1/search/query?q=**%20AND%20teamType:Group&from=0&size=25&index=team_search_index&sort_field=displayName.keyword&sort_order=asc',
     'waitForTeams'
   );
 

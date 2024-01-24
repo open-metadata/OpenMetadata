@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
@@ -23,6 +23,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { getEntityName } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { CustomEdgeData } from './EntityLineage.interface';
 
@@ -64,7 +65,14 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
-  const { edge, isColumnLineage, sourceHandle, targetHandle, ...rest } = data;
+  const {
+    edge,
+    isColumnLineage,
+    sourceHandle,
+    targetHandle,
+    isPipelineRootNode,
+    ...rest
+  } = data;
   const offset = 4;
 
   const {
@@ -171,23 +179,86 @@ export const CustomEdge = ({
     );
   };
 
+  const currentPipelineStatus = useMemo(() => {
+    const pipelineData = pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
+    if (pipelineData) {
+      switch (pipelineData.executionStatus) {
+        case StatusType.Failed:
+          return 'red';
+        case StatusType.Skipped:
+        case StatusType.Pending:
+          return 'amber';
+        case StatusType.Successful:
+          return 'green';
+      }
+    } else {
+      return '';
+    }
+  }, [data, pipelineStatus]);
+
+  const blinkingClass = useMemo(() => {
+    if (isPipelineRootNode && currentPipelineStatus) {
+      return `blinking-${currentPipelineStatus}-border`;
+    } else if (isPipelineRootNode) {
+      return 'blinking-border';
+    } else {
+      return '';
+    }
+  }, [currentPipelineStatus, isPipelineRootNode]);
+
   const getLineageEdgeIcon = useCallback(
     (icon: React.ReactNode, dataTestId: string, pipelineClass?: string) => {
+      const pipelineData =
+        pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
+
       return (
         <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-          <Button
-            className={classNames(
-              'flex-center custom-edge-pipeline-button',
-              pipelineClass
-            )}
-            data-testid={dataTestId}
-            icon={icon}
-            onClick={() => isEditMode && onAddPipelineClick()}
-          />
+          {isEditMode ? (
+            <Button
+              className={classNames(
+                'flex-center custom-edge-pipeline-button',
+                pipelineClass,
+                blinkingClass
+              )}
+              data-testid={dataTestId}
+              icon={icon}
+              onClick={() => isEditMode && onAddPipelineClick()}
+            />
+          ) : (
+            <EntityPopOverCard
+              entityFQN={data.edge.pipeline?.fullyQualifiedName}
+              entityType={data.edge.pipeline?.type}
+              extraInfo={
+                pipelineData && (
+                  <Tag className={pipelineClass}>
+                    {pipelineData?.executionStatus}
+                  </Tag>
+                )
+              }>
+              <Button
+                className={classNames(
+                  'flex-center custom-edge-pipeline-button',
+                  pipelineClass,
+                  blinkingClass
+                )}
+                data-testid={dataTestId}
+                icon={icon}
+                onClick={() => isEditMode && onAddPipelineClick()}
+              />
+            </EntityPopOverCard>
+          )}
         </LineageEdgeIcon>
       );
     },
-    [edgeCenterX, edgeCenterY, rest, data]
+    [
+      edgeCenterX,
+      edgeCenterY,
+      rest,
+      data,
+      pipelineStatus,
+      blinkingClass,
+      isEditMode,
+    ]
   );
 
   const getEditLineageIcon = useCallback(
@@ -238,23 +309,6 @@ export const CustomEdge = ({
       fetchPipelineStatus(data.edge.pipeline?.fullyQualifiedName);
     }
   }, [data.edge.pipeline]);
-
-  const currentPipelineStatus = useMemo(() => {
-    const pipelineData = pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
-    if (pipelineData) {
-      switch (pipelineData.executionStatus) {
-        case StatusType.Failed:
-          return 'red';
-        case StatusType.Skipped:
-        case StatusType.Pending:
-          return 'amber';
-        case StatusType.Successful:
-          return 'green';
-      }
-    } else {
-      return '';
-    }
-  }, [data, pipelineStatus]);
 
   return (
     <Fragment>
