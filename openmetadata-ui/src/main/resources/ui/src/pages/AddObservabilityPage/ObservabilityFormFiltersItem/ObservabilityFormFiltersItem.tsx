@@ -36,7 +36,6 @@ import {
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
-import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
 
@@ -333,13 +332,7 @@ function ObservabilityFormFiltersItem({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <Form.List
-            name={['input', 'filters']}
-            rules={[
-              {
-                validator: listLengthValidator(t('label.filter')),
-              },
-            ]}>
+          <Form.List name={['input', 'filters']}>
             {(fields, { add, remove }, { errors }) => (
               <Row gutter={[16, 16]} key="filters">
                 {fields.map(({ key, name }) => {
