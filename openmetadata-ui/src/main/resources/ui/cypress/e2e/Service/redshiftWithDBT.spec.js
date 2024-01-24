@@ -27,11 +27,13 @@ import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
   DBT,
+  ENTITY_SERVICE_TYPE,
   HTTP_CONFIG_SOURCE,
   SERVICE_TYPE,
 } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { REDSHIFT } from '../../constants/service.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
   'redshiftDatabase'
@@ -77,7 +79,7 @@ describe('RedShift Ingestion', () => {
       serviceName: REDSHIFT.serviceName,
       type: 'database',
       testIngestionButton: true,
-      serviceCategory: SERVICE_TYPE.Database,
+      serviceCategory: ENTITY_SERVICE_TYPE.Database,
     });
   });
 
@@ -93,11 +95,6 @@ describe('RedShift Ingestion', () => {
 
   it('Add DBT ingestion', () => {
     interceptURL(
-      'GET',
-      'api/v1/teams/name/Organization?fields=*',
-      'getSettingsPage'
-    );
-    interceptURL(
       'POST',
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
@@ -108,14 +105,10 @@ describe('RedShift Ingestion', () => {
       'pipelineStatus'
     );
     cy.sidebarClick(SidebarItem.SETTINGS);
-    verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains(SERVICE_TYPE.Database)
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.DATABASES);
 
     verifyResponseStatusCode('@getServices', 200);
     interceptURL(

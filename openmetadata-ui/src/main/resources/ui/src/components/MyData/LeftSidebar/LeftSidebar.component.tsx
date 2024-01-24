@@ -118,7 +118,6 @@ const LeftSidebar = () => {
 
         <Col className="w-full">
           <Menu
-            inlineCollapsed
             items={TOP_SIDEBAR_MENU_ITEMS}
             mode="inline"
             rootClassName="left-sidebar-menu"
@@ -130,7 +129,6 @@ const LeftSidebar = () => {
 
       <Row className="p-y-sm">
         <Menu
-          inlineCollapsed
           items={LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS}
           mode="inline"
           rootClassName="left-sidebar-menu"

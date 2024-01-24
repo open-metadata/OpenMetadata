@@ -18,7 +18,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const roleName = `Role-test-${uuid()}`;
 const userName = `usercttest${uuid()}`;
@@ -29,11 +29,10 @@ describe('Test Add role and assign it to the user', () => {
     cy.login();
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
     interceptURL('GET', '/api/v1/users?*', 'usersPage');
-    cy.sidebarClick(SidebarItem.SETTINGS);
   });
 
   it('Create role', () => {
-    cy.get('[data-menu-id*="roles"]').should('be.visible').click();
+    cy.settingClick(GlobalSettingOptions.ROLES);
     verifyResponseStatusCode('@getRoles', 200);
 
     cy.get('[data-testid="add-role"]').contains('Add Role').click();
@@ -66,7 +65,7 @@ describe('Test Add role and assign it to the user', () => {
 
   it('Create new user and assign new role to him', () => {
     // Create user and assign newly created role to the user
-    cy.get('[data-menu-id*="users"]').should('be.visible').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
     verifyResponseStatusCode('@usersPage', 200);
 
     cy.get('[data-testid="add-user"]').contains('Add User').click();
@@ -91,7 +90,7 @@ describe('Test Add role and assign it to the user', () => {
   });
 
   it('Verify assigned role to new user', () => {
-    cy.get('[data-menu-id*="users"]').should('be.visible').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
     verifyResponseStatusCode('@usersPage', 200);
 
     interceptURL(
