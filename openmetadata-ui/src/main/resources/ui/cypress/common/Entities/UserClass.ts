@@ -37,18 +37,18 @@ class UsersTestClass {
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   }
 
-  softDeleteUser(name) {
+  softDeleteUser(name: string, displayName: string) {
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     verifyResponseStatusCode('@getUsers', 200);
-    softDeleteUser(name);
+    softDeleteUser(name, displayName);
   }
 
   restoreSoftDeletedUser(name, editedName) {
     restoreUser(name, editedName);
   }
 
-  permanentDeleteUser(name) {
-    permanentDeleteUser(name);
+  permanentDeleteUser(name: string, displayName: string) {
+    permanentDeleteUser(name, displayName);
     cy.logout();
   }
 

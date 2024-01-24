@@ -30,6 +30,7 @@ import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -171,7 +172,7 @@ export const PersonaPage = () => {
         afterDeleteAction={() => fetchPersonas()}
         allowSoftDelete={false}
         entityId={personaDeleting?.id ?? ''}
-        entityName={personaDeleting?.name ?? ''}
+        entityName={getEntityName(personaDeleting)}
         entityType={EntityType.PERSONA}
         visible={Boolean(personaDeleting)}
         onCancel={() => {

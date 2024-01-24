@@ -16,13 +16,13 @@
 
 import { isEmpty } from 'lodash';
 import {
-  addOwner,
-  addTier,
   deleteEntity,
   interceptURL,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { visitEntityDetailsVersionPage } from '../../common/VersionUtils';
 import {
   DOMAIN_CREATION_DETAILS,
@@ -232,7 +232,7 @@ describe('Version page tests for data assets', () => {
 
           cy.get('@versionButton').contains('0.2');
 
-          addOwner(OWNER, entityDetails.entity);
+          addOwner(OWNER);
 
           interceptURL(
             'GET',
@@ -272,7 +272,7 @@ describe('Version page tests for data assets', () => {
 
           cy.get('@versionButton').contains('0.2');
 
-          addTier(TIER, entityDetails.entity);
+          addTier(TIER);
 
           interceptURL(
             'GET',

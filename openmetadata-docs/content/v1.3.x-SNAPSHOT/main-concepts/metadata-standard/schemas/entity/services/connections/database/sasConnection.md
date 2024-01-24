@@ -13,6 +13,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`username`** *(string)*: Username to connect to SAS Viya.
 - **`password`** *(string)*: Password to connect to SAS Viya.
 - **`serverHost`** *(string)*: Hostname of SAS Viya deployment.
+- **`filter`** *(string)*: A filter expression specifying items for import. For more information [see](https://developer.sas.com/apis/rest/DataManagement/#catalog-search)
+
 ## Definitions
 
 - **`sasType`** *(string)*: Service type. Must be one of: `['SAS']`. Default: `SAS`.

@@ -484,7 +484,7 @@ export const DataAssetsHeader = ({
                   allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                   canDelete={permissions.Delete}
                   deleted={dataAsset.deleted}
-                  displayName={dataAsset.displayName}
+                  displayName={getEntityName(dataAsset)}
                   editDisplayNamePermission={
                     permissions?.EditAll || permissions?.EditDisplayName
                   }
