@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FeedUtils;
 
 public interface MessageDecorator<T> {
@@ -59,7 +60,7 @@ public interface MessageDecorator<T> {
 
   String getRemoveMarkerClose();
 
-  String getEntityUrl(String entityType, String fqn);
+  String getEntityUrl(String entityType, String fqn, String additionalInput);
 
   T buildEntityMessage(ChangeEvent event);
 
@@ -72,7 +73,17 @@ public interface MessageDecorator<T> {
           Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
       fqn = result.getFullyQualifiedName();
     }
-    return getEntityUrl(entityType, fqn);
+
+    // Hande Test Case
+    if (entityType.equals(Entity.TEST_CASE)) {
+      TestCase testCase = (TestCase) entityInterface;
+      MessageParser.EntityLink link = MessageParser.EntityLink.parse(testCase.getEntityLink());
+      // TODO: this needs to be fixed no way to know the UI redirection
+      return getEntityUrl(
+          link.getEntityType(), link.getEntityFQN(), "profiler?activeTab=Data%20Quality");
+    }
+
+    return getEntityUrl(entityType, fqn, "");
   }
 
   default T buildOutgoingMessage(ChangeEvent event) {
