@@ -54,15 +54,9 @@ jest.mock(
   })
 );
 
-jest.mock('../../utils/Alerts/AlertsUtil', () => ({
-  getAlertBody: jest
-    .fn()
-    .mockImplementation(() => <p>Index Not Found Alert</p>),
-}));
-
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
-  Alert: jest.fn().mockImplementation(({ description }) => description),
+  Alert: jest.fn().mockReturnValue(<span>Index Not Found Alert</span>),
 }));
 
 const onChangeAdvancedSearchQuickFilters = jest.fn();
