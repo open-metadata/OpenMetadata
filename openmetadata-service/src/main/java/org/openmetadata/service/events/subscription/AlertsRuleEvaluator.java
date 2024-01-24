@@ -134,12 +134,6 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
-      if (changeEvent.getEntityType().equals(TEST_CASE)
-          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink())
-              .getEntityFQN()
-              .equals(name))) {
-        return true;
-      }
       if (entity.getFullyQualifiedName().equals(name)) {
         return true;
       }
