@@ -22,12 +22,17 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { PLACEHOLDER_ROUTE_FQN } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -38,6 +43,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -57,6 +63,12 @@ const AlertsPage = () => {
     showPagination,
     paging,
   } = usePaging();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.NOTIFICATIONS),
+    []
+  );
 
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
@@ -112,7 +124,7 @@ const AlertsPage = () => {
         width: '200px',
         key: 'name',
         render: (name: string, record: EventSubscription) => {
-          return <Link to={`alert/${record.id}`}>{name}</Link>;
+          return <Link to={`notifications/alert/${record.id}`}>{name}</Link>;
         },
       },
       {
@@ -149,7 +161,12 @@ const AlertsPage = () => {
           return (
             <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link to={`edit-alert/${id}`}>
+                <Link
+                  to={getSettingPath(
+                    GlobalSettingsMenuCategory.NOTIFICATIONS,
+                    GlobalSettingOptions.EDIT_ALERTS,
+                    true
+                  ).replace(PLACEHOLDER_ROUTE_FQN, id)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
                     data-testid={`alert-edit-${record.name}`}
@@ -175,20 +192,15 @@ const AlertsPage = () => {
     [handleAlertDelete]
   );
 
-  const pageHeaderData = useMemo(
-    () => ({
-      header: t('label.alert-plural'),
-      subHeader: t('message.alerts-description'),
-    }),
-    []
-  );
-
   return (
-    <>
-      <Row gutter={[16, 16]}>
+    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+      <Row className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <PageHeader data={pageHeaderData} />
+            <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
             <Link
               to={getSettingPath(
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
@@ -254,7 +266,7 @@ const AlertsPage = () => {
           />
         </Col>
       </Row>
-    </>
+    </PageLayoutV1>
   );
 };
 

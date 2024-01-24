@@ -17,6 +17,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ROUTES } from '../../constants/constants';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import CustomLogoConfigSettingsPage from './CustomLogoConfigSettingsPage';
 
@@ -35,11 +36,31 @@ jest.mock('../../rest/settingConfigAPI', () => ({
   ),
 }));
 
+jest.mock('../../utils/GlobalSettingsUtils', () => ({
+  getSettingPageEntityBreadCrumb: jest.fn().mockImplementation(() => [
+    {
+      name: 'setting',
+      url: ROUTES.SETTINGS,
+    },
+  ]),
+}));
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
 }));
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
+  }
+);
 
 describe('Test Custom Logo Config Page', () => {
   it('Should render the config details', async () => {

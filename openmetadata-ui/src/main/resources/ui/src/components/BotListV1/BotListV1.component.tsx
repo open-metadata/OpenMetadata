@@ -22,6 +22,7 @@ import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder
 import Table from '../../components/common/Table/Table';
 import { getBotsPath } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -32,6 +33,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getBots } from '../../rest/botsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -40,6 +42,8 @@ import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
+import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../PageHeader/PageHeader.component';
 import { BotListV1Props } from './BotListV1.interfaces';
 
@@ -66,6 +70,11 @@ const BotListV1 = ({
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
+    []
+  );
 
   /**
    *
@@ -234,7 +243,11 @@ const BotListV1 = ({
       </Col>
     </Row>
   ) : (
-    <Row gutter={[16, 16]}>
+    <Row className="page-container" gutter={[16, 16]}>
+      <Col span={24}>
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+      </Col>
+
       <Col span={12}>
         <PageHeader data={PAGE_HEADERS.BOTS} />
       </Col>

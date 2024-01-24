@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { ROUTES } from '../../../constants/constants';
 import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesListPage from './PoliciesListPage';
 
@@ -85,6 +86,26 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
     hasViewPermissions: jest.fn(),
   },
 }));
+
+jest.mock('../../../utils/GlobalSettingsUtils', () => ({
+  getSettingPageEntityBreadCrumb: jest.fn().mockImplementation(() => [
+    {
+      name: 'setting',
+      url: ROUTES.SETTINGS,
+    },
+  ]),
+}));
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock(
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
+  }
+);
 
 describe('Test Policies List Page', () => {
   it('Should render the list component', async () => {

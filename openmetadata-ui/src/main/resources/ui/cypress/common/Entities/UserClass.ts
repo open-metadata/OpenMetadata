@@ -18,6 +18,7 @@ import {
 } from '../../common/common';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../../constants/service.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   permanentDeleteUser,
   restoreUser,
@@ -32,9 +33,8 @@ class UsersTestClass {
   }
 
   visitUserListPage() {
-    cy.sidebarClick(SidebarItem.SETTINGS);
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
-    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
   }
 
   softDeleteUser(name: string, displayName: string) {
@@ -79,9 +79,7 @@ class UsersTestClass {
   checkStewardServicesPermissions() {
     cy.sidebarClick(SidebarItem.EXPLORE);
     Object.values(VISIT_SERVICE_PAGE_DETAILS).forEach((service) => {
-      cy.sidebarClick(SidebarItem.SETTINGS);
-
-      cy.get(`[data-menu-id*="${service.settingsMenuId}"]`).click();
+      cy.settingClick(service.settingsMenuId);
       cy.get('[data-testid="add-service-button"] > span').should('not.exist');
     });
     cy.sidebarClick(SidebarItem.EXPLORE);

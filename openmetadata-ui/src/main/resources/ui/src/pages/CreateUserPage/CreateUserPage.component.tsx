@@ -25,10 +25,7 @@ import {
   getUsersPagePath,
   PAGE_SIZE_LARGE,
 } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { createBotWithPut } from '../../rest/botsAPI';
@@ -53,12 +50,7 @@ const CreateUserPage = () => {
 
   const goToUserListPage = () => {
     if (bot) {
-      history.push(
-        getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.BOTS
-        )
-      );
+      history.push(getSettingPath(GlobalSettingOptions.BOTS));
     } else {
       history.goBack();
     }

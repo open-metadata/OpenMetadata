@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SidebarItem } from '../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 export const searchServiceFromSettingPage = (service) => {
@@ -25,12 +24,9 @@ export const searchServiceFromSettingPage = (service) => {
 };
 
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
-  cy.sidebarClick(SidebarItem.SETTINGS);
-
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServices');
-
-  cy.get('.ant-menu-title-content').contains(service.type).click();
+  cy.settingClick(service.type);
 
   cy.wait('@getServices');
 

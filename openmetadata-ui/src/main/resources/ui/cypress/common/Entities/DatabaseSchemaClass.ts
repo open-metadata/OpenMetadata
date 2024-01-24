@@ -16,9 +16,9 @@ import {
   createEntityTableViaREST,
   deleteEntityViaREST,
 } from '../../common/Utils/Entity';
-import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import EntityClass from './EntityClass';
 
 class DatabaseSchemaClass extends EntityClass {
@@ -50,7 +50,7 @@ class DatabaseSchemaClass extends EntityClass {
     visitServiceDetailsPage(
       {
         name: DATABASE_SERVICE.service.name,
-        type: SERVICE_TYPE.Database,
+        type: GlobalSettingOptions.DATABASES,
       },
       false
     );

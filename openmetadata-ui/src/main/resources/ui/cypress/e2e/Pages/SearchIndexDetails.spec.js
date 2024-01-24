@@ -33,6 +33,7 @@ import {
   USER_CREDENTIALS,
   USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const policy = {
   name: `cy-data-steward-policy-${uuid()}`,
@@ -195,7 +196,7 @@ describe('Prerequisite for data steward role tests', () => {
 
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
 
     verifyResponseStatusCode('@getUsersList', 200);
 

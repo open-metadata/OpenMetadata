@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { DELETE_TERM } from '../../constants/constants';
-import { EntityType, SidebarItem } from '../../constants/Entity.interface';
+import { EntityType } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   interceptURL,
   toastNotification,
@@ -19,13 +20,13 @@ import {
 } from '../common';
 
 export enum Services {
-  Database = 'Databases',
-  Messaging = 'Messaging',
-  Dashboard = 'Dashboards',
-  Pipeline = 'Pipelines',
-  MLModels = 'ML Models',
-  Storage = 'Storages',
-  Search = 'Search',
+  Database = GlobalSettingOptions.DATABASES,
+  Messaging = GlobalSettingOptions.MESSAGING,
+  Dashboard = GlobalSettingOptions.DASHBOARDS,
+  Pipeline = GlobalSettingOptions.PIPELINES,
+  MLModels = GlobalSettingOptions.MLMODELS,
+  Storage = GlobalSettingOptions.STORAGES,
+  Search = GlobalSettingOptions.SEARCH,
 }
 
 export const ServicesEntityMap = {
@@ -42,19 +43,9 @@ export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
 export const goToServiceListingPage = (services: Services) => {
-  interceptURL(
-    'GET',
-    'api/v1/teams/name/Organization?fields=*',
-    'getSettingsPage'
-  );
-  // Click on settings page
-  cy.sidebarClick(SidebarItem.SETTINGS);
-  verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page
   interceptURL('GET', '/api/v1/services/*', 'getServiceList');
-  cy.get(`[data-testid="global-setting-left-panel"]`)
-    .contains(services)
-    .click();
+  cy.settingClick(services);
 
   verifyResponseStatusCode('@getServiceList', 200);
 };

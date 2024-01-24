@@ -14,7 +14,7 @@ import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
-import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   descriptionBox,
   interceptURL,
@@ -168,10 +168,8 @@ export const permanentDeleteUser = (username: string, displayName: string) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
 };
 export const visitUserListPage = () => {
-  cy.sidebarClick(SidebarItem.SETTINGS);
-
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
-  cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+  cy.settingClick(GlobalSettingOptions.USERS);
 };
 
 export const generateToken = () => {

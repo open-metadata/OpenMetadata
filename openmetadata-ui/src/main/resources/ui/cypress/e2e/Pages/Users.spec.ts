@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 // eslint-disable-next-line spaced-comment
+import {
+  GlobalSettingOptions,
+  SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+} from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
@@ -114,13 +119,7 @@ describe('User with different Roles', () => {
     cy.clickOnLogo();
 
     // Check CRUD for Tags
-    cy.get(tag.testid)
-      .should('be.visible')
-      .click({ animationDistanceThreshold: 10, waitForAnimations: true });
-    if (tag.subMenu) {
-      cy.get(tag.subMenu).should('be.visible').click({ force: true });
-    }
-    cy.get('body').click();
+    cy.sidebarClick(SidebarItem.TAGS);
     cy.wait(200);
     cy.get('[data-testid="add-new-tag-button"]').should('not.exist');
 
@@ -130,14 +129,12 @@ describe('User with different Roles', () => {
   it('Data Consumer operations for settings page', () => {
     cy.login(user.email, user.newPassword);
 
-    // Navigate to settings
-    cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
-    cy.sidebarHoverOutside();
     Object.values(ID).forEach((id) => {
       if (id?.api) {
         interceptURL('GET', id.api, 'getTabDetails');
       }
-      cy.get(id.testid).should('be.visible').click();
+      // Navigate to settings and respective tab page
+      cy.settingClick(id.testid);
       if (id?.api) {
         verifyResponseStatusCode('@getTabDetails', 200);
       }
@@ -145,10 +142,16 @@ describe('User with different Roles', () => {
     });
 
     Object.values(GLOBAL_SETTING_PERMISSIONS).forEach((id) => {
-      if (id.testid === '[data-menu-id*="metadata"]') {
-        cy.get(id.testid).should('be.visible').click();
+      if (id.testid === GlobalSettingOptions.METADATA) {
+        cy.settingClick(id.testid);
       } else {
-        cy.get(id.testid).should('not.be.exist');
+        cy.sidebarClick(SidebarItem.SETTINGS);
+        let paths = SETTINGS_OPTIONS_PATH[id.testid];
+
+        if (id.isCustomProperty) {
+          paths = SETTING_CUSTOM_PROPERTIES_PATH[id.testid];
+        }
+        cy.get(`[data-testid="${paths[0]}"]`).should('not.be.exist');
       }
     });
   });
@@ -218,14 +221,12 @@ describe('User with different Roles', () => {
   it('Data Steward operations for settings page', () => {
     cy.login(user.email, user.newStewardPassword);
 
-    // Navigate to settings
-    cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
-    cy.sidebarHoverOutside();
     Object.values(ID).forEach((id) => {
       if (id?.api) {
         interceptURL('GET', id.api, 'getTabDetails');
       }
-      cy.get(id.testid).should('be.visible').click();
+      // Navigate to settings and respective tab page
+      cy.settingClick(id.testid);
       if (id?.api) {
         verifyResponseStatusCode('@getTabDetails', 200);
       }
@@ -233,10 +234,17 @@ describe('User with different Roles', () => {
     });
 
     Object.values(GLOBAL_SETTING_PERMISSIONS).forEach((id) => {
-      if (id.testid === '[data-menu-id*="metadata"]') {
-        cy.get(id.testid).should('be.visible').click();
+      if (id.testid === GlobalSettingOptions.METADATA) {
+        cy.settingClick(id.testid);
       } else {
-        cy.get(id.testid).should('not.be.exist');
+        cy.sidebarClick(SidebarItem.SETTINGS);
+
+        let paths = SETTINGS_OPTIONS_PATH[id.testid];
+
+        if (id.isCustomProperty) {
+          paths = SETTING_CUSTOM_PROPERTIES_PATH[id.testid];
+        }
+        cy.get(`[data-testid="${paths[0]}"]`).should('not.be.exist');
       }
     });
   });

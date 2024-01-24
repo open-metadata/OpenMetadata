@@ -12,9 +12,10 @@
  */
 
 import { BASE_URL } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   NAVBAR_DETAILS,
-  SETTINGS_LEFT_PANEL,
+  SETTINGS_PAGE_OPTIONS,
 } from '../../constants/redirections.constants';
 
 const validateURL = (url) => {
@@ -28,11 +29,14 @@ describe('Redirection link should work properly', () => {
 
   it('Check mydata redirection links on navbar', () => {
     Object.values(NAVBAR_DETAILS).map((navbar) => {
-      cy.get(navbar.testid)
+      cy.sidebarHover();
+      cy.get(`[data-testid=${navbar.testid}]`)
         .should('be.visible')
         .click({ animationDistanceThreshold: 10 });
       if (navbar.subMenu) {
-        cy.get(navbar.subMenu).should('be.visible').click({ force: true });
+        cy.get(`[data-testid=${navbar.subMenu}]`)
+          .should('be.visible')
+          .click({ force: true });
       }
       cy.get('body').click();
       validateURL(navbar.url);
@@ -42,15 +46,12 @@ describe('Redirection link should work properly', () => {
   });
 
   it('Check redirection links on settings page', () => {
-    cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
-    Object.values(SETTINGS_LEFT_PANEL).map((settingsLeftPanel) => {
-      cy.sidebarHoverOutside();
-      cy.get(settingsLeftPanel.testid)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-      cy.wait(200);
-      validateURL(settingsLeftPanel.url);
-    });
+    cy.sidebarClick(SidebarItem.SETTINGS);
+    Object.values(SETTINGS_PAGE_OPTIONS).forEach(
+      ({ testid, url, isCustomProperty }) => {
+        cy.settingClick(testid, isCustomProperty);
+        validateURL(url);
+      }
+    );
   });
 });

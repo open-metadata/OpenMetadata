@@ -923,7 +923,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
     [handleToggleDelete]
   );
 

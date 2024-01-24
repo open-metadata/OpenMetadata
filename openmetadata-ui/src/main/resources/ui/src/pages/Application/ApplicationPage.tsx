@@ -20,8 +20,12 @@ import ApplicationCard from '../../components/Applications/ApplicationCard/Appli
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
@@ -30,6 +34,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -48,6 +53,12 @@ const ApplicationPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
   const [showDisabled, setShowDisabled] = useState(false);
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.APPLICATIONS),
+    []
+  );
 
   const fetchApplicationList = useCallback(
     async (showDisabled = false, pagingOffset?: Paging) => {
@@ -121,8 +132,11 @@ const ApplicationPage = () => {
   }, [pageSize]);
 
   return (
-    <>
-      <Row gutter={[16, 16]}>
+    <PageLayoutV1 pageTitle={t('label.application-plural')}>
+      <Row className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
         <Col span={16}>
           <PageHeader data={PAGE_HEADERS.APPLICATION} />
         </Col>
@@ -192,7 +206,7 @@ const ApplicationPage = () => {
           </>
         )}
       </Row>
-    </>
+    </PageLayoutV1>
   );
 };
 

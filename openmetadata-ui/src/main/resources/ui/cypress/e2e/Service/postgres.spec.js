@@ -26,7 +26,11 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
-import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
+import {
+  API_SERVICE,
+  ENTITY_SERVICE_TYPE,
+  SERVICE_TYPE,
+} from '../../constants/constants';
 
 const serviceType = 'Postgres';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -76,7 +80,7 @@ describe('Postgres Ingestion', () => {
       connectionInput,
       addIngestionInput,
       serviceName,
-      serviceCategory: SERVICE_TYPE.Database,
+      serviceCategory: ENTITY_SERVICE_TYPE.Database,
     });
   });
 
