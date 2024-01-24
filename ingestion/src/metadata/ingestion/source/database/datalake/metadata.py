@@ -135,12 +135,15 @@ class DatalakeSource(DatabaseServiceSource):
         apply the necessary filters.
         """
         if isinstance(self.config_source, GCSConfig):
-
-            for (
-                project_id
-            ) in (
+            project_id_list = (
                 self.service_connection.configSource.securityConfig.gcpConfig.projectId.__root__
+            )
+            if not isinstance(
+                project_id_list,
+                list,
             ):
+                project_id_list = [project_id_list]
+            for project_id in project_id_list:
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

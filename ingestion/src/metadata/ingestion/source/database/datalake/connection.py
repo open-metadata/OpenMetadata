@@ -53,12 +53,6 @@ class DatalakeClient:
         self.config = config
 
 
-def _return_gcs_client(gcs_config: GCSConfig):
-    set_google_credentials(gcp_credentials=gcs_config.securityConfig)
-    gcs_client = storage.Client()
-    return gcs_client
-
-
 @singledispatch
 def get_datalake_client(config):
     """
@@ -87,7 +81,9 @@ def _(config: GCSConfig):
         gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
             gcs_config.securityConfig.gcpConfig.projectId.__root__[0]
         )
-    return _return_gcs_client(gcs_config=gcs_config)
+    set_google_credentials(gcp_credentials=gcs_config.securityConfig)
+    gcs_client = storage.Client()
+    return gcs_client
 
 
 @get_datalake_client.register
@@ -116,11 +112,11 @@ def _(config: AzureConfig):
 
 def set_gcs_datalake_client(config: GCSConfig, project_id: str):
     gcs_config = deepcopy(config)
-    if hasattr(config.securityConfig, "gcpConfig"):
+    if hasattr(gcs_config.securityConfig, "gcpConfig"):
         gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
             project_id
         )
-    return _return_gcs_client(gcs_config=gcs_config)
+    return get_datalake_client(config=gcs_config)
 
 
 def get_connection(connection: DatalakeConnection) -> DatalakeClient:
