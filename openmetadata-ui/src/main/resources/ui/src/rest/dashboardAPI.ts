@@ -21,8 +21,9 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type ListDataModelParams = {
@@ -74,26 +75,13 @@ export const getDashboards = async (
   return response.data;
 };
 
-export const getDashboardDetails = (
-  id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
-
-  return APIClient.get(url);
-};
-
-export const getDashboardByFqn = async (
-  fqn: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    'include=all'
+export const getDashboardByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Dashboard>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
-
-  const response = await APIClient.get<Dashboard>(url);
 
   return response.data;
 };

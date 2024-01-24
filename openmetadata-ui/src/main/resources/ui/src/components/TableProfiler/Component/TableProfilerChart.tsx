@@ -24,12 +24,12 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEqual } from 'lodash';
+import { isEqual, pick } from 'lodash';
+import { DateRangeObject } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
-import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
   DEFAULT_RANGE_DATA,
@@ -38,6 +38,7 @@ import {
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { TableProfile } from '../../../generated/entity/data/table';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getSystemProfileList,
   getTableProfilesList,
@@ -46,7 +47,6 @@ import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,
@@ -80,8 +80,11 @@ const TableProfilerChart = ({
     onSettingButtonClick,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
+    dateRangeObject = DEFAULT_RANGE_DATA,
+    onDateRangeChange,
   } = useTableProfiler();
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+
+  const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
   const { t } = useTranslation();
   const customMetrics = useMemo(
@@ -90,8 +93,6 @@ const TableProfilerChart = ({
   );
 
   const editDataProfile = permissions?.EditAll || permissions?.EditDataProfile;
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
   );
@@ -111,7 +112,7 @@ const TableProfilerChart = ({
         history.push(
           getAddDataQualityTableTestPath(
             ProfilerDashboardType.TABLE,
-            getDecodedFqn(datasetFQN)
+            datasetFQN
           )
         );
       },
@@ -121,10 +122,7 @@ const TableProfilerChart = ({
       key: 'custom-metric',
       onClick: () => {
         history.push(
-          getAddCustomMetricPath(
-            ProfilerDashboardType.TABLE,
-            getDecodedFqn(datasetFQN)
-          )
+          getAddCustomMetricPath(ProfilerDashboardType.TABLE, datasetFQN)
         );
       },
     },
@@ -137,7 +135,7 @@ const TableProfilerChart = ({
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
-      setDateRangeObject(value);
+      onDateRangeChange(value);
     }
   };
 
@@ -174,9 +172,10 @@ const TableProfilerChart = ({
     fqn: string,
     dateRangeObj: DateRangeObject
   ) => {
+    const dateRange = pick(dateRangeObj, ['startTs', 'endTs']);
     setIsLoading(true);
-    await fetchTableProfiler(fqn, dateRangeObj);
-    await fetchSystemProfiler(fqn, dateRangeObj);
+    await fetchTableProfiler(fqn, dateRange);
+    await fetchSystemProfiler(fqn, dateRange);
     setIsLoading(false);
   };
 
@@ -201,6 +200,7 @@ const TableProfilerChart = ({
                 <Space align="center" className="w-full justify-end">
                   <DatePickerMenu
                     showSelectedCustomRange
+                    defaultDateRange={dateRangeObject}
                     handleDateRangeChange={handleDateRangeChange}
                   />
 

@@ -35,7 +35,8 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
+
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -122,7 +123,7 @@ const TaskFeedCard = ({
             <Link
               className="break-all"
               data-testid="entity-link"
-              to={getEntityLink(entityType, entityFQN)}
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
               onClick={(e) => e.stopPropagation()}>
               {getNameFromFQN(entityFQN)}
             </Link>

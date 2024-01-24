@@ -33,6 +33,7 @@ import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
+import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
@@ -115,7 +116,9 @@ const MyDataPage = () => {
     }
     setIsLoadingOwnedData(true);
     try {
-      const userData = await getUserById(currentUser?.id, 'follows, owns');
+      const userData = await getUserById(currentUser?.id, {
+        fields: 'follows,owns',
+      });
 
       if (userData) {
         const includeData = Object.values(AssetsType);
@@ -187,6 +190,9 @@ const MyDataPage = () => {
   useEffect(() => {
     fetchAnnouncements();
   }, []);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection(isLoading);
 
   if (showWelcomeScreen) {
     return (

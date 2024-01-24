@@ -14,10 +14,7 @@
 import { isUndefined, startCase } from 'lodash';
 import { TableProfilerTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { getTableTabPath } from '../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../constants/service-guide.constant';
 import { EntityTabs } from '../enums/entity.enum';
 import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -33,7 +30,6 @@ import {
   getLogEntityPath,
   getSettingPath,
 } from './RouterUtils';
-import { getEncodedFqn } from './StringsUtils';
 
 /**
  * It takes in a service type, an ingestion name, and an ingestion details object, and returns an array
@@ -70,10 +66,7 @@ export const getLogBreadCrumbs = (
     return [
       {
         name: startCase(serviceType),
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.APPLICATIONS
-        ),
+        url: getSettingPath(GlobalSettingOptions.APPLICATIONS),
       },
       {
         name: ingestionName,
@@ -96,10 +89,8 @@ export const getLogBreadCrumbs = (
         name: ingestionDetails.name,
         url:
           getTableTabPath(
-            getEncodedFqn(
-              (ingestionDetails.sourceConfig.config as Pipeline)
-                ?.entityFullyQualifiedName ?? ''
-            ),
+            (ingestionDetails.sourceConfig.config as Pipeline)
+              ?.entityFullyQualifiedName ?? '',
             EntityTabs.PROFILER
           ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
       },
@@ -116,9 +107,7 @@ export const getLogBreadCrumbs = (
     return {
       name: index === 0 ? startCase(path) : path,
       url:
-        index !== urlPath.length - 1
-          ? getLogEntityPath(getEncodedFqn(path), serviceType)
-          : '',
+        index !== urlPath.length - 1 ? getLogEntityPath(path, serviceType) : '',
     };
   });
 };

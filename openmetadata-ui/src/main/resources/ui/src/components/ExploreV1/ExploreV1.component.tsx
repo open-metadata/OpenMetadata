@@ -219,7 +219,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       handleSummaryPanelDisplay(
         highlightEntityNameAndDescription(
           firstEntity._source,
-          firstEntity.highlight
+          firstEntity?.highlight
         )
       );
     } else {
@@ -237,7 +237,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       <div className="w-full h-full">
         {tabItems.length > 0 && (
           <Layout hasSider className="bg-white">
-            <Sider className="bg-white border-right" width={250}>
+            <Sider className="bg-white border-right" width={270}>
               <Typography.Paragraph className="explore-data-header">
                 {t('label.data-asset-plural')}
               </Typography.Paragraph>
@@ -287,6 +287,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       {(quickFilters || sqlQuery) && (
                         <Typography.Text
                           className="text-primary self-center cursor-pointer"
+                          data-testid="clear-filters"
                           onClick={() => clearFilters()}>
                           {t('label.clear-entity', {
                             entity: '',
@@ -355,7 +356,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       handleClosePanel={handleClosePanel}
                       highlights={omit(
                         {
-                          ...firstEntity.highlight, // highlights of firstEntity that we get from the query api
+                          ...firstEntity?.highlight, // highlights of firstEntity that we get from the query api
                           'tag.name': (
                             selectedQuickFilters?.find(
                               (filterOption) => filterOption.key === TAG_FQN_KEY

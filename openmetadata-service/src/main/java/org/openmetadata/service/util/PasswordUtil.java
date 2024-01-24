@@ -34,8 +34,8 @@ public class PasswordUtil {
 
   static {
     List<Rule> rules = new ArrayList<>();
-    // 8 and 16 characters
-    rules.add(new LengthRule(8, 16));
+    // 8 and 56 characters
+    rules.add(new LengthRule(8, 56));
     // No whitespace allowed
     rules.add(new WhitespaceRule());
     // At least one Upper-case character

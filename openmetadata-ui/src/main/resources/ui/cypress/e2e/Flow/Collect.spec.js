@@ -12,34 +12,37 @@
  */
 
 import { interceptURL } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Collect end point should work properly', () => {
   const PAGES = {
     setting: {
       name: 'Settings',
-      mainMenuId: `[data-testid="app-bar-item-settings"]`,
+      menuId: SidebarItem.SETTINGS,
     },
     explore: {
       name: 'Explore',
-      mainMenuId: `[data-testid="app-bar-item-explore"]`,
+      menuId: SidebarItem.EXPLORE,
     },
     dataQuality: {
       name: 'Quality',
-      mainMenuId: `[data-testid="app-bar-item-data-quality"]`,
+      menuId: SidebarItem.DATA_QUALITY,
+    },
+    incidentManager: {
+      name: 'Incident Manager',
+      menuId: SidebarItem.INCIDENT_MANAGER,
     },
     insight: {
       name: 'Insights',
-      mainMenuId: `[data-testid="app-bar-item-data-insight"]`,
+      menuId: SidebarItem.DATA_INSIGHT,
     },
     glossary: {
       name: 'Glossary',
-      mainMenuId: `[data-testid="governance"]`,
-      subMenu: `[data-testid="app-bar-item-glossary"]`,
+      menuId: SidebarItem.GLOSSARY,
     },
     tag: {
       name: 'Tags',
-      mainMenuId: `[data-testid="governance"]`,
-      subMenu: `[data-testid="app-bar-item-tags"]`,
+      menuId: SidebarItem.TAGS,
     },
   };
 
@@ -60,14 +63,7 @@ describe('Collect end point should work properly', () => {
 
   Object.values(PAGES).map((page) => {
     it(`Visit ${page.name} page should trigger collect API`, () => {
-      cy.get(page.mainMenuId)
-        .should('be.visible')
-        .click({ animationDistanceThreshold: 10 });
-      if (page.subMenu) {
-        // adding manual wait to open dropdown in UI
-        cy.wait(500);
-        cy.get(page.subMenu).should('be.visible').click({ force: true });
-      }
+      cy.sidebarClick(page.menuId);
       assertCollectEndPoint();
     });
   });

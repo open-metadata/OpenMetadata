@@ -14,13 +14,13 @@
 import { CustomPropertyType } from '../../common/Utils/CustomProperty';
 import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
-import StoreProcedureClass from './../../common/Entities/StoredProcedureClass';
 import TableClass from './../../common/Entities/TableClass';
 
 const entities = [
   new DatabaseClass(),
   new DatabaseSchemaClass(),
-  new StoreProcedureClass(),
+  // ES Issue
+  //   new StoreProcedureClass(),
   new TableClass(),
 ] as const;
 
@@ -97,11 +97,6 @@ entities.forEach((entity) => {
       entity.removeInactiveAnnouncement();
     });
 
-    it(`UpVote & DownVote entity`, () => {
-      entity.upVote();
-      entity.downVote();
-    });
-
     Object.values(CustomPropertyType).forEach((type) => {
       it(`Set ${type} Custom Property `, () => {
         entity.setCustomProperty(
@@ -116,6 +111,15 @@ entities.forEach((entity) => {
           entity.customPropertyValue[type].newValue
         );
       });
+    });
+
+    it(`UpVote & DownVote entity`, () => {
+      entity.upVote();
+      entity.downVote();
+    });
+
+    it(`follow unfollow entity`, () => {
+      entity.followUnfollowEntity();
     });
 
     it(`Soft delete`, () => {

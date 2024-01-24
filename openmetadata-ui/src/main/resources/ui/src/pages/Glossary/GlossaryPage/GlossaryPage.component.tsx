@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
@@ -35,6 +35,7 @@ import {
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -54,8 +55,7 @@ import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component'
 const GlossaryPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { fqn: glossaryName } = useParams<{ fqn: string }>();
-  const glossaryFqn = decodeURIComponent(glossaryName);
+  const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,10 +141,10 @@ const GlossaryPage = () => {
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
     try {
-      const response = await getGlossaryTermByFQN(
-        glossaryFqn,
-        'relatedTerms,reviewers,tags,owner,children,votes,domain'
-      );
+      const response = await getGlossaryTermByFQN(glossaryFqn, {
+        fields:
+          'relatedTerms,reviewers,tags,owner,children,votes,domain,extension',
+      });
       setSelectedData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);

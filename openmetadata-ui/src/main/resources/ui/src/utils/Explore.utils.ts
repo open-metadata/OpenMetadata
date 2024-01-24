@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import {
   ExploreQuickFilterField,
   ExploreSearchIndex,
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
-import { EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { Aggregations } from '../interface/search.interface';
 import {
   QueryFieldInterface,
@@ -116,30 +114,36 @@ export const getAggregations = (data: Aggregations) => {
   ) as Aggregations;
 };
 
-export const getSearchIndexFromEntityType = (entityType: EntityType) => {
-  const commonAssets: Record<string, SearchIndex> = {
-    [EntityType.ALL]: SearchIndex.ALL,
-    [EntityType.TABLE]: SearchIndex.TABLE,
-    [EntityType.PIPELINE]: SearchIndex.PIPELINE,
-    [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
-    [EntityType.MLMODEL]: SearchIndex.MLMODEL,
-    [EntityType.TOPIC]: SearchIndex.TOPIC,
-    [EntityType.CONTAINER]: SearchIndex.CONTAINER,
-    [EntityType.TAG]: SearchIndex.TAG,
-    [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
-    [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
-    [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
-    [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
-    [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
-    [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
-    [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
-    [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
-    [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
-    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
-    [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
-    [EntityType.DOMAIN]: SearchIndex.DOMAIN,
-    [EntityType.DATA_PRODUCT]: SearchIndex.DATA_PRODUCT,
-  };
+/**
+ * Generates a ElasticSearch Query filter based on the given data.
+ *
+ * @param {ExploreQuickFilterField[]} data - An array of ExploreQuickFilterField objects representing the filter data.
+ * @return {object} - The generated quick filter query.
+ */
+export const getQuickFilterQuery = (data: ExploreQuickFilterField[]) => {
+  const must: QueryFieldInterface[] = [];
+  data.forEach((filter) => {
+    if (!isEmpty(filter.value)) {
+      const should: QueryFieldValueInterface[] = [];
+      if (filter.value) {
+        filter.value.forEach((filterValue) => {
+          const term: Record<string, string> = {};
+          term[filter.key] = filterValue.key;
+          should.push({ term });
+        });
+      }
 
-  return commonAssets[entityType];
+      must.push({
+        bool: { should },
+      });
+    }
+  });
+
+  const quickFilterQuery = isEmpty(must)
+    ? undefined
+    : {
+        query: { bool: { must } },
+      };
+
+  return quickFilterQuery;
 };

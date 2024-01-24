@@ -57,8 +57,8 @@ We specify which public certificate must be used to validate the OM server conne
 - In **docker**:
 
 ```yaml
-AIRFLOW_VERIFY_SSL=validate
-AIRFLOW_SSL_CERT_PATH=/path/to/certificate/in/airflow
+PIPELINE_SERVICE_CLIENT_VERIFY_SSL=validate
+PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH=/path/to/certificate/in/airflow
 ```
 
 - In **bare metal**:
@@ -66,7 +66,7 @@ AIRFLOW_SSL_CERT_PATH=/path/to/certificate/in/airflow
 Edit the `conf/openmetadata.yaml` file:
 
 ```yaml
-airflowConfiguration:
+pipelineServiceClientConfiguration:
   verifySSL: "validate"
   sslConfig:
     validate:
@@ -91,7 +91,7 @@ When doing any call to the secured OM server, the certificate validation will be
 - In **docker**:
 
 ```yaml
-AIRFLOW_VERIFY_SSL=ignore
+PIPELINE_SERVICE_CLIENT_VERIFY_SSL=ignore
 ```
 
 - In **bare metal**:
@@ -99,7 +99,7 @@ AIRFLOW_VERIFY_SSL=ignore
 Edit the `conf/openmetadata.yaml` file:
 
 ```yaml
-airflowConfiguration:
+pipelineServiceClientConfiguration:
   verifySSL: "ignore"
 ```
 

@@ -113,8 +113,8 @@ def test_connection(
         taxonomy_project_ids = []
         if engine.url.host:
             taxonomy_project_ids.append(engine.url.host)
-        if service_connection.taxonomyProjectId:
-            taxonomy_project_ids.extend(service_connection.taxonomyProjectId)
+        if service_connection.taxonomyProjectID:
+            taxonomy_project_ids.extend(service_connection.taxonomyProjectID)
         if not taxonomy_project_ids:
             logger.info("'taxonomyProjectID' is not set, so skipping this test.")
             return None

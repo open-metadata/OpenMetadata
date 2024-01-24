@@ -38,6 +38,12 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../common/common';
 import { BASE_URL, LOGIN } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
+import {
+  SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+} from '../constants/settings.constant';
+import { SIDEBAR_LIST_ITEMS } from '../constants/sidebar.constant';
 
 Cypress.Commands.add('loginByGoogleApi', () => {
   cy.log('Logging in to Google');
@@ -126,17 +132,29 @@ Cypress.Commands.add('storeSession', (username, password) => {
         .replaceAll('.', '_')}`;
 
       cy.setCookie(versionCookie, 'true');
+      window.localStorage.setItem('loggedInUsers', 'admin');
     });
   });
 });
 
-Cypress.Commands.add('login', () => {
-  cy.storeSession(LOGIN.username, LOGIN.password);
-  cy.goToHomePage();
-});
+Cypress.Commands.add(
+  'login',
+  (username = LOGIN.username, password = LOGIN.password) => {
+    cy.storeSession(username, password);
+    cy.goToHomePage();
+  }
+);
 
 Cypress.Commands.add('clickOutside', function () {
   return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
+});
+
+Cypress.Commands.add('sidebarHover', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseover'); // trigger mouseover event inside the sidebar
+});
+
+Cypress.Commands.add('sidebarHoverOutside', function () {
+  return cy.get('[data-testid="left-sidebar"]').trigger('mouseout'); // trigger mouseout event outside the sidebar
 });
 
 Cypress.Commands.add('logout', () => {
@@ -149,4 +167,44 @@ Cypress.Commands.add('logout', () => {
   verifyResponseStatusCode('@logoutUser', 200);
 
   cy.url().should('eq', `${BASE_URL}/signin`);
+  Cypress.session.clearAllSavedSessions();
+});
+
+/* 
+  This command is used to click on the sidebar item
+  id: data-testid of the sidebar item to be clicked
+  */
+Cypress.Commands.add('sidebarClick', (id) => {
+  const items = SIDEBAR_LIST_ITEMS[id];
+  if (items) {
+    cy.sidebarHover();
+    cy.get(`[data-testid="${items[0]}"]`).click({
+      animationDistanceThreshold: 20,
+      waitForAnimations: true,
+    });
+
+    cy.get(`[data-testid="app-bar-item-${items[1]}"]`).click();
+
+    cy.get(`[data-testid="${items[0]}"]`).click();
+  } else {
+    cy.get(`[data-testid="app-bar-item-${id}"]`).click();
+  }
+
+  cy.sidebarHoverOutside();
+});
+
+// dataTestId of the setting options
+// isCustomProperty: whether the setting option is custom properties or not
+Cypress.Commands.add('settingClick', (dataTestId, isCustomProperty) => {
+  let paths = SETTINGS_OPTIONS_PATH[dataTestId];
+
+  if (isCustomProperty) {
+    paths = SETTING_CUSTOM_PROPERTIES_PATH[dataTestId];
+  }
+
+  cy.sidebarClick(SidebarItem.SETTINGS);
+
+  paths.forEach((path) => {
+    cy.get(`[data-testid="${path}"]`).scrollIntoView().click();
+  });
 });

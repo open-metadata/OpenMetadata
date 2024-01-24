@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Loader from '../../../components/Loader/Loader';
@@ -24,8 +24,9 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
 import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Include } from '../../../generated/type/include';
+import { useFqn } from '../../../hooks/useFqn';
 import { getApplicationByName } from '../../../rest/applicationAPI';
-import { getMarketPlaceApplicationByName } from '../../../rest/applicationMarketPlaceAPI';
+import { getMarketPlaceApplicationByFqn } from '../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -35,7 +36,7 @@ import './market-place-app-details.less';
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isInstalled, setIsInstalled] = useState(false);
@@ -59,7 +60,9 @@ const MarketPlaceAppDetails = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getMarketPlaceApplicationByName(fqn, 'owner');
+      const data = await getMarketPlaceApplicationByFqn(fqn, {
+        fields: 'owner',
+      });
       setAppData(data);
 
       if (data.appScreenshots) {

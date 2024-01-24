@@ -26,7 +26,6 @@ import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/A
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import ExecutionsTab from '../../components/Execution/Execution.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -71,10 +70,14 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../AppRouter/withActivityFeed';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
+import Lineage from '../Lineage/Lineage.component';
+import LineageProvider from '../LineageProvider/LineageProvider';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
@@ -422,6 +425,15 @@ const PipelineDetails = ({
         ),
       },
       {
+        title: t('label.owner'),
+        dataIndex: 'owner',
+        key: 'owner',
+        width: 120,
+        accessor: 'owner',
+        filterIcon: getFilterIcon('tag-filter'),
+        render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
+      },
+      {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
@@ -602,6 +614,7 @@ const PipelineDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={pipelineDetails}
                 dataProducts={pipelineDetails?.dataProducts ?? []}
                 domain={pipelineDetails?.domain}
                 editTagPermission={editTagsPermission}
@@ -609,6 +622,7 @@ const PipelineDetails = ({
                 entityId={pipelineDetails.id}
                 entityType={EntityType.PIPELINE}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -654,12 +668,14 @@ const PipelineDetails = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={deleted}
-            entity={pipelineDetails}
-            entityType={EntityType.PIPELINE}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={pipelineDetails as SourceType}
+              entityType={EntityType.PIPELINE}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
       {
@@ -670,13 +686,16 @@ const PipelineDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.PIPELINE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: pipelineDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.PIPELINE>
+              entityDetails={pipelineDetails}
+              entityType={EntityType.PIPELINE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

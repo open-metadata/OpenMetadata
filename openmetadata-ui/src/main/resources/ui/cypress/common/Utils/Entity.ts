@@ -14,7 +14,6 @@ import { DELETE_TERM } from '../../constants/constants';
 import {
   EntityType,
   EXPLORE_PAGE_TABS,
-  SEARCH_INDEX,
 } from '../../constants/Entity.interface';
 import {
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
@@ -179,12 +178,7 @@ export const visitEntityDetailsPage = ({
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=**&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
-    'explorePageTabSearch'
-  );
-  interceptURL(
-    'GET',
-    `/api/v1/search/query?q=**&from=*&size=*&index=all`,
+    `/api/v1/search/query?q=**&from=*&size=*&index=*`,
     'explorePageSearch'
   );
   const id = dataTestId ?? `${serviceName}-${term}`;
@@ -221,9 +215,9 @@ export const visitEntityDetailsPage = ({
 
         cy.get(`[data-testid="${tabName}-tab"]`).click();
 
-        verifyResponseStatusCode('@explorePageTabSearch', 200);
-
-        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`, {
+          timeout: 10000,
+        })
           .scrollIntoView()
           .click();
       }
@@ -262,21 +256,18 @@ export const checkCustomPropertyEditButton = ({ deleted }) => {
 export const checkLineageTabActions = ({ deleted }) => {
   interceptURL(
     'GET',
-    `/api/v1/lineage/*/name/*?upstreamDepth=1&downstreamDepth=1*`,
+    `/api/v1/lineage/getLineage?fqn=*&upstreamDepth=3&downstreamDepth=3&query_filter=*&includeDeleted=false`,
     'getLineageData'
   );
 
   cy.get('[data-testid="lineage"]').click();
 
-  !deleted && verifyResponseStatusCode('@getLineageData', 200);
+  verifyResponseStatusCode('@getLineageData', 200);
 
   if (!deleted) {
     cy.get('[data-testid="edit-lineage"]').should('be.visible');
   } else {
-    cy.get('[data-testid="no-data-placeholder"]').should(
-      'contain',
-      'Lineage data is not available for deleted entities.'
-    );
+    cy.get('[data-testid="edit-lineage"]').should(`not.exist`);
   }
 };
 
@@ -415,7 +406,11 @@ export const restoreEntity = () => {
   cy.get('[data-testid="deleted-badge"]').should('not.exist');
 };
 
-export const deleteEntity = (entityName: string, endPoint: EntityType) => {
+export const deleteEntity = (
+  entityName: string,
+  endPoint: EntityType,
+  displayName: string
+) => {
   deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
 
   cy.get('[data-testid="manage-button"]').click();
@@ -426,7 +421,7 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${entityName}`
+    displayName
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -444,9 +439,42 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
   toastNotification('deleted successfully!');
 
   cy.reload();
-  cy.get('[data-testid="deleted-badge"]').should('have.text', 'Deleted');
+
+  cy.get('[data-testid="deleted-badge"]', { timeout: 10000 }).should(
+    'have.text',
+    'Deleted'
+  );
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
+
+  if (endPoint === EntityType.Table) {
+    interceptURL(
+      'GET',
+      '/api/v1/tables?databaseSchema=*&include=deleted',
+      'queryDeletedTables'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/databaseSchemas/name/*?fields=*&include=all',
+      'getDatabaseSchemas'
+    );
+
+    cy.get('[data-testid="breadcrumb-link"]').last().click();
+    verifyResponseStatusCode('@getDatabaseSchemas', 200);
+
+    cy.get('[data-testid="show-deleted"]')
+      .scrollIntoView()
+      .click({ waitForAnimations: true });
+
+    verifyResponseStatusCode('@queryDeletedTables', 200);
+
+    cy.get('[data-testid="table"] [data-testid="count"]').should(
+      'contain',
+      '1'
+    );
+
+    cy.get(`[data-testid=${entityName}]`).click();
+  }
 
   restoreEntity();
   cy.reload();
@@ -454,6 +482,11 @@ export const deleteEntity = (entityName: string, endPoint: EntityType) => {
   deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
 };
 
+/**
+ *
+ * @param entityName should be displayName or fallback to name
+ * @param endPoint -- EntityType
+ */
 export const hardDeleteEntity = (entityName: string, endPoint: EntityType) => {
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
@@ -463,7 +496,7 @@ export const hardDeleteEntity = (entityName: string, endPoint: EntityType) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${entityName}`
+    entityName
   );
 
   cy.get('[data-testid="hard-delete-option"]').click();
@@ -527,4 +560,37 @@ export const updateDescriptioForEntity = (
   cy.get(
     '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
   ).should('contain', description);
+};
+
+export const followEntity = (entityType: EntityType) => {
+  interceptURL('PUT', `/api/v1/${entityType}/*/followers`, 'waitAfterFollow');
+
+  cy.get('[data-testid="entity-follow-button"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@waitAfterFollow', 200);
+};
+
+export const validateFollowedEntityToWidget = (
+  entityName: string,
+  isFollowed = true
+) => {
+  interceptURL('GET', '/api/v1/users/*?fields=follows*', 'getFollowedEntities');
+  cy.goToHomePage();
+
+  verifyResponseStatusCode('@getFollowedEntities', 200, { timeout: 10000 });
+  cy.get(`[data-testid="following-${entityName}"]`).should(
+    isFollowed ? 'be.visible' : 'not.exist'
+  );
+};
+
+export const unfollowEntity = (entityType: EntityType) => {
+  interceptURL(
+    'DELETE',
+    `/api/v1/${entityType}/*/followers/*`,
+    'waitAfterUnFollow'
+  );
+
+  cy.get('[data-testid="entity-follow-button"]').scrollIntoView().click();
+
+  verifyResponseStatusCode('@waitAfterUnFollow', 200);
 };

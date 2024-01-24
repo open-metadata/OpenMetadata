@@ -26,16 +26,20 @@ import {
   deleteCustomPropertyForEntity,
   generateCustomProperty,
   setValueForProperty,
+  validateValueForProperty,
 } from '../Utils/CustomProperty';
 import { addDomainToEntity, removeDomainFromEntity } from '../Utils/Domain';
 import {
   createEntityViaREST,
   deleteEntity,
   deleteEntityViaREST,
+  followEntity,
   hardDeleteEntity as hardDeleteEntityUtil,
   restoreEntity as restoreEntityUtil,
+  unfollowEntity,
   updateDescriptioForEntity,
   updateDisplayNameForEntity,
+  validateFollowedEntityToWidget,
 } from '../Utils/Entity';
 import {
   assignGlossaryTerm,
@@ -94,8 +98,8 @@ class EntityClass {
   };
 
   glossaryDetails1 = {
-    name: 'General',
-    displayName: 'General',
+    name: 'CypressGeneral',
+    displayName: 'Cypress General',
     description:
       'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
     reviewers: [],
@@ -104,8 +108,8 @@ class EntityClass {
   };
 
   glossaryDetails2 = {
-    name: 'Person',
-    displayName: 'Person',
+    name: 'CypressPerson',
+    displayName: 'Cypress Person',
     description:
       // eslint-disable-next-line max-len
       'Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with Person.PhoneNumber tag. The associated PII and PersonalData tags are automatically applied.',
@@ -115,8 +119,8 @@ class EntityClass {
   };
 
   glossaryTermDetails1 = {
-    name: 'BankNumber',
-    displayName: 'BankNumber',
+    name: 'CypressBankNumber',
+    displayName: 'Cypress BankNumber',
     description: 'A bank account number.',
     reviewers: [],
     relatedTerms: [],
@@ -124,12 +128,12 @@ class EntityClass {
     mutuallyExclusive: false,
     tags: [],
     style: {},
-    glossary: 'General',
+    glossary: 'CypressGeneral',
   };
 
   glossaryTermDetails2 = {
-    name: 'Address',
-    displayName: 'Address',
+    name: 'CypressAddress',
+    displayName: 'Cypress Address',
     description: 'Address of a Person.',
     reviewers: [],
     relatedTerms: [],
@@ -137,7 +141,7 @@ class EntityClass {
     mutuallyExclusive: false,
     tags: [],
     style: {},
-    glossary: 'Person',
+    glossary: 'CypressPerson',
   };
 
   constructor(
@@ -391,13 +395,25 @@ class EntityClass {
   // Glossary
 
   assignGlossary() {
-    assignGlossaryTerm('General.BankNumber', this.endPoint);
+    assignGlossaryTerm(
+      `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
+      this.endPoint
+    );
   }
   updateGlossary() {
-    udpateGlossaryTerm('Person.Address', this.endPoint);
+    udpateGlossaryTerm(
+      `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
+      this.endPoint
+    );
   }
   removeGlossary() {
-    removeGlossaryTerm(['General.BankNumber', 'Person.Address'], this.endPoint);
+    removeGlossaryTerm(
+      [
+        `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
+        `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
+      ],
+      this.endPoint
+    );
   }
 
   // Voting
@@ -419,7 +435,11 @@ class EntityClass {
   // Delete
 
   softDeleteEntity() {
-    deleteEntity(this.entityName, this.endPoint);
+    deleteEntity(
+      this.entityName,
+      this.endPoint,
+      `Cypress ${this.name} updated`
+    );
   }
 
   restoreEntity() {
@@ -427,7 +447,7 @@ class EntityClass {
   }
 
   hardDeleteEntity() {
-    hardDeleteEntityUtil(this.entityName, this.endPoint);
+    hardDeleteEntityUtil(`Cypress ${this.name} updated`, this.endPoint);
   }
 
   // Announcement
@@ -456,13 +476,24 @@ class EntityClass {
     deleteAnnoucement();
   }
 
+  followUnfollowEntity() {
+    followEntity(this.endPoint);
+    validateFollowedEntityToWidget(this.entityName, true);
+    this.visitEntity();
+    unfollowEntity(this.endPoint);
+    validateFollowedEntityToWidget(this.entityName, false);
+  }
+
   // Custom property
 
   setCustomProperty(propertydetails: CustomProperty, value: string) {
     setValueForProperty(propertydetails.name, value);
+    validateValueForProperty(propertydetails.name, value);
   }
+
   updateCustomProperty(propertydetails: CustomProperty, value: string) {
     setValueForProperty(propertydetails.name, value);
+    validateValueForProperty(propertydetails.name, value);
   }
 }
 

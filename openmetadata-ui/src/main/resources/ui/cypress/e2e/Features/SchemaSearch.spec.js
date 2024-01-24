@@ -15,6 +15,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
 let serviceId;
@@ -81,19 +82,11 @@ describe('Schema search', () => {
 
   it('Search schema in database page', () => {
     // Click on settings page
-    interceptURL(
-      'GET',
-      'api/v1/teams/name/Organization?fields=*',
-      'getSettingsPage'
-    );
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
-    verifyResponseStatusCode('@getSettingsPage', 200);
+
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-    cy.get('.ant-menu-title-content').contains('Databases').click();
+    cy.settingClick(GlobalSettingOptions.DATABASES);
 
     verifyResponseStatusCode('@getServices', 200);
 

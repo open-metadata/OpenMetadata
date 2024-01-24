@@ -16,7 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
@@ -29,6 +29,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
+import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
   getPipelineByFqn,
@@ -47,7 +48,6 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
@@ -56,14 +56,9 @@ const PipelineDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
 
-  const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
+  const { fqn: decodedPipelineFQN } = useFqn();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
-  );
-
-  const decodedPipelineFQN = useMemo(
-    () => getDecodedFqn(pipelineFQN),
-    [pipelineFQN]
   );
 
   const [isLoading, setLoading] = useState<boolean>(true);
@@ -122,7 +117,9 @@ const PipelineDetailsPage = () => {
     setLoading(true);
 
     try {
-      const res = await getPipelineByFqn(pipelineFQN, defaultFields);
+      const res = await getPipelineByFqn(pipelineFQN, {
+        fields: defaultFields,
+      });
       const { id, fullyQualifiedName, serviceType } = res;
 
       setPipelineDetails(res);
@@ -238,7 +235,11 @@ const PipelineDetailsPage = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.PIPELINE, pipelineFQN, currentVersion as string)
+      getVersionPath(
+        EntityType.PIPELINE,
+        decodedPipelineFQN,
+        currentVersion as string
+      )
     );
   };
 
@@ -276,7 +277,9 @@ const PipelineDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updatePipelinesVotes(id, data);
-      const details = await getPipelineByFqn(pipelineFQN, defaultFields);
+      const details = await getPipelineByFqn(decodedPipelineFQN, {
+        fields: defaultFields,
+      });
       setPipelineDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -294,13 +297,13 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
-      fetchPipelineDetail(pipelineFQN);
+      fetchPipelineDetail(decodedPipelineFQN);
     }
-  }, [pipelinePermissions, pipelineFQN]);
+  }, [pipelinePermissions, decodedPipelineFQN]);
 
   useEffect(() => {
-    fetchResourcePermission(pipelineFQN);
-  }, [pipelineFQN]);
+    fetchResourcePermission(decodedPipelineFQN);
+  }, [decodedPipelineFQN]);
 
   if (isLoading) {
     return <Loader />;
@@ -321,7 +324,7 @@ const PipelineDetailsPage = () => {
   return (
     <PipelineDetails
       descriptionUpdateHandler={descriptionUpdateHandler}
-      fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
+      fetchPipeline={() => fetchPipelineDetail(decodedPipelineFQN)}
       followPipelineHandler={followPipeline}
       handleToggleDelete={handleToggleDelete}
       paging={paging}

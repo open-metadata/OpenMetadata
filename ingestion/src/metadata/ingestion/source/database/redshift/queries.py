@@ -300,7 +300,6 @@ REDSHIFT_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 with SP_HISTORY as (
     select
-        query as procedure_id,
         querytxt as procedure_text,
         starttime as procedure_start_time,
         endtime as procedure_end_time,
@@ -311,7 +310,6 @@ with SP_HISTORY as (
 ),
 Q_HISTORY as (
     select
-        query as query_id,
         querytxt as query_text,
         case
             when querytxt ilike '%%MERGE%%' then 'MERGE'
@@ -334,11 +332,9 @@ Q_HISTORY as (
       and userid <> 1
 )
 select
-    sp.procedure_id,
     sp.procedure_text,
     sp.procedure_start_time,
     sp.procedure_end_time,
-    q.query_id,
     q.query_text,
     q.query_type,
     q.query_database_name,
@@ -353,4 +349,14 @@ from SP_HISTORY sp
    and q.query_end_time between sp.procedure_start_time and sp.procedure_end_time
 order by procedure_start_time DESC
     """
+)
+
+REDSHIFT_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select "table" as table_name,
+create_time as created_at
+from pg_catalog.svv_table_info o
+where o.schema = '{schema_name}'
+and o.database = '{database_name}'
+"""
 )

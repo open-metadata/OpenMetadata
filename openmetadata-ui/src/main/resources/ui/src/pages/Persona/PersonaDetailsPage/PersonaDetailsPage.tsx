@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
@@ -33,13 +33,15 @@ import {
 } from '../../../constants/GlobalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 export const PersonaDetailsPage = () => {
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const history = useHistory();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
@@ -171,7 +173,7 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md" gutter={[16, 16]}>
+      <Row className="m-b-md page-container" gutter={[16, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
             <PageHeader
@@ -185,7 +187,7 @@ export const PersonaDetailsPage = () => {
               allowSoftDelete={false}
               canDelete={entityPermission.EditAll || entityPermission.Delete}
               deleted={false}
-              displayName={personaDetails.displayName}
+              displayName={getEntityName(personaDetails)}
               editDisplayNamePermission={
                 entityPermission.EditAll || entityPermission.EditDescription
               }

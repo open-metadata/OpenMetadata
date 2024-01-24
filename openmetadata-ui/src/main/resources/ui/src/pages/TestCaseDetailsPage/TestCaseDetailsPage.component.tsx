@@ -16,28 +16,27 @@ import { AxiosError } from 'axios';
 import { has, isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TestSummary from '../../components/ProfilerDashboard/component/TestSummary';
 import { TestCase } from '../../generated/tests/testCase';
+import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import { getTestCaseByFqn } from '../../rest/testAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-case-details-page.style.less';
 
 function TestCaseDetailsPage() {
-  const { fqn: testCaseFQN } = useParams<{ fqn: string }>();
+  const { fqn: testCaseFQN } = useFqn();
   const { t } = useTranslation();
   const [testCaseData, setTestCaseData] = useState<TestCase>();
 
   const fetchTestCaseData = async () => {
     try {
-      const response = await getTestCaseByFqn(getEncodedFqn(testCaseFQN), {
+      const response = await getTestCaseByFqn(testCaseFQN, {
         fields: ['testSuite', 'testCaseResult'],
       });
       setTestCaseData(response.data);

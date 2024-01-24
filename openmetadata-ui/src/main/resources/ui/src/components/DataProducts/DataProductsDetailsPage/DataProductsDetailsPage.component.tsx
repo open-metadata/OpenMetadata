@@ -63,6 +63,7 @@ import {
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
@@ -100,12 +101,10 @@ const DataProductsDetailsPage = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const {
-    fqn,
-    tab: activeTab,
-    version,
-  } = useParams<{ fqn: string; tab: string; version: string }>();
-  const dataProductFqn = fqn ? decodeURIComponent(fqn) : '';
+  const { tab: activeTab, version } =
+    useParams<{ tab: string; version: string }>();
+  const { fqn: dataProductFqn } = useFqn();
+
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -354,14 +353,17 @@ const DataProductsDetailsPage = ({
       fetchDataProductAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDataProductsDetailsPath(fqn, activeKey));
+      history.push(getDataProductsDetailsPath(dataProductFqn, activeKey));
     }
   };
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getDataProductsDetailsPath(fqn)
-      : getDataProductVersionsPath(fqn, toString(dataProduct.version));
+      ? getDataProductsDetailsPath(dataProductFqn)
+      : getDataProductVersionsPath(
+          dataProductFqn,
+          toString(dataProduct.version)
+        );
 
     history.push(path);
   };

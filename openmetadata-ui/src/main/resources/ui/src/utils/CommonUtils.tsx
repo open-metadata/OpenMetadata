@@ -70,13 +70,14 @@ import { PipelineType } from '../generated/entity/services/ingestionPipelines/in
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
+import { getIncidentManagerDetailPagePath } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getEncodedFqn } from './StringsUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -552,7 +553,7 @@ export const getStatisticsDisplayValue = (
   return formatNumberWithComma(displayValue);
 };
 
-export const formTwoDigitNmber = (number: number) => {
+export const formTwoDigitNumber = (number: number) => {
   return number.toLocaleString('en-US', {
     minimumIntegerDigits: 2,
     useGrouping: false,
@@ -794,11 +795,10 @@ export const getEntityDetailLink = (
   subTab?: string
 ) => {
   let path = '';
-  const encodedFQN = getEncodedFqn(fqn);
   switch (entityType) {
     default:
     case EntityType.TABLE:
-      path = getTableTabPath(encodedFQN, tab, subTab);
+      path = getTableTabPath(fqn, tab, subTab);
 
       break;
 
@@ -827,7 +827,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.SEARCH_INDEX:
-      path = getSearchIndexTabPath(encodedFQN, tab, subTab);
+      path = getSearchIndexTabPath(fqn, tab, subTab);
 
       break;
 
@@ -847,7 +847,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.USER:
-      path = getUserPath(encodedFQN, tab, subTab);
+      path = getUserPath(fqn, tab, subTab);
 
       break;
 
@@ -855,6 +855,12 @@ export const getEntityDetailLink = (
       path = getStoredProcedureDetailPath(fqn, tab, subTab);
 
       break;
+
+    case EntityType.TEST_CASE:
+      path = getIncidentManagerDetailPagePath(fqn, IncidentManagerTabs.ISSUES);
+
+      break;
+
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
       path = getGlossaryTermDetailsPath(fqn, tab, subTab);

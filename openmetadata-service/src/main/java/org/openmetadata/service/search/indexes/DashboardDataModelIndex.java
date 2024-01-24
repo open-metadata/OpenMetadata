@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -62,10 +61,11 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
         "fqnParts",
         getFQNParts(
             dashboardDataModel.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
+    doc.put("lineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
     doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
     return doc;
   }
@@ -74,7 +74,6 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put(COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("columns.name", 2.0f);
-    fields.put("columns.name.ngram", 1.0f);
     fields.put("columns.displayName", 1.0f);
     fields.put("columns.description", 1.0f);
     fields.put("columns.children.name", 2.0f);

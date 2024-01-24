@@ -61,7 +61,9 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             filters=self.get_filters(),
         )
 
-    def check_life_cycle_query(self, query_type: Optional[str]) -> bool:
+    def check_life_cycle_query(
+        self, query_type: Optional[str], query_text: Optional[str]
+    ) -> bool:
         """
         returns true if query is to be used for life cycle processing.
 

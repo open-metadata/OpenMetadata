@@ -27,7 +27,6 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
@@ -41,12 +40,12 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { restoreDashboard } from '../../rest/dashboardAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -62,9 +61,12 @@ import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThr
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
+import Lineage from '../Lineage/Lineage.component';
+import LineageProvider from '../LineageProvider/LineageProvider';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import {
   ChartsPermissions,
   ChartType,
@@ -89,8 +91,10 @@ const DashboardDetails = ({
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const history = useHistory();
-  const { fqn: dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.DETAILS } =
+    useParams<{ tab: EntityTabs }>();
+
+  const { fqn: decodedDashboardFQN } = useFqn();
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
@@ -110,11 +114,6 @@ const DashboardDetails = ({
   const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
     Array<ChartsPermissions>
   >([]);
-
-  const decodedDashboardFQN = useMemo(
-    () => getDecodedFqn(dashboardFQN),
-    [dashboardFQN]
-  );
 
   const {
     owner,
@@ -183,7 +182,7 @@ const DashboardDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [dashboardFQN]);
+  }, [decodedDashboardFQN]);
 
   const getAllChartsPermissions = useCallback(
     async (charts: ChartType[]) => {
@@ -622,6 +621,7 @@ const DashboardDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={dashboardDetails}
                 dataProducts={dashboardDetails?.dataProducts ?? []}
                 domain={dashboardDetails?.domain}
                 editTagPermission={editTagsPermission}
@@ -629,6 +629,7 @@ const DashboardDetails = ({
                 entityId={dashboardDetails.id}
                 entityType={EntityType.DASHBOARD}
                 selectedTags={dashboardTags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -659,12 +660,14 @@ const DashboardDetails = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={deleted}
-            entity={dashboardDetails}
-            entityType={EntityType.DASHBOARD}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={dashboardDetails as SourceType}
+              entityType={EntityType.DASHBOARD}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
       {
@@ -675,13 +678,16 @@ const DashboardDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.DASHBOARD}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: dashboardDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.DASHBOARD>
+              entityDetails={dashboardDetails}
+              entityType={EntityType.DASHBOARD}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

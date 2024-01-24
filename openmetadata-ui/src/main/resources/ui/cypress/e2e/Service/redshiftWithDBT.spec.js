@@ -27,10 +27,13 @@ import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
   DBT,
+  ENTITY_SERVICE_TYPE,
   HTTP_CONFIG_SOURCE,
   SERVICE_TYPE,
 } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import { REDSHIFT } from '../../constants/service.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
   'redshiftDatabase'
@@ -76,7 +79,7 @@ describe('RedShift Ingestion', () => {
       serviceName: REDSHIFT.serviceName,
       type: 'database',
       testIngestionButton: true,
-      serviceCategory: SERVICE_TYPE.Database,
+      serviceCategory: ENTITY_SERVICE_TYPE.Database,
     });
   });
 
@@ -92,11 +95,6 @@ describe('RedShift Ingestion', () => {
 
   it('Add DBT ingestion', () => {
     interceptURL(
-      'GET',
-      'api/v1/teams/name/Organization?fields=*',
-      'getSettingsPage'
-    );
-    interceptURL(
       'POST',
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
@@ -106,17 +104,11 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
       'pipelineStatus'
     );
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click({ force: true });
-    verifyResponseStatusCode('@getSettingsPage', 200);
+    cy.sidebarClick(SidebarItem.SETTINGS);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
 
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains(SERVICE_TYPE.Database)
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.DATABASES);
 
     verifyResponseStatusCode('@getServices', 200);
     interceptURL(
@@ -225,11 +217,8 @@ describe('RedShift Ingestion', () => {
       `/api/v1/tags?*parent=${DBT.classification}*`,
       'getTagList'
     );
-    cy.get('[data-testid="governance"]').click();
 
-    cy.get('[data-testid="app-bar-item-tags"]').click({
-      waitForAnimations: true,
-    });
+    cy.sidebarClick(SidebarItem.TAGS);
 
     verifyResponseStatusCode('@fetchClassifications', 200);
 

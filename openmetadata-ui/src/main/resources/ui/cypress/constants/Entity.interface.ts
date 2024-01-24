@@ -29,6 +29,7 @@ export enum EntityType {
   PipelineService = 'services/pipelineServices',
   MessagingService = 'services/messagingServices',
   SearchService = 'services/searchServices',
+  MetadataService = 'services/metadataServices',
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
@@ -48,6 +49,7 @@ export const EXPLORE_PAGE_TABS: Record<
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
     | EntityType.Domain
+    | EntityType.MetadataService
   >,
   string
 > = {
@@ -76,6 +78,7 @@ export const SEARCH_INDEX: Record<
     | EntityType.Database
     | EntityType.DatabaseSchema
     | EntityType.GlossaryTerm
+    | EntityType.MetadataService
   >,
   string
 > = {
@@ -91,3 +94,19 @@ export const SEARCH_INDEX: Record<
   [EntityType.Glossary]: 'glossary_search_index',
   [EntityType.Domain]: 'domain_search_index',
 } as const;
+
+export enum SidebarItem {
+  EXPLORE = 'explore',
+  OBSERVABILITY = 'observability',
+  DATA_QUALITY = 'data-quality',
+  INCIDENT_MANAGER = 'incident-manager',
+  OBSERVABILITY_ALERT = 'observability-alert',
+  DATA_INSIGHT = 'data-insight',
+  DOMAIN = 'domain',
+  GOVERNANCE = 'governance',
+  GLOSSARY = 'glossary',
+  TAGS = 'tags',
+  INSIGHTS = 'insights',
+  SETTINGS = 'settings',
+  LOGOUT = 'logout',
+}

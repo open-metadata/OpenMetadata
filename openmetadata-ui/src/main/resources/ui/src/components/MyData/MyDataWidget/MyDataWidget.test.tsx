@@ -64,7 +64,6 @@ jest.mock('../../../utils/EntityUtils', () => ({
 }));
 
 jest.mock('../../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockImplementation((link) => link),
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
 }));
 

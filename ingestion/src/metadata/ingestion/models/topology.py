@@ -65,6 +65,10 @@ class NodeStage(BaseModel, Generic[T]):
         False,
         description="If we need to clean the values in the context for each produced element",
     )
+    store_fqn: bool = Field(
+        False,
+        description="If true, store the entity FQN in the context instead of just the name",
+    )
 
     # Used to compute the fingerprint
     cache_entities: bool = Field(

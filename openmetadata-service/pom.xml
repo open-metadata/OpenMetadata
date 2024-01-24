@@ -16,7 +16,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.19.3</org.testcontainers.version>
-    <awssdk.version>2.22.10</awssdk.version>
+    <awssdk.version>2.23.3</awssdk.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
@@ -130,6 +130,10 @@
     <dependency>
       <groupId>io.github.maksymdolgykh.dropwizard</groupId>
       <artifactId>dropwizard-micrometer-jdbi</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-json-logging</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-lang</groupId>
@@ -615,7 +619,7 @@
                 <argLine>-Xmx1G</argLine>
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                  <jdbcContainerImage>mysql:8</jdbcContainerImage>
+                  <jdbcContainerImage>mysql:8.2.0</jdbcContainerImage>
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>

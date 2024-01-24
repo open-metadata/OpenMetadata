@@ -14,7 +14,6 @@
 import { Popover } from 'antd';
 import i18next from 'i18next';
 import {
-  get,
   isEmpty,
   isNil,
   isObject,
@@ -117,7 +116,7 @@ import {
 } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn, stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -204,21 +203,28 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
     profile,
     columns,
     tableType,
+    service,
+    database,
+    databaseSchema,
   } = tableDetails;
-  const [service, database, schema] = getPartialNameFromTableFQN(
+  const [serviceName, databaseName, schemaName] = getPartialNameFromTableFQN(
     fullyQualifiedName ?? '',
     [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
     FQN_SEPARATOR_CHAR
   ).split(FQN_SEPARATOR_CHAR);
+
+  const serviceDisplayName = getEntityName(service) || serviceName;
+  const databaseDisplayName = getEntityName(database) || databaseName;
+  const schemaDisplayName = getEntityName(databaseSchema) || schemaName;
 
   const tier = getTierFromTableTags(tags ?? []);
 
   return {
     fullyQualifiedName,
     owner,
-    service,
-    database,
-    schema,
+    service: serviceDisplayName,
+    database: databaseDisplayName,
+    schema: schemaDisplayName,
     tier,
     usage: getUsageData(usageSummary),
     profile,
@@ -336,6 +342,7 @@ const getTableOverview = (tableDetails: Table) => {
 const getPipelineOverview = (pipelineDetails: Pipeline) => {
   const { owner, tags, sourceUrl, service, displayName } = pipelineDetails;
   const tier = getTierFromTableTags(tags ?? []);
+  const serviceDisplayName = getEntityName(service);
 
   const overview = [
     {
@@ -365,7 +372,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
     },
     {
       name: i18next.t('label.service'),
-      value: (service?.name as string) || NO_DATA,
+      value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
         service?.name as string,
         ServiceCategory.PIPELINE_SERVICES
@@ -388,6 +395,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 const getDashboardOverview = (dashboardDetails: Dashboard) => {
   const { owner, tags, sourceUrl, service, displayName } = dashboardDetails;
   const tier = getTierFromTableTags(tags ?? []);
+  const serviceDisplayName = getEntityName(service);
 
   const overview = [
     {
@@ -416,7 +424,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     },
     {
       name: i18next.t('label.service'),
-      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
         service?.name as string,
         ServiceCategory.DASHBOARD_SERVICES
@@ -1258,14 +1266,14 @@ export const getEntityReferenceFromEntity = <
   type: EntityType
 ): EntityReference => {
   return {
-    id: get(entity, 'id', ''),
+    id: entity.id,
     type,
-    deleted: get(entity, 'deleted', false),
-    description: get(entity, 'description', ''),
-    displayName: get(entity, 'displayName', ''),
-    fullyQualifiedName: get(entity, 'fullyQualifiedName', ''),
-    href: get(entity, 'href', ''),
-    name: get(entity, 'name', ''),
+    deleted: entity.deleted,
+    description: entity.description,
+    displayName: entity.displayName,
+    fullyQualifiedName: entity.fullyQualifiedName,
+    href: entity.href,
+    name: entity.name,
   };
 };
 
@@ -1299,7 +1307,7 @@ export const getEntityLinkFromType = (
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
-      return getTagsDetailsPath(getEncodedFqn(fullyQualifiedName));
+      return getTagsDetailsPath(fullyQualifiedName);
     case EntityType.TOPIC:
       return getTopicDetailsPath(fullyQualifiedName);
     case EntityType.DASHBOARD:
@@ -1315,7 +1323,7 @@ export const getEntityLinkFromType = (
     case EntityType.DATABASE_SCHEMA:
       return getDatabaseSchemaDetailsPath(fullyQualifiedName);
     case EntityType.DATA_PRODUCT:
-      return getDataProductsDetailsPath(getEncodedFqn(fullyQualifiedName));
+      return getDataProductsDetailsPath(fullyQualifiedName);
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(fullyQualifiedName);
     case EntityType.STORED_PROCEDURE:
@@ -1325,42 +1333,42 @@ export const getEntityLinkFromType = (
 
     case EntityType.DATABASE_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.DATABASE_SERVICES
       );
     case EntityType.MESSAGING_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.MESSAGING_SERVICES
       );
     case EntityType.DASHBOARD_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.DASHBOARD_SERVICES
       );
     case EntityType.PIPELINE_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.PIPELINE_SERVICES
       );
     case EntityType.MLMODEL_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.ML_MODEL_SERVICES
       );
     case EntityType.STORAGE_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.STORAGE_SERVICES
       );
     case EntityType.SEARCH_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.SEARCH_SERVICES
       );
     case EntityType.METADATA_SERVICE:
       return getServiceDetailsPath(
-        getEncodedFqn(fullyQualifiedName),
+        fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
       );
     default:
@@ -1379,7 +1387,7 @@ export const getBreadcrumbForTable = (
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            getEncodedFqn(service?.name),
+            service?.name,
             ServiceCategory.DATABASE_SERVICES
           )
         : '',
@@ -1419,7 +1427,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            getEncodedFqn(service?.name),
+            service?.name,
             ServiceCategoryPlural[
               service?.type as keyof typeof ServiceCategoryPlural
             ]
@@ -1453,7 +1461,7 @@ export const getBreadcrumbForContainer = (data: {
       name: getEntityName(service),
       url: service?.name
         ? getServiceDetailsPath(
-            getEncodedFqn(service?.name),
+            service?.name,
             ServiceCategoryPlural[
               service?.type as keyof typeof ServiceCategoryPlural
             ]
@@ -1561,7 +1569,7 @@ export const getEntityBreadcrumbs = (
           name: getEntityName((entity as DatabaseSchema).service),
           url: (entity as DatabaseSchema).service?.name
             ? getServiceDetailsPath(
-                getEncodedFqn((entity as DatabaseSchema).service?.name ?? ''),
+                (entity as DatabaseSchema).service?.name ?? '',
                 ServiceCategoryPlural[
                   (entity as DatabaseSchema).service
                     ?.type as keyof typeof ServiceCategoryPlural

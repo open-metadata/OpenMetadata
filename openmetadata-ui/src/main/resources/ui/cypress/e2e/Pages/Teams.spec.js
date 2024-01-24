@@ -23,6 +23,8 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const updatedDescription = 'This is updated description';
 
@@ -53,10 +55,10 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
 
-    cy.get('[data-testid="app-bar-item-settings"]').click();
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     // Clicking on teams
-    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
+    cy.settingClick(GlobalSettingOptions.TEAMS);
   });
 
   it('Add new team', () => {
@@ -323,9 +325,9 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@softDeleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(`"${TEAM_DETAILS.updatedName}" deleted successfully!`);
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
+    cy.settingClick(GlobalSettingOptions.TEAMS);
 
     // Check if soft deleted team is shown when 'Deleted Teams' switch is on
     cy.get('table').should('not.contain', TEAM_DETAILS.name);
@@ -339,12 +341,12 @@ describe('Teams flow should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/teams?limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      `/api/v1/teams?parentTeam=${TEAM_DETAILS.name}&include=all&limit=100000`,
       'getTeamParent'
     );
     interceptURL(
       'GET',
-      `/api/v1/teams?fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000&parentTeam=${TEAM_DETAILS.name}&include=all`,
+      `/api/v1/teams?parentTeam=${TEAM_DETAILS.name}&include=all&fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000`,
       'getChildrenCount'
     );
 
@@ -382,7 +384,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(`"${TEAM_DETAILS.updatedName}" deleted successfully!`);
 
     // Validating the deleted team
 
@@ -435,7 +437,9 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@deleteTeam', 200);
 
     // Verify the toast message
-    toastNotification('Team deleted successfully!');
+    toastNotification(
+      `"${HARD_DELETE_TEAM_DETAILS.name}" deleted successfully!`
+    );
 
     // Validating the deleted team
 

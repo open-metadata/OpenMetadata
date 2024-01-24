@@ -19,32 +19,6 @@ docker compose -f docker/development/docker-compose.yml up mysql elasticsearch -
 docker compose -f docker/development/docker-compose-postgres.yml up postgresql elasticsearch --build -d
 ```
 
-- Bootstrap MySQL with tables
-  1. Create a distribution as explained [here](/developers/contribute/build-code-and-run-tests/openmetadata-server#create-a-distribution-packaging) 
-  2. Extract the distribution tar.gz file and run the following command
-
-```shell
-cd open-metadata-<version>
-sh bootstrap/bootstrap_storage.sh drop-create-all
-```
-
-- Bootstrap ES with indexes and load sample data into MySQL
-  1. Run OpenMetadata service instances through IntelliJ IDEA following the instructions [here](/developers/contribute/build-code-and-run-tests/openmetadata-server#run-instance-through-intellij-idea)
-  2. Once the logs indicate that the instance is up, run the following commands from the top-level directory
-
-```shell
-python3 -m venv venv
-source venv/bin/activate
-make install_dev generate
-cd ingestion
-pip install -e '.[sample-data, elasticsearch]'
-metadata ingest -c ./pipelines/sample_data.json
-metadata ingest -c ./pipelines/sample_usage.json
-metadata ingest -c ./pipelines/metadata_to_es.json
-```
-
-- You are now ready to explore the app by going to [http://localhost:8585](http://localhost:8585) *If the web page doesn't work as intended, please take a look at the troubleshooting steps [here](/developers/contribute/build-code-and-run-tests/openmetadata-server#troubleshooting)
-
 ## Building
 The following commands must be run from the top-level directory.
 
@@ -68,7 +42,24 @@ openmetadata-dist/target/open-metadata-<version>.pom
 openmetadata-dist/target/open-metadata-<version>.tar.gz
 ```
 
-## Run instance through IntelliJ IDEA
+## Bootstrap MySQL
+
+Extract the distribution tar.gz file created on the previous step and run the following command
+
+```shell
+cd open-metadata-<version>
+sh bootstrap/bootstrap_storage.sh drop-create-all
+```
+
+## Running the OpenMetadata server
+
+You can run the OpenMetadata server directly
+
+```shell
+cd open-metadata-<version>
+sh bin/openmetadata-server-start.sh conf/openmetadata.yaml
+```
+### Using IntelliJ IDEA
 Add a new Run/Debug configuration like the below screenshot.
 
 1. Click on Intellij - Run menu
@@ -85,7 +76,7 @@ pass the following environment variable to IntelliJ when starting the server:
 SERVER_HOST_API_URL=http://host.docker.internal:8585/api
 ```
 
-## Add missing dependency
+#### Add missing dependency
 Right-click on openmetadata-service
 
 {% image src="/images/v1.3/developers/contribute/build-code-and-run-tests/intellij-openmetadata-service.png" alt="Open project" caption=" " /%}
@@ -115,6 +106,22 @@ Select it and click "OK".
 We also need to set the folder ‘generated-resources’ in some module’s target folder as “source” folder. IntelliJ IDEA mark target folder as "excluded" by default, we could change it in the module setting. The openmetadata-spec and openmetadata-java-client modules have generated code, need to be changed.
 
 Now run/debug the application.
+
+## Load Sample Data into MySQL
+
+With the OpenMetadata service up and running, run the following commands from the top-level directory
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+make install_dev generate
+cd ingestion
+pip install -e '.[sample-data, elasticsearch]'
+metadata ingest -c ./pipelines/sample_data.json
+metadata usage -c ./pipelines/sample_usage.json
+```
+
+- You are now ready to explore the app by going to [http://localhost:8585](http://localhost:8585) *If the web page doesn't work as intended, please take a look at the troubleshooting steps [here](/developers/contribute/build-code-and-run-tests/openmetadata-server#troubleshooting)
 
 ## Troubleshooting
 - If you see blank page at [http://localhost:8585](http://localhost:8585), please check the logs at logs/openmetadata.log. You might be encountering one of the following errors:

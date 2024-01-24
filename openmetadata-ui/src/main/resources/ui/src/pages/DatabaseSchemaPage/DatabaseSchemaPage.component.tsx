@@ -62,6 +62,7 @@ import { Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import StoredProcedureTab from '../../pages/StoredProcedure/StoredProcedureTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -78,7 +79,6 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -89,8 +89,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: databaseSchemaFQN, tab: activeTab = EntityTabs.TABLE } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.TABLE } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
   const isMounting = useRef(true);
 
@@ -122,11 +123,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const decodedDatabaseSchemaFQN = useMemo(
-    () => getDecodedFqn(databaseSchemaFQN),
-    [databaseSchemaFQN]
-  );
-
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
     setCurrentTablesPage(INITIAL_PAGING_VALUE);
@@ -155,7 +151,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE_SCHEMA,
-        databaseSchemaFQN
+        decodedDatabaseSchemaFQN
       );
       setDatabaseSchemaPermission(response);
     } catch (error) {
@@ -163,7 +159,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } finally {
       setIsPermissionsLoading(false);
     }
-  }, [databaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN]);
 
   const viewDatabaseSchemaPermission = useMemo(
     () =>
@@ -200,9 +196,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     try {
       setIsSchemaDetailsLoading(true);
       const response = await getDatabaseSchemaDetailsByFQN(
-        databaseSchemaFQN,
-        ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
-        Include.All
+        decodedDatabaseSchemaFQN,
+        {
+          fields: 'owner,usageSummary,tags,domain,votes,extension',
+          include: Include.All,
+        }
       );
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
@@ -213,7 +211,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } finally {
       setIsSchemaDetailsLoading(false);
     }
-  }, [databaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN]);
 
   const getSchemaTables = useCallback(
     async (params?: TableListParams) => {
@@ -452,12 +450,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       history.push(
         getVersionPathWithTab(
           EntityType.DATABASE_SCHEMA,
-          databaseSchemaFQN,
+          decodedDatabaseSchemaFQN,
           String(currentVersion),
           EntityTabs.TABLE
         )
       );
-  }, [currentVersion, databaseSchemaFQN]);
+  }, [currentVersion, decodedDatabaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
@@ -489,7 +487,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
-  }, [databaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission) {
@@ -497,15 +495,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       fetchStoreProcedureCount();
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission, databaseSchemaFQN]);
+  }, [viewDatabaseSchemaPermission, decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
-    if (viewDatabaseSchemaPermission && databaseSchemaFQN) {
+    if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
       getSchemaTables();
     }
   }, [
     showDeletedTables,
-    databaseSchemaFQN,
+    decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
     deleted,
   ]);
@@ -539,15 +537,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission, databaseSchema]
   );
 
-  const handelExtentionUpdate = useCallback(
-    async (schema: DatabaseSchema) => {
-      await saveUpdatedDatabaseSchemaData({
-        ...databaseSchema,
+  const handleExtensionUpdate = async (schema: DatabaseSchema) => {
+    await saveUpdatedDatabaseSchemaData({
+      ...databaseSchema,
+      extension: schema.extension,
+    });
+    setDatabaseSchema((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
         extension: schema.extension,
-      });
-    },
-    [saveUpdatedDatabaseSchemaData, databaseSchema]
-  );
+      };
+    });
+  };
 
   const tabs: TabsProps['items'] = [
     {
@@ -585,6 +590,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             data-testid="entity-right-panel"
             flex="320px">
             <EntityRightPanel
+              customProperties={databaseSchema}
               dataProducts={databaseSchema?.dataProducts ?? []}
               domain={databaseSchema?.domain}
               editTagPermission={editTagsPermission}
@@ -592,6 +598,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               entityId={databaseSchema?.id ?? ''}
               entityType={EntityType.DATABASE_SCHEMA}
               selectedTags={tags}
+              viewAllPermission={viewAllPermission}
               onTagSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
@@ -640,15 +647,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: (
-        <CustomPropertyTable
-          className=""
-          entityType={EntityType.DATABASE_SCHEMA}
-          handleExtensionUpdate={handelExtentionUpdate}
-          hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
-          isVersionView={false}
-        />
+      children: databaseSchema && (
+        <div className="m-sm">
+          <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
+            className=""
+            entityDetails={databaseSchema}
+            entityType={EntityType.DATABASE_SCHEMA}
+            handleExtensionUpdate={handleExtensionUpdate}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
+            isVersionView={false}
+          />
+        </div>
       ),
     },
   ];
@@ -657,9 +667,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     try {
       await updateDatabaseSchemaVotes(id, data);
       const response = await getDatabaseSchemaDetailsByFQN(
-        databaseSchemaFQN,
-        ['owner', 'usageSummary', 'tags', 'votes'],
-        Include.All
+        decodedDatabaseSchemaFQN,
+        {
+          fields: 'owner,usageSummary,tags,votes',
+          include: Include.All,
+        }
       );
       setDatabaseSchema(response);
     } catch (error) {
@@ -694,9 +706,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             {isSchemaDetailsLoading ? (
               <Skeleton
                 active
+                className="m-b-md"
                 paragraph={{
-                  rows: 3,
-                  width: ['20%', '80%', '60%'],
+                  rows: 2,
+                  width: ['20%', '80%'],
                 }}
               />
             ) : (

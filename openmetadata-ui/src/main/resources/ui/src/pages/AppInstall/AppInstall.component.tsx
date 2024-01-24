@@ -17,7 +17,7 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
 import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -26,10 +26,7 @@ import IngestionStepper from '../../components/IngestionStepper/IngestionStepper
 import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
 import {
@@ -38,8 +35,9 @@ import {
 } from '../../generated/entity/applications/createAppRequest';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
-import { getMarketPlaceApplicationByName } from '../../rest/applicationMarketPlaceAPI';
+import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import {
   getEntityMissingError,
   getIngestionFrequency,
@@ -55,7 +53,7 @@ import './app-install.less';
 const AppInstall = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
@@ -78,7 +76,9 @@ const AppInstall = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getMarketPlaceApplicationByName(fqn, 'owner');
+      const data = await getMarketPlaceApplicationByFqn(fqn, {
+        fields: 'owner',
+      });
       setAppData(data);
 
       const schema = await import(`../../utils/ApplicationSchemas/${fqn}.json`);
@@ -95,12 +95,7 @@ const AppInstall = () => {
   };
 
   const goToAppPage = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        GlobalSettingOptions.APPLICATIONS
-      )
-    );
+    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
   const onSubmit = async (repeatFrequency: string) => {

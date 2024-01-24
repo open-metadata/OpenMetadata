@@ -70,6 +70,7 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import {
   getDashboards,
@@ -111,7 +112,6 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
@@ -131,20 +131,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const { isAirflowAvailable } = useAirflowStatus();
-  const {
-    fqn: serviceFQN,
-    serviceCategory,
-    tab,
-  } = useParams<{
-    fqn: string;
+  const { serviceCategory, tab } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
 
-  const decodedServiceFQN = useMemo(
-    () => getDecodedFqn(serviceFQN),
-    [serviceFQN]
-  );
+  const { fqn: decodedServiceFQN } = useFqn();
 
   const isMetadataService = useMemo(
     () => serviceCategory === ServiceCategory.METADATA_SERVICES,
@@ -163,8 +155,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [tab, serviceCategory, isMetadataService]);
 
   const isOpenMetadataService = useMemo(
-    () => serviceFQN === OPEN_METADATA,
-    [serviceFQN]
+    () => decodedServiceFQN === OPEN_METADATA,
+    [decodedServiceFQN]
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -211,7 +203,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     try {
       const response = await getEntityPermissionByFqn(
         getResourceEntityFromServiceCategory(serviceCategory),
-        serviceFQN
+        decodedServiceFQN
       );
       setServicePermission(response);
     } catch (error) {
@@ -224,12 +216,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const isTestingDisabled = useMemo(
     () =>
       !servicePermission.EditAll ||
-      (isMetadataService && serviceFQN === OPEN_METADATA) ||
+      (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
       isUndefined(connectionDetails),
     [
       servicePermission,
       serviceCategory,
-      serviceFQN,
+      decodedServiceFQN,
       connectionDetails,
       isMetadataService,
     ]
@@ -237,19 +229,23 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const goToEditConnection = useCallback(() => {
     history.push(
-      getEditConnectionPath(serviceCategory ?? '', serviceFQN ?? '')
+      getEditConnectionPath(serviceCategory ?? '', decodedServiceFQN ?? '')
     );
-  }, [serviceCategory, serviceFQN]);
+  }, [serviceCategory, decodedServiceFQN]);
 
   const activeTabHandler = useCallback(
     (key: string) => {
       if (key !== activeTab) {
         history.push({
-          pathname: getServiceDetailsPath(serviceFQN, serviceCategory, key),
+          pathname: getServiceDetailsPath(
+            decodedServiceFQN,
+            serviceCategory,
+            key
+          ),
         });
       }
     },
-    [activeTab, serviceFQN, serviceCategory]
+    [activeTab, decodedServiceFQN, serviceCategory]
   );
 
   const getAirflowEndpoint = useCallback(async () => {
@@ -263,7 +259,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   const getAllIngestionWorkflows = useCallback(
-    async (paging?: string) => {
+    async (paging?: Omit<Paging, 'total'>, limit?: number) => {
       try {
         setIsIngestionPipelineLoading(true);
         const response = await getIngestionPipelines({
@@ -277,6 +273,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             PipelineType.Profiler,
             PipelineType.Dbt,
           ],
+          limit,
         });
 
         if (response.data) {
@@ -604,9 +601,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setIsLoading(true);
       const response = await getServiceByFQN(
         serviceCategory,
-        serviceFQN,
-        `owner,tags,${isMetadataService ? '' : 'domain'}`,
-        Include.All
+        decodedServiceFQN,
+        {
+          fields: `owner,tags,${isMetadataService ? '' : 'domain'}`,
+          include: Include.All,
+        }
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
@@ -615,7 +614,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [serviceCategory, serviceFQN, getOtherDetails, isMetadataService]);
+  }, [serviceCategory, decodedServiceFQN, getOtherDetails, isMetadataService]);
 
   useEffect(() => {
     getOtherDetails();
@@ -632,7 +631,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       fetchServiceDetails();
     }
-  }, [serviceFQN, serviceCategory, servicePermission]);
+  }, [decodedServiceFQN, serviceCategory, servicePermission]);
 
   const handleUpdateDisplayName = useCallback(
     async (data: EntityName) => {
@@ -779,7 +778,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             permissions={servicePermission}
             serviceCategory={serviceCategory as ServiceCategory}
             serviceDetails={serviceDetails}
-            serviceName={serviceFQN}
+            serviceName={decodedServiceFQN}
             triggerIngestion={triggerIngestionById}
             onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
           />
@@ -798,7 +797,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       ingestionPaging,
       servicePermission,
       serviceCategory,
-      serviceFQN,
+      decodedServiceFQN,
       triggerIngestionById,
       getAllIngestionWorkflows,
     ]
@@ -882,7 +881,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (!isOpenMetadataService) {
       fetchServicePermission();
     }
-  }, [serviceFQN, serviceCategory]);
+  }, [decodedServiceFQN, serviceCategory]);
 
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
@@ -924,7 +923,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
     [handleToggleDelete]
   );
 
@@ -1050,7 +1049,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       history.push(
         getServiceVersionPath(
           serviceCategory,
-          serviceFQN,
+          decodedServiceFQN,
           toString(currentVersion)
         )
       );
@@ -1071,7 +1070,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       })}>
       {isEmpty(serviceDetails) ? (
         <ErrorPlaceHolder className="m-0">
-          {getEntityMissingError(serviceCategory as string, serviceFQN)}
+          {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
         <Row data-testid="service-page" gutter={[0, 12]}>

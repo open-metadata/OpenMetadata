@@ -28,7 +28,7 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
 } from '../../../../utils/EntityUtils';
-import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
+import { bytesToSize } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
@@ -87,10 +87,9 @@ function TopicSummary({
 
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
-      const res = await getTopicByFqn(
-        getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
-        ['tags', 'owner']
-      );
+      const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', {
+        fields: 'tags,owner',
+      });
 
       const { partitions, messageSchema } = res;
 

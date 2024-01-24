@@ -18,6 +18,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { BASE_URL } from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -100,14 +101,7 @@ describe('Policy page should work properly', () => {
     cy.login();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
 
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Policies')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.POLICIES);
 
     cy.wait('@getPolicies', { timeout: 15000 })
       .its('response.statusCode')

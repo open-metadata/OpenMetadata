@@ -47,6 +47,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -61,21 +62,16 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const {
-    fqn: databaseSchemaFQN,
-    version,
-    tab,
-  } = useParams<{
-    fqn: string;
+  const { version, tab } = useParams<{
     version: string;
     tab: EntityTabs;
   }>();
+  const { fqn: decodedEntityFQN } = useFqn();
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
     data: [],
@@ -98,11 +94,6 @@ function DatabaseSchemaVersionPage() {
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
-  );
-
-  const decodedEntityFQN = useMemo(
-    () => getDecodedFqn(databaseSchemaFQN),
-    [databaseSchemaFQN]
   );
 
   const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
@@ -132,24 +123,22 @@ function DatabaseSchemaVersionPage() {
       setIsLoading(true);
       const permission = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE,
-        databaseSchemaFQN
+        decodedEntityFQN
       );
 
       setServicePermissions(permission);
     } finally {
       setIsLoading(false);
     }
-  }, [databaseSchemaFQN, getEntityPermissionByFqn, setServicePermissions]);
+  }, [decodedEntityFQN, getEntityPermissionByFqn, setServicePermissions]);
 
   const fetchVersionsList = useCallback(async () => {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseSchemaDetailsByFQN(
-        databaseSchemaFQN,
-        '',
-        Include.All
-      );
+      const { id } = await getDatabaseSchemaDetailsByFQN(decodedEntityFQN, {
+        include: Include.All,
+      });
       setDatabaseId(id ?? '');
 
       const versions = await getDatabaseSchemaVersions(id ?? '');
@@ -158,7 +147,7 @@ function DatabaseSchemaVersionPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [viewVersionPermission, databaseSchemaFQN]);
+  }, [viewVersionPermission, decodedEntityFQN]);
 
   const fetchCurrentVersionData = useCallback(
     async (id: string) => {
@@ -182,14 +171,14 @@ function DatabaseSchemaVersionPage() {
       try {
         const res = await getTableList({
           ...params,
-          databaseSchema: getDecodedFqn(databaseSchemaFQN),
+          databaseSchema: decodedEntityFQN,
         });
         setTableData(res);
       } finally {
         setIsTableDataLoading(false);
       }
     },
-    [databaseSchemaFQN]
+    [decodedEntityFQN]
   );
 
   const { displayName, tags, description } = useMemo(
@@ -213,7 +202,7 @@ function DatabaseSchemaVersionPage() {
         history.push(
           getVersionPathWithTab(
             EntityType.DATABASE_SCHEMA,
-            databaseSchemaFQN,
+            decodedEntityFQN,
             newVersion,
             tab
           )
@@ -223,14 +212,14 @@ function DatabaseSchemaVersionPage() {
         history.push(getDatabaseSchemaDetailsPath(decodedEntityFQN));
       },
     }),
-    [databaseSchemaFQN, decodedEntityFQN, tab]
+    [decodedEntityFQN, decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {
     history.push(
       getVersionPathWithTab(
         EntityType.DATABASE_SCHEMA,
-        databaseSchemaFQN,
+        decodedEntityFQN,
         String(version),
         activeKey
       )
@@ -386,16 +375,16 @@ function DatabaseSchemaVersionPage() {
   ]);
 
   useEffect(() => {
-    if (!isEmpty(databaseSchemaFQN)) {
+    if (!isEmpty(decodedEntityFQN)) {
       fetchResourcePermission();
     }
-  }, [databaseSchemaFQN]);
+  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
-  }, [databaseSchemaFQN, viewVersionPermission]);
+  }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (databaseId) {

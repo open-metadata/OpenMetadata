@@ -16,10 +16,11 @@ import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -32,6 +33,8 @@ import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
+import { Include } from '../../generated/type/include';
+import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import {
   createTeam,
@@ -41,7 +44,8 @@ import {
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -49,7 +53,7 @@ const TeamsPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const [currentFqn, setCurrentFqn] = useState<string>('');
   const [childTeams, setChildTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
@@ -125,9 +129,9 @@ const TeamsPage = () => {
 
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
     try {
-      const { data } = await getTeams(undefined, {
-        parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
-        include: 'all',
+      const { data } = await getTeams({
+        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        include: Include.All,
       });
 
       const modifiedTeams: Team[] = data.map((team) => ({
@@ -151,13 +155,11 @@ const TeamsPage = () => {
     loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
 
     try {
-      const { data } = await getTeams(
-        ['userCount', 'childrenCount', 'owns', 'parents'],
-        {
-          parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
-          include: 'all',
-        }
-      );
+      const { data } = await getTeams({
+        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        include: Include.All,
+        fields: 'userCount,childrenCount,owns,parents',
+      });
 
       const modifiedTeams: Team[] = data.map((team) => ({
         ...team,
@@ -187,7 +189,10 @@ const TeamsPage = () => {
   ) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(name, ['parents'], 'all');
+      const data = await getTeamByName(name, {
+        fields: 'parents',
+        include: Include.All,
+      });
       if (data) {
         setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -224,11 +229,10 @@ const TeamsPage = () => {
   const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(
-        name,
-        ['owner', 'parents', 'profile'],
-        'all'
-      );
+      const data = await getTeamByName(name, {
+        fields: 'users,parents,profile',
+        include: Include.All,
+      });
 
       setSelectedTeam(data);
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -244,11 +248,10 @@ const TeamsPage = () => {
   const fetchTeamAdvancedDetails = async (name: string) => {
     setFetchingAdvancedDetails(true);
     try {
-      const data = await getTeamByName(
-        name,
-        ['users', 'defaultRoles', 'policies', 'childrenCount', 'domain'],
-        'all'
-      );
+      const data = await getTeamByName(name, {
+        fields: 'users,defaultRoles,policies,childrenCount,domain',
+        include: Include.All,
+      });
 
       setSelectedTeam((prev) => ({ ...prev, ...data }));
       fetchAssets();
@@ -461,9 +464,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(
-          getSettingPath(getTeamsWithFqnPath(TeamType.Organization))
-        );
+      : history.push(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {
@@ -509,7 +510,7 @@ const TeamsPage = () => {
   }
 
   return (
-    <>
+    <PageLayoutV1 pageTitle={t('label.team-plural')}>
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
         assetsCount={assets}
@@ -542,7 +543,7 @@ const TeamsPage = () => {
           onSave={(data) => createNewTeam(data)}
         />
       )}
-    </>
+    </PageLayoutV1>
   );
 };
 

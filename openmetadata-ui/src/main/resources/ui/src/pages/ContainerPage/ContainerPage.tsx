@@ -29,8 +29,9 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import ContainerChildren from '../../components/ContainerDetail/ContainerChildren/ContainerChildren';
 import ContainerDataModel from '../../components/ContainerDetail/ContainerDataModel/ContainerDataModel';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
+import Lineage from '../../components/Lineage/Lineage.component';
+import LineageProvider from '../../components/LineageProvider/LineageProvider';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -39,6 +40,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
@@ -53,6 +55,7 @@ import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
@@ -71,7 +74,6 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -82,11 +84,12 @@ const ContainerPage = () => {
   const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: containerName, tab } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab } = useParams<{ tab: EntityTabs }>();
+
+  const { fqn: decodedContainerName } = useFqn();
 
   // Local states
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isChildrenLoading, setIsChildrenLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
@@ -105,19 +108,14 @@ const ContainerPage = () => {
     ThreadType.Conversation
   );
 
-  const decodedContainerName = useMemo(
-    () => getDecodedFqn(containerName),
-    [containerName]
-  );
-
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
-      const response = await getContainerByName(
-        containerFQN,
-        'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
-        Include.All
-      );
+      const response = await getContainerByName(containerFQN, {
+        fields:
+          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        include: Include.All,
+      });
       addToRecentViewed({
         displayName: getEntityName(response),
         entityType: EntityType.CONTAINER,
@@ -141,7 +139,9 @@ const ContainerPage = () => {
   const fetchContainerChildren = async () => {
     setIsChildrenLoading(true);
     try {
-      const { children } = await getContainerByName(containerName, 'children');
+      const { children } = await getContainerByName(decodedContainerName, {
+        fields: 'children',
+      });
       setContainerChildrenData(children);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -150,14 +150,24 @@ const ContainerPage = () => {
     }
   };
 
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
+
   const fetchResourcePermission = async (containerFQN: string) => {
-    setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
         ResourceEntity.CONTAINER,
         containerFQN
       );
       setContainerPermissions(entityPermission);
+
+      const viewBasicPermission =
+        entityPermission.ViewAll || entityPermission.ViewBasic;
+
+      if (viewBasicPermission) {
+        await fetchContainerDetail(containerFQN);
+        getEntityFeedCount();
+      }
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -233,9 +243,6 @@ const ContainerPage = () => {
     () => isEmpty(containerData?.dataModel),
     [containerData]
   );
-
-  const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
@@ -503,7 +510,11 @@ const ContainerPage = () => {
 
   const versionHandler = () =>
     history.push(
-      getVersionPath(EntityType.CONTAINER, containerName, toString(version))
+      getVersionPath(
+        EntityType.CONTAINER,
+        decodedContainerName,
+        toString(version)
+      )
     );
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -594,6 +605,7 @@ const ContainerPage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={containerData}
                 dataProducts={containerData?.dataProducts ?? []}
                 domain={containerData?.domain}
                 editTagPermission={
@@ -603,6 +615,7 @@ const ContainerPage = () => {
                 entityId={containerData?.id ?? ''}
                 entityType={EntityType.CONTAINER}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -650,7 +663,9 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
+            onUpdateEntityDetails={() =>
+              fetchContainerDetail(decodedContainerName)
+            }
           />
         ),
       },
@@ -658,12 +673,14 @@ const ContainerPage = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={deleted}
-            entity={containerData}
-            entityType={EntityType.CONTAINER}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={containerData as SourceType}
+              entityType={EntityType.CONTAINER}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
       {
@@ -674,13 +691,16 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.CONTAINER}
-            handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: containerData && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.CONTAINER>
+              entityDetails={containerData}
+              entityType={EntityType.CONTAINER}
+              handleExtensionUpdate={handleExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],
@@ -688,7 +708,7 @@ const ContainerPage = () => {
       isDataModelEmpty,
       containerData,
       description,
-      containerName,
+      decodedContainerName,
       decodedContainerName,
       entityName,
       editDescriptionPermission,
@@ -715,10 +735,11 @@ const ContainerPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateContainerVotes(id, data);
-      const details = await getContainerByName(
-        containerName,
-        'parent,dataModel,owner,tags,followers,extension,votes'
-      );
+
+      const details = await getContainerByName(decodedContainerName, {
+        fields: 'parent,dataModel,owner,tags,followers,extension,votes',
+      });
+
       setContainerData(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -727,20 +748,8 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    if (viewBasicPermission) {
-      fetchContainerDetail(containerName);
-    }
-  }, [containerName, viewBasicPermission]);
-
-  useEffect(() => {
-    fetchResourcePermission(containerName);
-  }, [containerName]);
-
-  useEffect(() => {
-    if (viewBasicPermission) {
-      getEntityFeedCount();
-    }
-  }, [containerName, viewBasicPermission]);
+    fetchResourcePermission(decodedContainerName);
+  }, [decodedContainerName]);
 
   // Rendering
   if (isLoading) {
@@ -750,7 +759,7 @@ const ContainerPage = () => {
   if (hasError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), containerName)}
+        {getEntityMissingError(t('label.container'), decodedContainerName)}
       </ErrorPlaceHolder>
     );
   }

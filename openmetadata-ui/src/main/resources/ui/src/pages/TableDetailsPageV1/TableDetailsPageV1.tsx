@@ -29,8 +29,9 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
+import Lineage from '../../components/Lineage/Lineage.component';
+import LineageProvider from '../../components/LineageProvider/LineageProvider';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -62,6 +63,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -82,7 +84,6 @@ import {
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -96,8 +97,9 @@ const TableDetailsPageV1 = () => {
     useTourProvider();
   const { currentUser } = useAuthContext();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = currentUser?.id ?? '';
@@ -121,18 +123,11 @@ const TableDetailsPageV1 = () => {
 
   const tableFqn = useMemo(
     () =>
-      encodeURIComponent(
-        getPartialNameFromTableFQN(
-          decodeURIComponent(datasetFQN),
-          [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-          FQN_SEPARATOR_CHAR
-        )
+      getPartialNameFromTableFQN(
+        datasetFQN,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
       ),
-    [datasetFQN]
-  );
-
-  const decodedTableFQN = useMemo(
-    () => getDecodedFqn(datasetFQN),
     [datasetFQN]
   );
 
@@ -144,7 +139,7 @@ const TableDetailsPageV1 = () => {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
 
-      const details = await getTableDetailsByFQN(tableFqn, fields);
+      const details = await getTableDetailsByFQN(tableFqn, { fields });
 
       setTableDetails(details);
       addToRecentViewed({
@@ -285,7 +280,7 @@ const TableDetailsPageV1 = () => {
   }, [tableFqn]);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, decodedTableFQN, setFeedCount);
+    getFeedCounts(EntityType.TABLE, datasetFQN, setFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -436,10 +431,13 @@ const TableDetailsPageV1 = () => {
 
   const onExtensionUpdate = async (updatedData: Table) => {
     tableDetails &&
-      (await saveUpdatedTableData({
-        ...tableDetails,
-        extension: updatedData.extension,
-      }));
+      (await onTableUpdate(
+        {
+          ...tableDetails,
+          extension: updatedData.extension,
+        },
+        'extension'
+      ));
   };
 
   const {
@@ -494,7 +492,7 @@ const TableDetailsPageV1 = () => {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
-              entityFqn={decodedTableFQN}
+              entityFqn={datasetFQN}
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={editDescriptionPermission}
@@ -513,7 +511,7 @@ const TableDetailsPageV1 = () => {
                 FQN_SEPARATOR_CHAR
               )}
               columns={tableDetails?.columns ?? []}
-              entityFqn={decodedTableFQN}
+              entityFqn={datasetFQN}
               hasDescriptionEditAccess={editDescriptionPermission}
               hasTagEditAccess={editTagsPermission}
               isReadOnly={deleted}
@@ -550,13 +548,15 @@ const TableDetailsPageV1 = () => {
                 <FrequentlyJoinedTables joinedTables={joinedTables} />
               ) : null
             }
+            customProperties={tableDetails}
             dataProducts={tableDetails?.dataProducts ?? []}
             domain={tableDetails?.domain}
             editTagPermission={editTagsPermission}
-            entityFQN={decodedTableFQN}
+            entityFQN={datasetFQN}
             entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}
+            viewAllPermission={viewAllPermission}
             onTagSelectionChange={handleTagSelection}
             onThreadLinkSelect={onThreadLinkSelect}
           />
@@ -665,12 +665,14 @@ const TableDetailsPageV1 = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={deleted}
-            entity={tableDetails as SourceType}
-            entityType={EntityType.TABLE}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={tableDetails as SourceType}
+              entityType={EntityType.TABLE}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
 
@@ -721,13 +723,16 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.TABLE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: tableDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.TABLE>
+              entityDetails={tableDetails}
+              entityType={EntityType.TABLE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ];
@@ -920,7 +925,9 @@ const TableDetailsPageV1 = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTablesVotes(id, data);
-      const details = await getTableDetailsByFQN(tableFqn, defaultFields);
+      const details = await getTableDetailsByFQN(tableFqn, {
+        fields: defaultFields,
+      });
       setTableDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -970,7 +977,6 @@ const TableDetailsPageV1 = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={
               isTourOpen
                 ? activeTabForTourDatasetPage

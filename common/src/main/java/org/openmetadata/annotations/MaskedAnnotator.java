@@ -50,9 +50,9 @@ public class MaskedAnnotator extends AbstractAnnotator {
   }
 
   /**
-   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If the {@link JMethod} is
-   * pointing to a field annotated with {@link MaskedField} then annotates the {@link JMethod} object with {@link
-   * MaskedField}
+   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If
+   * the {@link JMethod} is pointing to a field annotated with {@link MaskedField} then annotates
+   * the {@link JMethod} object with {@link MaskedField}
    */
   private void addMaskedFieldAnnotationIfApplies(JMethod jMethod, String propertyName) {
     try {

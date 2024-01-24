@@ -39,18 +39,10 @@ export const createCustomPropertyForEntity = ({
   property: CustomProperty;
   type: EntityType;
 }) => {
-  interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-  cy.get('[data-testid="app-bar-item-settings"]').click();
-  verifyResponseStatusCode('@settingsPage', 200);
-
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
 
   // Selecting the entity
-  cy.get(`[data-menu-id*="customAttributes.${type}"]`)
-    .first()
-    .scrollIntoView()
-    .click();
+  cy.settingClick(type, true);
 
   verifyResponseStatusCode('@getEntity', 200);
 
@@ -83,18 +75,10 @@ export const deleteCustomPropertyForEntity = ({
   property: CustomProperty;
   type: EntityType;
 }) => {
-  interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-  cy.get('[data-testid="app-bar-item-settings"]').click();
-  verifyResponseStatusCode('@settingsPage', 200);
-
   interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
   interceptURL('PATCH', `/api/v1/metadata/types/*`, 'patchEntity');
   // Selecting the entity
-  cy.get(`[data-menu-id*="customAttributes.${type}"]`)
-    .first()
-    .scrollIntoView()
-    .click();
+  cy.settingClick(type, true);
 
   verifyResponseStatusCode('@getEntity', 200);
 
@@ -102,10 +86,7 @@ export const deleteCustomPropertyForEntity = ({
     `[data-row-key="${property.name}"] [data-testid="delete-button"]`
   ).click();
 
-  cy.get('[data-testid="modal-header"]').should(
-    'contain',
-    `Delete Property ${property.name}`
-  );
+  cy.get('[data-testid="modal-header"]').should('contain', property.name);
 
   cy.get('[data-testid="save-button"]').click();
 
@@ -145,6 +126,19 @@ export const setValueForProperty = (propertyName, value: string) => {
     }
   });
   verifyResponseStatusCode('@patchEntity', 200);
+  cy.get(`[data-row-key="${propertyName}"]`).should(
+    'contain',
+    value.replace(/\*|_/gi, '')
+  );
+};
+export const validateValueForProperty = (propertyName, value: string) => {
+  cy.get('.ant-tabs-tab').first().click();
+  cy.get(
+    '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"]',
+    {
+      timeout: 10000,
+    }
+  ).scrollIntoView();
   cy.get(`[data-row-key="${propertyName}"]`).should(
     'contain',
     value.replace(/\*|_/gi, '')

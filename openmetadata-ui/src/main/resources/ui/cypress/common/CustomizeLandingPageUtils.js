@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { GlobalSettingOptions } from '../constants/settings.constant';
 import {
   interceptURL,
   toastNotification,
@@ -45,16 +46,9 @@ export const navigateToCustomizeLandingPage = ({
   personaName,
   customPageDataResponse,
 }) => {
-  interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-  cy.get('[data-testid="app-bar-item-settings"]').click();
-  verifyResponseStatusCode('@settingsPage', 200);
-  cy.get('[data-testid="settings-left-panel"]').should('be.visible');
-
   interceptURL('GET', '/api/v1/personas*', 'getPersonas');
-  cy.get(`[data-menu-id*="openMetadata.customizeLandingPage"]`)
-    .scrollIntoView()
-    .click();
+
+  cy.settingClick(GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE);
 
   verifyResponseStatusCode('@getPersonas', 200);
 
@@ -63,7 +57,7 @@ export const navigateToCustomizeLandingPage = ({
     `/api/v1/docStore/name/persona.${personaName}.Page.LandingPage`,
     'getCustomPageData'
   );
-  interceptURL('GET', `/api/v1/users/*?fields=follows,owns`, 'getMyData');
+  interceptURL('GET', `/api/v1/users/*?fields=follows%2C%20owns`, 'getMyData');
 
   cy.get(
     `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`

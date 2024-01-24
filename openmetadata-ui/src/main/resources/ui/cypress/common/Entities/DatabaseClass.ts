@@ -16,9 +16,9 @@ import {
   createEntityTableViaREST,
   deleteEntityViaREST,
 } from '../../common/Utils/Entity';
-import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import EntityClass from './EntityClass';
 
 class DatabaseClass extends EntityClass {
@@ -41,13 +41,17 @@ class DatabaseClass extends EntityClass {
     visitServiceDetailsPage(
       {
         name: DATABASE_SERVICE.service.name,
-        type: SERVICE_TYPE.Database,
+        type: GlobalSettingOptions.DATABASES,
       },
       false
     );
 
     cy.get(`[data-testid="${this.databaseName}"]`).click();
     verifyResponseStatusCode('@fetchDatabase', 200);
+  }
+
+  followUnfollowEntity() {
+    // Skiping this since not supported for database
   }
 
   // Creation

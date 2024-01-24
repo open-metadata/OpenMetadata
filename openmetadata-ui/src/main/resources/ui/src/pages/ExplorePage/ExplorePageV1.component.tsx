@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -48,13 +48,11 @@ import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
-import {
-  findActiveSearchIndex,
-  getSearchIndexFromEntityType,
-} from '../../utils/Explore.utils';
+import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
+import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -64,6 +62,8 @@ import {
 
 const ExplorePageV1: FunctionComponent = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
+  const EntityTypeSearchIndexMapping =
+    searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useLocation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
@@ -223,24 +223,29 @@ const ExplorePageV1: FunctionComponent = () => {
       ([tabSearchIndex, tabDetail]) => ({
         key: tabSearchIndex,
         label: (
-          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            <Space className="w-full justify-between">
+          <div
+            className="d-flex items-center justify-between"
+            data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+            <div className="d-flex items-center">
+              <span className="explore-icon d-flex m-r-xs">
+                {getEntityIcon(tabSearchIndex)}
+              </span>
               <Typography.Text
                 className={
                   tabSearchIndex === searchIndex ? 'text-primary' : ''
                 }>
                 {tabDetail.label}
               </Typography.Text>
-              <span>
-                {!isNil(searchHitCounts)
-                  ? getCountBadge(
-                      searchHitCounts[tabSearchIndex as ExploreSearchIndex],
-                      '',
-                      tabSearchIndex === searchIndex
-                    )
-                  : getCountBadge()}
-              </span>
-            </Space>
+            </div>
+            <span>
+              {!isNil(searchHitCounts)
+                ? getCountBadge(
+                    searchHitCounts[tabSearchIndex as ExploreSearchIndex],
+                    '',
+                    tabSearchIndex === searchIndex
+                  )
+                : getCountBadge()}
+            </span>
           </div>
         ),
         count: searchHitCounts
@@ -348,7 +353,7 @@ const ExplorePageV1: FunctionComponent = () => {
 
         buckets.forEach((item) => {
           const searchIndexKey =
-            item && getSearchIndexFromEntityType(item.key as EntityType);
+            item && EntityTypeSearchIndexMapping[item.key as EntityType];
 
           if (
             TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)

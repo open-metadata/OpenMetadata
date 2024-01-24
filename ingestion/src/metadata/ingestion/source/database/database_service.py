@@ -186,6 +186,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
                 store_all_in_context=True,
+                store_fqn=True,
                 use_cache=True,
             ),
         ],
@@ -281,7 +282,7 @@ class DatabaseServiceSource(
 
     def yield_table_tags(
         self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
         """
@@ -369,6 +370,21 @@ class DatabaseServiceSource(
                 if tag_label:
                     tag_labels.append(tag_label)
         return tag_labels or None
+
+    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
+        """
+        Method to get schema tags
+        This will only get executed if the tags context
+        is properly informed
+        """
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=schema_name,
+        )
+        return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """

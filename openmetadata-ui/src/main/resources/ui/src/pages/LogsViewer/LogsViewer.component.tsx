@@ -41,25 +41,26 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getApplicationByName,
   getApplicationRuns,
   getLatestApplicationRuns,
 } from '../../rest/applicationAPI';
 import {
-  getIngestionPipelineByName,
+  getIngestionPipelineByFqn,
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './logs-viewer.style.less';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
 import { LogViewerParams } from './LogsViewer.interfaces';
 
 const LogsViewer = () => {
-  const { logEntityType, ingestionName } = useParams<LogViewerParams>();
+  const { logEntityType } = useParams<LogViewerParams>();
+  const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
 
@@ -154,10 +155,9 @@ const LogsViewer = () => {
   const fetchIngestionDetailsByName = async () => {
     try {
       setIsLoading(true);
-      const res = await getIngestionPipelineByName(ingestionName, [
-        'owner',
-        'pipelineStatuses',
-      ]);
+      const res = await getIngestionPipelineByFqn(ingestionName, {
+        fields: 'owner,pipelineStatuses',
+      });
       if (res) {
         setIngestionDetails(res);
 
@@ -315,7 +315,7 @@ const LogsViewer = () => {
           <TitleBreadcrumb
             titleLinks={getLogBreadCrumbs(
               logEntityType,
-              getDecodedFqn(ingestionName),
+              ingestionName,
               ingestionDetails
             )}
           />

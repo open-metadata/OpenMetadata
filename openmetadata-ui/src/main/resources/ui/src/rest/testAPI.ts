@@ -25,6 +25,7 @@ import {
 import { TestSuite, TestSummary } from '../generated/tests/testSuite';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export enum TestSuiteType {
@@ -83,7 +84,7 @@ export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${testCaseUrl}/${fqn}/testCaseResult`;
+  const url = `${testCaseUrl}/${getEncodedFqn(fqn)}/testCaseResult`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;
@@ -99,7 +100,7 @@ export const getTestCaseByFqn = async (
   params?: { fields?: string[] }
 ) => {
   const response = await APIClient.get<TestCase>(
-    `/dataQuality/testCases/name/${fqn}`,
+    `/dataQuality/testCases/name/${getEncodedFqn(fqn)}`,
     {
       params,
     }
@@ -235,7 +236,7 @@ export const getTestSuiteByName = async (
   params?: ListTestCaseParams
 ) => {
   const response = await APIClient.get<TestSuite>(
-    `${testSuiteUrl}/name/${name}`,
+    `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
     { params }
   );
 
@@ -280,7 +281,7 @@ export const patchTestCaseResult = async ({
     headers: { 'Content-type': 'application/json-patch+json' },
   };
   const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
-    `${testCaseUrl}/${testCaseFqn}/testCaseResult/${timestamp}`,
+    `${testCaseUrl}/${getEncodedFqn(testCaseFqn)}/testCaseResult/${timestamp}`,
     patch,
     configOptions
   );

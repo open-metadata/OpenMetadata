@@ -30,7 +30,6 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -52,11 +51,7 @@ import {
   Status,
 } from '../../../generated/type/bulkOperationResult';
 import { Aggregations } from '../../../interface/search.interface';
-import {
-  QueryFieldInterface,
-  QueryFieldValueInterface,
-  QueryFilterInterface,
-} from '../../../pages/ExplorePage/ExplorePage.interface';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   addAssetsToDataProduct,
   getDataProductByName,
@@ -71,10 +66,10 @@ import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import {
   getAggregations,
+  getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
 } from '../../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
@@ -174,16 +169,15 @@ export const AssetSelectionModal = ({
 
   const fetchCurrentEntity = useCallback(async () => {
     if (type === AssetsOfEntity.DOMAIN) {
-      const data = await getDomainByName(encodeURIComponent(entityFqn), '');
+      const data = await getDomainByName(entityFqn);
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-      const data = await getDataProductByName(
-        encodeURIComponent(entityFqn),
-        'domain,assets'
-      );
+      const data = await getDataProductByName(entityFqn, {
+        fields: 'domain,assets',
+      });
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.GLOSSARY) {
-      const data = await getGlossaryTermByFQN(entityFqn, 'tags');
+      const data = await getGlossaryTermByFQN(entityFqn, { fields: 'tags' });
       setActiveEntity(data);
     }
   }, [type, entityFqn]);
@@ -268,7 +262,7 @@ export const AssetSelectionModal = ({
       switch (type) {
         case AssetsOfEntity.DATA_PRODUCT:
           res = await addAssetsToDataProduct(
-            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            activeEntity.fullyQualifiedName ?? '',
             entities
           );
 
@@ -282,7 +276,7 @@ export const AssetSelectionModal = ({
           break;
         case AssetsOfEntity.DOMAIN:
           res = await addAssetsToDomain(
-            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            activeEntity.fullyQualifiedName ?? '',
             entities
           );
 
@@ -422,30 +416,7 @@ export const AssetSelectionModal = ({
   );
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const must: QueryFieldInterface[] = [];
-    data.forEach((filter) => {
-      if (!isEmpty(filter.value)) {
-        const should: QueryFieldValueInterface[] = [];
-        if (filter.value) {
-          filter.value.forEach((filterValue) => {
-            const term: Record<string, string> = {};
-            term[filter.key] = filterValue.key;
-            should.push({ term });
-          });
-        }
-
-        must.push({
-          bool: { should },
-        });
-      }
-    });
-
-    const quickFilterQuery = isEmpty(must)
-      ? undefined
-      : {
-          query: { bool: { must } },
-        };
-
+    const quickFilterQuery = getQuickFilterQuery(data);
     setQuickFilterQuery(quickFilterQuery);
   };
 
@@ -615,7 +586,7 @@ export const AssetSelectionModal = ({
                 onScroll={onScroll}>
                 {({ _source: item }) => {
                   const { isError, errorMessage } = getErrorStatusAndMessage(
-                    item.id
+                    item.id ?? ''
                   );
 
                   return (

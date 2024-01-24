@@ -166,6 +166,13 @@ You can find all the definitions and types for the  `sourceConfig` [here](https:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=22 %}
+
+**computeMetrics**: Option to turn on/off computing profiler metrics. This flag is useful when you want to only ingest the sample data with the profiler workflow and not any other information.
+
+{% /codeInfo %}
+
+
 {% codeInfo srNumber=11 %}
 
 **profileSample**: Percentage of data or no. of rows we want to execute the profiler and tests on.
@@ -259,6 +266,9 @@ source:
 
 ```yaml {% srNumber=10 %}
       generateSampleData: true
+```
+```yaml {% srNumber=22 %}
+      computeMetrics: true
 ```
 ```yaml {% srNumber=11 %}
       # profileSample: 85

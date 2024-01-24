@@ -282,7 +282,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             className="max-two-lines"
             data-testid={`service-name-${name}`}
             to={getServiceDetailsPath(
-              encodeURIComponent(record.fullyQualifiedName ?? record.name),
+              record.fullyQualifiedName ?? record.name,
               serviceName
             )}>
             {getEntityName(record)}
@@ -341,9 +341,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                 <Link
                   className="no-underline"
                   to={getServiceDetailsPath(
-                    encodeURIComponent(
-                      service.fullyQualifiedName ?? service.name
-                    ),
+                    service.fullyQualifiedName ?? service.name,
                     serviceName
                   )}>
                   <Typography.Text

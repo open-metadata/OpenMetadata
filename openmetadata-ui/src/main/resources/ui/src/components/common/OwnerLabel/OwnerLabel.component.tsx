@@ -35,12 +35,14 @@ export const OwnerLabel = ({
   onUpdate,
   hasPermission,
   ownerDisplayName,
+  placeHolder,
 }: {
   owner?: EntityReference;
   className?: string;
   onUpdate?: (owner?: EntityReference) => void;
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode;
+  placeHolder?: string;
 }) => {
   const displayName = getEntityName(owner);
   const { t } = useTranslation();
@@ -97,7 +99,7 @@ export const OwnerLabel = ({
         <Typography.Text
           className={classNames('font-medium text-xs', className)}
           data-testid="owner-link">
-          {t('label.no-entity', { entity: t('label.owner') })}
+          {placeHolder ?? t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
       )}
       {onUpdate && (

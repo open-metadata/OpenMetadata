@@ -134,6 +134,10 @@ entities.forEach((entity) => {
       entity.renameEntity();
     });
 
+    it(`follow unfollow entity`, () => {
+      entity.followUnfollowEntity();
+    });
+
     it(`Soft delete`, () => {
       entity.softDeleteEntity();
     });

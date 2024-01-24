@@ -75,7 +75,6 @@ BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
   SELECT
-    job_id,
     query AS query_text,
     start_time,
     end_time,
@@ -90,7 +89,6 @@ WITH SP_HISTORY AS (
 ),
 Q_HISTORY AS (
   SELECT
-    job_id,
     project_id as database_name,
     user_email as user_name,
     statement_type as query_type,
@@ -109,8 +107,6 @@ Q_HISTORY AS (
     AND error_result is NULL
 )
 SELECT
-  SP.job_id as procedure_id,
-  Q.job_id as query_id,
   Q.query_type as query_type,
   SP.query_text as procedure_text,
   Q.query_text as query_text,
@@ -128,5 +124,16 @@ JOIN Q_HISTORY Q
   AND Q.end_time between SP.start_time and SP.end_time
   AND Q.user_name = SP.user_name
 ORDER BY procedure_start_time DESC
+"""
+)
+
+BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select 
+table_name as table_name,
+creation_time as created_at
+from `{schema_name}`.INFORMATION_SCHEMA.TABLES
+where table_schema = '{schema_name}'
+and table_catalog = '{database_name}'
 """
 )

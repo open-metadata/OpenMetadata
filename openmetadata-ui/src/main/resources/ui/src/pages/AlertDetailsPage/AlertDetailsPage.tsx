@@ -18,10 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   EventFilterRule,
@@ -89,11 +87,8 @@ const AlertDetailsPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.alert-plural'),
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERTS
-        ),
+        name: t('label.notification-plural'),
+        url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
       },
       {
         name: getEntityName(alerts),
@@ -104,7 +99,7 @@ const AlertDetailsPage = () => {
   );
 
   return (
-    <>
+    <PageLayoutV1 pageTitle={getEntityName(alerts)}>
       {loadingCount > 0 && <Card loading={loadingCount > 0} />}
       {alerts && (
         <AlertDetailsComponent
@@ -117,14 +112,14 @@ const AlertDetailsPage = () => {
         afterDeleteAction={() => history.back()}
         allowSoftDelete={false}
         entityId={alerts?.id || ''}
-        entityName={alerts?.name || ''}
+        entityName={getEntityName(alerts)}
         entityType={EntityType.SUBSCRIPTION}
         visible={showDeleteModel}
         onCancel={() => {
           setShowDeleteModel(false);
         }}
       />
-    </>
+    </PageLayoutV1>
   );
 };
 

@@ -75,6 +75,7 @@ public class TopicIndex implements SearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
+    doc.put("lineage", SearchIndex.getLineageData(topic.getEntityReference()));
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
     doc.put(
         "fqnParts",
@@ -116,12 +117,11 @@ public class TopicIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put(ES_MESSAGE_SCHEMA_FIELD, 2.0f);
-    fields.put("messageSchema.schemaFields.name.keyword", 2.0f);
-    fields.put("messageSchema.schemaFields.name.ngram", 1.0f);
+    fields.put(ES_MESSAGE_SCHEMA_FIELD, 7.0f);
+    fields.put("messageSchema.schemaFields.name.keyword", 5.0f);
     fields.put("messageSchema.schemaFields.description", 1.0f);
-    fields.put("messageSchema.schemaFields.children.name", 2.0f);
-    fields.put("messageSchema.schemaFields.children.keyword", 2.0f);
+    fields.put("messageSchema.schemaFields.children.name", 7.0f);
+    fields.put("messageSchema.schemaFields.children.keyword", 5.0f);
     return fields;
   }
 }

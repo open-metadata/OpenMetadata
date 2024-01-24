@@ -27,7 +27,8 @@ import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export interface UsersQueryParams {
@@ -63,34 +64,23 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getUserByName = async (
-  name: string,
-  arrQueryFields?: string,
-  params?: string
-) => {
-  const url = getURLWithQueryFields(
-    '/users/name/' + name,
-    arrQueryFields,
-    params
+export const getUserByName = async (name: string, params?: ListParams) => {
+  const response = await APIClient.get<User>(
+    `/users/name/${getEncodedFqn(name)}`,
+    { params }
   );
 
-  const response = await APIClient.get<User>(url);
+  return response.data;
+};
+
+export const getUserById = async (id: string, params?: ListParams) => {
+  const response = await APIClient.get<User>(`/users/${id}`, { params });
 
   return response.data;
 };
 
-export const getUserById = async (id: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields(`/users/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<User>(url);
-
-  return response.data;
-};
-
-export const getLoggedInUser = async (arrQueryFields?: string) => {
-  const url = getURLWithQueryFields('/users/loggedInUser', arrQueryFields);
-
-  const response = await APIClient.get<User>(url);
+export const getLoggedInUser = async (params?: ListParams) => {
+  const response = await APIClient.get<User>('/users/loggedInUser', { params });
 
   return response.data;
 };
@@ -196,18 +186,11 @@ export const getAuthMechanismForBotUser = async (botId: string) => {
   return response.data;
 };
 
-export const getBotByName = async (
-  name: string,
-  arrQueryFields?: string,
-  params?: string
-) => {
-  const url = getURLWithQueryFields(
-    `/bots/name/${name}`,
-    arrQueryFields,
-    params
+export const getBotByName = async (name: string, params?: ListParams) => {
+  const response = await APIClient.get<Bot>(
+    `/bots/name/${getEncodedFqn(name)}`,
+    { params }
   );
-
-  const response = await APIClient.get<Bot>(url);
 
   return response.data;
 };

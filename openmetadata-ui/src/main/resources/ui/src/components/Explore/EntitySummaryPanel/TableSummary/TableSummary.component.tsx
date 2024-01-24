@@ -31,7 +31,7 @@ import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from '../../../../rest/tableAPI';
-import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
@@ -41,7 +41,6 @@ import {
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { usePermissionProvider } from '../../../PermissionProvider/PermissionProvider';
 import {
@@ -91,8 +90,8 @@ function TableSummary({
   const fetchAllTests = async () => {
     try {
       const res = await getTableDetailsByFQN(
-        getEncodedFqn(tableDetails.fullyQualifiedName ?? ''),
-        'testSuite'
+        tableDetails.fullyQualifiedName ?? '',
+        { fields: 'testSuite' }
       );
 
       if (res?.testSuite?.summary) {

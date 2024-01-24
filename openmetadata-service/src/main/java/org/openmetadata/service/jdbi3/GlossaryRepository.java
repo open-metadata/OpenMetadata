@@ -76,6 +76,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = true;
+    supportsSearch = true;
   }
 
   @Override

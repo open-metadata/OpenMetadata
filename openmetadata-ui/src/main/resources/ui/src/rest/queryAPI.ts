@@ -18,6 +18,7 @@ import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { CreateQuery } from '../generated/api/data/createQuery';
 import { Query } from '../generated/entity/data/query';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type ListQueriesParams = ListParams & {
@@ -43,9 +44,12 @@ export const getQueryById = async (id: string, params?: QueryByIdParams) => {
   return response.data;
 };
 export const getQueryByFqn = async (fqn: string, params?: QueryByIdParams) => {
-  const response = await APIClient.get<Query>(`${BASE_URL}/name/${fqn}`, {
-    params,
-  });
+  const response = await APIClient.get<Query>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

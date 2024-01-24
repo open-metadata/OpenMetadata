@@ -22,7 +22,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
@@ -31,6 +31,7 @@ import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg'
 import {
   COMMON_ICON_STYLES,
   ICON_DIMENSION,
+  ROUTES,
 } from '../../../constants/constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -43,7 +44,11 @@ import {
 import { useAuth } from '../../../hooks/authHooks';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds, getFeedCount } from '../../../rest/feedsAPI';
-import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
+import {
+  getCountBadge,
+  getEntityDetailLink,
+  Transi18next,
+} from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
@@ -126,11 +131,21 @@ export const ActivityFeedTab = ({
 
   const placeholderText = useMemo(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
-      return t('message.no-activity-feed');
+      return (
+        <Transi18next
+          i18nKey="message.no-activity-feed"
+          renderElement={
+            <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
+          }
+          values={{
+            explored: t('message.have-not-explored-yet'),
+          }}
+        />
+      );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       return t('message.no-mentions');
     } else {
-      return t('message.no-tasks-assigned');
+      return t('message.no-open-tasks');
     }
   }, [activeTab]);
 

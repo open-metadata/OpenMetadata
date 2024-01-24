@@ -18,8 +18,9 @@ import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export interface ListStoredProcedureParams {
@@ -51,46 +52,19 @@ export const getStoredProceduresList = async (
   return response.data;
 };
 
-export const getStoredProceduresDetails = async (
-  id: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(`${URL}/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<StoredProcedure>(url);
-
-  return response.data;
-};
-
-export const getStoredProceduresByName = async (
-  name: string,
-  fields: string | string[],
-  include: Include = Include.NonDeleted
+export const getStoredProceduresByFqn = async (
+  fqn: string,
+  params?: ListParams
 ) => {
   const response = await APIClient.get<StoredProcedure>(
-    `${URL}/name/${name}?fields=${fields}`,
+    `${URL}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
-        include,
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
       },
     }
   );
-
-  return response.data;
-};
-
-export const getStoredProceduresDetailsByFQN = async (
-  storedProceduresName: string,
-  arrQueryFields?: string | string[],
-  include = Include.All
-) => {
-  const url = `${getURLWithQueryFields(
-    `${URL}/name/${storedProceduresName}`,
-    arrQueryFields,
-    `include=${include}`
-  )}`;
-
-  const response = await APIClient.get<StoredProcedure>(url);
 
   return response.data;
 };
