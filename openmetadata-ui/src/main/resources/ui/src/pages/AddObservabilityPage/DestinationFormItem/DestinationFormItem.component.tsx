@@ -12,42 +12,60 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
+import { Button, Card, Col, Form, Row, Select, Tabs, Typography } from 'antd';
 import Input from 'antd/lib/input/Input';
-import { DefaultOptionType } from 'antd/lib/select';
+import { SelectProps } from 'antd/lib/select';
 import { isEmpty, isNil } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Switch } from 'react-router-dom';
+import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
+import {
+  DESTINATION_SOURCE_ITEMS,
+  EXTERNAL_CATEGORY_OPTIONS,
+} from '../../../constants/Alerts.constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
+import { searchData } from '../../../rest/miscAPI';
 import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  checkIfDestinationIsInternal,
+  getConfigFieldFromDestinationType,
+} from '../../../utils/ObservabilityUtils';
+import { ModifiedDestination } from '../AddObservabilityPage.interface';
+import './destination-form-item.less';
 
 function DestinationFormItem({
   heading,
   subHeading,
   buttonLabel,
-  filterResources,
 }: Readonly<{
   heading: string;
   subHeading: string;
   buttonLabel: string;
-  filterResources: DefaultOptionType[];
 }>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
+  const [destinationOptions, SetDestinationOptions] = useState(
+    DESTINATION_SOURCE_ITEMS.internal
+  );
 
-  const selectedDestinations = Form.useWatch<
-    CreateEventSubscription['destinations']
-  >('destinations', form);
+  const selectedDestinations = Form.useWatch<ModifiedDestination[]>(
+    'destinations',
+    form
+  );
 
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
 
-  const filteredOptions = filterResources.map((o) => {
+  const filteredOptions = destinationOptions.map((o) => {
     return {
       ...o,
       disabled: selectedDestinations?.some((d) => d.type === o.value),
@@ -71,7 +89,48 @@ function DestinationFormItem({
     }
   };
 
-  const getConfigField = (type: SubscriptionType, fieldName: number) => {
+  const searchEntity = useCallback(
+    async (search: string, searchIndex: SearchIndex, filters?: string) => {
+      try {
+        const response = await searchData(
+          search,
+          1,
+          PAGE_SIZE_LARGE,
+          filters ?? '',
+          '',
+          '',
+          searchIndex
+        );
+
+        return response.data.hits.hits.map((d) => ({
+          label: getEntityName(d._source),
+          value: d._source.fullyQualifiedName,
+        }));
+      } catch (error) {
+        return [];
+      }
+    },
+    []
+  );
+
+  const getUserOptions = useCallback(
+    async (searchText: string) => {
+      return searchEntity(searchText, SearchIndex.USER, 'isBot:false');
+    },
+    [searchEntity]
+  );
+
+  const getTeamOptions = useCallback(
+    async (searchText: string) => {
+      return searchEntity(searchText, SearchIndex.TEAM);
+    },
+    [searchEntity]
+  );
+
+  const getConfigField = (
+    type: SubscriptionType | SubscriptionCategory,
+    fieldName: number
+  ) => {
     switch (type) {
       case SubscriptionType.Slack:
       case SubscriptionType.MSTeams:
@@ -111,6 +170,64 @@ function DestinationFormItem({
             />
           </Form.Item>
         );
+      case SubscriptionCategory.Teams:
+      case SubscriptionCategory.Users:
+        return (
+          <Form.Item
+            className="w-full"
+            name={[fieldName, 'config', 'receivers']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.entity-name', {
+                      entity:
+                        type === SubscriptionCategory.Teams
+                          ? t('label.team')
+                          : t('label.owner'),
+                    }),
+                  }),
+                }),
+              },
+            ]}>
+            <AsyncSelect
+              api={
+                type === SubscriptionCategory.Teams
+                  ? getTeamOptions
+                  : getUserOptions
+              }
+              data-testid={`${
+                type === SubscriptionCategory.Teams
+                  ? t('label.team')
+                  : t('label.user')
+              }-select`}
+              mode="multiple"
+              placeholder={t('label.search-by-type', {
+                type:
+                  type === SubscriptionCategory.Teams
+                    ? t('label.team-lowercase')
+                    : t('label.owner-lowercase'),
+              })}
+            />
+          </Form.Item>
+        );
+      case SubscriptionCategory.Admins:
+      case SubscriptionCategory.Owners:
+      case SubscriptionCategory.Followers:
+        return (
+          <Form.Item
+            hidden
+            initialValue
+            label=""
+            name={[
+              fieldName,
+              'config',
+              getConfigFieldFromDestinationType(type),
+            ]}>
+            <Switch />
+          </Form.Item>
+        );
       default:
         return null;
     }
@@ -119,6 +236,62 @@ function DestinationFormItem({
   const showAddDestination = useMemo(
     () => filteredOptions.some((o) => !o.disabled),
     [filteredOptions]
+  );
+
+  const handleTabChange = useCallback((key) => {
+    SetDestinationOptions(
+      DESTINATION_SOURCE_ITEMS[key as keyof typeof DESTINATION_SOURCE_ITEMS]
+    );
+  }, []);
+
+  const customDestinationDropdown: SelectProps['dropdownRender'] = useCallback(
+    (menu: React.ReactElement) => {
+      return (
+        <Tabs
+          centered
+          className="destination-select-dropdown"
+          defaultActiveKey="internal"
+          tabBarStyle={{
+            background: 'white',
+          }}
+          onTabClick={handleTabChange}>
+          <Tabs.TabPane key="internal" tab={t('label.internal')}>
+            {menu}
+          </Tabs.TabPane>
+          <Tabs.TabPane key="external" tab={t('label.external')}>
+            {menu}
+          </Tabs.TabPane>
+        </Tabs>
+      );
+    },
+    [handleTabChange]
+  );
+
+  const getHiddenDestinationFields = (
+    isInternalDestination: boolean,
+    item: number,
+    destinationType: string
+  ) => (
+    <>
+      <Form.Item
+        hidden
+        initialValue={
+          isInternalDestination
+            ? destinationType
+            : SubscriptionCategory.External
+        }
+        key={`${destinationType}-category`}
+        name={[item, 'category']}
+      />
+      {!isInternalDestination && (
+        <Form.Item
+          hidden
+          initialValue={destinationType}
+          key={`${destinationType}-type`}
+          name={[item, 'type']}
+        />
+      )}
+    </>
   );
 
   return (
@@ -142,49 +315,87 @@ function DestinationFormItem({
             ]}>
             {(fields, { add, remove }, { errors }) => {
               return (
-                <Row gutter={[16, 16]}>
-                  {fields.map(({ key, name }) => (
-                    <React.Fragment key={key}>
-                      <Col span={11}>
-                        <Form.Item
-                          required
-                          messageVariables={{
-                            fieldName: t('label.data-asset-plural'),
-                          }}
-                          name={[name, 'type']}>
-                          <Select
-                            className="w-full"
-                            data-testid="triggerConfig-type"
-                            options={filteredOptions}
-                            placeholder={t('label.select-field', {
-                              field: t('label.destination'),
-                            })}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={11}>
-                        <Form.Item
-                          hidden
-                          initialValue={SubscriptionCategory.External}
-                          name={[name, 'category']}
-                        />
-                        {selectedDestinations &&
-                          !isEmpty(selectedDestinations[name]) &&
-                          selectedDestinations[name] &&
-                          getConfigField(
-                            selectedDestinations[name]?.type,
-                            name
+                <Row gutter={[16, 16]} justify="space-between">
+                  {fields.map(({ key, name }) => {
+                    const destinationType =
+                      form.getFieldValue([
+                        'destinations',
+                        name,
+                        'destinationType',
+                      ]) ?? SubscriptionType.Email;
+
+                    const isInternalDestinationSelected =
+                      checkIfDestinationIsInternal(destinationType);
+
+                    return (
+                      <React.Fragment key={key}>
+                        <Col flex="1 1 auto">
+                          <Form.Item
+                            required
+                            messageVariables={{
+                              fieldName: t('label.data-asset-plural'),
+                            }}
+                            name={[name, 'destinationType']}>
+                            <Select
+                              className="w-full"
+                              data-testid="triggerConfig-type"
+                              dropdownRender={customDestinationDropdown}
+                              options={destinationOptions}
+                              placeholder={t('label.select-field', {
+                                field: t('label.destination'),
+                              })}
+                              onSelect={(value) => {
+                                form.setFieldValue(['destinations', name], {
+                                  destinationType: value,
+                                });
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col flex="1 1 auto">
+                          {getHiddenDestinationFields(
+                            isInternalDestinationSelected,
+                            name,
+                            destinationType
                           )}
-                      </Col>
-                      <Col span={2}>
-                        <Button
-                          data-testid={`remove-action-rule-${name}`}
-                          icon={<CloseOutlined />}
-                          onClick={() => remove(name)}
-                        />
-                      </Col>
-                    </React.Fragment>
-                  ))}
+                          {selectedDestinations &&
+                            !isEmpty(selectedDestinations[name]) &&
+                            selectedDestinations[name] &&
+                            getConfigField(
+                              selectedDestinations[name]?.destinationType,
+                              name
+                            )}
+                        </Col>
+                        <Col className="d-flex justify-end" flex="0 0 32px">
+                          <Button
+                            data-testid={`remove-action-rule-${name}`}
+                            icon={<CloseOutlined />}
+                            onClick={() => remove(name)}
+                          />
+                        </Col>
+                        {destinationType &&
+                          checkIfDestinationIsInternal(destinationType) && (
+                            <Col span={24}>
+                              <Form.Item
+                                required
+                                messageVariables={{
+                                  fieldName: t('label.data-asset-plural'),
+                                }}
+                                name={[name, 'type']}>
+                                <Select
+                                  className="w-full"
+                                  data-testid="triggerConfig-type"
+                                  options={EXTERNAL_CATEGORY_OPTIONS}
+                                  placeholder={t('label.select-field', {
+                                    field: t('label.destination'),
+                                  })}
+                                />
+                              </Form.Item>
+                            </Col>
+                          )}
+                      </React.Fragment>
+                    );
+                  })}
 
                   {showAddDestination && (
                     <Col span={24}>
@@ -193,7 +404,7 @@ function DestinationFormItem({
                           isEmpty(selectedTrigger) || isNil(selectedTrigger)
                         }
                         type="primary"
-                        onClick={add}>
+                        onClick={() => add({})}>
                         {buttonLabel}
                       </Button>
                     </Col>

@@ -15,7 +15,7 @@ import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { filter, isUndefined, startCase } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -29,9 +29,8 @@ import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
-  EventSubscription,
   ProviderType,
-  SubscriptionType,
+  SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { useFqn } from '../../hooks/useFqn';
@@ -43,6 +42,7 @@ import {
 } from '../../rest/observabilityAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './add-observability-page.less';
+import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormActionItem from './ObservabilityFormActionItem/ObservabilityFormActionItem';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
@@ -58,15 +58,29 @@ function AddObservabilityPage() {
     FilterResourceDescriptor[]
   >([]);
 
-  const [alert, setAlert] = useState<EventSubscription>();
+  const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [fetching, setFetching] = useState<number>(0);
   const [saving, setSaving] = useState<boolean>(false);
 
   const fetchAlerts = async () => {
     try {
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
+      const modifiedAlertData: ModifiedEventSubscription = {
+        ...observabilityAlert,
+        destinations: observabilityAlert.destinations.map((destination) => {
+          const isExternalDestination =
+            destination.category === SubscriptionCategory.External;
 
-      setAlert(observabilityAlert);
+          return {
+            ...destination,
+            destinationType: isExternalDestination
+              ? destination.type
+              : destination.category,
+          };
+        }),
+      };
+
+      setAlert(modifiedAlertData);
     } catch (error) {
       // Error handling
     } finally {
@@ -128,14 +142,23 @@ function AddObservabilityPage() {
 
       if (fqn && !isUndefined(alert)) {
         const { resources, ...otherData } = data;
-        const jsonPatch = compare(alert, {
-          ...alert,
-          ...otherData,
-          filteringRules: {
-            ...alert.filteringRules,
-            resources,
-          },
+        const initialDestinations = alert.destinations.map((d) => {
+          const { destinationType, ...originalData } = d;
+
+          return originalData;
         });
+        const jsonPatch = compare(
+          { ...alert, destinations: initialDestinations },
+          {
+            ...alert,
+            ...otherData,
+            filteringRules: {
+              ...alert.filteringRules,
+              resources,
+            },
+            destinations,
+          }
+        );
         await updateObservabilityAlert(alert.id, jsonPatch);
       } else {
         await createObservabilityAlert({
@@ -173,15 +196,6 @@ function AddObservabilityPage() {
       setSaving(false);
     }
   };
-
-  const destinationResources = filter(
-    SubscriptionType,
-    (value) => value !== SubscriptionType.ActivityFeed
-  ).map((value) => ({
-    label: startCase(value),
-    value,
-  }));
-
   if (fetching) {
     return <Loader />;
   }
@@ -285,7 +299,6 @@ function AddObservabilityPage() {
                         buttonLabel={t('label.add-entity', {
                           entity: t('label.destination'),
                         })}
-                        filterResources={destinationResources}
                         heading={t('label.destination')}
                         subHeading={t('message.alerts-destination-description')}
                       />

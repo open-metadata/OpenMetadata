@@ -10,12 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { MailOutlined } from '@ant-design/icons';
+import { includes } from 'lodash';
 import React from 'react';
+import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
+import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
+import { ReactComponent as MSTeamsIcon } from '../assets/svg/ms-teams.svg';
+import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/team-colored-icon.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/user-colored-icon.svg';
+import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
+import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
 export const getIconForEntity = (type: string) => {
   switch (type) {
@@ -30,7 +40,44 @@ export const getIconForEntity = (type: string) => {
     case 'testCase':
     case 'testSuite':
       return <IconTestSuite height={16} width={16} />;
+    case 'Teams':
+      return <TeamIcon height={16} width={16} />;
+    case 'Users':
+      return <UserIcon height={16} width={16} />;
+    case 'Admins':
+      return <AdminIcon height={16} width={16} />;
+    case 'GChat':
+      return <GChatIcon height={16} width={16} />;
+    case 'Slack':
+      return <SlackIcon height={16} width={16} />;
+    case 'Email':
+      return <MailOutlined height={16} width={16} />;
+    case 'MsTeams':
+    case 'Followers':
+      return <MSTeamsIcon height={16} width={16} />;
+    case 'Generic':
+    case 'Owners':
+      return <GenericIcon height={16} width={16} />;
   }
 
   return null;
+};
+
+export const checkIfDestinationIsInternal = (destinationName: string) => {
+  const isDestinationInternal = includes(SubscriptionCategory, destinationName);
+
+  return isDestinationInternal;
+};
+
+export const getConfigFieldFromDestinationType = (destinationType: string) => {
+  switch (destinationType) {
+    case SubscriptionCategory.Admins:
+      return 'sendToAdmins';
+    case SubscriptionCategory.Owners:
+      return 'sendToOwners';
+    case SubscriptionCategory.Followers:
+      return 'sendToFollowers';
+    default:
+      return '';
+  }
 };
