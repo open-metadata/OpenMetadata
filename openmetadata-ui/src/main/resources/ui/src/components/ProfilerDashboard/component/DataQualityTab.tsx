@@ -247,10 +247,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         : ''
                     }`
               }>
-              <AppBadge
-                className={classNames('resolution', label.toLocaleLowerCase())}
-                label={label}
-              />
+              <span data-testid={`${record.name}-status`}>
+                <AppBadge
+                  className={classNames(
+                    'resolution',
+                    label.toLocaleLowerCase()
+                  )}
+                  label={label}
+                />
+              </span>
             </Tooltip>
           ) : (
             '--'
@@ -435,7 +440,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
-            entityName={selectedTestCase?.data?.name ?? ''}
+            entityName={getEntityName(selectedTestCase?.data)}
             entityType={EntityType.TEST_CASE}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}

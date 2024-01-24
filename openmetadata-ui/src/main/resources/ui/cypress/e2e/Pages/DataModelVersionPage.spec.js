@@ -14,13 +14,13 @@
 /// <reference types="Cypress" />
 
 import {
-  addOwner,
-  addTier,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitDataModelPage,
 } from '../../common/common';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { visitDataModelVersionPage } from '../../common/VersionUtils';
 import { DELETE_TERM } from '../../constants/constants';
 import {
@@ -108,7 +108,7 @@ describe('Data model version page should work properly', () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addOwner(OWNER, 'dashboard/datamodels');
+    addOwner(OWNER);
 
     interceptURL(
       'GET',
@@ -144,7 +144,7 @@ describe('Data model version page should work properly', () => {
 
     cy.get('@versionButton').contains('0.2');
 
-    addTier(TIER, 'dashboard/datamodels');
+    addTier(TIER);
 
     interceptURL(
       'GET',
@@ -179,15 +179,11 @@ describe('Data model version page should work properly', () => {
     cy.get('[data-testid="manage-button"]').click();
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-    cy.get('[data-testid="delete-button-title"]')
-
-      .click()
-      .as('deleteBtn');
+    cy.get('[data-testid="delete-button-title"]').click();
 
     // Clicking on permanent delete radio button and checking the service name
     cy.get('[data-testid="soft-delete-option"]')
       .contains(DATA_MODEL_DETAILS.name)
-
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -199,7 +195,7 @@ describe('Data model version page should work properly', () => {
     verifyResponseStatusCode('@deleteDataModel', 200);
 
     // Closing the toast notification
-    toastNotification(`Dashboard Data Model deleted successfully!`);
+    toastNotification(`"${DATA_MODEL_DETAILS.name}" deleted successfully!`);
 
     interceptURL(
       'GET',
@@ -261,7 +257,7 @@ describe('Data model version page should work properly', () => {
 
     cy.get('[data-testid="delete-button-title"]').click();
 
-    cy.get('.ant-modal-header').should('contain', `Delete ${dataModelName}`);
+    cy.get('.ant-modal-header').should('contain', dataModelName);
 
     cy.get(`[data-testid="hard-delete-option"]`).click();
 
@@ -277,6 +273,6 @@ describe('Data model version page should work properly', () => {
     cy.get('[data-testid="confirm-button"]').click();
     verifyResponseStatusCode(`@hardDeleteDataModel`, 200);
 
-    toastNotification(`Dashboard Data Model deleted successfully!`, false);
+    toastNotification(`"${dataModelName}" deleted successfully!`, false);
   });
 });

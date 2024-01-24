@@ -435,7 +435,11 @@ class EntityClass {
   // Delete
 
   softDeleteEntity() {
-    deleteEntity(this.entityName, this.endPoint);
+    deleteEntity(
+      this.entityName,
+      this.endPoint,
+      `Cypress ${this.name} updated`
+    );
   }
 
   restoreEntity() {
@@ -443,7 +447,7 @@ class EntityClass {
   }
 
   hardDeleteEntity() {
-    hardDeleteEntityUtil(this.entityName, this.endPoint);
+    hardDeleteEntityUtil(`Cypress ${this.name} updated`, this.endPoint);
   }
 
   // Announcement
