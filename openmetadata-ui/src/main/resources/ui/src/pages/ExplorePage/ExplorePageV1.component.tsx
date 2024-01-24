@@ -53,6 +53,7 @@ import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePag
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
@@ -77,6 +78,10 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
     useState<boolean>(false);
+
+  useEffect(() => {
+    setShowIndexNotFoundAlert(false);
+  }, [tab]);
 
   const [updatedAggregations, setUpdatedAggregations] =
     useState<Aggregations>();
@@ -366,9 +371,14 @@ const ExplorePageV1: FunctionComponent = () => {
         setSearchHitCounts(counts as SearchHitCounts);
       }),
     ])
-      .catch(() => {
-        setShowIndexNotFoundAlert(true);
+      .catch((error) => {
+        if (error.response.data.message.includes('Failed to to find index')) {
+          setShowIndexNotFoundAlert(true);
+        } else {
+          showErrorToast(error);
+        }
       })
+
       .finally(() => setIsLoading(false));
   };
 
