@@ -542,7 +542,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   /**
-   * Check all the test case results that have an ongoing incident and get the stateId of the incident
+   * Check all the test case results that have an ongoing incident and get the stateId of the
+   * incident
    */
   private UUID getIncidentId(TestCase test) {
     UUID ongoingIncident = null;
@@ -757,9 +758,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       this.dataQualityDataTimeSeriesDao = Entity.getCollectionDAO().dataQualityDataTimeSeriesDao();
     }
 
-    /**
-     * If the task is resolved, we'll resolve the Incident with the given reason
-     */
+    /** If the task is resolved, we'll resolve the Incident with the given reason */
     @Override
     @Transaction
     public TestCase performTask(String userName, ResolveTask resolveTask) {
@@ -808,9 +807,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     /**
-     * If we close the task, we'll flag the incident as Resolved as a False Positive, if
-     * it is not resolved yet.
-     * Closing the task means that the incident is not applicable.
+     * If we close the task, we'll flag the incident as Resolved as a False Positive, if it is not
+     * resolved yet. Closing the task means that the incident is not applicable.
      */
     @Override
     @Transaction

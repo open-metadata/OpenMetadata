@@ -64,7 +64,6 @@ const TasksDAGViewProps = {
 
 jest.mock('../../utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
-  getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
   getLayoutedElements: jest.fn().mockImplementation(() => ({
     node: mockNodes,
     edge: mockEdges,

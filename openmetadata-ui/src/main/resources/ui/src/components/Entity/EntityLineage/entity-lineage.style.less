@@ -15,6 +15,7 @@
 
 @lineage-sidebar-width: 110px;
 @lineage-breadcrumb-panel: 50px;
+@lineage-toolbar-height: 54px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -175,12 +176,44 @@
   padding-top: 20px;
 }
 
-.lineage-card.full-screen-lineage {
+.loading-card {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+// lineage
+.lineage-card {
+  > .ant-card-body {
+    padding: 0;
+  }
+}
+
+.lineage-card {
+  height: calc(100vh - 240px);
+}
+
+.full-screen-lineage {
   top: @navbar-height;
   left: @sidebar-width;
   position: fixed !important;
   width: calc(100vw - @sidebar-width);
-  height: calc(100vh - (@navbar-height + @lineage-breadcrumb-panel));
+  height: calc(100vh - @navbar-height);
+  .lineage-card {
+    height: calc(100vh - @navbar-height);
+  }
+  .entity-lineage.sidebar {
+    top: @lineage-breadcrumb-panel;
+  }
+  .entity-panel-container {
+    top: calc(@lineage-breadcrumb-panel + @lineage-toolbar-height);
+    margin-top: 0;
+  }
+  .lineage-container {
+    height: calc(100vh - @navbar-height - @lineage-breadcrumb-panel);
+  }
 }
 
 .lineage-node-remove-btn {
@@ -203,21 +236,104 @@
   background-color: @body-bg-color;
   color: @primary-color;
   &.green {
-    background: @green-2;
-    border: 1px solid @green-5;
-    color: @green-6;
+    background: @green-6;
+    border: 1px solid @green-7;
+    color: @green-7;
   }
   &.amber {
-    background: @yellow-1;
-    border: 1px solid @yellow-4;
-    color: @yellow-4;
+    background: @yellow-5;
+    border: 1px solid @yellow-6;
+    color: @yellow-6;
   }
   &.red {
-    background: @red-2;
-    border: 1px solid @red-5;
-    color: @red-5;
+    background: @red-6;
+    border: 1px solid @red-7;
+    color: @red-7;
   }
   svg {
     color: inherit;
   }
+}
+
+.ant-tag.amber {
+  background: @yellow-5;
+  color: @yellow-6;
+  border: 1px solid @yellow-6;
+  margin: 0;
+}
+.ant-tag.red {
+  background: @red-6;
+  border: 1px solid @red-7;
+  color: @red-7;
+  margin: 0;
+}
+.ant-tag.green {
+  background: @green-6;
+  border: 1px solid @green-7;
+  color: @green-7;
+  margin: 0;
+}
+
+@keyframes blink {
+  0% {
+    border: 1px solid @primary-color;
+  }
+  50% {
+    border: 3px solid @primary-color;
+  }
+  100% {
+    border: 1px solid @primary-color;
+  }
+}
+
+@keyframes blink-success {
+  0% {
+    border: 1px solid @green-7;
+  }
+  50% {
+    border: 3px solid @green-7;
+  }
+  100% {
+    border: 1px solid @green-7;
+  }
+}
+
+@keyframes blink-amber {
+  0% {
+    border: 1px solid @yellow-6;
+  }
+  50% {
+    border: 3px solid @yellow-6;
+  }
+  100% {
+    border: 1px solid @yellow-6;
+  }
+}
+
+@keyframes blink-red {
+  0% {
+    border: 1px solid @red-7;
+  }
+  50% {
+    border: 3px solid @red-7;
+  }
+  100% {
+    border: 1px solid @red-7;
+  }
+}
+
+.blinking-border {
+  animation: blink 1s infinite;
+}
+
+.blinking-green-border {
+  animation: blink-success 1s infinite;
+}
+
+.blinking-amber-border {
+  animation: blink-amber 1s infinite;
+}
+
+.blinking-red-border {
+  animation: blink-red 1s infinite;
 }

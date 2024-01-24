@@ -47,10 +47,6 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
-    type: SearchIndex.PIPELINE,
-    label: t('label.pipeline-plural'),
-  },
-  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },

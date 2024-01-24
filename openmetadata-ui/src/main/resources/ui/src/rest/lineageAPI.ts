@@ -24,6 +24,7 @@ export const updateLineageEdge = async (edge: AddLineage) => {
 
 export const getLineageDataByFQN = async (
   fqn: string,
+  entityType: string,
   config?: LineageConfig,
   queryFilter?: string
 ) => {
@@ -33,6 +34,7 @@ export const getLineageDataByFQN = async (
     {
       params: {
         fqn,
+        type: entityType,
         upstreamDepth,
         downstreamDepth,
         query_filter: queryFilter,

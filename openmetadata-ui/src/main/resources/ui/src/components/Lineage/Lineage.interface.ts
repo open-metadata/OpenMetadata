@@ -48,4 +48,5 @@ export interface EdgeDetails {
   source?: string;
   sqlQuery?: string;
   columns?: ColumnLineage[];
+  description?: string;
 }

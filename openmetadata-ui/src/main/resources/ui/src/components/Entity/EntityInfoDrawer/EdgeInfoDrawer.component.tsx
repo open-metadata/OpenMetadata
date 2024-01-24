@@ -214,9 +214,7 @@ const EdgeInfoDrawer = ({
                       {isUndefined(data.link) ? (
                         <Typography.Text>{data.value}</Typography.Text>
                       ) : (
-                        <Typography.Link>
-                          <Link to={data.link}>{data.value}</Link>
-                        </Typography.Link>
+                        <Link to={data.link}>{data.value}</Link>
                       )}
                     </Col>
                   )

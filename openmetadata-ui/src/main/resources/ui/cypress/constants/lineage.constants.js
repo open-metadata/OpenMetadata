@@ -71,4 +71,11 @@ export const PIPELINE_ITEMS = [
     fqn: 'sample_airflow.dim_location_etl',
     searchIndex: SEARCH_INDEX.pipelines,
   },
+  {
+    term: 'dim_address_etl',
+    name: 'dim_address etl',
+    entity: DATA_ASSETS.pipelines,
+    fqn: 'sample_airflow.dim_address_etl',
+    searchIndex: SEARCH_INDEX.pipelines,
+  },
 ];

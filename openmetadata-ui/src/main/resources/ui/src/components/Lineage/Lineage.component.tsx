@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import classNames from 'classnames';
 import { debounce } from 'lodash';
 import Qs from 'qs';
-import React, { DragEvent, useCallback, useMemo, useRef } from 'react';
+import React, {
+  DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
@@ -35,6 +40,7 @@ import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { useLineageProvider } from '../LineageProvider/LineageProvider';
+import Loader from '../Loader/Loader';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -51,6 +57,7 @@ const Lineage = ({
     nodes,
     edges,
     isEditMode,
+    init,
     onNodeClick,
     onEdgeClick,
     onNodeDrop,
@@ -61,6 +68,7 @@ const Lineage = ({
     onConnect,
     onZoomUpdate,
     onInitReactFlow,
+    updateEntityType,
   } = useLineageProvider();
 
   const queryParams = new URLSearchParams(location.search);
@@ -102,76 +110,87 @@ const Lineage = ({
     [entity]
   );
 
+  useEffect(() => {
+    updateEntityType(entityType);
+  }, [entityType]);
+
+  // Loading the react flow component after the nodes and edges are initialised improves performance
+  // considerably. So added an init state for showing loader.
   return (
     <Card
-      className={classNames('lineage-card card-body-full w-auto border-none', {
-        'full-screen-lineage': isFullScreen,
-      })}
+      className="lineage-card card-body-full w-auto border-none"
       data-testid="lineage-details">
+      {isFullScreen && (
+        <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
+      )}
       <div
-        className="h-full"
+        className="h-full relative lineage-container"
         data-testid="lineage-container"
         ref={reactFlowWrapper}>
-        {isFullScreen && (
-          <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
-        )}
-        <ReactFlowProvider>
-          <ReactFlow
-            className="custom-react-flow"
-            data-testid="react-flow-component"
-            edgeTypes={customEdges}
-            edges={edges}
-            maxZoom={MAX_ZOOM_VALUE}
-            minZoom={MIN_ZOOM_VALUE}
-            nodeTypes={nodeTypes}
-            nodes={nodes}
-            nodesConnectable={isEditMode}
-            selectNodesOnDrag={false}
-            onConnect={onConnect}
-            onDragOver={onDragOver}
-            onDrop={(_e) =>
-              onNodeDrop(
-                _e,
-                reactFlowWrapper.current?.getBoundingClientRect() as DOMRect
-              )
+        {entityLineage && (
+          <CustomControlsComponent
+            className="absolute top-1 right-1 p-xs"
+            deleted={deleted}
+            handleFullScreenViewClick={
+              !isFullScreen ? onFullScreenClick : undefined
             }
-            onEdgeClick={(_e, data) => {
-              onEdgeClick(data);
-              _e.stopPropagation();
-            }}
-            onEdgesChange={onEdgesChange}
-            onInit={onInitReactFlow}
-            onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
-            onNodeClick={(_e, node) => {
-              onNodeClick(node);
-              _e.stopPropagation();
-            }}
-            onNodeContextMenu={onNodeContextMenu}
-            onNodeDrag={dragHandle}
-            onNodeDragStart={dragHandle}
-            onNodeDragStop={dragHandle}
-            onNodeMouseEnter={onNodeMouseEnter}
-            onNodeMouseLeave={onNodeMouseLeave}
-            onNodeMouseMove={onNodeMouseMove}
-            onNodesChange={onNodesChange}
-            onPaneClick={onPaneClick}>
-            {entityLineage && (
-              <CustomControlsComponent
-                className="absolute top-1 right-1 p-xs"
-                deleted={deleted}
-                handleFullScreenViewClick={
-                  !isFullScreen ? onFullScreenClick : undefined
-                }
-                hasEditAccess={hasEditAccess}
-                onExitFullScreenViewClick={
-                  isFullScreen ? onExitFullScreenViewClick : undefined
-                }
-              />
-            )}
-            <Background gap={12} size={1} />
-            <Controls position="bottom-right" showInteractive={false} />
-          </ReactFlow>
-        </ReactFlowProvider>
+            hasEditAccess={hasEditAccess}
+            onExitFullScreenViewClick={
+              isFullScreen ? onExitFullScreenViewClick : undefined
+            }
+          />
+        )}
+        {init ? (
+          <ReactFlowProvider>
+            <ReactFlow
+              onlyRenderVisibleElements
+              className="custom-react-flow"
+              data-testid="react-flow-component"
+              edgeTypes={customEdges}
+              edges={edges}
+              maxZoom={MAX_ZOOM_VALUE}
+              minZoom={MIN_ZOOM_VALUE}
+              nodeTypes={nodeTypes}
+              nodes={nodes}
+              nodesConnectable={isEditMode}
+              selectNodesOnDrag={false}
+              onConnect={onConnect}
+              onDragOver={onDragOver}
+              onDrop={(_e) =>
+                onNodeDrop(
+                  _e,
+                  reactFlowWrapper.current?.getBoundingClientRect() as DOMRect
+                )
+              }
+              onEdgeClick={(_e, data) => {
+                onEdgeClick(data);
+                _e.stopPropagation();
+              }}
+              onEdgesChange={onEdgesChange}
+              onInit={onInitReactFlow}
+              onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
+              onNodeClick={(_e, node) => {
+                onNodeClick(node);
+                _e.stopPropagation();
+              }}
+              onNodeContextMenu={onNodeContextMenu}
+              onNodeDrag={dragHandle}
+              onNodeDragStart={dragHandle}
+              onNodeDragStop={dragHandle}
+              onNodeMouseEnter={onNodeMouseEnter}
+              onNodeMouseLeave={onNodeMouseLeave}
+              onNodeMouseMove={onNodeMouseMove}
+              onNodesChange={onNodesChange}
+              onPaneClick={onPaneClick}>
+              <Background gap={12} size={1} />
+              <Controls position="bottom-right" showInteractive={false} />
+            </ReactFlow>
+          </ReactFlowProvider>
+        ) : (
+          <div className="loading-card">
+            <Loader />
+          </div>
+        )}
       </div>
     </Card>
   );

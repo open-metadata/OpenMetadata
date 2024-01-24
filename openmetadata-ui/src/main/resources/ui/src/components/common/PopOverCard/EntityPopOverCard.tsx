@@ -57,12 +57,14 @@ import './popover-card.less';
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
+  extraInfo?: React.ReactNode;
 }
 
 export const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
-}> = ({ entityFQN, entityType }) => {
+  extraInfo?: React.ReactNode;
+}> = ({ entityFQN, entityType, extraInfo }) => {
   const decodedFqn = getDecodedFqn(entityFQN);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -215,6 +217,7 @@ export const PopoverContent: React.FC<{
 
   return (
     <ExploreSearchCard
+      actionPopoverContent={extraInfo}
       id="tabledatacard"
       showTags={false}
       source={entityData}
@@ -222,11 +225,22 @@ export const PopoverContent: React.FC<{
   );
 };
 
-const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+const EntityPopOverCard: FC<Props> = ({
+  children,
+  entityType,
+  entityFQN,
+  extraInfo,
+}) => {
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={<PopoverContent entityFQN={entityFQN} entityType={entityType} />}
+      content={
+        <PopoverContent
+          entityFQN={entityFQN}
+          entityType={entityType}
+          extraInfo={extraInfo}
+        />
+      }
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>

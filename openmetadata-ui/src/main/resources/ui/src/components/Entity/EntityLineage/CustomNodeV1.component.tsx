@@ -23,7 +23,6 @@ import {
   Handle,
   NodeProps,
   Position,
-  useUpdateNodeInternals,
 } from 'reactflow';
 import { BORDER_COLOR } from '../../../constants/constants';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
@@ -45,7 +44,6 @@ import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { t } = useTranslation();
-  const updateNodeInternals = useUpdateNodeInternals();
   const { data, type, isConnectable } = props;
 
   const {
@@ -112,7 +110,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     }
 
     return false;
-  }, [node]);
+  }, [node.id]);
 
   const { isUpstreamNode, isDownstreamNode } = useMemo(() => {
     return {
@@ -168,9 +166,12 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const onCollapse = useCallback(
     (direction = EdgeTypeEnum.DOWN_STREAM) => {
-      onNodeCollapse(props, direction);
+      const node = getActiveNode(id);
+      if (node) {
+        onNodeCollapse(node, direction);
+      }
     },
-    [loadChildNodesHandler, props]
+    [loadChildNodesHandler, props, id]
   );
 
   const nodeLabel = useMemo(() => {
@@ -198,7 +199,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         </>
       );
     }
-  }, [node, isNewNode, label, isSelected, isEditMode]);
+  }, [node.id, isNewNode, label, isSelected, isEditMode]);
 
   const getExpandCollapseHandles = useCallback(() => {
     if (isEditMode) {
@@ -228,7 +229,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       </>
     );
   }, [
-    node,
+    node.id,
     nodes,
     edges,
     hasOutgoers,
@@ -296,7 +297,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         );
     }
   }, [
-    node,
+    node.id,
     nodeType,
     isConnectable,
     isDownstreamLeafNode,
@@ -313,7 +314,6 @@ const CustomNodeV1 = (props: NodeProps) => {
   }, [tracedNodes, id]);
 
   useEffect(() => {
-    updateNodeInternals(id);
     if (!isExpanded) {
       setShowAllColumns(false);
     } else if (!isEmpty(columns) && Object.values(columns).length < 5) {
