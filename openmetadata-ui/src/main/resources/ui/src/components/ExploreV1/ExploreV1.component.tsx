@@ -48,7 +48,6 @@ import {
   QueryFieldValueInterface,
 } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import { getAlertBody } from '../../utils/Alerts/AlertsUtil';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
@@ -345,35 +344,39 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       <Col span={24}>
                         <Alert
                           closable
-                          description={getAlertBody({
-                            title: t('server.indexing-error'),
-                            icon: (
+                          description={
+                            <div className="d-flex items-start gap-3">
                               <ExclamationCircleOutlined
                                 style={{
                                   color: ERROR_COLOR,
                                   fontSize: '16px',
                                 }}
                               />
-                            ),
-                            description: (
-                              <Transi18next
-                                i18nKey="message.configure-search-re-index"
-                                renderElement={
-                                  <Link
-                                    className="alert-link text-xs"
-                                    to={getApplicationDetailsPath(
-                                      'SearchIndexingApplication'
-                                    )}
+                              <div className="d-flex flex-col gap-2">
+                                <Typography.Text className="font-semibold text-xs">
+                                  {t('server.indexing-error')}
+                                </Typography.Text>
+                                <Typography.Paragraph className="m-b-0 text-xs">
+                                  <Transi18next
+                                    i18nKey="message.configure-search-re-index"
+                                    renderElement={
+                                      <Link
+                                        className="alert-link"
+                                        to={getApplicationDetailsPath(
+                                          'SearchIndexingApplication'
+                                        )}
+                                      />
+                                    }
+                                    values={{
+                                      settings: t(
+                                        'label.search-index-setting-plural'
+                                      ),
+                                    }}
                                   />
-                                }
-                                values={{
-                                  settings: t(
-                                    'label.search-index-setting-plural'
-                                  ),
-                                }}
-                              />
-                            ),
-                          })}
+                                </Typography.Paragraph>
+                              </div>
+                            </div>
+                          }
                           type="error"
                         />
                       </Col>
