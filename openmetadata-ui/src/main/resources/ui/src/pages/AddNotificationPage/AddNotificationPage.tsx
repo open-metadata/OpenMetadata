@@ -49,7 +49,7 @@ import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityF
 import ObservabilityFormTriggerItem from '../AddObservabilityPage/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './add-alerts-page.styles.less';
 
-const AddAlertPage = () => {
+const AddNotificationPage = () => {
   const { t } = useTranslation();
   const [form] = useForm<EventSubscription>();
   const history = useHistory();
@@ -300,4 +300,4 @@ const AddAlertPage = () => {
   );
 };
 
-export default AddAlertPage;
+export default AddNotificationPage;

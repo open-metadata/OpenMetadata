@@ -14,7 +14,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
-import AlertsPage from './AlertsPage';
+import AlertsPage from './NotificationListPage';
 
 const MOCK_DATA = [
   {

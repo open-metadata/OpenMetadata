@@ -45,11 +45,14 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import {
+  getObservabilityAlertDetailsPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const AlertsPage = () => {
+const NotificationListPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
@@ -126,7 +129,16 @@ const AlertsPage = () => {
         width: '200px',
         key: 'name',
         render: (name: string, record: EventSubscription) => {
-          return <Link to={`notifications/alert/${record.id}`}>{name}</Link>;
+          return (
+            record.fullyQualifiedName && (
+              <Link
+                to={getObservabilityAlertDetailsPath(
+                  record.fullyQualifiedName
+                )}>
+                {name}
+              </Link>
+            )
+          );
         },
       },
       {
@@ -208,8 +220,8 @@ const AlertsPage = () => {
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
                 GlobalSettingOptions.ADD_NOTIFICATION
               )}>
-              <Button data-testid="create-alert" type="primary">
-                {t('label.create-entity', { entity: 'alert' })}
+              <Button data-testid="create-notification" type="primary">
+                {t('label.create-entity', { entity: t('label.notification') })}
               </Button>
             </Link>
           </div>
@@ -272,4 +284,4 @@ const AlertsPage = () => {
   );
 };
 
-export default AlertsPage;
+export default NotificationListPage;

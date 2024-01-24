@@ -297,13 +297,15 @@ function ObservabilityAlertDetailsPage() {
                   subHeading: t('message.alerts-filter-description'),
                 })}
               </Col>
-              <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: getFilterDetails(false, actions),
-                  heading: t('label.action-plural'),
-                  subHeading: t('message.alerts-filter-description'),
-                })}
-              </Col>
+              {actions && (
+                <Col span={24}>
+                  {getObservabilityDetailsItem({
+                    details: getFilterDetails(false, actions),
+                    heading: t('label.action-plural'),
+                    subHeading: t('message.alerts-filter-description'),
+                  })}
+                </Col>
+              )}
               <Col span={24}>
                 {getObservabilityDetailsItem({
                   details: destinationDetails,
