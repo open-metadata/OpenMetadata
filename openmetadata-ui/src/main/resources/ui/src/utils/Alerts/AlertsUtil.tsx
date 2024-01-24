@@ -152,7 +152,7 @@ export const getAlertBody = ({
 }) => {
   return (
     <div className="d-flex items-start gap-3">
-      {icon && icon}
+      {icon}
       <div className="d-flex flex-col gap-2">
         {title ? (
           <Typography.Text className="font-semibold text-xs">
