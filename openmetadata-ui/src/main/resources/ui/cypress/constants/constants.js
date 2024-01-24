@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from './settings.constant';
 
 export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
