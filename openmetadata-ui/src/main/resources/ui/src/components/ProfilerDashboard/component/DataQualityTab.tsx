@@ -247,10 +247,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         : ''
                     }`
               }>
-              <AppBadge
-                className={classNames('resolution', label.toLocaleLowerCase())}
-                label={label}
-              />
+              <span data-testid={`${record.name}-status`}>
+                <AppBadge
+                  className={classNames(
+                    'resolution',
+                    label.toLocaleLowerCase()
+                  )}
+                  label={label}
+                />
+              </span>
             </Tooltip>
           ) : (
             '--'
