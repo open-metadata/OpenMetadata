@@ -951,6 +951,7 @@ const TeamDetailsV1 = ({
                   afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={!currentTeam.deleted}
                   canDelete={entityPermissions.EditAll}
+                  displayName={getEntityName(currentTeam)}
                   entityId={currentTeam.id}
                   entityName={
                     currentTeam.fullyQualifiedName ?? currentTeam.name
@@ -970,6 +971,7 @@ const TeamDetailsV1 = ({
             ) : (
               <ManageButton
                 canDelete={false}
+                displayName={getEntityName(currentTeam)}
                 entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
                 entityType={EntityType.TEAM}
                 extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}

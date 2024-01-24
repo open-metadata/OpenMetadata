@@ -112,7 +112,7 @@ const AlertDetailsPage = () => {
         afterDeleteAction={() => history.back()}
         allowSoftDelete={false}
         entityId={alerts?.id || ''}
-        entityName={alerts?.name || ''}
+        entityName={getEntityName(alerts)}
         entityType={EntityType.SUBSCRIPTION}
         visible={showDeleteModel}
         onCancel={() => {

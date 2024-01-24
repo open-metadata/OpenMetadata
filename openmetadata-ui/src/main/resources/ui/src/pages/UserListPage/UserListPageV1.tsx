@@ -396,13 +396,73 @@ const UserListPageV1 = () => {
         className="user-listing p-b-md page-container"
         data-testid="user-list-v1-component"
         gutter={[16, 16]}>
-        <Col span={24}>
+        <Col span={12}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={12}>
           <PageHeader
             data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
           />
+        </Col>
+        <Col span={12}>
+          <Space align="center" className="w-full justify-end" size={16}>
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedUserChange}
+              />
+              <span className="m-l-xs">{t('label.deleted')}</span>
+            </span>
+
+            {isAdminUser && (
+              <Button
+                data-testid="add-user"
+                type="primary"
+                onClick={handleAddNewUser}>
+                {t('label.add-entity', { entity: t('label.user') })}
+              </Button>
+            )}
+          </Space>
+        </Col>
+        <Col span={8}>
+          <Searchbar
+            removeMargin
+            placeholder={`${t('label.search-for-type', {
+              type: t('label.user'),
+            })}...`}
+            searchValue={searchValue}
+            onSearch={handleSearch}
+          />
+        </Col>
+
+        <Col span={24}>
+          <Table
+            bordered
+            className="user-list-table"
+            columns={columns}
+            data-testid="user-list-table"
+            dataSource={userList}
+            loading={isDataLoading}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        </Col>
+        <Col span={24}>
+          {showPagination && (
+            <NextPrevious
+              currentPage={currentPage}
+              isNumberBased={Boolean(searchValue)}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleUserPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
         </Col>
         <Col span={12}>
           <Space align="center" className="w-full justify-end" size={16}>
@@ -495,7 +555,7 @@ const UserListPageV1 = () => {
           afterDeleteAction={() => handleSearch('')}
           allowSoftDelete={!showDeletedUser}
           entityId={selectedUser?.id || ''}
-          entityName={selectedUser?.name || ''}
+          entityName={getEntityName(selectedUser)}
           entityType={EntityType.USER}
           visible={showDeleteModal}
           onCancel={() => {

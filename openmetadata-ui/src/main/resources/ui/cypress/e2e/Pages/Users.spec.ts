@@ -270,7 +270,7 @@ describe('User with different Roles', () => {
   it('Admin Soft delete user', () => {
     cy.login();
     visitUserListPage();
-    entity.softDeleteUser(user.name);
+    entity.softDeleteUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Restore soft deleted user', () => {
@@ -282,7 +282,7 @@ describe('User with different Roles', () => {
   it('Admin Permanent Delete User', () => {
     cy.login();
     visitUserListPage();
-    entity.permanentDeleteUser(user.name);
+    entity.permanentDeleteUser(user.name, user.updatedDisplayName);
   });
 
   it('Restore Admin Details', () => {

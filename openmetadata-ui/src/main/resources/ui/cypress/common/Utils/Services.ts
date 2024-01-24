@@ -29,6 +29,16 @@ export enum Services {
   Search = GlobalSettingOptions.SEARCH,
 }
 
+export const ServicesEntityMap = {
+  [Services.Database]: EntityType.Table,
+  [Services.Messaging]: EntityType.Topic,
+  [Services.Dashboard]: EntityType.Dashboard,
+  [Services.Pipeline]: EntityType.Pipeline,
+  [Services.MLModels]: EntityType.MlModel,
+  [Services.Storage]: EntityType.Container,
+  [Services.Search]: EntityType.SeachIndex,
+};
+
 export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
@@ -149,7 +159,7 @@ export const deleteService = (typeOfService: Services, serviceName: string) => {
   verifyResponseStatusCode('@deleteService', 200);
 
   // Closing the toast notification
-  toastNotification(`Service deleted successfully!`);
+  toastNotification(`"${serviceName}" deleted successfully!`);
 
   cy.get(`[data-testid="service-name-${serviceName}"]`).should('not.exist');
 };

@@ -86,10 +86,7 @@ export const deleteCustomPropertyForEntity = ({
     `[data-row-key="${property.name}"] [data-testid="delete-button"]`
   ).click();
 
-  cy.get('[data-testid="modal-header"]').should(
-    'contain',
-    `Delete Property ${property.name}`
-  );
+  cy.get('[data-testid="modal-header"]').should('contain', property.name);
 
   cy.get('[data-testid="save-button"]').click();
 

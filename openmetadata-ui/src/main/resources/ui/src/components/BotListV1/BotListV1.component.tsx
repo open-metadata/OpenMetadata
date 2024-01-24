@@ -316,7 +316,7 @@ const BotListV1 = ({
         afterDeleteAction={handleDeleteAction}
         allowSoftDelete={!showDeleted}
         entityId={selectedUser?.id || ''}
-        entityName={selectedUser?.displayName || ''}
+        entityName={getEntityName(selectedUser)}
         entityType={EntityType.BOT}
         visible={Boolean(selectedUser)}
         onCancel={() => {

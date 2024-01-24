@@ -256,10 +256,7 @@ describe('Persona operations', () => {
 
     cy.get('[data-testid="delete-button-title"]').click();
 
-    cy.get('.ant-modal-header').should(
-      'contain',
-      `Delete ${PERSONA_DETAILS.name}`
-    );
+    cy.get('.ant-modal-header').should('contain', PERSONA_DETAILS.displayName);
 
     cy.get(`[data-testid="hard-delete-option"]`).click();
 
@@ -275,6 +272,6 @@ describe('Persona operations', () => {
     cy.get('[data-testid="confirm-button"]').click();
     verifyResponseStatusCode(`@deletePersona`, 200);
 
-    toastNotification(`Persona deleted successfully!`);
+    toastNotification(`"${PERSONA_DETAILS.displayName}" deleted successfully!`);
   });
 });

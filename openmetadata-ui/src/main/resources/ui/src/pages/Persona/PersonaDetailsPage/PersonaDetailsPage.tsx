@@ -35,6 +35,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -186,7 +187,7 @@ export const PersonaDetailsPage = () => {
               allowSoftDelete={false}
               canDelete={entityPermission.EditAll || entityPermission.Delete}
               deleted={false}
-              displayName={personaDetails.displayName}
+              displayName={getEntityName(personaDetails)}
               editDisplayNamePermission={
                 entityPermission.EditAll || entityPermission.EditDescription
               }
