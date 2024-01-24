@@ -123,8 +123,7 @@ const DeleteWidgetModal = ({
 
   const isDeleteTextPresent = useMemo(() => {
     return (
-      deleteConfirmationText.toLowerCase() ===
-        DELETE_CONFIRMATION_TEXT.toLowerCase() &&
+      deleteConfirmationText.toLowerCase() === DELETE_CONFIRMATION_TEXT.toLowerCase() &&
       (deletionType === DeleteType.SOFT_DELETE ||
         deletionType === DeleteType.HARD_DELETE)
     );
