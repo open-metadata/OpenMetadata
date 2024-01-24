@@ -158,6 +158,38 @@ const Ingestion: React.FC<IngestionProps> = ({
     ]
   );
 
+  const renderAddIngestionButton = useMemo(() => {
+    if (isFetchingStatus) {
+      return <ButtonSkeleton size="default" />;
+    }
+
+    if (showAddIngestionButton) {
+      return (
+        <AddIngestionButton
+          ingestionData={ingestionData}
+          ingestionList={ingestionList}
+          permissions={permissions}
+          pipelineType={pipelineType}
+          serviceCategory={serviceCategory}
+          serviceDetails={serviceDetails}
+          serviceName={serviceName}
+        />
+      );
+    }
+
+    return null;
+  }, [
+    isFetchingStatus,
+    showAddIngestionButton,
+    ingestionData,
+    ingestionList,
+    permissions,
+    pipelineType,
+    serviceCategory,
+    serviceDetails,
+    serviceName,
+  ]);
+
   useEffect(() => {
     getSearchedIngestions();
   }, [searchText, ingestionList]);
@@ -194,23 +226,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             ) : null}
           </div>
-          <div className="relative">
-            {isFetchingStatus ? (
-              <ButtonSkeleton size="default" />
-            ) : (
-              showAddIngestionButton && (
-                <AddIngestionButton
-                  ingestionData={ingestionData}
-                  ingestionList={ingestionList}
-                  permissions={permissions}
-                  pipelineType={pipelineType}
-                  serviceCategory={serviceCategory}
-                  serviceDetails={serviceDetails}
-                  serviceName={serviceName}
-                />
-              )
-            )}
-          </div>
+          <div className="relative">{renderAddIngestionButton}</div>
         </Col>
         <Col span={24}>
           <IngestionListTable

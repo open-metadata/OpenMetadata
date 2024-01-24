@@ -105,11 +105,15 @@ function IngestionListTable({
   };
 
   const renderActionsField = (_: string, record: IngestionPipeline) => {
-    return isFetchingStatus ? (
-      <ButtonSkeleton size="default" />
-    ) : isPlatFormDisabled ? (
-      NO_DATA_PLACEHOLDER
-    ) : (
+    if (isFetchingStatus) {
+      return <ButtonSkeleton size="default" />;
+    }
+
+    if (isPlatFormDisabled) {
+      return NO_DATA_PLACEHOLDER;
+    }
+
+    return (
       <PipelineActions
         deleteSelection={deleteSelection}
         deployIngestion={deployIngestion}
@@ -179,6 +183,7 @@ function IngestionListTable({
       onIngestionWorkflowsUpdate,
       ingestionData,
       isFetchingStatus,
+      isPlatFormDisabled,
     ]
   );
 
