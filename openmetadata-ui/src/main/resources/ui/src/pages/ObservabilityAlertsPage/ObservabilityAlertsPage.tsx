@@ -36,7 +36,10 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getObservabilityAlertsEditPath } from '../../utils/RouterUtils';
+import {
+  getObservabilityAlertDetailsPath,
+  getObservabilityAlertsEditPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -110,7 +113,14 @@ const ObservabilityAlertsPage = () => {
         width: '200px',
         key: 'name',
         render: (name: string, record: EventSubscription) => {
-          return <Link to={`alert/${record.id}`}>{name}</Link>;
+          return (
+            <Link
+              to={getObservabilityAlertDetailsPath(
+                record.fullyQualifiedName ?? ''
+              )}>
+              {name}
+            </Link>
+          );
         },
       },
       {

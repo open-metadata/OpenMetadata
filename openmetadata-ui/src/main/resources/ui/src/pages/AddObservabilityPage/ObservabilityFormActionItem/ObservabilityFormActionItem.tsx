@@ -117,7 +117,7 @@ function ObservabilityFormActionItem({
       supportedActions?.map((func) => ({
         label: getEntityName(func),
         value: func.name,
-        disabled: actions?.some((d) => d.name === func.name),
+        disabled: actions?.some((d) => d?.name === func.name),
       })),
     [supportedActions, actions]
   );
@@ -129,122 +129,108 @@ function ObservabilityFormActionItem({
   );
 
   const getFieldByArgumentType = useCallback(
-    (fieldName: number, argument: string, fieldNumber: number) => {
+    (fieldName: number, argument: string, index: number) => {
+      let field: JSX.Element;
       switch (argument) {
         case 'fqnList':
-          return (
-            <>
-              <Col key="fqn-list-select" span={11}>
-                <Form.Item
-                  className="w-full"
-                  name={[fieldName, 'arguments', fieldNumber, 'input']}
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.entity-list', {
-                          entity: t('label.fqn-uppercase'),
-                        }),
-                      }),
-                    },
-                  ]}>
-                  <AsyncSelect
-                    api={getEntityByFQN}
-                    data-testid="fqn-list-select"
-                    mode="multiple"
-                    placeholder={t('label.search-by-type', {
-                      type: t('label.fqn-uppercase'),
-                    })}
-                    showArrow={false}
-                  />
-                </Form.Item>
-              </Col>
+          field = (
+            <Col key="fqn-list-select" span={11}>
               <Form.Item
-                hidden
-                initialValue="fqnList"
-                name={[fieldName, 'arguments', fieldNumber, 'name']}
-              />
-            </>
+                className="w-full"
+                name={[fieldName, 'arguments', index, 'input']}
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.entity-list', {
+                        entity: t('label.fqn-uppercase'),
+                      }),
+                    }),
+                  },
+                ]}>
+                <AsyncSelect
+                  api={getEntityByFQN}
+                  data-testid="fqn-list-select"
+                  mode="multiple"
+                  placeholder={t('label.search-by-type', {
+                    type: t('label.fqn-uppercase'),
+                  })}
+                  showArrow={false}
+                />
+              </Form.Item>
+            </Col>
           );
+
+          break;
 
         case 'domainList':
-          return (
-            <>
-              <Col key="domain-select" span={11}>
-                <Form.Item
-                  className="w-full"
-                  name={[fieldName, 'arguments', fieldNumber, 'input']}
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.entity-list', {
-                          entity: t('label.domain'),
-                        }),
-                      }),
-                    },
-                  ]}>
-                  <AsyncSelect
-                    api={getDomainOptions}
-                    data-testid="domain-select"
-                    mode="multiple"
-                    placeholder={t('label.search-by-type', {
-                      type: t('label.domain-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-              </Col>
+          field = (
+            <Col key="domain-select" span={11}>
               <Form.Item
-                className="d-none"
-                initialValue="domainList"
-                name={[fieldName, 'arguments', fieldNumber, 'name']}
-              />
-            </>
+                className="w-full"
+                name={[fieldName, 'arguments', index, 'input']}
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.entity-list', {
+                        entity: t('label.domain'),
+                      }),
+                    }),
+                  },
+                ]}>
+                <AsyncSelect
+                  api={getDomainOptions}
+                  data-testid="domain-select"
+                  mode="multiple"
+                  placeholder={t('label.search-by-type', {
+                    type: t('label.domain-lowercase'),
+                  })}
+                />
+              </Form.Item>
+            </Col>
           );
+
+          break;
 
         case 'tableNameList':
-          return (
-            <>
-              <Col key="domain-select" span={11}>
-                <Form.Item
-                  className="w-full"
-                  name={[fieldName, 'arguments', fieldNumber, 'input']}
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.entity-list', {
-                          entity: t('label.entity-name', {
-                            entity: t('label.table'),
-                          }),
+          field = (
+            <Col key="domain-select" span={11}>
+              <Form.Item
+                className="w-full"
+                name={[fieldName, 'arguments', index, 'input']}
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.entity-list', {
+                        entity: t('label.entity-name', {
+                          entity: t('label.table'),
                         }),
                       }),
-                    },
-                  ]}>
-                  <AsyncSelect
-                    api={getTableSuggestions}
-                    data-testid="table-select"
-                    mode="multiple"
-                    placeholder={t('label.search-by-type', {
-                      type: t('label.table-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-              </Col>
-              <Form.Item
-                className="d-none"
-                initialValue="tableNameList"
-                name={[fieldName, 'arguments', fieldNumber, 'name']}
-              />
-            </>
+                    }),
+                  },
+                ]}>
+                <AsyncSelect
+                  api={getTableSuggestions}
+                  data-testid="table-select"
+                  mode="multiple"
+                  placeholder={t('label.search-by-type', {
+                    type: t('label.table-lowercase'),
+                  })}
+                />
+              </Form.Item>
+            </Col>
           );
 
+          break;
+
         case 'pipelineStateList':
-          return (
+          field = (
             <Col key="pipeline-state-select" span={11}>
               <Form.Item
                 className="w-full"
-                name={[fieldName, 'arguments', fieldNumber, 'input']}
+                name={[fieldName, 'arguments', index, 'input']}
                 rules={[
                   {
                     required: true,
@@ -267,21 +253,17 @@ function ObservabilityFormActionItem({
                   })}
                 />
               </Form.Item>
-
-              <Form.Item
-                hidden
-                initialValue="pipelineStateList"
-                name={[fieldName, 'arguments', fieldNumber, 'name']}
-              />
             </Col>
           );
 
+          break;
+
         case 'testResultList':
-          return (
+          field = (
             <Col key="test-result-select" span={11}>
               <Form.Item
                 className="w-full"
-                name={[fieldName, 'arguments', fieldNumber, 'input']}
+                name={[fieldName, 'arguments', index, 'input']}
                 rules={[
                   {
                     required: true,
@@ -304,24 +286,27 @@ function ObservabilityFormActionItem({
                   })}
                 />
               </Form.Item>
-
-              <Form.Item
-                hidden
-                initialValue="testResultList"
-                name={[fieldName, 'arguments', fieldNumber, 'name']}
-              />
             </Col>
           );
 
+          break;
+
         default:
-          return (
-            <Form.Item
-              hidden
-              initialValue={[]}
-              name={[fieldName, 'arguments']}
-            />
-          );
+          field = <></>;
       }
+
+      return (
+        <>
+          {field}
+          <Form.Item
+            hidden
+            dependencies={[fieldName, 'arguments', index, 'input']}
+            initialValue={argument}
+            key={`${argument}-name`}
+            name={[fieldName, 'arguments', index, 'name']}
+          />
+        </>
+      );
     },
     [getEntityByFQN, getDomainOptions]
   );
@@ -348,7 +333,7 @@ function ObservabilityFormActionItem({
   };
 
   return (
-    <Card className="trigger-item-container">
+    <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Typography.Text>{heading}</Typography.Text>
@@ -368,63 +353,78 @@ function ObservabilityFormActionItem({
             ]}>
             {(fields, { add, remove }, { errors }) => (
               <Row gutter={[16, 16]}>
-                {fields.map(({ key, name }) => (
-                  <Col key={`observability-${key}`} span={24}>
-                    <Row gutter={[8, 8]}>
-                      <Col span={11}>
-                        <Form.Item
-                          key={`action-${key}`}
-                          name={[name, 'name']}
-                          rules={[
-                            {
-                              required: true,
-                              message: t('message.field-text-is-required', {
-                                fieldText: t('label.action'),
-                              }),
-                            },
-                          ]}>
-                          <Select
-                            options={functions}
-                            placeholder={t('label.select-field', {
-                              field: t('label.action'),
-                            })}
+                {fields.map(({ key, name }) => {
+                  const effect =
+                    form.getFieldValue(['input', 'actions', name, 'effect']) ??
+                    Effect.Include;
+
+                  return (
+                    <Col key={`observability-${key}`} span={24}>
+                      <Row gutter={[8, 8]}>
+                        <Col span={11}>
+                          <Form.Item
+                            key={`action-${key}`}
+                            name={[name, 'name']}
+                            rules={[
+                              {
+                                required: true,
+                                message: t('message.field-text-is-required', {
+                                  fieldText: t('label.action'),
+                                }),
+                              },
+                            ]}>
+                            <Select
+                              options={functions}
+                              placeholder={t('label.select-field', {
+                                field: t('label.action'),
+                              })}
+                              onChange={() => {
+                                form.setFieldValue(
+                                  ['input', 'actions', name, 'arguments'],
+                                  []
+                                );
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        {!isNil(supportedActions) &&
+                          !isEmpty(actions) &&
+                          actions[name] &&
+                          getConditionField(actions[name].name ?? '', name)}
+                        <Col span={2}>
+                          <Button
+                            data-testid={`remove-action-rule-${name}`}
+                            icon={<CloseOutlined />}
+                            onClick={() => remove(name)}
                           />
-                        </Form.Item>
-                      </Col>
-                      {!isNil(supportedActions) &&
-                        !isEmpty(actions) &&
-                        actions[name] &&
-                        getConditionField(actions[name].name ?? '', name)}
-                      <Col span={2}>
-                        <Button
-                          data-testid={`remove-action-rule-${name}`}
-                          icon={<CloseOutlined />}
-                          onClick={() => remove(name)}
-                        />
-                      </Col>
-                    </Row>
-                    <Form.Item
-                      getValueFromEvent={(value) =>
-                        value ? 'include' : 'exclude'
-                      }
-                      initialValue={Effect.Include}
-                      key={`effect-${key}`}
-                      label={
-                        <Typography.Text>{t('label.include')}</Typography.Text>
-                      }
-                      name={[name, 'effect']}
-                      valuePropName="checked">
-                      <Switch defaultChecked />
-                    </Form.Item>
-                  </Col>
-                ))}
+                        </Col>
+                      </Row>
+                      <Form.Item
+                        label={
+                          <Typography.Text>
+                            {t('label.include')}
+                          </Typography.Text>
+                        }
+                        name={[name, 'effect']}
+                        normalize={(value) =>
+                          value ? Effect.Include : Effect.Exclude
+                        }>
+                        <Switch checked={effect === Effect.Include} />
+                      </Form.Item>
+                    </Col>
+                  );
+                })}
                 {shouldShowAddAction(fields) && (
                   <Col span={24}>
                     <Button
                       data-testid="add-action"
                       disabled={isEmpty(triggerValue) || isNil(triggerValue)}
                       type="primary"
-                      onClick={() => add({})}>
+                      onClick={() =>
+                        add({
+                          effect: Effect.Include,
+                        })
+                      }>
                       {t('label.add-entity', {
                         entity: t('label.action'),
                       })}

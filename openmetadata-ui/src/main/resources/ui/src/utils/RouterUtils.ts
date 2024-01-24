@@ -638,3 +638,11 @@ export const getObservabilityAlertsEditPath = (fqn: string) => {
 
   return path;
 };
+
+export const getObservabilityAlertDetailsPath = (fqn: string) => {
+  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};

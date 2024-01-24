@@ -15,13 +15,8 @@ import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
 import { startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PipelineIcon } from '../../../assets/svg/ic-pipeline.svg';
-import { ReactComponent as ContainerIcon } from '../../../assets/svg/ic-storage.svg';
-import { ReactComponent as TableIcon } from '../../../assets/svg/ic-table.svg';
-import { ReactComponent as TopicIcon } from '../../../assets/svg/ic-topic.svg';
-import { ReactComponent as IconTestSuite } from '../../../assets/svg/icon-test-suite.svg';
 import { useFqn } from '../../../hooks/useFqn';
-import './observability-form-trigger-item.less';
+import { getIconForEntity } from '../../../utils/ObservabilityUtils';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
@@ -36,24 +31,6 @@ function ObservabilityFormTriggerItem({
   const [selectedResource, setSelectedResource] = useState<string[]>([]);
 
   const [isEditMode, setIsEditMode] = useState(false);
-
-  const getIconForEntity = (type: string) => {
-    switch (type) {
-      case 'container':
-        return <ContainerIcon height={16} width={16} />;
-      case 'pipeline':
-        return <PipelineIcon height={16} width={16} />;
-      case 'topic':
-        return <TopicIcon height={16} width={16} />;
-      case 'table':
-        return <TableIcon height={16} width={16} />;
-      case 'testCase':
-      case 'testSuite':
-        return <IconTestSuite height={16} width={16} />;
-    }
-
-    return null;
-  };
 
   const handleAddTriggerClick = useCallback(() => {
     setIsEditMode(true);
@@ -74,13 +51,13 @@ function ObservabilityFormTriggerItem({
   );
 
   const handleTriggerChange = (value: string) => {
-    form.resetFields(['input']);
+    form.setFieldValue('input', {});
     setSelectedResource([value]);
     form.setFieldValue('resources', [value]);
   };
 
   return (
-    <Card className="trigger-item-container">
+    <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Typography.Text>{heading}</Typography.Text>
@@ -93,6 +70,11 @@ function ObservabilityFormTriggerItem({
         <Col span={24}>
           <Form.Item
             required
+            initialValue={
+              fqn
+                ? form.getFieldValue(['filteringRules', 'resources'])
+                : undefined
+            }
             messageVariables={{
               fieldName: t('label.data-asset-plural'),
             }}

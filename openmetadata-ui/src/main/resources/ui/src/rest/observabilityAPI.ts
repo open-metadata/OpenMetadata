@@ -12,6 +12,8 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
@@ -67,8 +69,18 @@ export const createObservabilityAlert = async (
   return response.data;
 };
 
-export const updateObservabilityAlert = async (alert: EventSubscription) => {
-  const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
+export const updateObservabilityAlert = async (
+  id: string,
+  data: Operation[]
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<EventSubscription>
+  >(`${BASE_URL}/${id}`, data, configOptions);
 
   return response.data;
 };

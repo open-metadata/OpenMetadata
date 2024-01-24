@@ -122,7 +122,7 @@ function DestinationFormItem({
   );
 
   return (
-    <Card className="trigger-item-container">
+    <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Typography.Text>{heading}</Typography.Text>
