@@ -38,6 +38,11 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../common/common';
 import { BASE_URL, LOGIN } from '../constants/constants';
+import { SidebarItem } from '../constants/Entity.interface';
+import {
+  SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+} from '../constants/settings.constant';
 import { SIDEBAR_LIST_ITEMS } from '../constants/sidebar.constant';
 
 Cypress.Commands.add('loginByGoogleApi', () => {
@@ -186,4 +191,20 @@ Cypress.Commands.add('sidebarClick', (id) => {
   }
 
   cy.sidebarHoverOutside();
+});
+
+// dataTestId of the setting options
+// isCustomProperty: whether the setting option is custom properties or not
+Cypress.Commands.add('settingClick', (dataTestId, isCustomProperty) => {
+  let paths = SETTINGS_OPTIONS_PATH[dataTestId];
+
+  if (isCustomProperty) {
+    paths = SETTING_CUSTOM_PROPERTIES_PATH[dataTestId];
+  }
+
+  cy.sidebarClick(SidebarItem.SETTINGS);
+
+  paths.forEach((path) => {
+    cy.get(`[data-testid="${path}"]`).scrollIntoView().click();
+  });
 });

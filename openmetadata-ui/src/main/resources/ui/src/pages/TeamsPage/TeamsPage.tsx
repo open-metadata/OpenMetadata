@@ -20,6 +20,7 @@ import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -43,7 +44,7 @@ import {
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
@@ -463,9 +464,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(
-          getSettingPath(getTeamsWithFqnPath(TeamType.Organization))
-        );
+      : history.push(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {
@@ -511,7 +510,7 @@ const TeamsPage = () => {
   }
 
   return (
-    <>
+    <PageLayoutV1 pageTitle={t('label.team-plural')}>
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
         assetsCount={assets}
@@ -544,7 +543,7 @@ const TeamsPage = () => {
           onSave={(data) => createNewTeam(data)}
         />
       )}
-    </>
+    </PageLayoutV1>
   );
 };
 

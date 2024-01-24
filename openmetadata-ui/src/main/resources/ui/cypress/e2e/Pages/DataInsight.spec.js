@@ -24,6 +24,7 @@ import {
 } from '../../common/common';
 import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
 import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const KPI_DATA = [
   {
@@ -127,8 +128,7 @@ describe('Data Insight feature', () => {
       '/api/v1/apps/trigger/DataInsightsApplication',
       'triggerPipeline'
     );
-    cy.sidebarClick('app-bar-item-settings');
-    cy.get('[data-menu-id*="integrations.apps"]').scrollIntoView().click();
+    cy.settingClick(GlobalSettingOptions.APPLICATIONS);
     verifyResponseStatusCode('@apps', 200);
     cy.get(
       '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'

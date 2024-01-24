@@ -24,6 +24,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const updatedDescription = 'This is updated description';
 
@@ -57,7 +58,7 @@ describe('Teams flow should work properly', () => {
     cy.sidebarClick(SidebarItem.SETTINGS);
 
     // Clicking on teams
-    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
+    cy.settingClick(GlobalSettingOptions.TEAMS);
   });
 
   it('Add new team', () => {
@@ -326,7 +327,7 @@ describe('Teams flow should work properly', () => {
     // Verify the toast message
     toastNotification(`"${TEAM_DETAILS.updatedName}" deleted successfully!`);
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
+    cy.settingClick(GlobalSettingOptions.TEAMS);
 
     // Check if soft deleted team is shown when 'Deleted Teams' switch is on
     cy.get('table').should('not.contain', TEAM_DETAILS.name);

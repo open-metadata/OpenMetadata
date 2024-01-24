@@ -1,4 +1,4 @@
-import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 /*
  *  Copyright 2023 Collate.
@@ -15,12 +15,8 @@ import { SidebarItem } from '../../constants/Entity.interface';
 describe('template spec', () => {
   beforeEach(() => {
     cy.login();
-    cy.sidebarClick(SidebarItem.SETTINGS);
 
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Login Configuration')
-      .scrollIntoView()
-      .click();
+    cy.settingClick(GlobalSettingOptions.LOGIN_CONFIGURATION);
   });
 
   /* ==== Test Created with Cypress Studio ==== */

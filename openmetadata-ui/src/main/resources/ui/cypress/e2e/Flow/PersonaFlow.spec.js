@@ -20,8 +20,8 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
 import { PERSONA_DETAILS, USER_DETAILS } from '../../constants/EntityConstant';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const updatePersonaDisplayName = (displayName) => {
   interceptURL('PATCH', `/api/v1/personas/*`, 'updatePersona');
@@ -77,15 +77,10 @@ describe('Persona operations', () => {
 
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-    cy.sidebarClick(SidebarItem.SETTINGS);
-
-    verifyResponseStatusCode('@settingsPage', 200);
-    cy.get('[data-testid="settings-left-panel"]').should('be.visible');
 
     interceptURL('GET', '/api/v1/personas*', 'getPersonas');
-    cy.get(`[data-menu-id*="members.persona"]`).scrollIntoView().click();
+
+    cy.settingClick(GlobalSettingOptions.PERSONA);
 
     verifyResponseStatusCode('@getPersonas', 200);
   });
