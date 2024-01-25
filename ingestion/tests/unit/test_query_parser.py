@@ -206,7 +206,7 @@ class QueryParserTests(TestCase):
         """
         Validate we obtain information from Comon Table Expressions
         """
-        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS
          WITH cte_table AS (
            SELECT
              USERS.ID,
@@ -226,7 +226,6 @@ class QueryParserTests(TestCase):
         ;
         """
 
-        expected_tables = {"testdb.public.users"}
         expected_lineage = [
             (
                 Column("testdb.public.users.id"),
@@ -258,7 +257,7 @@ class QueryParserTests(TestCase):
         """
         Validate we obtain information from Comon Table Expressions
         """
-        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS
         SELECT
             ID,
             -- A comment here
@@ -295,7 +294,7 @@ class QueryParserTests(TestCase):
         """
         Validate we obtain information from Comon Table Expressions
         """
-        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS
         SELECT
             ID AS new_identifier,
             NAME new_name
@@ -335,7 +334,7 @@ class QueryParserTests(TestCase):
         Validate Copy query is skipped appropriately without any errors
         """
         query = """COPY MY_TABLE col1,col2,col3
-        FROM 's3://bucket/schema/table.csv'  
+        FROM 's3://bucket/schema/table.csv'
         WITH CREDENTIALS ''
         REGION 'US-east-2'
         """
