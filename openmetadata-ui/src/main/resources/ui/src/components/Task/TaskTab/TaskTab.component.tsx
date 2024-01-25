@@ -38,7 +38,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -50,6 +50,7 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
+import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -76,7 +77,6 @@ import { updateTask, updateThread } from '../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -115,7 +115,10 @@ export const TaskTab = ({
 
   const { task: taskDetails } = taskThread;
   const entityFQN = getEntityFQN(taskThread.about) ?? '';
-  const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
+  const entityCheck =
+    !isUndefined(entityFQN) &&
+    !isUndefined(entityType) &&
+    !isUndefined(taskDetails);
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { isAdminUser } = useAuth();
@@ -145,15 +148,18 @@ export const TaskTab = ({
     [taskDetails]
   );
 
-  const taskField = useMemo(() => {
-    const entityField = EntityLink.getEntityField(taskThread.about) ?? '';
+  const taskColumnName = useMemo(() => {
     const columnName = EntityLink.getTableColumnName(taskThread.about) ?? '';
 
     if (columnName) {
-      return `${entityField}/${columnName}`;
+      return (
+        <Typography.Text className="p-r-xss">
+          {columnName} {t('label.in-lowercase')}
+        </Typography.Text>
+      );
     }
 
-    return entityField;
+    return null;
   }, [taskThread]);
 
   const isOwner = isEqual(owner?.id, currentUser?.id);
@@ -189,38 +195,27 @@ export const TaskTab = ({
   };
 
   const getTaskLinkElement = entityCheck && (
-    <Typography.Text
-      className="font-medium text-md cursor-pointer"
-      data-testid="task-title"
-      onClick={handleTaskLinkClick}>
-      <Typography.Text className="p-r-xss text-md font-medium text-primary">
-        {`#${taskDetails?.id} `}
-      </Typography.Text>
+    <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+      <Button
+        className="p-0 task-feed-message font-medium text-md"
+        data-testid="task-title"
+        type="link"
+        onClick={handleTaskLinkClick}>
+        <Typography.Text className="p-0 text-primary">{`#${taskDetails?.id} `}</Typography.Text>
 
-      <Typography.Text>{taskDetails?.type}</Typography.Text>
-      <span className="m-x-xss">{t('label.for-lowercase')}</span>
+        <Typography.Text className="p-xss">
+          {TASK_TYPES[taskDetails?.type as TaskType]}
+        </Typography.Text>
 
-      {!isForFeedTab && (
-        <>
-          <span className="p-r-xss">{entityType}</span>
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Link
-              className="break-all p-r-xss"
-              data-testid="entitylink"
-              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
-              onClick={(e) => e.stopPropagation()}>
-              <Typography.Text className="text-md font-medium text-color-inherit">
-                {' '}
-                {getNameFromFQN(entityFQN)}
-              </Typography.Text>
-            </Link>
-          </EntityPopOverCard>
-        </>
-      )}
-      {!isEmpty(taskField) ? (
-        <span className="break-all">{taskField}</span>
-      ) : null}
-    </Typography.Text>
+        {taskColumnName}
+
+        <Typography.Text className="break-all" data-testid="entity-link">
+          {getNameFromFQN(entityFQN)}
+        </Typography.Text>
+
+        <Typography.Text className="p-l-xss">({entityType})</Typography.Text>
+      </Button>
+    </EntityPopOverCard>
   );
 
   const updateTaskData = (data: TaskDetails | ResolveTask) => {

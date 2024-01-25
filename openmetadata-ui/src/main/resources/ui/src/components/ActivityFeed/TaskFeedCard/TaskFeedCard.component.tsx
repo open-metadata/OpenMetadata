@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, lowerCase, noop } from 'lodash';
+import { isUndefined, lowerCase, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
@@ -25,6 +25,7 @@ import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopO
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
   Post,
+  TaskType,
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
@@ -36,7 +37,7 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { TASK_TYPES } from '../../../constants/Task.constant';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -61,32 +62,42 @@ const TaskFeedCard = ({
   showThread = true,
   isActive,
   hidePopover = false,
-  isForFeedTab = false,
-}: TaskFeedCardProps) => {
+}: //   isForFeedTab = false,
+TaskFeedCardProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const timeStamp = feed.threadTs;
-  const taskDetails = feed.task;
-  const postLength = feed?.postsCount ?? 0;
+
+  const {
+    threadTs: timeStamp,
+    task: taskDetails,
+    postsCount: postLength = 0,
+  } = feed;
+
   const entityType = getEntityType(feed.about) ?? '';
   const entityFQN = getEntityFQN(feed.about) ?? '';
 
-  const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
+  const entityCheck =
+    !isUndefined(entityFQN) &&
+    !isUndefined(entityType) &&
+    !isUndefined(taskDetails);
   const [isEditPost, setIsEditPost] = useState(false);
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
   const { showDrawer, setActiveThread } = useActivityFeedProvider();
 
-  const taskField = useMemo(() => {
-    const entityField = EntityLink.getEntityField(feed.about) ?? '';
+  const taskColumnName = useMemo(() => {
     const columnName = EntityLink.getTableColumnName(feed.about) ?? '';
 
     if (columnName) {
-      return `${entityField}/${columnName}`;
+      return (
+        <Typography.Text className="p-r-xss">
+          {columnName} {t('label.in-lowercase')}
+        </Typography.Text>
+      );
     }
 
-    return entityField;
+    return null;
   }, [feed]);
 
   const showReplies = () => {
@@ -105,38 +116,27 @@ const TaskFeedCard = ({
   };
 
   const getTaskLinkElement = entityCheck && (
-    <Typography.Text
-      className="cursor-pointer"
-      data-testid="redirect-task-button-link"
-      onClick={handleTaskLinkClick}>
-      <Typography.Text className="p-0 text-primary">
-        {`#${taskDetails?.id} `}
-      </Typography.Text>
+    <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+      <Button
+        className="p-0 task-feed-message"
+        data-testid="redirect-task-button-link"
+        type="link"
+        onClick={handleTaskLinkClick}>
+        <Typography.Text className="p-0 text-primary">{`#${taskDetails?.id} `}</Typography.Text>
 
-      <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
-      <span className="m-x-xss">{t('label.for-lowercase')}</span>
+        <Typography.Text className="p-xss">
+          {TASK_TYPES[taskDetails?.type as TaskType]}
+        </Typography.Text>
 
-      {isForFeedTab ? null : (
-        <>
-          <span className="p-r-xss">{entityType}</span>
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Link
-              className="break-all"
-              data-testid="entity-link"
-              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
-              onClick={(e) => e.stopPropagation()}>
-              {getNameFromFQN(entityFQN)}
-            </Link>
-          </EntityPopOverCard>
-        </>
-      )}
+        {taskColumnName}
 
-      {!isEmpty(taskField) ? (
-        <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
-          {taskField}
-        </span>
-      ) : null}
-    </Typography.Text>
+        <Typography.Text className="break-all" data-testid="entity-link">
+          {getNameFromFQN(entityFQN)}
+        </Typography.Text>
+
+        <Typography.Text className="p-l-xss">({entityType})</Typography.Text>
+      </Button>
+    </EntityPopOverCard>
   );
 
   return (
