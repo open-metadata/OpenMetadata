@@ -23,15 +23,11 @@ FROM alpine:3.18
 
 EXPOSE 8585
 
-RUN apk add --update --no-cache bash openjdk17-jre
+RUN adduser -D openmetadata && apk update && apk upgrade && apk add --update --no-cache bash openjdk17-jre
 
-COPY --from=build /opt/openmetadata /opt/openmetadata
-COPY docker/openmetadata-start.sh /
+COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
+COPY --chmod=755 docker/openmetadata-start.sh /
 
-RUN chmod 777 openmetadata-start.sh
-
-RUN adduser -D openmetadata
-RUN chown -R openmetadata:openmetadata /opt/openmetadata
 USER openmetadata
 
 WORKDIR /opt/openmetadata

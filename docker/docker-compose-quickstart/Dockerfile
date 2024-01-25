@@ -35,13 +35,11 @@ LABEL org.open-metadata.build-date=$BUILD_DATE
 LABEL org.open-metadata.commit-id=$COMMIT_ID
 
 EXPOSE 8585 8586
-COPY docker/openmetadata-start.sh ./
-COPY --from=build /opt/openmetadata /opt/openmetadata
-RUN apk add --update --no-cache bash openjdk17-jre && \
-    chmod 777 openmetadata-start.sh
+RUN adduser -D openmetadata && apk update && apk upgrade && apk add --update --no-cache bash openjdk17-jre
 
-RUN adduser -D openmetadata
-RUN chown -R openmetadata:openmetadata /opt/openmetadata
+COPY --chmod=755 docker/openmetadata-start.sh ./
+COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
+
 USER openmetadata
 
 WORKDIR /opt/openmetadata
