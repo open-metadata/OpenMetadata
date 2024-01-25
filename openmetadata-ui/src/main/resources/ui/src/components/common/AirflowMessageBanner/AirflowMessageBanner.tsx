@@ -33,7 +33,10 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
       data-testid="no-airflow-placeholder"
       size={16}>
       <IconRetry className="align-middle" height={24} width={24} />
-      <RichTextEditorPreviewer enableSeeMoreVariant={false} markdown={reason} />
+      <RichTextEditorPreviewer
+        enableSeeMoreVariant={false}
+        markdown={reason ?? ''}
+      />
     </Space>
   );
 };
