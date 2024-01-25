@@ -54,8 +54,8 @@ from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
+    TopologyContext,
     TopologyNode,
-    create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
@@ -194,7 +194,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: DashboardConnection.__fields__["config"].type_
 
     topology = DashboardServiceTopology()
-    context = create_source_context(topology)
+    context = TopologyContext.create(topology)
     dashboard_source_state: Set = set()
     datamodel_source_state: Set = set()
 

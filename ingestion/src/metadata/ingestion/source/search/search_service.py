@@ -43,8 +43,8 @@ from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
+    TopologyContext,
     TopologyNode,
-    create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
@@ -110,7 +110,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: SearchConnection.__fields__["config"].type_
 
     topology = SearchServiceTopology()
-    context = create_source_context(topology)
+    context = TopologyContext.create(topology)
     index_source_state: Set = set()
 
     def __init__(

@@ -31,8 +31,8 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
+    TopologyContext,
     TopologyNode,
-    create_source_context,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
@@ -135,7 +135,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     topology = DbtServiceTopology()
-    context = create_source_context(topology)
+    context = TopologyContext.create(topology)
     source_config: DbtPipeline
 
     def remove_manifest_non_required_keys(self, manifest_dict: dict):

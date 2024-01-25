@@ -152,7 +152,7 @@ class MetabaseSource(DashboardServiceSource):
                         service_name=self.context.dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts
+                    for chart in self.context.charts or []
                 ],
                 service=self.context.dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
