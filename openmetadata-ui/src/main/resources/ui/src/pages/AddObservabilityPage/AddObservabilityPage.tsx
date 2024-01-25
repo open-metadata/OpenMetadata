@@ -209,6 +209,11 @@ function AddObservabilityPage() {
     [filterResources, selectedTrigger]
   );
 
+  const shouldShowFiltersSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
+    [selectedTrigger, supportedFilters]
+  );
+
   if (fetching) {
     return <Loader />;
   }
@@ -283,7 +288,7 @@ function AddObservabilityPage() {
                         subHeading={t('message.alerts-trigger-description')}
                       />
                     </Col>
-                    {!isEmpty(supportedFilters) && (
+                    {shouldShowFiltersSection && (
                       <Col span={24}>
                         <ObservabilityFormFiltersItem
                           supportedFilters={supportedFilters}

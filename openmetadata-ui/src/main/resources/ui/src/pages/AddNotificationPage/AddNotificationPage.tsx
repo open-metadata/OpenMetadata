@@ -192,11 +192,17 @@ const AddNotificationPage = () => {
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
+
   const supportedFilters = useMemo(
     () =>
       entityFunctions.find((resource) => resource.name === selectedTrigger)
         ?.supportedFilters,
     [entityFunctions, selectedTrigger]
+  );
+
+  const shouldShowFiltersSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
+    [selectedTrigger, supportedFilters]
   );
 
   return (
@@ -268,7 +274,7 @@ const AddNotificationPage = () => {
                           subHeading={t('message.alerts-trigger-description')}
                         />
                       </Col>
-                      {!isEmpty(supportedFilters) && (
+                      {shouldShowFiltersSection && (
                         <Col span={24}>
                           <ObservabilityFormFiltersItem
                             supportedFilters={supportedFilters}
