@@ -280,7 +280,6 @@ class DatabaseServiceSource(
         From topology. To be run for each schema
         """
 
-    @abstractmethod
     def yield_database_tag(
         self, database_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -387,6 +386,20 @@ class DatabaseServiceSource(
                 if tag_label:
                     tag_labels.append(tag_label)
         return tag_labels or None
+
+    def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:
+        """
+        Method to get schema tags
+        This will only get executed if the tags context
+        is properly informed
+        """
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.context.database_service,
+            database_name=database_name,
+        )
+        return self.get_tag_by_fqn(entity_fqn=database_fqn)
 
     def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
         """

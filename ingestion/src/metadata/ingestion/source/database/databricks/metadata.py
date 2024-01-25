@@ -360,33 +360,32 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         """
         Method to yield database tags
         """
-        if self.source_config.includeTags:
-            try:
-                tags = self.connection.execute(
-                    DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)
+        try:
+            tags = self.connection.execute(
+                DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)
+            )
+            for tag in tags:
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn.build(
+                        self.metadata,
+                        Database,
+                        service_name=self.context.database_service,
+                        database_name=database_name,
+                    ),
+                    tags=[tag.tag_value],
+                    classification_name=tag.tag_name,
+                    tag_description=DATABRICKS_TAG,
+                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
                 )
-                for tag in tags:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            Database,
-                            service_name=self.context.database_service,
-                            database_name=database_name,
-                        ),
-                        tags=[tag.tag_value],
-                        classification_name=tag.tag_name,
-                        tag_description=DATABRICKS_TAG,
-                        classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                    )
 
-            except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name="Tags and Classifications",
-                        error=f"Failed to fetch database tags due to [{exc}]",
-                        stackTrace=traceback.format_exc(),
-                    )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to fetch database tags due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
                 )
+            )
 
     def yield_tag(
         self, schema_name: str
@@ -394,95 +393,93 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         """
         Method to yield schema tags
         """
-        if self.source_config.includeTags:
-            try:
-                tags = self.connection.execute(
-                    DATABRICKS_GET_SCHEMA_TAGS.format(
-                        database_name=self.context.database, schema_name=schema_name
-                    )
+        try:
+            tags = self.connection.execute(
+                DATABRICKS_GET_SCHEMA_TAGS.format(
+                    database_name=self.context.database, schema_name=schema_name
                 )
-                for tag in tags:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            DatabaseSchema,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
-                            schema_name=schema_name,
-                        ),
-                        tags=[tag.tag_value],
-                        classification_name=tag.tag_name,
-                        tag_description=DATABRICKS_TAG,
-                        classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                    )
+            )
+            for tag in tags:
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn.build(
+                        self.metadata,
+                        DatabaseSchema,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=schema_name,
+                    ),
+                    tags=[tag.tag_value],
+                    classification_name=tag.tag_name,
+                    tag_description=DATABRICKS_TAG,
+                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                )
 
-            except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name="Tags and Classifications",
-                        error=f"Failed to fetch database tags due to [{exc}]",
-                        stackTrace=traceback.format_exc(),
-                    )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to fetch database tags due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
                 )
+            )
 
     def yield_table_tags(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        if self.source_config.includeTags:
-            table_name, _ = table_name_and_type
-            try:
-                table_tags = self.connection.execute(
-                    DATABRICKS_GET_TABLE_TAGS.format(
+        table_name, _ = table_name_and_type
+        try:
+            table_tags = self.connection.execute(
+                DATABRICKS_GET_TABLE_TAGS.format(
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                    table_name=table_name,
+                )
+            )
+            for tag in table_tags:
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn.build(
+                        self.metadata,
+                        Table,
+                        service_name=self.context.database_service,
                         database_name=self.context.database,
                         schema_name=self.context.database_schema,
                         table_name=table_name,
-                    )
+                    ),
+                    tags=[tag.tag_value],
+                    classification_name=tag.tag_name,
+                    tag_description=DATABRICKS_TAG,
+                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
                 )
-                for tag in table_tags:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            Table,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
-                            table_name=table_name,
-                        ),
-                        tags=[tag.tag_value],
-                        classification_name=tag.tag_name,
-                        tag_description=DATABRICKS_TAG,
-                        classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                    )
 
-                column_tags = self.connection.execute(
-                    DATABRICKS_GET_COLUMN_TAGS.format(
+            column_tags = self.connection.execute(
+                DATABRICKS_GET_COLUMN_TAGS.format(
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                    table_name=table_name,
+                )
+            )
+            for tag in column_tags:
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn.build(
+                        self.metadata,
+                        Column,
+                        service_name=self.context.database_service,
                         database_name=self.context.database,
                         schema_name=self.context.database_schema,
                         table_name=table_name,
-                    )
+                        column_name=tag.column_name,
+                    ),
+                    tags=[tag.tag_value],
+                    classification_name=tag.tag_name,
+                    tag_description=DATABRICKS_TAG,
+                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
                 )
-                for tag in column_tags:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            Column,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
-                            table_name=table_name,
-                            column_name=tag.column_name,
-                        ),
-                        tags=[tag.tag_value],
-                        classification_name=tag.tag_name,
-                        tag_description=DATABRICKS_TAG,
-                        classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                    )
 
-            except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name="Tags and Classifications",
-                        error=f"Failed to fetch database tags due to [{exc}]",
-                        stackTrace=traceback.format_exc(),
-                    )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to fetch database tags due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
                 )
+            )
