@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { login, uuid, visitEntityDetailsPage } from '../../common/common';
+import {
+  interceptURL,
+  login,
+  uuid,
+  verifyResponseStatusCode,
+} from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { hardDeleteService } from '../../common/EntityUtils';
-import { createEntityTableViaREST } from '../../common/Utils/Entity';
-import { createViewBasicRoleViaREST } from '../../common/Utils/Permission';
+import {
+  createEntityTableViaREST,
+  visitEntityDetailsPage,
+} from '../../common/Utils/Entity';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE, USER_DETAILS } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
@@ -47,10 +54,10 @@ type OrganizationTeamType = {
 };
 const entity = new UsersTestClass();
 const policy: PolicyType = {
-  name: 'cy-permission-policy',
+  name: `cy-permission-policy-${uuid()}`,
   rules: [
     {
-      name: 'cy-permission-rule',
+      name: `cy-permission-rule-${uuid()}`,
       resources: ['All'],
       operations: ['ViewBasic'],
       effect: 'allow',
@@ -59,8 +66,21 @@ const policy: PolicyType = {
 };
 
 const role: RoleType = {
-  name: 'cy-permission-role',
+  name: `cy-permission-role-${uuid()}`,
   policies: [policy.name],
+};
+const tableFqn = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
+const testSuite = {
+  name: `${tableFqn}.testSuite`,
+  executableEntityReference: tableFqn,
+};
+const testCase = {
+  name: `user_tokens_table_column_name_to_exist_${uuid()}`,
+  entityLink: `<#E::table::${testSuite.executableEntityReference}>`,
+  parameterValues: [{ name: 'columnName', value: 'id' }],
+  testDefinition: 'tableColumnNameToExist',
+  description: 'test case description',
+  testSuite: testSuite.name,
 };
 
 let organizationTeam = {} as OrganizationTeamType;
@@ -193,6 +213,19 @@ const preRequisite = () => {
           service: 'sample_data',
         },
       });
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dataQuality/testSuites/executable`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: testSuite,
+      }).then(() => {
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/dataQuality/testCases`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: testCase,
+        });
+      });
     });
   });
   cy.logout();
@@ -269,6 +302,25 @@ const checkPermission = (permission?: {
   entity.viewPermissions(permission);
   cy.logout();
 };
+const updatePolicy = (
+  patch: { op: string; path: string; value: unknown }[]
+) => {
+  cy.login();
+  cy.getAllLocalStorage().then((data) => {
+    const token = Object.values(data)[0].oidcIdToken;
+    cy.request({
+      method: 'PATCH',
+      url: `/api/v1/policies/${policy.id}`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json-patch+json',
+      },
+      body: patch,
+    });
+  });
+  cy.logout();
+  cy.reload();
+};
 
 describe('Permissions', () => {
   before(preRequisite);
@@ -280,23 +332,78 @@ describe('Permissions', () => {
 
   viewPermissions.forEach((permissionData) => {
     it(`check ${permissionData.title}`, () => {
-      cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
-        cy.request({
-          method: 'PATCH',
-          url: `/api/v1/policies/${policy.id}`,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json-patch+json',
-          },
-          body: permissionData.data.patch,
-        });
-      });
-      cy.logout();
-      cy.reload();
-
+      updatePolicy(permissionData.data.patch);
       checkPermission(permissionData.data.permission);
     });
+  });
+
+  it('EditQuery permission', () => {
+    updatePolicy([
+      {
+        op: 'add',
+        path: '/rules/1',
+        value: {
+          name: `cy-edit-query-rule-${uuid()}`,
+          resources: ['query'],
+          operations: ['ViewAll', 'EditAll'],
+          effect: 'allow',
+        },
+      },
+      { op: 'add', path: '/rules/0/operations/5', value: 'EditQueries' },
+    ]);
+
+    login(USER_DETAILS.email, USER_DETAILS.password);
+    visitEntityDetailsPage({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: EntityType.Table,
+    });
+    interceptURL('GET', '/api/v1/queries?*', 'getQueries');
+    cy.get('[data-testid="table_queries"]').click();
+    verifyResponseStatusCode('@getQueries', 200);
+    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-menu-id*="edit-query"]').click();
+    interceptURL('PATCH', '/api/v1/queries/*', 'updateQuery');
+    cy.get('.CodeMirror-line').click().type('updated');
+    cy.get('[data-testid="save-query-btn"]').click();
+    verifyResponseStatusCode('@updateQuery', 200);
+    cy.logout();
+  });
+
+  it('EditTest permission', () => {
+    updatePolicy([
+      { op: 'add', path: '/rules/1/operations/6', value: 'EditTests' },
+      {
+        op: 'add',
+        path: '/rules/2',
+        value: {
+          name: `cy-edit-test-case-rule-${uuid()}`,
+          resources: ['testCase'],
+          operations: ['ViewAll', 'EditAll'],
+          effect: 'allow',
+        },
+      },
+    ]);
+
+    login(USER_DETAILS.email, USER_DETAILS.password);
+    visitEntityDetailsPage({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: EntityType.Table,
+    });
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler"]').click();
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
+    cy.get(`[data-testid="edit-${testCase.name}"]`).click();
+    cy.get('#tableTestForm_params_columnName')
+      .scrollIntoView()
+      .clear()
+      .type('test');
+    interceptURL('PATCH', '/api/v1/dataQuality/testCases/*', 'updateTest');
+    cy.get('.ant-modal-footer').contains('Submit').click();
+    verifyResponseStatusCode('@updateTest', 200);
   });
 });
