@@ -114,13 +114,20 @@ class DatabaseServiceTopology(ServiceTopology):
         producer="get_database_names",
         stages=[
             NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_database_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
+            NodeStage(
                 type_=Database,
                 context="database",
                 processor="yield_database",
                 consumer=["database_service"],
                 cache_entities=True,
                 use_cache=True,
-            )
+            ),
         ],
         children=["databaseSchema"],
     )
@@ -273,6 +280,14 @@ class DatabaseServiceSource(
         From topology. To be run for each schema
         """
 
+    @abstractmethod
+    def yield_database_tag(
+        self, database_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each database
+        """
+
     def yield_table_tags(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -297,6 +312,15 @@ class DatabaseServiceSource(
         """
         if self.source_config.includeTags:
             yield from self.yield_tag(schema_name) or []
+
+    def yield_database_tag_details(
+        self, database_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each database
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_database_tag(database_name) or []
 
     @abstractmethod
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
