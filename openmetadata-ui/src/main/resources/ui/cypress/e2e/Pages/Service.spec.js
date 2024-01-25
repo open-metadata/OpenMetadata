@@ -18,6 +18,7 @@ import {
 } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { service } from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
@@ -39,12 +40,7 @@ describe('Services page should work properly', () => {
     cy.login();
     // redirecting to services page
 
-    cy.sidebarClick('app-bar-item-settings');
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Database')
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.DATABASES);
   });
 
   it('Update service description', () => {
@@ -80,7 +76,7 @@ describe('Services page should work properly', () => {
     verifyResponseStatusCode('@pipelineServiceClient', 200);
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=*&index=team_search_index',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc',
       'editOwner'
     );
     cy.get('[data-testid="edit-owner"]')

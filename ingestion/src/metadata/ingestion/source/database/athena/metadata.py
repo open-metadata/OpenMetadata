@@ -93,20 +93,14 @@ def _get_column_type(self, type_):
         "struct": sqa_types.SQAStruct,
         "row": sqa_types.SQAStruct,
         "map": sqa_types.SQAMap,
+        "decimal": types.DECIMAL,
+        "varchar": types.VARCHAR,
+        "char": types.CHAR,
     }
-    if name in ["decimal"]:
-        col_type = types.DECIMAL
+    if name in ["decimal", "char", "varchar"]:
+        col_type = col_map[name]
         if length:
-            precision, scale = length.split(",")
-            args = [int(precision), int(scale)]
-    elif name in ["char"]:
-        col_type = types.CHAR
-        if length:
-            args = [int(length)]
-    elif name in ["varchar"]:
-        col_type = types.VARCHAR
-        if length:
-            args = [int(length)]
+            args = [int(l) for l in length.split(",")]
     elif type_.startswith("array"):
         parsed_type = (
             ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
@@ -114,7 +108,13 @@ def _get_column_type(self, type_):
             )
         )
         col_type = col_map["array"]
-        args = [col_map.get(parsed_type.get("arrayDataType").lower(), types.String)]
+        if parsed_type["arrayDataType"].lower().startswith("array"):
+            # as OpenMetadata doesn't store any details on children of array, we put
+            # in type as string as default to avoid Array item_type required issue
+            # from sqlalchemy types
+            args = [types.String]
+        else:
+            args = [col_map.get(parsed_type.get("arrayDataType").lower(), types.String)]
     elif col_map.get(name):
         col_type = col_map.get(name)
     else:

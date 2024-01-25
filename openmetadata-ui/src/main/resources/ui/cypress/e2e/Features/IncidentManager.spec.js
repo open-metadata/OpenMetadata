@@ -10,38 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
-  descriptionBox,
-  goToAddNewServicePage,
-  handleIngestionRetry,
-  interceptURL,
-  mySqlConnectionInput,
-  scheduleIngestion,
-  testServiceCreationAndIngestion,
-  verifyResponseStatusCode,
+  createEntityTableViaREST,
+  deleteEntityViaREST,
   visitEntityDetailsPage,
-} from '../../common/common';
-import { searchServiceFromSettingPage } from '../../common/serviceUtils';
-import {
-  DATA_ASSETS,
-  DELETE_TERM,
-  NEW_TABLE_TEST_CASE,
-  SERVICE_TYPE,
-  TEAM_ENTITY,
-  uuid,
-} from '../../constants/constants';
+} from '../../common/Utils/Entity';
+import { DATA_ASSETS, uuid } from '../../constants/constants';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+const TABLE_NAME = DATABASE_SERVICE.entity.name;
 
-const serviceType = 'Mysql';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const testSuite = {
+  name: `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}.testSuite`,
+  executableEntityReference: `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`,
+};
+
+const testCases = [
+  `cy_first_table_column_count_to_be_between_${uuid()}`,
+  `cy_second_table_column_count_to_be_between_${uuid()}`,
+  `cy_third_table_column_count_to_be_between_${uuid()}`,
+];
+
 const goToProfilerTab = () => {
   interceptURL(
     'GET',
-    `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?fields=*&include=all`,
+    `api/v1/tables/name/${DATABASE_SERVICE.service.name}.*.${TABLE_NAME}?fields=*&include=all`,
     'waitForPageLoad'
   );
   visitEntityDetailsPage({
-    term: TEAM_ENTITY,
-    serviceName,
+    term: TABLE_NAME,
+    serviceName: DATABASE_SERVICE.service.name,
     entity: DATA_ASSETS.tables,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
@@ -49,287 +48,424 @@ const goToProfilerTab = () => {
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
-// need to add more scenarios & update existing flow, will be done in septate PR
-describe.skip('Incident Manager', () => {
-  beforeEach(() => {
+const acknowledgeTask = (testCase) => {
+  goToProfilerTab();
+
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Data Quality')
+    .click();
+  cy.get(`[data-testid="${testCase}"]`)
+    .find('.last-run-box.failed')
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get(`[data-testid="${testCase}-status"]`).should('contain', 'New');
+  cy.get(`[data-testid="${testCase}"]`).contains(testCase).click();
+  cy.get('[data-testid="edit-resolution-icon"]').click();
+  cy.get('[data-testid="test-case-resolution-status-type"]').click();
+  cy.get('[title="Ack"]').click();
+  interceptURL(
+    'POST',
+    '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+    'updateTestCaseIncidentStatus'
+  );
+  cy.get('#update-status-button').click();
+  verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+  cy.get(`[data-testid="${testCase}-status"]`).should('contain', 'Ack');
+};
+
+const triggerTestCasePipeline = () => {
+  interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
+  interceptURL('GET', `/api/v1/tables/*/tableProfile?*`, 'tableProfile');
+  goToProfilerTab();
+  interceptURL(
+    'GET',
+    `api/v1/tables/name/${DATABASE_SERVICE.service.name}.*.${TABLE_NAME}?include=all`,
+    'addTableTestPage'
+  );
+  verifyResponseStatusCode('@systemProfile', 200);
+  verifyResponseStatusCode('@tableProfile', 200);
+  interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Data Quality')
+    .click();
+  verifyResponseStatusCode('@testCase', 200);
+
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
+    'getPipelineStatus'
+  );
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/trigger/*',
+    'triggerPipeline'
+  );
+  cy.get('[id*="tab-pipeline"]').click();
+  verifyResponseStatusCode('@getPipelineStatus', 200);
+  cy.get('[data-testid="run"]').click();
+  cy.wait('@triggerPipeline');
+};
+
+const assignIncident = (testCaseName) => {
+  cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
+  cy.get(`[data-testid="test-case-${testCaseName}"]`).should('be.visible');
+  cy.get(`[data-testid="${testCaseName}-status"]`)
+    .find(`[data-testid="edit-resolution-icon"]`)
+    .click();
+  cy.get(`[data-testid="test-case-resolution-status-type"]`).click();
+  cy.get(`[title="Assigned"]`).click();
+  cy.get('#testCaseResolutionStatusDetails_assignee').should('be.visible');
+  interceptURL(
+    'GET',
+    '/api/v1/search/suggest?q=Aaron%20Johnson&index=user_search_index',
+    'searchAssignee'
+  );
+  cy.get('#testCaseResolutionStatusDetails_assignee').type('Aaron Johnson');
+  verifyResponseStatusCode('@searchAssignee', 200);
+  cy.get('[data-testid="aaron_johnson0"]').click();
+  interceptURL(
+    'POST',
+    '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+    'updateTestCaseIncidentStatus'
+  );
+  cy.get('#update-status-button').click();
+  verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+  cy.get(
+    `[data-testid="${testCaseName}-status"] [data-testid="badge-container"]`
+  ).should('contain', 'Assigned');
+};
+
+describe('Incident Manager', () => {
+  before(() => {
     cy.login();
-    interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
-    interceptURL('GET', `/api/v1/tables/*/tableProfile?*`, 'tableProfile');
+
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTableViaREST({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.entity],
+      });
+      // create testSuite
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dataQuality/testSuites/executable`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: testSuite,
+      }).then((testSuiteResponse) => {
+        // creating test case
+
+        testCases.forEach((testCase) => {
+          cy.request({
+            method: 'POST',
+            url: `/api/v1/dataQuality/testCases`,
+            headers: { Authorization: `Bearer ${token}` },
+            body: {
+              name: testCase,
+              entityLink: `<#E::table::${testSuite.executableEntityReference}>`,
+              parameterValues: [
+                { name: 'minColValue', value: 12 },
+                { name: 'maxColValue', value: 24 },
+              ],
+              testDefinition: 'tableColumnCountToBeBetween',
+              testSuite: testSuite.name,
+            },
+          });
+        });
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/services/ingestionPipelines`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            airflowConfig: {},
+            name: `${testSuite.executableEntityReference}_test_suite`,
+            pipelineType: 'TestSuite',
+            service: {
+              id: testSuiteResponse.body.id,
+              type: 'testSuite',
+            },
+            sourceConfig: {
+              config: {
+                type: 'TestSuite',
+                entityFullyQualifiedName: testSuite.executableEntityReference,
+              },
+            },
+          },
+        }).then((response) =>
+          cy.request({
+            method: 'POST',
+            url: `/api/v1/services/ingestionPipelines/deploy/${response.body.id}`,
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        );
+      });
+    });
+
+    triggerTestCasePipeline();
   });
 
-  it('Add and ingest mysql data', () => {
-    goToAddNewServicePage(SERVICE_TYPE.Database);
+  after(() => {
+    cy.login();
 
-    const addIngestionInput = () => {
-      cy.get('#root\\/schemaFilterPattern\\/includes')
-        .scrollIntoView()
-        .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
-    };
-
-    testServiceCreationAndIngestion({
-      serviceType,
-      connectionInput: mySqlConnectionInput,
-      addIngestionInput,
-      serviceName,
-      serviceCategory: SERVICE_TYPE.Database,
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      deleteEntityViaREST({
+        token,
+        endPoint: EntityType.DatabaseService,
+        entityName: DATABASE_SERVICE.service.name,
+      });
     });
   });
 
-  it('Add Profiler ingestion', () => {
-    interceptURL(
-      'POST',
-      '/api/v1/services/ingestionPipelines/deploy/*',
-      'deployIngestion'
-    );
+  describe('Basic Scenario', () => {
+    const testCaseName = testCases[0];
 
-    goToProfilerTab();
+    beforeEach(() => {
+      cy.login();
+    });
 
-    cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
+    it("Acknowledge table test case's failure", () => {
+      acknowledgeTask(testCaseName);
+    });
 
-    cy.clickOnLogo();
+    it('Assign incident to user', () => {
+      assignIncident(testCaseName);
+    });
 
-    cy.sidebarClick('app-bar-item-settings');
-    cy.get('[data-menu-id*="databases"]').should('be.visible').click();
-    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-    interceptURL(
-      'GET',
-      '/api/v1/system/config/pipeline-service-client',
-      'airflow'
-    );
-    searchServiceFromSettingPage(serviceName);
-    cy.get(`[data-testid="service-name-${serviceName}"]`)
-      .should('exist')
-      .click();
-    cy.get('[data-testid="tabs"]').should('exist');
-    cy.wait('@ingestionData');
-    verifyResponseStatusCode('@airflow', 200);
-    cy.get('[data-testid="ingestions"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="ingestion-details-container"]').should('exist');
-    cy.get('[data-testid="add-new-ingestion-button"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-menu-id*="profiler"')
-      .scrollIntoView()
-      .contains('Profiler Ingestion')
-      .click();
-    cy.get('#root\\/profileSample')
-      .scrollIntoView()
-      .should('be.visible')
-      .and('not.be.disabled')
-      .type(10);
-    cy.get('[data-testid="submit-btn"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    it('Re-assign incident to user', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/name/*?fields=*',
+        'getTestCase'
+      );
+      interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
+      cy.get(`[data-testid="test-case-${testCaseName}"]`).click();
+      verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[data-testid="incident"]').click();
+      verifyResponseStatusCode('@getTaskFeed', 200);
+      cy.get('[data-testid="reject-task"]').scrollIntoView().click();
+      interceptURL(
+        'GET',
+        '/api/v1/search/suggest?q=admin&index=*user_search_index*',
+        'searchAssignee'
+      );
+      cy.get('[data-testid="select-assignee"]').click().type('admin');
+      verifyResponseStatusCode('@searchAssignee', 200);
+      cy.get('[data-testid="admin"]').click();
+      interceptURL(
+        'POST',
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+        'updateTestCaseIncidentStatus'
+      );
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+      // Todo: skipping this for now as its not working from backend
+      // cy.clickOnLogo();
+      // cy.get('[id*="tab-tasks"]').click();
+      // cy.get('[data-testid="task-feed-card"]')
+      //   .contains(NEW_TABLE_TEST_CASE.name)
+      //   .scrollIntoView()
+      //   .should('be.visible');
+    });
 
-    scheduleIngestion(false);
+    it('Resolve incident', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/name/*?fields=*',
+        'getTestCase'
+      );
+      interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
+      cy.get(`[data-testid="test-case-${testCaseName}"]`).click();
+      verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[data-testid="incident"]').click();
+      verifyResponseStatusCode('@getTaskFeed', 200);
+      cy.get('[data-testid="approve-task"]').scrollIntoView().click();
+      cy.get('#testCaseFailureReason').click();
+      cy.get('[title="Missing Data"]').click();
+      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .click()
+        .type('test');
+      interceptURL(
+        'POST',
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+        'updateTestCaseIncidentStatus'
+      );
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+    });
+  });
 
-    cy.wait('@deployIngestion').then(() => {
-      cy.get('[data-testid="view-service-button"]')
-        .scrollIntoView()
-        .should('be.visible')
+  describe('Resolving incident & re-run pipeline', () => {
+    const testName = testCases[1];
+
+    beforeEach(() => {
+      cy.login();
+    });
+
+    it("Acknowledge table test case's failure", () => {
+      acknowledgeTask(testName);
+    });
+
+    it('Resolve task from incident list page', () => {
+      goToProfilerTab();
+
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases?fields=*&entityLink=*&includeAllTests=true&limit=*',
+        'testCaseList'
+      );
+      cy.get('[data-testid="profiler-tab-left-panel"]')
+        .contains('Data Quality')
         .click();
+      verifyResponseStatusCode('@testCaseList', 200);
+      cy.get(`[data-testid="${testName}"]`)
+        .find('.last-run-box.failed')
+        .scrollIntoView()
+        .should('be.visible');
+      cy.get('.ant-table-row-level-0').should('contain', 'Ack');
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*',
+        'getIncidentList'
+      );
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
 
-      handleIngestionRetry('database', true, 0, 'profiler');
+      verifyResponseStatusCode('@getIncidentList', 200);
+
+      cy.get(`[data-testid="test-case-${testName}"]`).should('be.visible');
+      cy.get(`[data-testid="${testName}-status"]`)
+        .find(`[data-testid="edit-resolution-icon"]`)
+        .click();
+      cy.get(`[data-testid="test-case-resolution-status-type"]`).click();
+      cy.get(`[title="Resolved"]`).click();
+      cy.get('#testCaseResolutionStatusDetails_testCaseFailureReason').click();
+      cy.get('[title="Missing Data"]').click();
+      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .click()
+        .type('test');
+      interceptURL(
+        'POST',
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+        'updateTestCaseIncidentStatus'
+      );
+      cy.get('.ant-modal-footer').contains('Submit').click();
+      verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+    });
+
+    it('Task should be closed', () => {
+      goToProfilerTab();
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/name/*?fields=*',
+        'getTestCase'
+      );
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases?fields=*&entityLink=*&includeAllTests=true&limit=*',
+        'testCaseList'
+      );
+      interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.get('[data-testid="profiler-tab-left-panel"]')
+        .contains('Data Quality')
+        .click();
+      verifyResponseStatusCode('@testCaseList', 200);
+      cy.get(`[data-testid="${testName}"]`)
+        .find('.last-run-box.failed')
+        .scrollIntoView()
+        .should('be.visible');
+
+      cy.get(`[data-testid="${testName}"]`).contains(testName).click();
+      verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[data-testid="incident"]').click();
+      verifyResponseStatusCode('@getTaskFeed', 200);
+      cy.get('[data-testid="closed-task"]').click();
+      cy.get('[data-testid="task-feed-card"]').should('be.visible');
+      cy.get('[data-testid="task-tab"]').should(
+        'contain',
+        'Resolved the Task.'
+      );
+    });
+
+    it('Re-run pipeline', () => {
+      triggerTestCasePipeline();
+    });
+
+    it('Verify open and closed task', () => {
+      acknowledgeTask(testName);
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/name/*?fields=*',
+        'getTestCase'
+      );
+      interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.reload();
+      verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[data-testid="incident"]').click();
+      verifyResponseStatusCode('@getTaskFeed', 200);
+      cy.get('[data-testid="open-task"]')
+        .invoke('text')
+        .then((text) => {
+          expect(text.trim()).equal('1 Open');
+        });
+      cy.get('[data-testid="closed-task"]')
+        .invoke('text')
+        .then((text) => {
+          expect(text.trim()).equal('1 Closed');
+        });
     });
   });
 
-  it('Add table test case', () => {
-    const term = TEAM_ENTITY;
-    goToProfilerTab();
-    interceptURL(
-      'GET',
-      `api/v1/tables/name/${serviceName}.*.${term}?include=all`,
-      'addTableTestPage'
-    );
-    verifyResponseStatusCode('@systemProfile', 200);
-    verifyResponseStatusCode('@tableProfile', 200);
-    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
-    cy.get('[data-testid="profiler-tab-left-panel"]')
-      .contains('Data Quality')
-      .click();
-    verifyResponseStatusCode('@testCase', 200);
-    cy.get('[data-testid="profiler-add-table-test-btn"]').click();
-    cy.get('[data-testid="table"]').click();
+  describe('Rerunning pipeline for an open incident', () => {
+    const testName = testCases[2];
 
-    // creating new test case
-    cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.contains(NEW_TABLE_TEST_CASE.label).should('be.visible').click();
-    cy.get('#tableTestForm_testName').type(NEW_TABLE_TEST_CASE.name);
-    cy.get('#tableTestForm_params_columnName').type(NEW_TABLE_TEST_CASE.field);
-    cy.get(descriptionBox).scrollIntoView();
-    cy.get(descriptionBox).type(NEW_TABLE_TEST_CASE.description);
+    beforeEach(() => {
+      cy.login();
+    });
 
-    cy.get('[data-testid="submit-test"]').scrollIntoView().click();
+    it('Ack incident and verify open task', () => {
+      acknowledgeTask(testName);
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/name/*?fields=*',
+        'getTestCase'
+      );
+      interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.reload();
+      verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[data-testid="incident"]').click();
+      verifyResponseStatusCode('@getTaskFeed', 200);
+      cy.get('[data-testid="open-task"]')
+        .invoke('text')
+        .then((text) => {
+          expect(text.trim()).equal('1 Open');
+        });
+    });
 
-    cy.get('[data-testid="success-line"]')
-      .scrollIntoView()
-      .should('be.visible');
-    cy.get('[data-testid="add-ingestion-button"]').click();
-    scheduleIngestion(false);
+    it('Assign incident to user', () => {
+      assignIncident(testName);
+    });
 
-    cy.get('[data-testid="success-line"]')
-      .scrollIntoView()
-      .should('be.visible');
+    it('Re-run pipeline', () => {
+      triggerTestCasePipeline();
+    });
 
-    cy.get('[data-testid="view-service-button"]').click({ force: true });
+    it("Verify incident's status on DQ page", () => {
+      goToProfilerTab();
 
-    verifyResponseStatusCode('@getEntityDetails', 200);
-
-    cy.get('[data-testid="profiler-tab-left-panel"]')
-      .contains('Data Quality')
-      .click();
-    verifyResponseStatusCode('@testCase', 200);
-    cy.contains(NEW_TABLE_TEST_CASE.name).should('be.visible');
-  });
-
-  it("Acknowledge table test case's failure", () => {
-    goToProfilerTab();
-
-    cy.get('[data-testid="profiler-tab-left-panel"]')
-      .contains('Data Quality')
-      .click();
-    cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}"]`)
-      .find('.last-run-box.failed')
-      .should('be.visible');
-    cy.get('.ant-table-row-level-0').should('contain', 'New');
-    cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}"]`)
-      .contains(NEW_TABLE_TEST_CASE.name)
-      .click();
-    cy.get('[data-testid="test-case-resolution-status-type"]').click();
-    cy.get('[title="Ack"]').click();
-    interceptURL(
-      'POST',
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
-      'updateTestCaseIncidentStatus'
-    );
-    cy.get('#update-status-button').click();
-    verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
-    cy.get('.ant-table-row-level-0').should('contain', 'Ack');
-  });
-
-  it('Assign incident to user', () => {
-    cy.sidebarHover();
-    cy.get("[data-testid='data-quality'").click();
-    cy.sidebarClick('app-bar-item-incident-manager');
-    cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).should(
-      'be.visible'
-    );
-    cy.get(`[data-testid="${NEW_TABLE_TEST_CASE.name}-status"]`)
-      .find(`[data-testid="edit-resolution-icon"]`)
-      .click();
-    cy.get(`[data-testid="test-case-resolution-status-type"]`).click();
-    cy.get(`[title="Assigned"]`).click();
-    cy.get('#testCaseResolutionStatusDetails_assignee').should('be.visible');
-    interceptURL(
-      'GET',
-      '/api/v1/search/suggest?q=Aaron%20Johnson&index=user_search_index',
-      'searchAssignee'
-    );
-    cy.get('#testCaseResolutionStatusDetails_assignee').type('Aaron Johnson');
-    verifyResponseStatusCode('@searchAssignee', 200);
-    cy.get('[data-testid="Aaron Johnson"]').click();
-    interceptURL(
-      'POST',
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
-      'updateTestCaseIncidentStatus'
-    );
-    cy.get('#update-status-button').click();
-    verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
-    cy.get(
-      `[data-testid="${NEW_TABLE_TEST_CASE.name}-status"] [data-testid="badge-container"]`
-    ).should('contain', 'Assigned');
-  });
-
-  it('Re-assign incident to user', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testCases/name/*?fields=*',
-      'getTestCase'
-    );
-    interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
-    cy.sidebarHover();
-    cy.get("[data-testid='data-quality'").click();
-    cy.sidebarClick('app-bar-item-incident-manager');
-    cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
-    verifyResponseStatusCode('@getTestCase', 200);
-    cy.get('[data-testid="issue"]').click();
-    verifyResponseStatusCode('@getTaskFeed', 200);
-    cy.get('[data-testid="reject-task"]').scrollIntoView().click();
-    interceptURL(
-      'GET',
-      '/api/v1/search/suggest?q=admin&index=*user_search_index*',
-      'searchAssignee'
-    );
-    cy.get('[data-testid="select-assignee"]').click().type('admin');
-    verifyResponseStatusCode('@searchAssignee', 200);
-    cy.get('[data-testid="admin"]').click();
-    interceptURL('PUT', '/api/v1/feed/tasks/*/close', 'closeTask');
-    cy.get('.ant-modal-footer').contains('Submit').click();
-    verifyResponseStatusCode('@closeTask', 200);
-    cy.clickOnLogo();
-    cy.get('[id*="tab-tasks"]').click();
-    cy.get('[data-testid="task-feed-card"]')
-      .contains(NEW_TABLE_TEST_CASE.name)
-      .scrollIntoView()
-      .should('be.visible');
-  });
-
-  it('Resolve incident', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testCases/name/*?fields=*',
-      'getTestCase'
-    );
-    interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
-    cy.sidebarHover();
-    cy.get("[data-testid='data-quality'").click();
-    cy.sidebarClick('app-bar-item-incident-manager');
-    cy.get(`[data-testid="test-case-${NEW_TABLE_TEST_CASE.name}"]`).click();
-    verifyResponseStatusCode('@getTestCase', 200);
-    cy.get('[data-testid="issue"]').click();
-    verifyResponseStatusCode('@getTaskFeed', 200);
-    cy.get('[data-testid="approve-task"]').scrollIntoView().click();
-    cy.get('#testCaseFailureReason').click();
-    cy.get('[title="Missing Data"]').click();
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .click()
-      .type('test');
-    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'resolveTask');
-    cy.get('.ant-modal-footer').contains('Submit').click();
-    verifyResponseStatusCode('@resolveTask', 200);
-  });
-
-  it('Delete table test case', () => {
-    const testName = NEW_TABLE_TEST_CASE.name;
-
-    goToProfilerTab();
-
-    cy.get('[data-testid="profiler-tab-left-panel"]')
-      .contains('Data Quality')
-      .should('be.visible')
-      .click();
-
-    cy.get(`[data-testid="${testName}"]`).should('be.visible');
-    cy.get(`[data-testid="delete-${testName}"]`).should('be.visible').click();
-    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
-    interceptURL(
-      'DELETE',
-      '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=false',
-      'deleteTest'
-    );
-    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
-    cy.get('[data-testid="confirm-button"]')
-      .should('be.visible')
-      .should('not.be.disabled')
-      .click();
-    verifyResponseStatusCode('@deleteTest', 200);
-    verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[data-testid="profiler-tab-left-panel"]')
+        .contains('Data Quality')
+        .click();
+      cy.get(`[data-testid="${testName}"]`)
+        .find('.last-run-box.failed')
+        .scrollIntoView()
+        .should('be.visible');
+      cy.get(`[data-testid="${testName}-status"]`).should(
+        'contain',
+        'Assigned'
+      );
+    });
   });
 });

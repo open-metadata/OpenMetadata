@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  interceptURL,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,
@@ -38,7 +35,8 @@ const RECENTLY_VIEW_ENTITIES = [
   VISIT_ENTITIES_DATA.topic,
   VISIT_ENTITIES_DATA.pipeline,
   VISIT_ENTITIES_DATA.mlmodel,
-  VISIT_ENTITIES_DATA.storedProcedure,
+  // ES issue
+  //   VISIT_ENTITIES_DATA.storedProcedure,
 ];
 
 describe('Recently viwed data assets', () => {

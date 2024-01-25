@@ -58,6 +58,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 - [Redshift](/connectors/database/redshift)
 - [Salesforce](/connectors/database/salesforce)
 - [SAP Hana](/connectors/database/sap-hana)
+- [SAS](/connectors/database/sas)
 - [SingleStore](/connectors/database/singlestore)
 - [Snowflake](/connectors/database/snowflake)
 - [SQLite](/connectors/database/sqlite)

@@ -26,6 +26,7 @@ import { PipelineServiceClientResponse } from '../generated/entity/services/inge
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
@@ -42,7 +43,7 @@ export const getIngestionPipelineByFqn = async (
   params?: ListParams
 ) => {
   const response = await APIClient.get<IngestionPipeline>(
-    `/services/ingestionPipelines/name/${fqn}`,
+    `/services/ingestionPipelines/name/${getEncodedFqn(fqn)}`,
     { params }
   );
 
@@ -171,11 +172,11 @@ export const postKillIngestionPipelineById = (
 };
 
 export const getRunHistoryForPipeline = async (
-  id: string,
+  fqn: string,
   params: { startTs: number; endTs: number }
 ) => {
   const response = await APIClient.get<PagingResponse<PipelineStatus[]>>(
-    `/services/ingestionPipelines/${id}/pipelineStatus`,
+    `/services/ingestionPipelines/${getEncodedFqn(fqn)}/pipelineStatus`,
     {
       params,
     }

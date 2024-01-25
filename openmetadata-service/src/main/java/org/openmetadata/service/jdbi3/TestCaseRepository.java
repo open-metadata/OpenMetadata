@@ -2,21 +2,24 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
-import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
-import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
@@ -42,7 +45,6 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -258,6 +260,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
+    ArrayList<String> fields = new ArrayList<>();
+    fields.add(TEST_SUITE_FIELD);
 
     // set the test case resolution status reference if test failed, by either
     // creating a new incident or returning the stateId of an unresolved incident
@@ -269,6 +273,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       // plotting the UI
       // even after the incident has been closed.
       testCaseResult.setIncidentId(incidentStateId);
+      // if the test case failed, we'll add the incidentId field to update the testCase entity on ln
+      // 293
+      fields.add(INCIDENTS_FIELD);
+    } else {
+      // If the test case passed, we'll remove the incidentId from the test case
+      testCase.setIncidentId(null);
     }
 
     // We add the incidentStateId in the DQ table to quickly link Test Case <> Incident
@@ -282,8 +292,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             JsonUtils.pojoToJson(testCaseResult),
             incidentStateId != null ? incidentStateId.toString() : null);
 
-    setFieldsInternal(
-        testCase, new EntityUtil.Fields(allowedFields, Set.of(TEST_SUITE_FIELD, INCIDENTS_FIELD)));
+    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, ImmutableSet.copyOf(fields)));
     setTestSuiteSummary(
         testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus(), false);
     setTestCaseResult(testCase, testCaseResult, false);
@@ -292,8 +301,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         getChangeEvent(
             updatedBy, withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   private UUID getOrCreateIncidentOnFailure(TestCase testCase, String updatedBy) {
@@ -355,8 +363,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           getChangeEvent(updatedBy, testCase, change, entityType, testCase.getVersion());
       setTestSuiteSummary(testCase, timestamp, storedTestCaseResult.getTestCaseStatus(), true);
       setTestCaseResult(testCase, storedTestCaseResult, true);
-      return new RestUtil.PutResponse<>(
-          Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
         String.format(
@@ -495,7 +502,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
+        .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
@@ -535,7 +542,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   /**
-   * Check all the test case results that have an ongoing incident and get the stateId of the incident
+   * Check all the test case results that have an ongoing incident and get the stateId of the
+   * incident
    */
   private UUID getIncidentId(TestCase test) {
     UUID ongoingIncident = null;
@@ -609,7 +617,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
 
     testSuite.setTests(testCasesEntityReferences);
-    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASES_ADDED);
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
   @Transaction
@@ -622,7 +630,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference entityReference =
         Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
     testCase.setTestSuite(entityReference);
-    return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
+    return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
   /** Remove test case from test suite summary and update test suite */
@@ -750,9 +758,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       this.dataQualityDataTimeSeriesDao = Entity.getCollectionDAO().dataQualityDataTimeSeriesDao();
     }
 
-    /**
-     * If the task is resolved, we'll resolve the Incident with the given reason
-     */
+    /** If the task is resolved, we'll resolve the Incident with the given reason */
     @Override
     @Transaction
     public TestCase performTask(String userName, ResolveTask resolveTask) {
@@ -801,9 +807,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     /**
-     * If we close the task, we'll flag the incident as Resolved as a False Positive, if
-     * it is not resolved yet.
-     * Closing the task means that the incident is not applicable.
+     * If we close the task, we'll flag the incident as Resolved as a False Positive, if it is not
+     * resolved yet. Closing the task means that the incident is not applicable.
      */
     @Override
     @Transaction

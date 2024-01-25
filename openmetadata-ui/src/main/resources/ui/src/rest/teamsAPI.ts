@@ -19,6 +19,7 @@ import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getTeams = async (
@@ -48,9 +49,12 @@ export const getTeamsHierarchy = async (isJoinable = false) => {
 };
 
 export const getTeamByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<Team>(`/teams/name/${name}`, {
-    params,
-  });
+  const response = await APIClient.get<Team>(
+    `/teams/name/${getEncodedFqn(name)}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
@@ -101,7 +105,7 @@ export const restoreTeam = async (id: string) => {
 
 export const exportTeam = async (teamName: string) => {
   const response = await APIClient.get<string>(
-    `/teams/name/${teamName}/export`
+    `/teams/name/${getEncodedFqn(teamName)}/export`
   );
 
   return response.data;
@@ -127,7 +131,7 @@ export const importTeam = async (
     },
   };
   const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/teams/name/${teamName}/import`,
+    `/teams/name/${getEncodedFqn(teamName)}/import`,
     data,
     configOptions
   );

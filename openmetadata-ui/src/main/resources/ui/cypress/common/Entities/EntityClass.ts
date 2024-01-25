@@ -26,6 +26,7 @@ import {
   deleteCustomPropertyForEntity,
   generateCustomProperty,
   setValueForProperty,
+  validateValueForProperty,
 } from '../Utils/CustomProperty';
 import { addDomainToEntity, removeDomainFromEntity } from '../Utils/Domain';
 import {
@@ -434,7 +435,11 @@ class EntityClass {
   // Delete
 
   softDeleteEntity() {
-    deleteEntity(this.entityName, this.endPoint);
+    deleteEntity(
+      this.entityName,
+      this.endPoint,
+      `Cypress ${this.name} updated`
+    );
   }
 
   restoreEntity() {
@@ -442,7 +447,7 @@ class EntityClass {
   }
 
   hardDeleteEntity() {
-    hardDeleteEntityUtil(this.entityName, this.endPoint);
+    hardDeleteEntityUtil(`Cypress ${this.name} updated`, this.endPoint);
   }
 
   // Announcement
@@ -483,9 +488,12 @@ class EntityClass {
 
   setCustomProperty(propertydetails: CustomProperty, value: string) {
     setValueForProperty(propertydetails.name, value);
+    validateValueForProperty(propertydetails.name, value);
   }
+
   updateCustomProperty(propertydetails: CustomProperty, value: string) {
     setValueForProperty(propertydetails.name, value);
+    validateValueForProperty(propertydetails.name, value);
   }
 }
 

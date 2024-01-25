@@ -55,6 +55,7 @@ import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
@@ -73,7 +74,6 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -84,8 +84,9 @@ const ContainerPage = () => {
   const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: containerFQN, tab } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab } = useParams<{ tab: EntityTabs }>();
+
+  const { fqn: decodedContainerName } = useFqn();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -105,11 +106,6 @@ const ContainerPage = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
-  );
-
-  const decodedContainerName = useMemo(
-    () => getDecodedFqn(containerFQN),
-    [containerFQN]
   );
 
   const fetchContainerDetail = async (containerFQN: string) => {
@@ -143,7 +139,7 @@ const ContainerPage = () => {
   const fetchContainerChildren = async () => {
     setIsChildrenLoading(true);
     try {
-      const { children } = await getContainerByName(containerFQN, {
+      const { children } = await getContainerByName(decodedContainerName, {
         fields: 'children',
       });
       setContainerChildrenData(children);
@@ -514,7 +510,11 @@ const ContainerPage = () => {
 
   const versionHandler = () =>
     history.push(
-      getVersionPath(EntityType.CONTAINER, containerFQN, toString(version))
+      getVersionPath(
+        EntityType.CONTAINER,
+        decodedContainerName,
+        toString(version)
+      )
     );
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -605,6 +605,7 @@ const ContainerPage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={containerData}
                 dataProducts={containerData?.dataProducts ?? []}
                 domain={containerData?.domain}
                 editTagPermission={
@@ -614,6 +615,7 @@ const ContainerPage = () => {
                 entityId={containerData?.id ?? ''}
                 entityType={EntityType.CONTAINER}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -661,7 +663,9 @@ const ContainerPage = () => {
             entityType={EntityType.CONTAINER}
             fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={() => fetchContainerDetail(containerFQN)}
+            onUpdateEntityDetails={() =>
+              fetchContainerDetail(decodedContainerName)
+            }
           />
         ),
       },
@@ -687,13 +691,16 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.CONTAINER}
-            handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: containerData && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.CONTAINER>
+              entityDetails={containerData}
+              entityType={EntityType.CONTAINER}
+              handleExtensionUpdate={handleExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],
@@ -701,7 +708,7 @@ const ContainerPage = () => {
       isDataModelEmpty,
       containerData,
       description,
-      containerFQN,
+      decodedContainerName,
       decodedContainerName,
       entityName,
       editDescriptionPermission,
@@ -729,7 +736,7 @@ const ContainerPage = () => {
     try {
       await updateContainerVotes(id, data);
 
-      const details = await getContainerByName(containerFQN, {
+      const details = await getContainerByName(decodedContainerName, {
         fields: 'parent,dataModel,owner,tags,followers,extension,votes',
       });
 
@@ -741,8 +748,8 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    fetchResourcePermission(containerFQN);
-  }, [containerFQN]);
+    fetchResourcePermission(decodedContainerName);
+  }, [decodedContainerName]);
 
   // Rendering
   if (isLoading) {
@@ -752,7 +759,7 @@ const ContainerPage = () => {
   if (hasError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), containerFQN)}
+        {getEntityMissingError(t('label.container'), decodedContainerName)}
       </ErrorPlaceHolder>
     );
   }

@@ -33,9 +33,10 @@ import { AxiosError } from 'axios';
 import { intersection, isEmpty, map, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   GlobalSettingOptions,
@@ -53,6 +54,7 @@ import {
 } from '../../generated/events/eventSubscription';
 import { SubscriptionResourceDescriptor } from '../../generated/events/subscriptionResourceDescriptor';
 import { Function } from '../../generated/type/function';
+import { useFqn } from '../../hooks/useFqn';
 import {
   createAlert,
   getAlertsFromId,
@@ -79,7 +81,7 @@ const AddAlertPage = () => {
   const { t } = useTranslation();
   const [form] = useForm<EventSubscription>();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   // To block certain action based on provider of the Alert e.g. System / User
   const [provider, setProvider] = useState<ProviderType>(ProviderType.User);
 
@@ -196,7 +198,7 @@ const AddAlertPage = () => {
           ...(filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
-        alertType: AlertType.ChangeEvent,
+        alertType: AlertType.Notification,
         provider,
       });
 
@@ -423,10 +425,10 @@ const AddAlertPage = () => {
               {sendToCommonFields}
             </>
           );
-        case SubscriptionType.GenericWebhook:
-        case SubscriptionType.SlackWebhook:
-        case SubscriptionType.MSTeamsWebhook:
-        case SubscriptionType.GChatWebhook:
+        case SubscriptionType.Generic:
+        case SubscriptionType.Slack:
+        case SubscriptionType.MSTeams:
+        case SubscriptionType.GChat:
           return (
             <>
               <Form.Item required name={['subscriptionConfig', 'endpoint']}>
@@ -481,8 +483,8 @@ const AddAlertPage = () => {
   }, [subscriptionType]);
 
   return (
-    <>
-      <Row gutter={[16, 16]}>
+    <PageLayoutV1 pageTitle={getEntityName(alert)}>
+      <Row className="page-container" gutter={[16, 16]}>
         <Col span={24}>
           <Typography.Title level={5}>
             {!isEmpty(fqn)
@@ -680,10 +682,9 @@ const AddAlertPage = () => {
                           })}
                           showSearch={false}>
                           {map(SubscriptionType, (value) => {
-                            return [
-                              SubscriptionType.ActivityFeed,
-                              SubscriptionType.DataInsight,
-                            ].includes(value) ? null : (
+                            return [SubscriptionType.ActivityFeed].includes(
+                              value
+                            ) ? null : (
                               <Select.Option key={value} value={value}>
                                 <Space size={16}>
                                   {getAlertsActionTypeIcon(
@@ -719,7 +720,7 @@ const AddAlertPage = () => {
         <Col span={24} />
         <Col span={24} />
       </Row>
-    </>
+    </PageLayoutV1>
   );
 };
 

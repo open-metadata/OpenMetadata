@@ -12,6 +12,10 @@
  */
 
 import { BASE_URL } from './constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from './settings.constant';
 
 export const LEFT_PANEL_DETAILS = {
   tables: {
@@ -62,147 +66,197 @@ export const LEFT_PANEL_DETAILS = {
 
 export const NAVBAR_DETAILS = {
   explore: {
-    testid: '[data-testid="app-bar-item-explore"]',
+    testid: 'app-bar-item-explore',
     url: `${BASE_URL}/explore/tables`,
   },
   quality: {
-    testid: `[data-testid="data-quality"]`,
-    subMenu: '[data-testid="app-bar-item-data-contract"]',
+    testid: `observability`,
+    subMenu: 'app-bar-item-data-quality',
     url: `${BASE_URL}/data-quality`,
   },
   incidentManager: {
-    testid: `[data-testid="data-quality"]`,
-    subMenu: '[data-testid="app-bar-item-incident-manager"]',
+    testid: `observability`,
+    subMenu: 'app-bar-item-incident-manager',
     url: `${BASE_URL}/incident-manager`,
   },
   insights: {
-    testid: '[data-testid="app-bar-item-data-insight"]',
+    testid: 'app-bar-item-data-insight',
     url: `${BASE_URL}/data-insights`,
   },
   glossary: {
-    testid: `[data-testid="governance"]`,
-    subMenu: `[data-testid="app-bar-item-glossary"]`,
+    testid: 'governance',
+    subMenu: `app-bar-item-glossary`,
     url: `${BASE_URL}/glossary`,
   },
   tags: {
-    testid: `[data-testid="governance"]`,
-    subMenu: '[data-testid="app-bar-item-tags"]',
+    testid: 'governance',
+    subMenu: 'app-bar-item-tags',
     url: `${BASE_URL}/tags/`,
   },
   settings: {
-    testid: '[data-testid="app-bar-item-settings"]',
-    url: `${BASE_URL}/settings/members/teams/Organization`,
+    testid: 'app-bar-item-settings',
+    url: `${BASE_URL}/settings`,
   },
   profile: {
-    testid: '[data-testid="dropdown-profile"]',
-    subMenu: '[data-testid="user-name"]',
+    testid: 'dropdown-profile',
+    subMenu: 'user-name',
     url: `${BASE_URL}/users/admin`,
   },
 };
 
-export const SETTINGS_LEFT_PANEL = {
-  settings: {
-    testid: '[data-testid="app-bar-item-settings"]',
-    url: `${BASE_URL}/settings/members/teams/Organization`,
-  },
-  teams: {
-    testid: '[data-menu-id*="teams"]',
-    url: `${BASE_URL}/settings/members/teams/Organization`,
-  },
-  users: {
-    testid: '[data-menu-id*="users"]',
-    url: `${BASE_URL}/settings/members/users`,
-  },
-  admins: {
-    testid: '[data-menu-id*="admins"]',
-    url: `${BASE_URL}/settings/members/admins`,
-  },
-  roles: {
-    testid: '[data-menu-id*="roles"]',
-    url: `${BASE_URL}/settings/access/roles`,
-  },
-  policies: {
-    testid: '[data-menu-id*="policies"]',
-    url: `${BASE_URL}/settings/access/policies`,
-  },
+export const SETTINGS_PAGE_OPTIONS = {
+  // Services
   databases: {
-    testid: '[data-menu-id*="services.databases"]',
+    testid: GlobalSettingOptions.DATABASES,
     url: `${BASE_URL}/settings/services/databases`,
   },
   messaging: {
-    testid: '[data-menu-id*="services.messaging"]',
+    testid: GlobalSettingOptions.MESSAGING,
     url: `${BASE_URL}/settings/services/messaging`,
   },
   dashboard: {
-    testid: '[data-menu-id*="services.dashboards"]',
+    testid: GlobalSettingOptions.DASHBOARDS,
     url: `${BASE_URL}/settings/services/dashboards`,
   },
-  pipelines: {
-    testid: '[data-menu-id*="services.pipelines"]',
+  pipeline: {
+    testid: GlobalSettingOptions.PIPELINES,
     url: `${BASE_URL}/settings/services/pipelines`,
   },
-  mlmodels: {
-    testid: '[data-menu-id*="services.mlmodels"]',
+  mlmodel: {
+    testid: GlobalSettingOptions.MLMODELS,
     url: `${BASE_URL}/settings/services/mlmodels`,
   },
-  metadata: {
-    testid: '[data-menu-id*="services.metadata"]',
-    url: `${BASE_URL}/settings/services/metadata`,
-  },
   storages: {
-    testid: '[data-menu-id*="services.storages"]',
+    testid: GlobalSettingOptions.STORAGES,
     url: `${BASE_URL}/settings/services/storages`,
   },
+
   searchService: {
-    testid: '[data-menu-id*="services.search"]',
+    testid: GlobalSettingOptions.SEARCH,
     url: `${BASE_URL}/settings/services/search`,
   },
-  activityFeeds: {
-    testid: '[data-menu-id*="notifications.activityFeeds"]',
-    url: `${BASE_URL}/settings/notifications/activityFeeds`,
+  metadata: {
+    testid: GlobalSettingOptions.METADATA,
+    url: `${BASE_URL}/settings/services/metadata`,
   },
-  alerts: {
-    testid: '[data-menu-id*="notifications.alerts"]',
-    url: `${BASE_URL}/settings/notifications/alerts`,
-  },
-  customAttributesTable: {
-    testid: '[data-menu-id*="tables"]',
-    url: `${BASE_URL}/settings/customAttributes/tables`,
-  },
-  customAttributesTopics: {
-    testid: '[data-menu-id*="topics"]',
-    url: `${BASE_URL}/settings/customAttributes/topics`,
-  },
-  customAttributesDashboards: {
-    testid: '[data-menu-id*="customAttributes.dashboards"]',
-    url: `${BASE_URL}/settings/customAttributes/dashboards`,
-  },
-  customAttributesPipelines: {
-    testid: '[data-menu-id*="customAttributes.pipelines"]',
-    url: `${BASE_URL}/settings/customAttributes/pipelines`,
-  },
-  customAttributesMlModels: {
-    testid: '[data-menu-id*="customAttributes.mlmodels"]',
-    url: `${BASE_URL}/settings/customAttributes/mlmodels`,
-  },
-  customAttributesContainers: {
-    testid: '[data-menu-id*="customAttributes.containers"]',
-    url: `${BASE_URL}/settings/customAttributes/containers`,
-  },
-  customAttributesSearchIndex: {
-    testid: '[data-menu-id*="customAttributes.searchIndexes"]',
-    url: `${BASE_URL}/settings/customAttributes/searchIndexes`,
-  },
-  customAttributesStoredProcedure: {
-    testid: '[data-menu-id*="customAttributes.storedProcedures"]',
-    url: `${BASE_URL}/settings/customAttributes/storedProcedures`,
-  },
+
+  // Integrations
   applications: {
-    testid: '[data-menu-id*="integrations.apps"]',
-    url: `${BASE_URL}/settings/integrations/apps`,
+    testid: GlobalSettingOptions.APPLICATIONS,
+    url: `${BASE_URL}/settings/apps`,
   },
   bots: {
-    testid: '[data-menu-id*="bots"]',
-    url: `${BASE_URL}/settings/integrations/bots`,
+    testid: GlobalSettingOptions.BOTS,
+    url: `${BASE_URL}/settings/bots`,
+  },
+
+  // Notification
+  notification: {
+    testid: GlobalSettingsMenuCategory.NOTIFICATIONS,
+    url: `${BASE_URL}/settings/notifications`,
+  },
+
+  // Teams  User Management
+  users: {
+    testid: GlobalSettingOptions.USERS,
+    url: `${BASE_URL}/settings/members/users`,
+  },
+  teams: {
+    testid: GlobalSettingOptions.TEAMS,
+    url: `${BASE_URL}/settings/members/teams/Organization`,
+  },
+  admins: {
+    testid: GlobalSettingOptions.ADMINS,
+    url: `${BASE_URL}/settings/members/admins`,
+  },
+  persona: {
+    testid: GlobalSettingOptions.PERSONA,
+    url: `${BASE_URL}/settings/members/persona`,
+  },
+
+  // Access Control
+  roles: {
+    testid: GlobalSettingOptions.ROLES,
+    url: `${BASE_URL}/settings/access/roles`,
+  },
+  policies: {
+    testid: GlobalSettingOptions.POLICIES,
+    url: `${BASE_URL}/settings/access/policies`,
+  },
+
+  // Open-metadata
+  customizeLandingPage: {
+    testid: GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE,
+    url: `${BASE_URL}/settings/openMetadata/customizeLandingPage`,
+  },
+  email: {
+    testid: GlobalSettingOptions.EMAIL,
+    url: `${BASE_URL}/settings/openMetadata/email`,
+  },
+  customLogo: {
+    testid: GlobalSettingOptions.CUSTOM_LOGO,
+    url: `${BASE_URL}/settings/openMetadata/customLogo`,
+  },
+  loginConfiguration: {
+    testid: GlobalSettingOptions.LOGIN_CONFIGURATION,
+    url: `${BASE_URL}/settings/openMetadata/loginConfiguration`,
+  },
+
+  // CustomProperties
+
+  customPropertiesTable: {
+    testid: GlobalSettingOptions.TABLES,
+    url: `${BASE_URL}/settings/customProperties/tables`,
+    isCustomProperty: true,
+  },
+  customPropertiesTopics: {
+    testid: GlobalSettingOptions.TOPICS,
+    url: `${BASE_URL}/settings/customProperties/topics`,
+    isCustomProperty: true,
+  },
+  customPropertiesDashboards: {
+    testid: GlobalSettingOptions.DASHBOARDS,
+    url: `${BASE_URL}/settings/customProperties/dashboards`,
+    isCustomProperty: true,
+  },
+  customPropertiesPipelines: {
+    testid: GlobalSettingOptions.PIPELINES,
+    url: `${BASE_URL}/settings/customProperties/pipelines`,
+    isCustomProperty: true,
+  },
+  customPropertiesMlModels: {
+    testid: GlobalSettingOptions.MLMODELS,
+    url: `${BASE_URL}/settings/customProperties/mlmodels`,
+    isCustomProperty: true,
+  },
+  customPropertiesContainers: {
+    testid: GlobalSettingOptions.CONTAINERS,
+    url: `${BASE_URL}/settings/customProperties/containers`,
+    isCustomProperty: true,
+  },
+  customPropertiesSearchIndex: {
+    testid: GlobalSettingOptions.SEARCH_INDEXES,
+    url: `${BASE_URL}/settings/customProperties/searchIndexes`,
+    isCustomProperty: true,
+  },
+  customPropertiesStoredProcedure: {
+    testid: GlobalSettingOptions.STORED_PROCEDURES,
+    url: `${BASE_URL}/settings/customProperties/storedProcedures`,
+    isCustomProperty: true,
+  },
+  customPropertiesGlossaryTerm: {
+    testid: GlobalSettingOptions.GLOSSARY_TERM,
+    url: `${BASE_URL}/settings/customProperties/glossaryTerm`,
+    isCustomProperty: true,
+  },
+  customPropertiesDatabases: {
+    testid: GlobalSettingOptions.DATABASES,
+    url: `${BASE_URL}/settings/customProperties/databases`,
+    isCustomProperty: true,
+  },
+  customPropertiesDatabaseSchema: {
+    testid: GlobalSettingOptions.DATABASE_SCHEMA,
+    url: `${BASE_URL}/settings/customProperties/databaseSchemas`,
+    isCustomProperty: true,
   },
 };

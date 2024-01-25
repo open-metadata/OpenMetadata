@@ -70,7 +70,8 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+
+import { useFqn } from '../../../hooks/useFqn';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -93,10 +94,11 @@ const GlossaryHeader = ({
   const history = useHistory();
   const { currentUser } = useAuthContext();
 
-  const { fqn, version } = useParams<{
-    fqn: string;
+  const { version } = useParams<{
     version: string;
   }>();
+  const { fqn } = useFqn();
+  const { id } = useParams<{ id: string }>();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -114,8 +116,8 @@ const GlossaryHeader = ({
   const fetchCurrentGlossaryInfo = async () => {
     try {
       const res = isGlossary
-        ? await getGlossariesById(fqn)
-        : await getGlossaryTermsById(fqn);
+        ? await getGlossariesById(id)
+        : await getGlossaryTermsById(id);
 
       setLatestGlossaryData(res);
     } catch (error) {
@@ -183,7 +185,7 @@ const GlossaryHeader = ({
   const handleGlossaryImport = () =>
     history.push(
       getGlossaryPathWithAction(
-        getEncodedFqn(selectedData.fullyQualifiedName ?? ''),
+        selectedData.fullyQualifiedName ?? '',
         EntityAction.IMPORT
       )
     );
@@ -479,7 +481,7 @@ const GlossaryHeader = ({
     if (isVersionView) {
       fetchCurrentGlossaryInfo();
     }
-  }, []);
+  }, [id]);
 
   return (
     <>

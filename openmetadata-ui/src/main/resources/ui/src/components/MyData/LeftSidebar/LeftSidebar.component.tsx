@@ -107,9 +107,7 @@ const LeftSidebar = () => {
           <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
             <BrandImage
               alt="OpenMetadata Logo"
-              className={classNames('vertical-middle ', {
-                'm-l-sm': !isSidebarCollapsed,
-              })}
+              className="vertical-middle"
               dataTestId="image"
               height={isSidebarCollapsed ? 30 : 34}
               isMonoGram={isSidebarCollapsed}
@@ -120,7 +118,6 @@ const LeftSidebar = () => {
 
         <Col className="w-full">
           <Menu
-            inlineCollapsed
             items={TOP_SIDEBAR_MENU_ITEMS}
             mode="inline"
             rootClassName="left-sidebar-menu"
@@ -132,7 +129,6 @@ const LeftSidebar = () => {
 
       <Row className="p-y-sm">
         <Menu
-          inlineCollapsed
           items={LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS}
           mode="inline"
           rootClassName="left-sidebar-menu"

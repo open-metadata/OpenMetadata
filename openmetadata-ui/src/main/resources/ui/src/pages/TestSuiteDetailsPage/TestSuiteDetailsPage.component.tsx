@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { AddTestCaseList } from '../../components/AddTestCaseList/AddTestCaseList.component';
 import Description from '../../components/common/EntityDescription/Description';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -43,6 +43,7 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import {
   addTestCaseToLogicalTestSuite,
@@ -53,14 +54,17 @@ import {
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import {
+  getDataQualityPagePath,
+  getTestSuitePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-suite-details-page.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: testSuiteFQN } = useParams<{ fqn: string }>();
+  const { fqn: testSuiteFQN } = useFqn();
   const { isAdminUser } = useAuth();
   const history = useHistory();
 
@@ -97,6 +101,19 @@ const TestSuiteDetailsPage = () => {
       testSuiteId: testSuite?.id ?? '',
       testSuiteDescription: testSuite?.description ?? '',
     };
+  }, [testSuite]);
+
+  const incidentUrlState = useMemo(() => {
+    return [
+      {
+        name: t('label.test-suite-plural'),
+        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+      },
+      {
+        name: getEntityName(testSuite),
+        url: getTestSuitePath(testSuite?.fullyQualifiedName ?? ''),
+      },
+    ];
   }, [testSuite]);
 
   const saveAndUpdateTestSuiteData = (updatedData: TestSuite) => {
@@ -340,6 +357,7 @@ const TestSuiteDetailsPage = () => {
                 allowSoftDelete={false}
                 canDelete={isAdminUser}
                 deleted={testSuite?.deleted}
+                displayName={getEntityName(testSuite)}
                 entityId={testSuite?.id}
                 entityName={testSuite?.fullyQualifiedName as string}
                 entityType={EntityType.TEST_SUITE}
@@ -370,6 +388,7 @@ const TestSuiteDetailsPage = () => {
         <Col span={24}>
           <DataQualityTab
             afterDeleteAction={fetchTestCases}
+            breadcrumbData={incidentUrlState}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={{ testSuite: testSuite as TestSuite }}

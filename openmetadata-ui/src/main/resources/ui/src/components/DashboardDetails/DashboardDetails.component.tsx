@@ -40,12 +40,12 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { restoreDashboard } from '../../rest/dashboardAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -91,8 +91,10 @@ const DashboardDetails = ({
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const history = useHistory();
-  const { fqn: dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.DETAILS } =
+    useParams<{ tab: EntityTabs }>();
+
+  const { fqn: decodedDashboardFQN } = useFqn();
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
@@ -112,11 +114,6 @@ const DashboardDetails = ({
   const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
     Array<ChartsPermissions>
   >([]);
-
-  const decodedDashboardFQN = useMemo(
-    () => getDecodedFqn(dashboardFQN),
-    [dashboardFQN]
-  );
 
   const {
     owner,
@@ -185,7 +182,7 @@ const DashboardDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [dashboardFQN]);
+  }, [decodedDashboardFQN]);
 
   const getAllChartsPermissions = useCallback(
     async (charts: ChartType[]) => {
@@ -624,6 +621,7 @@ const DashboardDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={dashboardDetails}
                 dataProducts={dashboardDetails?.dataProducts ?? []}
                 domain={dashboardDetails?.domain}
                 editTagPermission={editTagsPermission}
@@ -631,6 +629,7 @@ const DashboardDetails = ({
                 entityId={dashboardDetails.id}
                 entityType={EntityType.DASHBOARD}
                 selectedTags={dashboardTags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -679,13 +678,16 @@ const DashboardDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.DASHBOARD}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: dashboardDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.DASHBOARD>
+              entityDetails={dashboardDetails}
+              entityType={EntityType.DASHBOARD}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],

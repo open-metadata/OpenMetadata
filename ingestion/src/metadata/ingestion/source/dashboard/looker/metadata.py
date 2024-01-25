@@ -47,9 +47,7 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as MetadataDashboard,
-)
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
@@ -616,7 +614,7 @@ class LookerSource(DashboardServiceSource):
             dashboard_id=dashboard.id, fields=",".join(GET_DASHBOARD_FIELDS)
         )
 
-    def get_owner_details(
+    def get_owner_ref(
         self, dashboard_details: LookerDashboard
     ) -> Optional[EntityReference]:
         """Get dashboard owner
@@ -659,13 +657,14 @@ class LookerSource(DashboardServiceSource):
                     service_name=self.context.dashboard_service,
                     chart_name=chart,
                 )
-                for chart in self.context.charts
+                for chart in self.context.charts or []
             ],
             # Dashboards are created from the UI directly. They are not linked to a project
             # like LookML assets, but rather just organised in folders.
             project=self._get_dashboard_project(dashboard_details),
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service,
+            owner=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
@@ -758,12 +757,12 @@ class LookerSource(DashboardServiceSource):
                 if cached_explore:
                     dashboard_fqn = fqn.build(
                         self.metadata,
-                        entity_type=MetadataDashboard,
+                        entity_type=Dashboard,
                         service_name=self.context.dashboard_service,
                         dashboard_name=self.context.dashboard,
                     )
                     dashboard_entity = self.metadata.get_by_name(
-                        entity=MetadataDashboard, fqn=dashboard_fqn
+                        entity=Dashboard, fqn=dashboard_fqn
                     )
                     yield Either(
                         right=AddLineageRequest(
@@ -796,7 +795,7 @@ class LookerSource(DashboardServiceSource):
         self,
         source: str,
         db_service_name: str,
-        to_entity: Union[MetadataDashboard, DashboardDataModel],
+        to_entity: Union[Dashboard, DashboardDataModel],
     ) -> Optional[Either[AddLineageRequest]]:
         """
         Once we have a list of origin data sources, check their components
@@ -941,9 +940,23 @@ class LookerSource(DashboardServiceSource):
         :return: UsageRequest, if not computed
         """
 
-        dashboard: MetadataDashboard = self.context.dashboard
+        dashboard_name = self.context.dashboard
 
         try:
+
+            dashboard_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.dashboard_service,
+                dashboard_name=dashboard_name,
+            )
+
+            dashboard: Dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,
+                fields=["usageSummary"],
+            )
+
             current_views = dashboard_details.view_count
 
             if not current_views:
@@ -995,8 +1008,8 @@ class LookerSource(DashboardServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=f"{dashboard.name} Usage",
-                    error=f"Exception computing dashboard usage for {dashboard.fullyQualifiedName.__root__}: {exc}",
+                    name=f"{dashboard_name} Usage",
+                    error=f"Exception computing dashboard usage for {dashboard_name}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )

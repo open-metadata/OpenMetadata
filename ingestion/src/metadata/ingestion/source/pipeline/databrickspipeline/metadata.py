@@ -81,7 +81,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[dict]:
-        for workflow in self.client.list_jobs():
+        for workflow in self.client.list_jobs() or []:
             yield workflow
 
     def get_pipeline_name(self, pipeline_details: dict) -> str:
@@ -133,7 +133,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def get_tasks(self, pipeline_details: dict) -> List[Task]:
         task_list = []
-        self._append_context(key="job_id_list", value=pipeline_details["job_id"])
+        self.context.append(key="job_id_list", value=pipeline_details["job_id"])
 
         downstream_tasks = self.get_downstream_tasks(
             pipeline_details["settings"].get("tasks")
@@ -195,7 +195,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         for job_id in self.context.job_id_list:
             try:
                 runs = self.client.get_job_runs(job_id=job_id)
-                for attempt in runs:
+                for attempt in runs or []:
                     for task_run in attempt["tasks"]:
                         task_status = []
                         task_status.append(

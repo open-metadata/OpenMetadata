@@ -15,7 +15,7 @@ import { interceptURL, verifyResponseStatusCode } from '../common';
 const userURL =
   '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
 const teamURL =
-  '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index';
+  '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index&sort_field=displayName.keyword&sort_order=asc';
 
 export const validateOwnerAndTeamCounts = () => {
   cy.getAllLocalStorage().then((data) => {
@@ -54,7 +54,7 @@ export const validateOwnerAndTeamCounts = () => {
   cy.clickOutside();
 };
 
-export const addOwner = (ownerName: string) => {
+export const addOwner = (ownerName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
@@ -76,10 +76,13 @@ export const addOwner = (ownerName: string) => {
   cy.get(`.ant-popover [title="${ownerName}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get('[data-testid="owner-link"]').should('contain', ownerName);
+  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
+    'contain',
+    ownerName
+  );
 };
 
-export const updateOwner = (ownerName: string) => {
+export const updateOwner = (ownerName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
@@ -103,10 +106,13 @@ export const updateOwner = (ownerName: string) => {
   cy.get(`.ant-popover [title="${ownerName}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get('[data-testid="owner-link"]').should('contain', ownerName);
+  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
+    'contain',
+    ownerName
+  );
 };
 
-export const removeOwner = (ownerName: string) => {
+export const removeOwner = (ownerName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
@@ -116,13 +122,16 @@ export const removeOwner = (ownerName: string) => {
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get('[data-testid="owner-link"]').should('not.contain', ownerName);
+  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
+    'not.contain',
+    ownerName
+  );
 };
 
-export const addTeamAsOwner = (teamName: string) => {
+export const addTeamAsOwner = (teamName: string, dataTestId?: string) => {
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index',
+    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&sort_field=displayName.keyword&sort_order=asc',
     'getTeams'
   );
 
@@ -147,10 +156,13 @@ export const addTeamAsOwner = (teamName: string) => {
   cy.get(`.ant-popover [title="${teamName}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get('[data-testid="owner-link"]').should('contain', teamName);
+  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
+    'contain',
+    teamName
+  );
 };
 
-export const updateTeamAsOwner = (teamName: string) => {
+export const updateTeamAsOwner = (teamName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
@@ -172,10 +184,13 @@ export const updateTeamAsOwner = (teamName: string) => {
   cy.get(`.ant-popover [title="${teamName}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
-  cy.get('[data-testid="owner-link"]').should('contain', teamName);
+  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
+    'contain',
+    teamName
+  );
 };
 
-export const removeTeamAsOwner = (teamName: string) => {
+export const removeTeamAsOwner = (teamName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
@@ -186,4 +201,9 @@ export const removeTeamAsOwner = (teamName: string) => {
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get('[data-testid="owner-link"]').should('not.contain', teamName);
+
+  cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
+    'not.contain',
+    teamName
+  );
 };

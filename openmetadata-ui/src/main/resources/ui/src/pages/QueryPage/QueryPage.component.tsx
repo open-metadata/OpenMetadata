@@ -33,6 +33,7 @@ import { getTableTabPath } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Query } from '../../generated/entity/data/query';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getQueryById,
   patchQueries,
@@ -44,8 +45,8 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const QueryPage = () => {
-  const { fqn: datasetFQN, queryId } =
-    useParams<{ fqn: string; queryId: string }>();
+  const { queryId } = useParams<{ queryId: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
 
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<

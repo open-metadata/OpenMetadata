@@ -112,6 +112,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -3167,14 +3168,14 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
 
-    default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
+    default List<String> list(EventType eventType, List<String> entityTypes, long timestamp) {
       if (nullOrEmpty(entityTypes)) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {
-        return listWithoutEntityFilter(eventType, timestamp);
+        return listWithoutEntityFilter(eventType.value(), timestamp);
       }
-      return listWithEntityFilter(eventType, entityTypes, timestamp);
+      return listWithEntityFilter(eventType.value(), entityTypes, timestamp);
     }
 
     @SqlQuery(
@@ -3708,14 +3709,6 @@ public interface CollectionDAO {
       return "data_quality_data_time_series";
     }
 
-    @SqlUpdate(
-        value =
-            "UPDATE data_quality_data_time_series SET incidentId = NULL "
-                + "WHERE entityFQNHash = :testCaseFQNHash and incidentId = :incidentStateId")
-    void cleanTestCaseIncident(
-        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
-        @Bind("incidentStateId") String incidentStateId);
-
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
@@ -3759,6 +3752,53 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
     void delete(@BindFQN("entityFQNHash") String entityFQNHash);
+
+    @SqlQuery(
+        "SELECT json FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "AND timestamp BETWEEN :startTs AND :endTs "
+            + "ORDER BY timestamp DESC) ranked "
+            + "<outerCond> AND ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+    List<String> listWithOffset(
+        @Define("table") String table,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default List<String> listWithOffset(
+        ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
+      if (latest) {
+        // When fetching latest, we need to apply Assignee and Status filters on the outer query
+        // i.e. after we have fetched the latest records for each testCaseFQNHash
+        // We'll first get the values, remove then from `filter` and then create `outerFilter`
+        String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
+        filter.removeQueryParam("testCaseResolutionStatusType");
+        String assignee = filter.getQueryParam("assignee");
+        filter.removeQueryParam("assignee");
+
+        ListFilter outerFilter = new ListFilter(null);
+        outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
+        outerFilter.addQueryParam("assignee", assignee);
+
+        return listWithOffset(
+            getTimeSeriesTableName(),
+            filter.getCondition(),
+            getPartitionFieldName(),
+            limit,
+            offset,
+            startTs,
+            endTs,
+            outerFilter.getCondition());
+      }
+      return listWithOffset(
+          getTimeSeriesTableName(), filter.getCondition(), limit, offset, startTs, endTs);
+    }
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

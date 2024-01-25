@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DateRangeObject } from 'Models';
 import { CurveType } from 'recharts/types/shape/Curve';
 import {
   Column,
@@ -21,7 +22,7 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { ListTestCaseParams } from '../../rest/testAPI';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import { DateRangeObject } from './component/TestSummary';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
@@ -111,6 +112,7 @@ export interface DataQualityTabProps {
     testSuite: TestSuite;
   };
   showPagination?: boolean;
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
 }
 
 export interface TestSummaryProps {

@@ -136,14 +136,14 @@ const Suggestions = ({
     }
 
     return (
-      <>
+      <div data-testid={`group-${searchIndex}`}>
         {getGroupLabel(searchIndex)}
         {suggestions.map((suggestion: SearchSuggestions[number]) => {
           return getSuggestionElement(suggestion, searchIndex, () =>
             setIsOpen(false)
           );
         })}
-      </>
+      </div>
     );
   };
 
@@ -205,7 +205,7 @@ const Suggestions = ({
         '',
         '',
         '',
-        searchCriteria ?? SearchIndex.ALL
+        searchCriteria ?? SearchIndex.DATA_ASSET
       );
 
       if (res.data) {

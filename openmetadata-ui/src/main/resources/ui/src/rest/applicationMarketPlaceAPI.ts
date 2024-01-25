@@ -13,6 +13,7 @@
 import { PagingResponse } from 'Models';
 import { AppMarketPlaceDefinition } from '../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps/marketplace';
@@ -31,7 +32,7 @@ export const getMarketPlaceApplicationByFqn = async (
   appFqn: string,
   params?: ListParams
 ) => {
-  const url = `/apps/marketplace/name/${appFqn}`;
+  const url = `/apps/marketplace/name/${getEncodedFqn(appFqn)}`;
 
   const response = await APIClient.get<AppMarketPlaceDefinition>(url, {
     params,

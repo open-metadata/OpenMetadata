@@ -64,6 +64,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getDashboardByFqn,
   getDashboardVersion,
@@ -112,7 +113,6 @@ import {
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSearchIndexTabPath } from '../../utils/SearchIndexUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import './EntityVersionPage.less';
 
@@ -135,17 +135,13 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as VersionData
   );
 
-  const {
-    entityType,
-    version,
-    fqn: entityFQN,
-    tab,
-  } = useParams<{
+  const { entityType, version, tab } = useParams<{
     entityType: EntityType;
     version: string;
-    fqn: string;
     tab: EntityTabs;
   }>();
+
+  const { fqn: decodedEntityFQN } = useFqn();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityPermissions, setEntityPermissions] =
@@ -157,10 +153,9 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const backHandler = useCallback(() => {
-    const decodedEntityFQN = getDecodedFqn(entityFQN);
     switch (entityType) {
       case EntityType.TABLE:
-        history.push(getTableTabPath(entityFQN, tab));
+        history.push(getTableTabPath(decodedEntityFQN, tab));
 
         break;
 
@@ -190,7 +185,7 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
 
       case EntityType.SEARCH_INDEX:
-        history.push(getSearchIndexTabPath(entityFQN, tab));
+        history.push(getSearchIndexTabPath(decodedEntityFQN, tab));
 
         break;
 
@@ -207,28 +202,28 @@ const EntityVersionPage: FunctionComponent = () => {
       default:
         break;
     }
-  }, [entityType, entityFQN, tab]);
+  }, [entityType, decodedEntityFQN, tab]);
 
   const versionHandler = useCallback(
     (newVersion = version) => {
       if (tab) {
         history.push(
-          getVersionPathWithTab(entityType, entityFQN, newVersion, tab)
+          getVersionPathWithTab(entityType, decodedEntityFQN, newVersion, tab)
         );
       } else {
-        history.push(getVersionPath(entityType, entityFQN, newVersion));
+        history.push(getVersionPath(entityType, decodedEntityFQN, newVersion));
       }
     },
-    [entityType, entityFQN, tab]
+    [entityType, decodedEntityFQN, tab]
   );
 
   const fetchResourcePermission = useCallback(
     async (resourceEntity: ResourceEntity) => {
-      if (!isEmpty(entityFQN)) {
+      if (!isEmpty(decodedEntityFQN)) {
         try {
           const permission = await getEntityPermissionByFqn(
             resourceEntity,
-            entityFQN
+            decodedEntityFQN
           );
 
           setEntityPermissions(permission);
@@ -237,7 +232,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
       }
     },
-    [entityFQN, getEntityPermissionByFqn, setEntityPermissions]
+    [decodedEntityFQN, getEntityPermissionByFqn, setEntityPermissions]
   );
 
   const fetchEntityPermissions = useCallback(async () => {
@@ -323,7 +318,9 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       switch (entityType) {
         case EntityType.TABLE: {
-          const { id } = await getTableDetailsByFQN(entityFQN);
+          const { id } = await getTableDetailsByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -335,7 +332,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.TOPIC: {
-          const { id } = await getTopicByFqn(entityFQN);
+          const { id } = await getTopicByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -347,7 +346,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD: {
-          const { id } = await getDashboardByFqn(entityFQN);
+          const { id } = await getDashboardByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -359,7 +360,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.PIPELINE: {
-          const { id } = await getPipelineByFqn(entityFQN);
+          const { id } = await getPipelineByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -371,7 +374,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.MLMODEL: {
-          const { id } = await getMlModelByFQN(entityFQN);
+          const { id } = await getMlModelByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -383,7 +388,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.CONTAINER: {
-          const { id } = await getContainerByName(entityFQN);
+          const { id } = await getContainerByName(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -395,7 +402,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.SEARCH_INDEX: {
-          const { id } = await getSearchIndexDetailsByFQN(entityFQN);
+          const { id } = await getSearchIndexDetailsByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -407,7 +416,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD_DATA_MODEL: {
-          const { id } = await getDataModelByFqn(entityFQN);
+          const { id } = await getDataModelByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id ?? '');
 
@@ -419,7 +430,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.STORED_PROCEDURE: {
-          const { id } = await getStoredProceduresByFqn(entityFQN, {
+          const { id } = await getStoredProceduresByFqn(decodedEntityFQN, {
             include: Include.All,
           });
 
@@ -438,7 +449,7 @@ const EntityVersionPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [entityType, entityFQN, viewVersionPermission]);
+  }, [entityType, decodedEntityFQN, viewVersionPermission]);
 
   const fetchCurrentVersion = useCallback(
     async (id: string) => {
@@ -730,13 +741,13 @@ const EntityVersionPage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchEntityPermissions();
-  }, [entityFQN]);
+  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchEntityVersions();
     }
-  }, [entityFQN, viewVersionPermission]);
+  }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (entityId) {

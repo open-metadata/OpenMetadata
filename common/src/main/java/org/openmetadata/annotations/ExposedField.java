@@ -19,8 +19,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies that the field or method is exposed, i.e., if the serialization will take into account those fields
- * annotated with
+ * Specifies that the field or method is exposed, i.e., if the serialization will take into account
+ * those fields annotated with
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE})

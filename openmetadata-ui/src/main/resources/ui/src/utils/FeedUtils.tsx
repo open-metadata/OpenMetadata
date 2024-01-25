@@ -69,7 +69,11 @@ import {
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
+import {
+  ENTITY_LINK_SEPARATOR,
+  getEntityBreadcrumbs,
+  getEntityName,
+} from './EntityUtils';
 import Fqn from './Fqn';
 import {
   getImageWithResolutionAndFallback,
@@ -166,14 +170,18 @@ export const getThreadField = (
 
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
   if (entityType === EntityType.GLOSSARY_TERM) {
-    return `${document.location.protocol}//${document.location.host}/glossary/${entityFqn}`;
+    return `${document.location.protocol}//${
+      document.location.host
+    }/glossary/${getEncodedFqn(entityFqn)}`;
   } else if (entityType === EntityType.TAG) {
     const classificationFqn = Fqn.split(entityFqn);
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
   }
 
-  return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
+  return `${document.location.protocol}//${
+    document.location.host
+  }/${entityType}/${getEncodedFqn(entityFqn)}`;
 };
 
 export async function suggestions(
@@ -205,6 +213,7 @@ export async function suggestions(
             type:
               hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
             name: hit._source.name,
+            displayName: hit._source.displayName,
           };
         })
       );
@@ -217,7 +226,7 @@ export async function suggestions(
         hits.map(async (hit: any) => {
           const entityType = hit._source.entityType;
           const name = getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.display_name}`,
+            `@${hit._source.name ?? hit._source.displayName}`,
             hit._source.deleted
           );
 
@@ -226,11 +235,12 @@ export async function suggestions(
             value: name,
             link: buildMentionLink(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
-              getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+              hit._source.fullyQualifiedName ?? ''
             ),
             type:
               hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
             name: hit._source.name,
+            displayName: hit._source.displayName,
           };
         })
       );
@@ -256,7 +266,7 @@ export async function suggestions(
           value: `#${entityType}/${hit._source.name}`,
           link: buildMentionLink(
             entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+            hit._source.fullyQualifiedName ?? ''
           ),
           type: entityType,
           name: hit._source.displayName || hit._source.name,
@@ -280,7 +290,7 @@ export async function suggestions(
           value: `#${entityType}/${hit._source.name}`,
           link: buildMentionLink(
             entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
+            hit._source.fullyQualifiedName ?? ''
           ),
           type: entityType,
           name: hit._source.displayName || hit._source.name,
@@ -331,7 +341,9 @@ export const userMentionItemWithAvatar = (
           </div>
         )}
       </div>
-      <span className="d-flex items-center truncate w-56">{item.name}</span>
+      <span className="d-flex items-center truncate w-56">
+        {getEntityName(item)}
+      </span>
     </div>,
     wrapper
   );

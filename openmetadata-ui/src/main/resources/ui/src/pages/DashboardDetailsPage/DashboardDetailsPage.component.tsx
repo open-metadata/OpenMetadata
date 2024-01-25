@@ -16,7 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
@@ -30,6 +30,7 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { useFqn } from '../../hooks/useFqn';
 import { updateChart } from '../../rest/chartAPI';
 import {
   addFollower,
@@ -63,7 +64,7 @@ const DashboardDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: dashboardFQN } = useParams<{ fqn: string }>();
+  const { fqn: dashboardFQN } = useFqn();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );

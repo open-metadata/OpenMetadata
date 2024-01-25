@@ -23,9 +23,9 @@ import {
 import { visitEntityDetailsPage } from '../Utils/Entity';
 import {
   deleteService,
-  getEntityTypeFromService,
   retryIngestionRun,
   Services,
+  ServicesEntityMap,
   testConnection,
 } from '../Utils/Services';
 
@@ -343,7 +343,7 @@ class ServiceBaseClass {
     visitEntityDetailsPage({
       term: this.entityName,
       serviceName: this.serviceName,
-      entity: getEntityTypeFromService(this.category),
+      entity: ServicesEntityMap[this.category],
     });
 
     // update description
@@ -354,10 +354,8 @@ class ServiceBaseClass {
     verifyResponseStatusCode('@updateEntity', 200);
 
     // re-run ingestion flow
-    cy.sidebarClick('app-bar-item-settings');
-
     // Services page
-    cy.get('.ant-menu-title-content').contains(this.category).click();
+    cy.settingClick(this.category);
     interceptURL(
       'GET',
       'api/v1/search/query?q=*&from=0&size=15&index=*',
@@ -397,12 +395,16 @@ class ServiceBaseClass {
     visitEntityDetailsPage({
       term: this.entityName,
       serviceName: this.serviceName,
-      entity: getEntityTypeFromService(this.category),
+      entity: ServicesEntityMap[this.category],
     });
     cy.get('[data-testid="markdown-parser"]')
       .first()
       .invoke('text')
       .should('contain', description);
+  }
+
+  runAdditionalTests() {
+    // Write service specific tests
   }
 
   deleteService() {

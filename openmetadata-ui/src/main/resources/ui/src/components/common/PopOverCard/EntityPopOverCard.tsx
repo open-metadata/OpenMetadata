@@ -46,7 +46,7 @@ import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -57,12 +57,15 @@ import './popover-card.less';
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
+  extraInfo?: React.ReactNode;
 }
 
 export const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
-}> = ({ entityFQN, entityType }) => {
+  extraInfo?: React.ReactNode;
+}> = ({ entityFQN, entityType, extraInfo }) => {
+  const decodedFqn = getDecodedFqn(entityFQN);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const { cachedEntityData, updateCachedEntityData } =
@@ -79,7 +82,7 @@ export const PopoverContent: React.FC<{
             displayName: getEntityName(data),
             id: data.id ?? '',
             description: data.description ?? '',
-            fullyQualifiedName: getDecodedFqn(entityFQN),
+            fullyQualifiedName: decodedFqn,
             tags: (data as Table)?.tags,
             entityType: entityType,
             serviceType: (data as Table)?.serviceType,
@@ -98,10 +101,9 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.TEST_CASE:
-        promise = getTableDetailsByFQN(
-          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
-          { fields }
-        );
+        promise = getTableDetailsByFQN(getTableFQNFromColumnFQN(decodedFqn), {
+          fields,
+        });
 
         break;
       case EntityType.TOPIC:
@@ -135,7 +137,7 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), {
+        promise = getGlossaryTermByFQN(entityFQN, {
           fields: 'owner',
         });
 
@@ -215,6 +217,7 @@ export const PopoverContent: React.FC<{
 
   return (
     <ExploreSearchCard
+      actionPopoverContent={extraInfo}
       id="tabledatacard"
       showTags={false}
       source={entityData}
@@ -222,14 +225,20 @@ export const PopoverContent: React.FC<{
   );
 };
 
-const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+const EntityPopOverCard: FC<Props> = ({
+  children,
+  entityType,
+  entityFQN,
+  extraInfo,
+}) => {
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
       content={
         <PopoverContent
-          entityFQN={getEncodedFqn(entityFQN)}
+          entityFQN={entityFQN}
           entityType={entityType}
+          extraInfo={extraInfo}
         />
       }
       overlayClassName="entity-popover-card"

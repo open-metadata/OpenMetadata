@@ -31,7 +31,7 @@ class SASClient:
 
     def __init__(self, config: SASConnection):
         self.config: SASConnection = config
-        self.auth_token = get_token(
+        self.auth_token = self.get_token(
             config.serverHost, config.username, config.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
@@ -99,8 +99,7 @@ class SASClient:
         )
         endpoint = (
             f"catalog/search?indices={assets}&q="
-            # f"{asset_filter if str(asset_filter) != 'None' else '*'}"
-            f"{asset_filter if str(asset_filter) != 'None' else '*'}&limit=10"  # TODO: MAKE THE CHANGE
+            f"{asset_filter if str(asset_filter) != 'None' else '*'}"
         )
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
         response = self.client._request("GET", path=endpoint, headers=headers)
@@ -167,18 +166,19 @@ class SASClient:
     def get_auth_token(self):
         return self.auth_token, 0
 
-
-def get_token(base_url, user, password):
-    endpoint = "/SASLogon/oauth/token"
-    payload = {"grant_type": "password", "username": user, "password": password}
-    headers = {
-        "Content-type": "application/x-www-form-urlencoded",
-        "Authorization": "Basic c2FzLmNsaTo=",
-    }
-    url = base_url + endpoint
-    response = requests.request(
-        "POST", url, headers=headers, data=payload, verify=False, timeout=10
-    )
-    text_response = response.json()
-    logger.info(f"this is user: {user}, password: {password}, text: {text_response}")
-    return response.json()["access_token"]
+    def get_token(self, base_url, user, password):
+        endpoint = "/SASLogon/oauth/token"
+        payload = {"grant_type": "password", "username": user, "password": password}
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "Authorization": "Basic c2FzLmNsaTo=",
+        }
+        url = base_url + endpoint
+        response = requests.request(
+            "POST", url, headers=headers, data=payload, verify=False, timeout=10
+        )
+        text_response = response.json()
+        logger.info(
+            f"this is user: {user}, password: {password}, text: {text_response}"
+        )
+        return response.json()["access_token"]

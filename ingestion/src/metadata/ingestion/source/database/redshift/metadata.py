@@ -54,6 +54,9 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
+)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
@@ -61,6 +64,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
     REDSHIFT_GET_STORED_PROCEDURES,
+    REDSHIFT_LIFE_CYCLE_QUERY,
     REDSHIFT_PARTITION_DETAILS,
 )
 from metadata.ingestion.source.database.redshift.utils import (
@@ -106,7 +110,9 @@ RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
 )
 
 
-class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class RedshiftSource(
+    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -115,6 +121,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
     def __init__(self, config, metadata):
         super().__init__(config, metadata)
         self.partition_details = {}
+        self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):

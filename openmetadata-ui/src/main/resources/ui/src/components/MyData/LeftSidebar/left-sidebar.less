@@ -42,9 +42,8 @@
 
   .brand-logo-container {
     height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding-top: 17px;
+    padding-left: 14px;
     background: rgba(248, 248, 248, 1);
   }
 
@@ -52,10 +51,6 @@
 
   .sidebar-open {
     width: 230px;
-
-    .brand-logo-container {
-      justify-content: flex-start;
-    }
 
     .ant-menu-submenu-arrow {
       opacity: 1;
@@ -67,12 +62,6 @@
 
     .ant-menu-hidden {
       display: none;
-    }
-
-    .ant-menu-submenu-open {
-      .ant-menu-submenu-title {
-        background: rgba(9, 80, 197, 0.04);
-      }
     }
 
     .left-sidebar-menu.ant-menu {
@@ -233,7 +222,8 @@
     &:not(.ant-menu-horizontal) .ant-menu-item-selected,
     .ant-menu-item:active,
     .ant-menu-submenu-title:active,
-    .ant-menu-item:hover {
+    .ant-menu-item:hover,
+    .ant-menu-submenu-title:hover {
       background-color: @left-nav-item-background;
       color: @text-color;
 
@@ -264,6 +254,13 @@
 .left-panel-item.active,
 .left-panel-item:hover {
   text-decoration: none;
+}
+
+.left-panel-item.ant-btn-text {
+  &:hover,
+  &:focus {
+    background: initial;
+  }
 }
 
 .page-layout-leftpanel {

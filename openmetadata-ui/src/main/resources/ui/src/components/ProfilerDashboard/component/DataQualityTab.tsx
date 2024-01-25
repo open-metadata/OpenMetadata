@@ -48,7 +48,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
-import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
+import { replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
@@ -69,6 +69,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   showTableColumn = true,
   afterDeleteAction,
   showPagination,
+  breadcrumbData,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -141,6 +142,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 300,
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
+          const urlData = {
+            pathname: getIncidentManagerDetailPagePath(
+              record.fullyQualifiedName ?? ''
+            ),
+            state: { breadcrumbData },
+          };
 
           return (
             <Space data-testid={name}>
@@ -151,12 +158,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               </Tooltip>
 
               <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
-                <Link
-                  to={getIncidentManagerDetailPagePath(
-                    record.fullyQualifiedName ?? ''
-                  )}>
-                  {getEntityName(record)}
-                </Link>
+                <Link to={urlData}>{getEntityName(record)}</Link>
               </Typography.Paragraph>
             </Space>
           );
@@ -177,10 +179,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     data-testid="table-link"
                     to={{
-                      pathname: getTableTabPath(
-                        getEncodedFqn(tableFqn),
-                        'profiler'
-                      ),
+                      pathname: getTableTabPath(tableFqn, 'profiler'),
                       search: QueryString.stringify({
                         activeTab: TableProfilerTab.DATA_QUALITY,
                       }),
@@ -248,10 +247,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         : ''
                     }`
               }>
-              <AppBadge
-                className={classNames('resolution', label.toLocaleLowerCase())}
-                label={label}
-              />
+              <span data-testid={`${record.name}-status`}>
+                <AppBadge
+                  className={classNames(
+                    'resolution',
+                    label.toLocaleLowerCase()
+                  )}
+                  label={label}
+                />
+              </span>
             </Tooltip>
           ) : (
             '--'
@@ -436,7 +440,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
-            entityName={selectedTestCase?.data?.name ?? ''}
+            entityName={getEntityName(selectedTestCase?.data)}
             entityType={EntityType.TEST_CASE}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}

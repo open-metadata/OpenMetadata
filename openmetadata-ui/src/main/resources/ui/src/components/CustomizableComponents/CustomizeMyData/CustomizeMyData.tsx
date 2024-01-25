@@ -17,7 +17,7 @@ import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import gridBgImg from '../../../assets/img/grid-bg-img.png';
 import {
   GlobalSettingOptions,
@@ -27,7 +27,7 @@ import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../generated/entity/type';
-import { PageType } from '../../../generated/system/ui/page';
+import { useFqn } from '../../../hooks/useFqn';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
@@ -47,7 +47,6 @@ import {
   getPersonaDetailsPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -68,7 +67,7 @@ function CustomizeMyData({
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const history = useHistory();
-  const { fqn: personaFQN } = useParams<{ fqn: string; pageFqn: PageType }>();
+  const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
       initialPageData.data?.page?.layout ??
@@ -86,11 +85,6 @@ function CustomizeMyData({
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-
-  const decodedPersonaFQN = useMemo(
-    () => getDecodedFqn(personaFQN),
-    [personaFQN]
-  );
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);

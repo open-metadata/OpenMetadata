@@ -36,13 +36,13 @@ import { Topic } from '../../generated/entity/data/topic';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
+import { useFqn } from '../../hooks/useFqn';
 import { restoreTopic } from '../../rest/topicsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -72,8 +72,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -82,8 +83,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-
-  const decodedTopicFQN = useMemo(() => getDecodedFqn(topicFQN), [topicFQN]);
 
   const {
     owner,
@@ -328,6 +327,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={topicDetails}
                 dataProducts={topicDetails?.dataProducts ?? []}
                 domain={topicDetails?.domain}
                 editTagPermission={editTagsPermission}
@@ -335,6 +335,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 entityId={topicDetails.id}
                 entityType={EntityType.TOPIC}
                 selectedTags={topicTags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -412,13 +413,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.TOPIC}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: topicDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.TOPIC>
+              entityDetails={topicDetails}
+              entityType={EntityType.TOPIC}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ],
@@ -478,7 +482,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </Col>
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.SCHEMA}
             className="entity-details-page-tabs"
             data-testid="tabs"

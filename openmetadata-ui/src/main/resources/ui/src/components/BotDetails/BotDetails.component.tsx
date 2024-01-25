@@ -20,10 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { TERM_ADMIN } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { Role } from '../../generated/entity/teams/role';
 import { getRoles } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -234,10 +231,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           titleLinks={[
             {
               name: 'Bots',
-              url: getSettingPath(
-                GlobalSettingsMenuCategory.INTEGRATIONS,
-                GlobalSettingOptions.BOTS
-              ),
+              url: getSettingPath(GlobalSettingOptions.BOTS),
             },
             { name: botData.name || '', url: '', activeTitle: true },
           ]}

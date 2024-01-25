@@ -23,7 +23,11 @@ import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.compon
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ListView } from '../../components/ListView/ListView.component';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
-import { getServiceDetailsPath, pagingObject } from '../../constants/constants';
+import {
+  DISABLED,
+  getServiceDetailsPath,
+  pagingObject,
+} from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -38,6 +42,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DatabaseServiceSearchSource } from '../../interface/search.interface';
 import { ServicesType } from '../../interface/service.interface';
 import { getServices, searchService } from '../../rest/serviceAPI';
@@ -50,7 +55,6 @@ import {
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
 } from '../../utils/ServiceUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { FilterIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -58,6 +62,7 @@ import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import PageHeader from '../PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import ButtonSkeleton from '../Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 
 interface ServicesProps {
   serviceName: ServiceCategory;
@@ -65,6 +70,8 @@ interface ServicesProps {
 
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
+  const { isFetchingStatus, platform } = useAirflowStatus();
+
   const history = useHistory();
   const handleAddServiceClick = () => {
     history.push(getAddServicePath(serviceName));
@@ -86,6 +93,8 @@ const Services = ({ serviceName }: ServicesProps) => {
   } = usePaging();
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
+
+  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const searchIndex = useMemo(() => {
     setSearchTerm('');
@@ -283,7 +292,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             className="max-two-lines"
             data-testid={`service-name-${name}`}
             to={getServiceDetailsPath(
-              getEncodedFqn(record.fullyQualifiedName ?? record.name),
+              record.fullyQualifiedName ?? record.name,
               serviceName
             )}>
             {getEntityName(record)}
@@ -342,7 +351,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                 <Link
                   className="no-underline"
                   to={getServiceDetailsPath(
-                    getEncodedFqn(service.fullyQualifiedName ?? service.name),
+                    service.fullyQualifiedName ?? service.name,
                     serviceName
                   )}>
                   <Typography.Text
@@ -431,28 +440,32 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <Space className="w-full justify-between m-b-lg" data-testid="header">
           <PageHeader data={getServicePageHeader()} />
-          <Tooltip
-            placement="left"
-            title={
-              addServicePermission
-                ? t('label.add-entity', {
+          {isFetchingStatus ? (
+            <ButtonSkeleton size="default" />
+          ) : (
+            <Tooltip
+              placement="left"
+              title={
+                addServicePermission
+                  ? t('label.add-entity', {
+                      entity: t('label.service'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
+              {addServicePermission && !isPlatFormDisabled && (
+                <Button
+                  className="m-b-xs"
+                  data-testid="add-service-button"
+                  size="middle"
+                  type="primary"
+                  onClick={handleAddServiceClick}>
+                  {t('label.add-new-entity', {
                     entity: t('label.service'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            {addServicePermission && (
-              <Button
-                className="m-b-xs"
-                data-testid="add-service-button"
-                size="middle"
-                type="primary"
-                onClick={handleAddServiceClick}>
-                {t('label.add-new-entity', {
-                  entity: t('label.service'),
-                })}
-              </Button>
-            )}
-          </Tooltip>
+                  })}
+                </Button>
+              )}
+            </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={24}>
