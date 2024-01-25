@@ -67,41 +67,35 @@ const FeedCardHeaderV1 = ({
 
   const getFeedLinkElement = entityCheck && (
     <span className="font-normal" data-testid="headerText">
+      <span className="m-r-xss">{t('label.posted-on-lowercase')}</span>
       {isEntityFeed ? (
         <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
         </span>
       ) : (
         <>
+          <span data-testid="entityType">{entityType} </span>
           {isUserOrTeam ? (
-            <span>
-              {t('label.posted-on-lowercase', { entity: entityType })}
-              <UserPopOverCard
-                showUserName
-                showUserProfile={false}
-                userName={createdBy}>
-                <Link
-                  className="break-all"
-                  data-testid="entitylink"
-                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-                  <span>{entityDisplayName(entityType, entityFQN)}</span>
-                </Link>
-              </UserPopOverCard>
-            </span>
+            <UserPopOverCard
+              showUserName
+              showUserProfile={false}
+              userName={createdBy}>
+              <Link
+                className="break-all"
+                data-testid="entitylink"
+                to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                <span>{entityDisplayName(entityType, entityFQN)}</span>
+              </Link>
+            </UserPopOverCard>
           ) : (
-            <span>
-              {t('message.made-announcement-for-entity', {
-                entity: entityType,
-              })}{' '}
-              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-                <Link
-                  className="break-all"
-                  data-testid="entitylink"
-                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-                  <span>{entityDisplayName(entityType, entityFQN)}</span>
-                </Link>
-              </EntityPopOverCard>
-            </span>
+            <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+              <Link
+                className="break-all"
+                data-testid="entitylink"
+                to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                <span>{entityDisplayName(entityType, entityFQN)}</span>
+              </Link>
+            </EntityPopOverCard>
           )}
         </>
       )}
