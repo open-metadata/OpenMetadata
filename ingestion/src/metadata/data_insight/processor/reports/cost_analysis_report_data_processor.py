@@ -241,7 +241,7 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
         Helper method to calculate number of data assets within time period
         """
         try:
-            if not life_cycle:
+            if not life_cycle or not life_cycle.accessed:
                 return
 
             # Iterate over the different time periods and update the data
