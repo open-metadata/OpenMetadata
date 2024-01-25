@@ -404,8 +404,10 @@ const AddObservabilityPage = withSuspenseFallback(
 
 // Settings Page Routes
 
-const AddAlertPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AddAlertPage/AddAlertPage'))
+const AddNotificationPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/AddNotificationPage/AddNotificationPage')
+  )
 );
 
 const ImportTeamsPage = withSuspenseFallback(
@@ -414,18 +416,16 @@ const ImportTeamsPage = withSuspenseFallback(
   )
 );
 
-const AlertDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
-);
-
 const AlertsActivityFeedPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
   )
 );
 
-const AlertsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AlertsPage/AlertsPage'))
+const NotificationListPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/NotificationListPage/NotificationListPage')
+  )
 );
 
 const TeamsPage = withSuspenseFallback(
@@ -1115,39 +1115,28 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       {/*  Setting routes without any category will be places here */}
       <AdminProtectedRoute
         exact
-        component={AlertsPage}
+        component={NotificationListPage}
         hasPermission={false}
         path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
       />
 
       <AdminProtectedRoute
         exact
-        component={AddAlertPage}
+        component={AddNotificationPage}
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.EDIT_ALERTS,
+          GlobalSettingOptions.EDIT_NOTIFICATION,
           true
         )}
       />
       <AdminProtectedRoute
         exact
-        component={AddAlertPage}
+        component={AddNotificationPage}
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_ALERTS
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AlertDetailsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERT,
-          true
+          GlobalSettingOptions.ADD_NOTIFICATION
         )}
       />
       <AdminProtectedRoute

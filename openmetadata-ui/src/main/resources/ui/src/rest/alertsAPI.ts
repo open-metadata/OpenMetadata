@@ -15,11 +15,11 @@
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import {
+  AlertType,
   EventSubscription,
   Status,
-  SubscriptionType,
 } from '../generated/events/eventSubscription';
-import { SubscriptionResourceDescriptor } from '../generated/events/subscriptionResourceDescriptor';
+import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
 import { getEncodedFqn } from '../utils/StringsUtils';
 
@@ -27,7 +27,7 @@ const BASE_URL = '/events/subscriptions';
 
 interface ListAlertsRequestParams {
   status?: Status;
-  alertType?: SubscriptionType;
+  alertType?: AlertType;
   before?: string;
   after?: string;
   include?: string;
@@ -107,8 +107,8 @@ export const getFilterFunctions = async () => {
 
 export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
-    PagingResponse<SubscriptionResourceDescriptor[]>
-  >(`${BASE_URL}/resources`);
+    PagingResponse<FilterResourceDescriptor[]>
+  >(`${BASE_URL}/${AlertType.Notification}/resources`);
 
   return response.data;
 };

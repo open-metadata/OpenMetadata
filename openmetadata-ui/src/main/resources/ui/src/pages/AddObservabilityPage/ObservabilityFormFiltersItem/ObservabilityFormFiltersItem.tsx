@@ -28,7 +28,10 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { SearchIndex } from '../../../enums/search.enum';
+import {
+  ENTITY_TO_SEARCH_INDEX_MAP,
+  SearchIndex,
+} from '../../../enums/search.enum';
 import {
   CreateEventSubscription,
   Effect,
@@ -38,25 +41,6 @@ import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
-
-export const getSearchIndexFromEntityType = (type: string) => {
-  switch (type) {
-    case 'table':
-      return SearchIndex.TABLE;
-    case 'topic':
-      return SearchIndex.TOPIC;
-    case 'pipeline':
-      return SearchIndex.PIPELINE;
-    case 'container':
-      return SearchIndex.CONTAINER;
-    case 'testCase':
-      return SearchIndex.TEST_CASE;
-    case 'testSuite':
-      return SearchIndex.TEST_SUITE;
-    default:
-      return SearchIndex.TABLE;
-  }
-};
 
 function ObservabilityFormFiltersItem({
   heading,
@@ -108,7 +92,7 @@ function ObservabilityFormFiltersItem({
     async (searchText: string) => {
       return searchEntity(
         searchText,
-        getSearchIndexFromEntityType(selectedTrigger)
+        ENTITY_TO_SEARCH_INDEX_MAP[selectedTrigger]
       );
     },
     [searchEntity, selectedTrigger]

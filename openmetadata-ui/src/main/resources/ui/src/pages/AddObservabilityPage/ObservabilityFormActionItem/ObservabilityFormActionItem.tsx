@@ -28,7 +28,10 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { SearchIndex } from '../../../enums/search.enum';
+import {
+  ENTITY_TO_SEARCH_INDEX_MAP,
+  SearchIndex,
+} from '../../../enums/search.enum';
 import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import {
@@ -36,10 +39,8 @@ import {
   EventFilterRule,
 } from '../../../generated/events/eventSubscription';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
-import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getSearchIndexFromEntityType } from '../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import { ObservabilityFormActionItemProps } from './ObservabilityFormActionItem.interface';
 
 function ObservabilityFormActionItem({
@@ -49,7 +50,6 @@ function ObservabilityFormActionItem({
 }: Readonly<ObservabilityFormActionItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
-  const { fqn } = useFqn();
 
   // Watchers
   const actions = Form.useWatch<EventFilterRule[]>(['input', 'actions'], form);
@@ -90,10 +90,7 @@ function ObservabilityFormActionItem({
 
   const getEntityByFQN = useCallback(
     async (searchText: string) => {
-      return searchEntity(
-        searchText,
-        getSearchIndexFromEntityType(triggerValue)
-      );
+      return searchEntity(searchText, ENTITY_TO_SEARCH_INDEX_MAP[triggerValue]);
     },
     [searchEntity, triggerValue]
   );

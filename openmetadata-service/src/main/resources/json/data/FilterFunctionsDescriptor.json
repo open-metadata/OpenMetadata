@@ -26,7 +26,7 @@
   {
     "name": "filterByFqn",
     "fullyQualifiedName": "eventSubscription.filterByFqn",
-    "displayName": "Filter By ENtity FQN",
+    "displayName": "Filter By Entity FQN",
     "description" : "Filter A Change Event By Entity FQN",
     "effect" : "include",
     "condition": "matchAnyEntityFqn(${fqnList})",
