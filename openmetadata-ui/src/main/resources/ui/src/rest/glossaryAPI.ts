@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { VotingDataProps } from '../components/Voting/voting.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
@@ -62,14 +63,9 @@ export const updateGlossaries = (
 };
 
 export const patchGlossaries = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
     `/glossaries/${id}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;
@@ -131,14 +127,10 @@ export const addGlossaryTerm = (
 };
 
 export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<GlossaryTerm>
-  >(`/glossaryTerms/${id}`, patch, configOptions);
+  >(`/glossaryTerms/${id}`, patch);
 
   return response.data;
 };
@@ -166,13 +158,10 @@ export const importGlossaryInCSVFormat = async (
   data: string,
   dryRun = true
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
-  };
   const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
     `/glossaries/name/${getEncodedFqn(glossaryName)}/import?dryRun=${dryRun}`,
     data,
-    configOptions
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 
   return response.data;

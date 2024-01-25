@@ -93,13 +93,10 @@ export const updateClassification = async (data: Classification) => {
   return response.data;
 };
 export const patchClassification = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<Classification>
-  >(`${BASE_URL}/${id}`, data, configOptions);
+  >(`${BASE_URL}/${id}`, data);
 
   return response.data;
 };
@@ -128,13 +125,9 @@ export const updateTag = async (data: Classification) => {
 };
 
 export const patchTag = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
   const response = await APIClient.patch<Operation[], AxiosResponse<Tag>>(
     `/tags/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

@@ -86,14 +86,9 @@ export const uninstallApp = (appName: string, hardDelete = false) => {
 };
 
 export const patchApplication = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<App>>(
     `${BASE_URL}/${id}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;

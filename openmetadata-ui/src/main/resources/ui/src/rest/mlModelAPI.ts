@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -76,45 +77,39 @@ export const getMlModels = async (
 };
 
 export const patchMlModelDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Mlmodel>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
 };
 
 export const addFollower = async (mlModelId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${mlModelId}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${mlModelId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (mlModelId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${mlModelId}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${mlModelId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
