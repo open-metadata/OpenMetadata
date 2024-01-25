@@ -237,6 +237,7 @@ const CustomControls: FC<ControlProps> = ({
               </Button>
             </Dropdown>
             <ExploreQuickFilters
+              independent
               aggregations={{}}
               fields={selectedQuickFilters}
               index={SearchIndex.ALL}

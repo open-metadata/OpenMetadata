@@ -41,6 +41,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
   index,
   aggregations,
+  independent = false,
   onFieldValueSelect,
 }) => {
   const location = useLocation();
@@ -151,7 +152,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
         return;
       }
-      if (aggregations?.[key] && key !== TIER_FQN_KEY) {
+      if (key !== TIER_FQN_KEY) {
         const res = await getAggregateFieldOptions(
           index,
           key,
@@ -197,6 +198,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           <SearchDropdown
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
+            independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
