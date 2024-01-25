@@ -12,7 +12,7 @@
  */
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -43,7 +43,7 @@ import {
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { getAllAlerts } from '../../rest/alertsAPI';
+import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import {
@@ -55,7 +55,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const NotificationListPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [loading, setLoading] = useState(true);
+  const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
   const {
@@ -76,7 +76,7 @@ const NotificationListPage = () => {
 
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
-      setLoading(true);
+      setLoadingCount((count) => count + 1);
       try {
         const { data, paging } = await getAllAlerts({
           after: params?.after,
@@ -85,14 +85,23 @@ const NotificationListPage = () => {
           alertType: AlertType.Notification,
         });
 
-        setAlerts(data.filter((d) => d.provider !== ProviderType.System));
+        if (isUndefined(params?.after)) {
+          // Fetch and show the system created activity feed alert when fetching results fro page 1
+          const activityFeedAlert = await getAlertsFromName(
+            'ActivityFeedAlert'
+          );
+          setAlerts([activityFeedAlert, ...data]);
+        } else {
+          setAlerts(data);
+        }
+
         handlePagingChange(paging);
       } catch (error) {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
       } finally {
-        setLoading(false);
+        setLoadingCount((count) => count - 1);
       }
     },
     [pageSize]
@@ -231,7 +240,7 @@ const NotificationListPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            loading={loading}
+            loading={Boolean(loadingCount)}
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
