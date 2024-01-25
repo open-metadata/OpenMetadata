@@ -18,8 +18,8 @@ import {
   interceptURL,
   verifyResponseStatusCode,
   visitDataModelPage,
-  visitEntityDetailsPage,
 } from './common';
+import { visitEntityDetailsPage } from './Utils/Entity';
 
 export const visitEntityDetailsVersionPage = (
   entityDetails,

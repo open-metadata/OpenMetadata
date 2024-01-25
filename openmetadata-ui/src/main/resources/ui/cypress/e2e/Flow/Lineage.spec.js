@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  interceptURL,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   LINEAGE_ITEMS,
   PIPELINE_ITEMS,
