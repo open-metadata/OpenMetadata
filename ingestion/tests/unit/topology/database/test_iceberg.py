@@ -12,19 +12,18 @@
 Test iceberg source
 """
 import uuid
+from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch
-
-from copy import deepcopy
 
 import pyiceberg.exceptions
 from pyiceberg.catalog.hive import HiveCatalog
 from pyiceberg.partitioning import PartitionField
+from pyiceberg.schema import Schema
 from pyiceberg.table import Table as PyIcebergTable
 from pyiceberg.table.metadata import TableMetadataV1
 from pyiceberg.transforms import IdentityTransform
 from pyiceberg.types import (
-    NestedField,
     BinaryType,
     BooleanType,
     DateType,
@@ -36,21 +35,27 @@ from pyiceberg.types import (
     ListType,
     LongType,
     MapType,
+    NestedField,
     StringType,
     StructType,
-    TimeType,
     TimestampType,
     TimestamptzType,
-    UUIDType
+    TimeType,
+    UUIDType,
 )
-from pyiceberg.schema import Schema
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.entity.data.table import Column, Constraint, DataType, TableType, TablePartition
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    DataType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -182,10 +187,12 @@ MOCK_COLUMN_MAP = {
         "ometa": Column(
             name="list",
             dataType=DataType.ARRAY,
-            dataTypeDisplay=str(ListType(
-                element_id=1,
-                element_type=IntegerType(),
-            )),
+            dataTypeDisplay=str(
+                ListType(
+                    element_id=1,
+                    element_type=IntegerType(),
+                )
+            ),
             arrayDataType=DataType.INT,
         ),
     },
@@ -217,12 +224,14 @@ MOCK_COLUMN_MAP = {
         "ometa": Column(
             name="map",
             dataType=DataType.MAP,
-            dataTypeDisplay=str(MapType(
-                key_id=1,
-                key_type=StringType(),
-                value_id=2,
-                value_type=IntegerType(),
-            )),
+            dataTypeDisplay=str(
+                MapType(
+                    key_id=1,
+                    key_type=StringType(),
+                    value_id=2,
+                    value_type=IntegerType(),
+                )
+            ),
         ),
     },
     "string": {
@@ -249,14 +258,14 @@ MOCK_COLUMN_MAP = {
                         name="nested1",
                         field_type=IntegerType(),
                         required=False,
-                        doc="nested #1"
+                        doc="nested #1",
                     ),
                     NestedField(
                         field_id=101,
                         name="nested2",
                         field_type=StringType(),
                         required=True,
-                    )
+                    ),
                 )
             ),
             required=False,
@@ -264,23 +273,25 @@ MOCK_COLUMN_MAP = {
         "ometa": Column(
             name="struct",
             dataType=DataType.STRUCT,
-            dataTypeDisplay=str(StructType(
-                fields=(
-                    NestedField(
-                        field_id=100,
-                        name="nested1",
-                        field_type=IntegerType(),
-                        required=False,
-                        doc="nested #1"
-                    ),
-                    NestedField(
-                        field_id=101,
-                        name="nested2",
-                        field_type=StringType(),
-                        required=True,
+            dataTypeDisplay=str(
+                StructType(
+                    fields=(
+                        NestedField(
+                            field_id=100,
+                            name="nested1",
+                            field_type=IntegerType(),
+                            required=False,
+                            doc="nested #1",
+                        ),
+                        NestedField(
+                            field_id=101,
+                            name="nested2",
+                            field_type=StringType(),
+                            required=True,
+                        ),
                     )
                 )
-            )),
+            ),
             children=[
                 Column(
                     name="nested1",
@@ -293,8 +304,8 @@ MOCK_COLUMN_MAP = {
                     dataType=DataType.STRING,
                     dataTypeDisplay=str(StringType()),
                     constraint=Constraint.NOT_NULL,
-                )
-            ]
+                ),
+            ],
         ),
     },
     "time": {
@@ -360,37 +371,26 @@ MOCK_ICEBERG_CONFIG = {
                 "type": "Iceberg",
                 "catalog": {
                     "name": "Batata",
-                    "type": {
-                        "uri": "thrift://localhost:9083"
-                    },
-                    "fileSystem": None
-                }
+                    "type": {"uri": "thrift://localhost:9083"},
+                    "fileSystem": None,
+                },
             }
         },
-        "sourceConfig": {
-            "config": {
-                "type": "DatabaseMetadata"
-            }
-        }
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },
-    "sink": {
-        "type": "metadata-rest",
-        "config": {}
-    },
+    "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "token"
-            }
+            "securityConfig": {"jwtToken": "token"},
         }
-    }
+    },
 }
 
 MOCK_NAMESPACES = [
     ("namespace1",),
-    ("namespace2","foo"),
+    ("namespace2", "foo"),
 ]
 
 EXPECTED_NAMESPACES_NAMES = [
@@ -401,7 +401,7 @@ EXPECTED_NAMESPACES_NAMES = [
 MOCK_TABLE_LIST = [
     ("namespace1", "table1"),
     ("namespace1", "table2", "foo"),
-    ("namespace2", "table3")
+    ("namespace2", "table3"),
 ]
 
 EXPECTED_TABLE_LIST = [
@@ -415,6 +415,7 @@ class IcebergUnitTest(TestCase):
     """
     Validate how we work with the Iceberg connector
     """
+
     @patch(
         "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
     )
@@ -425,7 +426,7 @@ class IcebergUnitTest(TestCase):
 
         self.iceberg = IcebergSource.create(
             MOCK_ICEBERG_CONFIG["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig)
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
         self.iceberg.context.database_service = "test_iceberg"
@@ -459,7 +460,7 @@ class IcebergUnitTest(TestCase):
             InvalidSourceException,
             IcebergSource.create,
             not_looker_source,
-            self.config.workflowConfig.openMetadataServerConfig
+            self.config.workflowConfig.openMetadataServerConfig,
         )
 
     def test_get_database_name(self):
@@ -472,13 +473,15 @@ class IcebergUnitTest(TestCase):
         # Iceberg connector without databaseName set returns 'default'
         self.assertEqual(next(self.iceberg.get_database_names()), "default")
 
-
         # Iceberg connector with databaseName set returns the databaseName
         iceberg_source_with_database_name = deepcopy(self.iceberg)
-        iceberg_source_with_database_name.service_connection.catalog.databaseName = "myDatabase"
+        iceberg_source_with_database_name.service_connection.catalog.databaseName = (
+            "myDatabase"
+        )
 
-
-        self.assertEqual(next(iceberg_source_with_database_name.get_database_names()), "myDatabase")
+        self.assertEqual(
+            next(iceberg_source_with_database_name.get_database_names()), "myDatabase"
+        )
 
     def test_yield_database(self):
         """
@@ -488,12 +491,10 @@ class IcebergUnitTest(TestCase):
         database_name = "database"
 
         expected = CreateDatabaseRequest(
-            name="database",
-            service=self.iceberg.context.database_service
+            name="database", service=self.iceberg.context.database_service
         )
         self.assertEqual(
-            next(self.iceberg.yield_database(database_name)).right,
-            expected
+            next(self.iceberg.yield_database(database_name)).right, expected
         )
 
     def test_get_database_schema_names(self):
@@ -501,9 +502,7 @@ class IcebergUnitTest(TestCase):
         Mock the Catalog and check the namespaces are transformed as expected,
         from tuples to strings.
         """
-        with patch.object(
-            HiveCatalog, "list_namespaces", return_value=MOCK_NAMESPACES
-        ):
+        with patch.object(HiveCatalog, "list_namespaces", return_value=MOCK_NAMESPACES):
             for i, namespace in enumerate(self.iceberg.get_database_schema_names()):
                 self.assertEqual(namespace, EXPECTED_NAMESPACES_NAMES[i])
 
@@ -529,8 +528,7 @@ class IcebergUnitTest(TestCase):
 
         with patch.object(fqn, "build", return_value=fully_qualified_database_name):
             self.assertEqual(
-                next(self.iceberg.yield_database_schema(schema_name)).right,
-                expected
+                next(self.iceberg.yield_database_schema(schema_name)).right, expected
             )
 
     def test_get_tables_name_and_type(self):
@@ -545,23 +543,23 @@ class IcebergUnitTest(TestCase):
             def name(self):
                 return next(self.data)
 
-
-        with \
-            patch.object(HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST), \
-            patch.object(HiveCatalog, "load_table", return_value=LoadTableMock()):
+        with patch.object(
+            HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
+        ), patch.object(HiveCatalog, "load_table", return_value=LoadTableMock()):
 
             for i, table in enumerate(self.iceberg.get_tables_name_and_type()):
                 self.assertEqual(table, EXPECTED_TABLE_LIST[i])
-
 
         # When pyiceberg.exceptions.NoSuchIcebergTableError is raised
         # Then nothing is yield.
         def raise_no_such_iceberg_table():
             raise pyiceberg.exceptions.NoSuchIcebergTableError()
 
-        with \
-            patch.object(HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST), \
-            patch.object(HiveCatalog, "load_table", side_effect=raise_no_such_iceberg_table):
+        with patch.object(
+            HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
+        ), patch.object(
+            HiveCatalog, "load_table", side_effect=raise_no_such_iceberg_table
+        ):
 
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
@@ -570,9 +568,9 @@ class IcebergUnitTest(TestCase):
         def raise_no_such_table():
             raise pyiceberg.exceptions.NoSuchTableError()
 
-        with \
-            patch.object(HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST), \
-            patch.object(HiveCatalog, "load_table", side_effect=raise_no_such_table):
+        with patch.object(
+            HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
+        ), patch.object(HiveCatalog, "load_table", side_effect=raise_no_such_table):
 
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
@@ -589,83 +587,109 @@ class IcebergUnitTest(TestCase):
         ref = EntityReference(id=uuid.uuid4(), type="user")
 
         iceberg_table_with_owner = {
-            "identifier": (self.iceberg.context.database, self.iceberg.context.database_schema, table_name),
-            "metadata": TableMetadataV1.parse_obj({
-                "location": "foo",
-                "last_column_id": 1,
-                "format_version": 1,
-                "schema": {},
-                "partition_spec": [],
-                "properties": {"owner": "myself"}
-            }),
+            "identifier": (
+                self.iceberg.context.database,
+                self.iceberg.context.database_schema,
+                table_name,
+            ),
+            "metadata": TableMetadataV1.parse_obj(
+                {
+                    "location": "foo",
+                    "last_column_id": 1,
+                    "format_version": 1,
+                    "schema": {},
+                    "partition_spec": [],
+                    "properties": {"owner": "myself"},
+                }
+            ),
             "metadata_location": "bar",
             "io": "pyiceberg.io.pyarrow.PyArrowFileIO",
-            "catalog": self.iceberg.connection_obj
+            "catalog": self.iceberg.connection_obj,
         }
 
         self.iceberg.context.iceberg_table = PyIcebergTable(**iceberg_table_with_owner)
 
         with patch.object(OpenMetadata, "get_reference_by_email", return_value=ref):
-            self.assertEqual(self.iceberg.get_owner_details(self.iceberg.context.database_schema, table_name), ref)
+            self.assertEqual(
+                self.iceberg.get_owner_details(
+                    self.iceberg.context.database_schema, table_name
+                ),
+                ref,
+            )
 
         # When the Owner is not present on the PyIceberg Table
         # Then None is returned
         iceberg_table_without_owner = {
-            "identifier": (self.iceberg.context.database, self.iceberg.context.database_schema, table_name),
-            "metadata": TableMetadataV1.parse_obj({
-                "location": "foo",
-                "last_column_id": 1,
-                "format_version": 1,
-                "schema": {},
-                "partition_spec": [],
-                "properties": {}
-            }),
+            "identifier": (
+                self.iceberg.context.database,
+                self.iceberg.context.database_schema,
+                table_name,
+            ),
+            "metadata": TableMetadataV1.parse_obj(
+                {
+                    "location": "foo",
+                    "last_column_id": 1,
+                    "format_version": 1,
+                    "schema": {},
+                    "partition_spec": [],
+                    "properties": {},
+                }
+            ),
             "metadata_location": "bar",
             "io": "pyiceberg.io.pyarrow.PyArrowFileIO",
-            "catalog": self.iceberg.connection_obj
+            "catalog": self.iceberg.connection_obj,
         }
-        self.iceberg.context.iceberg_table = PyIcebergTable(**iceberg_table_without_owner)
+        self.iceberg.context.iceberg_table = PyIcebergTable(
+            **iceberg_table_without_owner
+        )
 
-        self.assertEqual(self.iceberg.get_owner_details(self.iceberg.context.database_schema, table_name), None)
+        self.assertEqual(
+            self.iceberg.get_owner_details(
+                self.iceberg.context.database_schema, table_name
+            ),
+            None,
+        )
 
     def test_yield_table(self):
         table_name = "table_name"
         table_type = TableType.Regular
 
-
         iceberg_table = {
-            "identifier": (self.iceberg.context.database, self.iceberg.context.database_schema, table_name),
-            "metadata": TableMetadataV1.parse_obj({
-                "location": "foo",
-                "last_column_id": 1,
-                "format_version": 1,
-                "schema": Schema(
-                    fields=(
-                        MOCK_COLUMN_MAP[field]["iceberg"]
-                        for field in MOCK_COLUMN_MAP.keys()
-                    )
-                ),
-                "partition_spec": [],
-                "partition_specs": [
-                    {
-                        "fields": (
-                            PartitionField(
-                                source_id=1,
-                                field_id=1000,
-                                transform=IdentityTransform(),
-                                name="boolean"
-                            ),
+            "identifier": (
+                self.iceberg.context.database,
+                self.iceberg.context.database_schema,
+                table_name,
+            ),
+            "metadata": TableMetadataV1.parse_obj(
+                {
+                    "location": "foo",
+                    "last_column_id": 1,
+                    "format_version": 1,
+                    "schema": Schema(
+                        fields=(
+                            MOCK_COLUMN_MAP[field]["iceberg"]
+                            for field in MOCK_COLUMN_MAP.keys()
                         )
-                    }
-                ],
-                "properties": {
-                    "owner": "myself",
-                    "comment": "Table Description"
+                    ),
+                    "partition_spec": [],
+                    "partition_specs": [
+                        {
+                            "fields": (
+                                PartitionField(
+                                    source_id=1,
+                                    field_id=1000,
+                                    transform=IdentityTransform(),
+                                    name="boolean",
+                                ),
+                            )
+                        }
+                    ],
+                    "properties": {"owner": "myself", "comment": "Table Description"},
                 }
-            }),
+            ),
             "metadata_location": "bar",
             "io": "pyiceberg.io.pyarrow.PyArrowFileIO",
-            "catalog": self.iceberg.connection_obj
+            "catalog": self.iceberg.connection_obj,
         }
 
         fq_database_schema = "FullyQualifiedDatabaseSchema"
@@ -678,20 +702,17 @@ class IcebergUnitTest(TestCase):
             tableType=table_type,
             description="Table Description",
             owner=ref,
-            columns=[MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()],
-            tablePartition=TablePartition(
-                columns=["binary"]
-            ),
-            databaseSchema=fq_database_schema
+            columns=[
+                MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()
+            ],
+            tablePartition=TablePartition(columns=["binary"]),
+            databaseSchema=fq_database_schema,
         )
 
-        with \
-            patch.object(OpenMetadata, "get_reference_by_email", return_value=ref), \
-            patch.object(fqn, "build", return_value=fq_database_schema):
+        with patch.object(
+            OpenMetadata, "get_reference_by_email", return_value=ref
+        ), patch.object(fqn, "build", return_value=fq_database_schema):
 
             result = next(self.iceberg.yield_table((table_name, table_type))).right
 
-            self.assertEqual(
-                result,
-                expected
-            )
+            self.assertEqual(result, expected)

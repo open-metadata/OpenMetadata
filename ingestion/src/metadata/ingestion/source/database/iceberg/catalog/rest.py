@@ -14,19 +14,28 @@ Iceberg Rest Catalog
 """
 from pyiceberg.catalog import Catalog, load_rest
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import Catalog as IcebergCatalog
-from metadata.generated.schema.entity.services.connections.database.iceberg.restCatalogConnection import RestCatalogConnection
+from metadata.generated.schema.entity.services.connections.database.iceberg.restCatalogConnection import (
+    RestCatalogConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
+    Catalog as IcebergCatalog,
+)
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
+
 class IcebergRestCatalog(IcebergCatalogBase):
+    """Responsible for building a PyIceberg Rest Catalog."""
+
     @classmethod
     def get_catalog(cls, catalog: IcebergCatalog) -> Catalog:
-        """ Returns a Rest Catalog for the given connection and file storage.
+        """Returns a Rest Catalog for the given connection and file storage.
 
         For more information, check the PyIceberg [docs](https://py.iceberg.apache.org/configuration/#rest-catalog)
         """
         if not isinstance(catalog.connection, RestCatalogConnection):
-            raise RuntimeError("'connection' is not an instance of 'RestCatalogConnection'")
+            raise RuntimeError(
+                "'connection' is not an instance of 'RestCatalogConnection'"
+            )
 
         if catalog.connection.credential:
             credential = f"{catalog.connection.credential.clientId}:{catalog.connection.credential.clientSecret}"
@@ -47,10 +56,10 @@ class IcebergRestCatalog(IcebergCatalogBase):
                 "ssl": {
                     "client": {
                         "cert": catalog.connection.ssl.clientCertPath,
-                        "key": catalog.connection.ssl.privateKeyPath
+                        "key": catalog.connection.ssl.privateKeyPath,
                     },
-                    "cabundle": catalog.connection.ssl.caCertPath
-                }
+                    "cabundle": catalog.connection.ssl.caCertPath,
+                },
             }
 
         if catalog.connection.sigv4:
@@ -58,6 +67,6 @@ class IcebergRestCatalog(IcebergCatalogBase):
                 **parameters,
                 "rest.sigv4": True,
                 "rest.signing_region": catalog.connection.sigv4.signingRegion,
-                "rest.signing_name": catalog.connection.sigv4.signingName
+                "rest.signing_name": catalog.connection.sigv4.signingName,
             }
         return load_rest(catalog.name, parameters)

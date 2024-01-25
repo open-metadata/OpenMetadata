@@ -1,4 +1,3 @@
-
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,32 +13,40 @@
 Iceberg FileSystem Factory module.
 """
 from __future__ import annotations
-from typing import Dict, Type
+
+from typing import Dict, Optional, Type
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.generated.schema.security.credentials.azureCredentials import AzureCredentials
-
+from metadata.generated.schema.security.credentials.azureCredentials import (
+    AzureCredentials,
+)
 from metadata.ingestion.source.database.iceberg.fs.azure import AzureFileSystem
-from metadata.ingestion.source.database.iceberg.fs.base import FileSystemConfig, IcebergFileSystemBase
+from metadata.ingestion.source.database.iceberg.fs.base import (
+    FileSystemConfig,
+    IcebergFileSystemBase,
+)
 from metadata.ingestion.source.database.iceberg.fs.s3 import S3FileSystem
 
 
 class IcebergFileSystemFactory:
+    """Factory class to return any supported PyIceberg FileSystem."""
+
     file_system_config_map: Dict[str, Type[IcebergFileSystemBase]] = {
         AWSCredentials.__name__: S3FileSystem,
         AzureCredentials.__name__: AzureFileSystem,
     }
 
     @classmethod
-    def parse(cls, fs_config: FileSystemConfig) -> dict:
-        """ Returns the Iceberg FileSystem parameters, depending on specific implementation. """
+    def parse(cls, fs_config: Optional[FileSystemConfig]) -> dict:
+        """Returns the Iceberg FileSystem parameters, depending on specific implementation."""
         if not fs_config:
             return {}
-        else:
-            file_system_type = cls.file_system_config_map.get(fs_config.__class__.__name__)
 
-            if not file_system_type:
-                raise NotImplementedError(
-                    f"Iceberg File System otype ['{fs_config.__class__.__name__}'] Not Implemented.")
+        file_system_type = cls.file_system_config_map.get(fs_config.__class__.__name__)
 
-            return file_system_type.get_fs_params(fs_config)
+        if not file_system_type:
+            raise NotImplementedError(
+                f"Iceberg File System otype ['{fs_config.__class__.__name__}'] Not Implemented."
+            )
+
+        return file_system_type.get_fs_params(fs_config)

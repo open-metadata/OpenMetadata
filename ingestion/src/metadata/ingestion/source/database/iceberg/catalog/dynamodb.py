@@ -13,15 +13,20 @@
 Iceberg DynamoDB Catalog
 """
 import boto3
-
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.dynamodb import DynamoDbCatalog
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import Catalog as IcebergCatalog
-from metadata.generated.schema.entity.services.connections.database.iceberg.dynamoDbCatalogConnection import DynamoDbCatalogConnection
+from metadata.generated.schema.entity.services.connections.database.iceberg.dynamoDbCatalogConnection import (
+    DynamoDbCatalogConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
+    Catalog as IcebergCatalog,
+)
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
+
 class IcebergDynamoDbCatalog(IcebergCatalogBase):
+    """Responsible for building a PyIceberg DynamoDB Catalog."""
 
     @staticmethod
     def override_boto3_dyamo_client(catalog: DynamoDbCatalog, parameters: dict):
@@ -29,7 +34,7 @@ class IcebergDynamoDbCatalog(IcebergCatalogBase):
         Overrides the boto3 client created by PyIceberg.
         PyIceberg doesn't handle the Boto3 Session.
         """
-        BOTO_SESSION_CONFIG_KEYS = [
+        boto_session_config_keys = [
             "aws_access_key_id",
             "aws_secret_access_key",
             "aws_session_token",
@@ -37,27 +42,27 @@ class IcebergDynamoDbCatalog(IcebergCatalogBase):
             "profile_name",
         ]
 
-        session_config = {k: v for k, v in parameters.items() if k in BOTO_SESSION_CONFIG_KEYS}
+        session_config = {
+            k: v for k, v in parameters.items() if k in boto_session_config_keys
+        }
         session = boto3.Session(**session_config)
         catalog.dynamodb = session.client("dynamodb")
 
     @classmethod
     def get_catalog(cls, catalog: IcebergCatalog) -> Catalog:
-        """ Returns a DynamoDB Catalog for the given connection and file storage.
+        """Returns a DynamoDB Catalog for the given connection and file storage.
 
         For more information, check the PyIceberg [docs](https://py.iceberg.apache.org/configuration/#dynamodb-catalog)
         """
         if not isinstance(catalog.connection, DynamoDbCatalogConnection):
-            raise RuntimeError("'connection' is not an instance of 'DynamoDbCatalogConnection'")
+            raise RuntimeError(
+                "'connection' is not an instance of 'DynamoDbCatalogConnection'"
+            )
 
-        parameters = {
-            "warehouse": catalog.warehouseLocation
-        }
+        parameters = {"warehouse": catalog.warehouseLocation}
 
         if catalog.connection.tableName:
-            parameters = {
-                "table-name": catalog.connection.tableName
-            }
+            parameters = {"table-name": catalog.connection.tableName}
 
         if catalog.connection.awsConfig:
             aws_config = catalog.connection.awsConfig
@@ -66,14 +71,14 @@ class IcebergDynamoDbCatalog(IcebergCatalogBase):
                 **parameters,
                 "aws_secret_key_id": aws_config.awsAccessKeyId,
                 "aws_secret_access_key": aws_config.awsSecretAccessKey
-                    if aws_config.awsSecretAccessKey else None,
+                if aws_config.awsSecretAccessKey
+                else None,
                 "aws_session_token": aws_config.awsSessionToken,
                 "region_name": aws_config.awsRegion,
                 "profile_name": aws_config.profileName,
-                # Needed because the way PyIceberg instantiates the PyArrowFileIO is different from how they instantiate the Boto3 Client.
-                **cls.get_fs_parameters(
-                    aws_config
-                ),
+                # Needed because the way PyIceberg instantiates the PyArrowFileIO
+                # is different from how they instantiate the Boto3 Client.
+                **cls.get_fs_parameters(aws_config),
             }
 
         dynamodb_catalog = DynamoDbCatalog(catalog.name, **parameters)

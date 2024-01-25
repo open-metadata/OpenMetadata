@@ -14,20 +14,27 @@ Iceberg S3 File System.
 """
 from __future__ import annotations
 
-from metadata.generated.schema.security.credentials.azureCredentials import AzureCredentials
-from metadata.ingestion.source.database.iceberg.fs.base import IcebergFileSystemBase, FileSystemConfig
+from metadata.generated.schema.security.credentials.azureCredentials import (
+    AzureCredentials,
+)
+from metadata.ingestion.source.database.iceberg.fs.base import (
+    FileSystemConfig,
+    IcebergFileSystemBase,
+)
 
 
 class AzureFileSystem(IcebergFileSystemBase):
     @classmethod
     def get_fs_params(cls, fs_config: FileSystemConfig) -> dict:
-        """ Returns the parameters expected by PyIceberg for Azure Data Lake.
+        """Returns the parameters expected by PyIceberg for Azure Data Lake.
 
-        For more information, check the [PyIceberg documentation](https://py.iceberg.apache.org/configuration/#azure-data-lake).
+        For more information, check the
+            [PyIceberg documentation](https://py.iceberg.apache.org/configuration/#azure-data-lake).
         """
         if not isinstance(fs_config, AzureCredentials):
-            raise RuntimeError(f"FileSystem Configuration is not an instance of 'AzureCredentials'.")
-
+            raise RuntimeError(
+                "FileSystem Configuration is not an instance of 'AzureCredentials'."
+            )
 
         return {
             "adlfs.account-name": fs_config.accountName,

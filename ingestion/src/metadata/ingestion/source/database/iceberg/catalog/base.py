@@ -12,24 +12,29 @@
 """
 Iceberg Catalog base module.
 """
-from typing import Optional
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from pyiceberg.catalog import Catalog
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import Catalog as IcebergCatalog
-from metadata.ingestion.source.database.iceberg.fs import FileSystemConfig, IcebergFileSystemFactory
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
+    Catalog as IcebergCatalog,
+)
+from metadata.ingestion.source.database.iceberg.fs import (
+    FileSystemConfig,
+    IcebergFileSystemFactory,
+)
+
 
 class IcebergCatalogBase(ABC):
     @classmethod
     @abstractmethod
     def get_catalog(cls, catalog: IcebergCatalog) -> Catalog:
-        """ Returns a Catalog for given catalog configuration. """
-        pass
+        """Returns a Catalog for given catalog configuration."""
 
     @staticmethod
     def get_fs_parameters(fs_config: Optional[FileSystemConfig]) -> dict:
-        """ Gets the FileSystem parameters based on passed configuration. """
+        """Gets the FileSystem parameters based on passed configuration."""
         if not fs_config:
             return {}
         return IcebergFileSystemFactory.parse(fs_config)

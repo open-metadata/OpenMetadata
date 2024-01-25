@@ -29,7 +29,6 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
     IcebergConnection,
@@ -43,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -199,12 +199,18 @@ class IcebergSource(DatabaseServiceSource):
 
                 self.context.iceberg_table = table
                 yield table_name, TableType.Regular
-            # TODO: Implement the logging for these exceptions
+            except pyiceberg.exceptions.NoSuchPropertyException:
+                logger.warning(
+                    f"Table [{table_identifier}] does not have the 'table_type' property. Skipped."
+                )
+                continue
             except pyiceberg.exceptions.NoSuchIcebergTableError:
-                logger.warn(f"Table [{table_identifier}] is not an Iceberg Table. Skipped.")
+                logger.warning(
+                    f"Table [{table_identifier}] is not an Iceberg Table. Skipped."
+                )
                 continue
             except pyiceberg.exceptions.NoSuchTableError:
-                logger.warn(f"Table [{table_identifier}] not Found. Skipped.")
+                logger.warning(f"Table [{table_identifier}] not Found. Skipped.")
                 continue
             except Exception as exc:
                 table_name = ".".join(table_identifier)
@@ -218,7 +224,9 @@ class IcebergSource(DatabaseServiceSource):
                 )
 
     def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
-        owner = get_owner_from_table(self.context.iceberg_table, self.service_connection.ownershipProperty)
+        owner = get_owner_from_table(
+            self.context.iceberg_table, self.service_connection.ownershipProperty
+        )
         try:
             if owner:
                 owner_reference = self.metadata.get_reference_by_email(owner)
@@ -242,10 +250,7 @@ class IcebergSource(DatabaseServiceSource):
         try:
             owner = self.get_owner_ref(table_name)
             table = IcebergTable.from_pyiceberg(
-                table_name,
-                table_type,
-                owner,
-                iceberg_table
+                table_name, table_type, owner, iceberg_table
             )
             table_request = CreateTableRequest(
                 name=table.name,
@@ -265,7 +270,6 @@ class IcebergSource(DatabaseServiceSource):
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
         except Exception as exc:
-            raise(exc)
             yield Either(
                 left=StackTraceError(
                     name=table_name,

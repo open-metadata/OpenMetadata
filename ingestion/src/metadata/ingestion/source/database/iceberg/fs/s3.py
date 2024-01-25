@@ -15,15 +15,18 @@ Iceberg S3 File System.
 from __future__ import annotations
 
 from pyiceberg.io import (
-    S3_ENDPOINT,
     S3_ACCESS_KEY_ID,
+    S3_ENDPOINT,
+    S3_REGION,
     S3_SECRET_ACCESS_KEY,
     S3_SESSION_TOKEN,
-    S3_REGION
 )
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.ingestion.source.database.iceberg.fs.base import IcebergFileSystemBase, FileSystemConfig
+from metadata.ingestion.source.database.iceberg.fs.base import (
+    FileSystemConfig,
+    IcebergFileSystemBase,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -36,15 +39,20 @@ SUPPORTED_KEYS = [
     "awsRegion",
 ]
 
+
 class S3FileSystem(IcebergFileSystemBase):
+    """Responsible for returning a PyIceberg S3FileSystem compatible configuration."""
+
     @classmethod
     def get_fs_params(cls, fs_config: FileSystemConfig) -> dict:
-        """ Returns the parameters expected by PyIceberg for AWS S3.
+        """Returns the parameters expected by PyIceberg for AWS S3.
 
         For more information, check the [PyIceberg documentation](https://py.iceberg.apache.org/configuration/#s3).
         """
         if not isinstance(fs_config, AWSCredentials):
-            raise RuntimeError(f"FileSystem Configuration is not an instance of 'AWSCredentials'.")
+            raise RuntimeError(
+                "FileSystem Configuration is not an instance of 'AWSCredentials'."
+            )
 
         unused_keys = []
 
@@ -54,15 +62,17 @@ class S3FileSystem(IcebergFileSystemBase):
                     unused_keys.append(key)
 
         if unused_keys:
-            logger.warn("[%s] Not Supported by the Iceberg Connector. They won't be used.",
-                ",".join(unused_keys)
+            logger.warning(
+                "[%s] Not Supported by the Iceberg Connector. They won't be used.",
+                ",".join(unused_keys),
             )
 
         return {
             S3_ENDPOINT: fs_config.endPointURL,
             S3_ACCESS_KEY_ID: fs_config.awsAccessKeyId,
             S3_SECRET_ACCESS_KEY: fs_config.awsSecretAccessKey.get_secret_value()
-                if fs_config.awsSecretAccessKey else None,
+            if fs_config.awsSecretAccessKey
+            else None,
             S3_SESSION_TOKEN: fs_config.awsSessionToken,
             S3_REGION: fs_config.awsRegion,
         }

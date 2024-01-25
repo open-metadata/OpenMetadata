@@ -12,23 +12,19 @@
 Iceberg source helpers.
 """
 from __future__ import annotations
-from typing import Optional, Tuple
 
 from itertools import takewhile
-
+from typing import Optional, Tuple
 
 import pyiceberg.partitioning
 import pyiceberg.table
 import pyiceberg.types
 
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    Constraint,
-    DataType,
-)
+from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
+
 
 def namespace_to_str(namespace: tuple[str]) -> str:
-    """ Turns a PyIceberg Namespace into a String.
+    """Turns a PyIceberg Namespace into a String.
 
     The PyIceberg namespaces are returned as tuples and we turn them into a String
     concatenating the items with a '.' in between.
@@ -37,7 +33,7 @@ def namespace_to_str(namespace: tuple[str]) -> str:
 
 
 def get_table_name_as_str(table: pyiceberg.table.Table) -> str:
-    """ Returns the Table Name as Tring from a PyIceberg Table.
+    """Returns the Table Name as Tring from a PyIceberg Table.
 
     The PyIceberg table name is returned as tuple and we turn them into a String
     concatenating the items with a '.' in between.
@@ -48,25 +44,26 @@ def get_table_name_as_str(table: pyiceberg.table.Table) -> str:
 
 def get_column_from_partition(
     columns: Tuple[pyiceberg.types.NestedField, ...],
-    partition: pyiceberg.partitioning.PartitionField
+    partition: pyiceberg.partitioning.PartitionField,
 ) -> str:
-    """ Returns the Column Name belonging to a partition. """
+    """Returns the Column Name belonging to a partition."""
     # A Partition in Iceberg has a Source Column to which a Transformation is applied.
     # We need to return the Source Column name.
-    return [column.name for column in columns if column.field_id == partition.source_id][0]
+    return [
+        column.name for column in columns if column.field_id == partition.source_id
+    ][0]
 
 
 def get_owner_from_table(
-    table: pyiceberg.table.Table,
-    property: str
+    table: pyiceberg.table.Table, property_key: str
 ) -> Optional[str]:
-    """ Retrives the owner information from given Table Property. """
-    return table.properties.get(property)
-
-
+    """Retrives the owner information from given Table Property."""
+    return table.properties.get(property_key)
 
 
 class IcebergColumnParser:
+    """Responsible for containing the logic to parse a column from PyIceberg to OpenMetadata"""
+
     data_type_map = {
         # Primitive
         "BOOLEAN": DataType.BOOLEAN,
@@ -91,7 +88,7 @@ class IcebergColumnParser:
 
     @classmethod
     def parse(cls, field: pyiceberg.types.NestedField) -> Column:
-        """ Parses a PyIceberg Field into an OpenMetadata Column. """
+        """Parses a PyIceberg Field into an OpenMetadata Column."""
         data_type = cls.data_type_map.get(
             "".join(takewhile(lambda x: x.isalpha(), str(field.field_type))).upper(),
             DataType.UNKNOWN,

@@ -12,24 +12,19 @@
 """
 Iceberg FileSystem base module.
 """
+from abc import ABC, abstractmethod
 from typing import Union
 
-from abc import ABC, abstractmethod
-
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.generated.schema.security.credentials.azureCredentials import AzureCredentials
-
-
-FileSystemConfig = Union[
-    AWSCredentials,
+from metadata.generated.schema.security.credentials.azureCredentials import (
     AzureCredentials,
-    None
-]
+)
+
+FileSystemConfig = Union[AWSCredentials, AzureCredentials, None]
 
 
 class IcebergFileSystemBase(ABC):
     @classmethod
     @abstractmethod
     def get_fs_params(cls, fs_config: FileSystemConfig) -> dict:
-        """ Returns a Catalog for given catalog_config. """
-        pass
+        """Returns a Catalog for given catalog_config."""

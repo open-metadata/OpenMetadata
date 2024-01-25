@@ -14,19 +14,28 @@ Iceberg Hive Catalog
 """
 from pyiceberg.catalog import Catalog, load_hive
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import Catalog as IcebergCatalog
-from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import HiveCatalogConnection
+from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import (
+    HiveCatalogConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
+    Catalog as IcebergCatalog,
+)
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
+
 class IcebergHiveCatalog(IcebergCatalogBase):
+    """Responsible for building a PyIceberg Hive Catalog."""
+
     @classmethod
     def get_catalog(cls, catalog: IcebergCatalog) -> Catalog:
-        """ Returns a Hive Catalog for the given connection and file storage.
+        """Returns a Hive Catalog for the given connection and file storage.
 
         For more information, check the PyIceberg [docs](https://py.iceberg.apache.org/configuration/#hive-catalog)
         """
         if not isinstance(catalog.connection, HiveCatalogConnection):
-            raise RuntimeError("'connection' is not an instance of 'HiveCatalogConnection'")
+            raise RuntimeError(
+                "'connection' is not an instance of 'HiveCatalogConnection'"
+            )
 
         parameters = {
             **cls.get_fs_parameters(catalog.connection.fileSystem),

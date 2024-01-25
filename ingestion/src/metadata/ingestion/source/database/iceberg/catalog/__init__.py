@@ -13,22 +13,36 @@
 Iceberg Catalog Factory.
 """
 from typing import Dict, Type
+
 from pyiceberg.catalog import Catalog
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import Catalog as IcebergCatalog
-from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import HiveCatalogConnection
-from metadata.generated.schema.entity.services.connections.database.iceberg.restCatalogConnection import RestCatalogConnection
-from metadata.generated.schema.entity.services.connections.database.iceberg.glueCatalogConnection import GlueCatalogConnection
-from metadata.generated.schema.entity.services.connections.database.iceberg.dynamoDbCatalogConnection import DynamoDbCatalogConnection
+from metadata.generated.schema.entity.services.connections.database.iceberg.dynamoDbCatalogConnection import (
+    DynamoDbCatalogConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.iceberg.glueCatalogConnection import (
+    GlueCatalogConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import (
+    HiveCatalogConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.iceberg.restCatalogConnection import (
+    RestCatalogConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
+    Catalog as IcebergCatalog,
+)
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
-from metadata.ingestion.source.database.iceberg.catalog.dynamodb import IcebergDynamoDbCatalog
+from metadata.ingestion.source.database.iceberg.catalog.dynamodb import (
+    IcebergDynamoDbCatalog,
+)
 from metadata.ingestion.source.database.iceberg.catalog.glue import IcebergGlueCatalog
 from metadata.ingestion.source.database.iceberg.catalog.hive import IcebergHiveCatalog
 from metadata.ingestion.source.database.iceberg.catalog.rest import IcebergRestCatalog
 
 
-
 class IcebergCatalogFactory:
+    """Factory Class to get any PyIceberg implemented Catalog."""
+
     catalog_type_map: Dict[str, Type[IcebergCatalogBase]] = {
         RestCatalogConnection.__name__: IcebergRestCatalog,
         HiveCatalogConnection.__name__: IcebergHiveCatalog,
@@ -38,10 +52,14 @@ class IcebergCatalogFactory:
 
     @classmethod
     def from_connection(cls, catalog: IcebergCatalog) -> Catalog:
-        """ Returns a PyIceberg Catalog from the given catalog configuration. """
-        catalog_type = cls.catalog_type_map.get(catalog.connection.__class__.__name__, None)
+        """Returns a PyIceberg Catalog from the given catalog configuration."""
+        catalog_type = cls.catalog_type_map.get(
+            catalog.connection.__class__.__name__, None
+        )
 
         if not catalog_type:
-            raise NotImplementedError(f"Iceberg Catalog of type ['{catalog.connection.__class__.__name__}'] Not Implemmented.")
+            raise NotImplementedError(
+                f"Iceberg Catalog of type ['{catalog.connection.__class__.__name__}'] Not Implemmented."
+            )
 
         return catalog_type.get_catalog(catalog)

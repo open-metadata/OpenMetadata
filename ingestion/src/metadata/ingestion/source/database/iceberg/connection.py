@@ -17,7 +17,6 @@ from typing import Optional
 
 from pyiceberg.catalog import Catalog
 
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
