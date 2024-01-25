@@ -16,6 +16,8 @@ import KafkaIngestionClass from '../../common/Services/KafkaIngestionClass';
 import MetabaseIngestionClass from '../../common/Services/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../common/Services/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../common/Services/MysqlIngestionClass';
+import PostgresIngestionClass from '../../common/Services/PostgresIngestionClass';
+import RedshiftWithDBTIngestionClass from '../../common/Services/RedshiftWithDBTIngestionClass';
 import S3IngestionClass from '../../common/Services/S3IngestionClass';
 import SnowflakeIngestionClass from '../../common/Services/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../common/Services/SupersetIngestionClass';
@@ -31,6 +33,8 @@ const services = [
   new MlFlowIngestionClass(),
   new SnowflakeIngestionClass(),
   new SupersetIngestionClass(),
+  new PostgresIngestionClass(),
+  new RedshiftWithDBTIngestionClass(),
 ];
 
 services.forEach((service) => {
@@ -47,6 +51,8 @@ services.forEach((service) => {
     it(`Update description and verify description after re-run`, () => {
       service.updateService();
     });
+
+    service.runAdditionalTests();
 
     it(`Delete ${service.serviceType} service`, () => {
       service.deleteService();

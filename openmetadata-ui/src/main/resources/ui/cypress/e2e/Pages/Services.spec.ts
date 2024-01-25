@@ -16,6 +16,7 @@ import DatabaseServiceClass from './../../common/Entities/DatabaseServiceClass';
 import MessagingServiceClass from './../../common/Entities/MessagingServiceClass';
 import MlModelServiceClass from './../../common/Entities/MlModelServiceClass';
 import PipelineServiceClass from './../../common/Entities/PipelineServiceClass';
+import SearchServiceClass from './../../common/Entities/SearchServiceClass';
 import StorageServiceClass from './../../common/Entities/StorageServiceClass';
 
 const entities = [
@@ -25,7 +26,7 @@ const entities = [
   new PipelineServiceClass(),
   new MlModelServiceClass(),
   new StorageServiceClass(),
-  //   new SearchServiceClass(),
+  new SearchServiceClass(),
   // TODO: add tests for metadata service tests
   //   new MetadataServiceClass(),
 ] as const;
