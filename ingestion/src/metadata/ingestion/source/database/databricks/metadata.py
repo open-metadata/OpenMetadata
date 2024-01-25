@@ -418,7 +418,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
             yield Either(
                 left=StackTraceError(
                     name="Tags and Classifications",
-                    error=f"Failed to fetch database tags due to [{exc}]",
+                    error=f"Failed to fetch schema tags due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -479,7 +479,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
             yield Either(
                 left=StackTraceError(
                     name="Tags and Classifications",
-                    error=f"Failed to fetch database tags due to [{exc}]",
+                    error=f"Failed to fetch table/column tags due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 )
             )
