@@ -91,6 +91,10 @@ class DataInsightSource(Source):
         )  # make an immutable copy of the dict
 
     @property
+    def name(self) -> str:
+        return "OpenMetadata"
+
+    @property
     def processors(self) -> Dict[str, Optional[DataProcessor]]:
         """dictionnaray of processors"""
         return self._processors

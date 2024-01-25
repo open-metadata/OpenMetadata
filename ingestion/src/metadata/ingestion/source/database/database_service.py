@@ -207,6 +207,10 @@ class DatabaseServiceSource(
     topology = DatabaseServiceTopology()
     context = TopologyContext.create(topology)
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     def prepare(self):
         """By default, there is no preparation needed"""
 

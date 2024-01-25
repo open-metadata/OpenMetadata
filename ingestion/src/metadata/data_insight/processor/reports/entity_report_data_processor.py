@@ -77,6 +77,10 @@ class EntityReportDataProcessor(DataProcessor):
         self._refined_data = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         self.post_hook = self._post_hook_fn
 
+    @property
+    def name(self) -> str:
+        return "Entity Report Processor"
+
     def _get_team(self, owner: EntityReference) -> Optional[str]:
         """Get the team from an entity. We'll use this info as well to
         add info if an entity has an owner
