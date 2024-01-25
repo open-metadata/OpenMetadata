@@ -16,7 +16,7 @@ import { startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../hooks/useFqn';
-import { getIconForEntity } from '../../../utils/ObservabilityUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
@@ -41,7 +41,9 @@ function ObservabilityFormTriggerItem({
       filterResources.map((resource) => ({
         label: (
           <div className="d-flex items-center gap-2">
-            {getIconForEntity(resource.name ?? '')}
+            <div className="d-flex h-4 w-4">
+              {getEntityIcon(resource.name ?? '')}
+            </div>
             <span>{startCase(resource.name)}</span>
           </div>
         ),

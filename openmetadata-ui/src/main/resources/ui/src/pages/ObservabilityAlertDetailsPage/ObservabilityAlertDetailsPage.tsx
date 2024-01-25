@@ -51,12 +51,12 @@ import {
 import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getIconForEntity } from '../../utils/ObservabilityUtils';
 import {
   getNotificationAlertsEditPath,
   getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { getEntityIcon } from '../../utils/TableUtils';
 import '../AddObservabilityPage/add-observability-page.less';
 import { ObservabilityAlertDetailsPageProps } from './ObservabilityAlertDetailsPage.interface';
 
@@ -354,7 +354,9 @@ function ObservabilityAlertDetailsPage({
                 {getObservabilityDetailsItem({
                   details: (
                     <div className="d-flex items-center gap-2 m-l-sm">
-                      {getIconForEntity(resource ?? '')}
+                      <div className="d-flex h-4 w-4">
+                        {getEntityIcon(resource ?? '')}
+                      </div>
                       <span>{startCase(resource)}</span>
                     </div>
                   ),

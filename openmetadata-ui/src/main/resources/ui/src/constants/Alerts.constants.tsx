@@ -17,7 +17,7 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../generated/events/eventSubscription';
-import { getIconForEntity } from '../utils/ObservabilityUtils';
+import { getAlertDestinationCategoryIcons } from '../utils/ObservabilityUtils';
 
 export const INTERNAL_CATEGORY_OPTIONS = filter(
   SubscriptionCategory,
@@ -25,7 +25,7 @@ export const INTERNAL_CATEGORY_OPTIONS = filter(
 ).map((value) => ({
   label: (
     <div className="d-flex items-center gap-2">
-      {getIconForEntity(value)}
+      {getAlertDestinationCategoryIcons(value)}
       <span>{startCase(value)}</span>
     </div>
   ),
@@ -38,7 +38,7 @@ export const EXTERNAL_CATEGORY_OPTIONS = filter(
 ).map((value) => ({
   label: (
     <div className="d-flex items-center gap-2">
-      {getIconForEntity(value)}
+      {getAlertDestinationCategoryIcons(value)}
       <span>{startCase(value)}</span>
     </div>
   ),

@@ -28,8 +28,10 @@ import {
 } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
+import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as IconTerm } from '../assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
@@ -52,8 +54,10 @@ import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-lin
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -262,6 +266,7 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.PIPELINE:
     case EntityType.PIPELINE_SERVICE:
     case SearchIndex.PIPELINE_SERVICE:
+    case 'ingestionPipeline':
       return <PipelineIcon />;
 
     case SearchIndex.CONTAINER:
@@ -280,6 +285,7 @@ export const getEntityIcon = (indexType: string) => {
 
     case SearchIndex.TAG:
     case EntityType.TAG:
+    case 'tagCategory':
       return <ClassificationIcon />;
     case SearchIndex.GLOSSARY:
     case EntityType.GLOSSARY:
@@ -305,6 +311,19 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.DATA_PRODUCT:
     case SearchIndex.DATA_PRODUCT:
       return <DataProductIcon />;
+
+    case 'announcement':
+      return <AnnouncementIcon />;
+
+    case 'conversation':
+      return <ConversationIcon />;
+
+    case 'task':
+      return <TaskIcon />;
+
+    case EntityType.TEST_CASE:
+    case EntityType.TEST_SUITE:
+      return <IconTestSuite height={16} width={16} />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
