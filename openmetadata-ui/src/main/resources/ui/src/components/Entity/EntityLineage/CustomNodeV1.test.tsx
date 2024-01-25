@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import { ModelType } from '../../../generated/entity/data/table';
 import CustomNodeV1Component from './CustomNodeV1.component';
 
 const mockNodeDataProps = {
@@ -29,6 +30,33 @@ const mockNodeDataProps = {
         { fullyQualifiedName: 'col2', name: 'col2' },
         { fullyQualifiedName: 'col3', name: 'col3' },
       ],
+    },
+  },
+  selected: false,
+  isConnectable: false,
+  xPos: 0,
+  yPos: 0,
+  dragging: true,
+  zIndex: 0,
+};
+
+const mockNodeDataProps2 = {
+  id: 'node1',
+  type: 'table',
+  data: {
+    node: {
+      fullyQualifiedName: 'dim_customer',
+      type: 'table',
+      entityType: 'table',
+      id: 'khjahjfja',
+      columns: [
+        { fullyQualifiedName: 'col1', name: 'col1' },
+        { fullyQualifiedName: 'col2', name: 'col2' },
+        { fullyQualifiedName: 'col3', name: 'col3' },
+      ],
+      dataModel: {
+        modelType: ModelType.Dbt,
+      },
     },
   },
   selected: false,
@@ -73,5 +101,17 @@ describe('CustomNodeV1', () => {
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
     expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
+  });
+
+  it('renders node with dbt icon correctly', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps2} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
+    expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
   });
 });
