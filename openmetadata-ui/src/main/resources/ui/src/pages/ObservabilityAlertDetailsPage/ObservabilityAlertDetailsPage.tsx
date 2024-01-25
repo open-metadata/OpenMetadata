@@ -11,8 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
-import { isEmpty, isNil, startCase, toString } from 'lodash';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { isEmpty, isNil, startCase } from 'lodash';
 import React, {
   Fragment,
   ReactNode,
@@ -149,14 +159,19 @@ function ObservabilityAlertDetailsPage() {
                 <Col className="border rounded-4 p-sm" span={20}>
                   {filterDetails.arguments?.map((argument) => (
                     <Row gutter={[0, 8]} key={argument.name}>
-                      <Col className="font-medium" span={5}>
+                      <Col className="font-medium" span={24}>
                         <Typography.Text>{argument.name}</Typography.Text>
                       </Col>
-                      <Col span={1}>:</Col>
-                      <Col span={18}>
-                        <Typography.Text>
-                          {toString(argument.input).replaceAll(',', ', ')}
-                        </Typography.Text>
+                      <Col span={24}>
+                        {argument.input?.map((inputItem) => (
+                          <Tooltip key={inputItem} title={inputItem}>
+                            <Tag className="m-b-xs w-max-full">
+                              <Typography.Text ellipsis>
+                                {inputItem}
+                              </Typography.Text>
+                            </Tag>
+                          </Tooltip>
+                        ))}
                       </Col>
                     </Row>
                   ))}
@@ -197,18 +212,23 @@ function ObservabilityAlertDetailsPage() {
                       <Row gutter={[0, 8]}>
                         {destination.config?.receivers && (
                           <>
-                            <Col className="font-medium" span={5}>
+                            <Col className="font-medium" span={24}>
                               <Typography.Text>
                                 {t('label.receiver-plural')}
                               </Typography.Text>
                             </Col>
-                            <Col span={1}>:</Col>
-                            <Col span={18}>
-                              <Typography.Text>
-                                {toString(
-                                  destination.config?.receivers
-                                ).replaceAll(',', ', ')}
-                              </Typography.Text>
+                            <Col span={24}>
+                              {destination.config?.receivers?.map(
+                                (receiver) => (
+                                  <Tooltip key={receiver} title={receiver}>
+                                    <Tag className="m-b-xs w-max-full">
+                                      <Typography.Text ellipsis>
+                                        {receiver}
+                                      </Typography.Text>
+                                    </Tag>
+                                  </Tooltip>
+                                )
+                              )}
                             </Col>
                           </>
                         )}
@@ -326,7 +346,7 @@ function ObservabilityAlertDetailsPage() {
                   {getObservabilityDetailsItem({
                     details: getFilterDetails(false, actions),
                     heading: t('label.action-plural'),
-                    subHeading: t('message.alerts-filter-description'),
+                    subHeading: t('message.alerts-action-description'),
                   })}
                 </Col>
               )}

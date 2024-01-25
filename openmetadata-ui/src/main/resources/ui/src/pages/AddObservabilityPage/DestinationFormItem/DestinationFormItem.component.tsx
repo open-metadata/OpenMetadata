@@ -12,7 +12,17 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Form, Row, Select, Tabs, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Form,
+  Row,
+  Select,
+  Tabs,
+  Typography,
+} from 'antd';
 import Input from 'antd/lib/input/Input';
 import { SelectProps } from 'antd/lib/select';
 import { isEmpty, isNil } from 'lodash';
@@ -317,12 +327,16 @@ function DestinationFormItem({
               return (
                 <>
                   {fields.map(({ key, name }) => {
-                    const destinationType =
-                      form.getFieldValue([
-                        'destinations',
-                        name,
-                        'destinationType',
-                      ]) ?? SubscriptionType.Email;
+                    const destinationType = form.getFieldValue([
+                      'destinations',
+                      name,
+                      'destinationType',
+                    ]);
+                    const subscriptionType = form.getFieldValue([
+                      'destinations',
+                      name,
+                      'type',
+                    ]);
 
                     const isInternalDestinationSelected =
                       checkIfDestinationIsInternal(destinationType);
@@ -356,7 +370,7 @@ function DestinationFormItem({
                             />
                           </Form.Item>
                         </Col>
-                        <Col flex="1 1 auto">
+                        <Col flex="1 1 40%">
                           {getHiddenDestinationFields(
                             isInternalDestinationSelected,
                             name,
@@ -382,6 +396,28 @@ function DestinationFormItem({
                             <Col span={24}>
                               <Form.Item
                                 required
+                                extra={
+                                  destinationType &&
+                                  subscriptionType && (
+                                    <Alert
+                                      closable
+                                      className="m-t-xs"
+                                      message={
+                                        <Typography.Text className="font-medium text-sm">
+                                          {t(
+                                            'message.destination-selection-warning',
+                                            {
+                                              subscriptionCategory:
+                                                destinationType,
+                                              subscriptionType,
+                                            }
+                                          )}
+                                        </Typography.Text>
+                                      }
+                                      type="warning"
+                                    />
+                                  )
+                                }
                                 messageVariables={{
                                   fieldName: t('label.data-asset-plural'),
                                 }}
