@@ -14,7 +14,7 @@ import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
-import { SidebarItem } from '../../constants/Entity.interface';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   descriptionBox,
   interceptURL,
@@ -168,10 +168,8 @@ export const permanentDeleteUser = (username: string, displayName: string) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
 };
 export const visitUserListPage = () => {
-  cy.sidebarClick(SidebarItem.SETTINGS);
-
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
-  cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+  cy.settingClick(GlobalSettingOptions.USERS);
 };
 
 export const generateToken = () => {
@@ -193,7 +191,7 @@ export const revokeToken = () => {
   cy.get('[data-testid="revoke-button"]').should('not.exist');
 };
 
-export const updateExpiration = (expiry: number) => {
+export const updateExpiration = (expiry: number | string) => {
   cy.get('[data-testid="dropdown-profile"]').click();
   cy.get('[data-testid="user-name"] > .ant-typography').click({
     force: true,
@@ -252,12 +250,10 @@ export const editTeams = (teamName: string) => {
   cy.get('.filter-node > .ant-select-tree-node-content-wrapper').click();
   cy.get('[data-testid="inline-save-btn"]').click({ timeout: 10000 });
   verifyResponseStatusCode('@updateTeams', 200);
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
+
   cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
-  cy.get(`[data-testid="${teamName}"]`)
-    .should('exist')
-    .scrollIntoView()
-    .and('be.visible');
+  cy.get('.page-layout-v1-vertical-scroll').scrollTo(0, 0);
+  cy.get(`[data-testid="${teamName}"]`).should('be.visible');
 };
 
 export const handleUserUpdateDetails = (

@@ -16,6 +16,7 @@ import {
   findByTestId,
   findByText,
   fireEvent,
+  getAllByText,
   queryByTestId,
   render,
 } from '@testing-library/react';
@@ -23,6 +24,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { ServiceCategory } from '../../enums/service.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import Ingestion from './Ingestion.component';
 import { mockIngestionWorkFlow, mockService } from './Ingestion.mock';
@@ -88,6 +90,11 @@ jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
     .mockImplementation(() => <p>IngestionRecentRuns</p>),
 }));
 
+jest.mock(
+  '../Skeleton/CommonSkeletons/ControlElements/ControlElements.component',
+  () => jest.fn().mockImplementation(() => <div>ButtonSkeleton</div>)
+);
+
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
@@ -99,6 +106,15 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
       EditDisplayName: true,
       EditCustomFields: true,
     }),
+  }),
+}));
+
+jest.mock('../../hooks/useAirflowStatus', () => ({
+  useAirflowStatus: jest.fn(() => {
+    return {
+      isFetchingStatus: false,
+      platform: 'airflow',
+    };
   }),
 }));
 
@@ -413,5 +429,83 @@ describe('Test Ingestion page', () => {
     expect(
       await findByText(container, /KillIngestionModal/i)
     ).toBeInTheDocument();
+  });
+
+  it('should render button skeleton if airflow status is loading', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isFetchingStatus: true,
+      platform: 'airflow',
+    }));
+
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        airflowEndpoint=""
+        deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+        }
+        paging={mockPaging}
+        permissions={mockPermissions}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceName=""
+        triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const addIngestionButton = queryByTestId(
+      container,
+      'add-new-ingestion-button'
+    );
+
+    const loadingButton = getAllByText(container, 'ButtonSkeleton');
+
+    expect(loadingButton).toHaveLength(2);
+
+    expect(addIngestionButton).not.toBeInTheDocument();
+  });
+
+  it('should not render add ingestion button if platform is disabled', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isFetchingStatus: false,
+      platform: 'disabled',
+    }));
+
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        airflowEndpoint=""
+        deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+        }
+        paging={mockPaging}
+        permissions={mockPermissions}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceName=""
+        triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const addIngestionButton = queryByTestId(
+      container,
+      'add-new-ingestion-button'
+    );
+
+    expect(addIngestionButton).not.toBeInTheDocument();
   });
 });

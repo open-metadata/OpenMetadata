@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from './settings.constant';
+
 export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
 
@@ -465,6 +467,17 @@ export const service = {
 };
 
 export const SERVICE_TYPE = {
+  Database: GlobalSettingOptions.DATABASES,
+  Messaging: GlobalSettingOptions.MESSAGING,
+  Dashboard: GlobalSettingOptions.DASHBOARDS,
+  Pipeline: GlobalSettingOptions.PIPELINES,
+  MLModels: GlobalSettingOptions.MLMODELS,
+  Storage: GlobalSettingOptions.STORAGES,
+  Search: GlobalSettingOptions.SEARCH,
+  StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
+};
+
+export const ENTITY_SERVICE_TYPE = {
   Database: 'Database',
   Messaging: 'Messaging',
   Dashboard: 'Dashboard',
@@ -742,69 +755,74 @@ export const DOMAIN_3 = {
 };
 export const GLOBAL_SETTING_PERMISSIONS = {
   metadata: {
-    testid: '[data-menu-id*="metadata"]',
+    testid: GlobalSettingOptions.METADATA,
   },
   customAttributesTable: {
-    testid: '[data-menu-id*="tables"]',
+    testid: GlobalSettingOptions.TABLES,
+    isCustomProperty: true,
   },
   customAttributesTopics: {
-    testid: '[data-menu-id*="topics"]',
+    testid: GlobalSettingOptions.TOPICS,
+    isCustomProperty: true,
   },
   customAttributesDashboards: {
-    testid: '[data-menu-id*="customAttributes.dashboards"]',
+    testid: GlobalSettingOptions.DASHBOARDS,
+    isCustomProperty: true,
   },
   customAttributesPipelines: {
-    testid: '[data-menu-id*="customAttributes.pipelines"]',
+    testid: GlobalSettingOptions.PIPELINES,
+    isCustomProperty: true,
   },
   customAttributesMlModels: {
-    testid: '[data-menu-id*="customAttributes.mlModels"]',
+    testid: GlobalSettingOptions.MLMODELS,
+    isCustomProperty: true,
   },
   bots: {
-    testid: '[data-menu-id*="bots"]',
+    testid: GlobalSettingOptions.BOTS,
   },
 };
 export const ID = {
   teams: {
-    testid: '[data-menu-id*="teams"]',
+    testid: GlobalSettingOptions.TEAMS,
     button: 'add-team',
   },
   users: {
-    testid: '[data-menu-id*="users"]',
+    testid: GlobalSettingOptions.USERS,
     button: 'add-user',
     api: '/api/v1/users?*',
   },
   admins: {
-    testid: '[data-menu-id*="admins"]',
+    testid: GlobalSettingOptions.ADMINS,
     button: 'add-user',
     api: '/api/v1/users?*',
   },
   databases: {
-    testid: '[data-menu-id*="databases"]',
+    testid: GlobalSettingOptions.DATABASES,
     button: 'add-service-button',
     api: '/api/v1/services/databaseServices?*',
   },
   messaging: {
-    testid: '[data-menu-id*="messaging"]',
+    testid: GlobalSettingOptions.MESSAGING,
     button: 'add-service-button',
     api: '/api/v1/services/messagingServices?*',
   },
   dashboard: {
-    testid: '[data-menu-id*="services.dashboards"]',
+    testid: GlobalSettingOptions.DASHBOARDS,
     button: 'add-service-button',
     api: '/api/v1/services/dashboardServices?*',
   },
   pipelines: {
-    testid: '[data-menu-id*="services.pipelines"]',
+    testid: GlobalSettingOptions.PIPELINES,
     button: 'add-service-button',
     api: '/api/v1/services/pipelineServices?*',
   },
   mlmodels: {
-    testid: '[data-menu-id*="services.mlmodels"]',
+    testid: GlobalSettingOptions.MLMODELS,
     button: 'add-service-button',
     api: '/api/v1/services/mlmodelServices?*',
   },
   storage: {
-    testid: '[data-menu-id*="services.storages"]',
+    testid: GlobalSettingOptions.STORAGES,
     button: 'add-service-button',
     api: '/api/v1/services/storageServices?*',
   },

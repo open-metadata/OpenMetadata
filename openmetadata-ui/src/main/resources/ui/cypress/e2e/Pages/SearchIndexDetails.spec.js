@@ -21,8 +21,8 @@ import {
   removeTableFieldTags,
   updateTableFieldDescription,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { BASE_URL, uuid } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 import {
@@ -33,6 +33,7 @@ import {
   USER_CREDENTIALS,
   USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const policy = {
   name: `cy-data-steward-policy-${uuid()}`,
@@ -195,7 +196,7 @@ describe('Prerequisite for data steward role tests', () => {
 
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
 
     verifyResponseStatusCode('@getUsersList', 200);
 
@@ -305,6 +306,11 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('Soft delete workflow should work properly', () => {
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
@@ -362,6 +368,11 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('Hard delete workflow should work properly', () => {
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,

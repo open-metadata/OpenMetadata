@@ -195,11 +195,12 @@ public class LineageResource {
           String queryFilter,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
-          boolean deleted)
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
 
     return Entity.getSearchRepository()
-        .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+        .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
   @PUT
