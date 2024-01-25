@@ -91,7 +91,7 @@ EXAMPLE_TABLE = [
         columns=[],
     )
 ]
-mock_tableau_config = {
+mock_config = {
     "source": {
         "type": "metabase",
         "serviceName": "mock_metabase",
@@ -234,9 +234,9 @@ class MetabaseUnitTest(TestCase):
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_tableau_config)
+        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_config)
         self.metabase = MetabaseSource.create(
-            mock_tableau_config["source"],
+            mock_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metabase.client = SimpleNamespace()

@@ -19,7 +19,6 @@ import {
   descriptionBox,
   interceptURL,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import {
   deleteClassification,
@@ -27,6 +26,7 @@ import {
   validateForm,
   visitClassificationPage,
 } from '../../common/TagUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   DELETE_TERM,
   NEW_CLASSIFICATION,
@@ -186,6 +186,11 @@ describe('Classification Page', () => {
 
   it(`Assign tag to table ${SEARCH_ENTITY_TABLE.table_3.displayName}`, () => {
     const entity = SEARCH_ENTITY_TABLE.table_3;
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
     addNewTagToEntity(entity, NEW_TAG);
   });
 

@@ -14,7 +14,6 @@ import {
   descriptionBox,
   interceptURL,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import {
   createEntityTable,
@@ -22,6 +21,7 @@ import {
   generateRandomTable,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { DATA_ASSETS } from '../../constants/constants';
 import {
   DATABASE_SERVICE,

@@ -19,8 +19,8 @@ import {
   deleteEntity,
   interceptURL,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { visitEntityDetailsVersionPage } from '../../common/VersionUtils';
@@ -302,6 +302,11 @@ describe('Version page tests for data assets', () => {
         });
 
         it(`${entityType} version page should show changes after soft deleted`, () => {
+          visitEntityDetailsPage({
+            term: entityDetails.name,
+            serviceName: entityDetails.serviceName,
+            entity: entityDetails.entity,
+          });
           deleteEntity(
             entityDetails.name,
             entityDetails.serviceName,
