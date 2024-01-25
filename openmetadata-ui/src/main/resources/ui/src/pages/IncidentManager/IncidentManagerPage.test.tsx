@@ -33,6 +33,10 @@ jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({
     .fn()
     .mockImplementation(() => <div>AsyncSelect.component</div>),
 }));
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(() => <div>Link</div>),
+}));
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {

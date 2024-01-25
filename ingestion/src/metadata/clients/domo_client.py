@@ -146,8 +146,6 @@ class DomoClient:
 
         return None
 
-    # def get_owner_details(self, owner_id) -> dict:
-
     def get_pipelines(self):
         try:
             response = self.client._request(  # pylint: disable=protected-access

@@ -541,7 +541,12 @@ const ClassificationDetails = forwardRef(
             dataSource={tags}
             loading={isTagsLoading}
             locale={{
-              emptyText: <ErrorPlaceHolder className="m-y-md" />,
+              emptyText: (
+                <ErrorPlaceHolder
+                  className="m-y-md"
+                  placeholderText={t('message.no-tags-description')}
+                />
+              ),
             }}
             pagination={false}
             rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}

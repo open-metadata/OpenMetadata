@@ -47,7 +47,7 @@
     "@auth0/auth0-react": "^1.9.0",
     "@azure/msal-browser": "^2.37.0",
     "@azure/msal-react": "^1.5.11",
-    "@deuex-solutions/react-tour": "^1.2.5",
+    "@deuex-solutions/react-tour": "^1.2.6",
     "@fontsource/poppins": "^5.0.0",
     "@fontsource/source-code-pro": "^5.0.0",
     "@github/g-emoji-element": "^1.1.5",
@@ -125,7 +125,7 @@
     "recharts": "2.5.0",
     "showdown": "^2.1.0",
     "socket.io-client": "^4.5.1",
-    "styled-components": "^5.3.7",
+    "styled-components": "^6.1.8",
     "turndown": "^7.1.2",
     "use-analytics": "^0.0.5"
   },

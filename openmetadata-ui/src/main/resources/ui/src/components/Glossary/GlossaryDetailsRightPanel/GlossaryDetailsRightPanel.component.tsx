@@ -223,7 +223,7 @@ const GlossaryDetailsRightPanel = ({
           hasPermission={permissions.EditAll}
         />
       </Col>
-      <Col data-testid="owner-link" span="24">
+      <Col data-testid="glossary-right-panel-owner-link" span="24">
         <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">
             {t('label.owner')}

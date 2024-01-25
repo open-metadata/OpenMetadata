@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 // eslint-disable-next-line spaced-comment
-import {
-  GlobalSettingOptions,
-  SETTINGS_OPTIONS_PATH,
-  SETTING_CUSTOM_PROPERTIES_PATH,
-} from '../../../src/constants/GlobalSettings.constants';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
@@ -38,7 +33,11 @@ import {
   uuid,
 } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
-import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
+import {
+  GlobalSettingOptions,
+  SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+} from '../../constants/settings.constant';
 
 const entity = new UsersTestClass();
 const expirationTime = {
@@ -49,8 +48,6 @@ const expirationTime = {
   threemonths: '90',
 };
 const name = `Usercttest${uuid()}`;
-const glossary = NAVBAR_DETAILS.glossary;
-const tag = NAVBAR_DETAILS.tags;
 const ownerName = 'Aaron Warren';
 const user = {
   name: name,

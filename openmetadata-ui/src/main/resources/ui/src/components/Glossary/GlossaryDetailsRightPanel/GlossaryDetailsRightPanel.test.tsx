@@ -78,7 +78,9 @@ describe('GlossaryDetailsRightPanel', () => {
       </BrowserRouter>
     );
 
-    expect(getByTestId('owner-link')).toHaveTextContent('label.owner');
+    expect(getByTestId('glossary-right-panel-owner-link')).toHaveTextContent(
+      'label.owner'
+    );
     expect(getByTestId('glossary-reviewer-heading-name')).toHaveTextContent(
       'label.reviewer-plural'
     );
