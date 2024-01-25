@@ -109,6 +109,7 @@ class ModeSource(DashboardServiceSource):
                 for chart in self.context.charts
             ],
             service=self.context.dashboard_service,
+            owner=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)

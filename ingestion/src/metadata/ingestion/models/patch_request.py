@@ -78,6 +78,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "displayName": True,
     "sourceUrl": True,
     "description": True,
+    "owner": True,
     "tags": True,
     # Table Entity Fields
     "tableType": True,
@@ -134,7 +135,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "fileFormats": True,
 }
 
-RESTRICT_UPDATE_LIST = ["description", "tags"]
+RESTRICT_UPDATE_LIST = ["description", "tags", "owner"]
 
 
 def build_patch(

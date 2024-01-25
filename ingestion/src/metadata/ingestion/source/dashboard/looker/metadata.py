@@ -614,7 +614,7 @@ class LookerSource(DashboardServiceSource):
             dashboard_id=dashboard.id, fields=",".join(GET_DASHBOARD_FIELDS)
         )
 
-    def get_owner_details(
+    def get_owner_ref(
         self, dashboard_details: LookerDashboard
     ) -> Optional[EntityReference]:
         """Get dashboard owner
@@ -664,6 +664,7 @@ class LookerSource(DashboardServiceSource):
             project=self._get_dashboard_project(dashboard_details),
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service,
+            owner=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
