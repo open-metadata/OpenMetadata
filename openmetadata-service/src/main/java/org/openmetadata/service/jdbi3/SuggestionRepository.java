@@ -38,6 +38,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.SuggestionsResource;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -183,14 +186,19 @@ public class SuggestionRepository {
   }
 
   public RestUtil.PutResponse<Suggestion> acceptSuggestion(
-      UriInfo uriInfo, Suggestion suggestion, String user) {
+      UriInfo uriInfo,
+      Suggestion suggestion,
+      SecurityContext securityContext,
+      Authorizer authorizer) {
     suggestion.setStatus(SuggestionStatus.Accepted);
-    acceptSuggestion(suggestion, user);
+    acceptSuggestion(suggestion, securityContext, authorizer);
     Suggestion updatedHref = SuggestionsResource.addHref(uriInfo, suggestion);
     return new RestUtil.PutResponse<>(Response.Status.OK, updatedHref, SUGGESTION_ACCEPTED);
   }
 
-  protected void acceptSuggestion(Suggestion suggestion, String user) {
+  protected void acceptSuggestion(
+      Suggestion suggestion, SecurityContext securityContext, Authorizer authorizer) {
+    String user = securityContext.getUserPrincipal().getName();
     MessageParser.EntityLink entityLink =
         MessageParser.EntityLink.parse(suggestion.getEntityLink());
     EntityInterface entity =
@@ -202,6 +210,11 @@ public class SuggestionRepository {
     EntityInterface updatedEntity = suggestionWorkflow.acceptSuggestions(repository, entity);
     String updatedEntityJson = JsonUtils.pojoToJson(updatedEntity);
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+    OperationContext operationContext = new OperationContext(entityLink.getEntityType(), patch);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        new ResourceContext<>(entityLink.getEntityType(), entity.getId(), null));
     repository.patch(null, entity.getId(), user, patch);
     suggestion.setStatus(SuggestionStatus.Accepted);
     update(suggestion, user);
@@ -223,21 +236,25 @@ public class SuggestionRepository {
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
     EntityReference ownerRef = Entity.getOwner(aboutRef);
     List<String> ownerTeamNames = new ArrayList<>();
-    try {
-      User owner =
-          Entity.getEntityByName(USER, ownerRef.getFullyQualifiedName(), TEAMS_FIELD, NON_DELETED);
-      ownerTeamNames =
-          owner.getTeams().stream().map(EntityReference::getFullyQualifiedName).toList();
-    } catch (EntityNotFoundException e) {
-      Team owner = Entity.getEntityByName(TEAM, ownerRef.getFullyQualifiedName(), "", NON_DELETED);
-      ownerTeamNames.add(owner.getFullyQualifiedName());
+    if (ownerRef != null) {
+      try {
+        User owner =
+            Entity.getEntityByName(
+                USER, ownerRef.getFullyQualifiedName(), TEAMS_FIELD, NON_DELETED);
+        ownerTeamNames =
+            owner.getTeams().stream().map(EntityReference::getFullyQualifiedName).toList();
+      } catch (EntityNotFoundException e) {
+        Team owner =
+            Entity.getEntityByName(TEAM, ownerRef.getFullyQualifiedName(), "", NON_DELETED);
+        ownerTeamNames.add(owner.getFullyQualifiedName());
+      }
     }
 
     List<String> userTeamNames =
         user.getTeams().stream().map(EntityReference::getFullyQualifiedName).toList();
 
     if (Boolean.FALSE.equals(user.getIsAdmin())
-        && !ownerRef.getName().equals(userName)
+        && (ownerRef != null && !ownerRef.getName().equals(userName))
         && Collections.disjoint(userTeamNames, ownerTeamNames)) {
       throw new AuthorizationException(
           CatalogExceptionMessage.suggestionOperationNotAllowed(userName, status.value()));

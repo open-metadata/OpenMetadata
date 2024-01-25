@@ -63,8 +63,11 @@ import org.openmetadata.service.util.TestUtils;
 public class SuggestionResourceTest extends OpenMetadataApplicationTest {
   public static Table TABLE;
   public static Table TABLE2;
+
+  public static Table TABLE_WITHOUT_OWNER;
   public static String TABLE_LINK;
   public static String TABLE2_LINK;
+  public static String TABLE_WITHOUT_OWNER_LINK;
   public static String TABLE_COLUMN1_LINK;
   public static String TABLE_COLUMN2_LINK;
   public static List<Column> COLUMNS;
@@ -107,11 +110,18 @@ public class SuggestionResourceTest extends OpenMetadataApplicationTest {
     createTable2.withName("table2").withOwner(TEAM2_REF);
     TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
+    CreateTable createTable3 = TABLE_RESOURCE_TEST.createRequest(test);
+    createTable3.withName("table_without_owner").withOwner(null);
+    TABLE_WITHOUT_OWNER =
+        TABLE_RESOURCE_TEST.createAndCheckEntity(createTable3, ADMIN_AUTH_HEADERS);
+
     COLUMNS =
         Collections.singletonList(
             new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E::table::%s>", TABLE.getFullyQualifiedName());
     TABLE2_LINK = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
+    TABLE_WITHOUT_OWNER_LINK =
+        String.format("<#E::table::%s>", TABLE_WITHOUT_OWNER.getFullyQualifiedName());
     TABLE_COLUMN1_LINK =
         String.format("<#E::table::%s::columns::" + C1 + ">", TABLE.getFullyQualifiedName());
     TABLE_COLUMN2_LINK =
@@ -227,7 +237,13 @@ public class SuggestionResourceTest extends OpenMetadataApplicationTest {
                 null)
             .getPaging()
             .getTotal());
-
+    create = create().withEntityLink(TABLE_WITHOUT_OWNER_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+    assertEquals(
+        1,
+        listSuggestions(TABLE_WITHOUT_OWNER.getFullyQualifiedName(), null, USER_AUTH_HEADERS)
+            .getPaging()
+            .getTotal());
     /*  deleteSuggestions("table", TABLE.getFullyQualifiedName(), USER_AUTH_HEADERS);
     assertEquals(
         0,
@@ -279,6 +295,12 @@ public class SuggestionResourceTest extends OpenMetadataApplicationTest {
       expectedTags.addAll(suggestion2.getTagLabels());
       validateAppliedTags(expectedTags, column.getTags());
     }
+    String description = "Table without owner";
+    create = create().withEntityLink(TABLE_WITHOUT_OWNER_LINK).withDescription(description);
+    Suggestion suggestion3 = createSuggestion(create, USER_AUTH_HEADERS);
+    acceptSuggestion(suggestion3.getId(), USER2_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(TABLE_WITHOUT_OWNER.getId(), "", USER_AUTH_HEADERS);
+    assertEquals(description, table.getDescription());
   }
 
   @Test

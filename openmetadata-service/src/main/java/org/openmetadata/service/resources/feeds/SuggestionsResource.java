@@ -227,8 +227,7 @@ public class SuggestionsResource {
     Suggestion suggestion = dao.get(id);
     dao.checkPermissionsForAcceptOrRejectSuggestion(
         suggestion, SuggestionStatus.Accepted, securityContext);
-    return dao.acceptSuggestion(uriInfo, suggestion, securityContext.getUserPrincipal().getName())
-        .toResponse();
+    return dao.acceptSuggestion(uriInfo, suggestion, securityContext, authorizer).toResponse();
   }
 
   @PUT
