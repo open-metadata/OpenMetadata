@@ -97,6 +97,13 @@ class TestEntityLink(TestCase):
                 "<#E::table::随机的>",
                 ["table", "随机的"],
             ),
+            EntityLinkTest(
+                '<#E::table::ExampleWithFolder.withfolder.examplewithfolder."folderpath/username.csv">',
+                [
+                    "table",
+                    'ExampleWithFolder.withfolder.examplewithfolder."folderpath/username.csv"',
+                ],
+            ),
         ]
         for x in xs:
             x.validate(entity_link.split(x.entitylink), x.split_list)

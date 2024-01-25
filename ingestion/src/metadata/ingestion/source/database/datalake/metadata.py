@@ -13,6 +13,7 @@
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import json
+import os
 import traceback
 from typing import Any, Iterable, Tuple, Union
 
@@ -53,12 +54,18 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.datalake.connection import (
+    set_gcs_datalake_client,
+)
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
@@ -68,12 +75,13 @@ from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.datalake.datalake_utils import (
     fetch_dataframe,
     get_columns,
     get_file_format_type,
 )
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.s3_utils import list_s3_objects
 
@@ -96,8 +104,10 @@ class DatalakeSource(DatabaseServiceSource):
         )
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
+        self.temp_credentials_file_path = []
         self.connection = get_connection(self.service_connection)
-
+        if GOOGLE_CREDENTIALS in os.environ:
+            self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = self.connection.client
         self.table_constraints = None
         self.database_source_state = set()
@@ -125,8 +135,47 @@ class DatalakeSource(DatabaseServiceSource):
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-        database_name = self.service_connection.databaseName or DEFAULT_DATABASE
-        yield database_name
+        if isinstance(self.config_source, GCSConfig):
+            project_id_list = (
+                self.service_connection.configSource.securityConfig.gcpConfig.projectId.__root__
+            )
+            if not isinstance(
+                project_id_list,
+                list,
+            ):
+                project_id_list = [project_id_list]
+            for project_id in project_id_list:
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=project_id,
+                )
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else project_id,
+                ):
+                    self.status.filter(database_fqn, "Database Filtered out")
+                else:
+                    try:
+                        self.client = set_gcs_datalake_client(
+                            config=self.config_source, project_id=project_id
+                        )
+                        if GOOGLE_CREDENTIALS in os.environ:
+                            self.temp_credentials_file_path.append(
+                                os.environ[GOOGLE_CREDENTIALS]
+                            )
+                        yield project_id
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.error(
+                            f"Error trying to connect to database {project_id}: {exc}"
+                        )
+        else:
+            database_name = self.service_connection.databaseName or DEFAULT_DATABASE
+            yield database_name
 
     def yield_database(
         self, database_name: str
@@ -135,6 +184,8 @@ class DatalakeSource(DatabaseServiceSource):
         From topology.
         Prepare a database request and pass it to the sink
         """
+        if isinstance(self.config_source, GCSConfig):
+            database_name = self.client.project
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
@@ -143,24 +194,42 @@ class DatalakeSource(DatabaseServiceSource):
         )
 
     def fetch_gcs_bucket_names(self):
-        for bucket in self.client.list_buckets():
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=bucket.name,
-            )
-            if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else bucket.name,
-            ):
-                self.status.filter(schema_fqn, "Bucket Filtered Out")
-                continue
+        """
+        Fetch Google cloud storage buckets
+        """
+        try:
+            # List all the buckets in the project
+            for bucket in self.client.list_buckets():
+                # Build a fully qualified name (FQN) for each bucket
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=bucket.name,
+                )
 
-            yield bucket.name
+                # Check if the bucket matches a certain filter pattern
+                if filter_by_schema(
+                    self.config.sourceConfig.config.schemaFilterPattern,
+                    schema_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else bucket.name,
+                ):
+                    # If it does not match, the bucket is filtered out
+                    self.status.filter(schema_fqn, "Bucket Filtered Out")
+                    continue
+
+                # If it does match, the bucket name is yielded
+                yield bucket.name
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Bucket",
+                    error=f"Unexpected exception to yield bucket: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def fetch_s3_bucket_names(self):
         for bucket in self.client.list_buckets()["Buckets"]:
@@ -434,3 +503,12 @@ class DatalakeSource(DatabaseServiceSource):
     def close(self):
         if isinstance(self.config_source, AzureConfig):
             self.client.close()
+        if isinstance(self.config_source, GCSConfig):
+            os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
+            if isinstance(self.service_connection, GcpCredentialsValues) and (
+                GOOGLE_CREDENTIALS in os.environ
+            ):
+                del os.environ[GOOGLE_CREDENTIALS]
+                for temp_file_path in self.temp_credentials_file_path:
+                    if os.path.exists(temp_file_path):
+                        os.remove(temp_file_path)

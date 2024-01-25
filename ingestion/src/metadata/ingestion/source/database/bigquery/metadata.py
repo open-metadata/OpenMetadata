@@ -210,7 +210,6 @@ class BigquerySource(
         # as per service connection config, which would result in an error.
         self.test_connection = lambda: None
         super().__init__(config, metadata)
-        self.temp_credentials = None
         self.client = None
         # Used to delete temp json file created while initializing bigquery client
         self.temp_credentials_file_path = []
@@ -366,18 +365,18 @@ class BigquerySource(
                 schema_name=schema_name,
             ),
         )
-
-        dataset_obj = self.client.get_dataset(schema_name)
-        if dataset_obj.labels and self.source_config.includeTags:
-            database_schema_request_obj.tags = []
-            for label_classification, label_tag_name in dataset_obj.labels.items():
-                tag_label = get_tag_label(
-                    metadata=self.metadata,
-                    tag_name=label_tag_name,
-                    classification_name=label_classification,
-                )
-                if tag_label:
-                    database_schema_request_obj.tags.append(tag_label)
+        if self.source_config.includeTags:
+            dataset_obj = self.client.get_dataset(schema_name)
+            if dataset_obj.labels:
+                database_schema_request_obj.tags = []
+                for label_classification, label_tag_name in dataset_obj.labels.items():
+                    tag_label = get_tag_label(
+                        metadata=self.metadata,
+                        tag_name=label_tag_name,
+                        classification_name=label_classification,
+                    )
+                    if tag_label:
+                        database_schema_request_obj.tags.append(tag_label)
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
@@ -530,8 +529,6 @@ class BigquerySource(
 
     def close(self):
         super().close()
-        if self.temp_credentials:
-            os.unlink(self.temp_credentials)
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
