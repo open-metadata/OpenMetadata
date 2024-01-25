@@ -233,7 +233,7 @@ describe('Test IngestionRecentRun component', () => {
 
   it('should show additional details for click on run', async () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
-      data: executionRuns,
+      data: [...executionRuns],
       paging: { total: 4 },
     });
 
@@ -266,7 +266,7 @@ describe('Test IngestionRecentRun component', () => {
 
   it('should show stacktrace when click on logs', async () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
-      data: executionRuns,
+      data: [...executionRuns],
       paging: { total: 4 },
     });
 
