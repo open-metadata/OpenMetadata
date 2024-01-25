@@ -91,7 +91,7 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub(" ", output_clean)
-        regex = r"Source Status:%(log)s(.*?)%(log)s.* Status: .*" % REGEX_AUX
+        regex = r"[\w] Status:%(log)s(.*?)%(log)s.* Status: .*" % REGEX_AUX
         output_clean_regex = re.findall(regex, output_clean.strip())
         return Status.parse_obj(literal_eval(output_clean_regex[0].strip()))
 
@@ -101,7 +101,7 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub("", output_clean)
-        regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX
+        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX
         output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
         return Status.parse_obj(literal_eval(output_clean_regex))
 

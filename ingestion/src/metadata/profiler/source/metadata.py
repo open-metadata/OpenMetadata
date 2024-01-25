@@ -73,7 +73,7 @@ class OpenMetadataSource(Source):
 
     @property
     def name(self) -> str:
-        return "OpenMetadata"
+        return "OpenMetadata Service"
 
     # pylint: disable=super-init-not-called
     def __init__(
