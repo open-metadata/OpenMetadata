@@ -18,9 +18,6 @@ from typing import Any, List, Optional, Type
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 
-from metadata.generated.schema.tests.testCase import (
-    TestCaseParameterValue,
-)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -73,6 +70,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
     TestCaseParameterDefinition,
     TestPlatform,
