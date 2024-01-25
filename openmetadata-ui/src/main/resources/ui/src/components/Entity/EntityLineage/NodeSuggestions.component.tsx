@@ -115,7 +115,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         autoFocus
         open
         showSearch
-        className="w-72 lineage-node-searchbox"
+        className="w-76 lineage-node-searchbox"
         data-testid="node-search-box"
         options={(data || []).map((entity) => ({
           value: entity.fullyQualifiedName,

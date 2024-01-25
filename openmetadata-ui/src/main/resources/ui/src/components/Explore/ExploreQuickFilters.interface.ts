@@ -23,6 +23,7 @@ export interface ExploreQuickFiltersProps {
   onAdvanceSearch?: () => void;
   showDeleted?: boolean;
   onChangeShowDeleted?: (showDeleted: boolean) => void;
+  independent?: boolean; // flag to indicate if the filters are independent of aggregations
 }
 
 export interface FilterFieldsMenuItem {

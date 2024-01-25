@@ -206,9 +206,7 @@ describe('Prerequisite for data steward role tests', () => {
 
     interceptURL('GET', `/api/v1/users/name/${USER_NAME}*`, 'getUserDetails');
 
-    cy.get(
-      `[data-row-key="${USER_CREDENTIALS.id}"] [data-testid="${USER_NAME}"]`
-    ).click();
+    cy.get(`[data-testid="${USER_NAME}"]`).click();
 
     verifyResponseStatusCode('@getUserDetails', 200);
 
