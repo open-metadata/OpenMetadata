@@ -106,5 +106,14 @@
       "userList"
     ],
     "inputType": "runtime"
+  },
+  {
+    "name": "filterByGeneralMetadataEvents",
+    "fullyQualifiedName": "eventSubscription.filterByGeneralMetadataEvents",
+    "displayName": "Filter By General Metadata Events",
+    "description" : "Filter By General MetadataEvents",
+    "effect" : "include",
+    "condition": "matchAnyFieldChange('description', 'tags')",
+    "inputType": "none"
   }
 ]
