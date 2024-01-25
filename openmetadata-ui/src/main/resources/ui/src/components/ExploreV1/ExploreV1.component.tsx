@@ -12,10 +12,12 @@
  */
 
 import {
+  ExclamationCircleOutlined,
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Col,
   Layout,
@@ -31,21 +33,28 @@ import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
-import { TAG_FQN_KEY } from '../../constants/explore.constants';
+import { ERROR_COLOR } from '../../constants/constants';
+import {
+  SEARCH_INDEXING_APPLICATION,
+  TAG_FQN_KEY,
+} from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
 } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
+import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import {
   ExploreProps,
@@ -57,6 +66,46 @@ import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
+
+const IndexNotFoundBanner = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Alert
+      closable
+      description={
+        <div className="d-flex items-start gap-3">
+          <ExclamationCircleOutlined
+            style={{
+              color: ERROR_COLOR,
+              fontSize: '16px',
+            }}
+          />
+          <div className="d-flex flex-col gap-2">
+            <Typography.Text className="font-semibold text-xs">
+              {t('server.indexing-error')}
+            </Typography.Text>
+            <Typography.Paragraph className="m-b-0 text-xs">
+              <Transi18next
+                i18nKey="message.configure-search-re-index"
+                renderElement={
+                  <Link
+                    className="alert-link"
+                    to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
+                  />
+                }
+                values={{
+                  settings: t('label.search-index-setting-plural'),
+                }}
+              />
+            </Typography.Paragraph>
+          </div>
+        </div>
+      }
+      type="error"
+    />
+  );
+};
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -76,6 +125,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
   quickFilters,
+  isElasticSearchIssue,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -333,6 +383,13 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         </Button>
                       </span>
                     </Col>
+                    {isElasticSearchIssue ? (
+                      <Col span={24}>
+                        <IndexNotFoundBanner />
+                      </Col>
+                    ) : (
+                      <></>
+                    )}
                     {sqlQuery && (
                       <Col span={24}>
                         <AppliedFilterText
@@ -373,7 +430,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   <Col
                     lg={{ offset: 2, span: 19 }}
                     md={{ offset: 0, span: 24 }}>
-                    {!loading ? (
+                    {!loading && !isElasticSearchIssue ? (
                       <SearchedData
                         isFilterSelected
                         data={searchResults?.hits.hits ?? []}
@@ -389,8 +446,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         onPaginationChange={onChangePage}
                       />
                     ) : (
-                      <Loader />
+                      <></>
                     )}
+                    {loading ? <Loader /> : <></>}
                   </Col>
                 </Row>
               </PageLayoutV1>
