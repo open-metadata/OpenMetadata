@@ -19,7 +19,8 @@
         "filterByUpdaterName",
         "filterByFieldChange",
         "filterByDomain",
-        "filterByMentionedName"
+        "filterByMentionedName",
+        "filterByGeneralMetadataEvents"
       ]
     }
   },
