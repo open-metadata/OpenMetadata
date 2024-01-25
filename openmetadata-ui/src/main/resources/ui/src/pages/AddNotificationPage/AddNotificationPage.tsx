@@ -14,38 +14,37 @@
 import { Button, Col, Form, Input, Row, Skeleton, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { isEmpty, trim } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import Loader from '../../components/Loader/Loader';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
-  EventFilterRule,
   EventSubscription,
-  FilteringRules,
   ProviderType,
+  SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { useFqn } from '../../hooks/useFqn';
 import {
-  createAlert,
-  getAlertsFromId,
+  createNotificationAlert,
+  getAlertsFromName,
   getResourceFunctions,
-  updateAlert,
+  updateNotificationAlert,
 } from '../../rest/alertsAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabilityPage.interface';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../AddObservabilityPage/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
@@ -56,15 +55,13 @@ const AddNotificationPage = () => {
   const [form] = useForm<EventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
-  // To block certain action based on provider of the Alert e.g. System / User
-  const [provider, setProvider] = useState<ProviderType>(ProviderType.User);
 
   const [loadingCount, setLoadingCount] = useState(0);
   const [entityFunctions, setEntityFunctions] = useState<
     FilterResourceDescriptor[]
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
-  const [alert, setAlert] = useState<EventSubscription>();
+  const [alert, setAlert] = useState<ModifiedEventSubscription>();
 
   const breadcrumb = useMemo(
     () => [
@@ -86,36 +83,27 @@ const AddNotificationPage = () => {
     [fqn]
   );
 
-  const fetchAlert = async () => {
+  const fetchAlerts = async () => {
     try {
       setLoadingCount((count) => count + 1);
 
-      const response: EventSubscription = await getAlertsFromId(fqn);
-      setAlert(response);
-
-      const requestFilteringRules =
-        response.filteringRules?.rules?.map(
-          (curr) =>
-            ({
-              ...curr,
-              condition: curr.condition
-                .replace(new RegExp(`${curr.name}\\('`), '')
-                .replaceAll("'", '')
-                .replace(new RegExp(`\\)`), '')
-                .split(',')
-                .map(trim),
-            } as unknown as EventFilterRule)
-        ) ?? [];
-
-      setProvider(response.provider ?? ProviderType.User);
-
-      form.setFieldsValue({
+      const response: EventSubscription = await getAlertsFromName(fqn);
+      const modifiedAlertData: ModifiedEventSubscription = {
         ...response,
-        filteringRules: {
-          ...(response.filteringRules as FilteringRules),
-          rules: requestFilteringRules,
-        },
-      });
+        destinations: response.destinations.map((destination) => {
+          const isExternalDestination =
+            destination.category === SubscriptionCategory.External;
+
+          return {
+            ...destination,
+            destinationType: isExternalDestination
+              ? destination.type
+              : destination.category,
+          };
+        }),
+      };
+
+      setAlert(modifiedAlertData);
     } catch {
       showErrorToast(
         t('server.entity-fetch-error', { entity: t('label.alert') }),
@@ -125,12 +113,6 @@ const AddNotificationPage = () => {
       setLoadingCount((count) => count - 1);
     }
   };
-
-  useEffect(() => {
-    if (fqn) {
-      fetchAlert();
-    }
-  }, [fqn]);
 
   const fetchFunctions = async () => {
     try {
@@ -146,42 +128,61 @@ const AddNotificationPage = () => {
 
   useEffect(() => {
     fetchFunctions();
-  }, []);
+    if (!fqn) {
+      return;
+    }
+    fetchAlerts();
+  }, [fqn]);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
 
-  const handleSave = async (data: EventSubscription) => {
-    setIsButtonLoading(true);
-
-    const api = isEditMode ? updateAlert : createAlert;
-
-    const destinations = data.destinations?.map((d) => ({
-      type: d.type,
-      config: d.config,
-      category: d.category,
-    }));
-
+  const handleSave = async (data: CreateEventSubscription) => {
     try {
-      await api({
-        ...data,
-        destinations,
-        provider,
-      });
+      setIsButtonLoading(true);
+
+      const destinations = data.destinations?.map((d) => ({
+        type: d.type,
+        config: d.config,
+        category: d.category,
+      }));
+
+      if (fqn && !isUndefined(alert)) {
+        const { resources, ...otherData } = data;
+
+        // Remove 'destinationType' field from the `destination` as it is used for internal UI use
+        const initialDestinations = alert.destinations.map((d) => {
+          const { destinationType, ...originalData } = d;
+
+          return originalData;
+        });
+
+        const jsonPatch = compare(
+          { ...alert, destinations: initialDestinations },
+          {
+            ...alert,
+            ...otherData,
+            filteringRules: {
+              ...alert.filteringRules,
+              resources,
+            },
+            destinations,
+          }
+        );
+
+        await updateNotificationAlert(alert.id, jsonPatch);
+      } else {
+        await createNotificationAlert({
+          ...data,
+          destinations,
+        });
+      }
 
       showSuccessToast(
         t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
           entity: t('label.alert-plural'),
         })
       );
-      history.push(
-        getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          // We need this check to have correct redirection after updating the subscription
-          alert?.name === 'ActivityFeedAlert'
-            ? GlobalSettingOptions.ACTIVITY_FEED
-            : GlobalSettingOptions.NOTIFICATIONS
-        )
-      );
+      history.push(getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS));
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -227,6 +228,10 @@ const AddNotificationPage = () => {
     [selectedTrigger, supportedFilters]
   );
 
+  if (loadingCount) {
+    return <Loader />;
+  }
+
   return (
     <ResizablePanels
       hideSecondPanel
@@ -253,9 +258,13 @@ const AddNotificationPage = () => {
                 </Typography.Text>
               </Col>
               <Col span={24}>
-                <Form<EventSubscription>
+                <Form<CreateEventSubscription>
                   className="alerts-notification-form"
                   form={form}
+                  initialValues={{
+                    ...alert,
+                    resources: alert?.filteringRules?.resources,
+                  }}
                   onFinish={handleSave}>
                   {loadingCount > 0 ? (
                     <Skeleton title paragraph={{ rows: 8 }} />
