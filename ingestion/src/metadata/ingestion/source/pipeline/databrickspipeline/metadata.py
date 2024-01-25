@@ -138,7 +138,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         downstream_tasks = self.get_downstream_tasks(
             pipeline_details["settings"].get("tasks")
         )
-        for task in pipeline_details["settings"].get("tasks"):
+        for task in pipeline_details["settings"].get("tasks", []):
             task_list.append(
                 Task(
                     name=task["task_key"],
@@ -159,7 +159,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return task_key
 
     def get_downstream_tasks(self, workflow):
-        task_key_list = [task["task_key"] for task in workflow]
+        task_key_list = [task["task_key"] for task in workflow or []]
 
         dependent_tasks = self.get_dependent_tasks(workflow)
 
@@ -182,7 +182,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
     def get_dependent_tasks(self, workflow):
         dependent_tasks = {}
 
-        for task in workflow:
+        for task in workflow or []:
             depends_on = task.get("depends_on")
             if depends_on:
                 dependent_tasks[task["task_key"]] = [v["task_key"] for v in depends_on]

@@ -181,7 +181,8 @@ source:
       # metastoreConnection:
       #   type: Mysql
       #   username: <username>
-      #   password: <password>
+      #   authType:
+      #     password: <password>
       #   hostPort: <hostPort>
       #   databaseSchema: metastore
 
@@ -191,7 +192,8 @@ source:
       # metastoreConnection:
       #   type: Postgres
       #   username: <username>
-      #   password: <password>
+      #   authType:
+      #     password: <password>
       #   hostPort: <hostPort>
       #   database: metastore
 ```

@@ -54,6 +54,15 @@ jest.mock(
   })
 );
 
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Alert: jest.fn().mockReturnValue(<span>Index Not Found Alert</span>),
+}));
+
+jest.mock('../SearchedData/SearchedData', () =>
+  jest.fn().mockReturnValue(<div>SearchedData</div>)
+);
+
 const onChangeAdvancedSearchQuickFilters = jest.fn();
 const onChangeSearchIndex = jest.fn();
 const onChangeSortOder = jest.fn();
@@ -129,5 +138,13 @@ describe('ExploreV1', () => {
     });
 
     expect(onChangeSortOder).toHaveBeenCalled();
+  });
+
+  it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {
+    render(<ExploreV1 {...props} isElasticSearchIssue />);
+
+    expect(screen.getByText('Index Not Found Alert')).toBeInTheDocument();
+
+    expect(screen.queryByText('SearchedData')).not.toBeInTheDocument();
   });
 });
