@@ -13,14 +13,12 @@ Mixin to be used by service sources to dynamically
 generate the _run based on their topology.
 """
 import traceback
+from collections import defaultdict
 from functools import singledispatchmethod
-from typing import Any, Dict, Generic, Iterable, List, TypeVar, Union
+from typing import Any, Generic, Iterable, List, Type, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.data.createStoredProcedure import (
-    CreateStoredProcedureRequest,
-)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -34,24 +32,17 @@ from metadata.ingestion.models.topology import (
     ServiceTopology,
     TopologyContext,
     TopologyNode,
-    get_ctx_default,
     get_topology_node,
     get_topology_root,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.source_hash_utils import (
-    SOURCE_HASH_EXCLUDE_FIELDS,
-    generate_source_hash,
-)
+from metadata.utils.source_hash import generate_source_hash
 
 logger = ingestion_logger()
 
 C = TypeVar("C", bound=BaseModel)
-
-CACHED_ENTITIES = "cached_entities"
 
 
 class MissingExpectedEntityAckException(Exception):
@@ -71,6 +62,9 @@ class TopologyRunnerMixin(Generic[C]):
     context: TopologyContext
     metadata: OpenMetadata
 
+    # The cache will have the shape {`child_stage.type_`: {`name`: `hash`}}
+    cache = defaultdict(dict)
+
     def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:
         """
         Given a list of nodes, either roots or children,
@@ -78,77 +72,115 @@ class TopologyRunnerMixin(Generic[C]):
 
         The execution tree is created in a depth-first fashion.
 
+        Note that this is used to handle the metadata ingestion for all our services. Therefore,
+        the first Node is always expected to be a Service. This is important because:
+        - Services (root Nodes) are flagged with `overwrite=False` -> In `yield_and_update_context` if
+          the stage is flagged as `overwrite=False`, we won't send any PUT/PATCH request to the API if
+          the service already exists.
+        - Then, when we iterate over Services' children (databases, pipelines, dashboards,...), we will
+          initialize a cache listing its children. This is used to to compare the fingerprint of the
+          stored entity vs. incoming entity and see if we need to:
+          1. Create a new entity (PUT) - if no fingerprint is found for the given name
+          2. Update some fields from the entity (PATCH) - if there's a fingerprint mismatch
+          3. Do nothing - if the fingerprints are the same.
+
+        The fingerprint is stored in the db in the field `sourceHash` in each entity.
+
         :param nodes: Topology Nodes to process
         :return: recursively build the execution tree
         """
         for node in nodes:
             logger.debug(f"Processing node {node}")
             node_producer = getattr(self, node.producer)
-            child_nodes = (
-                [get_topology_node(child, self.topology) for child in node.children]
-                if node.children
-                else []
-            )
+            child_nodes = self._get_child_nodes(node)
 
-            for element in node_producer() or []:
+            # Each node producer will give us a list of entities that we need
+            # to process. Each of the internal stages will sink result to OM API.
+            # E.g., in the DB topology, at the Table TopologyNode, the node_entity
+            # will be each `table`
+            for node_entity in node_producer() or []:
                 for stage in node.stages:
-                    logger.debug(f"Processing stage: {stage}")
+                    yield from self._process_stage(
+                        stage=stage, node_entity=node_entity, child_nodes=child_nodes
+                    )
 
-                    stage_fn = getattr(self, stage.processor)
-                    for entity_request in stage_fn(element) or []:
-                        try:
-                            # yield and make sure the data is updated
-                            yield from self.sink_request(
-                                stage=stage, entity_request=entity_request
-                            )
-                        except ValueError as err:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Unexpected value error when processing stage: [{stage}]: {err}"
-                            )
-
-                    # init the cache dict
-                    if stage.cache_entities:
-                        self._init_cache_dict(stage=stage, child_nodes=child_nodes)
-
-                # processing for all stages completed now cleaning the cache if applicable
+                # Once we are done processing all the stages,
                 for stage in node.stages:
-                    if stage.clear_cache:
-                        self.clear_context(stage=stage)
+                    if stage.clear_context:
+                        self.context.clear_stage(stage=stage)
 
                 # process all children from the node being run
                 yield from self.process_nodes(child_nodes)
 
-            if node.post_process:
-                logger.debug(f"Post processing node {node}")
-                for process in node.post_process:
-                    try:
-                        yield from self.check_context_and_handle(process)
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Could not run Post Process `{process}` from Topology Runner -- {exc}"
-                        )
+            yield from self._run_node_post_process(node=node)
 
-    def _init_cache_dict(self, stage: NodeStage, child_nodes: List[TopologyNode]):
-        """
-        Method to call the API to fill the entities cache
-        """
+    def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:
+        """Compute children nodes if any"""
+        return (
+            [get_topology_node(child, self.topology) for child in node.children]
+            if node.children
+            else []
+        )
 
-        if not self.context.__dict__.get(CACHED_ENTITIES):
-            self.context.__dict__[CACHED_ENTITIES] = {}
+    def _process_stage(
+        self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]
+    ) -> Iterable[Entity]:
+        """
+        For each entity produced in the Node Producer, iterate over all the Node's Stages and
+        yield the assets to pass down the workflow.
+
+        For each node_entity processed, we will cache - if needed - its children.
+        E.g., when processing DB Schemas, we will store its tables to compare the fingerprint
+        and decide if we need to PUT or PATCH at the sink.
+        """
+        logger.debug(f"Processing stage: {stage}")
+
+        stage_fn = getattr(self, stage.processor)
+        for entity_request in stage_fn(node_entity) or []:
+            try:
+                # yield and make sure the data is updated
+                yield from self.sink_request(stage=stage, entity_request=entity_request)
+            except ValueError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected value error when processing stage: [{stage}]: {err}"
+                )
+
+        if stage.cache_entities:
+            self._init_cache_dict(stage=stage, child_nodes=child_nodes)
+
+    def _run_node_post_process(self, node: TopologyNode) -> Iterable[Entity]:
+        """
+        If the node has post_process steps, iterate over them and yield the result
+        """
+        if node.post_process:
+            logger.debug(f"Post processing node {node}")
+            for process in node.post_process:
+                try:
+                    node_post_process = getattr(self, process)
+                    for entity_request in node_post_process():
+                        yield entity_request
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Could not run Post Process `{process}` due to [{exc}]"
+                    )
+
+    def _init_cache_dict(
+        self, stage: NodeStage, child_nodes: List[TopologyNode]
+    ) -> None:
+        """
+        Method to call the API to fill the entities cache.
+
+        The cache will be part of the context
+        """
         for child_node in child_nodes or []:
             for child_stage in child_node.stages or []:
                 if child_stage.use_cache:
-                    entity_fqn = self.fqn_from_context(
+                    entity_fqn = self.context.fqn_from_stage(
                         stage=stage,
                         entity_name=self.context.__dict__[stage.context],
                     )
-
-                    if not self.context.__dict__[CACHED_ENTITIES].get(
-                        child_stage.type_
-                    ):
-                        self.context.__dict__[CACHED_ENTITIES][child_stage.type_] = {}
 
                     self.get_fqn_source_hash_dict(
                         parent_type=stage.type_,
@@ -157,12 +189,11 @@ class TopologyRunnerMixin(Generic[C]):
                     )
 
     def get_fqn_source_hash_dict(
-        self, parent_type: Entity, child_type: Entity, entity_fqn: str
-    ) -> Dict:
+        self, parent_type: Type[Entity], child_type: Type[Entity], entity_fqn: str
+    ) -> None:
         """
         Get all the entities and store them as fqn:sourceHash in a dict
         """
-        params = {}
         if parent_type in (Database, DatabaseSchema):
             if child_type == StoredProcedure:
                 params = {"databaseSchema": entity_fqn}
@@ -177,23 +208,9 @@ class TopologyRunnerMixin(Generic[C]):
         )
         for entity in entities_list:
             if entity.sourceHash:
-                self.context.__dict__[CACHED_ENTITIES][child_type][
+                self.cache[child_type][
                     model_str(entity.fullyQualifiedName)
                 ] = entity.sourceHash
-
-    def check_context_and_handle(self, post_process: str):
-        """Based on the post_process step, check context and
-        evaluate if we can run it based on available class attributes
-
-        Args:
-            post_process: the name of the post_process step
-        """
-        if post_process == "mark_tables_as_deleted" and not self.context.database:
-            raise ValueError("No Database found in  `self.context`")
-
-        node_post_process = getattr(self, post_process)
-        for entity_request in node_post_process():
-            yield entity_request
 
     def _iter(self) -> Iterable[Either]:
         """
@@ -206,56 +223,6 @@ class TopologyRunnerMixin(Generic[C]):
         :return: Iterable of the Entities yielded by all nodes in the topology
         """
         yield from self.process_nodes(get_topology_root(self.topology))
-
-    def _replace_context(self, key: str, value: Any) -> None:
-        """
-        Update the key of the context with the given value
-        :param key: element to update from the source context
-        :param value: value to use for the update
-        """
-        self.context.__dict__[key] = value
-
-    def _append_context(self, key: str, value: Any) -> None:
-        """
-        Update the key of the context with the given value
-        :param key: element to update from the source context
-        :param value: value to use for the update
-        """
-        self.context.__dict__[key].append(value)
-
-    def clear_context(self, stage: NodeStage) -> None:
-        """
-        Clear the available context
-        :param key: element to update from the source context
-        """
-        self.context.__dict__[stage.context] = get_ctx_default(stage)
-
-    def fqn_from_context(self, stage: NodeStage, entity_name: str) -> str:
-        """
-        Read the context
-        :param stage: Topology node being processed
-        :param entity_request: Request sent to the sink
-        :return: Entity FQN derived from context
-        """
-        context_names = [
-            self.context.__dict__[dependency]
-            for dependency in stage.consumer or []  # root nodes do not have consumers
-        ]
-        return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_name
-        )
-
-    def update_context(
-        self, stage: NodeStage, context: Union[str, OMetaTagAndClassification]
-    ):
-        """Append or update context"""
-        # We'll store the entity_name in the topology context instead of the entity_fqn
-        # and build the fqn on the fly wherever required.
-        # This is mainly because we need the context in other places
-        if stage.context and not stage.cache_all:
-            self._replace_context(key=stage.context, value=context)
-        if stage.context and stage.cache_all:
-            self._append_context(key=stage.context, value=context)
 
     def create_patch_request(
         self, original_entity: Entity, create_request: C
@@ -284,30 +251,27 @@ class TopologyRunnerMixin(Generic[C]):
         """
         entity = None
         entity_name = model_str(right.name)
-        entity_fqn = self.fqn_from_context(stage=stage, entity_name=entity_name)
+        entity_fqn = self.context.fqn_from_stage(stage=stage, entity_name=entity_name)
 
-        # we get entity from OM if we do not want to overwrite existing data in OM
+        # If we don't want to write data in OM, we'll return what we fetch from the API.
         # This will be applicable for service entities since we do not want to overwrite the data
         if not stage.overwrite and not self._is_force_overwrite_enabled():
             entity = self.metadata.get_by_name(
                 entity=stage.type_,
                 fqn=entity_fqn,
-                fields=["*"],  # Get all the available data from the Entity
+                fields=["*"],
             )
         create_entity_request_hash = generate_source_hash(
             create_request=entity_request.right,
-            exclude_fields=SOURCE_HASH_EXCLUDE_FIELDS,
         )
 
         if hasattr(entity_request.right, "sourceHash"):
             entity_request.right.sourceHash = create_entity_request_hash
 
-        skip_processing_entity = False
+        same_fingerprint = False
         if entity is None and stage.use_cache:
             # check if we find the entity in the entities list
-            entity_source_hash = self.context.__dict__[CACHED_ENTITIES][
-                stage.type_
-            ].get(entity_fqn)
+            entity_source_hash = self.cache[stage.type_].get(entity_fqn)
             if entity_source_hash:
                 # if the source hash is present, compare it with new hash
                 if entity_source_hash != create_entity_request_hash:
@@ -315,7 +279,7 @@ class TopologyRunnerMixin(Generic[C]):
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
                         fqn=entity_fqn,
-                        fields=["*"],  # Get all the available data from the Entity
+                        fields=["*"],
                     )
 
                     # we return the entity for a patch update
@@ -329,9 +293,9 @@ class TopologyRunnerMixin(Generic[C]):
                     logger.debug(
                         f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'"
                     )
-                    skip_processing_entity = True
+                    same_fingerprint = True
 
-        if not skip_processing_entity:
+        if not same_fingerprint:
             # We store the generated source hash and yield the request
 
             yield entity_request
@@ -357,7 +321,7 @@ class TopologyRunnerMixin(Generic[C]):
                     "for the service connection."
                 )
 
-        self.update_context(stage=stage, context=entity_name)
+        self.context.update_context_name(stage=stage, right=right)
 
     @yield_and_update_context.register
     def _(
@@ -373,7 +337,7 @@ class TopologyRunnerMixin(Generic[C]):
         lineage has been properly drawn. We'll skip the process for now.
         """
         yield entity_request
-        self.update_context(stage=stage, context=right.edge.fromEntity.name.__root__)
+        self.context.update_context_name(stage=stage, right=right.edge.fromEntity)
 
     @yield_and_update_context.register
     def _(
@@ -382,11 +346,16 @@ class TopologyRunnerMixin(Generic[C]):
         stage: NodeStage,
         entity_request: Either[C],
     ) -> Iterable[Either[Entity]]:
-        """Tag implementation for the context information"""
+        """
+        Tag implementation for the context information.
+
+        We need the full OMetaTagAndClassification in the context
+        to build the TagLabels during the ingestion. We need to bundle
+        both CreateClassificationRequest and CreateTagRequest.
+        """
         yield entity_request
 
-        # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, context=right)
+        self.context.update_context_value(stage=stage, value=right)
 
     @yield_and_update_context.register
     def _(
@@ -398,30 +367,7 @@ class TopologyRunnerMixin(Generic[C]):
         """Custom Property implementation for the context information"""
         yield entity_request
 
-        # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, context=right)
-
-    @yield_and_update_context.register
-    def _(
-        self,
-        right: CreateStoredProcedureRequest,
-        stage: NodeStage,
-        entity_request: Either[C],
-    ) -> Iterable[Either[Entity]]:
-        """Tag implementation for the context information"""
-        yield entity_request
-
-        procedure_fqn = fqn.build(
-            metadata=self.metadata,
-            entity_type=StoredProcedure,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
-            procedure_name=right.name.__root__,
-        )
-
-        # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, context=procedure_fqn)
+        self.context.update_context_value(stage=stage, value=right)
 
     def sink_request(
         self, stage: NodeStage, entity_request: Either[C]

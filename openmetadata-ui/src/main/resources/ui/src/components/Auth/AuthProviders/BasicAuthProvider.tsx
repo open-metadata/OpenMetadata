@@ -19,7 +19,7 @@ import { useHistory } from 'react-router-dom';
 import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,
-} from '../../../constants/auth.constants';
+} from '../../../constants/Auth.constants';
 import { ROUTES } from '../../../constants/constants';
 import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../../generated/auth/registrationRequest';

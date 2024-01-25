@@ -29,42 +29,45 @@ Contents:
 - [Roadmap](https://docs.open-metadata.org/releases/roadmap)
 - [Documentation and Support](#documentation-and-support)
 - [Contributors](#contributors)
-- [License](#license)
 
 OpenMetadata Consists of Four Main Components:
-- **Metadata Schemas**: These are the core definitions and vocabulary for metadata, based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
+- **Metadata Schemas**: These are the core definitions and vocabulary for metadata based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
 - **Metadata Store**: This is the central repository for storing and managing the metadata graph, which connects data assets, users, and tool-generated metadata in a unified way.
 - **Metadata APIs**: These are the interfaces for producing and consuming metadata, built on top of the metadata schemas. They enable seamless integration of user interfaces and tools, systems, and services with the metadata store.
 - **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
 
-## Key Features of OpenMetadata:
+## Key Features of OpenMetadata
+**Data Discovery**: Find and explore all your data assets in a single place using various strategies, such as keyword search, data associations, and advanced queries. You can search across tables, topics, dashboards, pipelines, and services.
 
 ![12](https://github.com/open-metadata/OpenMetadata/assets/40225091/0dbd2746-c93d-4a47-8d3e-ceb3ae01436f)
-- **Data Discovery**: This feature enables you to find and explore data assets and metadata entities using various strategies, such as keyword search, data associations, and advanced queries. You can search across tables, topics, dashboards, pipelines, and services.
+<br><br><br>
+**Data Collaboration**: Communicate, converse, and cooperate with other users and teams on data assets. You can get event notifications, send alerts, add announcements, create tasks, and use conversation threads.
 
 ![11](https://github.com/open-metadata/OpenMetadata/assets/40225091/7df29e12-8a29-44b7-9466-42474823783f)
-- **Data Collaboration**: This feature enables you to communicate and cooperate with other users and teams on data assets and metadata entities. You can get event notifications, send alerts, add announcements, create tasks, and use conversation threads.
+<br><br><br>
+**Data Quality and Profiler**: Measure and monitor the quality with **no-code** to build trust in your data. You can define and run data quality tests, group them into test suites, and view the results in an interactive dashboard. With powerful collaboration, make data quality a shared responsibility in your organization.
 
 ![8](https://github.com/open-metadata/OpenMetadata/assets/40225091/6b330827-cc2d-4d06-abf0-a4d42ce532ba)
-- **Data Quality and Profiler**: This feature enables you to measure and monitor the quality and characteristics of your data assets. You can define and run data quality tests, group them into test suites, and view the results in an interactive dashboard.
+<br><br><br>
+**Data Governance**: Enforce data policies and standards across your organization. You can define data domains and data products, assign owners and stakeholders, and classify data assets using tags and terms. Use powerful automation features to auto-classify your data.
 
 ![10](https://github.com/open-metadata/OpenMetadata/assets/40225091/f7384a71-6b58-44ad-983f-e302718ee3f1)
-- **Data Governance**: This feature enables you to enforce data policies and standards across your organization. You can define data domains and data products, assign owners and stakeholders, and classify data assets using tags and terms.
+<br><br><br>
+**Data Insights and KPIs**: Use reports and platform analytics to understand how your organization's data is doing. Data Insights provides a single-pane view of all the key metrics to reflect the state of your data best. Define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
 
 ![9](https://github.com/open-metadata/OpenMetadata/assets/40225091/61fc2f65-2436-4fc9-9434-c27ee9b25183)
-- **Data Insights and KPIs**: OpenMetadata offers a suite of reports providing platform analytics around specific areas. Data Insight allows admins to take an active approach in their metadata management. Data Insight provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
-
-- **Data Lineage**: This feature enables you to track and visualize the origin and transformation of your data assets. You can view column-level lineage, filter queries, and edit lineage manually using a no-code editor.
+<br><br><br>
+**Data Lineage**: Track and visualize the origin and transformation of your data assets end-to-end. You can view column-level lineage, filter queries, and edit lineage manually using a no-code editor.
   
-- **Data Documentation**: You can document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations, and generate data dictionaries and data catalogs.
+**Data Documentation**: Document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations and generate data dictionaries and data catalogs.
   
-- **Data Observability**: This feature enables you to monitor the health and performance of your data assets and pipelines. You can view metrics such as data freshness, data volume, data quality, and data latency. You can also set up alerts and notifications for any anomalies or failures.
+**Data Observability**: Monitor the health and performance of your data assets and pipelines. You can view metrics such as data freshness, data volume, data quality, and data latency. You can also set up alerts and notifications for any anomalies or failures.
   
-- **Data Security**: You can secure your data and metadata using various authentication and authorization mechanisms. You can integrate with different identity providers for single sign-on, and define roles and policies for access control.
+**Data Security**: Secure your data and metadata using various authentication and authorization mechanisms. You can integrate with different identity providers for single sign-on and define roles and policies for access control.
   
-- **Webhooks**: You can integrate with external applications and services using webhooks. You can register URLs to receive metadata event notifications, and integrate with Slack, Microsoft Teams, and Google Chat.
+**Webhooks**: Integrate with external applications and services using webhooks. You can register URLs to receive metadata event notifications and integrate with Slack, Microsoft Teams, and Google Chat.
   
-- **Connectors**: You can ingest metadata from various sources and tools using connectors. OpenMetadata supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
+**Connectors**: Ingest metadata from various sources and tools using connectors. OpenMetadata supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
 
 ## Try our Sandbox
 
@@ -75,17 +78,12 @@ Get up and running in a few minutes. See the OpenMetadata documentation for [ins
 
 ## Documentation and Support
 
-Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features.
+We're here to help and make OpenMetadata even better! Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features. Join our [Slack Community](https://slack.open-metadata.org/) to get in touch with us if you want to chat, need help, or discuss new feature requirements.
 
-Join our [Slack Community](https://slack.open-metadata.org/) to get in touch with us, want to chat, need help, or want to discuss about a new feature requirement.
-
-Or join the group at [https://groups.google.com/g/openmetadata-users](https://groups.google.com/g/openmetadata-users)
-
-We're here to help and make OpenMetadata even better!
 
 ## Contributors
 
-We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started and let us know how we can help.
+We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started, and let us know how we can help.
 
 Don't want to miss anything? Give the project a ⭐ 🚀 
 

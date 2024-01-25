@@ -7,16 +7,18 @@ slug: /connectors/database/hive/yaml
 
 {% multiTablesWrapper %}
 
-| Feature            | Status                              |
-|:-------------------|:------------------------------------|
-| Stage              | PROD                                |
-| Metadata           | {% icon iconName="check" /%}        |
-| Query Usage        | {% icon iconName="cross" /%}        |
-| Data Profiler      | {% icon iconName="check" /%}        |
-| Data Quality       | {% icon iconName="check" /%}        |
-| Stored Procedures  | {% icon iconName="cross" /%}                          |
-| DBT                | {% icon iconName="cross" /%}        |
-| Supported Versions | Hive >= 2.0                         |
+| Feature            | Status                       |
+| :----------------- | :--------------------------- |
+| Stage              | PROD                         |
+| Metadata           | {% icon iconName="check" /%} |
+| Query Usage        | {% icon iconName="cross" /%} |
+| Data Profiler      | {% icon iconName="check" /%} |
+| Data Quality       | {% icon iconName="check" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
+| Supported Versions | Hive >= 2.0                  |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
@@ -179,7 +181,8 @@ source:
       # metastoreConnection:
       #   type: Mysql
       #   username: <username>
-      #   password: <password>
+      #   authType:
+      #     password: <password>
       #   hostPort: <hostPort>
       #   databaseSchema: metastore
 
@@ -189,7 +192,8 @@ source:
       # metastoreConnection:
       #   type: Postgres
       #   username: <username>
-      #   password: <password>
+      #   authType:
+      #     password: <password>
       #   hostPort: <hostPort>
       #   database: metastore
 ```

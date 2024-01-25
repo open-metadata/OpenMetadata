@@ -21,6 +21,13 @@ jest.mock('../../rest/searchAPI');
 jest.mock('../../utils/TableUtils');
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test'),
+  getEntityReferenceFromEntity: jest
+    .fn()
+    .mockImplementation((entity, type) => ({
+      ...entity,
+      entityType: undefined,
+      type: type,
+    })),
 }));
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest
@@ -68,6 +75,9 @@ const mockSearchAPIResponse = {
             name: 'test 1',
             fullyQualifiedName: 'test-1',
             entityType: 'table',
+            href: '',
+            description: '',
+            deleted: false,
           },
         },
         {
@@ -76,6 +86,9 @@ const mockSearchAPIResponse = {
             name: 'test 2',
             fullyQualifiedName: 'test-2',
             entityType: 'table',
+            href: '',
+            description: '',
+            deleted: false,
           },
         },
       ],
@@ -135,7 +148,10 @@ describe('DataAssetAsyncSelectList', () => {
     });
 
     const { container } = render(
-      <DataAssetAsyncSelectList searchIndex={SearchIndex.USER} />
+      <DataAssetAsyncSelectList
+        mode="multiple"
+        searchIndex={SearchIndex.USER}
+      />
     );
 
     await act(async () => {
@@ -153,8 +169,16 @@ describe('DataAssetAsyncSelectList', () => {
       {
         displayName: 'Test',
         label: 'Test',
-        reference: { id: '1', type: 'table' },
-        value: '1',
+        reference: {
+          id: '1',
+          type: 'table',
+          name: 'test 1',
+          deleted: false,
+          description: '',
+          fullyQualifiedName: 'test-1',
+          href: '',
+        },
+        value: 'test-1',
       },
     ];
 
@@ -180,7 +204,7 @@ describe('DataAssetAsyncSelectList', () => {
       });
     });
 
-    const option = screen.getByTestId('option-1');
+    const option = screen.getByTestId('option-test-1');
 
     await act(async () => {
       fireEvent.click(option);

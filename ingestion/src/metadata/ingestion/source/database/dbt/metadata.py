@@ -12,6 +12,7 @@
 DBT source methods.
 """
 import traceback
+from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -59,6 +60,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
+    DBT_RUN_RESULT_DATE_FORMAT,
     REQUIRED_CATALOG_KEYS,
     REQUIRED_MANIFEST_KEYS,
     DbtCommonEnum,
@@ -857,12 +859,21 @@ class DbtSource(DbtServiceSource):
                         dbt_test_completed_at = dbt_test_timing.completed_at
                 dbt_timestamp = None
                 if dbt_test_completed_at:
-                    dbt_timestamp = dbt_test_completed_at.timestamp()
+                    dbt_timestamp = dbt_test_completed_at
                 elif self.context.run_results_generate_time:
-                    dbt_timestamp = self.context.run_results_generate_time.timestamp()
+                    dbt_timestamp = self.context.run_results_generate_time
+
+                # check if the timestamp is a str type and convert accordingly
+                if isinstance(dbt_timestamp, str):
+                    dbt_timestamp = datetime.strptime(
+                        dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT
+                    )
+
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=convert_timestamp_to_milliseconds(dbt_timestamp),
+                    timestamp=convert_timestamp_to_milliseconds(
+                        dbt_timestamp.timestamp()
+                    ),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(

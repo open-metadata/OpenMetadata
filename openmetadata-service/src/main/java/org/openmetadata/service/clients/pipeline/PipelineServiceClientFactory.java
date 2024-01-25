@@ -35,7 +35,7 @@ public final class PipelineServiceClientFactory {
     }
 
     String pipelineServiceClientClass = config.getClassName();
-    LOG.info("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
+    LOG.debug("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
 
     try {
       pipelineServiceClient =
@@ -51,8 +51,7 @@ public final class PipelineServiceClientFactory {
         | IllegalAccessException e) {
       throw new PipelineServiceClientException(
           String.format(
-              "Error trying to load PipelineServiceClient %s: %s",
-              pipelineServiceClientClass, e.getMessage()));
+              "Error trying to load PipelineServiceClient %s: %s", pipelineServiceClientClass, e));
     }
   }
 }

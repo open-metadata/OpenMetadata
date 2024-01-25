@@ -62,13 +62,13 @@ class CliCommonDashboard:
             # first go
             self.assertTrue(
                 self.expected_dashboards_and_charts() + self.expected_lineage()
-                <= len(source_status.records)
+                <= (len(source_status.records) + len(source_status.updated_records))
             )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertTrue(
                 self.expected_dashboards_and_charts() + self.expected_lineage()
-                <= len(sink_status.records)
+                <= (len(sink_status.records) + len(sink_status.updated_records))
             )
 
         def assert_for_vanilla_ingestion(
@@ -78,7 +78,7 @@ class CliCommonDashboard:
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertTrue(len(source_status.filtered) == 0)
             self.assertEqual(
-                len(source_status.records),
+                (len(source_status.records) + len(source_status.updated_records)),
                 self.expected_dashboards_and_charts_after_patch()
                 + self.expected_tags()
                 + self.expected_lineage()
@@ -88,7 +88,7 @@ class CliCommonDashboard:
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertEqual(
-                len(sink_status.records),
+                (len(sink_status.records) + len(sink_status.updated_records)),
                 self.expected_dashboards_and_charts_after_patch()
                 + self.expected_tags()
                 + self.expected_lineage()
@@ -103,7 +103,8 @@ class CliCommonDashboard:
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertEqual(
-                self.expected_filtered_sink_mix(), len(sink_status.records)
+                self.expected_filtered_sink_mix(),
+                (len(sink_status.records) + len(sink_status.updated_records)),
             )
 
         @staticmethod

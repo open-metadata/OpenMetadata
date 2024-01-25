@@ -14,7 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -27,14 +27,20 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../components/common/SearchBarComponent/SearchBar.component';
 import Table from '../../components/common/Table/Table';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
-import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -48,6 +54,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, updateUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
@@ -57,10 +64,11 @@ const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
 const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
+
   const history = useHistory();
   const location = useLocation();
-  const { isAdminUser } = useAuth();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
+  const { isAdminUser } = useAuth();
 
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [showDeletedUser, setShowDeletedUser] = useState<boolean>(false);
@@ -89,6 +97,15 @@ const UserListPageV1 = () => {
     handlePageChange(INITIAL_PAGING_VALUE);
     handlePageSizeChange(PAGE_SIZE_MEDIUM);
   };
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.MEMBERS,
+        capitalize(tab)
+      ),
+    [tab]
+  );
 
   const fetchUsersList = async (params: UsersQueryParams) => {
     setIsDataLoading(true);
@@ -215,7 +232,6 @@ const UserListPageV1 = () => {
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
-      pathname: location.pathname,
       search: value && params.toString(),
     });
     if (value) {
@@ -325,9 +341,7 @@ const UserListPageV1 = () => {
                 disabled={!isAdminUser}
                 icon={
                   <IconDelete
-                    data-testid={`delete-user-btn-${
-                      record.displayName || record.name
-                    }`}
+                    data-testid={`delete-user-btn-${record.name}`}
                     name={t('label.delete')}
                     width="16px"
                   />
@@ -377,115 +391,119 @@ const UserListPageV1 = () => {
   }
 
   return (
-    <Row
-      className="user-listing p-b-md"
-      data-testid="user-list-v1-component"
-      gutter={[16, 16]}>
-      <Col span={12}>
-        <PageHeader
-          data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
-        />
-      </Col>
-      <Col span={12}>
-        <Space align="center" className="w-full justify-end" size={16}>
-          <span>
-            <Switch
-              checked={showDeletedUser}
-              data-testid="show-deleted"
-              onClick={handleShowDeletedUserChange}
-            />
-            <span className="m-l-xs">{t('label.deleted')}</span>
-          </span>
-
-          {isAdminUser && (
-            <Button
-              data-testid="add-user"
-              type="primary"
-              onClick={handleAddNewUser}>
-              {t('label.add-entity', { entity: t('label.user') })}
-            </Button>
-          )}
-        </Space>
-      </Col>
-      <Col span={8}>
-        <Searchbar
-          removeMargin
-          placeholder={`${t('label.search-for-type', {
-            type: t('label.user'),
-          })}...`}
-          searchValue={searchValue}
-          typingInterval={500}
-          onSearch={handleSearch}
-        />
-      </Col>
-
-      <Col span={24}>
-        <Table
-          bordered
-          className="user-list-table"
-          columns={columns}
-          data-testid="user-list-table"
-          dataSource={userList}
-          loading={isDataLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isNumberBased={Boolean(searchValue)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleUserPageChange}
-            onShowSizeChange={handlePageSizeChange}
+    <PageLayoutV1 pageTitle={t('label.user-plural')}>
+      <Row
+        className="user-listing p-b-md page-container"
+        data-testid="user-list-v1-component"
+        gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={12}>
+          <PageHeader
+            data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
           />
-        )}
-      </Col>
+        </Col>
+        <Col span={12}>
+          <Space align="center" className="w-full justify-end" size={16}>
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedUserChange}
+              />
+              <span className="m-l-xs">{t('label.deleted')}</span>
+            </span>
 
-      <Modal
-        cancelButtonProps={{
-          type: 'link',
-        }}
-        className="reactive-modal"
-        closable={false}
-        confirmLoading={isLoading}
-        maskClosable={false}
-        okText={t('label.restore')}
-        open={showReactiveModal}
-        title={t('label.restore-entity', {
-          entity: t('label.user'),
-        })}
-        onCancel={() => {
-          setShowReactiveModal(false);
-          setSelectedUser(undefined);
-        }}
-        onOk={handleReactiveUser}>
-        <p>
-          {t('message.are-you-want-to-restore', {
-            entity: getEntityName(selectedUser),
+            {isAdminUser && (
+              <Button
+                data-testid="add-user"
+                type="primary"
+                onClick={handleAddNewUser}>
+                {t('label.add-entity', { entity: t('label.user') })}
+              </Button>
+            )}
+          </Space>
+        </Col>
+        <Col span={8}>
+          <Searchbar
+            removeMargin
+            placeholder={`${t('label.search-for-type', {
+              type: t('label.user'),
+            })}...`}
+            searchValue={searchValue}
+            onSearch={handleSearch}
+          />
+        </Col>
+
+        <Col span={24}>
+          <Table
+            bordered
+            className="user-list-table"
+            columns={columns}
+            data-testid="user-list-table"
+            dataSource={userList}
+            loading={isDataLoading}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        </Col>
+        <Col span={24}>
+          {showPagination && (
+            <NextPrevious
+              currentPage={currentPage}
+              isNumberBased={Boolean(searchValue)}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleUserPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
+        </Col>
+
+        <Modal
+          cancelButtonProps={{
+            type: 'link',
+          }}
+          className="reactive-modal"
+          closable={false}
+          confirmLoading={isLoading}
+          maskClosable={false}
+          okText={t('label.restore')}
+          open={showReactiveModal}
+          title={t('label.restore-entity', {
+            entity: t('label.user'),
           })}
-        </p>
-      </Modal>
+          onCancel={() => {
+            setShowReactiveModal(false);
+            setSelectedUser(undefined);
+          }}
+          onOk={handleReactiveUser}>
+          <p>
+            {t('message.are-you-want-to-restore', {
+              entity: getEntityName(selectedUser),
+            })}
+          </p>
+        </Modal>
 
-      <DeleteWidgetModal
-        afterDeleteAction={() => handleSearch('')}
-        allowSoftDelete={!showDeletedUser}
-        entityId={selectedUser?.id || ''}
-        entityName={selectedUser?.name || ''}
-        entityType={EntityType.USER}
-        visible={showDeleteModal}
-        onCancel={() => {
-          setShowDeleteModal(false);
-          setSelectedUser(undefined);
-        }}
-      />
-    </Row>
+        <DeleteWidgetModal
+          afterDeleteAction={() => handleSearch('')}
+          allowSoftDelete={!showDeletedUser}
+          entityId={selectedUser?.id || ''}
+          entityName={getEntityName(selectedUser)}
+          entityType={EntityType.USER}
+          visible={showDeleteModal}
+          onCancel={() => {
+            setShowDeleteModal(false);
+            setSelectedUser(undefined);
+          }}
+        />
+      </Row>
+    </PageLayoutV1>
   );
 };
 

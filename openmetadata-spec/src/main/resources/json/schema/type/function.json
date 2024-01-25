@@ -8,19 +8,14 @@
   "definitions": {
     "parameterType": {
       "type": "string",
-      "enum": ["NotRequired", "AllIndexElasticSearch", "SpecificIndexElasticSearch", "ReadFromParamContext"]
+      "enum": ["NotRequired", "AllIndexElasticSearch", "SpecificIndexElasticSearch", "ReadFromParamContext", "ReadFromParamContextPerEntity"]
     },
     "paramAdditionalContext": {
       "description": "Additional Context",
       "type": "object",
       "properties": {
         "data": {
-          "description": "List of Entities",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true
+          "description": "List of Entities"
         }
       },
       "additionalProperties": false

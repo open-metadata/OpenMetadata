@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { GlobalSettingOptions } from './settings.constant';
+
 export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
 
@@ -40,7 +42,7 @@ export const EXPLORE_PAGE_TABS = {
   mlmodels: 'ml models',
   storedProcedures: 'stored procedures',
   dataProducts: 'data products',
-  dataModel: 'dashboard data model',
+  dataModel: 'dashboard data models',
   searchIndexes: 'search indexes',
 };
 
@@ -51,6 +53,7 @@ export const SEARCH_INDEX = {
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
   containers: 'container_search_index',
+  searchIndexes: 'search_entity_search_index',
 };
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
@@ -238,10 +241,10 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
-  name: 'table_column_name_to_exist_in_id',
+  name: `table_column_name_to_exist_in_id_${uuid()}`,
   label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
-  field: 'id',
+  field: 'testCase',
   description: 'New table test case for TableColumnNameToExist',
 };
 
@@ -464,6 +467,17 @@ export const service = {
 };
 
 export const SERVICE_TYPE = {
+  Database: GlobalSettingOptions.DATABASES,
+  Messaging: GlobalSettingOptions.MESSAGING,
+  Dashboard: GlobalSettingOptions.DASHBOARDS,
+  Pipeline: GlobalSettingOptions.PIPELINES,
+  MLModels: GlobalSettingOptions.MLMODELS,
+  Storage: GlobalSettingOptions.STORAGES,
+  Search: GlobalSettingOptions.SEARCH,
+  StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
+};
+
+export const ENTITY_SERVICE_TYPE = {
   Database: 'Database',
   Messaging: 'Messaging',
   Dashboard: 'Dashboard',
@@ -601,7 +615,7 @@ export const TAG_INVALID_NAMES = {
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
-  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+  WITH_SPECIAL_CHARS: '::normalName::',
 };
 
 export const NAME_VALIDATION_ERROR =
@@ -738,4 +752,78 @@ export const DOMAIN_3 = {
       fullyQualifiedName: 'sample_looker.model.operations_view',
     },
   ],
+};
+export const GLOBAL_SETTING_PERMISSIONS = {
+  metadata: {
+    testid: GlobalSettingOptions.METADATA,
+  },
+  customAttributesTable: {
+    testid: GlobalSettingOptions.TABLES,
+    isCustomProperty: true,
+  },
+  customAttributesTopics: {
+    testid: GlobalSettingOptions.TOPICS,
+    isCustomProperty: true,
+  },
+  customAttributesDashboards: {
+    testid: GlobalSettingOptions.DASHBOARDS,
+    isCustomProperty: true,
+  },
+  customAttributesPipelines: {
+    testid: GlobalSettingOptions.PIPELINES,
+    isCustomProperty: true,
+  },
+  customAttributesMlModels: {
+    testid: GlobalSettingOptions.MLMODELS,
+    isCustomProperty: true,
+  },
+  bots: {
+    testid: GlobalSettingOptions.BOTS,
+  },
+};
+export const ID = {
+  teams: {
+    testid: GlobalSettingOptions.TEAMS,
+    button: 'add-team',
+  },
+  users: {
+    testid: GlobalSettingOptions.USERS,
+    button: 'add-user',
+    api: '/api/v1/users?*',
+  },
+  admins: {
+    testid: GlobalSettingOptions.ADMINS,
+    button: 'add-user',
+    api: '/api/v1/users?*',
+  },
+  databases: {
+    testid: GlobalSettingOptions.DATABASES,
+    button: 'add-service-button',
+    api: '/api/v1/services/databaseServices?*',
+  },
+  messaging: {
+    testid: GlobalSettingOptions.MESSAGING,
+    button: 'add-service-button',
+    api: '/api/v1/services/messagingServices?*',
+  },
+  dashboard: {
+    testid: GlobalSettingOptions.DASHBOARDS,
+    button: 'add-service-button',
+    api: '/api/v1/services/dashboardServices?*',
+  },
+  pipelines: {
+    testid: GlobalSettingOptions.PIPELINES,
+    button: 'add-service-button',
+    api: '/api/v1/services/pipelineServices?*',
+  },
+  mlmodels: {
+    testid: GlobalSettingOptions.MLMODELS,
+    button: 'add-service-button',
+    api: '/api/v1/services/mlmodelServices?*',
+  },
+  storage: {
+    testid: GlobalSettingOptions.STORAGES,
+    button: 'add-service-button',
+    api: '/api/v1/services/storageServices?*',
+  },
 };

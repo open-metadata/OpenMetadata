@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as FollowingEmptyIcon } from '../../../assets/svg/following-no-data-placeholder.svg';
 import { getUserPath } from '../../../constants/constants';
+import { FOLLOW_DATA_ASSET } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -50,7 +51,7 @@ function FollowingWidget({
   return (
     <Card
       className="following-widget-container card-widget h-full"
-      data-testid="following-data-container">
+      data-testid="following-widget">
       <EntityListWithV1
         entityList={followedData}
         headerText={
@@ -72,9 +73,14 @@ function FollowingWidget({
               <>
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
+                  data-testid="drag-widget-button"
                   size={14}
                 />
-                <CloseOutlined size={14} onClick={handleCloseClick} />
+                <CloseOutlined
+                  data-testid="remove-widget-button"
+                  size={14}
+                  onClick={handleCloseClick}
+                />
               </>
             )}
           </Space>
@@ -94,6 +100,13 @@ function FollowingWidget({
               <Typography.Paragraph>
                 {t('message.not-followed-anything')}
               </Typography.Paragraph>
+              <Link
+                className="link-title"
+                rel="noreferrer"
+                target="_blank"
+                to={FOLLOW_DATA_ASSET}>
+                {t('label.learn-more')}
+              </Link>
             </ErrorPlaceHolder>
           </div>
         }

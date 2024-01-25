@@ -9,14 +9,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /** Posts that are part of conversation threads require special handling */
-public class PostResourceContext implements ResourceContextInterface {
-  // The user who posted to thread is the owner of that post
-  private final String postedBy;
-
-  public PostResourceContext(String postedBy) {
-    this.postedBy = postedBy;
-  }
-
+public record PostResourceContext(String postedBy) implements ResourceContextInterface {
   @Override
   public String getResource() {
     return Entity.THREAD;

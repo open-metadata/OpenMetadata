@@ -13,12 +13,11 @@
 
 import { Button, Col, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, uniqBy } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
+import { Link, useHistory } from 'react-router-dom';
 import gridBgImg from '../../../assets/img/grid-bg-img.png';
 import {
   GlobalSettingOptions,
@@ -27,13 +26,11 @@ import {
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { Document } from '../../../generated/entity/docStore/document';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
-import { PageType } from '../../../generated/system/ui/page';
-import { useAuth } from '../../../hooks/authHooks';
+import { useFqn } from '../../../hooks/useFqn';
+import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getUserById } from '../../../rest/userAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import {
@@ -41,6 +38,7 @@ import {
   getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
+  getUniqueFilteredLayout,
   getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
@@ -49,7 +47,6 @@ import {
   getPersonaDetailsPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -70,8 +67,7 @@ function CustomizeMyData({
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const history = useHistory();
-  const { fqn: personaFQN } = useParams<{ fqn: string; pageFqn: PageType }>();
-  const location = useLocation();
+  const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
       initialPageData.data?.page?.layout ??
@@ -86,18 +82,9 @@ function CustomizeMyData({
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
-  const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-  const [isAnnouncementLoading, setIsAnnouncementLoading] =
-    useState<boolean>(true);
-  const [announcements, setAnnouncements] = useState<Thread[]>([]);
-
-  const decodedPersonaFQN = useMemo(
-    () => getDecodedFqn(personaFQN),
-    [personaFQN]
-  );
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
@@ -157,7 +144,9 @@ function CustomizeMyData({
     }
     setIsLoadingOwnedData(true);
     try {
-      const userData = await getUserById(currentUser?.id, 'follows, owns');
+      const userData = await getUserById(currentUser?.id, {
+        fields: 'follows, owns',
+      });
 
       if (userData) {
         const includeData = Object.values(AssetsType);
@@ -189,7 +178,6 @@ function CustomizeMyData({
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
-            announcements: announcements,
             followedData: followedData ?? [],
             followedDataCount: followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
@@ -198,53 +186,26 @@ function CustomizeMyData({
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
-            isAnnouncementLoading: isAnnouncementLoading,
           })}
         </div>
       )),
     [
       layout,
-      announcements,
       followedData,
       followedDataCount,
       isLoadingOwnedData,
       handleOpenAddWidgetModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
-      isAnnouncementLoading,
     ]
   );
-
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setIsAnnouncementLoading(true);
-      const response = await getActiveAnnouncement();
-
-      setAnnouncements(response.data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsAnnouncementLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
 
   useEffect(() => {
     handlePageDataChange({
       ...initialPageData,
       data: {
         page: {
-          layout: uniqBy(
-            layout.filter(
-              (widget) =>
-                widget.i.startsWith('KnowledgePanel') &&
-                !widget.i.endsWith('.EmptyWidgetPlaceholder')
-            ),
-            'i'
-          ),
+          layout: getUniqueFilteredLayout(layout),
         },
       },
     });
@@ -260,13 +221,18 @@ function CustomizeMyData({
   }, []);
 
   const handleReset = useCallback(() => {
-    const newMainPanelLayout = customizePageClassBase.defaultLayout;
+    // Get default layout with the empty widget added at the end
+    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
+      customizePageClassBase.defaultLayout,
+      2,
+      4
+    );
     setLayout(newMainPanelLayout);
     handlePageDataChange({
       ...initialPageData,
       data: {
         page: {
-          layout: uniqBy(newMainPanelLayout, 'i'),
+          layout: getUniqueFilteredLayout(newMainPanelLayout),
         },
       },
     });
@@ -275,14 +241,11 @@ function CustomizeMyData({
   }, []);
 
   useEffect(() => {
-    if (
-      ((isAuthDisabled && AppState.users.length) ||
-        !isEmpty(AppState.userDetails)) &&
-      isNil(followedData)
-    ) {
-      fetchMyData();
-    }
-  }, [AppState.userDetails, AppState.users, isAuthDisabled]);
+    fetchMyData();
+  }, []);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection();
 
   return (
     <ActivityFeedProvider>
@@ -290,9 +253,13 @@ function CustomizeMyData({
         header={
           <Col
             className="bg-white d-flex justify-between border-bottom p-sm"
+            data-testid="customize-landing-page-header"
             span={24}>
             <div className="d-flex gap-2 items-center">
-              <Typography.Title className="m-0" level={5}>
+              <Typography.Title
+                className="m-0"
+                data-testid="customize-page-title"
+                level={5}>
                 <Transi18next
                   i18nKey="message.customize-landing-page-header"
                   renderElement={
@@ -310,13 +277,23 @@ function CustomizeMyData({
               </Typography.Title>
             </div>
             <Space>
-              <Button size="small" onClick={handleCancel}>
+              <Button
+                data-testid="cancel-button"
+                size="small"
+                onClick={handleCancel}>
                 {t('label.cancel')}
               </Button>
-              <Button size="small" onClick={handleOpenResetModal}>
+              <Button
+                data-testid="reset-button"
+                size="small"
+                onClick={handleOpenResetModal}>
                 {t('label.reset')}
               </Button>
-              <Button size="small" type="primary" onClick={onSaveLayout}>
+              <Button
+                data-testid="save-button"
+                size="small"
+                type="primary"
+                onClick={onSaveLayout}>
                 {t('label.save')}
               </Button>
             </Space>
@@ -358,6 +335,7 @@ function CustomizeMyData({
         <Modal
           centered
           cancelText={t('label.no')}
+          data-testid="reset-layout-modal"
           okText={t('label.yes')}
           open={isResetModalOpen}
           title={t('label.reset-default-layout')}

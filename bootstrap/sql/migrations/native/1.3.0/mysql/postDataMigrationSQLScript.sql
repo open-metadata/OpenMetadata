@@ -18,3 +18,17 @@ WHERE json -> '$.testCaseResult.testCaseFailureStatus' IS NOT NULL;
 UPDATE data_quality_data_time_series d
 SET json = JSON_REMOVE(json, '$.testCaseFailureStatus');
 -- END: Incident Manager Migration
+
+-- Test Case passed/failed row level migration
+UPDATE test_definition
+SET json = JSON_SET(json, '$.supportsRowLevelPassedFailed', true)
+WHERE name IN (
+	'columnValuesToBeUnique',
+	'columnValueLengthsToBeBetween',
+	'columnValuesToBeBetween',
+	'columnValuesToBeInSet',
+	'columnValuesToBeNotInSet',
+	'columnValuesToBeNotNull',
+	'columnValuesToMatchRegex',
+	'columnValuesToNotMatchRegex'
+);

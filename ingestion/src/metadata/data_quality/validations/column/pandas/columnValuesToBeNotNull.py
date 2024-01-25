@@ -49,3 +49,14 @@ class ColumnValuesToBeNotNullValidator(
             column: column
         """
         return self.run_dataframe_results(self.runner, metric, column)
+
+    def compute_row_count(self, column: SQALikeColumn):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+
+        Raises:
+            NotImplementedError:
+        """
+        return self._compute_row_count(self.runner, column)

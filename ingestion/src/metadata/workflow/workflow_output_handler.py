@@ -28,8 +28,6 @@ from metadata.workflow.output_handler import (
     DEFAULT_EXAMPLE_FILE,
     EXAMPLES_WORKFLOW_PATH,
     WORKFLOW_FAILURE_MESSAGE,
-    WORKFLOW_SUCCESS_MESSAGE,
-    WORKFLOW_WARNING_MESSAGE,
     WorkflowType,
     print_error_msg,
     print_more_info,
@@ -122,12 +120,14 @@ def print_status(workflow: "IngestionWorkflow") -> None:
 
     print_workflow_summary(workflow)
 
-    if workflow.source.get_status().source_start_time:
+    # Get the time to execute the first step
+    first_step = workflow.workflow_steps()[0]
+    if first_step.get_status().source_start_time:
         log_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
             message="Workflow finished in time: "
-            f"{pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)}",
+            f"{pretty_print_time_duration(time.time()-first_step.get_status().source_start_time)}",
         )
 
     if workflow.result_status() == 1:
@@ -135,14 +135,4 @@ def print_status(workflow: "IngestionWorkflow") -> None:
             color=ANSI.BRIGHT_RED,
             bold=True,
             message=WORKFLOW_FAILURE_MESSAGE,
-        )
-    elif workflow.source.get_status().warnings or (
-        hasattr(workflow, "sink") and workflow.sink.get_status().warnings
-    ):
-        log_ansi_encoded_string(
-            color=ANSI.YELLOW, bold=True, message=WORKFLOW_WARNING_MESSAGE
-        )
-    else:
-        log_ansi_encoded_string(
-            color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
         )

@@ -19,8 +19,9 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const configOptionsForPatch = {
@@ -55,16 +56,13 @@ export const getContainers = async (args: {
   return response.data;
 };
 
-export const getContainerByName = async (
-  name: string,
-  fields: string | string[],
-  include: Include = Include.All
-) => {
+export const getContainerByName = async (name: string, params?: ListParams) => {
   const response = await APIClient.get<Container>(
-    `${BASE_URL}/name/${name}?fields=${fields}`,
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
     {
       params: {
-        include,
+        ...params,
+        include: params?.include ?? Include.All,
       },
     }
   );
@@ -129,18 +127,13 @@ export const getContainerVersion = async (id: string, version: string) => {
   return response.data;
 };
 
-export const getContainerByFQN = async (
-  fqn: string,
-  arrQueryFields: string | string[],
-  include = 'all'
-) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+export const getContainerByFQN = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Container>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
-
-  const response = await APIClient.get<Container>(url);
 
   return response.data;
 };

@@ -28,6 +28,7 @@ from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
@@ -282,6 +283,25 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``"
         )
     return _build(service_name, topic_name)
+
+
+@fqn_build_registry.add(Container)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for Container FQN building
+    *,
+    service_name: str,
+    parent_container: str,
+    container_name: str,
+) -> str:
+    if not service_name or not container_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, container=`{container_name}``"
+        )
+    return (
+        _build(parent_container, container_name, quote=False)
+        if parent_container
+        else (_build(service_name, container_name))
+    )
 
 
 @fqn_build_registry.add(SearchIndex)

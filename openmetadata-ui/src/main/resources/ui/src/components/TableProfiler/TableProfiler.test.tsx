@@ -59,7 +59,7 @@ jest.mock('./Component/ColumnProfileTable', () => {
 
 jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
-  formTwoDigitNmber: jest.fn(),
+  formTwoDigitNumber: jest.fn(),
   getStatisticsDisplayValue: jest.fn(),
   getEntityDeleteMessage: jest.fn(),
 }));

@@ -50,3 +50,26 @@ class ColumnValueLengthsToBeBetweenValidator(
             column: column
         """
         return self.run_dataframe_results(self.runner, metric, column)
+
+    def compute_row_count(self, column: SQALikeColumn, min_bound: int, max_bound: int):
+        """Compute row count for the given column
+
+        Args:
+            column (Union[SQALikeColumn, Column]): column to compute row count for
+            min_bound (_type_): min bound to filter out rows within the bound
+            max_bound (_type_): max bound to filter out rows within the bound
+
+        Raises:
+            NotImplementedError:
+        """
+        row_count = self._compute_row_count(self.runner, column)
+        failed_rows = sum(
+            len(
+                runner.query(
+                    f"`{column.name}`.str.len() > {max_bound} or `{column.name}`.str.len() < {min_bound}"
+                )
+            )
+            for runner in self.runner  # type: ignore
+        )
+
+        return row_count, failed_rows

@@ -400,6 +400,28 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.size');
     expect(JSON.stringify(assetData.extraInfo)).toContain('bytesToSize');
 
+    //  If Data has 0 as a value,it should display them
+    const assetWithZeroData = getDataAssetsHeaderInfo(
+      EntityType.CONTAINER,
+      {
+        ...mockContainerData,
+        dataModel: {
+          ...mockContainerData.dataModel,
+          isPartitioned: true,
+        },
+        numberOfObjects: 0,
+        size: 0,
+      },
+      'container',
+      []
+    );
+
+    expect(JSON.stringify(assetWithZeroData.extraInfo)).toContain(
+      'label.number-of-object-plural'
+    );
+
+    expect(JSON.stringify(assetWithZeroData.extraInfo)).toContain('label.size');
+
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
       EntityType.CONTAINER,

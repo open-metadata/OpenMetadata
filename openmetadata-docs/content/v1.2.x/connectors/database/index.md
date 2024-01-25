@@ -21,6 +21,7 @@ This is the supported list of connectors for Database Services:
 - [Glue](/connectors/database/glue)
 - [Greenplum](/connectors/database/greenplum)
 - [Hive](/connectors/database/hive)
+- [Impala](/connectors/database/impala)
 - [MariaDB](/connectors/database/mariadb)
 - [MSSQL](/connectors/database/mssql)
 - [MySQL](/connectors/database/mysql)

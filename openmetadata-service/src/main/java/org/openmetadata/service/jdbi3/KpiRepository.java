@@ -1,11 +1,14 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.Entity.KPI;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -18,7 +21,6 @@ import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -125,8 +127,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult);
     ChangeEvent changeEvent =
         getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
-    return new RestUtil.PutResponse<>(
-        Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
@@ -141,8 +142,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
       kpi.setKpiResult(storedKpiResult);
       ChangeDescription change = deleteKpiChangeDescription(kpi.getVersion(), storedKpiResult);
       ChangeEvent changeEvent = getChangeEvent(kpi, change, entityType, kpi.getVersion());
-      return new RestUtil.PutResponse<>(
-          Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
         String.format("Failed to find kpi result for %s at %s", kpi.getName(), timestamp));
@@ -185,9 +185,10 @@ public class KpiRepository extends EntityRepository<Kpi> {
   private ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
+        .withId(UUID.randomUUID())
         .withEntity(updated)
         .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
+        .withEventType(ENTITY_UPDATED)
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())

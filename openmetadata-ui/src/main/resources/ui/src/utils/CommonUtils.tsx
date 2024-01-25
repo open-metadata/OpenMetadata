@@ -38,7 +38,6 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import AppState from '../AppState';
 import {
   getDayCron,
   getHourCron,
@@ -68,16 +67,17 @@ import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { EntityReference } from '../generated/entity/teams/user';
+import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
+import { getIncidentManagerDetailPagePath } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getEncodedFqn } from './StringsUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -202,14 +202,13 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string) => {
-  const loggedInUser = AppState.getCurrentUserDetails();
+export const hasEditAccess = (type: string, id: string, currentUser: User) => {
   if (type === 'user') {
-    return id === loggedInUser?.id;
+    return id === currentUser.id;
   } else {
     return Boolean(
-      loggedInUser?.teams?.length &&
-        loggedInUser?.teams?.some((team) => team.id === id)
+      currentUser.teams?.length &&
+        currentUser.teams.some((team) => team.id === id)
     );
   }
 };
@@ -554,7 +553,7 @@ export const getStatisticsDisplayValue = (
   return formatNumberWithComma(displayValue);
 };
 
-export const formTwoDigitNmber = (number: number) => {
+export const formTwoDigitNumber = (number: number) => {
   return number.toLocaleString('en-US', {
     minimumIntegerDigits: 2,
     useGrouping: false,
@@ -570,10 +569,10 @@ export const digitFormatter = (value: number) => {
 };
 
 export const getTeamsUser = (
-  data?: ExtraInfo
+  data: ExtraInfo,
+  currentUser: User
 ): Record<string, string | undefined> | undefined => {
   if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
-    const currentUser = AppState.getCurrentUserDetails();
     const teams = currentUser?.teams;
 
     const dataFound = teams?.find((team) => {
@@ -796,11 +795,10 @@ export const getEntityDetailLink = (
   subTab?: string
 ) => {
   let path = '';
-  const encodedFQN = getEncodedFqn(fqn);
   switch (entityType) {
     default:
     case EntityType.TABLE:
-      path = getTableTabPath(encodedFQN, tab, subTab);
+      path = getTableTabPath(fqn, tab, subTab);
 
       break;
 
@@ -829,7 +827,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.SEARCH_INDEX:
-      path = getSearchIndexTabPath(encodedFQN, tab, subTab);
+      path = getSearchIndexTabPath(fqn, tab, subTab);
 
       break;
 
@@ -849,7 +847,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.USER:
-      path = getUserPath(encodedFQN, tab, subTab);
+      path = getUserPath(fqn, tab, subTab);
 
       break;
 
@@ -857,6 +855,12 @@ export const getEntityDetailLink = (
       path = getStoredProcedureDetailPath(fqn, tab, subTab);
 
       break;
+
+    case EntityType.TEST_CASE:
+      path = getIncidentManagerDetailPagePath(fqn, IncidentManagerTabs.ISSUES);
+
+      break;
+
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
       path = getGlossaryTermDetailsPath(fqn, tab, subTab);

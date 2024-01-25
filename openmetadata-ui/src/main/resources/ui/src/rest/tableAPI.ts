@@ -26,7 +26,8 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type TableListParams = {
@@ -41,17 +42,6 @@ export type TableListParams = {
 };
 
 const BASE_URL = '/tables';
-
-export const getTableDetails = async (
-  id: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<Table>(url);
-
-  return response.data;
-};
 
 export const getTableVersions = async (id: string) => {
   const url = `${BASE_URL}/${id}/versions`;
@@ -71,31 +61,16 @@ export const getTableVersion = async (id: string, version: string) => {
 
 export const getTableDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[],
-  include = 'all'
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+  const response = await APIClient.get<Table>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
 
-  const response = await APIClient.get<Table>(url);
-
   return response.data;
-};
-
-export const getDatabaseTables = (
-  databaseName: string,
-  paging: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
-  const url = `${getURLWithQueryFields(
-    `${BASE_URL}`,
-    arrQueryFields
-  )}&database=${databaseName}${paging ? paging : ''}`;
-
-  return APIClient.get(url);
 };
 
 export const patchTableDetails = async (id: string, data: Operation[]) => {
@@ -182,7 +157,7 @@ export const getTableProfilesList = async (
     endTs?: number;
   }
 ) => {
-  const url = `${BASE_URL}/${tableFqn}/tableProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(tableFqn)}/tableProfile`;
 
   const response = await APIClient.get<PagingResponse<TableProfile[]>>(url, {
     params,
@@ -198,7 +173,7 @@ export const getSystemProfileList = async (
     endTs?: number;
   }
 ) => {
-  const url = `${BASE_URL}/${tableFqn}/systemProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(tableFqn)}/systemProfile`;
 
   const response = await APIClient.get<PagingResponse<SystemProfile[]>>(url, {
     params,
@@ -217,7 +192,7 @@ export const getColumnProfilerList = async (
     after?: string;
   }
 ) => {
-  const url = `${BASE_URL}/${columnFqn}/columnProfile`;
+  const url = `${BASE_URL}/${getEncodedFqn(columnFqn)}/columnProfile`;
 
   const response = await APIClient.get<{
     data: ColumnProfile[];
@@ -234,7 +209,7 @@ export const getSampleDataByTableId = async (id: string) => {
 };
 
 export const getLatestTableProfileByFqn = async (fqn: string) => {
-  const encodedFQN = encodeURIComponent(fqn);
+  const encodedFQN = getEncodedFqn(fqn);
   const response = await APIClient.get<Table>(
     `${BASE_URL}/${encodedFQN}/tableProfile/latest`
   );

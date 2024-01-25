@@ -9,18 +9,20 @@ slug: /connectors/database/greenplum
 
 | Feature            | Status                       |
 | :----------------- | :--------------------------- |
-| Stage              | PROD                         |
+| Stage              | BETA                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions |  -                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}          |
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 
@@ -32,7 +34,6 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [Lineage](/connectors/ingestion/lineage)

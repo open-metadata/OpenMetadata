@@ -13,7 +13,7 @@
 import { PagingResponse } from 'Models';
 import { AppMarketPlaceDefinition } from '../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { ListParams } from '../interface/API.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps/marketplace';
@@ -28,16 +28,15 @@ export const getMarketPlaceApplicationList = async (params?: ListParams) => {
   return response.data;
 };
 
-export const getMarketPlaceApplicationByName = async (
-  appName: string,
-  arrQueryFields: string | string[]
+export const getMarketPlaceApplicationByFqn = async (
+  appFqn: string,
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `/apps/marketplace/name/${appName}`,
-    arrQueryFields
-  );
+  const url = `/apps/marketplace/name/${getEncodedFqn(appFqn)}`;
 
-  const response = await APIClient.get<AppMarketPlaceDefinition>(url);
+  const response = await APIClient.get<AppMarketPlaceDefinition>(url, {
+    params,
+  });
 
   return response.data;
 };

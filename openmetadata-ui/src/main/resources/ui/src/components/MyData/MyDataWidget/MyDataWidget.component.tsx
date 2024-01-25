@@ -28,8 +28,9 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -91,7 +92,10 @@ const MyDataWidgetInternal = ({
   }, [currentUser]);
 
   return (
-    <Card className="my-data-widget-container card-widget" loading={isLoading}>
+    <Card
+      className="my-data-widget-container card-widget"
+      data-testid="my-data-widget"
+      loading={isLoading}>
       <Row>
         <Col span={24}>
           <div className="d-flex justify-between m-b-xs">
@@ -115,9 +119,14 @@ const MyDataWidgetInternal = ({
                 <>
                   <DragOutlined
                     className="drag-widget-icon cursor-pointer"
+                    data-testid="drag-widget-button"
                     size={14}
                   />
-                  <CloseOutlined size={14} onClick={handleCloseClick} />
+                  <CloseOutlined
+                    data-testid="remove-widget-button"
+                    size={14}
+                    onClick={handleCloseClick}
+                  />
                 </>
               )}
             </Space>
@@ -155,7 +164,7 @@ const MyDataWidgetInternal = ({
                   <div className="d-flex items-center">
                     <Link
                       className=""
-                      to={getEntityLink(
+                      to={entityUtilClassBase.getEntityLink(
                         item.entityType ?? '',
                         item.fullyQualifiedName as string
                       )}>

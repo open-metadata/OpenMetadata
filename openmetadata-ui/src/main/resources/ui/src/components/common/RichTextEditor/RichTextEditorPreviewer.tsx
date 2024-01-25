@@ -32,7 +32,7 @@ const RichTextEditorPreviewer = ({
   showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
 }: PreviewerProp) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
 
   // initially read more will be false
@@ -71,8 +71,9 @@ const RichTextEditorPreviewer = ({
     const targetNodeDataTestId = targetNode.getAttribute('data-testid');
 
     if (targetNodeDataTestId === 'code-block-copy-icon' && previousSibling) {
-      const content =
-        targetNode.parentElement?.getAttribute('data-content') ?? '';
+      const codeNode = previousSibling.previousElementSibling;
+
+      const content = codeNode?.textContent ?? '';
 
       try {
         await navigator.clipboard.writeText(content);
@@ -96,8 +97,11 @@ const RichTextEditorPreviewer = ({
 
   return (
     <div
-      className={classNames('rich-text-editor-container', className)}
-      data-testid="viewer-container">
+      className={classNames('rich-text-editor-container', className, {
+        'text-right': i18n.dir() === 'rtl',
+      })}
+      data-testid="viewer-container"
+      dir={i18n.dir()}>
       <div
         className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser">

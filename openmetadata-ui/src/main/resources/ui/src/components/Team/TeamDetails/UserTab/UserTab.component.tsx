@@ -51,7 +51,7 @@ import { getUsers } from '../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../utils/RouterUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -169,7 +169,7 @@ export const UserTab = ({
   };
 
   useEffect(() => {
-    getCurrentTeamUsers(getEncodedFqn(currentTeam.name));
+    getCurrentTeamUsers(currentTeam.name);
   }, [currentTeam, pageSize]);
 
   const isTeamDeleted = useMemo(
@@ -322,6 +322,7 @@ export const UserTab = ({
             {!isTeamDeleted && (
               <ManageButton
                 canDelete={false}
+                displayName={getEntityName(currentTeam)}
                 entityName={currentTeam.name}
                 entityType={EntityType.USER}
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
@@ -367,6 +368,7 @@ export const UserTab = ({
                 )}
                 <ManageButton
                   canDelete={false}
+                  displayName={getEntityName(currentTeam)}
                   entityName={currentTeam.name}
                   entityType={EntityType.USER}
                   extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}

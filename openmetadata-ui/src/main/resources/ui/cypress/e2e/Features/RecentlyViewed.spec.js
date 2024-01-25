@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  interceptURL,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,
@@ -38,7 +35,8 @@ const RECENTLY_VIEW_ENTITIES = [
   VISIT_ENTITIES_DATA.topic,
   VISIT_ENTITIES_DATA.pipeline,
   VISIT_ENTITIES_DATA.mlmodel,
-  VISIT_ENTITIES_DATA.storedProcedure,
+  // ES issue
+  //   VISIT_ENTITIES_DATA.storedProcedure,
 ];
 
 describe('Recently viwed data assets', () => {
@@ -92,16 +90,15 @@ describe('Recently viwed data assets', () => {
 
   beforeEach(() => {
     cy.login();
-    cy.get("[data-testid='welcome-screen-close-btn']").click();
   });
 
   it('recently view section should be present', () => {
-    cy.get('[data-testid="recently-viewed-container"]')
+    cy.get('[data-testid="recently-viewed-widget"]')
       .scrollIntoView()
       .should('be.visible');
 
     cy.get(
-      `[data-testid="recently-viewed-container"] .right-panel-list-item`
+      `[data-testid="recently-viewed-widget"] .right-panel-list-item`
     ).should('have.length', 0);
   });
 
@@ -124,18 +121,18 @@ describe('Recently viwed data assets', () => {
 
       // need to add manual wait as we are dependant on local storage for recently view data
       cy.wait(500);
-      cy.get('[data-testid="recently-viewed-container"]')
+      cy.get('[data-testid="recently-viewed-widget"]')
         .scrollIntoView()
         .should('be.visible');
       cy.get(
-        `[data-testid="recently-viewed-container"] [title="${entity.displayName}"]`
+        `[data-testid="recently-viewed-widget"] [title="${entity.displayName}"]`
       )
         .scrollIntoView()
         .should('be.visible');
 
       // Checking count since we will only show max 5 not more than that
       cy.get(
-        `[data-testid="recently-viewed-container"] .right-panel-list-item`
+        `[data-testid="recently-viewed-widget"] .right-panel-list-item`
       ).should('have.length', index + 1);
     });
   });

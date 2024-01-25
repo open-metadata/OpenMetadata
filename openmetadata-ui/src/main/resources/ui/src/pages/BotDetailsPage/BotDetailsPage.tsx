@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import BotDetails from '../../components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
@@ -28,7 +27,9 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
+import { Include } from '../../generated/type/include';
 import { useAuth } from '../../hooks/authHooks';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getBotByName,
   getUserByName,
@@ -41,7 +42,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotDetailsPage = () => {
   const { t } = useTranslation();
-  const { fqn: botsName } = useParams<{ fqn: string }>();
+  const { fqn: botsName } = useFqn();
   const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botUserData, setBotUserData] = useState<User>({} as User);
@@ -70,16 +71,13 @@ const BotDetailsPage = () => {
   const fetchBotsData = async () => {
     try {
       setIsLoading(true);
-      const botResponse = await getBotByName(
-        botsName,
-        undefined,
-        'include=all'
-      );
+      const botResponse = await getBotByName(botsName, {
+        include: Include.All,
+      });
 
       const botUserResponse = await getUserByName(
         botResponse.botUser.fullyQualifiedName || '',
-        'roles,profile',
-        'include=all'
+        { fields: 'roles,profile', include: Include.All }
       );
       setBotUserData(botUserResponse);
       setBotData(botResponse);

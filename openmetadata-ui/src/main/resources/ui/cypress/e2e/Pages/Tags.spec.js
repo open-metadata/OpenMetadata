@@ -19,7 +19,6 @@ import {
   descriptionBox,
   interceptURL,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import {
   deleteClassification,
@@ -27,6 +26,7 @@ import {
   validateForm,
   visitClassificationPage,
 } from '../../common/TagUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   DELETE_TERM,
   NEW_CLASSIFICATION,
@@ -54,7 +54,7 @@ const permanentDeleteModal = (entity) => {
     .click();
 };
 
-describe('Tags page should work', () => {
+describe('Classification Page', () => {
   beforeEach(() => {
     cy.login();
     interceptURL(
@@ -71,7 +71,7 @@ describe('Tags page should work', () => {
     visitClassificationPage();
   });
 
-  it('Required Details should be available', () => {
+  it('Should render basic elements on page', () => {
     cy.get('[data-testid="add-classification"]').should('be.visible');
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible');
     cy.get('[data-testid="manage-button"]').should('be.visible');
@@ -108,7 +108,7 @@ describe('Tags page should work', () => {
       });
   });
 
-  it('Add new tag classification flow should work properly', () => {
+  it('Create classification with validation checks', () => {
     interceptURL('POST', 'api/v1/classifications', 'createTagCategory');
     cy.get('[data-testid="add-classification"]').should('be.visible').click();
     cy.get('[data-testid="modal-container"]')
@@ -144,7 +144,7 @@ describe('Tags page should work', () => {
       .and('contain', NEW_CLASSIFICATION.displayName);
   });
 
-  it('Add new tag flow should work properly', () => {
+  it('Create tag with validation checks', () => {
     cy.get('[data-testid="data-summary-container"]')
       .contains(NEW_CLASSIFICATION.displayName)
       .should('be.visible')
@@ -184,12 +184,17 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="table"]').should('contain', NEW_TAG.name);
   });
 
-  it('Use newly created tag to any entity should work', () => {
+  it(`Assign tag to table ${SEARCH_ENTITY_TABLE.table_3.displayName}`, () => {
     const entity = SEARCH_ENTITY_TABLE.table_3;
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
     addNewTagToEntity(entity, NEW_TAG);
   });
 
-  it('Add tag at DatabaseSchema level should work', () => {
+  it('Assign tag to DatabaseSchema', () => {
     interceptURL(
       'GET',
       '/api/v1/permissions/databaseSchema/name/*',
@@ -258,7 +263,7 @@ describe('Tags page should work', () => {
     );
   });
 
-  it('Add tag at DatabaseSchema level with task & suggestions', () => {
+  it('Assign tag using Task & Suggestion flow to DatabaseSchema', () => {
     interceptURL(
       'GET',
       '/api/v1/permissions/databaseSchema/name/*',
@@ -299,9 +304,7 @@ describe('Tags page should work', () => {
     )
       .click()
       .type(assignee);
-    cy.get(`[data-testid="assignee-option-${assignee}"]`)
-      .scrollIntoView()
-      .click();
+    cy.get(`[data-testid="${assignee}"]`).scrollIntoView().click();
 
     // click outside the select box
     cy.clickOutside();
@@ -338,7 +341,7 @@ describe('Tags page should work', () => {
     verifyResponseStatusCode('@removeTags', 200);
   });
 
-  it('Check Usage of tag and it should redirect to explore page with tags filter', () => {
+  it('Should have correct tag usage count and redirection should work', () => {
     cy.get('[data-testid="data-summary-container"]')
       .contains(NEW_CLASSIFICATION.displayName)
       .should('be.visible')
@@ -375,7 +378,7 @@ describe('Tags page should work', () => {
     verifyResponseStatusCode('@getEntityDetailsPage', 200);
   });
 
-  it('Delete Tag flow should work properly', () => {
+  it('Remove tag', () => {
     interceptURL(
       'DELETE',
       '/api/v1/tags/*?recursive=true&hardDelete=true',
@@ -383,37 +386,26 @@ describe('Tags page should work', () => {
     );
     cy.get('[data-testid="data-summary-container"]')
       .contains(NEW_CLASSIFICATION.displayName)
-      .should('be.visible')
-      .as('newCategory');
-
-    cy.get('@newCategory')
       .click()
       .parent()
       .should('have.class', 'activeCategory');
 
     verifyResponseStatusCode('@permissions', 200);
 
-    cy.get('[data-testid="table"]')
-      .should('be.visible')
-      .should('contain', NEW_TAG.name);
+    cy.get('[data-testid="table"]').should('contain', NEW_TAG.name);
 
-    cy.get('[data-testid="table"]')
-      .find('[data-testid="delete-tag"]')
-      .should('exist')
-      .and('be.visible')
-      .click();
-
-    cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
+    cy.get('[data-testid="table"]').find('[data-testid="delete-tag"]').click();
+    cy.wait(500); // adding manual wait to open modal, as it depends on click not an api.
     permanentDeleteModal(NEW_TAG.name);
 
     verifyResponseStatusCode('@deleteTag', 200);
-    cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
+    cy.wait(500);
     cy.get('[data-testid="table"]')
       .contains(NEW_TAG.name)
       .should('not.be.exist');
   });
 
-  it('Delete Tag classification flow should work properly', () => {
+  it('Remove classification', () => {
     deleteClassification(NEW_CLASSIFICATION);
   });
 });

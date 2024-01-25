@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/ClassificationDetails/ClassificationDetails.interface';
@@ -39,7 +39,7 @@ import {
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import TagsLeftPanelSkeleton from '../../components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LOADING_STATE } from '../../enums/common.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
@@ -50,6 +50,7 @@ import {
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { useFqn } from '../../hooks/useFqn';
 import {
   createClassification,
   createTag,
@@ -66,7 +67,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
-import { getDecodedFqn, getErrorText } from '../../utils/StringsUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import TagsForm from './TagsForm';
 import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
@@ -74,7 +75,7 @@ import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
-  const { fqn: tagCategoryName } = useParams<{ fqn: string }>();
+  const { fqn: tagCategoryName } = useFqn();
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );
@@ -143,7 +144,10 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getAllClassifications(['termCount'], 1000);
+      const response = await getAllClassifications({
+        fields: 'termCount',
+        limit: 1000,
+      });
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
@@ -168,10 +172,9 @@ const TagsPage = () => {
     if (currentClassification?.fullyQualifiedName !== fqn || update) {
       setIsLoading(true);
       try {
-        const currentClassification = await getClassificationByName(fqn, [
-          'usageCount',
-          'termCount',
-        ]);
+        const currentClassification = await getClassificationByName(fqn, {
+          fields: 'usageCount,termCount',
+        });
         if (currentClassification) {
           setClassifications((prevClassifications) =>
             prevClassifications.map((data) => {
@@ -501,9 +504,7 @@ const TagsPage = () => {
      */
     if (tagCategoryName) {
       const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
-      fetchCurrentClassification(
-        isTier ? TIER_CATEGORY : getDecodedFqn(tagCategoryName)
-      );
+      fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
     }
   }, [tagCategoryName]);
 

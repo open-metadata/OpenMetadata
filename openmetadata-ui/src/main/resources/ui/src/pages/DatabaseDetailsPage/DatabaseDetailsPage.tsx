@@ -15,7 +15,6 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
@@ -27,7 +26,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { default as appState } from '../../AppState';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -61,6 +59,8 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { Include } from '../../generated/type/include';
+import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
+import { useFqn } from '../../hooks/useFqn';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
@@ -74,9 +74,9 @@ import {
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -85,16 +85,19 @@ const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { withinPageSearch } =
+    useLocationSearch<{ withinPageSearch: string }>();
 
-  const { fqn: databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
 
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
 
   const [databaseName, setDatabaseName] = useState<string>(
-    databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
+    decodedDatabaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
   );
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
@@ -128,17 +131,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const decodedDatabaseFQN = useMemo(
-    () => getDecodedFqn(databaseFQN),
-    [databaseFQN]
-  );
-
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE,
-        databaseFQN
+        decodedDatabaseFQN
       );
       setDatabasePermission(response);
     } catch (error) {
@@ -172,7 +170,7 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const fetchDatabaseSchemaCount = useCallback(async () => {
-    if (isEmpty(databaseFQN)) {
+    if (isEmpty(decodedDatabaseFQN)) {
       return;
     }
 
@@ -189,15 +187,14 @@ const DatabaseDetails: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [databaseFQN]);
+  }, [decodedDatabaseFQN]);
 
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(
-      databaseFQN,
-      ['owner', 'tags', 'domain', 'votes'],
-      Include.All
-    )
+    getDatabaseDetailsByFQN(decodedDatabaseFQN, {
+      fields: 'owner,tags,domain,votes,extension',
+      include: Include.All,
+    })
       .then((res) => {
         if (res) {
           const { description, id, name, serviceType } = res;
@@ -328,36 +325,33 @@ const DatabaseDetails: FunctionComponent = () => {
   }, []);
 
   useEffect(() => {
-    if (!isMounting.current && appState.inPageSearchText) {
+    if (withinPageSearch && serviceType) {
       history.push(
         getExplorePath({
-          search: appState.inPageSearchText,
+          search: withinPageSearch,
+          isPersistFilters: false,
           extraParameters: {
-            facetFilter: {
-              serviceType: [serviceType],
-              'database.name.keyword': [databaseName],
-            },
+            quickFilter: getQueryFilterForDatabase(serviceType, databaseName),
           },
         })
       );
     }
-  }, [appState.inPageSearchText]);
+  }, [withinPageSearch]);
 
   useEffect(() => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
       getDetailsByFQN();
       fetchDatabaseSchemaCount();
     }
-  }, [databasePermission, databaseFQN]);
+  }, [databasePermission, decodedDatabaseFQN]);
 
   useEffect(() => {
     fetchDatabasePermission();
-  }, [databaseFQN]);
+  }, [decodedDatabaseFQN]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
-    appState.inPageSearchText = '';
   }, []);
 
   const handleUpdateTier = useCallback(
@@ -456,12 +450,12 @@ const DatabaseDetails: FunctionComponent = () => {
       history.push(
         getVersionPathWithTab(
           EntityType.DATABASE,
-          databaseFQN,
+          decodedDatabaseFQN,
           toString(currentVersion),
           EntityTabs.SCHEMA
         )
       );
-  }, [currentVersion, databaseFQN]);
+  }, [currentVersion, decodedDatabaseFQN]);
 
   const {
     editTagsPermission,
@@ -540,6 +534,7 @@ const DatabaseDetails: FunctionComponent = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={database}
                 dataProducts={database?.dataProducts ?? []}
                 domain={database?.domain}
                 editTagPermission={editTagsPermission}
@@ -547,6 +542,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 entityId={database?.id ?? ''}
                 entityType={EntityType.DATABASE}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -582,14 +578,17 @@ const DatabaseDetails: FunctionComponent = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.DATABASE}
-            handleExtensionUpdate={settingsUpdateHandler}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
+        children: database && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.DATABASE>
+              entityDetails={database}
+              entityType={EntityType.DATABASE}
+              handleExtensionUpdate={settingsUpdateHandler}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+              isVersionView={false}
+            />
+          </div>
         ),
       },
     ],
@@ -616,11 +615,10 @@ const DatabaseDetails: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseVotes(id, data);
-      const details = await getDatabaseDetailsByFQN(
-        databaseFQN,
-        ['owner', 'tags', 'votes'],
-        Include.All
-      );
+      const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
+        fields: 'owner,tags,votes',
+        include: Include.All,
+      });
       setDatabase(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -699,4 +697,4 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 };
 
-export default observer(withActivityFeed(DatabaseDetails));
+export default withActivityFeed(DatabaseDetails);

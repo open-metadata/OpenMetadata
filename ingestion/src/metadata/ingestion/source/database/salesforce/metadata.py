@@ -151,6 +151,7 @@ class SalesforceSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.database_schema
+
         try:
             if self.service_connection.sobjectName:
                 table_name = self.standardize_table_name(
@@ -191,6 +192,30 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
+    def get_table_description(self, table_name: str) -> Optional[str]:
+        """
+        Method to get the table description for salesforce with Tooling API
+        """
+        try:
+            result = self.client.toolingexecute(
+                f"query/?q=SELECT+Description+FROM+EntityDefinition+WHERE+QualifiedApiName='{table_name}'"
+            )
+            return result["records"][0]["Description"]
+        except KeyError as err:
+            logger.warning(
+                f"Unable to get required key from Tooling API response for table [{table_name}]: {err}"
+            )
+        except IndexError as err:
+            logger.warning(
+                f"Unable to get row for table [{table_name}] from EntityDefinition: {err}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unable to get description with Tooling API for table [{table_name}]: {exc}"
+            )
+        return None
+
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -209,6 +234,7 @@ class SalesforceSource(DatabaseServiceSource):
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
+                description=self.get_table_description(table_name),
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=fqn.build(
@@ -216,7 +242,7 @@ class SalesforceSource(DatabaseServiceSource):
                     entity_type=DatabaseSchema,
                     service_name=self.context.database_service,
                     database_name=self.context.database,
-                    schema_name=self.context.database.database_schema,
+                    schema_name=self.context.database_schema,
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,

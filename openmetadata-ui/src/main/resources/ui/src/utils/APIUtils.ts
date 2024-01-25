@@ -28,6 +28,8 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.DASHBOARD
   | SearchIndex.TABLE
   | SearchIndex.MLMODEL
+  | SearchIndex.DATABASE
+  | SearchIndex.DATABASE_SCHEMA
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
   | SearchIndex.STORED_PROCEDURE
@@ -78,6 +80,10 @@ export const formatDataResponse = (
 
     if ('databaseSchema' in source) {
       newData.databaseSchema = source.databaseSchema?.name;
+    }
+
+    if ('columns' in source) {
+      newData.columns = source.columns;
     }
 
     newData.changeDescription = source.changeDescription;
@@ -189,29 +195,6 @@ export const formatSearchTagsResponse = (
     fullyQualifiedName: d._source.fullyQualifiedName,
     type: d._source.entityType,
   }));
-};
-
-export const getURLWithQueryFields = (
-  url: string,
-  lstQueryFields?: string | string[],
-  qParams?: string
-) => {
-  let strQuery = lstQueryFields
-    ? typeof lstQueryFields === 'string'
-      ? lstQueryFields
-      : lstQueryFields.length
-      ? lstQueryFields.join()
-      : ''
-    : '';
-  strQuery = strQuery.replace(/ /g, '');
-
-  let queryParam = strQuery ? `?fields=${strQuery}` : '';
-
-  if (qParams) {
-    queryParam += queryParam ? `&${qParams}` : `?${qParams}`;
-  }
-
-  return url + queryParam;
 };
 
 export const omitDeep = <T>(

@@ -173,7 +173,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -198,7 +198,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',

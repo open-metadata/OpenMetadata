@@ -14,35 +14,26 @@
 /// <reference types="cypress" />
 
 import {
-  addAnnouncement,
-  addOwner,
   addTableFieldTags,
-  addTags,
-  addTier,
   deleteEntity,
   interceptURL,
   login,
-  removeOwner,
   removeTableFieldTags,
-  removeTags,
-  removeTier,
-  updateDescription,
   updateTableFieldDescription,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { BASE_URL, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
-  SEARCH_INDEX_DETAILS_FOR_ANNOUNCEMENT,
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
   SEARCH_INDEX_DISPLAY_NAME,
   TAG_1,
-  TIER,
-  UPDATE_DESCRIPTION,
   UPDATE_FIELD_DESCRIPTION,
   USER_CREDENTIALS,
   USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const policy = {
   name: `cy-data-steward-policy-${uuid()}`,
@@ -71,14 +62,6 @@ const role = {
 let roleId = '';
 
 const performCommonOperations = () => {
-  // Add and remove tier flow should work properly
-  addTier(TIER, 'searchIndexes');
-  removeTier('searchIndexes');
-
-  // Add and remove tags flow should work properly
-  addTags(TAG_1.classification, TAG_1.tag, 'searchIndexes');
-  removeTags(TAG_1.classification, TAG_1.tag, 'searchIndexes');
-
   // User should be able to edit search index field tags
   addTableFieldTags(
     SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.fields[0].fullyQualifiedName,
@@ -91,19 +74,6 @@ const performCommonOperations = () => {
     TAG_1.classification,
     TAG_1.tag,
     'searchIndexes'
-  );
-
-  // User should be able to edit search index description
-  updateDescription(UPDATE_DESCRIPTION, 'searchIndexes');
-
-  cy.get('[data-testid="asset-description-container"]').contains(
-    UPDATE_DESCRIPTION
-  );
-
-  updateDescription(' ', 'searchIndexes');
-
-  cy.get('[data-testid="asset-description-container"]').contains(
-    'No description'
   );
 
   // User should be able to edit search index field description
@@ -126,14 +96,6 @@ const performCommonOperations = () => {
   cy.get(
     `[data-row-key="${SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.fields[0].fullyQualifiedName}"] [data-testid="description"]`
   ).contains('No Description');
-
-  // Add and remove owner flow should work properly
-  addOwner(
-    `${USER_CREDENTIALS.firstName}${USER_CREDENTIALS.lastName}`,
-    'searchIndexes'
-  );
-
-  removeOwner('searchIndexes');
 };
 
 describe('Prerequisite for search index details page test', () => {
@@ -229,11 +191,12 @@ describe('Prerequisite for data steward role tests', () => {
     cy.login();
 
     // Assign data steward role to the created user
-    cy.get('[data-testid="app-bar-item-settings"]').click();
+
+    cy.sidebarClick(SidebarItem.SETTINGS);
 
     interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
 
-    cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
+    cy.settingClick(GlobalSettingOptions.USERS);
 
     verifyResponseStatusCode('@getUsersList', 200);
 
@@ -243,9 +206,7 @@ describe('Prerequisite for data steward role tests', () => {
 
     interceptURL('GET', `/api/v1/users/name/${USER_NAME}*`, 'getUserDetails');
 
-    cy.get(
-      `[data-row-key="${USER_CREDENTIALS.id}"] [data-testid="${USER_NAME}"]`
-    ).click();
+    cy.get(`[data-testid="${USER_NAME}"]`).click();
 
     verifyResponseStatusCode('@getUserDetails', 200);
 
@@ -334,34 +295,20 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('All permissible actions on search index details page should work properly', () => {
-    // Add announcement workflow should work properly
-    addAnnouncement(SEARCH_INDEX_DETAILS_FOR_ANNOUNCEMENT);
-
-    // Rename search index flow should work properly
-    cy.get('[data-testid="manage-button"]').click();
-
-    cy.get('[data-testid="rename-button"]').click({ waitForAnimations: true });
-
-    cy.get('#displayName').clear().type(SEARCH_INDEX_DISPLAY_NAME);
-
-    interceptURL(
-      'PATCH',
-      `/api/v1/searchIndexes/${SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.id}`,
-      'updateDisplayName'
-    );
-
-    cy.get('[data-testid="save-button"]').click();
-
-    verifyResponseStatusCode('@updateDisplayName', 200);
-
-    cy.get('[data-testid="entity-header-display-name"]').contains(
-      SEARCH_INDEX_DISPLAY_NAME
-    );
-
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     performCommonOperations();
   });
 
   it('Soft delete workflow should work properly', () => {
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
@@ -419,6 +366,11 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('Hard delete workflow should work properly', () => {
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,

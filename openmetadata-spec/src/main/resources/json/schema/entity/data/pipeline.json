@@ -8,18 +8,11 @@
   "javaType": "org.openmetadata.schema.entity.data.Pipeline",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "entityName": {
-      "description": "Name of a pipeline. Expected to be unique within a pipeline service.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^((?!::).)*$"
-    },
     "statusType": {
       "javaType": "org.openmetadata.schema.type.StatusType",
       "description": "Enum defining the possible Status.",
       "type": "string",
-      "enum": ["Successful", "Failed", "Pending"],
+      "enum": ["Successful", "Failed", "Pending", "Skipped"],
       "javaEnums": [
         {
           "name": "Successful"
@@ -29,6 +22,9 @@
         },
         {
           "name": "Pending"
+        },
+        {
+          "name": "Skipped"
         }
       ]
     },
@@ -117,6 +113,10 @@
             "$ref": "../../type/tagLabel.json"
           },
           "default": null
+        },
+        "owner": {
+          "description": "Owner of this task.",
+          "$ref": "../../type/entityReference.json"
         }
       },
       "required": ["name"],
@@ -154,7 +154,7 @@
     },
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",

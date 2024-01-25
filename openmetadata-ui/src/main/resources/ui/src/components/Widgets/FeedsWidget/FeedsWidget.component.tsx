@@ -15,11 +15,12 @@ import { Button, Space, Tabs, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import ActivityFeedListV1 from '../../../components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
+import { ROUTES } from '../../../constants/constants';
 import { mockFeedData } from '../../../constants/mockTourData.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -29,7 +30,11 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
-import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
+import {
+  getCountBadge,
+  getEntityDetailLink,
+  Transi18next,
+} from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
@@ -148,7 +153,20 @@ const FeedsWidget = ({
             children: (
               <>
                 <ActivityFeedListV1
-                  emptyPlaceholderText={t('message.no-activity-feed')}
+                  emptyPlaceholderText={
+                    <Transi18next
+                      i18nKey="message.no-activity-feed"
+                      renderElement={
+                        <Link
+                          rel="noreferrer"
+                          to={{ pathname: ROUTES.EXPLORE }}
+                        />
+                      }
+                      values={{
+                        explored: t('message.have-not-explored-yet'),
+                      }}
+                    />
+                  }
                   feedList={isTourOpen ? mockFeedData : threads}
                   hidePopover={isEditView}
                   isLoading={loading && !isTourOpen}
@@ -187,7 +205,7 @@ const FeedsWidget = ({
             children: (
               <>
                 <ActivityFeedListV1
-                  emptyPlaceholderText={t('message.no-tasks-assigned')}
+                  emptyPlaceholderText={t('message.no-open-tasks')}
                   feedList={threads}
                   hidePopover={isEditView}
                   isLoading={loading}
@@ -215,9 +233,14 @@ const FeedsWidget = ({
               <>
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
+                  data-testid="drag-widget-button"
                   size={14}
                 />
-                <CloseOutlined size={14} onClick={handleCloseClick} />
+                <CloseOutlined
+                  data-testid="remove-widget-button"
+                  size={14}
+                  onClick={handleCloseClick}
+                />
               </>
             )}
           </Space>

@@ -37,9 +37,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
-from metadata.profiler.orm.functions.table_metric_construct import (
-    table_metric_construct_factory,
-)
+from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -186,12 +184,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         # pylint: disable=protected-access
         try:
             dialect = runner._session.get_bind().dialect.name
-            row = table_metric_construct_factory.construct(
+            table_metric_computer: TableMetricComputer = TableMetricComputer(
                 dialect,
                 runner=runner,
                 metrics=metrics,
                 conn_config=self.service_connection_config,
             )
+            row = table_metric_computer.compute()
             if row:
                 return dict(row)
             return None
@@ -413,6 +412,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 partition_details=self.partition_details,
                 profile_sample_query=self.profile_query,
             )
+            return thread_local.runner
+        thread_local.runner._sample = sample  # pylint: disable=protected-access
         return thread_local.runner
 
     def compute_metrics_in_thread(
@@ -431,7 +432,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 session,
                 metric_func.table,
             )
-            sample = sampler.random_sample()
+            sample = sampler.random_sample(metric_func.column)
             runner = self._create_thread_safe_runner(
                 session,
                 metric_func.table,
@@ -565,7 +566,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         sampler = self._get_sampler(table=kwargs.get("table"))
-        sample = sampler.random_sample()
+        sample = sampler.random_sample(column)
         try:
             return metric(column).fn(sample, column_results, self.session)
         except Exception as exc:

@@ -23,7 +23,7 @@ openmetadata:
     authentication:
       provider: "custom-oidc"
       publicKeys:
-      - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+      - "http://{your openmetadata domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
       - "{IssuerUrl}/certs"
       authority: "{IssuerUrl}"
       clientId: "{client id}"

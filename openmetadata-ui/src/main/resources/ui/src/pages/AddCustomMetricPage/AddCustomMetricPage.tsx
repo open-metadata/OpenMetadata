@@ -30,16 +30,17 @@ import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddCustomMetricPage = () => {
-  const { fqn, dashboardType } =
-    useParams<{ fqn: string; dashboardType: ProfilerDashboardType }>();
+  const { dashboardType } =
+    useParams<{ dashboardType: ProfilerDashboardType }>();
+  const { fqn } = useFqn();
 
   const history = useHistory();
   const location = useLocation();
@@ -50,10 +51,7 @@ const AddCustomMetricPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const columnName = Form.useWatch('columnName', form);
-  const encodedFqn = useMemo(
-    () => getEncodedFqn(table?.fullyQualifiedName ?? ''),
-    [table]
-  );
+  const entityFqn = useMemo(() => table?.fullyQualifiedName ?? '', [table]);
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = table
@@ -61,7 +59,7 @@ const AddCustomMetricPage = () => {
           ...getEntityBreadcrumbs(table, EntityType.TABLE),
           {
             name: getEntityName(table),
-            url: getTableTabPath(encodedFqn, EntityTabs.PROFILER),
+            url: getTableTabPath(entityFqn, EntityTabs.PROFILER),
           },
           {
             name: t('label.add-entity-metric', {
@@ -96,14 +94,14 @@ const AddCustomMetricPage = () => {
   const handleBackClick = () => {
     if (isColumnMetric) {
       history.push({
-        pathname: getTableTabPath(encodedFqn, EntityTabs.PROFILER),
+        pathname: getTableTabPath(entityFqn, EntityTabs.PROFILER),
         search: QueryString.stringify({
           activeTab: TableProfilerTab.COLUMN_PROFILE,
           activeColumnFqn,
         }),
       });
     } else {
-      history.push(getTableTabPath(encodedFqn, EntityTabs.PROFILER));
+      history.push(getTableTabPath(entityFqn, EntityTabs.PROFILER));
     }
   };
 
@@ -128,10 +126,9 @@ const AddCustomMetricPage = () => {
   const fetchTableData = async () => {
     setIsLoading(true);
     try {
-      const table = await getTableDetailsByFQN(
-        fqn,
-        'testSuite,customMetrics,columns'
-      );
+      const table = await getTableDetailsByFQN(fqn, {
+        fields: 'testSuite,customMetrics,columns',
+      });
       setTable(table);
     } catch (error) {
       showErrorToast(error as AxiosError);

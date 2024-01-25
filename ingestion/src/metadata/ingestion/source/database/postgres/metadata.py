@@ -31,8 +31,6 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -203,9 +201,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
         result = self.engine.execute(
-            POSTGRES_PARTITION_DETAILS.format(
-                table_name=table_name, schema_name=schema_name
-            )
+            POSTGRES_PARTITION_DETAILS, table_name=table_name, schema_name=schema_name
         ).all()
         if result:
             partition_details = TablePartition(
@@ -251,33 +247,3 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_owner_details(self, schema_name: str, table_name: str):
-        """
-        Returns owner's entity reference
-        """
-        owner = None
-        owner_name = self.inspector.get_table_owner(
-            connection=self.connection, table_name=table_name, schema=schema_name
-        )
-        if not owner_name:
-            return owner_name
-        user_owner_fqn = fqn.build(
-            self.metadata, entity_type=User, user_name=owner_name
-        )
-        if user_owner_fqn:
-            owner = self.metadata.get_entity_reference(entity=User, fqn=user_owner_fqn)
-        else:
-            team_owner_fqn = fqn.build(
-                self.metadata, entity_type=Team, team_name=owner_name
-            )
-            if team_owner_fqn:
-                owner = self.metadata.get_entity_reference(
-                    entity=Team, fqn=team_owner_fqn
-                )
-            else:
-                logger.warning(
-                    "Unable to ingest owner from Postgres since no user or"
-                    f" team was found with name {owner_name}"
-                )
-        return owner

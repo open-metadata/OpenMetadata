@@ -19,10 +19,20 @@ import NodeSuggestions from './NodeSuggestions.component';
 
 const mockProps = {
   onSelectHandler: jest.fn(),
-  entityType: 'TABLE',
+  entityType: SearchIndex.TABLE,
 };
 
-const entityType = ['TABLE', 'TOPIC', 'DASHBOARD', 'MLMODEL'];
+const entityType = [
+  SearchIndex.TABLE,
+  SearchIndex.TOPIC,
+  SearchIndex.DASHBOARD,
+  SearchIndex.PIPELINE,
+  SearchIndex.MLMODEL,
+  SearchIndex.CONTAINER,
+  SearchIndex.PIPELINE,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+];
 
 jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -50,9 +60,7 @@ describe('Test NodeSuggestions Component', () => {
 
       // 1st call on page load with empty search string and respective searchIndex
       expect(mockSearchData.mock.calls[0][0]).toBe('');
-      expect(mockSearchData.mock.calls[0][6]).toEqual(
-        SearchIndex[value as keyof typeof SearchIndex]
-      );
+      expect(mockSearchData.mock.calls[0][6]).toEqual(value);
 
       const suggestionNode = await screen.findByTestId('suggestion-node');
       const searchInput = await screen.findByRole('combobox');

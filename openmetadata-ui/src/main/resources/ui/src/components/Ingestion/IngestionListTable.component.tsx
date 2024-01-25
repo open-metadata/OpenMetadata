@@ -11,18 +11,21 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../../components/common/Table/Table';
+import { DISABLED, NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import ButtonSkeleton from '../Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -47,6 +50,7 @@ function IngestionListTable({
   isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
+  const { isFetchingStatus, platform } = useAirflowStatus();
 
   const {
     currentPage,
@@ -61,41 +65,28 @@ function IngestionListTable({
     handlePagingChange(paging);
   }, [paging]);
 
+  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
+
   const ingestionPagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        const pagingString = `&${cursorType}=${paging[cursorType]}`;
-
-        onIngestionWorkflowsUpdate(pagingString);
+        onIngestionWorkflowsUpdate(
+          { [cursorType]: paging[cursorType] },
+          pageSize
+        );
         handlePageChange(currentPage);
       }
     },
-    [paging, handlePageChange, onIngestionWorkflowsUpdate]
+    [paging, handlePageChange, onIngestionWorkflowsUpdate, pageSize]
   );
 
-  const renderNameField = (text: string, record: IngestionPipeline) => {
-    return airflowEndpoint ? (
-      <Tooltip
-        title={
-          permissions.ViewAll || permissions.ViewBasic
-            ? t('label.view-entity', {
-                entity: t('label.dag'),
-              })
-            : t('message.no-permission-to-view')
-        }>
-        <Typography.Link
-          className="m-r-xs overflow-wrap-anywhere"
-          data-testid="ingestion-dag-link"
-          disabled={!(permissions.ViewAll || permissions.ViewBasic)}
-          href={`${airflowEndpoint}/tree?dag_id=${text}`}
-          rel="noopener noreferrer"
-          target="_blank">
-          {getEntityName(record)}
-        </Typography.Link>
-      </Tooltip>
-    ) : (
-      getEntityName(record)
-    );
+  const handlePipelinePageSizeChange = useCallback((pageSize: number) => {
+    handlePageSizeChange(pageSize);
+    onIngestionWorkflowsUpdate({}, pageSize);
+  }, []);
+
+  const renderNameField = (_: string, record: IngestionPipeline) => {
+    return getEntityName(record);
   };
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
@@ -114,6 +105,14 @@ function IngestionListTable({
   };
 
   const renderActionsField = (_: string, record: IngestionPipeline) => {
+    if (isFetchingStatus) {
+      return <ButtonSkeleton size="default" />;
+    }
+
+    if (isPlatFormDisabled) {
+      return NO_DATA_PLACEHOLDER;
+    }
+
     return (
       <PipelineActions
         deleteSelection={deleteSelection}
@@ -183,6 +182,8 @@ function IngestionListTable({
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
       ingestionData,
+      isFetchingStatus,
+      isPlatFormDisabled,
     ]
   );
 
@@ -202,6 +203,7 @@ function IngestionListTable({
           emptyText: getErrorPlaceHolder(
             isRequiredDetailsAvailable,
             ingestionData.length,
+            isPlatFormDisabled,
             pipelineType
           ),
         }}
@@ -216,7 +218,7 @@ function IngestionListTable({
           pageSize={pageSize}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
-          onShowSizeChange={handlePageSizeChange}
+          onShowSizeChange={handlePipelinePageSizeChange}
         />
       )}
     </Space>

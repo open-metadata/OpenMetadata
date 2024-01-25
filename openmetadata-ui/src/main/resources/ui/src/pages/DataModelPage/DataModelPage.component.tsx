@@ -23,7 +23,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataModelDetails from '../../components/DataModels/DataModelDetails.component';
@@ -39,9 +38,10 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Include } from '../../generated/type/include';
+import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
-  getDataModelsByName,
+  getDataModelByFqn,
   patchDataModelDetails,
   removeDataModelFollower,
   updateDataModelVotes,
@@ -61,7 +61,8 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: dashboardDataModelFQN } = useParams<{ fqn: string }>();
+
+  const { fqn: dashboardDataModelFQN } = useFqn();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -121,11 +122,10 @@ const DataModelsPage = () => {
   const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
-      const response = await getDataModelsByName(
-        dashboardDataModelFQN,
-        'owner,tags,followers,votes,domain,dataProducts',
-        Include.All
-      );
+      const response = await getDataModelByFqn(dashboardDataModelFQN, {
+        fields: 'owner,tags,followers,votes,domain,dataProducts',
+        include: Include.All,
+      });
       setDataModelData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -295,10 +295,13 @@ const DataModelsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDataModelVotes(id, data);
-      const details = await getDataModelsByName(
+      const details = await getDataModelByFqn(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes,domain,dataProducts',
-        Include.All
+
+        {
+          fields: 'owner,tags,followers,votes,domain,dataProducts',
+          include: Include.All,
+        }
       );
       setDataModelData(details);
     } catch (error) {

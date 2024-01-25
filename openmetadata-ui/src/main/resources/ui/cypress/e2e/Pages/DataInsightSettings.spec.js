@@ -12,18 +12,15 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe('Data Insight settings page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-    cy.get('[data-testid="app-bar-item-settings"]').click();
-    verifyResponseStatusCode('@settingsPage', 200);
-    cy.get('[data-testid="settings-left-panel"]').should('be.visible');
 
     interceptURL('GET', '/api/v1/apps?limit=*', 'getApplications');
-    cy.get(`[data-menu-id*="integrations.apps"]`).scrollIntoView().click();
+
+    cy.settingClick(GlobalSettingOptions.APPLICATIONS);
 
     verifyResponseStatusCode('@getApplications', 200);
   });

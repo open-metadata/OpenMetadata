@@ -27,7 +27,7 @@ AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot, <service_application_client_id>]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=okta
-AUTHENTICATION_PUBLIC_KEYS=[{ISSUER_URL}/v1/keys, http://{your openmetadata domain}/api/v1/config/jwks] # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+AUTHENTICATION_PUBLIC_KEYS=[{ISSUER_URL}/v1/keys, http://{your openmetadata domain}/api/v1/system/config/jwks] # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
 AUTHENTICATION_AUTHORITY={ISSUER_URL} # Update with your Issuer URL
 AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback

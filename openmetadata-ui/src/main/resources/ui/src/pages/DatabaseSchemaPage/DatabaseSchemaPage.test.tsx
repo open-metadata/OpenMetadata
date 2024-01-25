@@ -178,16 +178,19 @@ jest.mock('../../rest/databaseAPI', () => ({
     ),
 }));
 
-jest.mock('../../AppState', () => ({
-  inPageSearchText: '',
-}));
-
 const mockParams = {
   fqn: 'sample_data.ecommerce_db.shopify',
   tab: 'table',
 };
 
-const API_FIELDS = ['owner', 'usageSummary', 'tags', 'domain', 'votes'];
+const API_FIELDS = [
+  'owner',
+  'usageSummary',
+  'tags',
+  'domain',
+  'votes',
+  'extension',
+];
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
@@ -240,11 +243,10 @@ describe('Tests for DatabaseSchemaPage', () => {
       render(<DatabaseSchemaPageComponent />);
     });
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.fqn,
-      API_FIELDS,
-      'all'
-    );
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
+      fields: API_FIELDS.join(','),
+      include: 'all',
+    });
   });
 
   it('DatabaseSchemaPage should fetch storedProcedure with basic fields', async () => {
@@ -275,11 +277,10 @@ describe('Tests for DatabaseSchemaPage', () => {
       render(<DatabaseSchemaPageComponent />);
     });
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.fqn,
-      API_FIELDS,
-      'all'
-    );
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
+      fields: API_FIELDS.join(','),
+      include: 'all',
+    });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByTestId('tabs')).toBeInTheDocument();
@@ -297,11 +298,10 @@ describe('Tests for DatabaseSchemaPage', () => {
       render(<DatabaseSchemaPageComponent />);
     });
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.fqn,
-      API_FIELDS,
-      'all'
-    );
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
+      fields: API_FIELDS.join(','),
+      include: 'all',
+    });
 
     expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();
   });

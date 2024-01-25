@@ -17,6 +17,9 @@ from typing import List
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
+    CreateTestCaseResolutionStatus,
+)
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
@@ -38,3 +41,9 @@ class OMetaTestCaseSample(BaseModel):
 class OMetaTestCaseResultsSample(BaseModel):
     test_case_results: TestCaseResult
     test_case_name: str
+
+
+class OMetaTestCaseResolutionStatus(BaseModel):
+    """For sample data"""
+
+    test_case_resolution: CreateTestCaseResolutionStatus

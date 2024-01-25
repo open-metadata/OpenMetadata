@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.analytics.DataAssetValues;
 import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssetsCount;
 
@@ -62,5 +63,5 @@ public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S>
 
   protected abstract S getAggregations(B bucket, String key);
 
-  protected abstract Double getValue(S aggregations);
+  protected abstract Optional<Double> getValue(S aggregations);
 }

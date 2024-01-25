@@ -93,19 +93,14 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
-    def get_owner_details(
+    def get_owner_ref(
         self, dashboard_details: DomoDashboardDetails
     ) -> Optional[EntityReference]:
-        for owner in dashboard_details.owners:
+        for owner in dashboard_details.owners or []:
             try:
                 owner_details = self.client.domo.users_get(owner.id)
                 if owner_details.get("email"):
-                    user = self.metadata.get_user_by_email(owner_details["email"])
-                    if user:
-                        return EntityReference(id=user.id.__root__, type="user")
-                    logger.warning(
-                        f"No user found with email [{owner_details['email']}] in OMD"
-                    )
+                    return self.metadata.get_reference_by_email(owner_details["email"])
             except Exception as exc:
                 logger.warning(
                     f"Error while getting details of user {owner.displayName} - {exc}"
@@ -132,9 +127,10 @@ class DomodashboardSource(DashboardServiceSource):
                         service_name=self.context.dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts
+                    for chart in self.context.charts or []
                 ],
                 service=self.context.dashboard_service,
+                owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

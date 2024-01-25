@@ -102,6 +102,7 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: 'owner,summary',
+      includeEmptyTestSuites: false,
       limit: 15,
       testSuiteType: 'executable',
     });
@@ -138,6 +139,7 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: 'owner,summary',
+      includeEmptyTestSuites: true,
       limit: 15,
       testSuiteType: 'logical',
     });

@@ -73,15 +73,10 @@ const DatabaseSummary = ({
           entityDetail={entityDetails}
           tags={
             tags ??
-            getSortedTagsWithHighlight({
-              tags: entityDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ??
-            []
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
           }
         />
 

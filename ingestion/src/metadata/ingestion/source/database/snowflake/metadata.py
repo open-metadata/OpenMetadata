@@ -13,7 +13,6 @@ Snowflake source module
 """
 import json
 import traceback
-import urllib
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import sqlparse
@@ -30,7 +29,6 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
-    Table,
     TablePartition,
     TableType,
 )
@@ -44,10 +42,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
-from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -89,6 +85,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_unique_constraints,
     get_view_definition,
     get_view_names,
+    get_view_names_reflection,
     normalize_names,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
@@ -101,7 +98,6 @@ from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
@@ -122,6 +118,7 @@ SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
     get_schema_columns
 )
 Inspector.get_table_names = get_table_names_reflection
+Inspector.get_view_names = get_view_names_reflection
 SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
     _current_database_schema
 )
@@ -146,6 +143,7 @@ class SnowflakeSource(
 
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
+        self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -477,47 +475,32 @@ class SnowflakeSource(
             logger.error(f"Unable to get source url: {exc}")
         return None
 
-    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
-        Get the life cycle data of the table
+        Connect to the source database to get the view
+        name and type. By default, use the inspector method
+        to get the names and pass the View type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., material views,...
         """
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
-            table_name=self.context.table,
-            skip_es_search=True,
-        )
-        table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-        if table:
-            try:
-                life_cycle_data = self.life_cycle_query_dict(
-                    query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
-                        database_name=table.database.name,
-                        schema_name=table.databaseSchema.name,
-                    )
-                ).get(table.name.__root__)
-                if life_cycle_data:
-                    life_cycle = LifeCycle(
-                        created=AccessDetails(
-                            timestamp=convert_timestamp_to_milliseconds(
-                                life_cycle_data.created_at.timestamp()
-                            )
-                        )
-                    )
-                    yield Either(
-                        right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
-                    )
-            except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name=table.name.__root__,
-                        error=f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
+
+        regular_views = [
+            TableNameAndType(name=view_name, type_=TableType.View)
+            for view_name in self.inspector.get_view_names(schema_name) or []
+        ]
+
+        materialized_views = [
+            TableNameAndType(name=view_name, type_=TableType.MaterializedView)
+            for view_name in self.inspector.get_view_names(
+                schema_name, materialized_views=True
+            )
+            or []
+        ]
+
+        return regular_views + materialized_views
 
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -555,7 +538,7 @@ class SnowflakeSource(
                 database_name=self.context.database,
                 schema_name=self.context.database_schema,
                 procedure_name=stored_procedure.name,
-                procedure_signature=urllib.parse.unquote(stored_procedure.signature),
+                procedure_signature=stored_procedure.unquote_signature(),
             )
         )
         return dict(res.all()).get("body", "")

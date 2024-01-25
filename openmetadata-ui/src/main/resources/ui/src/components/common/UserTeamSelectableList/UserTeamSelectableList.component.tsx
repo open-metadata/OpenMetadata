@@ -35,8 +35,8 @@ import {
 } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
-import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 import './user-team-selectable-list.less';
+import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
@@ -105,64 +105,33 @@ export const UserTeamSelectableList = ({
   const fetchTeamOptions = async (searchText: string, after?: string) => {
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
 
-    if (searchText) {
-      try {
-        const res = await searchData(
-          searchText,
-          afterPage,
-          PAGE_SIZE_MEDIUM,
-          'teamType:Group',
-          '',
-          '',
-          SearchIndex.TEAM
-        );
+    try {
+      const res = await searchData(
+        searchText || '',
+        afterPage,
+        PAGE_SIZE_MEDIUM,
+        'teamType:Group',
+        'displayName.keyword',
+        'asc',
+        SearchIndex.TEAM
+      );
 
-        const data = getEntityReferenceListFromEntities(
-          formatTeamsResponse(res.data.hits.hits),
-          EntityType.TEAM
-        );
+      const data = getEntityReferenceListFromEntities(
+        formatTeamsResponse(res.data.hits.hits),
+        EntityType.TEAM
+      );
 
-        setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
+      setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
 
-        return {
-          data,
-          paging: {
-            total: res.data.hits.total.value,
-            after: toString(afterPage + 1),
-          },
-        };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
-      try {
-        const { data } = await searchData(
-          '',
-          afterPage,
-          PAGE_SIZE_MEDIUM,
-          'teamType:Group',
-          '',
-          '',
-          SearchIndex.TEAM
-        );
-
-        const filterData = getEntityReferenceListFromEntities(
-          formatTeamsResponse(data.hits.hits),
-          EntityType.TEAM
-        );
-
-        setCount((pre) => ({ ...pre, team: data.hits.total.value }));
-
-        return {
-          data: filterData,
-          paging: {
-            total: data.hits.total.value,
-            after: toString(afterPage + 1),
-          },
-        };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
+      return {
+        data,
+        paging: {
+          total: res.data.hits.total.value,
+          after: toString(afterPage + 1),
+        },
+      };
+    } catch (error) {
+      return { data: [], paging: { total: 0 } };
     }
   };
 

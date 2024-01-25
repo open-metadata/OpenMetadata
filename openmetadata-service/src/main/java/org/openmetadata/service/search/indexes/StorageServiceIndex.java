@@ -3,22 +3,14 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class StorageServiceIndex implements SearchIndex {
-
-  final StorageService storageService;
-
+public record StorageServiceIndex(StorageService storageService) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public StorageServiceIndex(StorageService storageService) {
-    this.storageService = storageService;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(storageService);
@@ -31,7 +23,7 @@ public class StorageServiceIndex implements SearchIndex {
         "fqnParts",
         getFQNParts(
             storageService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.STORAGE_SERVICE);
     doc.put("owner", getEntityWithDisplayName(storageService.getOwner()));

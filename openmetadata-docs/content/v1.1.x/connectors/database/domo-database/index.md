@@ -15,7 +15,7 @@ slug: /connectors/database/domo-database
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
 | Lineage            | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
@@ -32,7 +32,6 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 {% partial file="/v1.1/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/domo-database/yaml"} /%}

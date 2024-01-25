@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { AppType } from '../../../generated/entity/applications/app';
@@ -34,6 +34,7 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useFqn } from '../../../hooks/useFqn';
 import { getApplicationRuns } from '../../../rest/applicationAPI';
 import {
   getStatusFromPipelineState,
@@ -59,16 +60,11 @@ import {
 
 const AppRunsHistory = forwardRef(
   (
-    {
-      appData,
-      maxRecords,
-      showPagination = true,
-      runsData,
-    }: AppRunsHistoryProps,
+    { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
     ref
   ) => {
     const { t } = useTranslation();
-    const { fqn } = useParams<{ fqn: string }>();
+    const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [appRunsHistoryData, setAppRunsHistoryData] = useState<
       AppRunRecordWithId[]
@@ -276,13 +272,8 @@ const AppRunsHistory = forwardRef(
     }));
 
     useEffect(() => {
-      if (runsData) {
-        setAppRunsHistoryData(runsData);
-        setIsLoading(false);
-      } else {
-        fetchAppHistory();
-      }
-    }, [fqn, pageSize, runsData]);
+      fetchAppHistory();
+    }, [fqn, pageSize]);
 
     return (
       <Row gutter={[16, 16]}>

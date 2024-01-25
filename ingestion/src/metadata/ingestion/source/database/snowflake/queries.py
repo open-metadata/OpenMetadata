@@ -67,6 +67,12 @@ SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
 """
+
+SNOWFLAKE_GET_MVIEW_NAMES = """
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'MATERIALIZED VIEW'
+"""
+
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' 
@@ -181,7 +187,6 @@ SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
     SELECT
-      QUERY_ID,
       QUERY_TEXT,
       SESSION_ID,
       START_TIME,
@@ -192,7 +197,6 @@ WITH SP_HISTORY AS (
 ),
 Q_HISTORY AS (
     SELECT
-      QUERY_ID,
       QUERY_TYPE,
       QUERY_TEXT,
       SESSION_ID,
@@ -209,8 +213,6 @@ Q_HISTORY AS (
       AND START_TIME >= '{start_date}' 
 )
 SELECT
-  SP.QUERY_ID AS PROCEDURE_ID,
-  Q.QUERY_ID AS QUERY_ID,
   Q.QUERY_TYPE AS QUERY_TYPE,
   Q.DATABASE_NAME AS QUERY_DATABASE_NAME,
   Q.SCHEMA_NAME AS QUERY_SCHEMA_NAME,

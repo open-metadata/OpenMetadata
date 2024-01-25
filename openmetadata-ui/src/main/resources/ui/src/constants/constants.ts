@@ -18,7 +18,6 @@ import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -76,6 +75,7 @@ export const refreshTokenKey = 'refreshToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
+export const DISABLED = 'disabled';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
@@ -99,12 +99,12 @@ export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_SUB_TAB = ':subTab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
+export const PLACEHOLDER_ROUTE_ID = ':id';
 export const PLACEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 
 export const PLACEHOLDER_ROUTE_QUERY_ID = ':queryId';
 export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
-export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
@@ -112,9 +112,7 @@ export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const LOG_ENTITY_TYPE = ':logEntityType';
-export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
-export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
 
 export const pagingObject = { after: '', before: '', total: 0 };
@@ -157,6 +155,8 @@ export const ROUTES = {
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
+  SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
+  SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB_FQN_ACTION: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ACTION}`,
@@ -268,16 +268,13 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_ROUTE_FQN}/add-term`,
   GLOSSARY_DETAILS_WITH_TAB: `/glossary/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   GLOSSARY_DETAILS_WITH_SUBTAB: `/glossary/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
-  GLOSSARY_VERSION: `/glossary/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
-  GLOSSARY_TERMS_VERSION: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
-  GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  GLOSSARY_VERSION: `/glossary/${PLACEHOLDER_ROUTE_ID}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS_VERSION: `/glossary-term/${PLACEHOLDER_ROUTE_ID}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_ROUTE_ID}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_ROUTE_FQN}`,
 
-  CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
-  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
-  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
-  PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/add-field`,
+  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
@@ -307,14 +304,18 @@ export const ROUTES = {
   DATA_QUALITY: '/data-quality',
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
 
+  INCIDENT_MANAGER: '/incident-manager',
+  INCIDENT_MANAGER_DETAILS: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}`,
+  INCIDENT_MANAGER_DETAILS_WITH_TAB: `/incident-manager/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
   // logs viewer
-  LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
+  LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
 
   DATA_INSIGHT: `/data-insights`,
   DATA_INSIGHT_WITH_TAB: `/data-insights/${PLACEHOLDER_ROUTE_TAB}`,
   KPI_LIST: `/data-insights/kpi`,
   ADD_KPI: `/data-insights/kpi/add-kpi`,
-  EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
+  EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
@@ -322,6 +323,8 @@ export const ROUTES = {
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  OBSERVABILITY: '/observability',
 };
 
 export const SOCKET_EVENTS = {
@@ -342,12 +345,12 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
 
-export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
+export const getTagsDetailsPath = (entityFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
-  const classification = getPartialNameFromFQN(entityFQN, ['service']);
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
 
-  return `${path}${columnName ? `.${columnName}` : ''}`;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+
+  return path;
 };
 
 export const getVersionPath = (
@@ -358,7 +361,7 @@ export const getVersionPath = (
   let path = ROUTES.ENTITY_VERSION;
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -373,7 +376,7 @@ export const getVersionPathWithTab = (
   let path = ROUTES.ENTITY_VERSION_WITH_TAB;
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
     .replace(PLACEHOLDER_ROUTE_VERSION, version)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
@@ -392,7 +395,7 @@ export const getTableTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tableFQN))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -406,7 +409,7 @@ export const getServiceDetailsPath = (
   let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
-    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -686,7 +689,7 @@ export const getTeamAndUserDetailsPath = (name?: string) => {
       GlobalSettingOptions.TEAMS,
       true
     );
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, name);
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
   }
 
   return path;
@@ -694,7 +697,7 @@ export const getTeamAndUserDetailsPath = (name?: string) => {
 
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
-  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, webhookName);
+  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
 
   return path;
 };
@@ -710,14 +713,14 @@ export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, username);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(username));
 
   return path;
 };
 
 export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, botsName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
 
   return path;
 };
@@ -725,7 +728,7 @@ export const getBotsPath = (botsName: string) => {
 export const getMlModelPath = (mlModelFqn: string, tab = '') => {
   let path = ROUTES.MLMODEL_DETAILS_WITH_TAB;
   path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, mlModelFqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(mlModelFqn))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -733,7 +736,10 @@ export const getMlModelPath = (mlModelFqn: string, tab = '') => {
 
 export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
   let path = ROUTES.ADD_CUSTOM_PROPERTY;
-  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+  path = path.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    getEncodedFqn(entityTypeFQN)
+  );
 
   return path;
 };
@@ -753,13 +759,13 @@ export const getUsersPagePath = () => {
 };
 
 export const getBotsPagePath = () => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.INTEGRATIONS}/bots`;
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`;
 };
 
 export const getKpiPath = (kpiName: string) => {
   let path = ROUTES.EDIT_KPI;
 
-  path = path.replace(KPI_NAME, kpiName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(kpiName));
 
   return path;
 };
@@ -776,15 +782,15 @@ export const ENTITY_PATH = {
   topics: 'topic',
   dashboards: 'dashboard',
   pipelines: 'pipeline',
-  mlModels: 'mlmodel',
+  mlmodels: 'mlmodel',
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
-  searchIndex: 'searchIndex',
-  storedProcedure: 'storedProcedure',
+  searchIndexes: 'searchIndex',
+  storedProcedures: 'storedProcedure',
   glossaryTerm: 'glossaryTerm',
-  database: 'database',
-  databaseSchema: 'databaseSchema',
+  databases: 'database',
+  databaseSchemas: 'databaseSchema',
 };
 
 export const VALIDATION_MESSAGES = {

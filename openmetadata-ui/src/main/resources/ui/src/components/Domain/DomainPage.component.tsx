@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -26,6 +26,7 @@ import { ROUTES } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
+import { useFqn } from '../../hooks/useFqn';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
@@ -37,14 +38,13 @@ import { useDomainProvider } from './DomainProvider/DomainProvider';
 
 const DomainPage = () => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn: domainFqn } = useFqn();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
   const { domains, refreshDomains, updateDomains, domainLoading } =
     useDomainProvider();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [activeDomain, setActiveDomain] = useState<Domain>();
-  const domainFqn = fqn ? decodeURIComponent(fqn) : null;
 
   const createDomainPermission = useMemo(
     () => checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
@@ -105,13 +105,12 @@ const DomainPage = () => {
     history.push(domainPath);
   };
 
-  const fetchDomainByName = async (fqn: string) => {
+  const fetchDomainByName = async (domainFqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDomainByName(
-        encodeURIComponent(fqn),
-        'children,owner,parent,experts'
-      );
+      const data = await getDomainByName(domainFqn, {
+        fields: 'children,owner,parent,experts',
+      });
       setActiveDomain(data);
     } catch (error) {
       showErrorToast(error as AxiosError);

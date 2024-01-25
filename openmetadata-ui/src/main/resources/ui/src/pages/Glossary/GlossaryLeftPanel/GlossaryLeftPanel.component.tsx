@@ -15,7 +15,7 @@ import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
@@ -24,6 +24,7 @@ import { ResourceEntity } from '../../../components/PermissionProvider/Permissio
 import GlossaryV1Skeleton from '../../../components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { ROUTES } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -33,8 +34,7 @@ import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { fqn: glossaryName } = useParams<{ fqn: string }>();
-  const glossaryFqn = glossaryName ? decodeURIComponent(glossaryName) : null;
+  const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
 
   const createGlossaryPermission = useMemo(

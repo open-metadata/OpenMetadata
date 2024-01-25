@@ -101,3 +101,178 @@ export const TASK_COLUMNS: Column[] = [
     ordinalPosition: 3,
   },
 ];
+
+export const MOCK_ASSIGNEE_DATA = {
+  suggest: {
+    'metadata-suggest': [
+      {
+        text: 'ash',
+        offset: 0,
+        length: 3,
+        options: [
+          {
+            text: 'Ashish Gupta',
+            _index: 'user_search_index',
+            _type: '_doc',
+            _id: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
+            _score: 30,
+            _ignored: ['description.keyword'],
+            _source: {
+              id: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
+              name: 'ashish',
+              fullyQualifiedName: 'ashish',
+              description:
+                'this is test description. this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!',
+              displayName: 'Ashish Gupta',
+              version: 0.8,
+              updatedAt: 1699428544440,
+              updatedBy: 'ashish',
+              email: 'ashish@getcollate.io',
+              isBot: false,
+              isAdmin: true,
+              profile: {
+                images: {
+                  image:
+                    'https://lh3.googleusercontent.com/a/ACg8ocJghhvg6uUMNVzzmA1YEtgSvHKmDmo0RSIeydHuqzM1=s96-c',
+                  image24:
+                    'https://lh3.googleusercontent.com/a/ACg8ocJghhvg6uUMNVzzmA1YEtgSvHKmDmo0RSIeydHuqzM1=s24-c',
+                  image32:
+                    'https://lh3.googleusercontent.com/a/ACg8ocJghhvg6uUMNVzzmA1YEtgSvHKmDmo0RSIeydHuqzM1=s32-c',
+                  image48:
+                    'https://lh3.googleusercontent.com/a/ACg8ocJghhvg6uUMNVzzmA1YEtgSvHKmDmo0RSIeydHuqzM1=s48-c',
+                  image72:
+                    'https://lh3.googleusercontent.com/a/ACg8ocJghhvg6uUMNVzzmA1YEtgSvHKmDmo0RSIeydHuqzM1=s72-c',
+                  image192:
+                    'https://lh3.googleusercontent.com/a/ACg8ocJghhvg6uUMNVzzmA1YEtgSvHKmDmo0RSIeydHuqzM1=s192-c',
+                  image512:
+                    'https://lh3.googleusercontent.com/a/ACg8ocJghhvg6uUMNVzzmA1YEtgSvHKmDmo0RSIeydHuqzM1=s512-c',
+                },
+              },
+              teams: [
+                {
+                  id: '9efbccd7-3d0b-485d-89c4-ac0f8fc80da5',
+                  type: 'team',
+                  name: 'Organization',
+                  fullyQualifiedName: 'Organization',
+                  description:
+                    'Organization under which all the other team hierarchy is created',
+                  displayName: 'Organization',
+                  deleted: false,
+                  href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/9efbccd7-3d0b-485d-89c4-ac0f8fc80da5',
+                },
+              ],
+              personas: [],
+              deleted: false,
+              roles: [],
+              inheritedRoles: [
+                {
+                  id: 'f8239edf-4f55-43a4-8d6e-a34e4fadee25',
+                  type: 'role',
+                  name: 'DataConsumer',
+                  fullyQualifiedName: 'DataConsumer',
+                  description:
+                    'Users with Data Consumer role use different data assets for their day to day work.',
+                  displayName: 'Data Consumer',
+                  deleted: false,
+                },
+              ],
+              isEmailVerified: true,
+              domain: {
+                id: '9545569e-9b4e-4be0-8142-ce5d502fbab7',
+                type: 'domain',
+                name: 'Product',
+                fullyQualifiedName: 'Product',
+                description:
+                  'A Domain producing  and serving Product Master Data.',
+                displayName: 'Product Name',
+                inherited: true,
+              },
+              fqnParts: ['ashish', 'Ashish Gupta'],
+              suggest: [
+                {
+                  input: 'ashish',
+                  weight: 5,
+                },
+                {
+                  input: 'Ashish Gupta',
+                  weight: 10,
+                },
+              ],
+              entityType: 'user',
+            },
+            contexts: {
+              deleted: ['false'],
+            },
+          },
+          {
+            text: 'Ashley King',
+            _index: 'user_search_index',
+            _type: '_doc',
+            _id: '0c83a592-7ced-4156-b235-01726259a0e7',
+            _score: 30,
+            _source: {
+              id: '0c83a592-7ced-4156-b235-01726259a0e7',
+              name: 'ashley_king5',
+              fullyQualifiedName: 'ashley_king5',
+              displayName: 'Ashley King',
+              version: 0.2,
+              updatedAt: 1702647808915,
+              updatedBy: 'ingestion-bot',
+              email: 'ashley_king5@gmail.com',
+              isAdmin: false,
+              teams: [
+                {
+                  id: 'dfa05a46-eb4f-4c68-8cd6-140b0d330b8d',
+                  type: 'team',
+                  name: 'Compute',
+                  fullyQualifiedName: 'Compute',
+                  deleted: false,
+                },
+              ],
+              personas: [],
+              deleted: false,
+              roles: [],
+              inheritedRoles: [
+                {
+                  id: 'f8239edf-4f55-43a4-8d6e-a34e4fadee25',
+                  type: 'role',
+                  name: 'DataConsumer',
+                  fullyQualifiedName: 'DataConsumer',
+                  description:
+                    'Users with Data Consumer role use different data assets for their day to day work.',
+                  displayName: 'Data Consumer',
+                  deleted: false,
+                },
+              ],
+              domain: {
+                id: '52fc9c67-78b7-42bf-8147-69278853c230',
+                type: 'domain',
+                name: 'Design',
+                fullyQualifiedName: 'Design',
+                description: "Here' the description for Product Design",
+                displayName: 'Product Design ',
+                inherited: true,
+              },
+              fqnParts: ['ashley_king5', 'Ashley King'],
+              suggest: [
+                {
+                  input: 'ashley_king5',
+                  weight: 5,
+                },
+                {
+                  input: 'Ashley King',
+                  weight: 10,
+                },
+              ],
+              entityType: 'user',
+              isBot: false,
+            },
+            contexts: {
+              deleted: ['false'],
+            },
+          },
+        ],
+      },
+    ],
+  },
+};

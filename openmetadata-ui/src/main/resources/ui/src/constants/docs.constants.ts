@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-export const OMD_REPOSITORY_LINK =
-  'https://github.com/open-metadata/OpenMetadata?pk_campaign=om_start_us&pk_source=OpenMetadata&pk_medium=start_us';
+export const OMD_REPOSITORY_LINK = 'https://star-us.open-metadata.org/';
 
 export const WORKFLOWS_PROFILER_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler';
@@ -28,6 +27,9 @@ export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
 export const WORKFLOWS_METADATA_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata';
 
+export const INGESTION_FRAMEWORK_DEPLOYMENT_DOCS =
+  'https://docs.open-metadata.org/deployment/ingestion';
+
 export const BOTS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
 
@@ -36,7 +38,7 @@ export const TEAMS_DOCS = 'https://docs.open-metadata.org/features/users';
 export const WEBHOOK_DOCS =
   'https://docs.open-metadata.org/developers/webhooks';
 
-export const CUSTOM_PROPERTIES_DOCS =
+export const ADD_CUSTOM_PROPERTIES_DOCS =
   'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-property-to-an-entity';
 
 export const POLICY_DOCS =
@@ -76,3 +78,18 @@ export const AIRFLOW_DOCS = 'https://docs.open-metadata.org/deployment/airflow';
 
 export const CUSTOM_LOGO_DOCS =
   'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-logo';
+
+export const FOLLOW_DATA_ASSET =
+  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/follow-data-asset';
+
+export const RECENTLY_VIEWED =
+  'https://docs.open-metadata.org/how-to-guides/data-discovery/discover';
+
+export const DATA_INSIGHT_GUIDE_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/data-insights';
+
+export const DATA_QUALITY_PROFILER_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/data-quality-profiler';
+
+export const CUSTOM_PROPERTIES_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom';

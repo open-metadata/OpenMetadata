@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -17,15 +16,9 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DashboardDataModelIndex implements ColumnIndex {
-
+public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
+    implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final DashboardDataModel dashboardDataModel;
-
-  public DashboardDataModelIndex(DashboardDataModel dashboardDataModel) {
-    this.dashboardDataModel = dashboardDataModel;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(dashboardDataModel);
@@ -68,10 +61,11 @@ public class DashboardDataModelIndex implements ColumnIndex {
         "fqnParts",
         getFQNParts(
             dashboardDataModel.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
+    doc.put("lineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
     doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
     return doc;
   }
@@ -80,7 +74,6 @@ public class DashboardDataModelIndex implements ColumnIndex {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put(COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("columns.name", 2.0f);
-    fields.put("columns.name.ngram", 1.0f);
     fields.put("columns.displayName", 1.0f);
     fields.put("columns.description", 1.0f);
     fields.put("columns.children.name", 2.0f);

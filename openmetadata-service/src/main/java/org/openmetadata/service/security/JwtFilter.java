@@ -28,11 +28,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.TreeMap;
+import java.util.*;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.MultivaluedMap;
@@ -187,7 +183,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
   @SneakyThrows
   public String validateAndReturnUsername(Map<String, Claim> claims) {
-    // Get username from JWT token
+    // Get email from JWT token
     String jwtClaim =
         jwtPrincipalClaims.stream()
             .filter(claims::containsKey)

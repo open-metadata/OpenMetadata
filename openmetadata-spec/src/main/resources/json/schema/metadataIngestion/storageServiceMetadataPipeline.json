@@ -46,8 +46,17 @@
         },
         {
           "$ref": "./storage/storageMetadataADLSConfig.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataGCSConfig.json"
         }
       ]
+    },
+    "markDeletedContainers": {
+      "description": "Optional configuration to soft delete containers in OpenMetadata if the source containers are deleted. Also, if the topic is deleted, all the associated entities with that containers will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Containers"
     }
   },
   "additionalProperties": false

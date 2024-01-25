@@ -9,18 +9,20 @@ slug: /connectors/database/mongodb
 
 | Feature            | Status                       |
 | :----------------- | :--------------------------- |
-| Stage              | PROD                         |
+| Stage              | BETA                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}          |
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 
@@ -61,8 +63,6 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 
 #### Connection Details
 
-- **MongoDB Connection Details**: Choose between MongoDB Connection String and MongoDB Connection Values to authenticate with your mongodb cluster.
-- **Connection URI**: MongoDB connection string is a concise string of parameters used to establish a connection between an OpenMetadata and a MongoDB database. For ex. `mongodb://username:password@mongodb0.example.com:27017`.
 - **Username**: Username to connect to Mongodb. This user must have access to perform `find` operation on collection and `listCollection` operations on database available in MongoDB.
 - **Password**: Password to connect to MongoDB.
 - **Host Port**: The hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`.

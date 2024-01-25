@@ -23,14 +23,12 @@ describe('LeftSidebar', () => {
       </BrowserRouter>
     );
 
-    const exploreLink = screen.getByTestId('app-bar-item-explore');
-    const qualityLink = screen.getByTestId('app-bar-item-data-quality');
-    const insightLink = screen.getByTestId('app-bar-item-data-insight');
-    const settingsLink = screen.getByTestId('app-bar-item-settings');
-
-    expect(exploreLink).toBeInTheDocument();
-    expect(qualityLink).toBeInTheDocument();
-    expect(insightLink).toBeInTheDocument();
-    expect(settingsLink).toBeInTheDocument();
+    expect(screen.getByTestId('image')).toBeInTheDocument();
+    expect(screen.getByTestId('app-bar-item-explore')).toBeInTheDocument();
+    expect(screen.getByTestId('observability')).toBeInTheDocument();
+    expect(screen.getByTestId('app-bar-item-domain')).toBeInTheDocument();
+    expect(screen.getByTestId('governance')).toBeInTheDocument();
+    expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
+    expect(screen.getByTestId('app-bar-item-logout')).toBeInTheDocument();
   });
 });

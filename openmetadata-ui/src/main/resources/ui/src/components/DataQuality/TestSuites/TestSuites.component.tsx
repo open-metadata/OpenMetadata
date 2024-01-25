@@ -83,9 +83,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               data-testid={name}
               to={{
                 pathname: getTableTabPath(
-                  encodeURIComponent(
-                    record.executableEntityReference?.fullyQualifiedName ?? ''
-                  ),
+                  record.executableEntityReference?.fullyQualifiedName ?? '',
                   EntityTabs.PROFILER
                 ),
                 search: QueryString.stringify({
@@ -98,9 +96,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           ) : (
             <Link
               data-testid={name}
-              to={getTestSuitePath(
-                encodeURIComponent(record.fullyQualifiedName ?? record.name)
-              )}>
+              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
               {getEntityName(record)}
             </Link>
           );
@@ -145,6 +141,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       const result = await getListTestSuites({
         ...params,
         fields: 'owner,summary',
+        includeEmptyTestSuites: !(tab === DataQualityPageTabs.TABLES),
         testSuiteType:
           tab === DataQualityPageTabs.TABLES
             ? TestSuiteType.executable

@@ -80,6 +80,7 @@ import { getSuggestions } from '../../../rest/miscAPI';
 import { exportTeam, restoreTeam } from '../../../rest/teamsAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
@@ -143,7 +144,7 @@ const TeamDetailsV1 = ({
   const history = useHistory();
   const location = useLocation();
   const { isAdminUser } = useAuth();
-  const { currentUser, isAuthDisabled } = useAuthContext();
+  const { currentUser } = useAuthContext();
 
   const { activeTab } = useMemo(() => {
     const param = location.search;
@@ -153,6 +154,7 @@ const TeamDetailsV1 = ({
 
     return searchData as { activeTab: TeamsPageTab };
   }, [location.search]);
+
   const isOrganization = currentTeam.name === TeamType.Organization;
   const isGroupType = currentTeam.teamType === TeamType.Group;
   const DELETE_USER_INITIAL_STATE = {
@@ -187,6 +189,15 @@ const TeamDetailsV1 = ({
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
   const { showModal } = useEntityExportModalProvider();
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.MEMBERS,
+        t('label.team-plural')
+      ),
+    []
+  );
 
   const addPolicy = t('label.add-entity', {
     entity: t('label.policy'),
@@ -899,21 +910,14 @@ const TeamDetailsV1 = ({
           {t('label.leave-team')}
         </Button>
       ) : (
-        (Boolean(currentTeam.isJoinable) || isAuthDisabled || isAdminUser) && (
+        (Boolean(currentTeam.isJoinable) || isAdminUser) && (
           <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
             {t('label.join-team')}
           </Button>
         )
       )),
 
-    [
-      currentUser,
-      isAlreadyJoinedTeam,
-      isAuthDisabled,
-      isAdminUser,
-      joinTeam,
-      deleteUserHandler,
-    ]
+    [currentUser, isAlreadyJoinedTeam, isAdminUser, joinTeam, deleteUserHandler]
   );
 
   const teamsCollapseHeader = useMemo(
@@ -947,6 +951,7 @@ const TeamDetailsV1 = ({
                   afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={!currentTeam.deleted}
                   canDelete={entityPermissions.EditAll}
+                  displayName={getEntityName(currentTeam)}
                   entityId={currentTeam.id}
                   entityName={
                     currentTeam.fullyQualifiedName ?? currentTeam.name
@@ -966,6 +971,7 @@ const TeamDetailsV1 = ({
             ) : (
               <ManageButton
                 canDelete={false}
+                displayName={getEntityName(currentTeam)}
                 entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
                 entityType={EntityType.TEAM}
                 extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
@@ -1098,8 +1104,14 @@ const TeamDetailsV1 = ({
   }
 
   return (
-    <div className="teams-layout">
+    <div className="teams-layout page-container">
       <Row className="h-full" data-testid="team-details-container">
+        {isOrganization && (
+          <Col className="p-x-md p-y-sm" span={24}>
+            <TitleBreadcrumb titleLinks={breadcrumbs} />
+          </Col>
+        )}
+
         <Col
           className="teams-profile-container"
           data-testid="team-detail-header"

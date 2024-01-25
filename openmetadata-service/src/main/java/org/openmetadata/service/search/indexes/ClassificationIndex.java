@@ -10,15 +10,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ClassificationIndex implements SearchIndex {
-
+public record ClassificationIndex(Classification classification) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final Classification classification;
-
-  public ClassificationIndex(Classification classification) {
-    this.classification = classification;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(classification);

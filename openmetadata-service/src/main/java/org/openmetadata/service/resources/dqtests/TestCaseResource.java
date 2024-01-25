@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -73,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -755,7 +757,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     if (testCaseIds == null || testCaseIds.isEmpty()) {
-      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE)
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE)
           .toResponse();
     }
 

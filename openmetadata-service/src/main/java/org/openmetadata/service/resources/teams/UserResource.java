@@ -1272,7 +1272,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       UserTokenCache.invalidateToken(user.getName());
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
-    throw new CustomExceptionMessage(BAD_REQUEST, "Bots cannot have a Personal Access Token.");
+    throw new CustomExceptionMessage(
+        BAD_REQUEST, "NO_PERSONAL_TOKEN_FOR_BOTS", "Bots cannot have a Personal Access Token.");
   }
 
   @GET
@@ -1371,7 +1372,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   public void validateEmailAlreadyExists(String email) {
     if (repository.checkEmailAlreadyExists(email)) {
-      throw new CustomExceptionMessage(BAD_REQUEST, "User with Email Already Exists");
+      throw new CustomExceptionMessage(
+          BAD_REQUEST, "EMAIL_EXISTS", "User with Email Already Exists");
     }
   }
 

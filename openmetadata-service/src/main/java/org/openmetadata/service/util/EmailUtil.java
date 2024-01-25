@@ -29,14 +29,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.events.subscription.email.EmailMessage;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -416,5 +417,18 @@ public class EmailUtil {
       mailer = createMailer(emailConfig);
     }
     return emailConfig;
+  }
+
+  /**
+   * Check if given email address is valid
+   *
+   * @param email email address
+   * @return true if valid, false otherwise
+   */
+  public static Boolean isValidEmail(String email) {
+    if (StringUtils.isBlank(email)) {
+      return false;
+    }
+    return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
   }
 }

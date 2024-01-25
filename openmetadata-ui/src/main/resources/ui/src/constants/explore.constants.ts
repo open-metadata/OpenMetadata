@@ -12,7 +12,6 @@
  */
 
 import { SortingField } from '../components/Explore/SortingDropDown';
-import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
@@ -59,17 +58,6 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'tags.tagFQN',
 ];
 
-export const TABS_SEARCH_INDEXES = [
-  SearchIndex.TABLE,
-  SearchIndex.STORED_PROCEDURE,
-  SearchIndex.DASHBOARD,
-  SearchIndex.DASHBOARD_DATA_MODEL,
-  SearchIndex.PIPELINE,
-  SearchIndex.TOPIC,
-  SearchIndex.MLMODEL,
-  SearchIndex.CONTAINER,
-  SearchIndex.SEARCH_INDEX,
-  SearchIndex.GLOSSARY,
-  SearchIndex.TAG,
-  SearchIndex.DATA_PRODUCT,
-];
+export const FAILED_TO_FIND_INDEX_ERROR = 'Failed to to find index';
+
+export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';

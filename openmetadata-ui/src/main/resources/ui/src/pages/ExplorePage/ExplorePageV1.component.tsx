@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -37,14 +36,15 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
-  TABS_SEARCH_INDEXES,
 } from '../../constants/explore.constants';
 import {
   mockSearchData,
   MOCK_EXPLORE_PAGE_COUNT,
 } from '../../constants/mockTourData.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
@@ -62,9 +62,12 @@ import {
 
 const ExplorePageV1: FunctionComponent = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
+  const EntityTypeSearchIndexMapping =
+    searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useLocation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
+  const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
 
   const { tab } = useParams<UrlParams>();
 
@@ -72,6 +75,14 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
+    useState<boolean>(false);
+
+  useEffect(() => {
+    setShowIndexNotFoundAlert(false);
+    setSearchResults(undefined);
+  }, [tab]);
 
   const [updatedAggregations, setUpdatedAggregations] =
     useState<Aggregations>();
@@ -217,17 +228,26 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
-      ([tabSearchIndex, tabDetail]) => ({
-        key: tabSearchIndex,
-        label: (
-          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            <Space className="w-full justify-between">
-              <Typography.Text
-                className={
-                  tabSearchIndex === searchIndex ? 'text-primary' : ''
-                }>
-                {tabDetail.label}
-              </Typography.Text>
+      ([tabSearchIndex, tabDetail]) => {
+        const Icon = tabDetail.icon;
+
+        return {
+          key: tabSearchIndex,
+          label: (
+            <div
+              className="d-flex items-center justify-between"
+              data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+              <div className="d-flex items-center">
+                <span className="explore-icon d-flex m-r-xs">
+                  <Icon />
+                </span>
+                <Typography.Text
+                  className={
+                    tabSearchIndex === searchIndex ? 'text-primary' : ''
+                  }>
+                  {tabDetail.label}
+                </Typography.Text>
+              </div>
               <span>
                 {!isNil(searchHitCounts)
                   ? getCountBadge(
@@ -237,13 +257,13 @@ const ExplorePageV1: FunctionComponent = () => {
                     )
                   : getCountBadge()}
               </span>
-            </Space>
-          </div>
-        ),
-        count: searchHitCounts
-          ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
-          : 0,
-      })
+            </div>
+          ),
+          count: searchHitCounts
+            ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
+            : 0,
+        };
+      }
     );
 
     return searchQueryParam
@@ -340,20 +360,30 @@ const ExplorePageV1: FunctionComponent = () => {
         fetchSource: false,
         filters: '',
       }).then((res) => {
-        const buckets = res.aggregations[`index_count`].buckets;
+        const buckets = res.aggregations['entityType'].buckets;
         const counts: Record<string, number> = {};
 
         buckets.forEach((item) => {
-          if (item && TABS_SEARCH_INDEXES.includes(item.key as SearchIndex)) {
-            counts[item.key ?? ''] = item.doc_count;
+          const searchIndexKey =
+            item && EntityTypeSearchIndexMapping[item.key as EntityType];
+
+          if (
+            TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)
+          ) {
+            counts[searchIndexKey ?? ''] = item.doc_count;
           }
         });
         setSearchHitCounts(counts as SearchHitCounts);
       }),
     ])
-      .catch((err) => {
-        showErrorToast(err);
+      .catch((error) => {
+        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
+          setShowIndexNotFoundAlert(true);
+        } else {
+          showErrorToast(error);
+        }
       })
+
       .finally(() => setIsLoading(false));
   };
 
@@ -384,14 +414,11 @@ const ExplorePageV1: FunctionComponent = () => {
     [setAdvancedSearchQuickFilters, history, parsedSearch]
   );
 
-  useEffect(() => {
-    AppState.updateExplorePageTab(tab);
-  }, [tab]);
-
   return (
     <ExploreV1
       activeTabKey={searchIndex}
       aggregations={updatedAggregations}
+      isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
       searchIndex={searchIndex}

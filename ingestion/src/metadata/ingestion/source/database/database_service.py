@@ -45,7 +45,6 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -63,8 +62,8 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
+    TopologyContext,
     TopologyNode,
-    create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils import fqn
@@ -133,7 +132,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_database_schema_tag_details",
                 nullable=True,
-                cache_all=True,
+                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DatabaseSchema,
@@ -155,7 +154,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_table_tag_details",
                 nullable=True,
-                cache_all=True,
+                store_all_in_context=True,
             ),
             NodeStage(
                 type_=Table,
@@ -163,12 +162,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
                 use_cache=True,
-            ),
-            NodeStage(
-                type_=User,
-                context="owner",
-                processor="process_owner",
-                consumer=["database_service", "database_schema"],
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -185,7 +178,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="stored_procedures",
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
-                cache_all=True,
+                store_all_in_context=True,
+                store_fqn=True,
                 use_cache=True,
             ),
         ],
@@ -211,7 +205,7 @@ class DatabaseServiceSource(
     inspector: Inspector
 
     topology = DatabaseServiceTopology()
-    context = create_source_context(topology)
+    context = TopologyContext.create(topology)
 
     def prepare(self):
         """By default, there is no preparation needed"""
@@ -281,7 +275,7 @@ class DatabaseServiceSource(
 
     def yield_table_tags(
         self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
         """
@@ -370,6 +364,21 @@ class DatabaseServiceSource(
                     tag_labels.append(tag_label)
         return tag_labels or None
 
+    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:
+        """
+        Method to get schema tags
+        This will only get executed if the tags context
+        is properly informed
+        """
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=schema_name,
+        )
+        return self.get_tag_by_fqn(entity_fqn=schema_fqn)
+
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
@@ -457,67 +466,33 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
-    def get_owner_details(  # pylint: disable=useless-return
-        self, schema_name: str, table_name: str  # pylint: disable=unused-argument
-    ) -> Optional[EntityReference]:
-        """Get database owner
-
-        Args
-        schema_name, table_nam
-        Returns:
-            Optional[EntityReference]
-        """
-        logger.debug(
-            f"Processing ownership is not supported for {self.service_connection.type.name}"
-        )
-        return None
-
-    def process_owner(self, table_name_and_type: Tuple[str, str]):
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
         """
         Method to process the table owners
         """
         try:
             if self.source_config.includeOwners:
-                self.inspector.get_table_owner(
+                owner_name = self.inspector.get_table_owner(
                     connection=self.connection,  # pylint: disable=no-member
-                    table_name=table_name_and_type[0],
+                    table_name=table_name,
                     schema=self.context.database_schema,
                 )
-                schema_name = self.context.database_schema
-                table_name = table_name_and_type[0]
-
-                owner = self.get_owner_details(  # pylint: disable=assignment-from-none
-                    table_name=table_name, schema_name=schema_name
-                )
-
-                if owner:
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
-                        table_name=table_name,
-                    )
-                    table_entity = self.metadata.get_by_name(
-                        entity=Table, fqn=table_fqn
-                    )
-                    self.metadata.patch_owner(
-                        entity=Table,
-                        source=table_entity,
-                        owner=owner,
-                        force=False,
-                    )
+                owner_ref = self.metadata.get_reference_by_name(name=owner_name)
+                return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error processing owner for table {table_name_and_type[0]}: {exc}"
-            )
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+        return None
 
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
         """
+        if not self.context.__dict__.get("database"):
+            raise ValueError(
+                "No Database found in the context. We cannot run the table deletion."
+            )
+
         if self.source_config.markDeletedTables:
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"

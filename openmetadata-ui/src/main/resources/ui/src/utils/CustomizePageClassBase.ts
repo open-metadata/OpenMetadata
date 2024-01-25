@@ -57,6 +57,15 @@ class CustomizePageClassBase {
     totalAssets: 3,
   };
 
+  announcementWidget: WidgetConfig = {
+    h: this.landingPageWidgetDefaultHeights.announcements,
+    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    w: 1,
+    x: 3,
+    y: 0,
+    static: true, // Making announcement widget fixed on top right position
+  };
+
   defaultLayout: Array<WidgetConfig> = [
     {
       h: this.landingPageWidgetDefaultHeights.activityFeed,
@@ -88,14 +97,6 @@ class CustomizePageClassBase {
       w: 3,
       x: 0,
       y: 9,
-      static: false,
-    },
-    {
-      h: this.landingPageWidgetDefaultHeights.announcements,
-      i: LandingPageWidgetKeys.ANNOUNCEMENTS,
-      w: 1,
-      x: 3,
-      y: 0,
       static: false,
     },
     {

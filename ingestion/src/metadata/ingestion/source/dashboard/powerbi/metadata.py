@@ -327,7 +327,7 @@ class PowerbiSource(DashboardServiceSource):
                 project=self._fetch_dataset_workspace(dataset_id=dataset.id),
             )
             yield Either(right=data_model_request)
-            self.register_record_datamodel(datamodel_requst=data_model_request)
+            self.register_record_datamodel(datamodel_request=data_model_request)
 
         except Exception as exc:
             yield Either(
@@ -408,9 +408,10 @@ class PowerbiSource(DashboardServiceSource):
                             service_name=self.context.dashboard_service,
                             chart_name=chart,
                         )
-                        for chart in self.context.charts
+                        for chart in self.context.charts or []
                     ],
                     service=self.context.dashboard_service,
+                    owner=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             else:
                 dashboard_request = CreateDashboardRequest(
@@ -423,6 +424,7 @@ class PowerbiSource(DashboardServiceSource):
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
                     service=self.context.dashboard_service,
+                    owner=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

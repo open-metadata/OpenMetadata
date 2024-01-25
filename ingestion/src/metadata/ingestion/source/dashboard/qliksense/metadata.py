@@ -129,9 +129,10 @@ class QliksenseSource(DashboardServiceSource):
                         service_name=self.context.dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts
+                    for chart in self.context.charts or []
                 ],
                 service=self.context.dashboard_service,
+                owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -224,7 +225,7 @@ class QliksenseSource(DashboardServiceSource):
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_requst=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
                 except Exception as exc:
                     name = (
                         data_model.tableName if data_model.tableName else data_model.id

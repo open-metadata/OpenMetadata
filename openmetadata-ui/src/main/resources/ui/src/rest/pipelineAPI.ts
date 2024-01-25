@@ -20,8 +20,9 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { ListTestCaseResultsParams } from './testAPI';
 
@@ -63,26 +64,13 @@ export const getPipelines = async (
   return response.data;
 };
 
-export const getPipelineDetails = (
-  id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
-
-  return APIClient.get(url);
-};
-
-export const getPipelineByFqn = async (
-  fqn: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    'include=all'
+export const getPipelineByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Pipeline>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
-
-  const response = await APIClient.get<Pipeline>(url);
 
   return response.data;
 };
@@ -135,7 +123,7 @@ export const getPipelineStatus = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${BASE_URL}/${fqn}/status`;
+  const url = `${BASE_URL}/${getEncodedFqn(fqn)}/status`;
 
   const response = await APIClient.get<PagingResponse<Array<PipelineStatus>>>(
     url,

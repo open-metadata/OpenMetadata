@@ -15,14 +15,15 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import EntityPopOverCard from '../../../../components/common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from '../../../../components/common/PopOverCard/UserPopOverCard';
 import { getUserPath } from '../../../../constants/constants';
+import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getEntityField,
@@ -30,9 +31,11 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../../utils/FeedUtils';
-import { getEntityLink } from '../../../../utils/TableUtils';
+
+import { EntityType } from '../../../../enums/entity.enum';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v1.style.less';
-import FeedCardHeaderName from './FeedCardHeaderName';
 
 interface FeedCardHeaderV1Props {
   about?: string;
@@ -49,20 +52,22 @@ const FeedCardHeaderV1 = ({
   className = '',
   isEntityFeed = false,
 }: FeedCardHeaderV1Props) => {
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: createdBy ?? '',
+  });
+
   const { t } = useTranslation();
-  const history = useHistory();
+
   const entityType = getEntityType(entityLink) ?? '';
   const entityFQN = getEntityFQN(entityLink) ?? '';
   const entityField = getEntityField(entityLink) ?? '';
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
-
-  const onTitleClickHandler = (name: string) => {
-    history.push(getUserPath(name));
-  };
+  const isUserOrTeam = [EntityType.USER, EntityType.TEAM].includes(entityType);
 
   const getFeedLinkElement = entityCheck && (
     <span className="font-normal" data-testid="headerText">
-      <span className="m-x-xss">{t('label.posted-on-lowercase')}</span>
+      <span className="m-r-xss">{t('label.posted-on-lowercase')}</span>
       {isEntityFeed ? (
         <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
@@ -70,14 +75,28 @@ const FeedCardHeaderV1 = ({
       ) : (
         <>
           <span data-testid="entityType">{entityType} </span>
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Link
-              className="break-all"
-              data-testid="entitylink"
-              to={getEntityLink(entityType, entityFQN)}>
-              <span>{entityDisplayName(entityType, entityFQN)}</span>
-            </Link>
-          </EntityPopOverCard>
+          {isUserOrTeam ? (
+            <UserPopOverCard
+              showUserName
+              showUserProfile={false}
+              userName={createdBy}>
+              <Link
+                className="break-all"
+                data-testid="entitylink"
+                to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                <span>{entityDisplayName(entityType, entityFQN)}</span>
+              </Link>
+            </UserPopOverCard>
+          ) : (
+            <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+              <Link
+                className="break-all"
+                data-testid="entitylink"
+                to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                <span>{entityDisplayName(entityType, entityFQN)}</span>
+              </Link>
+            </EntityPopOverCard>
+          )}
         </>
       )}
     </span>
@@ -85,12 +104,15 @@ const FeedCardHeaderV1 = ({
 
   return (
     <div className={classNames('feed-header', className)}>
-      <UserPopOverCard className="m-l-sm" userName={createdBy} />
-      <span className="feed-header-content">
-        <FeedCardHeaderName
-          createdBy={createdBy}
-          onTitleClickHandler={onTitleClickHandler}
-        />
+      <UserPopOverCard userName={createdBy} />
+
+      <p className="feed-header-content break-word">
+        <UserPopOverCard userName={createdBy}>
+          <Link className="thread-author m-r-xss" to={getUserPath(createdBy)}>
+            {getEntityName(user)}
+          </Link>
+        </UserPopOverCard>
+
         {getFeedLinkElement}
 
         {timeStamp && (
@@ -100,7 +122,7 @@ const FeedCardHeaderV1 = ({
             </span>
           </Tooltip>
         )}
-      </span>
+      </p>
     </div>
   );
 };

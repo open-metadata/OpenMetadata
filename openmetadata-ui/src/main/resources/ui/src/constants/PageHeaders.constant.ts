@@ -170,4 +170,25 @@ export const PAGE_HEADERS = {
     }),
     subHeader: i18n.t('message.page-sub-header-for-customize-landing-page'),
   },
+  INCIDENT_MANAGER: {
+    header: i18n.t('label.incident-manager'),
+    subHeader: i18n.t('message.page-sub-header-for-data-quality'),
+  },
+  SETTING: {
+    header: i18n.t('label.setting-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-setting'),
+  },
+  LOGIN_CONFIGURATION: {
+    header: i18n.t('label.login'),
+    subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
+  },
+  NOTIFICATION: {
+    header: i18n.t('label.notification-plural'),
+    subHeader: i18n.t('message.alerts-description'),
+  },
+  CUSTOM_METRICS: {
+    header: i18n.t('label.custom-metric'),
+    // Todo: need to update message once @harshach provides the message
+    subHeader: '',
+  },
 };

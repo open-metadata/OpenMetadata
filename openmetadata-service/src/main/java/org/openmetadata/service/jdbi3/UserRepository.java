@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
+import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -415,7 +416,8 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    protected User toEntity(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
       User user =
           new User()
@@ -424,26 +426,16 @@ public class UserRepository extends EntityRepository<User> {
               .withDescription(csvRecord.get(2))
               .withEmail(csvRecord.get(3))
               .withTimezone(csvRecord.get(4))
-              .withIsAdmin(getBoolean(printer, csvRecord, 5));
-
-      // Field 7 - team
-      user.setTeams(getTeams(printer, csvRecord, user.getName()));
-      if (!processRecord) {
-        return null;
+              .withIsAdmin(getBoolean(printer, csvRecord, 5))
+              .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
+              .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
+      if (processRecord) {
+        createEntity(printer, csvRecord, user);
       }
-
-      // Field 8 - roles
-      user.setRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
-      if (!processRecord) {
-        return null;
-      }
-
-      // TODO authentication mechanism?
-      return user;
     }
 
     @Override
-    protected List<String> toRecord(User entity) {
+    protected void addRecord(CsvFile csvFile, User entity) {
       // Headers - name,displayName,description,email,timezone,isAdmin,team,roles
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
@@ -454,7 +446,7 @@ public class UserRepository extends EntityRepository<User> {
       addField(recordList, entity.getIsAdmin());
       addField(recordList, entity.getTeams().get(0).getFullyQualifiedName());
       addEntityReferences(recordList, entity.getRoles());
-      return recordList;
+      addRecord(csvFile, recordList);
     }
 
     private List<User> listUsers(

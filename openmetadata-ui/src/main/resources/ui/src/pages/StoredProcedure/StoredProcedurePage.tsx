@@ -26,8 +26,9 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
+import Lineage from '../../components/Lineage/Lineage.component';
+import LineageProvider from '../../components/LineageProvider/LineageProvider';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -56,11 +57,13 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
+import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
-  getStoredProceduresDetailsByFQN,
+  getStoredProceduresByFqn,
   patchStoredProceduresDetails,
   removeStoredProceduresFollower,
   restoreStoredProcedures,
@@ -74,7 +77,6 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -84,8 +86,9 @@ const StoredProcedurePage = () => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
-  const { fqn: storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
-    useParams<{ fqn: string; tab: string }>();
+  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
+
+  const { fqn: decodedStoredProcedureFQN } = useFqn();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -101,11 +104,6 @@ const StoredProcedurePage = () => {
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
-  );
-
-  const decodedStoredProcedureFQN = useMemo(
-    () => getDecodedFqn(storedProcedureFQN),
-    [storedProcedureFQN]
   );
 
   const {
@@ -143,7 +141,7 @@ const StoredProcedurePage = () => {
     try {
       const permission = await getEntityPermissionByFqn(
         ResourceEntity.STORED_PROCEDURE,
-        storedProcedureFQN
+        decodedStoredProcedureFQN
       );
 
       setStoredProcedurePermissions(permission);
@@ -169,9 +167,12 @@ const StoredProcedurePage = () => {
   const fetchStoredProcedureDetails = async () => {
     setIsLoading(true);
     try {
-      const response = await getStoredProceduresDetailsByFQN(
-        storedProcedureFQN,
-        STORED_PROCEDURE_DEFAULT_FIELDS
+      const response = await getStoredProceduresByFqn(
+        decodedStoredProcedureFQN,
+        {
+          fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+          include: Include.All,
+        }
       );
 
       setStoredProcedure(response);
@@ -196,11 +197,11 @@ const StoredProcedurePage = () => {
       history.push(
         getVersionPath(
           EntityType.STORED_PROCEDURE,
-          storedProcedureFQN,
+          decodedStoredProcedureFQN,
           version + ''
         )
       );
-  }, [storedProcedureFQN, version]);
+  }, [decodedStoredProcedureFQN, version]);
 
   const saveUpdatedStoredProceduresData = useCallback(
     (updatedData: StoredProcedure) => {
@@ -471,6 +472,16 @@ const StoredProcedurePage = () => {
           ...storedProcedure,
           extension: updatedData.extension,
         }));
+      setStoredProcedure((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          extension: updatedData.extension,
+        };
+      });
     },
     [saveUpdatedStoredProceduresData, storedProcedure]
   );
@@ -558,6 +569,7 @@ const StoredProcedurePage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <EntityRightPanel
+                customProperties={storedProcedure}
                 dataProducts={storedProcedure?.dataProducts ?? []}
                 domain={storedProcedure?.domain}
                 editTagPermission={editTagsPermission}
@@ -565,6 +577,7 @@ const StoredProcedurePage = () => {
                 entityId={storedProcedure?.id ?? ''}
                 entityType={EntityType.STORED_PROCEDURE}
                 selectedTags={tags}
+                viewAllPermission={viewAllPermission}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
@@ -595,12 +608,14 @@ const StoredProcedurePage = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={deleted}
-            entity={storedProcedure as SourceType}
-            entityType={EntityType.STORED_PROCEDURE}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={storedProcedure as SourceType}
+              entityType={EntityType.STORED_PROCEDURE}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
       {
@@ -611,8 +626,9 @@ const StoredProcedurePage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
+        children: storedProcedure && (
+          <CustomPropertyTable<EntityType.STORED_PROCEDURE>
+            entityDetails={storedProcedure}
             entityType={EntityType.STORED_PROCEDURE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
@@ -644,9 +660,11 @@ const StoredProcedurePage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateStoredProcedureVotes(id, data);
-      const details = await getStoredProceduresDetailsByFQN(
-        storedProcedureFQN,
-        STORED_PROCEDURE_DEFAULT_FIELDS
+      const details = await getStoredProceduresByFqn(
+        decodedStoredProcedureFQN,
+        {
+          fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+        }
       );
       setStoredProcedure(details);
     } catch (error) {
@@ -655,17 +673,17 @@ const StoredProcedurePage = () => {
   };
 
   useEffect(() => {
-    if (storedProcedureFQN) {
+    if (decodedStoredProcedureFQN) {
       fetchResourcePermission();
     }
-  }, [storedProcedureFQN]);
+  }, [decodedStoredProcedureFQN]);
 
   useEffect(() => {
     if (viewBasicPermission) {
       fetchStoredProcedureDetails();
       getEntityFeedCount();
     }
-  }, [storedProcedureFQN, storedProcedurePermissions]);
+  }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
 
   if (isLoading) {
     return <Loader />;
@@ -707,7 +725,6 @@ const StoredProcedurePage = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.CODE}
             className="entity-details-page-tabs"
             data-testid="tabs"

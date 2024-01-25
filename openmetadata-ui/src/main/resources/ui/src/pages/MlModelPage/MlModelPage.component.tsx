@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
@@ -29,6 +29,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -51,7 +52,7 @@ const MlModelPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const history = useHistory();
-  const { fqn: mlModelFqn } = useParams<{ fqn: string }>();
+  const { fqn: mlModelFqn } = useFqn();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = currentUser?.id ?? '';
@@ -93,7 +94,7 @@ const MlModelPage = () => {
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
-      const res = await getMlModelByFQN(name, fields);
+      const res = await getMlModelByFQN(name, { fields });
       setMlModelDetail(res);
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -116,11 +117,17 @@ const MlModelPage = () => {
     }
   }, [mlModelPermissions, mlModelFqn]);
 
-  const saveUpdatedMlModelData = (updatedData: Mlmodel) => {
-    const jsonPatch = compare(omitBy(mlModelDetail, isUndefined), updatedData);
+  const saveUpdatedMlModelData = useCallback(
+    (updatedData: Mlmodel) => {
+      const jsonPatch = compare(
+        omitBy(mlModelDetail, isUndefined),
+        updatedData
+      );
 
-    return patchMlModelDetails(mlModelDetail.id, jsonPatch);
-  };
+      return patchMlModelDetails(mlModelDetail.id, jsonPatch);
+    },
+    [mlModelDetail]
+  );
 
   const descriptionUpdateHandler = async (updatedMlModel: Mlmodel) => {
     try {
@@ -230,19 +237,25 @@ const MlModelPage = () => {
     }
   };
 
-  const handleExtensionUpdate = async (updatedMlModel: Mlmodel) => {
-    try {
-      const data = await saveUpdatedMlModelData(updatedMlModel);
-      setMlModelDetail(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: getEntityName(mlModelDetail),
-        })
-      );
-    }
-  };
+  const handleExtensionUpdate = useCallback(
+    async (updatedMlModel: Mlmodel) => {
+      try {
+        const data = await saveUpdatedMlModelData({
+          ...mlModelDetail,
+          extension: updatedMlModel.extension,
+        });
+        setMlModelDetail(data);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: getEntityName(mlModelDetail),
+          })
+        );
+      }
+    },
+    [saveUpdatedMlModelData, setMlModelDetail, mlModelDetail]
+  );
 
   const createThread = async (data: CreateThread) => {
     try {
@@ -284,7 +297,9 @@ const MlModelPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateMlModelVotes(id, data);
-      const details = await getMlModelByFQN(mlModelFqn, defaultFields);
+      const details = await getMlModelByFQN(mlModelFqn, {
+        fields: defaultFields,
+      });
       setMlModelDetail(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

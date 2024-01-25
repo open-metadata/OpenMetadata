@@ -1,3 +1,5 @@
+import { GlobalSettingOptions } from '../../constants/settings.constant';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +15,8 @@
 describe('template spec', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="app-bar-item-settings"]').click();
 
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Login Configuration')
-      .scrollIntoView()
-      .click();
+    cy.settingClick(GlobalSettingOptions.LOGIN_CONFIGURATION);
   });
 
   /* ==== Test Created with Cypress Studio ==== */

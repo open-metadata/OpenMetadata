@@ -22,12 +22,16 @@ import {
 } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 
+export interface HighlightedTagLabel extends TagLabel {
+  isHighlighted: boolean;
+}
+
 export interface BasicEntityInfo {
   algorithm?: string;
   name: string;
   title: ReactNode;
   type?: DataType | ChartType | FeatureType | string;
-  tags?: TagLabel[];
+  tags?: Array<TagLabel | HighlightedTagLabel>;
   description?: string;
   columnConstraint?: Constraint;
   tableConstraints?: TableConstraint[];

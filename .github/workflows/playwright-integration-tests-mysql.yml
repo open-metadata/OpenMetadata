@@ -46,7 +46,7 @@ jobs:
             swap-storage: true
             docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.1
+        uses: lewagon/wait-on-check-action@v1.3.3
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -116,7 +116,7 @@ jobs:
           E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
           E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
           E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
-          E2E_REDSHIFT_DB: ${{ secrets.E2E_REDSHIFT_DB }}
+          E2E_REDSHIFT_DB: ${{ secrets.TEST_REDSHIFT_DATABASE }}
           E2E_DRUID_HOST_PORT: ${{ secrets.E2E_DRUID_HOST_PORT }}
           E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
         run: |

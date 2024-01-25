@@ -134,7 +134,6 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), "non-existing");
-    tableFqn.replace("\"", "\"\""); // To handle double quote CSV escaping
     expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, entityNotFound(0, Entity.TABLE, tableFqn))

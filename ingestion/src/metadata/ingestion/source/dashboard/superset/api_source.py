@@ -97,9 +97,10 @@ class SupersetAPISource(SupersetSourceMixin):
                         service_name=self.context.dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts
+                    for chart in self.context.charts or []
                 ],
                 service=self.context.dashboard_service,
+                owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -220,7 +221,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_requst=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(

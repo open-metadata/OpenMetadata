@@ -92,13 +92,13 @@ public class EntityCsvTest {
   }
 
   public static String getSuccessRecord(String record, String successDetails) {
-    return String.format("%s,%s,%s", EntityCsv.IMPORT_STATUS_SUCCESS, successDetails, record);
+    return String.format("%s,%s,%s", EntityCsv.IMPORT_SUCCESS, successDetails, record);
   }
 
   public static String getFailedRecord(String record, String errorDetails) {
     errorDetails = StringEscapeUtils.escapeCsv(errorDetails);
     String format = errorDetails.startsWith("\"") ? "%s,%s,%s" : "%s,\"%s\",%s";
-    return String.format(format, EntityCsv.IMPORT_STATUS_FAILED, errorDetails, record);
+    return String.format(format, EntityCsv.IMPORT_FAILED, errorDetails, record);
   }
 
   private static List<CsvHeader> getHeaders(Object[][] headers) {
@@ -152,13 +152,14 @@ public class EntityCsvTest {
     }
 
     @Override
-    protected EntityInterface toEntity(CSVPrinter resultsPrinter, CSVRecord record) {
-      return new Table(); // Return a random entity to mark successfully processing a record
+    protected void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> records)
+        throws IOException {
+      CSVRecord csvRecord = getNextRecord(resultsPrinter, records);
+      Table entity = new Table();
+      createEntity(resultsPrinter, csvRecord, entity);
     }
 
     @Override
-    protected List<String> toRecord(EntityInterface entity) {
-      return null;
-    }
+    protected void addRecord(CsvFile csvFile, EntityInterface entity) {}
   }
 }

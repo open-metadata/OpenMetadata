@@ -277,6 +277,8 @@ site_menu:
     url: /how-to-guides/data-collaboration/announcements
   - category: How-to Guides / Data Collaboration / How to Create an Announcement
     url: /how-to-guides/data-collaboration/add-announcement
+  - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
+    url: /how-to-guides/data-collaboration/knowledge-center
 
   - category: How-to Guides / Data Quality and Profiler
     url: /how-to-guides/data-quality-profiler
@@ -675,6 +677,10 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
+  - category: Connectors / Metadata / Alation
+    url: /connectors/metadata/alation
+  - category: Connectors / Metadata / Alation / Run Externally
+    url: /connectors/metadata/alation/yaml
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
@@ -761,9 +767,6 @@ site_menu:
 
   - category: Features / Discovery & Collaboration
     url: /features/discovery-collaboration
-
-  - category: Features / Teams & Users
-    url: /features/users
 
   - category: Features / Integrations
     url: /features/integrations

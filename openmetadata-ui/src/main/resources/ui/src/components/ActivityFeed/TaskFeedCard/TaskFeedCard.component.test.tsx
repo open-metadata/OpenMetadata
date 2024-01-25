@@ -39,7 +39,7 @@ jest.mock('../../../components/common/AssigneeList/AssigneeList', () => {
 });
 
 jest.mock('../../../components/common/PopOverCard/EntityPopOverCard', () => {
-  return jest.fn().mockImplementation(() => <p>EntityPopOverCard</p>);
+  return jest.fn().mockImplementation(({ children }) => children);
 });
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () => {
@@ -56,10 +56,6 @@ jest.mock('../Shared/ActivityFeedActions', () => {
 
 jest.mock('../../../utils/TasksUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
-}));
-
-jest.mock('../../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockReturnValue('/'),
 }));
 
 jest.mock('../../../utils/FeedUtils', () => ({

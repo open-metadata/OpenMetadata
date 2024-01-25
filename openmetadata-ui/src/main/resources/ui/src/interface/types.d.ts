@@ -93,6 +93,7 @@ declare module 'Models' {
     deleted?: boolean;
     entityType?: string;
     changeDescription?: ChangeDescription;
+    columns?: TableColumn[];
   };
 
   export type SearchedUsersAndTeams = {
@@ -274,4 +275,11 @@ declare module 'Models' {
     fullyQualifiedName?: string;
     children?: TagsData[];
   };
+
+  export interface DateRangeObject {
+    startTs: number;
+    endTs: number;
+    key?: string;
+    title?: string;
+  }
 }

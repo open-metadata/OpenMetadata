@@ -34,6 +34,7 @@ import {
   TaskType,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
@@ -41,7 +42,6 @@ import {
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -63,8 +63,8 @@ const UpdateDescription = () => {
   const history = useHistory();
   const [form] = useForm();
 
-  const { entityType, fqn: entityFQN } =
-    useParams<{ fqn: string; entityType: EntityType }>();
+  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { fqn: entityFQN } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -79,8 +79,6 @@ const UpdateDescription = () => {
     () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
     [value]
   );
-
-  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
 
   const taskMessage = useMemo(
     () =>
@@ -115,7 +113,11 @@ const UpdateDescription = () => {
   };
 
   const onSearch = (query: string) => {
-    fetchOptions(query, setOptions);
+    const data = {
+      query,
+      setOptions,
+    };
+    fetchOptions(data);
   };
 
   const getTaskAbout = () => {
@@ -130,7 +132,7 @@ const UpdateDescription = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -152,7 +154,7 @@ const UpdateDescription = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            decodedEntityFQN,
+            entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )

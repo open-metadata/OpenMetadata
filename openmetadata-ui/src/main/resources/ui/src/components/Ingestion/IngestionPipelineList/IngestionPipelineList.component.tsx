@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tooltip } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
@@ -22,6 +22,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
@@ -72,20 +73,7 @@ export const IngestionPipelineList = ({
   const { t } = useTranslation();
 
   const renderNameField = (_: string, record: IngestionPipeline) => {
-    return (
-      <Tooltip
-        title={t('label.view-entity', {
-          entity: t('label.dag'),
-        })}>
-        <Typography.Link
-          className="m-r-xs overflow-wrap-anywhere"
-          data-testid="ingestion-dag-link"
-          rel="noopener noreferrer"
-          target="_blank">
-          {getEntityName(record)}
-        </Typography.Link>
-      </Tooltip>
-    );
+    return getEntityName(record);
   };
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
@@ -182,26 +170,26 @@ export const IngestionPipelineList = ({
   };
 
   const fetchPipelines = async ({
-    cursor,
+    paging,
     pipelineType,
     limit,
   }: {
-    cursor?: string;
+    paging?: Omit<Paging, 'total'>;
     pipelineType?: PipelineType[];
     limit?: number;
   }) => {
     setLoading(true);
     try {
-      const { data, paging } = await getIngestionPipelines({
+      const { data, paging: pagingRes } = await getIngestionPipelines({
         arrQueryFields: ['owner'],
         serviceType: getEntityTypeFromServiceCategory(serviceName),
-        paging: cursor,
+        paging,
         pipelineType,
         limit,
       });
 
       setPipelines(data);
-      handlePagingChange(paging);
+      handlePagingChange(pagingRes);
     } catch {
       // Error
     } finally {
@@ -214,9 +202,10 @@ export const IngestionPipelineList = ({
     currentPage,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      const pagingString = `&${cursorType}=${paging[cursorType]}`;
-
-      fetchPipelines({ cursor: pagingString, limit: pageSize });
+      fetchPipelines({
+        paging: { [cursorType]: paging[cursorType] },
+        limit: pageSize,
+      });
       handlePageChange(currentPage);
     }
   };

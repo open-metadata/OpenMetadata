@@ -54,6 +54,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String TIMEOUT_KEY = "timeout";
   private static final String TRUSTSTORE_PATH_KEY = "truststorePath";
   private static final String TRUSTSTORE_PASSWORD_KEY = "truststorePassword";
+  private static final String DOCS_LINK =
+      "Follow [this guide](https://docs.open-metadata.org/deployment/ingestion/openmetadata) for further details.";
 
   protected final String username;
   protected final String password;
@@ -130,11 +132,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
-          ingestionPipeline.getName(), e.getMessage());
+          ingestionPipeline.getName(), DEPLOYEMENT_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw IngestionPipelineDeploymentException.byMessage(
-          ingestionPipeline.getName(), e.getMessage());
+          ingestionPipeline.getName(), DEPLOYEMENT_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(
@@ -181,14 +183,17 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          pipelineName, TRIGGER_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          pipelineName, TRIGGER_ERROR, e.getMessage());
     }
 
     throw IngestionPipelineDeploymentException.byMessage(
         pipelineName,
+        TRIGGER_ERROR,
         "Failed to trigger IngestionPipeline",
         Response.Status.fromStatusCode(response.statusCode()));
   }
@@ -289,7 +294,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
       // APIs URL not found
       if (response.statusCode() == 404) {
         return buildUnhealthyStatus(
-            "Airflow APIs not found. Please follow the installation guide.");
+            String.format(
+                "Airflow APIs not found. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
+                DOCS_LINK));
       }
 
       return buildUnhealthyStatus(
@@ -298,12 +305,16 @@ public class AirflowRESTClient extends PipelineServiceClient {
               response.statusCode(), response.body()));
 
     } catch (IOException | URISyntaxException e) {
-      return buildUnhealthyStatus(
-          String.format("Failed to get REST status due to [%s].", e.getMessage()));
+      String exceptionMsg;
+      if (e.getMessage() != null) {
+        exceptionMsg = String.format("Failed to get Airflow status due to [%s].", e.getMessage());
+      } else {
+        exceptionMsg = "Failed to connect to Airflow.";
+      }
+      return buildUnhealthyStatus(String.format("%s %s", exceptionMsg, DOCS_LINK));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return buildUnhealthyStatus(
-          String.format("Failed to get REST status due to [%s].", e.getMessage()));
+      return buildUnhealthyStatus(String.format("Failed to connect to Airflow. %s", DOCS_LINK));
     }
   }
 
@@ -318,10 +329,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflow.getName(), TRIGGER_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflow.getName(), TRIGGER_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(
@@ -354,10 +367,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(workflowPayload, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflowPayload, DEPLOYEMENT_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(workflowPayload, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(
+          workflowPayload, DEPLOYEMENT_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(

@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getDomainByName,
   getDomainVersionData,
@@ -34,7 +35,8 @@ import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component'
 
 const DomainVersion = () => {
   const history = useHistory();
-  const { fqn, version } = useParams<{ fqn: string; version: string }>();
+  const { version } = useParams<{ version: string }>();
+  const { fqn } = useFqn();
   const [loading, setLoading] = useState(true);
   const [domain, setDomain] = useState<Domain>();
   const [versionList, setVersionList] = useState<EntityHistory>(
@@ -72,7 +74,7 @@ const DomainVersion = () => {
 
   const fetchDomainData = useCallback(async () => {
     try {
-      const res = await getDomainByName(fqn, '');
+      const res = await getDomainByName(fqn);
       setDomain(res);
     } catch (error) {
       showErrorToast(error as AxiosError);

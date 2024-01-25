@@ -18,6 +18,7 @@ export const MenuOptions = {
   [StatusType.Successful]: 'Success',
   [StatusType.Failed]: 'Failed',
   [StatusType.Pending]: 'Pending',
+  [StatusType.Skipped]: 'Skipped',
   Aborted: 'Aborted',
 };
 

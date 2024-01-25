@@ -14,17 +14,14 @@
             ],
             "default": "MongoDB"
         },
-        "MongoConnectionString": {
-            "type": "object",
-            "javaType": "org.openmetadata.schema.services.connections.database.mongo.MongoConnectionString",
-            "title": "Mongo Connection String",
-            "properties": {
-                "connectionURI": {
-                    "title": "Connection URI",
-                    "description": "Connection URI to connect to your MongoDB cluster",
-                    "type": "string"
-                }
-            }
+        "mongoDBScheme": {
+            "description": "Mongo connection scheme options.",
+            "type": "string",
+            "enum": [
+                "mongodb",
+                "mongodb+srv"
+            ],
+            "default": "mongodb"
         }
 
     },
@@ -35,17 +32,31 @@
             "$ref": "#/definitions/mongoDBType",
             "default": "MongoDB"
         },
-        "connectionDetails": {
-            "title": "MongoDB Connection Details",
-            "description": "MongoDB Connection Details.",
-            "oneOf": [
-                {
-                    "$ref": "mongoDB/mongoDBValues.json"
-                },
-                {
-                    "$ref": "#/definitions/MongoConnectionString"
-                }
-            ]
+        "scheme": {
+            "title": "Connection Scheme",
+            "description": "Mongo connection scheme options.",
+            "$ref": "#/definitions/mongoDBScheme",
+            "default": "mongodb"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to MongoDB. This user should have privileges to read all the metadata in MongoDB.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to MongoDB.",
+            "type": "string",
+            "format": "password"
+        },
+        "hostPort": {
+            "title": "Host and Port",
+            "description": "Host and port of the MongoDB service.",
+            "type": "string"
+        },
+        "connectionOptions": {
+            "title": "Connection Options",
+            "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
         },
         "databaseName": {
             "title": "Database Name",
@@ -57,5 +68,6 @@
             "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
         }
     },
+    "required": ["hostPort"],
     "additionalProperties": false
 }

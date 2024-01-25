@@ -123,7 +123,7 @@ const PopoverContent = React.memo(
     const getUserWithAdditionalDetails = useCallback(async () => {
       try {
         setLoading(true);
-        const user = await getUserByName(userName, 'teams, roles');
+        const user = await getUserByName(userName, { fields: 'teams, roles' });
 
         updateUserProfilePics({
           id: userName,
@@ -214,18 +214,22 @@ const PopoverTitle = React.memo(
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
+  displayName?: string;
   type?: UserTeam;
   showUserName?: boolean;
   showUserProfile?: boolean;
   profileWidth?: number;
+  className?: string;
 }
 
 const UserPopOverCard: FC<Props> = ({
   userName,
+  displayName,
   type = UserTeam.User,
   showUserName = false,
   showUserProfile = true,
   children,
+  className,
   profileWidth = 24,
 }) => {
   const profilePicture = (
@@ -255,7 +259,8 @@ const UserPopOverCard: FC<Props> = ({
             'assignee-item d-flex gap-1 cursor-pointer items-center',
             {
               'm-r-xs': !showUserName && showUserProfile,
-            }
+            },
+            className
           )}
           data-testid={userName}
           to={
@@ -264,7 +269,9 @@ const UserPopOverCard: FC<Props> = ({
               : getUserPath(userName ?? '')
           }>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? <span className="">{userName ?? ''}</span> : null}
+          {showUserName ? (
+            <span className="">{displayName ?? userName ?? ''}</span>
+          ) : null}
         </Link>
       )}
     </Popover>

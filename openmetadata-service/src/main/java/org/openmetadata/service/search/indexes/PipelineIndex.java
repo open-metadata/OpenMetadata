@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
@@ -48,11 +47,12 @@ public class PipelineIndex implements SearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.PIPELINE);
     doc.put("serviceType", pipeline.getServiceType());
+    doc.put("lineage", SearchIndex.getLineageData(pipeline.getEntityReference()));
     doc.put(
         "fqnParts",
         getFQNParts(
             pipeline.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(pipeline.getOwner()));
     doc.put("service", getEntityWithDisplayName(pipeline.getService()));
     doc.put("domain", getEntityWithDisplayName(pipeline.getDomain()));
@@ -61,7 +61,7 @@ public class PipelineIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put("tasks.name", 2.0f);
+    fields.put("tasks.name", 8.0f);
     fields.put("tasks.description", 1.0f);
     return fields;
   }

@@ -14,7 +14,7 @@
 import { isEqual } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { SettledStatus } from '../enums/axios.enum';
+import { SettledStatus } from '../enums/Axios.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchResponse } from '../interface/search.interface';
 import { getSearchedTeams, getSearchedUsers } from '../rest/miscAPI';

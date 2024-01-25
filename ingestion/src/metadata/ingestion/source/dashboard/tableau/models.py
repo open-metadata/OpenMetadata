@@ -99,12 +99,6 @@ class DatasourceField(BaseModel):
     description: Optional[str]
 
 
-class Workbook(BaseModel):
-    id: str
-    luid: str
-    name: Optional[str]
-
-
 class UpstreamTableColumn(BaseModel):
     id: str
     name: Optional[str]
@@ -130,7 +124,6 @@ class DataSource(BaseModel):
     id: str
     name: Optional[str]
     fields: Optional[List[DatasourceField]]
-    workbook: Optional[Workbook]
     upstreamTables: Optional[List[UpstreamTable]]
 
 
@@ -148,7 +141,6 @@ class TableauChart(TableauBaseModel):
     Aux class for Chart object of the tableau_api_lib response
     """
 
-    workbook: TableauBaseModel
     owner: Optional[TableauOwner]
     tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)

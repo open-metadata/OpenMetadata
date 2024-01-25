@@ -10,7 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SearchOutlined } from '@ant-design/icons';
 import i18next from 'i18next';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import {
   Option,
@@ -44,10 +58,37 @@ import {
   getEntityName,
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
-import { Icons } from './SvgUtils';
 import { getServiceIcon } from './TableUtils';
 
 class SearchClassBase {
+  public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
+    return {
+      [EntityType.ALL]: SearchIndex.ALL,
+      [EntityType.TABLE]: SearchIndex.TABLE,
+      [EntityType.PIPELINE]: SearchIndex.PIPELINE,
+      [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
+      [EntityType.MLMODEL]: SearchIndex.MLMODEL,
+      [EntityType.TOPIC]: SearchIndex.TOPIC,
+      [EntityType.CONTAINER]: SearchIndex.CONTAINER,
+      [EntityType.TAG]: SearchIndex.TAG,
+      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
+      [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
+      [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
+      [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
+      [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
+      [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
+      [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
+      [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
+      [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
+      [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
+      [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
+      [EntityType.DOMAIN]: SearchIndex.DOMAIN,
+      [EntityType.DATA_PRODUCT]: SearchIndex.DATA_PRODUCT,
+      [EntityType.DATABASE]: SearchIndex.DATABASE,
+      [EntityType.DATABASE_SCHEMA]: SearchIndex.DATABASE_SCHEMA,
+    };
+  }
+
   public getTabsInfo() {
     return {
       [SearchIndex.TABLE]: {
@@ -55,80 +96,98 @@ class SearchClassBase {
         sortingFields: tableSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'tables',
-        icon: Icons.TABLE_GREY,
-        selectedIcon: Icons.TABLE,
+        icon: TableIcon,
       },
       [SearchIndex.STORED_PROCEDURE]: {
         label: i18n.t('label.stored-procedure-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'storedProcedure',
+        icon: IconStoredProcedure,
+      },
+      [SearchIndex.DATABASE]: {
+        label: i18n.t('label.database-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'databases',
+        icon: DatabaseIcon,
+      },
+      [SearchIndex.DATABASE_SCHEMA]: {
+        label: i18n.t('label.database-schema-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'databaseSchemas',
+        icon: SchemaIcon,
       },
       [SearchIndex.DASHBOARD]: {
         label: i18n.t('label.dashboard-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'dashboards',
-        icon: Icons.DASHBOARD_GREY,
-        selectedIcon: Icons.DASHBOARD,
+        icon: DashboardIcon,
       },
       [SearchIndex.DASHBOARD_DATA_MODEL]: {
         label: i18n.t('label.dashboard-data-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'dashboardDataModel',
+        icon: IconDataModel,
       },
       [SearchIndex.PIPELINE]: {
         label: i18n.t('label.pipeline-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'pipelines',
-        icon: Icons.PIPELINE_GREY,
-        selectedIcon: Icons.PIPELINE,
+        icon: PipelineIcon,
       },
       [SearchIndex.TOPIC]: {
         label: i18n.t('label.topic-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'topics',
-        icon: Icons.TOPIC_GREY,
-        selectedIcon: Icons.TOPIC,
+        icon: TopicIcon,
       },
       [SearchIndex.MLMODEL]: {
         label: i18n.t('label.ml-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'mlmodels',
+        icon: MlModelIcon,
       },
       [SearchIndex.CONTAINER]: {
         label: i18n.t('label.container-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'containers',
+        icon: ContainerIcon,
       },
       [SearchIndex.SEARCH_INDEX]: {
         label: i18n.t('label.search-index-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'searchIndexes',
+        icon: SearchOutlined,
       },
       [SearchIndex.GLOSSARY]: {
         label: i18n.t('label.glossary-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'glossaries',
+        icon: GlossaryIcon,
       },
       [SearchIndex.TAG]: {
         label: i18n.t('label.tag-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'tags',
+        icon: ClassificationIcon,
       },
       [SearchIndex.DATA_PRODUCT]: {
         label: i18n.t('label.data-product-plural'),
         sortingFields: tableSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'dataProducts',
+        icon: DataProductIcon,
       },
     };
   }
@@ -167,6 +226,9 @@ class SearchClassBase {
         return [...TAG_DROPDOWN_ITEMS];
       case SearchIndex.DATA_PRODUCT:
         return [...DATA_PRODUCT_DROPDOWN_ITEMS];
+      case SearchIndex.DATABASE:
+      case SearchIndex.DATABASE_SCHEMA:
+        return [...COMMON_DROPDOWN_ITEMS];
 
       default:
         return [];

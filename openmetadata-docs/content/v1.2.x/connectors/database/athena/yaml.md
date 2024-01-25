@@ -14,7 +14,9 @@ slug: /connectors/database/athena/yaml
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
@@ -91,7 +93,8 @@ And is defined as:
             "Action": [
                 "glue:GetTables",
                 "glue:GetTable",
-                "glue:GetDatabases"
+                "glue:GetDatabases",
+                "glue:GetPartitions"
             ],
             "Effect": "Allow",
             "Resource": [
@@ -124,7 +127,7 @@ If you have external services other than glue and facing permission issues, add 
 {% /note %}
 
 
-You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/athena).
+You can find further information on the Athena connector in the [docs](/connectors/database/athena).
 
 ### Python Requirements
 

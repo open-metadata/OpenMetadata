@@ -97,7 +97,7 @@ describe('Web Analytics utils', () => {
   });
 
   it('trackCustomEvent should call postWebAnalyticEvent', () => {
-    trackCustomEvent(MOCK_ANALYTICS_DATA);
+    trackCustomEvent(MOCK_ANALYTICS_DATA, 'test');
 
     expect(postWebAnalyticEvent).toHaveBeenCalledWith(CUSTOM_EVENT_PAYLOAD);
   });

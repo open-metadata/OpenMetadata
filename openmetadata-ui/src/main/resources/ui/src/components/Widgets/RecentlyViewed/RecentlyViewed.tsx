@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as RecentlyViewedEmptyIcon } from '../../../assets/svg/recently-viewed-no-data-placeholder.svg';
+import { RECENTLY_VIEWED } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -25,8 +26,9 @@ import {
   getRecentlyViewedData,
   prepareLabel,
 } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './recently-viewed.less';
@@ -72,7 +74,7 @@ const RecentlyViewed = ({
   return (
     <Card
       className="recently-viewed-widget-container card-widget"
-      data-testid="recently-viewed-container">
+      data-testid="recently-viewed-widget">
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>
@@ -88,9 +90,14 @@ const RecentlyViewed = ({
                 <Space>
                   <DragOutlined
                     className="drag-widget-icon cursor-pointer"
+                    data-testid="drag-widget-button"
                     size={14}
                   />
-                  <CloseOutlined size={14} onClick={handleCloseClick} />
+                  <CloseOutlined
+                    data-testid="remove-widget-button"
+                    size={14}
+                    onClick={handleCloseClick}
+                  />
                 </Space>
               </Col>
             )}
@@ -108,6 +115,13 @@ const RecentlyViewed = ({
                 <Typography.Paragraph>
                   {t('message.no-recently-viewed-date')}
                 </Typography.Paragraph>
+                <Link
+                  className="link-title"
+                  rel="noreferrer"
+                  target="_blank"
+                  to={RECENTLY_VIEWED}>
+                  {t('label.learn-more')}
+                </Link>
               </ErrorPlaceHolder>
             </div>
           ) : (
@@ -121,7 +135,7 @@ const RecentlyViewed = ({
                     <div className=" flex items-center">
                       <Link
                         className=""
-                        to={getEntityLink(
+                        to={entityUtilClassBase.getEntityLink(
                           item.type || '',
                           item.fullyQualifiedName as string
                         )}>

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { SERVICE_TYPE, uuid } from './constants';
+import { GlobalSettingOptions } from './settings.constant';
 const uniqueID = uuid();
 
 export const SERVICE_CATEGORIES = {
@@ -42,31 +43,35 @@ export const MYSQL = {
 
 export const VISIT_SERVICE_PAGE_DETAILS = {
   [SERVICE_TYPE.Database]: {
-    settingsMenuId: 'services.databases',
+    settingsMenuId: GlobalSettingOptions.DATABASES,
     serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
   },
   [SERVICE_TYPE.Messaging]: {
-    settingsMenuId: 'services.messaging',
+    settingsMenuId: GlobalSettingOptions.MESSAGING,
     serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
   },
   [SERVICE_TYPE.Dashboard]: {
-    settingsMenuId: 'services.dashboards',
+    settingsMenuId: GlobalSettingOptions.DASHBOARDS,
     serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
   },
   [SERVICE_TYPE.Pipeline]: {
-    settingsMenuId: 'services.pipelines',
+    settingsMenuId: GlobalSettingOptions.PIPELINES,
     serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
   },
   [SERVICE_TYPE.MLModels]: {
-    settingsMenuId: 'services.mlModels',
+    settingsMenuId: GlobalSettingOptions.MLMODELS,
     serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
   },
   [SERVICE_TYPE.Storage]: {
-    settingsMenuId: 'services.storages',
+    settingsMenuId: GlobalSettingOptions.STORAGES,
     serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
   },
   [SERVICE_TYPE.Search]: {
-    settingsMenuId: 'services.search',
+    settingsMenuId: GlobalSettingOptions.SEARCH,
     serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  },
+  [SERVICE_TYPE.Metadata]: {
+    settingsMenuId: GlobalSettingOptions.METADATA,
+    serviceCategory: SERVICE_CATEGORIES.METADATA_SERVICES,
   },
 };

@@ -47,6 +47,9 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCaseResolutionStatus import (
+    TestCaseResolutionStatus,
+)
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
@@ -60,6 +63,7 @@ from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
     RESTRICT_UPDATE_LIST,
+    PatchedEntity,
     PatchRequest,
 )
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -67,6 +71,7 @@ from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
+    OMetaTestCaseResolutionStatus,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -171,7 +176,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
         )
-        return Either(right=entity)
+        patched_entity = PatchedEntity(new_entity=entity) if entity else None
+        return Either(right=patched_entity)
 
     @_run_dispatch.register
     def write_custom_properties(self, record: OMetaCustomProperties) -> Either[Dict]:
@@ -275,7 +281,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             for role in record.roles:
                 try:
                     role_entity = self.metadata.get_by_name(
-                        entity=Role, fqn=str(role.name.__root__.__root__)
+                        entity=Role, fqn=str(role.name.__root__)
                     )
                 except APIError:
                     role_entity = self._create_role(role)
@@ -409,6 +415,15 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(
             f"Successfully ingested test case results for test case {record.testCase.name.__root__}"
         )
+        return Either(right=res)
+
+    @_run_dispatch.register
+    def write_test_case_resolution_status(
+        self, record: OMetaTestCaseResolutionStatus
+    ) -> TestCaseResolutionStatus:
+        """For sample data"""
+        res = self.metadata.create_test_case_resolution(record.test_case_resolution)
+
         return Either(right=res)
 
     @_run_dispatch.register

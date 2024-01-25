@@ -15,14 +15,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TestCaseIndex implements SearchIndex {
-  final TestCase testCase;
-
+public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  public TestCaseIndex(TestCase testCase) {
-    this.testCase = testCase;
-  }
 
   @SneakyThrows
   public Map<String, Object> buildESDoc() {
@@ -79,7 +73,7 @@ public class TestCaseIndex implements SearchIndex {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("testSuite.fullyQualifiedName", 10.0f);
     fields.put("testSuite.name", 10.0f);
-    fields.put("testSuite.description", 3.0f);
+    fields.put("testSuite.description", 1.0f);
     fields.put("entityLink", 3.0f);
     fields.put("entityFQN", 10.0f);
     return fields;

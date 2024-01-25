@@ -21,10 +21,8 @@ from typing import Generic, List, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
-from metadata.utils.logger import ometa_logger
 
 T = TypeVar("T", bound=BaseModel)
-logger = ometa_logger()
 
 
 class PatchField(str, Enum):
@@ -140,9 +138,6 @@ class OMetaPatchMixinBase(Generic[T]):
         instance = self.get_by_id(entity=entity, entity_id=entity_id, fields=fields)
 
         if not instance:
-            logger.warning(
-                f"Cannot find an instance of '{entity.__class__.__name__}' with id [{str(entity_id)}]."
-            )
             return None
 
         return instance

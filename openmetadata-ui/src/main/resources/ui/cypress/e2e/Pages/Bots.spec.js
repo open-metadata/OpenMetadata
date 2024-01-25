@@ -21,6 +21,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
+import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
@@ -70,20 +71,12 @@ const revokeToken = () => {
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
     interceptURL(
       'GET',
       'api/v1/bots?limit=*&include=non-deleted',
       'getBotsList'
     );
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Bots')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.settingClick(GlobalSettingOptions.BOTS);
     verifyResponseStatusCode('@getBotsList', 200);
   });
 

@@ -21,6 +21,10 @@
           "description": "Number of test cases that aborted.",
           "type": "integer"
         },
+        "queued": {
+          "description": "Number of test cases that are queued for execution.",
+          "type": "integer"
+        },
         "total": {
           "description": "Total number of test cases.",
           "type": "integer"
@@ -46,7 +50,7 @@
       "description": "Status of Test Case run.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
       "type": "string",
-      "enum": ["Success", "Failed", "Aborted"],
+      "enum": ["Success", "Failed", "Aborted", "Queued"],
       "javaEnums": [
         {
           "name": "Success"
@@ -56,6 +60,9 @@
         },
         {
           "name": "Aborted"
+        },
+        {
+          "name": "Queued"
         }
       ]
     },
@@ -86,9 +93,25 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "testCaseResolutionStatusReference": {
-            "description": "Reference to the failure status object for the test case result.",
-            "$ref": "./testCaseResolutionStatus.json"
+        "passedRows": {
+          "description": "Number of rows that passed.",
+          "type": "integer"
+        },
+        "failedRows": {
+          "description": "Number of rows that failed.",
+          "type": "integer"
+        },
+        "passedRowsPercentage": {
+          "description": "Percentage of rows that passed.",
+          "type": "number"
+        },
+        "failedRowsPercentage": {
+          "description": "Percentage of rows that failed.",
+          "type": "number"
+        },
+        "incidentId": {
+          "description": "Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved.",
+          "$ref": "../type/basic.json#/definitions/uuid"
         }
       }
     },

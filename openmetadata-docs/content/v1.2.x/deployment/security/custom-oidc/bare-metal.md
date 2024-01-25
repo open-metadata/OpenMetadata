@@ -19,7 +19,7 @@ authenticationConfiguration:
   providerName: "KeyCloak"
   publicKeyUrls:
     - "http://localhost:8080/realms/myrealm/protocol/openid-connect/certs"
-    - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+    - "http://{your openmetadata domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: "http://localhost:8080/realms/myrealm"
   clientId: "{client id}"
   callbackUrl: "http://localhost:8585/callback"

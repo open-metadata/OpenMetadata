@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -17,14 +16,8 @@ import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ContainerIndex implements ColumnIndex {
+public record ContainerIndex(Container container) implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
-
-  final Container container;
-
-  public ContainerIndex(Container container) {
-    this.container = container;
-  }
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(container);
@@ -69,11 +62,12 @@ public class ContainerIndex implements ColumnIndex {
     doc.put("column_suggest", columnSuggest);
     doc.put("entityType", Entity.CONTAINER);
     doc.put("serviceType", container.getServiceType());
+    doc.put("lineage", SearchIndex.getLineageData(container.getEntityReference()));
     doc.put(
         "fqnParts",
         getFQNParts(
             container.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(container.getOwner()));
     doc.put("service", getEntityWithDisplayName(container.getService()));
     doc.put("domain", getEntityWithDisplayName(container.getDomain()));
@@ -84,9 +78,7 @@ public class ContainerIndex implements ColumnIndex {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("dataModel.columns.name", 2.0f);
     fields.put(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f);
-    fields.put("dataModel.columns.name.ngram", 1.0f);
     fields.put("dataModel.columns.displayName", 2.0f);
-    fields.put("dataModel.columns.displayName.ngram", 1.0f);
     fields.put("dataModel.columns.description", 1.0f);
     fields.put("dataModel.columns.children.name", 2.0f);
     return fields;

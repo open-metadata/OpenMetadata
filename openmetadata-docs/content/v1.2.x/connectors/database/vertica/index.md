@@ -14,9 +14,11 @@ slug: /connectors/database/vertica
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures            | {% icon iconName="cross" /%} |
+| Stored Procedures  | {% icon iconName="cross" /%} |
+| Owners             | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Vertica >= 9.2                    |
+| Supported Versions | Vertica >= 9.2               |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
@@ -33,9 +35,9 @@ Configure and schedule Vertica metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [Data Quality](#data-quality)
-- [dbt Integration](#dbt-integration)
+- [Data Profiler](/connectors/ingestion/workflows/profiler)
+- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 {% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/vertica/yaml"} /%}
 

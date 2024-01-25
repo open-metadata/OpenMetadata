@@ -4,6 +4,7 @@ import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataIns
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TIER;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TYPE;
+import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
@@ -27,7 +28,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
@@ -46,7 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.exception.DataInsightJobException;
+import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -93,7 +93,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
-      throw new DataInsightJobException(e);
+      throw new EventSubscriptionJobException(e);
     }
   }
 
@@ -150,7 +150,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   private void sendToAdmins(
       SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     // Get Admins
-    Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
+    Set<String> emailList = getAdminsData(EMAIL);
     try {
       // Build Insights Report
       DataInsightTotalAssetTemplate totalAssetTemplate =
@@ -247,26 +247,22 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       double currentCompletedDescription = getCompletedDescriptionCount(last);
       double currentTotalCount = getTotalEntityFromDescriptionList(last);
 
-      // Calculate Percent Change
-      double previousDiff = previousTotalCount - previousCompletedDescription;
-      double currentDiff = currentTotalCount - currentCompletedDescription;
-
-      // Change
-      double percentChange = 0D;
-      if (previousDiff != 0) {
-        percentChange = ((currentDiff - previousDiff) / previousDiff) * 100;
+      // Previous Percent
+      double previousPercentCompleted = 0D;
+      if (previousTotalCount != 0) {
+        previousPercentCompleted = (previousCompletedDescription / previousTotalCount) * 100;
       }
-      // Completion
-      double percentCompleted = 0;
+      // Current Percent
+      double currentPercentCompleted = 0;
       if (currentTotalCount != 0) {
-        percentCompleted = (currentCompletedDescription / currentTotalCount) * 100;
+        currentPercentCompleted = (currentCompletedDescription / currentTotalCount) * 100;
       }
 
       return getTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
           PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-          percentCompleted,
-          percentChange,
+          currentPercentCompleted,
+          currentPercentCompleted - previousPercentCompleted,
           numberOfDaysChange);
     }
 
@@ -300,27 +296,22 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       double currentHasOwner = getCompletedOwnershipCount(last);
       double currentTotalCount = getTotalEntityFromOwnerList(last);
 
-      // Calculate Change
-      double previousDiff = previousTotalCount - previousHasOwner;
-      double currentDiff = currentTotalCount - currentHasOwner;
-
-      // Change Percent
-      double percentChange = 0D;
-      if (previousDiff != 0) {
-        percentChange = ((currentDiff - previousDiff) / previousDiff) * 100;
+      // Previous Percent
+      double previousPercentCompleted = 0D;
+      if (previousTotalCount != 0) {
+        previousPercentCompleted = (previousHasOwner / previousTotalCount) * 100;
       }
-
-      // Completion
-      double percentCompleted = 0;
+      // Current Percent
+      double currentPercentCompleted = 0;
       if (currentTotalCount != 0) {
-        percentCompleted = (currentHasOwner / currentTotalCount) * 100;
+        currentPercentCompleted = (currentHasOwner / currentTotalCount) * 100;
       }
 
       return getTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
           PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-          percentCompleted,
-          percentChange,
+          currentPercentCompleted,
+          currentPercentCompleted - previousPercentCompleted,
           numberOfDaysChange);
     }
 
@@ -479,28 +470,23 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   private long getTimeFromSchedule(
       AppSchedule appSchedule, JobExecutionContext jobExecutionContext) {
     AppSchedule.ScheduleTimeline timeline = appSchedule.getScheduleType();
-    switch (timeline) {
-      case HOURLY:
-        return 3600000L;
-      case DAILY:
-        return 86400000L;
-      case WEEKLY:
-        return 604800000L;
-      case MONTHLY:
-        return 2592000000L;
-      case CUSTOM:
+    return switch (timeline) {
+      case HOURLY -> 3600000L;
+      case DAILY -> 86400000L;
+      case WEEKLY -> 604800000L;
+      case MONTHLY -> 2592000000L;
+      case CUSTOM -> {
         if (jobExecutionContext.getTrigger() != null) {
           Trigger triggerQrz = jobExecutionContext.getTrigger();
           Date previousFire =
               triggerQrz.getPreviousFireTime() == null
                   ? triggerQrz.getStartTime()
                   : triggerQrz.getPreviousFireTime();
-          return previousFire.toInstant().toEpochMilli();
+          yield previousFire.toInstant().toEpochMilli();
         }
-        return 86400000L;
-      default:
-        throw new IllegalArgumentException("Invalid Trigger Type.");
-    }
+        yield 86400000L;
+      }
+    };
   }
 
   public static int getNumberOfDays(AppSchedule appSchedule) {

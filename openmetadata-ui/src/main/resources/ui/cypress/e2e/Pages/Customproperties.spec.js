@@ -19,17 +19,11 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { ENTITIES, uuid } from '../../constants/constants';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/teams/name/*', 'settingsPage');
-
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
-    verifyResponseStatusCode('@settingsPage', 200);
-    cy.get('[data-testid="settings-left-panel"]').should('be.visible');
   });
 
   describe('Add update and delete Integer custom properties', () => {
@@ -42,12 +36,7 @@ describe('Custom Properties should work properly', () => {
           `/api/v1/metadata/types/name/${entity.name}*`,
           'getEntity'
         );
-
-        // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
 
@@ -61,11 +50,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="app-bar-item-settings"]').click();
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .click();
-
+        cy.settingClick(entity.entityApiType, true);
         verifyResponseStatusCode('@getEntity', 200);
       });
 
@@ -77,9 +62,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
         editCreatedProperty(propertyName);
@@ -93,10 +76,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
         deleteCreatedProperty(propertyName);
@@ -116,10 +96,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
 
@@ -132,14 +109,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="app-bar-item-settings"]')
-          .should('be.visible')
-          .click();
-        // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
       });
@@ -152,10 +122,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
         editCreatedProperty(propertyName);
@@ -169,10 +136,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
         deleteCreatedProperty(propertyName);
@@ -192,10 +156,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
 
@@ -208,13 +169,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="app-bar-item-settings"]')
-          .should('be.visible')
-          .click();
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
       });
@@ -227,10 +182,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
         editCreatedProperty(propertyName);
@@ -244,10 +196,7 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Selecting the entity
-        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+        cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
         deleteCreatedProperty(propertyName);
@@ -267,10 +216,7 @@ describe('Custom Properties should work properly', () => {
     const propertyName = `addcyentity${glossaryTerm.name}test${uuid()}`;
 
     it('test custom properties in advanced search modal', () => {
-      cy.get(`[data-menu-id*="customAttributes.${glossaryTerm.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+      cy.settingClick(glossaryTerm.entityApiType, true);
 
       addCustomPropertiesForEntity(
         propertyName,
@@ -281,7 +227,7 @@ describe('Custom Properties should work properly', () => {
       );
 
       // Navigating to explore page
-      cy.get('[data-testid="app-bar-item-explore"]').click();
+      cy.sidebarClick(SidebarItem.EXPLORE);
       interceptURL(
         'GET',
         `/api/v1/metadata/types/name/glossaryTerm*`,
@@ -313,10 +259,7 @@ describe('Custom Properties should work properly', () => {
       );
 
       // Selecting the entity
-      cy.get(`[data-menu-id*="customAttributes.${glossaryTerm.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+      cy.settingClick(glossaryTerm.entityApiType, true);
 
       verifyResponseStatusCode('@getEntity', 200);
       deleteCreatedProperty(propertyName);

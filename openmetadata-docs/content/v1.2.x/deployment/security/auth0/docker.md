@@ -20,7 +20,7 @@ AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=auth0
-AUTHENTICATION_PUBLIC_KEYS=[{Domain}/.well-known/jwks.json,http://{your openmetadata domain}/api/v1/config/jwks] # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+AUTHENTICATION_PUBLIC_KEYS=[{Domain}/.well-known/jwks.json,http://{your openmetadata domain}/api/v1/system/config/jwks] # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
 
 AUTHENTICATION_AUTHORITY={Domain} # Update with your Domain
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID

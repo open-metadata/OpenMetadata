@@ -13,6 +13,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
+import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, {
   createContext,
@@ -23,18 +24,20 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { Table } from '../../generated/entity/data/table';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../generated/tests/testCase';
+import { useFqn } from '../../hooks/useFqn';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from '../../rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
-import { bytesToSize, getDecodedFqn } from '../../utils/StringsUtils';
+import { bytesToSize } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -58,7 +61,7 @@ export const TableProfilerProvider = ({
   isTableDeleted,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
-  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
   const location = useLocation();
   // profiler has its own api but sent's the data in Table type
@@ -73,6 +76,8 @@ export const TableProfilerProvider = ({
     column: [],
     table: [],
   });
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const {
     activeTab = isTourOpen
@@ -149,6 +154,10 @@ export const TableProfilerProvider = ({
     ];
   }, [tableProfiler]);
 
+  const handleDateRangeChange = (data: DateRangeObject) => {
+    setDateRangeObject(data);
+  };
+
   const splitTableAndColumnTest = (data: TestCase[]) => {
     const columnTestsCase: TestCase[] = [];
     const tableTests: TestCase[] = [];
@@ -190,14 +199,12 @@ export const TableProfilerProvider = ({
     // As we are encoding the fqn in API function to apply all over the application
     // and the datasetFQN comes form url parameter which is already encoded,
     // we are decoding FQN below to avoid double encoding in the API function
-    const decodedDatasetFQN = getDecodedFqn(datasetFQN);
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(decodedDatasetFQN);
-      const customMetricResponse = await getTableDetailsByFQN(
-        datasetFQN,
-        'customMetrics,columns'
-      );
+      const profiler = await getLatestTableProfileByFqn(datasetFQN);
+      const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
+        fields: 'customMetrics,columns',
+      });
 
       setTableProfiler(profiler);
       setCustomMetric(customMetricResponse);
@@ -213,8 +220,8 @@ export const TableProfilerProvider = ({
     try {
       const { data } = await getListTestCase({
         ...params,
-        fields: 'testCaseResult, testDefinition',
-        entityLink: generateEntityLink(getDecodedFqn(datasetFQN) ?? ''),
+        fields: 'testCaseResult, testDefinition, incidentId',
+        entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });
@@ -280,6 +287,8 @@ export const TableProfilerProvider = ({
       splitTestCases,
       customMetric,
       onCustomMetricUpdate: handleUpdateCustomMetrics,
+      onDateRangeChange: handleDateRangeChange,
+      dateRangeObject,
     };
   }, [
     isTestsLoading,
@@ -292,6 +301,7 @@ export const TableProfilerProvider = ({
     onTestCaseUpdate,
     splitTestCases,
     customMetric,
+    dateRangeObject,
   ]);
 
   return (

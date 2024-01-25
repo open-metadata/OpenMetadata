@@ -264,6 +264,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.REGISTER,
       ROUTES.RESET_PASSWORD,
       ROUTES.ACCOUNT_ACTIVATION,
+      ROUTES.HOME,
     ].indexOf(pathname) === -1
   );
 };

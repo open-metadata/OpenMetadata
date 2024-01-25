@@ -112,6 +112,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -1551,6 +1552,42 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @SqlQuery("SELECT json FROM change_event_consumers where id = :id AND extension = :extension")
+    String getSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)"
+                + "ON DUPLICATE KEY UPDATE json = :json, jsonSchema = :jsonSchema",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, jsonSchema = EXCLUDED.jsonSchema",
+        connectionType = POSTGRES)
+    void upsertSubscriberExtension(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json) "
+                + "VALUES (:id, :extension, :json)"
+                + "ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json) "
+                + "VALUES (:id, :extension, (:json :: jsonb)) ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void upsertFailedEvent(
+        @Bind("id") String id, @Bind("extension") String extension, @Bind("json") String json);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -3131,14 +3168,14 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
 
-    default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
+    default List<String> list(EventType eventType, List<String> entityTypes, long timestamp) {
       if (nullOrEmpty(entityTypes)) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {
-        return listWithoutEntityFilter(eventType, timestamp);
+        return listWithoutEntityFilter(eventType.value(), timestamp);
       }
-      return listWithEntityFilter(eventType, entityTypes, timestamp);
+      return listWithEntityFilter(eventType.value(), entityTypes, timestamp);
     }
 
     @SqlQuery(
@@ -3156,6 +3193,12 @@ public interface CollectionDAO {
             + "ORDER BY eventTime ASC")
     List<String> listWithoutEntityFilter(
         @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
+
+    @SqlQuery("SELECT json FROM change_event ORDER BY eventTime ASC LIMIT :limit OFFSET :offset")
+    List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
+
+    @SqlQuery("SELECT count(*) FROM change_event")
+    long getLatestOffset();
   }
 
   interface TypeEntityDAO extends EntityDAO<Type> {
@@ -3382,6 +3425,79 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String mySqlCondition = filter.getCondition(getTableName());
+      String postgresCondition = filter.getCondition(getTableName());
+      boolean includeEmptyTestSuite =
+          Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
+      if (!includeEmptyTestSuite) {
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_CASE);
+        mySqlCondition = condition;
+        postgresCondition = condition;
+
+        mySqlCondition =
+            String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition =
+            String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+      }
+      return listCount(
+          getTableName(),
+          mySqlCondition,
+          postgresCondition,
+          String.format("%s.%s", getTableName(), getNameHashColumn()));
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String mySqlCondition = filter.getCondition(getTableName());
+      String postgresCondition = filter.getCondition(getTableName());
+      String groupBy = "";
+      boolean includeEmptyTestSuite =
+          Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
+      if (!includeEmptyTestSuite) {
+        groupBy = String.format("group by %s.json, %s.name", getTableName(), getTableName());
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_CASE);
+        mySqlCondition = condition;
+        postgresCondition = condition;
+        mySqlCondition =
+            String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition =
+            String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+      }
+      return listBefore(getTableName(), mySqlCondition, postgresCondition, limit, before, groupBy);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String mySqlCondition = filter.getCondition(getTableName());
+      String postgresCondition = filter.getCondition(getTableName());
+      String groupBy = "";
+      boolean includeEmptyTestSuite =
+          Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
+      if (!includeEmptyTestSuite) {
+        groupBy = String.format("group by %s.json, %s.name", getTableName(), getTableName());
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_CASE);
+        mySqlCondition = condition;
+        postgresCondition = condition;
+
+        mySqlCondition =
+            String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition =
+            String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+      }
+      return listAfter(getTableName(), mySqlCondition, postgresCondition, limit, after, groupBy);
+    }
   }
 
   interface TestCaseDAO extends EntityDAO<TestCase> {
@@ -3592,6 +3708,33 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, :json, :incidentStateId)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
+                + "VALUES (:testCaseFQNHash, :extension, :jsonSchema, (:json :: jsonb), :incidentStateId)",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("testCaseFQNHash") String testCaseFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json,
+        @Bind("incidentStateId") String incidentStateId);
+
+    default void insert(
+        String entityFQNHash,
+        String extension,
+        String jsonSchema,
+        String json,
+        String incidentStateId) {
+      insert(getTimeSeriesTableName(), entityFQNHash, extension, jsonSchema, json, incidentStateId);
+    }
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -3605,6 +3748,57 @@ public interface CollectionDAO {
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
+    void delete(@BindFQN("entityFQNHash") String entityFQNHash);
+
+    @SqlQuery(
+        "SELECT json FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "AND timestamp BETWEEN :startTs AND :endTs "
+            + "ORDER BY timestamp DESC) ranked "
+            + "<outerCond> AND ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+    List<String> listWithOffset(
+        @Define("table") String table,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default List<String> listWithOffset(
+        ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
+      if (latest) {
+        // When fetching latest, we need to apply Assignee and Status filters on the outer query
+        // i.e. after we have fetched the latest records for each testCaseFQNHash
+        // We'll first get the values, remove then from `filter` and then create `outerFilter`
+        String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
+        filter.removeQueryParam("testCaseResolutionStatusType");
+        String assignee = filter.getQueryParam("assignee");
+        filter.removeQueryParam("assignee");
+
+        ListFilter outerFilter = new ListFilter(null);
+        outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
+        outerFilter.addQueryParam("assignee", assignee);
+
+        return listWithOffset(
+            getTimeSeriesTableName(),
+            filter.getCondition(),
+            getPartitionFieldName(),
+            limit,
+            offset,
+            startTs,
+            endTs,
+            outerFilter.getCondition());
+      }
+      return listWithOffset(
+          getTimeSeriesTableName(), filter.getCondition(), limit, offset, startTs, endTs);
+    }
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
@@ -3760,7 +3954,6 @@ public interface CollectionDAO {
         case PASSWORD_RESET -> JsonUtils.readValue(json, PasswordResetToken.class);
         case REFRESH_TOKEN -> JsonUtils.readValue(json, RefreshToken.class);
         case PERSONAL_ACCESS_TOKEN -> JsonUtils.readValue(json, PersonalAccessToken.class);
-        default -> throw new IllegalArgumentException("Invalid Token Type.");
       };
     }
   }

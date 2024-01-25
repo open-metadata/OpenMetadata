@@ -93,10 +93,8 @@ def update_column_description(
         desc_column = col_dict.get(col.fullyQualifiedName.__root__)
         if desc_column:
             if col.description and not force:
-                logger.warning(
-                    f"The entity with id [{model_str(col.fullyQualifiedName)}] already has a description."
-                    " To overwrite it, set `force` to True."
-                )
+                # If the description is already present and force is not passed,
+                # description will not be overridden
                 continue
 
             col.description = desc_column.__root__
@@ -196,10 +194,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return None
 
         if instance.description and not force:
-            logger.warning(
-                f"The entity with id [{model_str(source.id)}] already has a description."
-                " To overwrite it, set `force` to True."
-            )
+            # If the description is already present and force is not passed,
+            # description will not be overridden
             return None
 
         # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
@@ -349,10 +345,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         # Don't change existing data without force
         if instance.owner and not force:
-            logger.warning(
-                f"The entity with id [{model_str(source.id)}] already has an owner."
-                " To overwrite it, set `overrideOwner` to True."
-            )
+            # If a owner is already present and force is not passed,
+            # owner will not be overridden
             return None
 
         destination = deepcopy(instance)

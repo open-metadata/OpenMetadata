@@ -86,8 +86,9 @@ class SupersetDBSource(SupersetSourceMixin):
     def get_column_list(self, table_name: str) -> Iterable[FetchChart]:
         try:
             if table_name:
-                sql_query = sql.text(FETCH_COLUMN.format(table_name=table_name.lower()))
-                col_list = self.engine.execute(sql_query)
+                col_list = self.engine.execute(
+                    sql.text(FETCH_COLUMN), table_name=table_name.lower()
+                )
                 return [FetchColumn(**col) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -120,9 +121,10 @@ class SupersetDBSource(SupersetSourceMixin):
                         service_name=self.context.dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts
+                    for chart in self.context.charts or []
                 ],
                 service=self.context.dashboard_service,
+                owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -239,7 +241,7 @@ class SupersetDBSource(SupersetSourceMixin):
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_requst=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
 
                 except Exception as exc:
                     yield Either(

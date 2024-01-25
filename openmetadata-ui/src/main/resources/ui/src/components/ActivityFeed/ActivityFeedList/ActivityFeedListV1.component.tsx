@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,7 +32,7 @@ interface ActivityFeedListV1Props {
   activeFeedId?: string;
   hidePopover: boolean;
   isForFeedTab?: boolean;
-  emptyPlaceholderText: string;
+  emptyPlaceholderText: ReactNode;
   tab: ActivityFeedTabs;
 }
 

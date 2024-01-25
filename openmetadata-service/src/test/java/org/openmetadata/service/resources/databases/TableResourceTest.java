@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -26,6 +27,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.csv.EntityCsvTest.assertRows;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.BINARY;
@@ -73,6 +79,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -81,6 +88,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -98,6 +106,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -121,8 +130,10 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -2233,6 +2244,80 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  @SneakyThrows
+  void testImportInvalidCsv() {
+    Column c1 = new Column().withName("c1").withDataType(INT);
+    CreateTable createTable =
+        createRequest("s1").withColumns(listOf(c1)).withTableConstraints(null);
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    String tableName = table.getFullyQualifiedName();
+
+    // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+    // Create table with invalid tags field
+    String resultsHeader = recordToString(EntityCsv.getResultHeaders(TableCsv.HEADERS));
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,c1,c1,c1,INT,";
+    String csv = createCsv(TableCsv.HEADERS, listOf(record), null);
+    CsvImportResult result = importCsv(tableName, csv, false);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    String[] expectedRows =
+        new String[] {
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(4, "tag", "Tag.invalidTag"))
+        };
+    assertRows(result, expectedRows);
+
+    // Add an invalid column tag
+    record = "s1,dsp1,dsc1,,,,,,c1,,,,Tag.invalidTag";
+    csv = createCsv(TableCsv.HEADERS, listOf(record), null);
+    result = importCsv(tableName, csv, false);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader,
+          getFailedRecord(record, EntityCsv.entityNotFound(12, "tag", "Tag.invalidTag"))
+        };
+    assertRows(result, expectedRows);
+
+    // Update a non existing column
+    record = "s1,dsp1,dsc1,,,,,,nonExistingColumn,,,,";
+    csv = createCsv(TableCsv.HEADERS, listOf(record), null);
+    result = importCsv(tableName, csv, false);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader, getFailedRecord(record, EntityCsv.columnNotFound(8, "nonExistingColumn"))
+        };
+    assertRows(result, expectedRows);
+  }
+
+  @Test
+  void testImportExport() throws IOException {
+    String user1 = USER1.getName();
+    Column c1 = new Column().withName("c1").withDataType(STRUCT);
+    Column c11 = new Column().withName("c11").withDataType(INT);
+    Column c2 = new Column().withName("c2").withDataType(INT);
+    c1.withChildren(listOf(c11));
+    CreateTable createTable =
+        createRequest("s1").withColumns(listOf(c1, c2)).withTableConstraints(null);
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+    // Update terms with change in description
+    List<String> updateRecords =
+        listOf(
+            String.format(
+                "s1,dsp1,new-dsc1,user;%s,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
+                    + "dsp1-new,desc1,type,PII.Sensitive",
+                user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
+            ",,,,,,,,c1.c11,dsp11-new,desc11,type1,PII.Sensitive",
+            ",,,,,,,,c2,,,,");
+
+    // Update created entity with changes
+    importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);
+    deleteEntityByName(table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

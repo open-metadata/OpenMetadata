@@ -5,6 +5,14 @@ slug: /connectors/pipeline/dagster
 
 # Dagster
 
+| Stage           | PROD                         |
+|-----------------|------------------------------|
+| Pipelines       | {% icon iconName="check" /%} |
+| Pipeline Status | {% icon iconName="check" /%} |
+| Owners          | {% icon iconName="cross" /%} |
+| Tags            | {% icon iconName="check" /%} |
+| Lineage         | {% icon iconName="cross" /%} |
+
 In this section, we provide guides and references to use the Dagster connector.
 
 Configure and schedule Dagster metadata and profiler workflows from the OpenMetadata UI:
@@ -14,7 +22,7 @@ Configure and schedule Dagster metadata and profiler workflows from the OpenMeta
     - [Dagster Versions](#dagster-versions)
   - [Metadata Ingestion](#metadata-ingestion)
       - [Service Name](#service-name)
-      - [Connection Options](#connection-options)
+      - [Connection Details](#connection-details)
       - [Metadata Ingestion Options](#metadata-ingestion-options)
   - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)

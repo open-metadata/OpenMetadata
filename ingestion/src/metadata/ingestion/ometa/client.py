@@ -155,9 +155,12 @@ class REST:
                     self.config.expires_in = (
                         datetime.datetime.utcnow().timestamp() + expiry - 120
                     )
-        headers[
-            self.config.auth_header
-        ] = f"{self._auth_token_mode} {self.config.access_token}"
+
+        headers[self.config.auth_header] = (
+            f"{self._auth_token_mode} {self.config.access_token}"
+            if self._auth_token_mode
+            else self.config.access_token
+        )
 
         # Merge extra headers if provided.
         # If a header value is provided in modulo string format and matches an existing header,

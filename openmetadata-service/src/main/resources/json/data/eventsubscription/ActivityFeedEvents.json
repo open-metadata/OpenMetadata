@@ -3,25 +3,56 @@
   "fullyQualifiedName": "ActivityFeedAlert",
   "displayName": "Activity Feed Alerts",
   "description": "Alerts received on the Activity Feed are controlled with this.",
-  "alertType": "ChangeEvent",
+  "alertType": "ActivityFeed",
   "filteringRules":{
     "resources": ["all"],
     "rules": [
       {
         "name": "matchUpdatedBy",
         "effect": "exclude",
-        "condition": "matchUpdatedBy('ingestion-bot')"
+        "condition": "matchUpdatedBy({'ingestion-bot'})"
       },
       {
         "name": "matchAnyFieldChange",
         "effect": "exclude",
-        "condition": "matchAnyFieldChange('usageSummary')"
+        "condition": "matchAnyFieldChange({'usageSummary'})"
       }
     ]
   },
-  "subscriptionType": "ActivityFeed",
-  "subscriptionConfig": {
-    "description": "Feed Subscription Endpoint"
+  "destinations": [
+    {
+      "id": "fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a65",
+      "category": "External",
+      "type": "ActivityFeed"
+    }
+  ],
+  "input": {
+    "filters": [
+      {
+        "name": "filterByUpdaterName",
+        "effect" : "exclude",
+        "arguments": [
+          {
+            "name": "updateByUserList",
+            "input": [
+              "ingestion-bot"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterByFieldChange",
+        "effect" : "exclude",
+        "arguments": [
+          {
+            "name": "fieldChangeList",
+            "input": [
+              "usageSummary"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "provider" : "system",
   "enabled" : true

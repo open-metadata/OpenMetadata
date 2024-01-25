@@ -78,7 +78,7 @@ const TreeViewTab = ({
         />
       ) : (
         <Row className="w-full">
-          <Col span={6}>
+          <Col span={12}>
             <Tree
               defaultExpandAll
               showIcon
@@ -87,7 +87,7 @@ const TreeViewTab = ({
               treeData={treeLabelList}
             />
           </Col>
-          <Col span={18}>
+          <Col span={12}>
             <Tree
               defaultExpandAll
               showIcon

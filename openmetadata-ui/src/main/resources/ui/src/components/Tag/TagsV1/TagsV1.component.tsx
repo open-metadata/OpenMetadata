@@ -18,15 +18,14 @@ import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
-import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getGlossaryPath, getTagPath } from '../../../utils/RouterUtils';
 import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
@@ -90,10 +89,8 @@ const TagsV1 = ({
   const redirectLink = useCallback(
     () =>
       (tagType ?? tag.source) === TagSource.Glossary
-        ? history.push(`${ROUTES.GLOSSARY}/${getEncodedFqn(tag.tagFQN)}`)
-        : history.push(
-            `${ROUTES.TAGS}/${getEncodedFqn(Fqn.split(tag.tagFQN)[0])}`
-          ),
+        ? history.push(getGlossaryPath(tag.tagFQN))
+        : history.push(getTagPath(Fqn.split(tag.tagFQN)[0])),
     [tagType, tag.source, tag.tagFQN]
   );
 

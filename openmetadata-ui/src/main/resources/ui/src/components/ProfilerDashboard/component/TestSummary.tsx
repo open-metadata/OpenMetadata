@@ -14,35 +14,61 @@
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
+import {
+  first,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  omitBy,
+  pick,
+  round,
+  uniqueId,
+} from 'lodash';
+import { DateRangeObject } from 'Models';
 import Qs from 'qs';
-import React, { ReactElement, useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useHistory } from 'react-router-dom';
 import {
+  CartesianGrid,
   Legend,
   Line,
   LineChart,
   LineProps,
   ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
+import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
 import {
   GREEN_3,
   GREEN_3_OPACITY,
   RED_3,
+  RED_3_OPACITY,
   YELLOW_2,
 } from '../../../constants/Color.constants';
+import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import {
   COLORS,
   PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import {
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
 import {
   TestCaseParameterValue,
   TestCaseResult,
@@ -56,8 +82,8 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
@@ -65,21 +91,20 @@ import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 import './test-summary.less';
+import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 type ChartDataType = {
   information: { label: string; color: string }[];
-  data: { [key: string]: string }[];
+  data: Record<string, string | number | undefined | Thread>[];
 };
-
-export interface DateRangeObject {
-  startTs: number;
-  endTs: number;
-}
 
 const TestSummary: React.FC<TestSummaryProps> = ({
   data,
+  showOnlyGraph = false,
   showExpandIcon = true,
 }) => {
+  const { entityThread } = useActivityFeedProvider();
+
   const defaultRange = useMemo(
     () => ({
       initialRange: {
@@ -89,19 +114,20 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         endTs: getCurrentMillis(),
       },
       key: 'last30days',
+      title: PROFILER_FILTER_RANGE.last30days.title,
     }),
     []
   );
   const history = useHistory();
-  const [chartData, setChartData] = useState<ChartDataType>(
-    {} as ChartDataType
-  );
   const [results, setResults] = useState<TestCaseResult[]>([]);
   const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
     defaultRange.initialRange
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
+    defaultRange.title
+  );
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
@@ -109,32 +135,93 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   };
 
-  const generateChartData = (currentData: TestCaseResult[]) => {
-    const chartData: { [key: string]: string }[] = [];
-    currentData.forEach((result) => {
+  const chartData = useMemo(() => {
+    const chartData: ChartDataType['data'] = [];
+
+    results.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
+        const value = round(parseFloat(curr.value ?? ''), 2) || 0;
+
         return {
           ...acc,
-          [curr.name ?? 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
+          [curr.name ?? 'value']: value,
         };
       }, {});
+      const metric = {
+        passedRows: result.passedRows,
+        failedRows: result.failedRows,
+        passedRowsPercentage: isUndefined(result.passedRowsPercentage)
+          ? undefined
+          : `${result.passedRowsPercentage}%`,
+        failedRowsPercentage: isUndefined(result.failedRowsPercentage)
+          ? undefined
+          : `${result.failedRowsPercentage}%`,
+      };
 
       chartData.push({
-        name: formatDateTime(result.timestamp),
-        status: result.testCaseStatus ?? '',
+        name: result.timestamp,
+        status: result.testCaseStatus,
         ...values,
+        ...omitBy(metric, isUndefined),
+        incidentId: result.incidentId,
+        task: entityThread.find(
+          (task) => task.task?.testCaseResolutionStatusId === result.incidentId
+        ),
       });
     });
     chartData.reverse();
-    setChartData({
+
+    return {
       information:
-        currentData[0]?.testResultValue?.map((info, i) => ({
+        results[0]?.testResultValue?.map((info, i) => ({
           label: info.name ?? '',
           color: COLORS[i],
         })) ?? [],
       data: chartData,
+    };
+  }, [results, entityThread]);
+
+  const incidentData = useMemo(() => {
+    const data = chartData.data ?? [];
+
+    const issueData = entityThread.map((task) => {
+      const failedRows = data.filter(
+        (chart) => task.task?.testCaseResolutionStatusId === chart.incidentId
+      );
+      const x2 =
+        task.task?.status === ThreadTaskStatus.Closed
+          ? task.task?.closedAt
+          : undefined;
+
+      return {
+        x1: first(failedRows)?.name,
+        x2,
+        task,
+      };
     });
-  };
+
+    return issueData as {
+      x1?: string | number;
+      x2?: string | number;
+      task: Thread;
+    }[];
+  }, [entityThread, chartData]);
+
+  const customLegendPayLoad = useMemo(() => {
+    const legendPayload: Payload[] = chartData?.information.map((info) => ({
+      value: info.label,
+      type: 'line',
+      color: info.color,
+    }));
+
+    legendPayload.push({
+      value: 'Incident',
+      type: 'rect',
+      color: RED_3,
+    });
+
+    return legendPayload;
+  }, [chartData]);
 
   const updatedDot: LineProps['dot'] = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,11 +254,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     setIsGraphLoading(true);
     try {
       const { data: chartData } = await getListTestCaseResults(
-        getEncodedFqn(data.fullyQualifiedName || ''),
-        dateRangeObj
+        data.fullyQualifiedName || '',
+        pick(dateRangeObj, ['startTs', 'endTs'])
       );
+
       setResults(chartData);
-      generateChartData(chartData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -181,7 +268,18 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   };
 
   const referenceArea = () => {
-    const yValues = data.parameterValues?.reduce((acc, curr, i) => {
+    const params = data.parameterValues ?? [];
+
+    if (params.length < 2) {
+      return (
+        <ReferenceLine
+          label={params[0].name}
+          stroke={GREEN_3}
+          strokeDasharray="4"
+        />
+      );
+    }
+    const yValues = params.reduce((acc, curr, i) => {
       return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
     }, {});
 
@@ -196,7 +294,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     );
   };
 
-  const getGraph = () => {
+  const getGraph = useMemo(() => {
     if (isGraphLoading) {
       return <Loader />;
     }
@@ -213,15 +311,27 @@ const TestSummary: React.FC<TestSummaryProps> = ({
             bottom: 16,
             right: 40,
           }}>
-          <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
+          <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+          <XAxis
+            dataKey="name"
+            domain={['auto', 'auto']}
+            padding={{ left: 8, right: 8 }}
+            scale="time"
+            tickFormatter={formatDateTime}
+            type="number"
+          />
           <YAxis
             allowDataOverflow
             padding={{ top: 8, bottom: 8 }}
             tickFormatter={(value) => axisTickFormatter(value)}
           />
-          <Tooltip />
-          <Legend />
-          {data.parameterValues?.length === 2 && referenceArea()}
+          <Tooltip
+            content={<TestSummaryCustomTooltip />}
+            offset={-200}
+            wrapperStyle={{ pointerEvents: 'auto' }}
+          />
+          {referenceArea()}
+          <Legend payload={customLegendPayLoad} />
           {chartData?.information?.map((info) => (
             <Line
               dataKey={info.label}
@@ -231,16 +341,40 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               type="monotone"
             />
           ))}
+
+          {incidentData.length > 0 &&
+            incidentData.map((data) => (
+              <ReferenceArea
+                fill={RED_3_OPACITY}
+                ifOverflow="extendDomain"
+                key={data.task.id}
+                x1={data.x1}
+                x2={data.x2}
+              />
+            ))}
         </LineChart>
       </ResponsiveContainer>
     ) : (
       <ErrorPlaceHolder
         className="m-t-0"
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.FILTER}
-      />
+        icon={
+          <FilterPlaceHolderIcon
+            className="w-24"
+            data-testid="no-search-image"
+          />
+        }
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph style={{ marginBottom: '0' }}>
+          {t('message.no-test-result-for-days', {
+            days: selectedTimeRange,
+          })}
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          {t('message.select-longer-duration')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
     );
-  };
+  }, [isGraphLoading, selectedTimeRange, incidentData, chartData]);
 
   useEffect(() => {
     if (dateRangeObject) {
@@ -327,6 +461,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     ]
   );
 
+  const handleSelectedTimeRange = useCallback((range: string) => {
+    setSelectedTimeRange(range);
+  }, []);
+
   return (
     <Row data-testid="test-summary-container" gutter={[0, 16]}>
       <Col span={24}>
@@ -339,8 +477,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <Col>
                   <DatePickerMenu
                     showSelectedCustomRange
-                    defaultValue={defaultRange.key}
+                    defaultDateRange={pick(defaultRange, ['key', 'title'])}
                     handleDateRangeChange={handleDateRangeChange}
+                    handleSelectedTimeRange={handleSelectedTimeRange}
                   />
                 </Col>
                 <Col>
@@ -360,44 +499,46 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               </Row>
             </Col>
             <Col data-testid="graph-container" span={24}>
-              {getGraph()}
+              {getGraph}
             </Col>
           </Row>
         )}
       </Col>
-      <Col span={24}>
-        <Row align="top" data-testid="params-container" gutter={[16, 16]}>
-          {showParameters && (
-            <Col>
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.parameter')}:`}
-              </Typography.Text>
-              {!isEmpty(parameterValuesWithoutSqlExpression) ? (
-                <Row className="parameter-value-container" gutter={[4, 4]}>
-                  {parameterValuesWithoutSqlExpression?.map(showParamsData)}
-                </Row>
-              ) : (
-                <Typography.Text className="m-l-xs" type="secondary">
-                  {t('label.no-parameter-available')}
-                </Typography.Text>
-              )}
-            </Col>
-          )}
-          {!isUndefined(parameterValuesWithSqlExpression) ? (
-            <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
-          ) : null}
-          {data.description && (
-            <Col>
-              <Space direction="vertical" size={4}>
+      {showOnlyGraph ? null : (
+        <Col span={24}>
+          <Row align="top" data-testid="params-container" gutter={[16, 16]}>
+            {showParameters && (
+              <Col>
                 <Typography.Text className="text-grey-muted">
-                  {`${t('label.description')}:`}
+                  {`${t('label.parameter')}:`}
                 </Typography.Text>
-                <RichTextEditorPreviewer markdown={data.description} />
-              </Space>
-            </Col>
-          )}
-        </Row>
-      </Col>
+                {!isEmpty(parameterValuesWithoutSqlExpression) ? (
+                  <Row className="parameter-value-container" gutter={[4, 4]}>
+                    {parameterValuesWithoutSqlExpression?.map(showParamsData)}
+                  </Row>
+                ) : (
+                  <Typography.Text className="m-l-xs" type="secondary">
+                    {t('label.no-parameter-available')}
+                  </Typography.Text>
+                )}
+              </Col>
+            )}
+            {!isUndefined(parameterValuesWithSqlExpression) ? (
+              <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
+            ) : null}
+            {data.description && (
+              <Col>
+                <Space direction="vertical" size={4}>
+                  <Typography.Text className="text-grey-muted">
+                    {`${t('label.description')}:`}
+                  </Typography.Text>
+                  <RichTextEditorPreviewer markdown={data.description} />
+                </Space>
+              </Col>
+            )}
+          </Row>
+        </Col>
+      )}
     </Row>
   );
 };

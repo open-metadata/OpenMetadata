@@ -68,6 +68,9 @@
       "sourceUrl": {
         "type": "text"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "dataProducts": {
         "properties": {
           "id": {

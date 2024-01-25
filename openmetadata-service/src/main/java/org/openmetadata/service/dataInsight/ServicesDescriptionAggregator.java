@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithDescription;
 
 public abstract class ServicesDescriptionAggregator<A, B, M, S>
@@ -26,21 +27,24 @@ public abstract class ServicesDescriptionAggregator<A, B, M, S>
         S sumCompletedDescriptions =
             getSumAggregations(serviceBucket, COMPLETED_DESCRIPTION_FRACTION);
         S sumEntityCount = getSumAggregations(serviceBucket, ENTITY_COUNT);
+        Optional<Double> completedDescription = getValue(sumCompletedDescriptions);
+        Optional<Double> entityCount = getValue(sumEntityCount);
+        Double completedDescriptionFraction =
+            completedDescription.flatMap(cdf -> entityCount.map(ec -> cdf / ec)).orElse(null);
 
         data.add(
             new PercentageOfServicesWithDescription()
                 .withTimestamp(timestamp)
                 .withServiceName(serviceName)
-                .withEntityCount(getValue(sumEntityCount))
-                .withCompletedDescription(getValue(sumCompletedDescriptions))
-                .withCompletedDescriptionFraction(
-                    getValue(sumCompletedDescriptions) / getValue(sumEntityCount)));
+                .withEntityCount(entityCount.orElse(null))
+                .withCompletedDescription(completedDescription.orElse(null))
+                .withCompletedDescriptionFraction(completedDescriptionFraction));
       }
     }
     return data;
   }
 
-  protected abstract Double getValue(S key);
+  protected abstract Optional<Double> getValue(S key);
 
   protected abstract S getSumAggregations(B bucket, String key);
 

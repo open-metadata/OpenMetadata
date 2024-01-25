@@ -64,6 +64,10 @@
   .filters-row {
     border-bottom: 1px solid @border-color;
   }
+
+  a.alert-link {
+    font-size: inherit;
+  }
 }
 
 .explore-page {
@@ -73,5 +77,17 @@
       height: 40px;
       width: 100%;
     }
+  }
+}
+
+.explore-icon svg {
+  width: 16px;
+  height: 16px;
+  color: @text-color;
+}
+
+.ant-menu-item-selected {
+  .explore-icon svg {
+    color: @primary-color;
   }
 }

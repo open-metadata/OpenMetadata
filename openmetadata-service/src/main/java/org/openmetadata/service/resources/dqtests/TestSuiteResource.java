@@ -126,6 +126,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("testSuiteType")
           String testSuiteType,
       @Parameter(
+              description = "Include empty test suite in the response.",
+              schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("includeEmptyTestSuites")
+          @DefaultValue("true")
+          Boolean includeEmptyTestSuites,
+      @Parameter(
               description = "Returns list of test definitions before this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -143,6 +149,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           Include include) {
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testSuiteType", testSuiteType);
+    filter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     EntityUtil.Fields fields = getFields(fieldsParam);
 
     ResourceContext<?> resourceContext = getResourceContext();
@@ -371,7 +378,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
-    testSuite = setExecutableTestSuiteOwner(testSuite);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -645,16 +651,5 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       testSuite.setExecutableEntityReference(entityReference);
     }
     return testSuite;
-  }
-
-  private TestSuite setExecutableTestSuiteOwner(TestSuite testSuite) {
-    Table tableEntity =
-        Entity.getEntity(
-            testSuite.getExecutableEntityReference().getType(),
-            testSuite.getExecutableEntityReference().getId(),
-            "owner",
-            ALL);
-    EntityReference ownerReference = tableEntity.getOwner();
-    return testSuite.withOwner(ownerReference);
   }
 }

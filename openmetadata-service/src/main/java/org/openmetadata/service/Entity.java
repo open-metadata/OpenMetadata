@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
@@ -89,7 +90,7 @@ public final class Entity {
   @Getter @Setter private static SearchRepository searchRepository;
 
   // List of all the entities
-  private static final List<String> ENTITY_LIST = new ArrayList<>();
+  private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
   public static final String FIELD_OWNER = "owner";
@@ -139,6 +140,7 @@ public final class Entity {
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
+  public static final String TASK = "task";
   public static final String CHART = "chart";
   public static final String APPLICATION = "app";
   public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
@@ -250,7 +252,6 @@ public final class Entity {
           DASHBOARD_SERVICE,
           MESSAGING_SERVICE,
           WORKFLOW,
-          TEST_SUITE,
           DOCUMENT);
 
   private Entity() {}
@@ -294,9 +295,8 @@ public final class Entity {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    Collections.sort(ENTITY_LIST);
 
-    LOG.info("Registering entity {} {}", clazz, entity);
+    LOG.debug("Registering entity {} {}", clazz, entity);
   }
 
   public static <T extends EntityTimeSeriesInterface> void registerEntity(
@@ -306,9 +306,8 @@ public final class Entity {
         entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    Collections.sort(ENTITY_LIST);
 
-    LOG.info("Registering entity time series {} {}", clazz, entity);
+    LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
 
   public static void registerResourcePermissions(
@@ -324,8 +323,8 @@ public final class Entity {
     ResourceRegistry.addResource(entity, null, getEntityFields(clazz));
   }
 
-  public static List<String> getEntityList() {
-    return Collections.unmodifiableList(ENTITY_LIST);
+  public static Set<String> getEntityList() {
+    return Collections.unmodifiableSet(ENTITY_LIST);
   }
 
   public static EntityReference getEntityReference(EntityReference ref, Include include) {
@@ -466,7 +465,12 @@ public final class Entity {
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.delete(updatedBy, entityId, recursive, hardDelete);
+    try {
+      dao.find(entityId, Include.ALL);
+      dao.delete(updatedBy, entityId, recursive, hardDelete);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Entity {} is already deleted.", entityId);
+    }
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {

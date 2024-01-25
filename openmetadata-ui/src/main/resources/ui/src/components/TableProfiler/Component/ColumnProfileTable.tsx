@@ -25,10 +25,11 @@ import {
   map,
   toLower,
 } from 'lodash';
+import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../assets/svg/DropDown.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -37,20 +38,21 @@ import { TableProfilerTab } from '../../../components/ProfilerDashboard/profiler
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
-  DEFAULT_RANGE_DATA,
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { useFqn } from '../../../hooks/useFqn';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
+import { getEntityName, searchInColumns } from '../../../utils/EntityUtils';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
 } from '../../../utils/RouterUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SummaryCard } from '../../common/SummaryCard/SummaryCard.component';
@@ -58,7 +60,6 @@ import { SummaryCardProps } from '../../common/SummaryCard/SummaryCard.interface
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
-import { DateRangeObject } from '../../ProfilerDashboard/component/TestSummary';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import {
   columnTestResultType,
@@ -75,7 +76,7 @@ const ColumnProfileTable = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const {
     isTestsLoading,
     isProfilerDataLoading,
@@ -86,6 +87,8 @@ const ColumnProfileTable = () => {
     isProfilingEnabled,
     tableProfiler,
     splitTestCases,
+    dateRangeObject,
+    onDateRangeChange,
   } = useTableProfiler();
   const isLoading = isTestsLoading || isProfilerDataLoading;
   const columnTests = splitTestCases.column ?? [];
@@ -94,8 +97,6 @@ const ColumnProfileTable = () => {
   const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =
     useState<columnTestResultType>();
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const { activeColumnFqn, activeTab } = useMemo(() => {
     const param = location.search;
@@ -124,7 +125,7 @@ const ColumnProfileTable = () => {
         key: 'name',
         width: 250,
         fixed: 'left',
-        render: (name: string, record) => {
+        render: (_, record) => {
           return (
             <Button
               className="break-word p-0"
@@ -132,7 +133,7 @@ const ColumnProfileTable = () => {
               onClick={() =>
                 updateActiveColumnFqn(record.fullyQualifiedName || '')
               }>
-              {name}
+              {getEntityName(record)}
             </Button>
           );
         },
@@ -273,7 +274,7 @@ const ColumnProfileTable = () => {
         history.push({
           pathname: getAddDataQualityTableTestPath(
             ProfilerDashboardType.COLUMN,
-            getDecodedFqn(fqn)
+            fqn
           ),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
@@ -284,10 +285,7 @@ const ColumnProfileTable = () => {
       key: 'custom-metric',
       onClick: () => {
         history.push({
-          pathname: getAddCustomMetricPath(
-            ProfilerDashboardType.COLUMN,
-            getDecodedFqn(fqn)
-          ),
+          pathname: getAddCustomMetricPath(ProfilerDashboardType.COLUMN, fqn),
           search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
       },
@@ -338,14 +336,15 @@ const ColumnProfileTable = () => {
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
-      setDateRangeObject(value);
+      onDateRangeChange(value);
     }
   };
 
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
     if (searchText) {
-      setData(columns.filter((col) => col.name?.includes(searchText)));
+      const searchCols = searchInColumns(columns, searchText);
+      setData(searchCols);
     } else {
       setData(columns);
     }
@@ -393,6 +392,7 @@ const ColumnProfileTable = () => {
               {!isEmpty(activeColumnFqn) && (
                 <DatePickerMenu
                   showSelectedCustomRange
+                  defaultDateRange={dateRangeObject}
                   handleDateRangeChange={handleDateRangeChange}
                 />
               )}

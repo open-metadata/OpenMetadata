@@ -19,7 +19,7 @@ import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
@@ -38,7 +38,6 @@ import {
   getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServiceUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
@@ -174,12 +173,7 @@ const AddService = ({
   // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
-      history.push(
-        getServiceDetailsPath(
-          getEncodedFqn(newServiceData.name),
-          serviceCategory
-        )
-      );
+      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
     }
   };
 

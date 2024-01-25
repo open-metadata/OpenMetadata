@@ -5,8 +5,10 @@ source:
     config:
       type: MongoDB
       databaseName: custom_database_name
-      connectionDetails:
-        connectionURI: mongodb+srv://user:pass@localhost:27017
+      scheme: mongodb+srv
+      username: username
+      password: password
+      hostPort:  localhost:27017
   sourceConfig:
     config:
       type: DatabaseMetadata

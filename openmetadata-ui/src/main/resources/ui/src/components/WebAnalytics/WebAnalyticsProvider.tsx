@@ -24,7 +24,7 @@ const WebAnalyticsProvider = ({ children }: WebAnalyticsProps) => {
   const { currentUser } = useAuthContext();
 
   return (
-    <AnalyticsProvider instance={getAnalyticInstance(currentUser?.id ?? '')}>
+    <AnalyticsProvider instance={getAnalyticInstance(currentUser?.id)}>
       {children}
     </AnalyticsProvider>
   );

@@ -14,7 +14,7 @@
 import { TagProps } from 'antd';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { HighlightedTagLabel } from '../../../utils/EntitySummaryPanelUtils';
+import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 
 export type TagsV1Props = {
   tag: TagLabel | HighlightedTagLabel;

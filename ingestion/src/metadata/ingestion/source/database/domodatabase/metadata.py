@@ -166,9 +166,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
-                user = self.metadata.get_user_by_email(owner_details.email)
-                if user:
-                    return EntityReference(id=user.id.__root__, type="user")
+                return self.metadata.get_reference_by_email(owner_details.email)
         except Exception as exc:
             logger.warning(f"Error while getting details of user {owner.name} - {exc}")
         return None

@@ -98,45 +98,59 @@ class LineageParser:
         """
         Get a list of intermediate tables
         """
-        # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        return self.retrieve_tables(self.parser.intermediate_tables)
+        if self.parser:
+            # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
+            return self.retrieve_tables(self.parser.intermediate_tables)
+        return []
 
     @cached_property
     def source_tables(self) -> List[Table]:
         """
         Get a list of source tables
         """
-        # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        return self.retrieve_tables(self.parser.source_tables)
+        if self.parser:
+            # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
+            return self.retrieve_tables(self.parser.source_tables)
+        return []
 
     @cached_property
     def target_tables(self) -> List[Table]:
         """
         Get a list of target tables
         """
-        # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        return self.retrieve_tables(self.parser.target_tables)
+        if self.parser:
+            # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
+            return self.retrieve_tables(self.parser.target_tables)
+        return []
 
+    # pylint: disable=protected-access
     @cached_property
     def column_lineage(self) -> List[Tuple[Column, Column]]:
         """
         Get a list of tuples of column lineage
         """
-        if self.parser._dialect == SQLPARSE_DIALECT:  # pylint: disable=protected-access
-            return self.parser.get_column_lineage()
         column_lineage = []
-        for col_lineage in self.parser.get_column_lineage():
-            # In case of column level lineage it is possible that we get
-            # two or more columns as there might be some intermediate columns
-            # but the source columns will be the first value and
-            # the target column always will be the last columns
-            src_column = col_lineage[0]
-            tgt_column = col_lineage[-1]
-            src_col = Column(src_column.raw_name)
-            src_col._parent = src_column._parent  # pylint: disable=protected-access
-            tgt_col = Column(tgt_column.raw_name)
-            tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
-            column_lineage.append((src_col, tgt_col))
+        if self.parser is None:
+            return []
+        try:
+            if self.parser._dialect == SQLPARSE_DIALECT:
+                return self.parser.get_column_lineage()
+
+            for col_lineage in self.parser.get_column_lineage():
+                # In case of column level lineage it is possible that we get
+                # two or more columns as there might be some intermediate columns
+                # but the source columns will be the first value and
+                # the target column always will be the last columns
+                src_column = col_lineage[0]
+                tgt_column = col_lineage[-1]
+                src_col = Column(src_column.raw_name)
+                src_col._parent = src_column._parent  # pylint: disable=protected-access
+                tgt_col = Column(tgt_column.raw_name)
+                tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
+                column_lineage.append((src_col, tgt_col))
+        except Exception as err:
+            logger.warning(f"Failed to fetch column level lineage due to: {err}")
+            logger.debug(traceback.format_exc())
         return column_lineage
 
     @cached_property
@@ -325,6 +339,8 @@ class LineageParser:
         :return: for each table name, list all joins against other tables
         """
         join_data = defaultdict(list)
+        if self.parser is None:
+            return join_data
         # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
         for statement in self.parser.statements():
             self.stateful_add_joins_from_statement(join_data, sql_statement=statement)
@@ -372,7 +388,11 @@ class LineageParser:
     @staticmethod
     def _evaluate_best_parser(
         query: str, dialect: Dialect, timeout_seconds: int
-    ) -> LineageRunner:
+    ) -> Optional[LineageRunner]:
+
+        if query is None:
+            return None
+
         @timeout(seconds=timeout_seconds)
         def get_sqlfluff_lineage_runner(qry: str, dlct: str) -> LineageRunner:
             lr_dialect = LineageRunner(qry, dialect=dlct)

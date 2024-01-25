@@ -13,17 +13,12 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.email.EmailMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   @Override
@@ -64,25 +59,24 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildMessage(ChangeEvent event) {
-    EmailMessage emailMessage = new EmailMessage();
-    emailMessage.setUserName(event.getUserName());
-    if (event.getEntity() != null) {
-      emailMessage.setUpdatedBy(event.getUserName());
-      if (event.getEntityType().equals(Entity.QUERY)) {
-        emailMessage.setEntityUrl(Entity.QUERY);
-      } else {
-        emailMessage.setEntityUrl(
-            this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
-      }
+  public EmailMessage buildEntityMessage(ChangeEvent event) {
+    return getEmailMessage(createEntityMessage(event));
+  }
+
+  @Override
+  public EmailMessage buildThreadMessage(ChangeEvent event) {
+    return getEmailMessage(createThreadMessage(event));
+  }
+
+  public EmailMessage getEmailMessage(OutgoingMessage outgoingMessage) {
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      EmailMessage emailMessage = new EmailMessage();
+      emailMessage.setUserName(outgoingMessage.getUserName());
+      emailMessage.setEntityUrl(outgoingMessage.getEntityUrl());
+      emailMessage.setUpdatedBy(outgoingMessage.getUserName());
+      emailMessage.setChangeMessage(new ArrayList<>(outgoingMessage.getMessages()));
+      return emailMessage;
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
-    List<String> changeMessage = new ArrayList<>();
-    for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
-      changeMessage.add(entry.getValue());
-    }
-    emailMessage.setChangeMessage(changeMessage);
-    return emailMessage;
+    throw new UnhandledServerException("No messages found for the event");
   }
 }

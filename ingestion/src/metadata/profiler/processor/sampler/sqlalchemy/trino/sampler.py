@@ -33,9 +33,10 @@ class TrinoSampler(SQASampler):
 
         super().__init__(*args, **kwargs)
 
-    def _base_sample_query(self, label=None):
+    def _base_sample_query(self, column, label=None):
         sqa_columns = [col for col in inspect(self.table).c if col.name != RANDOM_LABEL]
-        return self.client.query(self.table, label).where(
+        entity = self.table if column is None else column
+        return self.client.query(entity, label).where(
             or_(
                 *[
                     text(f"is_nan({cols.name}) = False")

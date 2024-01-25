@@ -34,17 +34,6 @@ jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
   })),
 }));
 
-jest.mock('../../AppState', () => ({
-  getCurrentUserDetails: jest.fn().mockReturnValue({
-    id: '2e424734-761a-443f-bf2a-a5b361823c80',
-    type: 'user',
-    name: 'aaron_johnson0',
-    fullyQualifiedName: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-  }),
-}));
-
 const mockProps = {
   reaction: ReactionType.ThumbsUp,
   reactionList: [

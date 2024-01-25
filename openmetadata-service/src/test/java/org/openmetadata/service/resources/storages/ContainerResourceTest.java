@@ -567,8 +567,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
     Column c2_f = getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL);
     c2.getChildren().add(c2_f); // Add c2.f
-    create2 =
-        create2.withDataModel(new ContainerDataModel().withColumns(Arrays.asList(c1_new, c2)));
+    create2.withDataModel(new ContainerDataModel().withColumns(Arrays.asList(c1_new, c2)));
     fieldAdded(change, build("dataModel.columns", C2), List.of(c2_f));
 
     //

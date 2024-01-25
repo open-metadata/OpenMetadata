@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   findAllByTestId,
   findByTestId,
   findByText,
@@ -21,44 +22,13 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { act } from 'react-test-renderer';
-import {
-  LeafNodes,
-  LoadingNodeState,
-} from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { EntityLineage } from '../../generated/type/entityLineage';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import PipelineDetails from './PipelineDetails.component';
-
-/**
- * mock implementation of ResizeObserver
- */
-window.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-const mockUserTeam = [
-  {
-    description: 'description',
-    displayName: 'Cloud_Infra',
-    id: 'id1',
-    name: 'Cloud_infra',
-    type: 'team',
-  },
-  {
-    description: 'description',
-    displayName: 'Finance',
-    id: 'id2',
-    name: 'Finance',
-    type: 'team',
-  },
-];
+import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const mockTasks = [
   {
@@ -83,67 +53,98 @@ const mockTasks = [
 
 const mockTaskUpdateHandler = jest.fn();
 
-const PipelineDetailsProps = {
-  sourceUrl: '',
-  serviceType: '',
-  users: [],
+const PipelineDetailsProps: PipeLineDetailsProp = {
   pipelineDetails: { tasks: mockTasks } as Pipeline,
-  entityLineage: {} as EntityLineage,
-  entityName: '',
-  activeTab: 1,
-  owner: {} as EntityReference,
-  description: '',
-  tier: {} as TagLabel,
-  followers: [],
-  pipelineTags: [],
-  slashedPipelineName: [],
   taskUpdateHandler: mockTaskUpdateHandler,
   fetchPipeline: jest.fn(),
-  setActiveTabHandler: jest.fn(),
   followPipelineHandler: jest.fn(),
   unFollowPipelineHandler: jest.fn(),
   settingsUpdateHandler: jest.fn(),
   descriptionUpdateHandler: jest.fn(),
-  tagUpdateHandler: jest.fn(),
-  loadNodeHandler: jest.fn(),
-  lineageLeafNodes: {} as LeafNodes,
-  isNodeLoading: {} as LoadingNodeState,
-  version: '',
   versionHandler: jest.fn(),
-  addLineageHandler: jest.fn(),
-  removeLineageHandler: jest.fn(),
-  entityLineageHandler: jest.fn(),
-  entityThread: [],
-  isentityThreadLoading: false,
-  postFeedHandler: jest.fn(),
-  feedCount: 0,
-  entityFieldThreadCount: [],
-  entityFieldTaskCount: [],
-  createThread: jest.fn(),
   pipelineFQN: '',
-  deletePostHandler: jest.fn(),
   paging: {} as Paging,
-  fetchFeedHandler: jest.fn(),
-  pipelineStatus: {},
-  isPipelineStatusLoading: false,
-  updateThreadHandler: jest.fn(),
   onExtensionUpdate: jest.fn(),
   handleToggleDelete: jest.fn(),
   onUpdateVote: jest.fn(),
 };
 
-jest.mock('../common/EntityDescription/Description', () => {
-  return jest.fn().mockReturnValue(<p>Description Component</p>);
-});
-jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
+jest.mock(
+  `../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component`,
+  () => ({
+    ActivityFeedTab: jest.fn().mockReturnValue(<p>testActivityFeedTab</p>),
+  })
+);
+
+jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+}));
+
+jest.mock('../Entity/EntityRightPanel/EntityRightPanel', () => {
+  return jest.fn().mockReturnValue(<p>EntityRightPanel</p>);
 });
 
-jest.mock('../FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn().mockReturnValue({
+    currentUser: {
+      id: 'testUser',
+    },
+  }),
+}));
+
+jest.mock('../../components/Execution/Execution.component', () => {
+  return jest.fn().mockImplementation(() => <p>Executions</p>);
 });
 
-jest.mock('../Entity/EntityLineage/EntityLineage.component', () => {
+jest.mock('../../components/Table/ColumnFilter/ColumnFilter.component', () => {
+  return jest.fn().mockImplementation(() => <p>ColumnFilter</p>);
+});
+
+jest.mock(
+  '../../components/TableDescription/TableDescription.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>TableDescription</p>);
+  }
+);
+
+jest.mock(
+  `../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component`,
+  () => ({
+    DataAssetsHeader: jest.fn().mockReturnValue(<p>testDataAssetsHeader</p>),
+  })
+);
+
+jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
+  ModalWithMarkdownEditor: jest
+    .fn()
+    .mockReturnValue(<p>testModalWithMarkdownEditor</p>),
+}));
+
+jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
+});
+
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    permissions: DEFAULT_ENTITY_PERMISSION,
+  }),
+}));
+
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+  return jest.fn().mockReturnValue(<p>DescriptionV1</p>);
+});
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({ tab: 'tasks' })),
+  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+}));
+
+jest.mock('../LineageProvider/LineageProvider', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock('../Lineage/Lineage.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);
@@ -157,6 +158,19 @@ jest.mock('../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../utils/FeedUtils', () => ({
+  getEntityFieldThreadCounts: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../utils/TableTags/TableTags.utils', () => ({
+  getAllTags: jest.fn().mockReturnValue([]),
+  searchTagInData: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('testEntityName'),
+}));
+
 jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
@@ -164,25 +178,50 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
-  getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
-  getUserTeams: () => mockUserTeam,
-  getHtmlForNonAdminAction: jest.fn(),
-  getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
-  getEntityName: jest.fn().mockReturnValue('entityName'),
-  getOwnerValue: jest.fn().mockReturnValue('Owner'),
-  getFeedCounts: jest.fn(),
-  getCountBadge: jest.fn().mockImplementation((count) => <p>{count}</p>),
+  getFeedCounts: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
-  getTagsHierarchy: jest.fn().mockReturnValue([]),
+  createTagObject: jest.fn().mockReturnValue([]),
+  updateTierTag: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/GlossaryUtils', () => ({
-  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
-  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  () => ({
+    ActivityThreadPanel: jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>),
+  })
+);
+
+jest.mock('../AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((component) => component),
+}));
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockReturnValue({
+      feedCount: 0,
+      entityFieldThreadCount: [],
+      entityFieldTaskCount: [],
+      createThread: jest.fn(),
+      postFeedHandler: jest.fn(),
+      deletePostHandler: jest.fn(),
+      updateThreadHandler: jest.fn(),
+      fetchFeedHandler: jest.fn(),
+    }),
+  })
+);
+
+jest.mock('../../utils/TableUtils', () => ({
+  getFilterIcon: jest.fn().mockReturnValue(<p>FilterIcon</p>),
+  getTagsWithoutTier: jest.fn().mockReturnValue([]),
+  getTierTags: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../Execution/Execution.component', () => {
@@ -196,7 +235,7 @@ jest.mock('../../components/TableTags/TableTags.component', () =>
     ))
 );
 
-describe.skip('Test PipelineDetails component', () => {
+describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,
@@ -253,7 +292,7 @@ describe.skip('Test PipelineDetails component', () => {
 
     const dagButton = getByText(switchContainer, 'Dag');
 
-    await act(() => {
+    await act(async () => {
       fireEvent.click(dagButton);
     });
 
@@ -261,6 +300,8 @@ describe.skip('Test PipelineDetails component', () => {
   });
 
   it('Check if active tab is activity feed', async () => {
+    (useParams as jest.Mock).mockReturnValue({ tab: 'activity_feed' });
+
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,
       {
@@ -268,21 +309,13 @@ describe.skip('Test PipelineDetails component', () => {
       }
     );
 
-    const activityFeedTab = await findByText(
-      container,
-      'label.activity-feed-and-task-plural'
-    );
-
-    await act(async () => {
-      fireEvent.click(activityFeedTab);
-    });
-
-    const activityFeedList = await findByText(container, /ActivityFeedList/i);
+    const activityFeedList = await findByText(container, 'testActivityFeedTab');
 
     expect(activityFeedList).toBeInTheDocument();
   });
 
   it('should render execution tab', async () => {
+    (useParams as jest.Mock).mockReturnValue({ tab: EntityTabs.EXECUTIONS });
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,
       {
@@ -290,37 +323,28 @@ describe.skip('Test PipelineDetails component', () => {
       }
     );
 
-    const activityFeedTab = await findByText(
-      container,
-      'label.execution-plural'
-    );
-
-    await act(async () => {
-      fireEvent.click(activityFeedTab);
-    });
     const executions = await findByText(container, 'Executions');
 
     expect(executions).toBeInTheDocument();
   });
 
   it('Check if active tab is lineage', async () => {
+    (useParams as jest.Mock).mockReturnValue({ tab: EntityTabs.LINEAGE });
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const activityFeedTab = await findByText(container, 'label.lineage');
-
-    await act(async () => {
-      fireEvent.click(activityFeedTab);
-    });
     const lineage = await findByTestId(container, 'lineage-details');
 
     expect(lineage).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,
       {
@@ -328,41 +352,11 @@ describe.skip('Test PipelineDetails component', () => {
       }
     );
 
-    const activityFeedTab = await findByText(
-      container,
-      'label.custom-property-plural'
-    );
-
-    await act(async () => {
-      fireEvent.click(activityFeedTab);
-    });
     const customProperties = await findByText(
       container,
       'CustomPropertyTable.component'
     );
 
     expect(customProperties).toBeInTheDocument();
-  });
-
-  it('Should create an observer if IntersectionObserver is available', async () => {
-    const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const activityFeedTab = await findByText(
-      container,
-      'label.activity-feed-and-task-plural'
-    );
-
-    await act(async () => {
-      fireEvent.click(activityFeedTab);
-    });
-
-    const obServerElement = await findByTestId(container, 'observer-element');
-
-    expect(obServerElement).toBeInTheDocument();
   });
 });

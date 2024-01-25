@@ -14,9 +14,9 @@ import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   DATA_ASSETS,
   INVALID_NAMES,
@@ -76,7 +76,7 @@ const createCustomMetric = ({
   interceptURL('PUT', '/api/v1/tables/*/customMetric', 'createCustomMetric');
   interceptURL(
     'GET',
-    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
     'getCustomMetric'
   );
   visitEntityDetailsPage({
@@ -96,7 +96,7 @@ const createCustomMetric = ({
   cy.get('[data-testid="custom-metric"]').click();
 
   // validate redirection and cancel button
-  cy.get('[data-testid="heading"]').should('be.visible');
+  cy.get('[data-testid="heading"]').first().should('be.visible');
   cy.get(
     `[data-testid=${
       isColumnMetric
@@ -108,6 +108,7 @@ const createCustomMetric = ({
   verifyResponseStatusCode('@getCustomMetric', 200);
   cy.url().should('include', 'profiler');
   cy.get('[data-testid="heading"]')
+    .first()
     .invoke('text')
     .should('equal', isColumnMetric ? 'Column Profile' : 'Table Profile');
 
@@ -133,6 +134,7 @@ const createCustomMetric = ({
   // verify the created custom metric
   cy.url().should('include', 'profiler');
   cy.get('[data-testid="heading"]')
+    .first()
     .invoke('text')
     .should('equal', isColumnMetric ? 'Column Profile' : 'Table Profile');
   cy.get(`[data-testid="${metric.name}-custom-metrics"]`)
@@ -149,7 +151,7 @@ const editCustomMetric = ({
 }) => {
   interceptURL(
     'GET',
-    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
     'getCustomMetric'
   );
   interceptURL('PUT', '/api/v1/tables/*/customMetric', 'editCustomMetric');
@@ -196,7 +198,7 @@ const deleteCustomMetric = ({
 }) => {
   interceptURL(
     'GET',
-    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
     'getCustomMetric'
   );
   interceptURL(
@@ -224,11 +226,11 @@ const deleteCustomMetric = ({
     .should('be.visible');
   cy.get(`[data-testid="${metric.name}-custom-metrics-menu"]`).click();
   cy.get(`[data-menu-id*="delete"]`).click();
-  cy.get('.ant-modal-header').should('contain', `Delete ${metric.name}`);
+  cy.get('.ant-modal-header').should('contain', metric.name);
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
   cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@deleteCustomMetric', 200);
-  toastNotification(`${metric.name} deleted successfully!`);
+  toastNotification(`"${metric.name}" deleted successfully!`);
 };
 
 describe('Custom Metric', () => {

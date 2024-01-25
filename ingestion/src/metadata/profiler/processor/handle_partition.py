@@ -112,8 +112,8 @@ class partition_filter_handler:
                 )
                 if self.build_sample:
                     return (
-                        _self.client.query(
-                            _self.table,
+                        _self._base_sample_query(
+                            kwargs.get("column"),
                             (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                         )
                         .filter(partition_filter)

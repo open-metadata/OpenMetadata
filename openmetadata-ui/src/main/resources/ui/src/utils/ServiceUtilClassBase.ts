@@ -73,9 +73,11 @@ import {
   SAGEMAKER,
   SALESFORCE,
   SAP_HANA,
+  SAS,
   SCIKIT,
   SINGLESTORE,
   SNOWFLAKE,
+  SPARK,
   SPLINE,
   SQLITE,
   SUPERSET,
@@ -244,6 +246,9 @@ class ServiceUtilClassBase {
       case DatabaseServiceType.MongoDB:
         return MONGODB;
 
+      case DatabaseServiceType.SAS:
+        return SAS;
+
       case DatabaseServiceType.Couchbase:
         return COUCHBASE;
 
@@ -306,6 +311,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.GluePipeline:
         return GLUE;
+
+      case PipelineServiceType.Spark:
+        return SPARK;
 
       case PipelineServiceType.Spline:
         return SPLINE;

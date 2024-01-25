@@ -59,3 +59,12 @@ class PandasValidatorMixin:
             return metric_fn(runner)
         except Exception as exc:
             raise RuntimeError(exc)
+
+    def _compute_row_count(self, runner, column: SQALikeColumn, **kwargs):
+        """compute row count
+
+        Args:
+            runner (List[DataFrame]): runner to run the test case against)
+            column (SQALikeColumn): column to compute row count for
+        """
+        return self.run_dataframe_results(runner, Metrics.ROW_COUNT, column, **kwargs)

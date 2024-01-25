@@ -29,7 +29,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.entity.data.database import Database, EntityName
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
@@ -49,7 +49,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
-from metadata.generated.schema.type.basic import SourceUrl
+from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -64,6 +64,7 @@ from metadata.ingestion.source.database.bigquery.models import (
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
 )
@@ -71,6 +72,9 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import (
@@ -83,11 +87,8 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
-from metadata.utils.tag_utils import (
-    get_ometa_tag_and_classification,
-    get_tag_label,
-    get_tag_labels,
-)
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
+from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
@@ -195,7 +196,9 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 
 
-class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class BigquerySource(
+    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -207,12 +210,14 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         # as per service connection config, which would result in an error.
         self.test_connection = lambda: None
         super().__init__(config, metadata)
-        self.temp_credentials = None
         self.client = None
+        # Used to delete temp json file created while initializing bigquery client
+        self.temp_credentials_file_path = []
         # Upon invoking the set_project_id method, we retrieve a comprehensive
         # list of all project IDs. Subsequently, after the invokation,
         # we proceed to test the connections for each of these project IDs
         self.project_ids = self.set_project_id()
+        self.life_cycle_query = BIGQUERY_LIFE_CYCLE_QUERY
         self.test_connection = self._test_connection
         self.test_connection()
 
@@ -240,6 +245,8 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
             test_connection_fn(
                 self.metadata, inspector_details.engine, self.service_connection
             )
+            if os.environ[GOOGLE_CREDENTIALS]:
+                self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -284,6 +291,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
                         classification_description="",
+                        include_tags=self.source_config.includeTags,
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.database]
@@ -303,6 +311,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
                         classification_description="",
+                        include_tags=self.source_config.includeTags,
                     )
         except Exception as exc:
             yield Either(
@@ -356,18 +365,18 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                 schema_name=schema_name,
             ),
         )
-
-        dataset_obj = self.client.get_dataset(schema_name)
-        if dataset_obj.labels:
-            database_schema_request_obj.tags = []
-            for label_classification, label_tag_name in dataset_obj.labels.items():
-                database_schema_request_obj.tags.append(
-                    get_tag_label(
+        if self.source_config.includeTags:
+            dataset_obj = self.client.get_dataset(schema_name)
+            if dataset_obj.labels:
+                database_schema_request_obj.tags = []
+                for label_classification, label_tag_name in dataset_obj.labels.items():
+                    tag_label = get_tag_label(
                         metadata=self.metadata,
                         tag_name=label_tag_name,
                         classification_name=label_classification,
                     )
-                )
+                    if tag_label:
+                        database_schema_request_obj.tags.append(tag_label)
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
@@ -376,7 +385,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         return self.client.get_table(bq_table_fqn)
 
-    def yield_table_tag_details(self, table_name_and_type: Tuple[str, str]):
+    def yield_table_tags(self, table_name_and_type: Tuple[str, str]):
         table_name, _ = table_name_and_type
         table_obj = self.get_table_obj(table_name=table_name)
         if table_obj.labels:
@@ -386,6 +395,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                     classification_name=key,
                     tag_description="Bigquery Table Label",
                     classification_description="",
+                    include_tags=self.source_config.includeTags,
                 )
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
@@ -414,7 +424,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         is properly informed
         """
         if column.get("policy_tags"):
-            return get_tag_labels(
+            return fetch_tag_labels_om(
                 metadata=self.metadata,
                 tags=[column["policy_tags"]],
                 classification_name=column["taxonomy"],
@@ -426,7 +436,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         inspector_details = get_inspector_details(
             database_name=database_name, service_connection=self.service_connection
         )
-
+        self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
@@ -519,15 +529,14 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
 
     def close(self):
         super().close()
-        if self.temp_credentials:
-            os.unlink(self.temp_credentials)
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ) and (GOOGLE_CREDENTIALS in os.environ):
-            tmp_credentials_file = os.environ[GOOGLE_CREDENTIALS]
-            os.remove(tmp_credentials_file)
             del os.environ[GOOGLE_CREDENTIALS]
+            for temp_file_path in self.temp_credentials_file_path:
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
 
     def _get_source_url(
         self,

@@ -16,8 +16,9 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './entity.less';
 
@@ -61,14 +62,12 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
               return (
                 <div
                   className="right-panel-list-item flex items-center justify-between"
-                  data-testid={`${testIDText}-${getEntityName(
-                    item as unknown as EntityReference
-                  )}`}
+                  data-testid={`${testIDText}-${item.name}`}
                   key={item.id}>
                   <div className="flex items-center">
                     <Link
                       className="font-medium"
-                      to={getEntityLink(
+                      to={entityUtilClassBase.getEntityLink(
                         item.type || '',
                         item.fullyQualifiedName ?? ''
                       )}>

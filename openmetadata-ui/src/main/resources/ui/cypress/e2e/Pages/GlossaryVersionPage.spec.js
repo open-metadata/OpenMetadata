@@ -13,18 +13,15 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import {
-  addOwner,
-  interceptURL,
-  removeOwner,
-  verifyResponseStatusCode,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   addReviewer,
   deleteGlossary,
   removeReviewer,
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
+import { addOwner, removeOwner } from '../../common/Utils/Owner';
+import { GLOSSARY_OWNER_LINK_TEST_ID } from '../../constants/glossary.constant';
 import {
   GLOSSARY_FOR_VERSION_TEST,
   GLOSSARY_PATCH_PAYLOAD,
@@ -143,7 +140,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaries', true, true);
+    addOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
 
     interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
     interceptURL(
@@ -157,7 +154,9 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-added"]')
+    cy.get(
+      '[data-testid="glossary-right-panel-owner-link"] [data-testid="diff-added"]'
+    )
       .scrollIntoView()
       .should('be.visible');
 
@@ -166,7 +165,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getGlossaryDetails', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-    removeOwner('glossaries', true);
+    removeOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
 
     addReviewer(REVIEWER, 'glossaries');
 
@@ -270,7 +269,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, 'glossaryTerms', true, true);
+    addOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
 
     interceptURL('GET', `/api/v1/glossaryTerms/*/versions`, 'getVersionsList');
     interceptURL(
@@ -284,7 +283,9 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-added"]')
+    cy.get(
+      '[data-testid="glossary-right-panel-owner-link"] [data-testid="diff-added"]'
+    )
       .scrollIntoView()
       .should('be.visible');
 
@@ -293,7 +294,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
-    removeOwner('glossaryTerms', true);
+    removeOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
 
     addReviewer(REVIEWER, 'glossaryTerms');
 

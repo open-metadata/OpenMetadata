@@ -11,6 +11,18 @@
       "mandatory": true
     },
     {
+      "name": "ValidateApiVersion",
+      "description": "Validate that the entered api version matches with the server api version",
+      "errorMessage": "Failed to match api versions, please validate the entered version",
+      "mandatory": false
+    },
+    {
+      "name": "ValidateSiteUrl",
+      "description": "Validate that the entered site url is in a correct format",
+      "errorMessage": "Failed to validate site url, please validate the entered value",
+      "mandatory": false
+    },
+    {
       "name": "GetWorkbooks",
       "description": "List all the workbooks available to the user. We will ingest Workbooks as Dashboards.",
       "errorMessage": "Failed to fetch workbooks, please validate if user has access to fetch workbooks",

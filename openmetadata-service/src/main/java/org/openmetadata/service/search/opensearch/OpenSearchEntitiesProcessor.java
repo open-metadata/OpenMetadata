@@ -78,7 +78,9 @@ public class OpenSearchEntitiesProcessor
   public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     UpdateRequest updateRequest =
-        new UpdateRequest(indexMapping.getIndexName(), entity.getId().toString());
+        new UpdateRequest(
+            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
+            entity.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(
             Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity)).buildESDoc()),

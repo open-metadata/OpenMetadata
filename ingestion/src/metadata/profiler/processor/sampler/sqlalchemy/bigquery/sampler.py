@@ -14,6 +14,7 @@ for the profiler
 """
 from typing import Dict, Optional
 
+from sqlalchemy import Column
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
@@ -50,8 +51,35 @@ class BigQuerySampler(SQASampler):
         )
         self.table_type: TableType = table_type
 
+    def _base_sample_query(self, column: Optional[Column], label=None):
+        """Base query for sampling
+
+        Args:
+            column (Optional[Column]): if computing a column metric only sample for the column
+            label (_type_, optional):
+
+        Returns:
+        """
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy_bigquery import STRUCT
+
+        if column is not None:
+            column_parts = column.name.split(".")
+            if len(column_parts) > 1:
+                # for struct columns (e.g. `foo.bar`) we need to create a new column corresponding to
+                # the struct (e.g. `foo`) and then use that in the sample query as the column that
+                # will be query is `foo.bar`.
+                # e.g. WITH sample AS (SELECT `foo` FROM table) SELECT `foo.bar`
+                # FROM sample TABLESAMPLE SYSTEM (n PERCENT)
+                column = Column(column_parts[0], STRUCT)
+                # pylint: disable=protected-access
+                column._set_parent(self.table.__table__)
+                # pylint: enable=protected-access
+
+        return super()._base_sample_query(column, label=label)
+
     @partition_filter_handler(build_sample=True)
-    def get_sample_query(self) -> Query:
+    def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
         if (
@@ -59,11 +87,11 @@ class BigQuerySampler(SQASampler):
             and self.table_type != TableType.View
         ):
             return (
-                self._base_sample_query()
+                self._base_sample_query(column)
                 .suffix_with(
                     f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
                 )
                 .cte(f"{self.table.__tablename__}_sample")
             )
 
-        return super().get_sample_query()
+        return super().get_sample_query(column=column)
