@@ -18,7 +18,9 @@ import { isEmpty, isUndefined, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolderIngestion from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import { DISABLED } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -27,6 +29,7 @@ import {
   IngestionServicePermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import ButtonSkeleton from '../Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import AddIngestionButton from './AddIngestionButton.component';
 import { IngestionProps, SelectedRowDetails } from './ingestion.interface';
 import IngestionListTable from './IngestionListTable.component';
@@ -55,6 +58,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 }: IngestionProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { isFetchingStatus, platform } = useAirflowStatus();
   const [searchText, setSearchText] = useState('');
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
@@ -144,9 +148,47 @@ const Ingestion: React.FC<IngestionProps> = ({
     () =>
       isRequiredDetailsAvailable &&
       permissions.EditAll &&
+      displayAddIngestionButton &&
+      platform !== DISABLED,
+    [
+      isRequiredDetailsAvailable,
+      permissions,
       displayAddIngestionButton,
-    [isRequiredDetailsAvailable, permissions, displayAddIngestionButton]
+      platform,
+    ]
   );
+
+  const renderAddIngestionButton = useMemo(() => {
+    if (isFetchingStatus) {
+      return <ButtonSkeleton size="default" />;
+    }
+
+    if (showAddIngestionButton) {
+      return (
+        <AddIngestionButton
+          ingestionData={ingestionData}
+          ingestionList={ingestionList}
+          permissions={permissions}
+          pipelineType={pipelineType}
+          serviceCategory={serviceCategory}
+          serviceDetails={serviceDetails}
+          serviceName={serviceName}
+        />
+      );
+    }
+
+    return null;
+  }, [
+    isFetchingStatus,
+    showAddIngestionButton,
+    ingestionData,
+    ingestionList,
+    permissions,
+    pipelineType,
+    serviceCategory,
+    serviceDetails,
+    serviceName,
+  ]);
 
   useEffect(() => {
     getSearchedIngestions();
@@ -184,19 +226,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             ) : null}
           </div>
-          <div className="relative">
-            {showAddIngestionButton && (
-              <AddIngestionButton
-                ingestionData={ingestionData}
-                ingestionList={ingestionList}
-                permissions={permissions}
-                pipelineType={pipelineType}
-                serviceCategory={serviceCategory}
-                serviceDetails={serviceDetails}
-                serviceName={serviceName}
-              />
-            )}
-          </div>
+          <div className="relative">{renderAddIngestionButton}</div>
         </Col>
         <Col span={24}>
           <IngestionListTable
