@@ -20,8 +20,8 @@ import TableClass from './../../common/Entities/TableClass';
 const entities = [
   new DatabaseClass(),
   new DatabaseSchemaClass(),
-  new StoreProcedureClass(),
   new TableClass(),
+  new StoreProcedureClass(),
 ] as const;
 
 const OWNER1 = 'Aaron Johnson';

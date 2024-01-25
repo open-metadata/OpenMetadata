@@ -18,9 +18,9 @@ import {
   interceptURL,
   scheduleIngestion,
   verifyResponseStatusCode,
-  visitServiceDetailsPage,
 } from '../common';
 import ServiceBaseClass from '../Entities/ServiceBaseClass';
+import { visitServiceDetailsPage } from '../serviceUtils';
 import { visitEntityDetailsPage } from '../Utils/Entity';
 import { Services } from '../Utils/Services';
 
