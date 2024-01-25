@@ -1577,6 +1577,7 @@
     "permanently-delete-metadata-and-dependents": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו, כמו גם את המטה-דאטה של {{dependents}} מ-OpenMetadata לצמיתות.",
     "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "תיאור תהליך הטעינה.",
+    "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
     "pipeline-scheduler-message": "מתזמן השקת המעבד לא מסוגל להגיב. יש לפנות לתמיכת Collate. תודה.",
     "pipeline-trigger-failed-message": "נכשל להפעיל את תהליכי הטעינה!",
     "pipeline-trigger-success-message": "תהליך הטעינה הופעל בהצלחה!",

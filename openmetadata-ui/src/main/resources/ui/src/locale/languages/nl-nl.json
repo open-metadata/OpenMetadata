@@ -1577,6 +1577,7 @@
     "permanently-delete-metadata-and-dependents": "Het permanent verwijderen van deze {{entityName}} verwijdert de metadata ervan, evenals de metadata van {{dependents}} permanent uit OpenMetadata.",
     "personal-access-token": "Persoonlijke toegangstoken",
     "pipeline-description-message": "Beschrijving van de pipeline.",
+    "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
     "pipeline-scheduler-message": "De Ingestion Scheduler kan niet reageren. Neem contact op met Collate-ondersteuning. Dank je.",
     "pipeline-trigger-failed-message": "Mislukt om de pipeline te activeren!",
     "pipeline-trigger-success-message": "Pipeline succesvol geactiveerd!",
