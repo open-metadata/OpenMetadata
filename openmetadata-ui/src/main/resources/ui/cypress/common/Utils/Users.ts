@@ -191,7 +191,7 @@ export const revokeToken = () => {
   cy.get('[data-testid="revoke-button"]').should('not.exist');
 };
 
-export const updateExpiration = (expiry: number) => {
+export const updateExpiration = (expiry: number | string) => {
   cy.get('[data-testid="dropdown-profile"]').click();
   cy.get('[data-testid="user-name"] > .ant-typography').click({
     force: true,
@@ -250,12 +250,10 @@ export const editTeams = (teamName: string) => {
   cy.get('.filter-node > .ant-select-tree-node-content-wrapper').click();
   cy.get('[data-testid="inline-save-btn"]').click({ timeout: 10000 });
   verifyResponseStatusCode('@updateTeams', 200);
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
+
   cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
-  cy.get(`[data-testid="${teamName}"]`)
-    .should('exist')
-    .scrollIntoView()
-    .and('be.visible');
+  cy.get('.page-layout-v1-vertical-scroll').scrollTo(0, 0);
+  cy.get(`[data-testid="${teamName}"]`).should('be.visible');
 };
 
 export const handleUserUpdateDetails = (
@@ -376,4 +374,16 @@ export const editRole = (username: string, role: string) => {
   verifyResponseStatusCode('@updateRole', 200);
   cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
   cy.get(`[data-testid=chip-container]`).should('contain', role);
+};
+
+export const checkNoPermissionPlaceholder = (permission = false) => {
+  cy.get('[data-testid="permission-error-placeholder"]').should(
+    permission ? 'not.exist' : 'be.visible'
+  );
+  if (!permission) {
+    cy.get('[data-testid="permission-error-placeholder"]').should(
+      'contain',
+      'You don’t have access, please check with the admin to get permissions'
+    );
+  }
 };
