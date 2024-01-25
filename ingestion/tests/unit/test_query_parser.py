@@ -329,3 +329,31 @@ class QueryParserTests(TestCase):
             parser.column_lineage,
             expected_lineage,
         )
+
+    def test_copy_query(self):
+        """
+        Validate Copy query is skipped appropriately without any errors
+        """
+        query = """COPY MY_TABLE col1,col2,col3
+        FROM 's3://bucket/schema/table.csv'  
+        WITH CREDENTIALS ''
+        REGION 'US-east-2'
+        """
+        expected_lineage = []
+        expected_tables = set()
+
+        parser = LineageParser(query)
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, expected_tables)
+        self.assertEqual(
+            parser.column_lineage,
+            expected_lineage,
+        )
+
+        parser = LineageParser(query, Dialect.MYSQL)
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, expected_tables)
+        self.assertEqual(
+            parser.column_lineage,
+            expected_lineage,
+        )
