@@ -23,49 +23,7 @@
       "default": "Iceberg"
     },
     "catalog": {
-      "title": "Catalog",
-      "description": "Iceberg Catalog configuration.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Catalog Name.",
-          "type": "string"
-        },
-        "connection": {
-          "title": "Connection",
-          "description": "Catalog connection configuration, depending on your catalog type.",
-          "oneOf": [
-            {
-              "$ref": "./iceberg/hiveCatalogConnection.json"
-            },
-            {
-              "$ref": "./iceberg/restCatalogConnection.json"
-            },
-            {
-              "$ref": "./iceberg/glueCatalogConnection.json"
-            },
-            {
-              "$ref": "./iceberg/dynamoDbCatalogConnection.json"
-            }
-          ]
-        },
-        "databaseName": {
-          "title": "Database Name",
-          "description": "Custom Database Name for your Iceberg Service. If not set it will be 'default'.",
-          "type": "string"
-        },
-        "warehouseLocation": {
-          "title": "Warehouse Location",
-          "description": "Warehouse Location. Used to specify a custom warehouse location if needed.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "name",
-        "connection"
-      ]
+      "$ref": "./iceberg/icebergCatalog.json"
     },
     "ownershipProperty": {
       "title": "Ownership Property",

@@ -61,7 +61,7 @@
       }
     },
     "fileSystem": {
-      "$ref": "./common.json#/definitions/fileSystem"
+      "$ref": "./icebergFileSystem.json"
     }
   },
   "additionalProperties": false,
