@@ -252,13 +252,9 @@ const AddNotificationPage = () => {
 
               <Col span={24}>
                 <Typography.Title level={5}>
-                  {isEditMode
-                    ? t('label.edit-entity', {
-                        entity: t('label.alert-plural'),
-                      })
-                    : t('label.create-entity', {
-                        entity: t('label.alert-plural'),
-                      })}
+                  {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
+                    entity: t('label.alert'),
+                  })}
                 </Typography.Title>
                 <Typography.Text>
                   {t('message.alerts-description')}

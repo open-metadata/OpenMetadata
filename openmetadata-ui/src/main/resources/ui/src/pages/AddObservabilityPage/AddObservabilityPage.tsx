@@ -249,8 +249,8 @@ function AddObservabilityPage() {
 
               <Col span={24}>
                 <Typography.Title level={5}>
-                  {t(`label.${fqn ? 'edit' : 'create'}-entity`, {
-                    entity: t('label.observability'),
+                  {t(`label.${fqn ? 'edit' : 'add'}-entity`, {
+                    entity: t('label.alert'),
                   })}
                 </Typography.Title>
                 <Typography.Text>
