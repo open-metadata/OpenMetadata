@@ -215,6 +215,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     sourceUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
+    owner=EXPECTED_USER,
 )
 
 EXPECTED_CHART = CreateChartRequest(
