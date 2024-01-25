@@ -209,9 +209,21 @@ function AddObservabilityPage() {
     [filterResources, selectedTrigger]
   );
 
+  const supportedActions = useMemo(
+    () =>
+      filterResources.find((resource) => resource.name === selectedTrigger)
+        ?.supportedActions,
+    [filterResources, selectedTrigger]
+  );
+
   const shouldShowFiltersSection = useMemo(
     () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
     [selectedTrigger, supportedFilters]
+  );
+
+  const shouldShowActionsSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedActions) : true),
+    [selectedTrigger, supportedActions]
   );
 
   if (fetching) {
@@ -295,13 +307,13 @@ function AddObservabilityPage() {
                         />
                       </Col>
                     )}
-                    <Col span={24}>
-                      <ObservabilityFormActionItem
-                        filterResources={filterResources}
-                        heading={t('label.action-plural')}
-                        subHeading={t('message.alerts-action-description')}
-                      />
-                    </Col>
+                    {shouldShowActionsSection && (
+                      <Col span={24}>
+                        <ObservabilityFormActionItem
+                          supportedActions={supportedActions}
+                        />
+                      </Col>
+                    )}
                     <Form.Item
                       hidden
                       initialValue={AlertType.Observability}

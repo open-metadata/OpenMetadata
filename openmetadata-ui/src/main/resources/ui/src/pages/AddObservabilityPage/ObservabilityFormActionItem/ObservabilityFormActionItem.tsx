@@ -44,9 +44,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { ObservabilityFormActionItemProps } from './ObservabilityFormActionItem.interface';
 
 function ObservabilityFormActionItem({
-  heading,
-  subHeading,
-  filterResources,
+  supportedActions,
 }: Readonly<ObservabilityFormActionItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
@@ -56,13 +54,6 @@ function ObservabilityFormActionItem({
   const [triggerValue] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
-
-  const supportedActions = useMemo(
-    () =>
-      filterResources.find((resource) => resource.name === triggerValue)
-        ?.supportedActions,
-    [filterResources, triggerValue]
-  );
 
   const searchEntity = useCallback(
     async (search: string, searchIndex: SearchIndex) => {
@@ -334,11 +325,13 @@ function ObservabilityFormActionItem({
     <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
+          <Typography.Text className="font-medium">
+            {t('label.action-plural')}
+          </Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
+            {t('message.alerts-action-description')}
           </Typography.Text>
         </Col>
         <Col span={24}>
