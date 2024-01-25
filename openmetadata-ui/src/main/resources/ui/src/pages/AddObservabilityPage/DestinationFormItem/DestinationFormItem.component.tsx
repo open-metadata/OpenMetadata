@@ -401,7 +401,7 @@ function DestinationFormItem({
                                   subscriptionType && (
                                     <Alert
                                       closable
-                                      className="m-t-xs"
+                                      className="m-t-sm"
                                       message={
                                         <Typography.Text className="font-medium text-sm">
                                           {t(

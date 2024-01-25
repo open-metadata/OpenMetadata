@@ -18,14 +18,17 @@ import { isEmpty, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
+import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
   EventFilterRule,
@@ -41,7 +44,6 @@ import {
   getResourceFunctions,
   updateAlert,
 } from '../../rest/alertsAPI';
-import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
@@ -63,6 +65,26 @@ const AddNotificationPage = () => {
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<EventSubscription>();
+
+  const breadcrumb = useMemo(
+    () => [
+      {
+        name: t('label.setting-plural'),
+        url: ROUTES.SETTINGS,
+      },
+      {
+        name: t('label.notification-plural'),
+        url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
+      },
+      {
+        name: fqn
+          ? t('label.edit-entity', { entity: t('label.alert') })
+          : t('label.create-entity', { entity: t('label.alert') }),
+        url: '',
+      },
+    ],
+    [fqn]
+  );
 
   const fetchAlert = async () => {
     try {
@@ -189,114 +211,153 @@ const AddNotificationPage = () => {
     }
   };
 
+  const [selectedTrigger] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
+
+  const supportedFilters = useMemo(
+    () =>
+      entityFunctions.find((resource) => resource.name === selectedTrigger)
+        ?.supportedFilters,
+    [entityFunctions, selectedTrigger]
+  );
+
+  const shouldShowFiltersSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
+    [selectedTrigger, supportedFilters]
+  );
+
   return (
-    <PageLayoutV1 pageTitle={getEntityName(alert)}>
-      <Row className="page-container" gutter={[16, 16]}>
-        <Col span={24}>
-          <Typography.Title level={5}>
-            {isEditMode
-              ? t('label.edit-entity', { entity: t('label.alert-plural') })
-              : t('label.create-entity', { entity: t('label.alert-plural') })}
-          </Typography.Title>
-          <Typography.Text>{t('message.alerts-description')}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Form<EventSubscription>
-            className="alerts-notification-form"
-            form={form}
-            onFinish={handleSave}>
-            {loadingCount > 0 ? (
-              <Skeleton title paragraph={{ rows: 8 }} />
-            ) : (
-              <Row gutter={[20, 20]}>
-                <Col span={24}>
-                  <Form.Item
-                    label={t('label.name')}
-                    labelCol={{ span: 24 }}
-                    name="name"
-                    rules={[
-                      { required: true },
-                      {
-                        pattern: ENTITY_NAME_REGEX,
-                        message: t('message.entity-name-validation'),
-                      },
-                    ]}>
-                    <Input placeholder={t('label.name')} />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item
-                    label={t('label.description')}
-                    labelCol={{ span: 24 }}
-                    name="description"
-                    trigger="onTextChange"
-                    valuePropName="initialValue">
-                    <RichTextEditor
-                      data-testid="description"
-                      height="200px"
-                      initialValue=""
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <ObservabilityFormTriggerItem
-                    buttonLabel={t('label.add-entity', {
-                      entity: t('label.trigger'),
-                    })}
-                    filterResources={entityFunctions}
-                    heading={t('label.trigger')}
-                    subHeading={t('message.alerts-trigger-description')}
-                  />
-                </Col>
-                <Col span={24}>
-                  <ObservabilityFormFiltersItem
-                    filterResources={entityFunctions}
-                    heading={t('label.filter-plural')}
-                    subHeading={t('message.alerts-filter-description')}
-                  />
-                </Col>
-                <Form.Item
-                  hidden
-                  initialValue={AlertType.Notification}
-                  name="alertType"
-                />
-                <Form.Item
-                  hidden
-                  initialValue={ProviderType.User}
-                  name="provider"
-                />
-                <Col span={24}>
-                  <DestinationFormItem
-                    buttonLabel={t('label.add-entity', {
-                      entity: t('label.destination'),
-                    })}
-                    heading={t('label.destination')}
-                    subHeading={t('message.alerts-destination-description')}
-                  />
-                </Col>
-                <Col flex="auto" />
-                <Col flex="300px" pull="right">
-                  <Button
-                    className="m-l-sm float-right"
-                    htmlType="submit"
-                    loading={isButtonLoading}
-                    type="primary">
-                    {t('label.save')}
-                  </Button>
-                  <Button
-                    className="float-right"
-                    onClick={() => history.goBack()}>
-                    {t('label.cancel')}
-                  </Button>
-                </Col>
-              </Row>
-            )}
-          </Form>
-        </Col>
-        <Col span={24} />
-        <Col span={24} />
-      </Row>
-    </PageLayoutV1>
+    <ResizablePanels
+      hideSecondPanel
+      firstPanel={{
+        children: (
+          <div className="alert-page-container">
+            <Row className="page-container" gutter={[16, 16]}>
+              <Col span={24}>
+                <TitleBreadcrumb titleLinks={breadcrumb} />
+              </Col>
+
+              <Col span={24}>
+                <Typography.Title level={5}>
+                  {isEditMode
+                    ? t('label.edit-entity', {
+                        entity: t('label.alert-plural'),
+                      })
+                    : t('label.create-entity', {
+                        entity: t('label.alert-plural'),
+                      })}
+                </Typography.Title>
+                <Typography.Text>
+                  {t('message.alerts-description')}
+                </Typography.Text>
+              </Col>
+              <Col span={24}>
+                <Form<EventSubscription>
+                  className="alerts-notification-form"
+                  form={form}
+                  onFinish={handleSave}>
+                  {loadingCount > 0 ? (
+                    <Skeleton title paragraph={{ rows: 8 }} />
+                  ) : (
+                    <Row gutter={[20, 20]}>
+                      <Col span={24}>
+                        <Form.Item
+                          label={t('label.name')}
+                          labelCol={{ span: 24 }}
+                          name="name"
+                          rules={[
+                            { required: true },
+                            {
+                              pattern: ENTITY_NAME_REGEX,
+                              message: t('message.entity-name-validation'),
+                            },
+                          ]}>
+                          <Input placeholder={t('label.name')} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={24}>
+                        <Form.Item
+                          label={t('label.description')}
+                          labelCol={{ span: 24 }}
+                          name="description"
+                          trigger="onTextChange"
+                          valuePropName="initialValue">
+                          <RichTextEditor
+                            data-testid="description"
+                            height="200px"
+                            initialValue=""
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={24}>
+                        <ObservabilityFormTriggerItem
+                          buttonLabel={t('label.add-entity', {
+                            entity: t('label.trigger'),
+                          })}
+                          filterResources={entityFunctions}
+                          heading={t('label.trigger')}
+                          subHeading={t('message.alerts-trigger-description')}
+                        />
+                      </Col>
+                      {shouldShowFiltersSection && (
+                        <Col span={24}>
+                          <ObservabilityFormFiltersItem
+                            supportedFilters={supportedFilters}
+                          />
+                        </Col>
+                      )}
+                      <Form.Item
+                        hidden
+                        initialValue={AlertType.Notification}
+                        name="alertType"
+                      />
+                      <Form.Item
+                        hidden
+                        initialValue={ProviderType.User}
+                        name="provider"
+                      />
+                      <Col span={24}>
+                        <DestinationFormItem
+                          buttonLabel={t('label.add-entity', {
+                            entity: t('label.destination'),
+                          })}
+                          heading={t('label.destination')}
+                          subHeading={t(
+                            'message.alerts-destination-description'
+                          )}
+                        />
+                      </Col>
+                      <Col flex="auto" />
+                      <Col flex="300px" pull="right">
+                        <Button
+                          className="m-l-sm float-right"
+                          htmlType="submit"
+                          loading={isButtonLoading}
+                          type="primary">
+                          {t('label.save')}
+                        </Button>
+                        <Button
+                          className="float-right"
+                          onClick={() => history.goBack()}>
+                          {t('label.cancel')}
+                        </Button>
+                      </Col>
+                    </Row>
+                  )}
+                </Form>
+              </Col>
+              <Col span={24} />
+              <Col span={24} />
+            </Row>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      secondPanel={{ children: <></>, minWidth: 0 }}
+    />
   );
 };
 
