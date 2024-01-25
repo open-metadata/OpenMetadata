@@ -19,10 +19,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import sqlparse
 from cached_property import cached_property
-from sqllineage import SQLPARSE_DIALECT
-from sqllineage.core.models import Column, Table
-from sqllineage.exceptions import SQLLineageException
-from sqllineage.runner import LineageRunner
+from collate_sqllineage import SQLPARSE_DIALECT
+from collate_sqllineage.core.models import Column, Table
+from collate_sqllineage.exceptions import SQLLineageException
+from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin

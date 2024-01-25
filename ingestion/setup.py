@@ -115,7 +115,7 @@ base_requirements = {
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage>=1.0.4",
+    "collate-sqllineage=~1.3.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "wheel~=0.38.4",
