@@ -120,7 +120,6 @@ class IcebergSource(DatabaseServiceSource):
         Filtering happens here.
         """
         for namespace in self.iceberg.list_namespaces():
-            logger.info("Namespace: %s", namespace)
             namespace_name = namespace_to_str(namespace)
             try:
                 schema_fqn = fqn.build(
@@ -218,13 +217,7 @@ class IcebergSource(DatabaseServiceSource):
                     )
                 )
 
-    def process_owner(self, table_name_and_type: Tuple[str, str]):
-        """
-        Method to process the table owners
-        """
-        pass
-
-    def get_owner_details(self, schema_name: str, table_name: str) -> Optional[EntityReference]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
         owner = get_owner_from_table(self.context.iceberg_table, self.service_connection.ownershipProperty)
         try:
             if owner:
@@ -247,7 +240,7 @@ class IcebergSource(DatabaseServiceSource):
         table_name, table_type = table_name_and_type
         iceberg_table = self.context.iceberg_table
         try:
-            owner = self.get_owner_details(self.context.database_schema, table_name)
+            owner = self.get_owner_ref(table_name)
             table = IcebergTable.from_pyiceberg(
                 table_name,
                 table_type,
