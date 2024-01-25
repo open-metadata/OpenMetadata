@@ -14,7 +14,7 @@
 import { Col, Select, Typography } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import i18next, { t } from 'i18next';
-import { map, startCase } from 'lodash';
+import { isEqual, map, startCase } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -22,6 +22,7 @@ import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import {
   ENTITY_TO_SEARCH_INDEX_MAP,
@@ -31,6 +32,7 @@ import { PipelineState } from '../../generated/entity/services/ingestionPipeline
 import {
   EventFilterRule,
   InputType,
+  SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { EventType } from '../../generated/type/changeEvent';
@@ -197,6 +199,23 @@ const eventTypeOptions = map(EventType, (eventType) => ({
   label: eventType,
   value: eventType,
 }));
+
+// Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
+// Since there is no provision for webhook subscription for users
+export const getSubscriptionTypeOptions = (destinationType: string) => {
+  return EXTERNAL_CATEGORY_OPTIONS.map((item) => {
+    const isEmailType = isEqual(item.value, SubscriptionType.Email);
+    const shouldDisable =
+      isEqual(destinationType, SubscriptionCategory.Users) ||
+      isEqual(destinationType, SubscriptionCategory.Followers) ||
+      isEqual(destinationType, SubscriptionCategory.Admins);
+
+    return {
+      ...item,
+      disabled: !isEmailType && shouldDisable,
+    };
+  });
+};
 
 export const getSupportedFilterOptions = (
   selectedFilters: EventFilterRule[],

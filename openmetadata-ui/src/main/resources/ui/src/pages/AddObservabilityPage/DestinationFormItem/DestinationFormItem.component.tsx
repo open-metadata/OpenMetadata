@@ -30,10 +30,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from 'react-router-dom';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
-import {
-  DESTINATION_SOURCE_ITEMS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../../constants/Alerts.constants';
+import { DESTINATION_SOURCE_ITEMS } from '../../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
@@ -42,7 +39,10 @@ import {
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import { searchData } from '../../../rest/miscAPI';
-import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
+import {
+  getSubscriptionTypeOptions,
+  listLengthValidator,
+} from '../../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   checkIfDestinationIsInternal,
@@ -425,7 +425,9 @@ function DestinationFormItem({
                                 <Select
                                   className="w-full"
                                   data-testid="triggerConfig-type"
-                                  options={EXTERNAL_CATEGORY_OPTIONS}
+                                  options={getSubscriptionTypeOptions(
+                                    destinationType
+                                  )}
                                   placeholder={t('label.select-field', {
                                     field: t('label.destination'),
                                   })}
