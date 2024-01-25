@@ -129,7 +129,9 @@ function ObservabilityAlertDetailsPage({
   );
 
   const handleAlertDelete = useCallback(async () => {
-    history.push(ROUTES.OBSERVABILITY_ALERTS);
+    isNotificationAlert
+      ? history.push(ROUTES.NOTIFICATION_ALERTS)
+      : history.push(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
 
   const getObservabilityDetailsItem = ({
