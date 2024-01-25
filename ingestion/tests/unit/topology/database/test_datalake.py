@@ -520,6 +520,12 @@ mock_datalake_gcs_config = {
     },
 }
 
+mock_multiple_project_id = deepcopy(mock_datalake_gcs_config)
+
+mock_multiple_project_id["source"]["serviceConnection"]["config"]["configSource"][
+    "securityConfig"
+]["gcpConfig"]["projectId"] = ["project_id", "project_id2"]
+
 
 class DatalakeGCSUnitTest(TestCase):
     """
@@ -543,6 +549,21 @@ class DatalakeGCSUnitTest(TestCase):
         self.datalake_source.context.__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
+
+    @patch(
+        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
+    )
+    @patch("google.cloud.storage.Client")
+    @patch("metadata.utils.credentials.validate_private_key")
+    def test_multiple_project_id_implementation(
+        self, validate_private_key, storage_client, test_connection
+    ):
+        self.datalake_source_multiple_project_id = DatalakeSource.create(
+            mock_multiple_project_id["source"],
+            OpenMetadataWorkflowConfig.parse_obj(
+                mock_multiple_project_id
+            ).workflowConfig.openMetadataServerConfig,
+        )
 
     def test_gcs_schema_filer(self):
         self.datalake_source.client.list_buckets = lambda: MOCK_GCS_SCHEMA
