@@ -28,6 +28,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 API_TIMEOUT = 10
+PAGE_SIZE = 100
 QUERIES_PATH = "/sql/history/queries"
 
 
@@ -155,7 +156,6 @@ class DatabricksClient:
         Method returns List all the created jobs in a Databricks Workspace
         """
         try:
-            PAGE_SIZE = 100
             iteration_count = 1
             data = {"limit": PAGE_SIZE, "expand_tasks": True, "offset": 0}
 
