@@ -143,11 +143,14 @@ function AddObservabilityPage() {
 
       if (fqn && !isUndefined(alert)) {
         const { resources, ...otherData } = data;
+
+        // Remove 'destinationType' field from the `destination` as it is used for internal UI use
         const initialDestinations = alert.destinations.map((d) => {
           const { destinationType, ...originalData } = d;
 
           return originalData;
         });
+
         const jsonPatch = compare(
           { ...alert, destinations: initialDestinations },
           {
@@ -160,6 +163,7 @@ function AddObservabilityPage() {
             destinations,
           }
         );
+
         await updateObservabilityAlert(alert.id, jsonPatch);
       } else {
         await createObservabilityAlert({

@@ -657,7 +657,7 @@ class LookerSource(DashboardServiceSource):
                     service_name=self.context.dashboard_service,
                     chart_name=chart,
                 )
-                for chart in self.context.charts
+                for chart in self.context.charts or []
             ],
             # Dashboards are created from the UI directly. They are not linked to a project
             # like LookML assets, but rather just organised in folders.

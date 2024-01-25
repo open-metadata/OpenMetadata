@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -41,7 +42,6 @@ import {
   getObservabilityAlertDetailsPath,
   getObservabilityAlertsEditPath,
 } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ObservabilityAlertsPage = () => {
@@ -172,7 +172,7 @@ const ObservabilityAlertsPage = () => {
                 <Button
                   data-testid={`delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
+                  icon={<DeleteIcon height={16} width={16} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />

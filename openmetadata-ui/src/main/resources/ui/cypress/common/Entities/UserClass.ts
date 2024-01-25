@@ -20,6 +20,7 @@ import { SidebarItem } from '../../constants/Entity.interface';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../../constants/service.constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
+  checkNoPermissionPlaceholder,
   permanentDeleteUser,
   restoreUser,
   softDeleteUser,
@@ -74,6 +75,60 @@ class UsersTestClass {
     cy.get('[data-testid="manage-button"]').should('not.be.exist');
     cy.get('[data-testid="lineage"] > .ant-space-item').click();
     cy.get('[data-testid="edit-lineage"]').should('be.disabled');
+  }
+
+  viewPermissions(permission?: {
+    viewSampleData?: boolean;
+    viewQueries?: boolean;
+    viewTests?: boolean;
+    editDisplayName?: boolean;
+  }) {
+    // check Add domain permission
+    cy.get('[data-testid="add-domain"]').should('not.be.exist');
+    cy.get('[data-testid="edit-displayName-button"]').should(
+      permission?.editDisplayName ? 'be.exist' : 'not.be.exist'
+    );
+    // check edit owner permission
+    cy.get('[data-testid="edit-owner"]').should('not.be.exist');
+    // check edit description permission
+    cy.get('[data-testid="edit-description"]').should('not.be.exist');
+    // check edit tier permission
+    cy.get('[data-testid="edit-tier"]').should('not.be.exist');
+    // check add tags button
+    cy.get(
+      ':nth-child(2) > [data-testid="tags-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+    ).should('not.be.exist');
+    // check add glossary term button
+    cy.get(
+      ':nth-child(3) > [data-testid="glossary-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+    ).should('not.be.exist');
+    // check edit tier permission
+
+    cy.get('[data-testid="manage-button"]').should(
+      permission?.editDisplayName ? 'be.visible' : 'not.be.exist'
+    );
+    if (permission?.editDisplayName) {
+      interceptURL('PATCH', '/api/v1/tables/*', 'updateName');
+      cy.get('[data-testid="manage-button"]').click();
+      cy.get('[data-testid="rename-button"]').click();
+      cy.get('#displayName').clear().type('updated-table-name');
+      cy.get('[data-testid="save-button"]').click();
+      verifyResponseStatusCode('@updateName', 200);
+      cy.get('[data-testid="entity-header-display-name').should(
+        'contain',
+        'updated-table-name'
+      );
+    }
+    cy.get('[data-testid="sample_data"]').click();
+    checkNoPermissionPlaceholder(permission?.viewSampleData);
+    cy.get('[data-testid="table_queries"]').click();
+    checkNoPermissionPlaceholder(permission?.viewQueries);
+    cy.get('[data-testid="profiler"]').click();
+    checkNoPermissionPlaceholder(permission?.viewTests);
+    cy.get('[data-testid="lineage"]').click();
+    cy.get('[data-testid="edit-lineage"]').should('be.disabled');
+    cy.get('[data-testid="custom_properties"]').click();
+    checkNoPermissionPlaceholder();
   }
 
   checkStewardServicesPermissions() {
