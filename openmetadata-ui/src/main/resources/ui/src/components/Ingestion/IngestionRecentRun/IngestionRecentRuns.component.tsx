@@ -11,19 +11,25 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag } from 'antd';
+import { Button, Popover, Skeleton, Space, Tag } from 'antd';
+import Modal from 'antd/lib/modal/Modal';
+import { ColumnType } from 'antd/lib/table';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isEmpty, startCase } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA } from '../../../constants/constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../../../constants/pipeline.constants';
 import {
   IngestionPipeline,
   PipelineStatus,
+  StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../rest/ingestionPipelineAPI';
 import {
@@ -31,6 +37,8 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
+import Table from '../../common/Table/Table';
+import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import './ingestion-recent-run.style.less';
 
 interface Props {
@@ -49,6 +57,80 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState<PipelineStatus>();
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+  const columns: ColumnType<StepSummary>[] = useMemo(
+    () => [
+      {
+        title: t('label.step'),
+        dataIndex: 'name',
+      },
+      {
+        title: t('label.record-plural'),
+        dataIndex: 'records',
+      },
+      {
+        title: t('label.filtered'),
+        dataIndex: 'filtered',
+      },
+      {
+        title: t('label.warning-plural'),
+        dataIndex: 'warnings',
+      },
+      {
+        title: t('label.error-plural'),
+        dataIndex: 'errors',
+      },
+
+      {
+        title: t('label.failure-plural'),
+        dataIndex: 'failures',
+        render: (failures: StepSummary['failures'], record: StepSummary) =>
+          (failures?.length ?? 0) > 0 ? (
+            <Button
+              size="small"
+              type="link"
+              onClick={() => setExpandedKeys([record.name])}>
+              {t('label.log-plural')}
+            </Button>
+          ) : (
+            NO_DATA
+          ),
+      },
+    ],
+    [setExpandedKeys]
+  );
+  const expandable: ExpandableConfig<StepSummary> = useMemo(
+    () => ({
+      expandedRowRender: (record) => {
+        return (
+          record.failures?.map((failure) => (
+            <ConnectionStepCard
+              isTestingConnection={false}
+              key={failure.name}
+              testConnectionStep={{
+                name: failure.name,
+                mandatory: false,
+                description: failure.error,
+              }}
+              testConnectionStepResult={{
+                name: failure.name,
+                passed: false,
+                mandatory: false,
+                message: failure.error,
+                errorLog: failure.stackTrace,
+              }}
+            />
+          )) ?? []
+        );
+      },
+      indentSize: 0,
+      expandIcon: () => null,
+      expandedRowKeys: expandedKeys,
+      rowExpandable: (record) => (record.failures?.length ?? 0) > 0,
+    }),
+    [expandedKeys]
+  );
 
   const fetchPipelineStatus = useCallback(async () => {
     setLoading(true);
@@ -87,17 +169,18 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
           const status =
             i === recentRunStatus.length - 1 ? (
               <Tag
-                className="ingestion-run-badge latest"
+                className="ingestion-run-badge latest cursor-pointer"
                 color={
                   PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
                 }
                 data-testid="pipeline-status"
-                key={i}>
+                key={i}
+                onClick={() => setSelectedStatus(r)}>
                 {startCase(r?.pipelineState)}
               </Tag>
             ) : (
               <Tag
-                className="ingestion-run-badge"
+                className="ingestion-run-badge cursor-pointer"
                 color={
                   PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
                 }
@@ -139,6 +222,29 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
           );
         }) ?? '--'
       )}
+
+      <Modal
+        centered
+        closeIcon={<></>}
+        maskClosable={false}
+        okButtonProps={{ style: { display: 'none' } }}
+        open={Boolean(selectedStatus)}
+        title={`Run status: ${startCase(
+          selectedStatus?.pipelineState
+        )} at ${formatDateTime(selectedStatus?.timestamp)}`}
+        width="80%"
+        onCancel={() => setSelectedStatus(undefined)}>
+        <Table
+          bordered
+          columns={columns}
+          dataSource={selectedStatus?.status ?? []}
+          expandable={expandable}
+          indentSize={0}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
+      </Modal>
     </Space>
   );
 };
