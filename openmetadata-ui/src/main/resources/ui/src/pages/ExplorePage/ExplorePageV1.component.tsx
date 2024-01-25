@@ -36,6 +36,7 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
 import {
@@ -75,6 +76,14 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
+    useState<boolean>(false);
+
+  useEffect(() => {
+    setShowIndexNotFoundAlert(false);
+    setSearchResults(undefined);
+  }, [tab]);
 
   const [updatedAggregations, setUpdatedAggregations] =
     useState<Aggregations>();
@@ -364,9 +373,14 @@ const ExplorePageV1: FunctionComponent = () => {
         setSearchHitCounts(counts as SearchHitCounts);
       }),
     ])
-      .catch((err) => {
-        showErrorToast(err);
+      .catch((error) => {
+        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
+          setShowIndexNotFoundAlert(true);
+        } else {
+          showErrorToast(error);
+        }
       })
+
       .finally(() => setIsLoading(false));
   };
 
@@ -401,6 +415,7 @@ const ExplorePageV1: FunctionComponent = () => {
     <ExploreV1
       activeTabKey={searchIndex}
       aggregations={updatedAggregations}
+      isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
       searchIndex={searchIndex}

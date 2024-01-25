@@ -603,7 +603,7 @@ export const getQbConfigs: (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...getCommonQueryBuilderFields(),
+          ...getCommonQueryBuilderFields(undefined, tierOptions),
         },
       };
   }
