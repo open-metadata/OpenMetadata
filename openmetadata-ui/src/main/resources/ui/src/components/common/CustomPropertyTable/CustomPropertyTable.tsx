@@ -65,7 +65,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
-  maxDataCap,
+  maxDataCap = 5,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -250,7 +250,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           {t('label.custom-property-plural')}
         </Typography.Text>
         {entityTypeDetail.customProperties &&
-          maxDataCap &&
           entityTypeDetail.customProperties?.length >= maxDataCap &&
           entityDetails.fullyQualifiedName && (
             <Link
@@ -267,7 +266,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         bordered
         columns={tableColumn}
         data-testid="custom-properties-table"
-        dataSource={entityTypeDetail.customProperties?.slice(0, maxDataCap)}
+        dataSource={entityTypeDetail?.customProperties?.slice(0, maxDataCap)}
         loading={entityTypeDetailLoading}
         pagination={false}
         rowKey="name"

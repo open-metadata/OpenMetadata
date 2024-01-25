@@ -16,26 +16,25 @@ import { noop } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
-import { useFqn } from '../../../hooks/useFqn';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
+import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
-import './glossary-details.less';
 import {
   GlossaryDetailsProps,
   GlossaryTabs,
 } from './GlossaryDetails.interface';
+import './glossary-details.less';
 
 const GlossaryDetails = ({
   permissions,
@@ -53,7 +52,6 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn: glossaryTermFqn } = useFqn();
 
   const { tab: activeTab } = useParams<{ tab: string }>();
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -170,7 +168,6 @@ const GlossaryDetails = ({
         <Col className="p-y-md" span={6}>
           <GlossaryDetailsRightPanel
             isGlossary
-            entityFQN={glossaryTermFqn}
             entityType={EntityType.GLOSSARY_TERM}
             isVersionView={isVersionView}
             permissions={permissions}

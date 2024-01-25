@@ -17,18 +17,18 @@ import React, { ReactNode, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import TagButton from '../../../components/TagButton/TagButton.component';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import TagButton from '../../../components/TagButton/TagButton.component';
+import { EntityField } from '../../../constants/Feeds.constants';
 import {
   DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
   getTeamAndUserDetailsPath,
   getUserPath,
-  NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
@@ -45,11 +45,11 @@ import {
   getDiffValue,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryReviewers from './GlossaryReviewers';
 
 type Props = {
@@ -60,7 +60,6 @@ type Props = {
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onThreadLinkSelect: (value: string) => void;
   entityType: EntityType;
-  entityFQN?: string;
 };
 
 const GlossaryDetailsRightPanel = ({

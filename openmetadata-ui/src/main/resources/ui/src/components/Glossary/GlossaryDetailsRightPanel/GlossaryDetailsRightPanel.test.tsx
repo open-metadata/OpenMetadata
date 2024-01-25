@@ -68,7 +68,6 @@ describe('GlossaryDetailsRightPanel', () => {
       <BrowserRouter>
         <GlossaryDetailsRightPanel
           isGlossary
-          entityFQN="test"
           entityType={EntityType.GLOSSARY_TERM}
           permissions={mockPermissions}
           selectedData={mockedGlossaries[0]}
