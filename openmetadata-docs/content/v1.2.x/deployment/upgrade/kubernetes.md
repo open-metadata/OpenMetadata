@@ -45,11 +45,11 @@ Verify with the below command to see the latest release available locally.
 ```commandline
 helm search repo open-metadata --versions
 > NAME                                   	CHART VERSION	APP VERSION	DESCRIPTION                                
-open-metadata/openmetadata              1.2.4           1.2.2           A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata              1.2.8           1.2.5           A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata              1.2.3           1.2.2           A Helm chart for OpenMetadata on Kubernetes
 
 ...
-open-metadata/openmetadata-dependencies 1.2.4           1.2.2           Helm Dependencies for OpenMetadata
+open-metadata/openmetadata-dependencies 1.2.8           1.2.5           Helm Dependencies for OpenMetadata
 open-metadata/openmetadata-dependencies 1.2.3           1.2.2           Helm Dependencies for OpenMetadata
 ...
 ```
