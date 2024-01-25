@@ -14,17 +14,14 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import {
-  interceptURL,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   createEntityTable,
   generateRandomTable,
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { createDescriptionTask } from '../../common/TaskUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { DATA_ASSETS } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';

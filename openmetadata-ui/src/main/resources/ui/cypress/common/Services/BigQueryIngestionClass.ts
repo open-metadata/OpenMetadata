@@ -14,7 +14,7 @@ import { checkServiceFieldSectionHighlighting } from '../common';
 import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { Services } from '../Utils/Services';
 
-class MetabaseIngestionClass extends ServiceBaseClass {
+class BigQueryIngestionClass extends ServiceBaseClass {
   name: string;
   filterPattern;
 
@@ -88,4 +88,4 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 }
 
-export default MetabaseIngestionClass;
+export default BigQueryIngestionClass;

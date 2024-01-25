@@ -20,13 +20,9 @@ import {
   TABLE_DETAILS,
 } from '../constants/EntityConstant';
 import { USER_CREDENTIALS } from '../constants/SearchIndexDetails.constants';
-import {
-  interceptURL,
-  uuid,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from './common';
+import { interceptURL, uuid, verifyResponseStatusCode } from './common';
 import { createEntityTable } from './EntityUtils';
+import { visitEntityDetailsPage } from './Utils/Entity';
 
 export const ADVANCE_SEARCH_TABLES = {
   table1: TABLE_DETAILS,

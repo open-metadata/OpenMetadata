@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  interceptURL,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,

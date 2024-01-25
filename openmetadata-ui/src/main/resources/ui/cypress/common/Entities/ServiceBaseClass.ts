@@ -403,6 +403,10 @@ class ServiceBaseClass {
       .should('contain', description);
   }
 
+  runAdditionalTests() {
+    // Write service specific tests
+  }
+
   deleteService() {
     deleteService(this.category, this.serviceName);
   }

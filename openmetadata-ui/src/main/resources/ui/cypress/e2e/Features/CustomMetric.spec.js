@@ -14,9 +14,9 @@ import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   DATA_ASSETS,
   INVALID_NAMES,

@@ -33,7 +33,6 @@ import {
   uuid,
 } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
-import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 import {
   GlobalSettingOptions,
   SETTINGS_OPTIONS_PATH,
@@ -49,8 +48,6 @@ const expirationTime = {
   threemonths: '90',
 };
 const name = `Usercttest${uuid()}`;
-const glossary = NAVBAR_DETAILS.glossary;
-const tag = NAVBAR_DETAILS.tags;
 const ownerName = 'Aaron Warren';
 const user = {
   name: name,

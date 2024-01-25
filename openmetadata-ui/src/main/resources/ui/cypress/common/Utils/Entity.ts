@@ -173,7 +173,7 @@ export const visitEntityDetailsPage = ({
       'getEntityDetails'
     );
   } else {
-    interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+    interceptURL('GET', `/api/v1/${entity}/name/*`, 'getEntityDetails');
   }
 
   interceptURL(

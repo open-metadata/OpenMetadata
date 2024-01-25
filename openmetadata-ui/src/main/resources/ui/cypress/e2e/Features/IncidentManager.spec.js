@@ -10,14 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  interceptURL,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   createEntityTableViaREST,
   deleteEntityViaREST,
+  visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
 import { DATA_ASSETS, uuid } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';

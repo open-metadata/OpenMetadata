@@ -29,6 +29,7 @@ declare global {
       sidebarClick(id: string, parentId?: string): void;
       sidebarHoverOutside(): void;
       settingClick(dataTestId: string, isCustomProperty?: boolean): void;
+      storeSession(username: string, password: string): void;
     }
   }
 }

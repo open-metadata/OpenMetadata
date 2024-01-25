@@ -21,8 +21,8 @@ import {
   removeTableFieldTags,
   updateTableFieldDescription,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { BASE_URL, uuid } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 import {
@@ -306,6 +306,11 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('Soft delete workflow should work properly', () => {
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
@@ -363,6 +368,11 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   });
 
   it('Hard delete workflow should work properly', () => {
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+    });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,

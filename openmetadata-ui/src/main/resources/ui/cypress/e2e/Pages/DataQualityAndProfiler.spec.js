@@ -26,10 +26,10 @@ import {
   toastNotification,
   uuid,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
 import {
   API_SERVICE,
