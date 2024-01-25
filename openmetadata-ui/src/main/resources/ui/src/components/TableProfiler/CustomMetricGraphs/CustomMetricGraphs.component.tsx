@@ -37,6 +37,7 @@ import {
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../../constants/DataInsight.constants';
+import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { CustomMetric } from '../../../generated/entity/data/table';
 import {
@@ -49,6 +50,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomMetricForm from '../../CustomMetricForm/CustomMetricForm.component';
+import PageHeader from '../../PageHeader/PageHeader.component';
 import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLatestValue';
 import { useTableProfiler } from '../TableProfilerProvider';
 import './custom-metric-graphs.style.less';
@@ -169,6 +171,11 @@ const CustomMetricGraphs = ({
 
   return (
     <Row data-testid="custom-metric-graph-container" gutter={[16, 16]}>
+      {!isEmpty(customMetricsGraphData) && (
+        <Col span={24}>
+          <PageHeader data={PAGE_HEADERS.CUSTOM_METRICS} />
+        </Col>
+      )}
       {toPairs(customMetricsGraphData).map(([key, metric], i) => {
         const color = TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor();
 
@@ -196,18 +203,14 @@ const CustomMetricGraphs = ({
                 ) : null
               }
               loading={isLoading}
-              title={
-                <Typography.Title level={5}>
-                  {t('label.custom-metric')}
-                </Typography.Title>
-              }>
+              title={<Typography.Title level={5}>{key}</Typography.Title>}>
               <Row gutter={[16, 16]}>
                 <Col span={4}>
                   <ProfilerLatestValue
                     information={[
                       {
                         latestValue: last(metric)?.[key] ?? '--',
-                        title: key,
+                        title: '',
                         dataKey: key,
                         color,
                       },

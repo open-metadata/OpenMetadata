@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Edge } from 'reactflow';
+import { EntityType } from '../../enums/entity.enum';
 import { getLineageDataByFQN } from '../../rest/lineageAPI';
 import { EdgeTypeEnum } from '../Entity/EntityLineage/EntityLineage.interface';
 import LineageProvider, { useLineageProvider } from './LineageProvider';
@@ -23,7 +24,8 @@ const mockLocation = {
 };
 
 const DummyChildrenComponent = () => {
-  const { loadChildNodesHandler, onEdgeClick } = useLineageProvider();
+  const { loadChildNodesHandler, onEdgeClick, updateEntityType } =
+    useLineageProvider();
 
   const nodeData = {
     name: 'table1',
@@ -54,6 +56,10 @@ const DummyChildrenComponent = () => {
     // Trigger the loadChildNodesHandler method when the button is clicked
     loadChildNodesHandler(nodeData, EdgeTypeEnum.DOWN_STREAM);
   };
+
+  useEffect(() => {
+    updateEntityType(EntityType.TABLE);
+  }, []);
 
   return (
     <div>
@@ -99,7 +105,7 @@ describe('LineageProvider', () => {
     await act(async () => {
       render(
         <LineageProvider>
-          <div data-testid="children">Children</div>
+          <DummyChildrenComponent />
         </LineageProvider>
       );
     });

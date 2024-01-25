@@ -20,13 +20,9 @@ import {
   TABLE_DETAILS,
 } from '../constants/EntityConstant';
 import { USER_CREDENTIALS } from '../constants/SearchIndexDetails.constants';
-import {
-  interceptURL,
-  uuid,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from './common';
+import { interceptURL, uuid, verifyResponseStatusCode } from './common';
 import { createEntityTable } from './EntityUtils';
+import { visitEntityDetailsPage } from './Utils/Entity';
 
 export const ADVANCE_SEARCH_TABLES = {
   table1: TABLE_DETAILS,
@@ -339,7 +335,7 @@ export const addOwner = ({ ownerName, term, serviceName, entity }) => {
 
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=**%20AND%20teamType:Group&from=0&size=25&index=team_search_index',
+    '/api/v1/search/query?q=**%20AND%20teamType:Group&from=0&size=25&index=team_search_index&sort_field=displayName.keyword&sort_order=asc',
     'waitForTeams'
   );
 

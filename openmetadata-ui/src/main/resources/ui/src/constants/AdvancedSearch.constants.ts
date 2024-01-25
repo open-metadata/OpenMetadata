@@ -236,6 +236,14 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
   },
 ];
 
+export const LINEAGE_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
+  {
+    label: t('label.column'),
+    key: 'columns.name.keyword',
+  },
+];
+
 export const ALL_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   ...TABLE_DROPDOWN_ITEMS,

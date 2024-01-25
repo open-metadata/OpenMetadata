@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  interceptURL,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
   LINEAGE_ITEMS,
   PIPELINE_ITEMS,
@@ -31,6 +28,10 @@ const dragConnection = (sourceId, targetId) => {
   return cy
     .get(`[data-testid="${targetId}"] .react-flow__handle-left`)
     .click({ force: true }); // Adding force true for handles because it can be hidden behind the node
+};
+
+const performFitView = () => {
+  cy.get('.react-flow__controls-fitview').click({ force: true });
 };
 
 const connectEdgeBetweenNodes = (fromNode, toNode) => {
@@ -62,7 +63,7 @@ const connectEdgeBetweenNodes = (fromNode, toNode) => {
 };
 
 const verifyNodePresent = (node) => {
-  cy.get('.react-flow__controls-fitview').click();
+  performFitView();
   cy.get(`[data-testid="lineage-node-${node.fqn}"]`).should('be.visible');
   cy.get(
     `[data-testid="lineage-node-${node.fqn}"] [data-testid="entity-header-name"]`
@@ -70,7 +71,7 @@ const verifyNodePresent = (node) => {
 };
 
 const deleteNode = (node) => {
-  cy.get('.react-flow__controls-fitview').click();
+  performFitView();
   interceptURL('DELETE', '/api/v1/lineage/**', 'lineageDeleteApi');
   cy.get(`[data-testid="lineage-node-${node.fqn}"]`).click({ force: true });
   // Adding force true for handles because it can be hidden behind the node
@@ -95,7 +96,12 @@ const applyPipelineFromModal = (fromNode, toNode, pipelineData) => {
   verifyResponseStatusCode('@lineageApi', 200);
 };
 
-const verifyPipelineDataInDrawer = (fromNode, toNode, pipelineData) => {
+const verifyPipelineDataInDrawer = (
+  fromNode,
+  toNode,
+  pipelineData,
+  bVerifyPipelineLineage
+) => {
   cy.get(
     `[data-testid="pipeline-label-${fromNode.fqn}-${toNode.fqn}"]`
   ).click();
@@ -103,10 +109,31 @@ const verifyPipelineDataInDrawer = (fromNode, toNode, pipelineData) => {
   cy.get('.edge-info-drawer [data-testid="Edge"] a').contains(
     pipelineData.name
   );
-  cy.get('.edge-info-drawer .ant-drawer-header .anticon-close').click();
+
+  if (bVerifyPipelineLineage) {
+    cy.get('.edge-info-drawer [data-testid="Edge"] a').click();
+    cy.get('[data-testid="lineage"]').click();
+    cy.get('.custom-edge-pipeline-button').should(
+      'have.class',
+      'blinking-border'
+    );
+    visitEntityDetailsPage({
+      term: fromNode.term,
+      serviceName: fromNode.serviceName,
+      entity: fromNode.entity,
+    });
+    cy.get('[data-testid="lineage"]').click();
+  } else {
+    cy.get('.edge-info-drawer .ant-drawer-header .anticon-close').click();
+  }
 };
 
-const addPipelineBetweenNodes = (sourceEntity, targetEntity, pipelineItem) => {
+const addPipelineBetweenNodes = (
+  sourceEntity,
+  targetEntity,
+  pipelineItem,
+  bVerifyPipeline
+) => {
   visitEntityDetailsPage({
     term: sourceEntity.term,
     serviceName: sourceEntity.serviceName,
@@ -119,28 +146,31 @@ const addPipelineBetweenNodes = (sourceEntity, targetEntity, pipelineItem) => {
   if (pipelineItem) {
     applyPipelineFromModal(sourceEntity, targetEntity, pipelineItem);
     cy.get('[data-testid="edit-lineage"]').click();
-    verifyPipelineDataInDrawer(sourceEntity, targetEntity, pipelineItem);
+    verifyPipelineDataInDrawer(
+      sourceEntity,
+      targetEntity,
+      pipelineItem,
+      bVerifyPipeline
+    );
   }
+};
+
+const expandCols = (nodeFqn) => {
+  cy.get(
+    `[data-testid="lineage-node-${nodeFqn}"] [data-testid="expand-cols-btn"]`
+  ).click({ force: true });
+  cy.get(
+    `[data-testid="lineage-node-${nodeFqn}"] [data-testid="show-more-cols-btn"]`
+  ).click({ force: true });
 };
 
 const addColumnLineage = (fromNode, toNode) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
-  cy.get('.react-flow__controls-fitview').click({ force: true });
-  cy.get(
-    `[data-testid="lineage-node-${fromNode.fqn}"] [data-testid="expand-cols-btn"]`
-  ).click({ force: true });
-  cy.get(
-    `[data-testid="lineage-node-${fromNode.fqn}"] [data-testid="show-more-cols-btn"]`
-  ).click({ force: true });
-  cy.get('.react-flow__controls-fitview').click({ force: true });
-  cy.get(
-    `[data-testid="lineage-node-${toNode.fqn}"] [data-testid="expand-cols-btn"]`
-  ).click({ force: true });
-  cy.get(
-    `[data-testid="lineage-node-${toNode.fqn}"] [data-testid="show-more-cols-btn"]`
-  ).click({ force: true });
-  cy.get('.react-flow__controls-fitview').click({ force: true });
-
+  performFitView();
+  expandCols(fromNode.fqn);
+  performFitView();
+  expandCols(toNode.fqn);
+  performFitView();
   dragConnection(
     `column-${fromNode.columns[0]}`,
     `column-${toNode.columns[0]}`
@@ -215,7 +245,12 @@ describe('Lineage verification', () => {
   it('Lineage Add Pipeline Between Tables', () => {
     const sourceEntity = LINEAGE_ITEMS[0];
     const targetEntity = LINEAGE_ITEMS[1];
-    addPipelineBetweenNodes(sourceEntity, targetEntity, PIPELINE_ITEMS[0]);
+    addPipelineBetweenNodes(
+      sourceEntity,
+      targetEntity,
+      PIPELINE_ITEMS[0],
+      true
+    );
     cy.get('[data-testid="edit-lineage"]').click();
     deleteNode(targetEntity);
   });
@@ -223,7 +258,12 @@ describe('Lineage verification', () => {
   it('Lineage Add Pipeline Between Table and Topic', () => {
     const sourceEntity = LINEAGE_ITEMS[1];
     const targetEntity = LINEAGE_ITEMS[2];
-    addPipelineBetweenNodes(sourceEntity, targetEntity, PIPELINE_ITEMS[0]);
+    addPipelineBetweenNodes(
+      sourceEntity,
+      targetEntity,
+      PIPELINE_ITEMS[0],
+      true
+    );
     cy.get('[data-testid="edit-lineage"]').click();
     deleteNode(targetEntity);
   });

@@ -14,7 +14,7 @@
 import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isUndefined, startCase } from 'lodash';
 import {
   default as React,
   useCallback,
@@ -25,8 +25,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -38,10 +41,12 @@ import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-properties-pageV1.less';
@@ -67,6 +72,15 @@ const CustomEntityDetailV1 = () => {
 
   const [propertyPermission, setPropertyPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+        startCase(tab)
+      ),
+    [tab]
+  );
 
   const fetchPermission = async () => {
     try {
@@ -253,17 +267,22 @@ const CustomEntityDetailV1 = () => {
   }
 
   return (
-    <Row
-      className="m-y-xs"
-      data-testid="custom-entity-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <PageHeader data={customPageHeader} />
-      </Col>
-      <Col className="global-settings-tabs" span={24}>
-        <Tabs items={tabs} key={tab} onChange={onTabChange} />
-      </Col>
-    </Row>
+    <PageLayoutV1 pageTitle={t('label.custom-property')}>
+      <Row
+        className="m-y-xs page-container"
+        data-testid="custom-entity-container"
+        gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <PageHeader data={customPageHeader} />
+        </Col>
+        <Col className="global-settings-tabs" span={24}>
+          <Tabs items={tabs} key={tab} onChange={onTabChange} />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

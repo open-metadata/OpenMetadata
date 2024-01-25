@@ -122,7 +122,9 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    fetchResourcePermission(decodedEntityFqn);
+    if (!isEmpty(decodedEntityFqn)) {
+      fetchResourcePermission(decodedEntityFqn);
+    }
   }, [decodedEntityFqn]);
 
   const handleEditColumn = (column: Column): void => {

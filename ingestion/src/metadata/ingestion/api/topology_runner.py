@@ -19,9 +19,6 @@ from typing import Any, Generic, Iterable, List, Type, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.data.createStoredProcedure import (
-    CreateStoredProcedureRequest,
-)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -35,13 +32,11 @@ from metadata.ingestion.models.topology import (
     ServiceTopology,
     TopologyContext,
     TopologyNode,
-    get_ctx_default,
     get_topology_node,
     get_topology_root,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.source_hash import generate_source_hash
 
@@ -112,7 +107,7 @@ class TopologyRunnerMixin(Generic[C]):
                 # Once we are done processing all the stages,
                 for stage in node.stages:
                     if stage.clear_context:
-                        self.clear_context(stage=stage)
+                        self.context.clear_stage(stage=stage)
 
                 # process all children from the node being run
                 yield from self.process_nodes(child_nodes)
@@ -182,7 +177,7 @@ class TopologyRunnerMixin(Generic[C]):
         for child_node in child_nodes or []:
             for child_stage in child_node.stages or []:
                 if child_stage.use_cache:
-                    entity_fqn = self.fqn_from_context(
+                    entity_fqn = self.context.fqn_from_stage(
                         stage=stage,
                         entity_name=self.context.__dict__[stage.context],
                     )
@@ -229,85 +224,6 @@ class TopologyRunnerMixin(Generic[C]):
         """
         yield from self.process_nodes(get_topology_root(self.topology))
 
-    def _replace_context(self, key: str, value: Any) -> None:
-        """
-        Update the key of the context with the given value
-        :param key: element to update from the source context
-        :param value: value to use for the update
-        """
-        self.context.__dict__[key] = value
-
-    def _append_context(self, key: str, value: Any) -> None:
-        """
-        Update the key of the context with the given value
-        :param key: element to update from the source context
-        :param value: value to use for the update
-        """
-        self.context.__dict__[key].append(value)
-
-    def clear_context(self, stage: NodeStage) -> None:
-        """
-        Clear the available context
-        :param stage: Update stage context to the default values
-        """
-        self.context.__dict__[stage.context] = get_ctx_default(stage)
-
-    def fqn_from_context(self, stage: NodeStage, entity_name: str) -> str:
-        """
-        Read the context
-        :param stage: Topology node being processed
-        :param entity_name: name being stored
-        :return: Entity FQN derived from context
-        """
-        context_names = [
-            self.context.__dict__[dependency]
-            for dependency in stage.consumer or []  # root nodes do not have consumers
-        ]
-        return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_name
-        )
-
-    def update_context(self, stage: NodeStage, right: C):
-        """
-        Append or update context
-
-        We'll store the entity name or FQN in the topology context.
-        If we store the name, the FQN will be built in the source itself when needed.
-        """
-
-        if stage.store_fqn:
-            new_context = self._build_new_context_fqn(right)
-        else:
-            new_context = model_str(right.name)
-
-        if stage.context and not stage.store_all_in_context:
-            self._replace_context(key=stage.context, value=new_context)
-        if stage.context and stage.store_all_in_context:
-            self._append_context(key=stage.context, value=new_context)
-
-    @singledispatchmethod
-    def _build_new_context_fqn(self, right: C) -> str:
-        """Build context fqn string"""
-        raise NotImplementedError(f"Missing implementation for [{type(C)}]")
-
-    @_build_new_context_fqn.register
-    def _(self, right: CreateStoredProcedureRequest) -> str:
-        """
-        Implement FQN context building for Stored Procedures.
-
-        We process the Stored Procedures lineage at the very end of the service. If we
-        just store the SP name, we lose the information of which db/schema the SP belongs to.
-        """
-
-        return fqn.build(
-            metadata=self.metadata,
-            entity_type=StoredProcedure,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
-            procedure_name=right.name.__root__,
-        )
-
     def create_patch_request(
         self, original_entity: Entity, create_request: C
     ) -> PatchRequest:
@@ -335,7 +251,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
         entity = None
         entity_name = model_str(right.name)
-        entity_fqn = self.fqn_from_context(stage=stage, entity_name=entity_name)
+        entity_fqn = self.context.fqn_from_stage(stage=stage, entity_name=entity_name)
 
         # If we don't want to write data in OM, we'll return what we fetch from the API.
         # This will be applicable for service entities since we do not want to overwrite the data
@@ -405,7 +321,7 @@ class TopologyRunnerMixin(Generic[C]):
                     "for the service connection."
                 )
 
-        self.update_context(stage=stage, right=right)
+        self.context.update_context_name(stage=stage, right=right)
 
     @yield_and_update_context.register
     def _(
@@ -421,7 +337,7 @@ class TopologyRunnerMixin(Generic[C]):
         lineage has been properly drawn. We'll skip the process for now.
         """
         yield entity_request
-        self.update_context(stage=stage, right=right.edge.fromEntity.name.__root__)
+        self.context.update_context_name(stage=stage, right=right.edge.fromEntity)
 
     @yield_and_update_context.register
     def _(
@@ -430,11 +346,16 @@ class TopologyRunnerMixin(Generic[C]):
         stage: NodeStage,
         entity_request: Either[C],
     ) -> Iterable[Either[Entity]]:
-        """Tag implementation for the context information"""
+        """
+        Tag implementation for the context information.
+
+        We need the full OMetaTagAndClassification in the context
+        to build the TagLabels during the ingestion. We need to bundle
+        both CreateClassificationRequest and CreateTagRequest.
+        """
         yield entity_request
 
-        # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, right=right)
+        self.context.update_context_value(stage=stage, value=right)
 
     @yield_and_update_context.register
     def _(
@@ -446,8 +367,7 @@ class TopologyRunnerMixin(Generic[C]):
         """Custom Property implementation for the context information"""
         yield entity_request
 
-        # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, right=right)
+        self.context.update_context_value(stage=stage, value=right)
 
     def sink_request(
         self, stage: NodeStage, entity_request: Either[C]

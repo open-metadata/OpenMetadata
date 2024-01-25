@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { SidebarItem } from '../../constants/Entity.interface';
 
 describe('Explore Page', () => {
   before(() => {
@@ -31,7 +32,7 @@ describe('Explore Page', () => {
       'searchAPI'
     );
 
-    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.sidebarClick(SidebarItem.EXPLORE);
     cy.get('[data-testid="searchBox"]').clear();
     cy.get('[data-testid="searchBox"]').type(searchText);
 

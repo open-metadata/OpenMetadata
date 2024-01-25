@@ -14,11 +14,9 @@
 /// <reference types="cypress" />
 
 import {
-  addOwner,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
@@ -27,6 +25,8 @@ import {
   editAssignee,
   verifyTaskDetails,
 } from '../../common/TaskUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { addOwner } from '../../common/Utils/Owner';
 import { DATA_ASSETS } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
@@ -207,7 +207,7 @@ describe('Task flow should work', () => {
       entity: ENTITY_TABLE.entity,
     });
 
-    addOwner('Adam Rodriguez', 'tables');
+    addOwner('Adam Rodriguez');
 
     cy.get('[data-testid="request-description"]').click();
 

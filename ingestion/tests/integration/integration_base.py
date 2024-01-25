@@ -13,7 +13,7 @@ OpenMetadata base class for tests
 """
 import uuid
 from datetime import datetime
-from typing import Any, Optional, Type
+from typing import Any, List, Optional, Type
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
@@ -30,17 +30,22 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestDefinition import (
+    CreateTestDefinitionRequest,
+)
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    ColumnName,
-    DataType,
-    Table,
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
 )
-from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
-    CustomDatabaseConnection,
-    CustomDatabaseType,
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
@@ -55,6 +60,11 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -62,6 +72,11 @@ from metadata.generated.schema.entity.services.pipelineService import (
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
+)
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import (
+    TestCaseParameterDefinition,
+    TestPlatform,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
@@ -130,11 +145,31 @@ def _(name: EntityName) -> C:
     )
 
 
+@create_service_registry.add(DatabaseService)
+def _(name: EntityName) -> C:
+    """Prepare a Create service request"""
+    return CreateDatabaseServiceRequest(
+        name=name,
+        serviceType=DatabaseServiceType.Mysql,
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                authType=BasicAuth(
+                    password="password",
+                ),
+                hostPort="http://localhost:1234",
+            )
+        ),
+    )
+
+
 create_entity_registry = class_register()
 
 
 def get_create_entity(
-    entity: Type[T], reference: Any, name: Optional[EntityName] = None
+    entity: Type[T],
+    reference: Any,
+    name: Optional[EntityName] = None,
 ) -> C:
     """Create a vanilla entity based on the input type"""
     func = create_entity_registry.registry.get(entity.__name__)
@@ -185,15 +220,86 @@ def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
         name=name,
         databaseSchema=reference,
         columns=[
-            Column(name=ColumnName(__root__="id"), dataType=DataType.BIGINT),
-            Column(name=ColumnName(__root__="name"), dataType=DataType.STRING),
-            Column(name=ColumnName(__root__="age"), dataType=DataType.INT),
+            Column(name="id", dataType=DataType.BIGINT),
+            Column(name="another", dataType=DataType.BIGINT),
             Column(
-                name=ColumnName(__root__="address"),
-                dataType=DataType.VARCHAR,
-                dataLength=256,
+                name="struct",
+                dataType=DataType.STRUCT,
+                children=[
+                    Column(name="id", dataType=DataType.INT),
+                    Column(name="name", dataType=DataType.STRING),
+                ],
             ),
         ],
+    )
+
+
+def get_create_user_entity(
+    name: Optional[EntityName] = None, email: Optional[str] = None
+):
+    if not name:
+        name = generate_name()
+    if not email:
+        email = f"{generate_name().__root__}@getcollate.io"
+    return CreateUserRequest(name=name, email=email)
+
+
+def get_create_team_entity(name: Optional[EntityName] = None, users=List[str]):
+    if not name:
+        name = generate_name()
+    return CreateTeamRequest(name=name, teamType="Group", users=users)
+
+
+def get_create_test_definition(
+    parameter_definition: List[TestCaseParameterDefinition],
+    entity_type: [T],
+    name: Optional[EntityName] = None,
+    description: Optional[str] = None,
+):
+    if not name:
+        name = generate_name()
+    if not description:
+        description = generate_name().__root__
+    return CreateTestDefinitionRequest(
+        name=name,
+        description=description,
+        entityType=entity_type,
+        testPlatforms=[TestPlatform.GreatExpectations],
+        parameterDefinition=parameter_definition,
+    )
+
+
+def get_create_test_suite(
+    executable_entity_reference: str,
+    name: Optional[EntityName] = None,
+    description: Optional[str] = None,
+):
+    if not name:
+        name = generate_name()
+    if not description:
+        description = generate_name().__root__
+    return CreateTestSuiteRequest(
+        name=name,
+        description=description,
+        executableEntityReference=executable_entity_reference,
+    )
+
+
+def get_create_test_case(
+    entity_link: str,
+    test_suite: FullyQualifiedEntityName,
+    test_definition: FullyQualifiedEntityName,
+    parameter_values: List[TestCaseParameterValue],
+    name: Optional[EntityName] = None,
+):
+    if not name:
+        name = generate_name()
+    return CreateTestCaseRequest(
+        name=name,
+        entityLink=entity_link,
+        testSuite=test_suite,
+        testDefinition=test_definition,
+        parameterValues=parameter_values,
     )
 
 

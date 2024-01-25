@@ -16,13 +16,13 @@
 
 import { isEmpty } from 'lodash';
 import {
-  addOwner,
-  addTier,
   deleteEntity,
   interceptURL,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { addOwner } from '../../common/Utils/Owner';
+import { addTier } from '../../common/Utils/Tier';
 import { visitEntityDetailsVersionPage } from '../../common/VersionUtils';
 import {
   DOMAIN_CREATION_DETAILS,
@@ -232,7 +232,7 @@ describe('Version page tests for data assets', () => {
 
           cy.get('@versionButton').contains('0.2');
 
-          addOwner(OWNER, entityDetails.entity);
+          addOwner(OWNER);
 
           interceptURL(
             'GET',
@@ -272,7 +272,7 @@ describe('Version page tests for data assets', () => {
 
           cy.get('@versionButton').contains('0.2');
 
-          addTier(TIER, entityDetails.entity);
+          addTier(TIER);
 
           interceptURL(
             'GET',
@@ -302,6 +302,11 @@ describe('Version page tests for data assets', () => {
         });
 
         it(`${entityType} version page should show changes after soft deleted`, () => {
+          visitEntityDetailsPage({
+            term: entityDetails.name,
+            serviceName: entityDetails.serviceName,
+            entity: entityDetails.entity,
+          });
           deleteEntity(
             entityDetails.name,
             entityDetails.serviceName,
