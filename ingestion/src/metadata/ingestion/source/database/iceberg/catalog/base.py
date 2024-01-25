@@ -17,9 +17,7 @@ from typing import Optional
 
 from pyiceberg.catalog import Catalog
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    Catalog as IcebergCatalog,
-)
+from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import IcebergCatalog
 from metadata.ingestion.source.database.iceberg.fs import (
     FileSystemConfig,
     IcebergFileSystemFactory,

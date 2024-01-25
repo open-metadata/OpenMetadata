@@ -19,9 +19,7 @@ from pyiceberg.catalog.dynamodb import DynamoDbCatalog
 from metadata.generated.schema.entity.services.connections.database.iceberg.dynamoDbCatalogConnection import (
     DynamoDbCatalogConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    Catalog as IcebergCatalog,
-)
+from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import IcebergCatalog
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
 

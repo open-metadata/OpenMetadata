@@ -14,11 +14,9 @@ Iceberg Rest Catalog
 """
 from pyiceberg.catalog import Catalog, load_rest
 
+from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import IcebergCatalog
 from metadata.generated.schema.entity.services.connections.database.iceberg.restCatalogConnection import (
     RestCatalogConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    Catalog as IcebergCatalog,
 )
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
@@ -43,12 +41,17 @@ class IcebergRestCatalog(IcebergCatalogBase):
             credential = None
 
         parameters = {
-            **cls.get_fs_parameters(catalog.connection.fileSystem),
             "warehouse": catalog.warehouseLocation,
             "uri": catalog.connection.uri,
             "credential": credential,
             "token": catalog.connection.token,
         }
+
+        if catalog.connection.fileSystem:
+            parameters = {
+                **parameters,
+                **cls.get_fs_parameters(catalog.connection.fileSystem.type)
+            }
 
         if catalog.connection.ssl:
             parameters = {

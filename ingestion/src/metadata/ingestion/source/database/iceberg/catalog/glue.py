@@ -19,9 +19,7 @@ from pyiceberg.catalog.glue import GlueCatalog
 from metadata.generated.schema.entity.services.connections.database.iceberg.glueCatalogConnection import (
     GlueCatalogConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    Catalog as IcebergCatalog,
-)
+from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import IcebergCatalog
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
 

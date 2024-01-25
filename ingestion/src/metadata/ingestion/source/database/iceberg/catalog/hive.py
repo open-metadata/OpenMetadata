@@ -17,9 +17,7 @@ from pyiceberg.catalog import Catalog, load_hive
 from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import (
     HiveCatalogConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    Catalog as IcebergCatalog,
-)
+from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import IcebergCatalog
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
 
@@ -38,9 +36,15 @@ class IcebergHiveCatalog(IcebergCatalogBase):
             )
 
         parameters = {
-            **cls.get_fs_parameters(catalog.connection.fileSystem),
             "warehouse": catalog.warehouseLocation,
             "uri": catalog.connection.uri,
         }
+
+        if catalog.connection.fileSystem:
+            parameters = {
+                **parameters,
+                **cls.get_fs_parameters(catalog.connection.fileSystem.type)
+            }
+
 
         return load_hive(catalog.name, parameters)
