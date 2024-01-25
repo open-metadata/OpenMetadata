@@ -158,19 +158,21 @@ const addPipelineBetweenNodes = (
   }
 };
 
-const expandCols = (nodeFqn) => {
+const expandCols = (nodeFqn, hasShowMore) => {
   cy.get(
     `[data-testid="lineage-node-${nodeFqn}"] [data-testid="expand-cols-btn"]`
   ).click({ force: true });
-  cy.get(
-    `[data-testid="lineage-node-${nodeFqn}"] [data-testid="show-more-cols-btn"]`
-  ).click({ force: true });
+  if (hasShowMore) {
+    cy.get(
+      `[data-testid="lineage-node-${nodeFqn}"] [data-testid="show-more-cols-btn"]`
+    ).click({ force: true });
+  }
 };
 
 const addColumnLineage = (fromNode, toNode) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
-  expandCols(fromNode.fqn);
-  expandCols(toNode.fqn);
+  expandCols(fromNode.fqn, false);
+  expandCols(toNode.fqn, true);
   dragConnection(
     `column-${fromNode.columns[0]}`,
     `column-${toNode.columns[0]}`
