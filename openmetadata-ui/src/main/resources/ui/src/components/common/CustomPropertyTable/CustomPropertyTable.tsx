@@ -31,9 +31,7 @@ import {
 } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
-
-import { Transi18next } from '../../../utils/CommonUtils';
+import { getEntityDetailLink, Transi18next } from '../../../utils/CommonUtils';
 
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
