@@ -431,20 +431,24 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     lg={{ offset: 2, span: 19 }}
                     md={{ offset: 0, span: 24 }}>
                     {!loading ? (
-                      <SearchedData
-                        isFilterSelected
-                        data={searchResults?.hits.hits ?? []}
-                        filter={parsedSearch}
-                        handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                        isSummaryPanelVisible={showSummaryPanel}
-                        selectedEntityId={entityDetails?.id || ''}
-                        totalValue={
-                          tabCounts?.[searchIndex] ??
-                          searchResults?.hits.total.value ??
-                          0
-                        }
-                        onPaginationChange={onChangePage}
-                      />
+                      !isElasticSearchIssue ? (
+                        <SearchedData
+                          isFilterSelected
+                          data={searchResults?.hits.hits ?? []}
+                          filter={parsedSearch}
+                          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                          isSummaryPanelVisible={showSummaryPanel}
+                          selectedEntityId={entityDetails?.id || ''}
+                          totalValue={
+                            tabCounts?.[searchIndex] ??
+                            searchResults?.hits.total.value ??
+                            0
+                          }
+                          onPaginationChange={onChangePage}
+                        />
+                      ) : (
+                        <></>
+                      )
                     ) : (
                       <Loader />
                     )}
