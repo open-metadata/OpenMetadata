@@ -13,101 +13,6 @@
         "Iceberg"
       ],
       "default": "Iceberg"
-    },
-    "hiveCatalogConnection": {
-      "title": "Hive",
-      "description": "Configuration for using a Hive catalog.",
-      "type": "object",
-      "properties": {
-        "uri": {
-          "title": "Uri",
-          "description": "Uri to the Hive Metastore. Example: 'thrift://localhost:9083'",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "uri"
-      ]
-    },
-    "restCatalogConnection": {
-      "title": "REST",
-      "description": "Configuration for using a REST catalog.",
-      "type": "object",
-      "properties": {
-        "uri": {
-          "title": "Uri",
-          "description": "Uri to the REST catalog. Example: 'http://rest-catalog/ws/'",
-          "type": "string"
-        },
-        "credential": {
-          "title": "OAuth2 Credential",
-          "description": "OAuth2 credential to use when initializing the catalog. Example: 't-1234:secret', where 't-1234' is the Client Id and 'secret' the Client Secret.",
-          "type": "string"
-        },
-        "token": {
-          "title": "Token",
-          "description": "Berarer token to use for the 'Authorization' header.",
-          "type": "string"
-        },
-        "ssl": {
-          "title": "SSL",
-          "description": "SSL Configuration details.",
-          "$ref": "../common/sslCertPaths.json"
-        },
-        "sigv4": {
-          "title": "Sigv4",
-          "description": "Sign requests to the REST Server using AWS SigV4 protocol.",
-          "type": "object",
-          "properties": {
-            "signingRegion": {
-              "title": "Signing AWS Region",
-              "description": "AWS Region to use when SigV4 signs a request.",
-              "type": "string"
-            },
-            "signingName": {
-              "title": "Signing Name",
-              "description": "The service signing name to use when SigV4 signs a request.",
-              "type": "string"
-            }
-          }
-        }
-      },
-      "required": [
-        "uri"
-      ]
-    },
-    "glueCatalogConnection": {
-      "title": "Glue",
-      "description": "Configuration for using a Glue Catalog.",
-      "type": "object",
-      "properties": {
-        "awsConfig": {
-          "title": "AWS Configuration",
-          "description": "Configuration needed to access AWS Glue.",
-          "$ref": "../../../../security/credentials/awsCredentials.json"
-        }
-      },
-      "additionalProperties": false
-    },
-    "dynamoDbCatalogConnection": {
-      "title": "DynamoDB",
-      "description": "Configuration for using a DynamoDB Catalog.",
-      "type": "object",
-      "properties": {
-        "tableName": {
-          "title": "Table Name",
-          "description": "DynamoDB table name.",
-          "type": "string",
-          "default": "iceberg"
-        },
-        "awsConfig": {
-          "title": "AWS Configuration",
-          "description": "Configuration needed to access AWS Glue.",
-          "$ref": "../../../../security/credentials/awsCredentials.json"
-        }
-      },
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -127,21 +32,21 @@
           "description": "Catalog Name.",
           "type": "string"
         },
-        "type": {
-          "title": "Type",
-          "description": "Catalog configuration, depending on your catalog type.",
+        "connection": {
+          "title": "Connection",
+          "description": "Catalog connection configuration, depending on your catalog type.",
           "oneOf": [
             {
-              "$ref": "#/definitions/hiveCatalogConnection"
+              "$ref": "./iceberg/hiveCatalogConnection.json"
             },
             {
-              "$ref": "#/definitions/restCatalogConnection"
+              "$ref": "./iceberg/restCatalogConnection.json"
             },
             {
-              "$ref": "#/definitions/glueCatalogConnection"
+              "$ref": "./iceberg/glueCatalogConnection.json"
             },
             {
-              "$ref": "#/definitions/dynamoDbCatalogConnection"
+              "$ref": "./iceberg/dynamoDbCatalogConnection.json"
             }
           ]
         },
@@ -150,35 +55,16 @@
           "description": "Custom Database Name for your Iceberg Service. If not set it will be 'default'.",
           "type": "string"
         },
-        "fileSystem": {
-          "title": "File System",
-          "description": "Iceberg File System. Where the files actually reside.",
-          "oneOf": [
-            {
-              "title": "Local",
-              "description": "Local File System.",
-              "type": "null"
-            },
-            {
-              "title": "AWS",
-              "$ref": "../../../../security/credentials/awsCredentials.json"
-            },
-            {
-              "title": "Azure",
-              "$ref": "../../../../security/credentials/azureCredentials.json"
-            }
-          ]
-        },
         "warehouseLocation": {
           "title": "Warehouse Location",
-          "description": "Warehouse Location. Used to specify a custom warehouse location.",
+          "description": "Warehouse Location. Used to specify a custom warehouse location if needed.",
           "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
         "name",
-        "type"
+        "connection"
       ]
     },
     "ownershipProperty": {
