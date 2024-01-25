@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
 import { SERVICE_TYPE, uuid } from './constants';
+import { GlobalSettingOptions } from './settings.constant';
 const uniqueID = uuid();
 
 export const SERVICE_CATEGORIES = {

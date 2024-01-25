@@ -19,7 +19,7 @@ import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../components/common/Table/Table';
-import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
+import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../enums/common.enum';
 import { CustomProperty } from '../../generated/entity/type';
@@ -165,7 +165,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           emptyText: (
             <ErrorPlaceHolder
               className="mt-xs"
-              doc={CUSTOM_PROPERTIES_DOCS}
+              doc={ADD_CUSTOM_PROPERTIES_DOCS}
               heading={t('label.property')}
               permission={hasAccess}
               type={ERROR_PLACEHOLDER_TYPE.CREATE}

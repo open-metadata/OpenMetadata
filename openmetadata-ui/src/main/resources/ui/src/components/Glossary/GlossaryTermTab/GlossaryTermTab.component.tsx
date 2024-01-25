@@ -355,6 +355,7 @@ const GlossaryTermTab = ({
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary-term')}
         permission={permissions.Create}
+        placeholderText={t('message.no-glossary-term')}
         type={
           permissions.Create && glossaryTermStatus === Status.Approved
             ? ERROR_PLACEHOLDER_TYPE.CREATE
