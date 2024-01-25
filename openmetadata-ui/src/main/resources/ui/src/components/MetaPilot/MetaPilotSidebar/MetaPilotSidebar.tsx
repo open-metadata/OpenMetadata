@@ -14,9 +14,10 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Card, Drawer, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as MetaPilotIcon } from '../../../assets/svg/ic-metapilot.svg';
+import { ReactComponent as MetaPilotIcon } from '../../../assets/svg/MetaPilotApplication.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Suggestion } from '../../../generated/entity/feed/suggestion';
+import EntityLink from '../../../utils/EntityLink';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
@@ -45,7 +46,8 @@ const MetaPilotSidebar = () => {
             markdown={item.description ?? ''}
           />
           <Typography.Text className="text-xss text-grey-muted">
-            {item.entityLink}
+            {EntityLink.getTableColumnName(item.entityLink) ??
+              EntityLink.getEntityFqn(item.entityLink)}
           </Typography.Text>
         </Card>
       );

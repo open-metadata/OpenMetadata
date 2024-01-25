@@ -12,6 +12,7 @@
  */
 
 import { Button, Space } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
@@ -37,7 +38,7 @@ const TableDescription = ({
   onThreadLinkSelect,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
-  const { activeSuggestion } = useMetaPilotContext();
+  const { activeSuggestion, suggestions } = useMetaPilotContext();
 
   const entityLink = useMemo(
     () =>
@@ -50,6 +51,16 @@ const TableDescription = ({
     [entityType, entityFqn]
   );
 
+  const suggestionForEmptyData = useMemo(() => {
+    if (isEmpty(columnData.field ?? ''.trim())) {
+      return suggestions.find(
+        (suggestion) => suggestion.entityLink === entityLink
+      );
+    }
+
+    return null;
+  }, [suggestions, columnData.field, entityLink]);
+
   if (activeSuggestion?.entityLink === entityLink) {
     return (
       <MetaPilotDescriptionAlert
@@ -57,6 +68,10 @@ const TableDescription = ({
         suggestion={activeSuggestion}
       />
     );
+  }
+
+  if (suggestionForEmptyData) {
+    return <MetaPilotDescriptionAlert suggestion={suggestionForEmptyData} />;
   }
 
   return (

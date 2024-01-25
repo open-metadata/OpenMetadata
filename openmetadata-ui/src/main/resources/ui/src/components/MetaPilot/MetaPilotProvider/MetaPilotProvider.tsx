@@ -21,7 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as MetaPilotIcon } from '../../../assets/svg/ic-metapilot.svg';
+import { ReactComponent as MetaPilotIcon } from '../../../assets/svg/MetaPilotApplication.svg';
 import { Suggestion } from '../../../generated/entity/feed/suggestion';
 import {
   getMetaPilotSuggestionsList,
