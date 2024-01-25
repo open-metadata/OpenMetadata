@@ -102,7 +102,6 @@ export const TaskTab = ({
   taskThread,
   owner,
   entityType,
-  isForFeedTab,
   ...rest
 }: TaskTabProps) => {
   const history = useHistory();
@@ -110,15 +109,19 @@ export const TaskTab = ({
   const { currentUser } = useAuthContext();
   const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
-
   const { permissions } = usePermissionProvider();
-
   const { task: taskDetails } = taskThread;
-  const entityFQN = getEntityFQN(taskThread.about) ?? '';
-  const entityCheck =
-    !isUndefined(entityFQN) &&
-    !isUndefined(entityType) &&
-    !isUndefined(taskDetails);
+
+  const entityFQN = useMemo(
+    () => getEntityFQN(taskThread.about) ?? '',
+    [taskThread.about]
+  );
+
+  const isEntityDetailsAvailable = useMemo(
+    () => !isUndefined(entityFQN) && !isUndefined(entityType),
+    [entityFQN, entityType]
+  );
+
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { isAdminUser } = useAuth();
@@ -130,7 +133,6 @@ export const TaskTab = ({
     testCaseResolutionStatus,
   } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
-
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
@@ -160,7 +162,7 @@ export const TaskTab = ({
     }
 
     return null;
-  }, [taskThread]);
+  }, [taskThread.about]);
 
   const isOwner = isEqual(owner?.id, currentUser?.id);
   const isCreator = isEqual(taskThread.createdBy, currentUser?.name);
@@ -194,28 +196,38 @@ export const TaskTab = ({
     });
   };
 
-  const getTaskLinkElement = entityCheck && (
-    <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-      <Button
-        className="p-0 task-feed-message font-medium text-md"
-        data-testid="task-title"
-        type="link"
-        onClick={handleTaskLinkClick}>
-        <Typography.Text className="p-0 text-primary">{`#${taskDetails?.id} `}</Typography.Text>
+  const taskLinkTitleElement = useMemo(
+    () =>
+      isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
+        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+          <Button
+            className="p-0 task-feed-message font-medium text-md"
+            data-testid="task-title"
+            type="link"
+            onClick={handleTaskLinkClick}>
+            <Typography.Text className="p-0 text-primary">{`#${taskDetails.id} `}</Typography.Text>
 
-        <Typography.Text className="p-xss">
-          {TASK_TYPES[taskDetails?.type as TaskType]}
-        </Typography.Text>
+            <Typography.Text className="p-xss">
+              {TASK_TYPES[taskDetails.type]}
+            </Typography.Text>
 
-        {taskColumnName}
+            {taskColumnName}
 
-        <Typography.Text className="break-all" data-testid="entity-link">
-          {getNameFromFQN(entityFQN)}
-        </Typography.Text>
+            <Typography.Text className="break-all" data-testid="entity-link">
+              {getNameFromFQN(entityFQN)}
+            </Typography.Text>
 
-        <Typography.Text className="p-l-xss">({entityType})</Typography.Text>
-      </Button>
-    </EntityPopOverCard>
+            <Typography.Text className="p-l-xss">{entityType}</Typography.Text>
+          </Button>
+        </EntityPopOverCard>
+      ) : null,
+    [
+      isEntityDetailsAvailable,
+      entityFQN,
+      entityType,
+      taskDetails,
+      handleTaskLinkClick,
+    ]
   );
 
   const updateTaskData = (data: TaskDetails | ResolveTask) => {
@@ -691,7 +703,7 @@ export const TaskTab = ({
           style={{ fontSize: '18px' }}
         />
 
-        {getTaskLinkElement}
+        {taskLinkTitleElement}
       </Col>
       <Col span={24}>{taskHeader}</Col>
       <Col span={24}>
