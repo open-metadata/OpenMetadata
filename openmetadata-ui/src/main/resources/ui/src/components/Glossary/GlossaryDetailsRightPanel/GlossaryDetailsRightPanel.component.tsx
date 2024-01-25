@@ -330,7 +330,7 @@ const GlossaryDetailsRightPanel = ({
           </div>
         </Col>
       )}
-      <Col span="22">
+      <Col data-testid="entity-right-panel" span="22">
         {!isGlossary && selectedData && (
           <CustomPropertyTable
             entityDetails={selectedData as GlossaryTerm}
