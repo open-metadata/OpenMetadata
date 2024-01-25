@@ -41,19 +41,28 @@ import RichTextEditorPreviewer from '../../components/common/RichTextEditor/Rich
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ArgumentsInput,
   EventSubscription,
+  ProviderType,
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getIconForEntity } from '../../utils/ObservabilityUtils';
-import { getObservabilityAlertsEditPath } from '../../utils/RouterUtils';
+import {
+  getNotificationAlertsEditPath,
+  getObservabilityAlertsEditPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import '../AddObservabilityPage/add-observability-page.less';
+import { ObservabilityAlertDetailsPageProps } from './ObservabilityAlertDetailsPage.interface';
 
-function ObservabilityAlertDetailsPage() {
+function ObservabilityAlertDetailsPage({
+  isNotificationAlert,
+}: Readonly<ObservabilityAlertDetailsPageProps>) {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const history = useHistory();
@@ -86,20 +95,36 @@ function ObservabilityAlertDetailsPage() {
   };
 
   const breadcrumb = useMemo(
-    () => [
-      {
-        name: t('label.observability'),
-        url: '',
-      },
-      {
-        name: t('label.alert-plural'),
-        url: ROUTES.OBSERVABILITY_ALERTS,
-      },
-      {
-        name: getEntityName(alertDetails),
-        url: '',
-      },
-    ],
+    () =>
+      isNotificationAlert
+        ? [
+            {
+              name: t('label.setting-plural'),
+              url: ROUTES.SETTINGS,
+            },
+            {
+              name: t('label.notification-plural'),
+              url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
+            },
+            {
+              name: getEntityName(alertDetails),
+              url: '',
+            },
+          ]
+        : [
+            {
+              name: t('label.observability'),
+              url: '',
+            },
+            {
+              name: t('label.alert-plural'),
+              url: ROUTES.OBSERVABILITY_ALERTS,
+            },
+            {
+              name: getEntityName(alertDetails),
+              url: '',
+            },
+          ],
     [alertDetails]
   );
 
@@ -267,20 +292,22 @@ function ObservabilityAlertDetailsPage() {
               <Col span={24}>
                 <Row justify="space-between">
                   <Col>
-                    <Space direction="vertical">
-                      <Typography.Title level={5}>
-                        {t('label.create-entity', {
-                          entity: t('label.observability'),
-                        })}
-                      </Typography.Title>
-                      <Typography.Text>
-                        {t('message.alerts-description')}
-                      </Typography.Text>
-                    </Space>
+                    <Typography.Title level={5}>
+                      {t('label.entity-detail-plural', {
+                        entity: isNotificationAlert
+                          ? t('label.notification-alert')
+                          : t('label.observability-alert'),
+                      })}
+                    </Typography.Title>
                   </Col>
                   <Col>
                     <Space size={8}>
-                      <Link to={getObservabilityAlertsEditPath(fqn)}>
+                      <Link
+                        to={
+                          isNotificationAlert
+                            ? getNotificationAlertsEditPath(fqn)
+                            : getObservabilityAlertsEditPath(fqn)
+                        }>
                         <Button
                           className="flex flex-center"
                           data-testid="edit-button"
@@ -290,6 +317,9 @@ function ObservabilityAlertDetailsPage() {
                       <Button
                         className="flex flex-center"
                         data-testid="delete-button"
+                        disabled={
+                          alertDetails?.provider === ProviderType.System
+                        }
                         icon={<DeleteIcon height={16} width={16} />}
                         onClick={() => setShowDeleteModal(true)}
                       />

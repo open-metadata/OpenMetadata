@@ -27,7 +27,6 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { PLACEHOLDER_ROUTE_FQN } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -47,7 +46,8 @@ import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import {
-  getObservabilityAlertDetailsPath,
+  getNotificationAlertDetailsPath,
+  getNotificationAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -141,9 +141,7 @@ const NotificationListPage = () => {
           return (
             record.fullyQualifiedName && (
               <Link
-                to={getObservabilityAlertDetailsPath(
-                  record.fullyQualifiedName
-                )}>
+                to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
                 {name}
               </Link>
             )
@@ -184,12 +182,7 @@ const NotificationListPage = () => {
           return (
             <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link
-                  to={getSettingPath(
-                    GlobalSettingsMenuCategory.NOTIFICATIONS,
-                    GlobalSettingOptions.EDIT_NOTIFICATION,
-                    true
-                  ).replace(PLACEHOLDER_ROUTE_FQN, id)}>
+                <Link to={getNotificationAlertsEditPath(id)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
                     data-testid={`alert-edit-${record.name}`}

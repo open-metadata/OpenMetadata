@@ -42,7 +42,10 @@ import {
   getResourceFunctions,
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
-import { getSettingPath } from '../../utils/RouterUtils';
+import {
+  getNotificationAlertDetailsPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabilityPage.interface';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
@@ -121,6 +124,10 @@ const AddNotificationPage = () => {
       const entityFunctions = await getResourceFunctions();
 
       setEntityFunctions(entityFunctions.data);
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.config') })
+      );
     } finally {
       setLoadingCount((count) => count - 1);
     }
@@ -182,7 +189,7 @@ const AddNotificationPage = () => {
           entity: t('label.alert-plural'),
         })
       );
-      history.push(getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS));
+      history.push(getNotificationAlertDetailsPath(data.name));
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -356,8 +363,6 @@ const AddNotificationPage = () => {
                   )}
                 </Form>
               </Col>
-              <Col span={24} />
-              <Col span={24} />
             </Row>
           </div>
         ),

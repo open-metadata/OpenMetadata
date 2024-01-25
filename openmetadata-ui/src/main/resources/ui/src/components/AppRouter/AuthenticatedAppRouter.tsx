@@ -1122,6 +1122,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <AdminProtectedRoute
         exact
+        component={() => <ObservabilityAlertDetailsPage isNotificationAlert />}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
+      />
+
+      <AdminProtectedRoute
+        exact
         component={AddNotificationPage}
         hasPermission={false}
         path={getSettingPath(

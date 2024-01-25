@@ -96,7 +96,9 @@ function AddObservabilityPage() {
 
       setFilterResources(filterResources.data);
     } catch (error) {
-      // TODO: Handle error
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.config') })
+      );
     } finally {
       setFetching((prev) => prev - 1);
     }
