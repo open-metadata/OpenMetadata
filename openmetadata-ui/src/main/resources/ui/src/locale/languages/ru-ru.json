@@ -1571,6 +1571,7 @@
     "permanently-delete-metadata-and-dependents": "Безвозвратное удаление этого {{entityName}} удалит его метаданные, а также метаданные {{dependers}} из OpenMetadata навсегда.",
     "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Описание пайплайна.",
+    "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
     "pipeline-scheduler-message": "Планировщик загрузки не может ответить. Обратитесь в службу поддержки. Спасибо.",
     "pipeline-trigger-failed-message": "Не удалось запустить пайплайн!",
     "pipeline-trigger-success-message": "Пайплайн запущен успешно!",

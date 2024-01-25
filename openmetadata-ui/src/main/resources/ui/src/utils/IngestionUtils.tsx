@@ -21,6 +21,7 @@ import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
+  INGESTION_FRAMEWORK_DEPLOYMENT_DOCS,
   WORKFLOWS_METADATA_DOCS,
 } from '../constants/docs.constants';
 import {
@@ -191,7 +192,10 @@ export const getIngestionTypes = (
   ];
 };
 
-const getPipelineExtraInfo = (pipelineType?: PipelineType) => {
+const getPipelineExtraInfo = (
+  isPlatFormDisabled: boolean,
+  pipelineType?: PipelineType
+) => {
   switch (pipelineType) {
     case PipelineType.DataInsight:
       return (
@@ -239,17 +243,31 @@ const getPipelineExtraInfo = (pipelineType?: PipelineType) => {
       return (
         <Typography.Paragraph className="w-max-500">
           <Transi18next
-            i18nKey="message.no-ingestion-description"
+            i18nKey={
+              isPlatFormDisabled
+                ? 'message.pipeline-disabled-ingestion-deployment'
+                : 'message.no-ingestion-description'
+            }
             renderElement={
               <a
-                href={WORKFLOWS_METADATA_DOCS}
+                href={
+                  isPlatFormDisabled
+                    ? INGESTION_FRAMEWORK_DEPLOYMENT_DOCS
+                    : WORKFLOWS_METADATA_DOCS
+                }
                 rel="noreferrer"
                 style={{ color: '#1890ff' }}
                 target="_blank"
               />
             }
             values={{
-              link: t('label.metadata-ingestion'),
+              link: t(
+                `label.${
+                  isPlatFormDisabled
+                    ? 'documentation-lowercase'
+                    : 'metadata-ingestion'
+                }`
+              ),
             }}
           />
         </Typography.Paragraph>
@@ -260,12 +278,13 @@ const getPipelineExtraInfo = (pipelineType?: PipelineType) => {
 export const getErrorPlaceHolder = (
   isRequiredDetailsAvailable: boolean,
   ingestionDataLength: number,
+  isPlatFormDisabled: boolean,
   pipelineType?: PipelineType
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
       <ErrorPlaceHolder className="p-y-lg" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        {getPipelineExtraInfo(pipelineType)}
+        {getPipelineExtraInfo(isPlatFormDisabled, pipelineType)}
       </ErrorPlaceHolder>
     );
   }
