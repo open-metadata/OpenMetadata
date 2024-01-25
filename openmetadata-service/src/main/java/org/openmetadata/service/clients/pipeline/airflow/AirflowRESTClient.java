@@ -292,7 +292,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       // APIs URL not found
       if (response.statusCode() == 404) {
         return buildUnhealthyStatus(
-            "Airflow APIs not found. Please validate if the OpenMetadata Airflow plugin is installed correctly. Follow [this guide](https://docs.open-metadata.org/v1.2.x/deployment/ingestion/openmetadata) for further details.");
+            "Airflow APIs not found. Please validate if the OpenMetadata Airflow plugin is installed correctly. Follow [this guide](https://docs.open-metadata.org/deployment/ingestion/openmetadata) for further details.");
       }
 
       return buildUnhealthyStatus(
