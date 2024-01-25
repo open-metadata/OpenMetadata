@@ -975,6 +975,7 @@
     "show": "Show",
     "show-deleted": "Show Deleted",
     "show-deleted-entity": "Show Deleted {{entity}}",
+    "show-log-plural": "Show Logs",
     "show-more-entity": "Show More {{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}} Advanced Config",
     "sign-in-with-sso": "Sign in with {{sso}}",

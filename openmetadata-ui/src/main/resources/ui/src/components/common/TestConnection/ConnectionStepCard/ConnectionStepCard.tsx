@@ -133,7 +133,7 @@ const ConnectionStepCard = ({
                 <Panel
                   className="connection-step-card-content-logs"
                   data-testid="lazy-log"
-                  header="Show logs"
+                  header={t('label.show-log-plural')}
                   key="show-log">
                   <LazyLog
                     caseInsensitive
