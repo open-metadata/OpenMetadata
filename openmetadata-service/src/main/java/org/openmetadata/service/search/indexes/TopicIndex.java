@@ -1,5 +1,15 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
@@ -10,17 +20,6 @@ import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 
 public class TopicIndex implements SearchIndex {
   final List<String> excludeTopicFields =
