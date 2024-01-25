@@ -23,11 +23,15 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MetaPilotIcon } from '../../../assets/svg/ic-metapilot.svg';
 import { Suggestion } from '../../../generated/entity/feed/suggestion';
-import { getMetaPilotSuggestionsList } from '../../../rest/suggestionsAPI';
+import {
+  getMetaPilotSuggestionsList,
+  updateSuggestionStatus,
+} from '../../../rest/suggestionsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   MetaPilotContextProps,
   MetaPilotContextType,
+  SuggestionAction,
 } from './MetaPilotProvider.interface';
 
 export const MetaPilotContext = createContext({} as MetaPilotContextType);
@@ -61,6 +65,18 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       setLoading(false);
     }
   }, []);
+
+  const acceptRejectSuggestion = useCallback(
+    async (suggestion: Suggestion, status: SuggestionAction) => {
+      try {
+        await updateSuggestionStatus(suggestion, status);
+        await fetchSuggestions(entityFqn);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [entityFqn]
+  );
 
   const onToggleSuggestionsVisible = useCallback((state: boolean) => {
     setSuggestionsVisible(state);
@@ -102,6 +118,7 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       onMetaPilotEnableUpdate,
       onUpdateActiveSuggestion,
       fetchSuggestions,
+      acceptRejectSuggestion,
       resetMetaPilot,
     };
   }, [
@@ -116,6 +133,7 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
     onMetaPilotEnableUpdate,
     onUpdateActiveSuggestion,
     fetchSuggestions,
+    acceptRejectSuggestion,
     resetMetaPilot,
   ]);
 

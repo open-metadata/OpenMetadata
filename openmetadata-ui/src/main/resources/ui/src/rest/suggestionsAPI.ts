@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
+import { SuggestionAction } from '../components/MetaPilot/MetaPilotProvider/MetaPilotProvider.interface';
 import { Suggestion } from '../generated/entity/feed/suggestion';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
@@ -29,4 +31,13 @@ export const getMetaPilotSuggestionsList = async (
   });
 
   return response.data;
+};
+
+export const updateSuggestionStatus = (
+  data: Suggestion,
+  action: SuggestionAction
+): Promise<AxiosResponse> => {
+  const url = `${BASE_URL}/${data.id}/${action}`;
+
+  return APIClient.put(url, {});
 };

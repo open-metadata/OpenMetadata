@@ -14,6 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
@@ -75,7 +76,7 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
-  const { activeSuggestion } = useMetaPilotContext();
+  const { activeSuggestion, suggestions } = useMetaPilotContext();
 
   const handleRequestDescription = useCallback(() => {
     history.push(
@@ -171,8 +172,22 @@ const DescriptionV1 = ({
     ]
   );
 
+  const suggestionForEmptyData = useMemo(() => {
+    if (isEmpty(description.trim())) {
+      return suggestions.find(
+        (suggestion) => suggestion.entityLink === entityLinkWithoutField
+      );
+    }
+
+    return null;
+  }, [suggestions, description]);
+
   if (activeSuggestion?.entityLink === entityLinkWithoutField) {
-    return <MetaPilotDescriptionAlert />;
+    return <MetaPilotDescriptionAlert suggestion={activeSuggestion} />;
+  }
+
+  if (suggestionForEmptyData) {
+    return <MetaPilotDescriptionAlert suggestion={suggestionForEmptyData} />;
   }
 
   const content = (

@@ -18,13 +18,16 @@ import { ReactComponent as MetaPilotIcon } from '../../../assets/svg/ic-metapilo
 import { ReactComponent as SuggestionsIcon } from '../../../assets/svg/ic-suggestions.svg';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import { useMetaPilotContext } from '../MetaPilotProvider/MetaPilotProvider';
+import { SuggestionAction } from '../MetaPilotProvider/MetaPilotProvider.interface';
 import { MetaPilotDescriptionAlertProps } from './MetaPilotDescriptionAlert.interface';
 
 const MetaPilotDescriptionAlert = ({
   showHeading = true,
+  suggestion,
 }: MetaPilotDescriptionAlertProps) => {
   const { t } = useTranslation();
-  const { activeSuggestion, onUpdateActiveSuggestion } = useMetaPilotContext();
+  const { onUpdateActiveSuggestion, acceptRejectSuggestion } =
+    useMetaPilotContext();
 
   useLayoutEffect(() => {
     const element = document.querySelector('.suggested-description-card');
@@ -33,7 +36,7 @@ const MetaPilotDescriptionAlert = ({
     }
   }, []);
 
-  if (!activeSuggestion) {
+  if (!suggestion) {
     return null;
   }
 
@@ -61,18 +64,23 @@ const MetaPilotDescriptionAlert = ({
           </div>
           <CloseOutlined onClick={() => onUpdateActiveSuggestion(undefined)} />
         </div>
-        <RichTextEditorPreviewer
-          markdown={activeSuggestion.description ?? ''}
-        />
+        <RichTextEditorPreviewer markdown={suggestion.description ?? ''} />
         <div className="d-flex justify-end p-t-sm gap-2">
           <Button
             ghost
             icon={<CloseOutlined />}
             type="primary"
-            onClick={() => onUpdateActiveSuggestion(undefined)}>
+            onClick={() =>
+              acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
+            }>
             {t('label.reject')}
           </Button>
-          <Button icon={<CheckOutlined />} type="primary">
+          <Button
+            icon={<CheckOutlined />}
+            type="primary"
+            onClick={() =>
+              acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
+            }>
             {t('label.accept')}
           </Button>
         </div>

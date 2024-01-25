@@ -51,7 +51,12 @@ const TableDescription = ({
   );
 
   if (activeSuggestion?.entityLink === entityLink) {
-    return <MetaPilotDescriptionAlert showHeading={false} />;
+    return (
+      <MetaPilotDescriptionAlert
+        showHeading={false}
+        suggestion={activeSuggestion}
+      />
+    );
   }
 
   return (

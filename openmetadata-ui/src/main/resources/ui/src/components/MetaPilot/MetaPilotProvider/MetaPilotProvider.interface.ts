@@ -24,10 +24,19 @@ export interface MetaPilotContextType {
   entityFqn: string;
   onUpdateActiveSuggestion: (suggestion?: Suggestion) => void;
   fetchSuggestions: (entityFqn: string) => void;
+  acceptRejectSuggestion: (
+    suggestion: Suggestion,
+    action: SuggestionAction
+  ) => void;
   onUpdateEntityFqn: (entityFqn: string) => void;
   resetMetaPilot: () => void;
 }
 
 export interface MetaPilotContextProps {
   children: ReactNode;
+}
+
+export enum SuggestionAction {
+  Accept = 'accept',
+  Reject = 'reject',
 }
