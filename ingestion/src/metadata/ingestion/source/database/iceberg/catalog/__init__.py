@@ -25,10 +25,12 @@ from metadata.generated.schema.entity.services.connections.database.iceberg.glue
 from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import (
     HiveCatalogConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import (
+    IcebergCatalog,
+)
 from metadata.generated.schema.entity.services.connections.database.iceberg.restCatalogConnection import (
     RestCatalogConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.iceberg.icebergCatalog import IcebergCatalog
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 from metadata.ingestion.source.database.iceberg.catalog.dynamodb import (
     IcebergDynamoDbCatalog,

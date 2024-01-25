@@ -14,10 +14,10 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import org.openmetadata.schema.services.connections.database.iceberg.IcebergCatalog;
 import org.openmetadata.schema.services.connections.database.iceberg.DynamoDbCatalogConnection;
 import org.openmetadata.schema.services.connections.database.iceberg.GlueCatalogConnection;
 import org.openmetadata.schema.services.connections.database.iceberg.HiveCatalogConnection;
+import org.openmetadata.schema.services.connections.database.iceberg.IcebergCatalog;
 import org.openmetadata.schema.services.connections.database.iceberg.RestCatalogConnection;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -37,8 +37,7 @@ public class IcebergCatalogClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    IcebergCatalog icebergCatalog =
-        (IcebergCatalog) JsonUtils.convertValue(object, this.clazz);
+    IcebergCatalog icebergCatalog = (IcebergCatalog) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(icebergCatalog.getConnection(), CONNECTION_CLASSES)
         .ifPresent(icebergCatalog::setConnection);

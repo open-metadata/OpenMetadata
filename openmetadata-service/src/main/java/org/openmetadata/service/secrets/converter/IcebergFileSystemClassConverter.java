@@ -23,9 +23,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class IcebergFileSystemClassConverter extends ClassConverter {
 
   private static final List<Class<?>> FILE_SYSTEM_CLASSES =
-      List.of(
-          AWSCredentials.class,
-          AzureCredentials.class);
+      List.of(AWSCredentials.class, AzureCredentials.class);
 
   public IcebergFileSystemClassConverter() {
     super(IcebergFileSystem.class);
