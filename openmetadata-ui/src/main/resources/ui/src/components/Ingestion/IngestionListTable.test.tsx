@@ -13,6 +13,8 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { mockIngestionListTableProps } from '../../mocks/IngestionListTable.mock';
 import IngestionListTable from './IngestionListTable.component';
 
@@ -22,6 +24,12 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
 jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>loader</div>)
 );
+
+jest.mock(
+  '../Skeleton/CommonSkeletons/ControlElements/ControlElements.component',
+  () => jest.fn().mockImplementation(() => <div>ButtonSkeleton</div>)
+);
+
 jest.mock('./PipelineActions.component', () =>
   jest.fn().mockImplementation(() => <div>pipelineActions</div>)
 );
@@ -29,6 +37,15 @@ jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
   IngestionRecentRuns: jest
     .fn()
     .mockImplementation(() => <div>ingestionRecentRuns</div>),
+}));
+
+jest.mock('../../hooks/useAirflowStatus', () => ({
+  useAirflowStatus: jest.fn(() => {
+    return {
+      isFetchingStatus: false,
+      platform: 'airflow',
+    };
+  }),
 }));
 
 describe('IngestionListTable tests', () => {
@@ -106,5 +123,39 @@ describe('IngestionListTable tests', () => {
     );
 
     expect(ingestionDagName).toBeInTheDocument();
+  });
+
+  it('Should render pipeline action component if airflow platform is not disabled', () => {
+    render(<IngestionListTable {...mockIngestionListTableProps} />);
+
+    const actionButtons = screen.getByText('pipelineActions');
+
+    expect(actionButtons).toBeInTheDocument();
+  });
+
+  it('Should render noDataPlaceholder in ingestion table is airflow platform is disabled', () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isFetchingStatus: false,
+      platform: 'disabled',
+    }));
+
+    render(<IngestionListTable {...mockIngestionListTableProps} />);
+
+    const noData = screen.getByText(NO_DATA_PLACEHOLDER);
+
+    expect(noData).toBeInTheDocument();
+  });
+
+  it('Should render loader in ingestion table is airflow status is fetching', () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isFetchingStatus: true,
+      platform: 'disabled',
+    }));
+
+    render(<IngestionListTable {...mockIngestionListTableProps} />);
+
+    const loader = screen.getByText('ButtonSkeleton');
+
+    expect(loader).toBeInTheDocument();
   });
 });
