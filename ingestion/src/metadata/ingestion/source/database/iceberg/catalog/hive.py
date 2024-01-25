@@ -14,10 +14,8 @@ Iceberg Hive Catalog
 """
 from pyiceberg.catalog import Catalog, load_hive
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    Catalog as IcebergCatalog,
-    HiveCatalogConnection,
-)
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import Catalog as IcebergCatalog
+from metadata.generated.schema.entity.services.connections.database.iceberg.hiveCatalogConnection import HiveCatalogConnection
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
 class IcebergHiveCatalog(IcebergCatalogBase):
@@ -27,13 +25,13 @@ class IcebergHiveCatalog(IcebergCatalogBase):
 
         For more information, check the PyIceberg [docs](https://py.iceberg.apache.org/configuration/#hive-catalog)
         """
-        if not isinstance(catalog.type, HiveCatalogConnection):
+        if not isinstance(catalog.connection, HiveCatalogConnection):
             raise RuntimeError("'connection' is not an instance of 'HiveCatalogConnection'")
 
         parameters = {
-            **cls.get_fs_parameters(catalog.fileSystem),
+            **cls.get_fs_parameters(catalog.connection.fileSystem),
             "warehouse": catalog.warehouseLocation,
-            "uri": catalog.type.uri,
+            "uri": catalog.connection.uri,
         }
 
         return load_hive(catalog.name, parameters)

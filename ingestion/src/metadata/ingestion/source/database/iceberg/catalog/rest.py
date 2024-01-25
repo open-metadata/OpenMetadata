@@ -14,10 +14,8 @@ Iceberg Rest Catalog
 """
 from pyiceberg.catalog import Catalog, load_rest
 
-from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
-    Catalog as IcebergCatalog,
-    RestCatalogConnection,
-)
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import Catalog as IcebergCatalog
+from metadata.generated.schema.entity.services.connections.database.iceberg.restCatalogConnection import RestCatalogConnection
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
 class IcebergRestCatalog(IcebergCatalogBase):
@@ -27,34 +25,39 @@ class IcebergRestCatalog(IcebergCatalogBase):
 
         For more information, check the PyIceberg [docs](https://py.iceberg.apache.org/configuration/#rest-catalog)
         """
-        if not isinstance(catalog.type, RestCatalogConnection):
+        if not isinstance(catalog.connection, RestCatalogConnection):
             raise RuntimeError("'connection' is not an instance of 'RestCatalogConnection'")
 
+        if catalog.connection.credential:
+            credential = f"{catalog.connection.credential.clientId}:{catalog.connection.credential.clientSecret}"
+        else:
+            credential = None
+
         parameters = {
-            **cls.get_fs_parameters(catalog.fileSystem),
+            **cls.get_fs_parameters(catalog.connection.fileSystem),
             "warehouse": catalog.warehouseLocation,
-            "uri": catalog.type.uri,
-            "credential": catalog.type.credential,
-            "token": catalog.type.token,
+            "uri": catalog.connection.uri,
+            "credential": credential,
+            "token": catalog.connection.token,
         }
 
-        if catalog.type.ssl:
+        if catalog.connection.ssl:
             parameters = {
                 **parameters,
                 "ssl": {
                     "client": {
-                        "cert": catalog.type.ssl.clientCertPath,
-                        "key": catalog.type.ssl.privateKeyPath
+                        "cert": catalog.connection.ssl.clientCertPath,
+                        "key": catalog.connection.ssl.privateKeyPath
                     },
-                    "cabundle": catalog.type.ssl.caCertPath
+                    "cabundle": catalog.connection.ssl.caCertPath
                 }
             }
 
-        if catalog.type.sigv4:
+        if catalog.connection.sigv4:
             parameters = {
                 **parameters,
                 "rest.sigv4": True,
-                "rest.signing_region": catalog.type.sigv4.signingRegion,
-                "rest.signing_name": catalog.type.sigv4.signingName
+                "rest.signing_region": catalog.connection.sigv4.signingRegion,
+                "rest.signing_name": catalog.connection.sigv4.signingName
             }
         return load_rest(catalog.name, parameters)

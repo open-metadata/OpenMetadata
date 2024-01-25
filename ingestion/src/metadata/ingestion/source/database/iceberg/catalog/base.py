@@ -12,7 +12,7 @@
 """
 Iceberg Catalog base module.
 """
-
+from typing import Optional
 from abc import ABC, abstractmethod
 
 from pyiceberg.catalog import Catalog
@@ -28,6 +28,8 @@ class IcebergCatalogBase(ABC):
         pass
 
     @staticmethod
-    def get_fs_parameters(fs_config: FileSystemConfig) -> dict:
+    def get_fs_parameters(fs_config: Optional[FileSystemConfig]) -> dict:
         """ Gets the FileSystem parameters based on passed configuration. """
+        if not fs_config:
+            return {}
         return IcebergFileSystemFactory.parse(fs_config)

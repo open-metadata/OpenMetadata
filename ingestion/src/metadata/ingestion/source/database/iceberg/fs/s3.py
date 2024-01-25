@@ -61,7 +61,8 @@ class S3FileSystem(IcebergFileSystemBase):
         return {
             S3_ENDPOINT: fs_config.endPointURL,
             S3_ACCESS_KEY_ID: fs_config.awsAccessKeyId,
-            S3_SECRET_ACCESS_KEY: fs_config.awsSecretAccessKey,
+            S3_SECRET_ACCESS_KEY: fs_config.awsSecretAccessKey.get_secret_value()
+                if fs_config.awsSecretAccessKey else None,
             S3_SESSION_TOKEN: fs_config.awsSessionToken,
             S3_REGION: fs_config.awsRegion,
         }

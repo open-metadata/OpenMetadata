@@ -120,6 +120,7 @@ class IcebergSource(DatabaseServiceSource):
         Filtering happens here.
         """
         for namespace in self.iceberg.list_namespaces():
+            logger.info("Namespace: %s", namespace)
             namespace_name = namespace_to_str(namespace)
             try:
                 schema_fqn = fqn.build(
@@ -208,6 +209,7 @@ class IcebergSource(DatabaseServiceSource):
                 continue
             except Exception as exc:
                 table_name = ".".join(table_identifier)
+                # TODO: Uncomment when understand why 'send_failed_status_callback()' is breaking
                 self.status.failed(
                     StackTraceError(
                         name=table_name,
