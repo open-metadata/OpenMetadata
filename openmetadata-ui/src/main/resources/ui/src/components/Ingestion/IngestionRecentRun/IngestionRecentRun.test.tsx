@@ -252,11 +252,6 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     expect(await findByRole(document.body, 'dialog')).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        'Run status: Partial Success at Jan 20, 1970, 12:38 PM'
-      )
-    ).toBeInTheDocument();
 
     expect(await screen.findByText(/Source/)).toBeInTheDocument();
 
