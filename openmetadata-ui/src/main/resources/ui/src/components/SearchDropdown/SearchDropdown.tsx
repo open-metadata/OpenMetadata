@@ -63,6 +63,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   onGetInitialOptions,
   onSearch,
   index,
+  independent = false,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -75,9 +76,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Filtering out selected options
-    const selectedOptionsObj = options.filter((option) =>
-      selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
-    );
+    const selectedOptionsObj = independent
+      ? selectedOptions
+      : options.filter((option) =>
+          selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+        );
 
     if (fixedOrderOptions) {
       return options.map((item) => ({
@@ -116,7 +119,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
       return [...selectedOptionKeys, ...otherOptions];
     }
-  }, [options, selectedOptions, fixedOrderOptions]);
+  }, [options, selectedOptions, fixedOrderOptions, independent]);
 
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
