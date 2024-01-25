@@ -15,7 +15,7 @@ import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -197,6 +197,18 @@ function AddObservabilityPage() {
       setSaving(false);
     }
   };
+
+  const [selectedTrigger] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
+
+  const supportedFilters = useMemo(
+    () =>
+      filterResources.find((resource) => resource.name === selectedTrigger)
+        ?.supportedFilters,
+    [filterResources, selectedTrigger]
+  );
+
   if (fetching) {
     return <Loader />;
   }
@@ -271,13 +283,13 @@ function AddObservabilityPage() {
                         subHeading={t('message.alerts-trigger-description')}
                       />
                     </Col>
-                    <Col span={24}>
-                      <ObservabilityFormFiltersItem
-                        filterResources={filterResources}
-                        heading={t('label.filter-plural')}
-                        subHeading={t('message.alerts-filter-description')}
-                      />
-                    </Col>
+                    {!isEmpty(supportedFilters) && (
+                      <Col span={24}>
+                        <ObservabilityFormFiltersItem
+                          supportedFilters={supportedFilters}
+                        />
+                      </Col>
+                    )}
                     <Col span={24}>
                       <ObservabilityFormActionItem
                         filterResources={filterResources}

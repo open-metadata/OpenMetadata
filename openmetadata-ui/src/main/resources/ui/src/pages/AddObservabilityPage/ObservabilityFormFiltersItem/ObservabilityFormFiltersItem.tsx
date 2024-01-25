@@ -23,7 +23,7 @@ import {
   Switch,
   Typography,
 } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, map } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
@@ -37,15 +37,14 @@ import {
   Effect,
 } from '../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import { EventType } from '../../../generated/events/failedEvent';
 import { InputType } from '../../../generated/events/filterResourceDescriptor';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
 
 function ObservabilityFormFiltersItem({
-  heading,
-  subHeading,
-  filterResources,
+  supportedFilters,
 }: Readonly<ObservabilityFormFiltersItemProps>) {
   const { t } = useTranslation();
 
@@ -56,13 +55,6 @@ function ObservabilityFormFiltersItem({
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
-
-  const supportedFilters = useMemo(
-    () =>
-      filterResources.find((resource) => resource.name === selectedTrigger)
-        ?.supportedFilters,
-    [filterResources, selectedTrigger]
-  );
 
   const searchEntity = useCallback(
     async (search: string, searchIndex: SearchIndex, filters?: string) => {
@@ -118,6 +110,13 @@ function ObservabilityFormFiltersItem({
     },
     [searchEntity]
   );
+
+  const eventTypeOptions = useMemo(() => {
+    return map(EventType, (eventType) => ({
+      label: eventType,
+      value: eventType,
+    }));
+  }, []);
 
   // Run time values needed for conditional rendering
   const functions = useMemo(() => {
@@ -232,6 +231,7 @@ function ObservabilityFormFiltersItem({
           break;
 
         case 'ownerNameList':
+        case 'updateByUserList':
           field = (
             <Col key="owner-select" span={11}>
               <Form.Item
@@ -243,7 +243,10 @@ function ObservabilityFormFiltersItem({
                     message: t('message.field-text-is-required', {
                       fieldText: t('label.entity-list', {
                         entity: t('label.entity-name', {
-                          entity: t('label.owner'),
+                          entity:
+                            argument === 'ownerNameList'
+                              ? t('label.owner')
+                              : t('label.user'),
                         }),
                       }),
                     }),
@@ -254,7 +257,76 @@ function ObservabilityFormFiltersItem({
                   data-testid="owner-select"
                   mode="multiple"
                   placeholder={t('label.search-by-type', {
-                    type: t('label.owner-lowercase'),
+                    type:
+                      argument === 'ownerNameList'
+                        ? t('label.owner-lowercase')
+                        : t('label.user'),
+                  })}
+                />
+              </Form.Item>
+            </Col>
+          );
+
+          break;
+
+        case 'eventTypeList':
+          field = (
+            <Col key="event-type-select" span={11}>
+              <Form.Item
+                className="w-full"
+                name={[fieldName, 'arguments', index, 'input']}
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.entity-list', {
+                        entity: t('label.entity-name', {
+                          entity: t('label.event'),
+                        }),
+                      }),
+                    }),
+                  },
+                ]}>
+                <Select
+                  data-testid="event-type-select"
+                  mode="multiple"
+                  options={eventTypeOptions}
+                  placeholder={t('label.search-by-type', {
+                    type: t('label.event-type-lowercase'),
+                  })}
+                />
+              </Form.Item>
+            </Col>
+          );
+
+          break;
+
+        case 'entityIdList':
+          field = (
+            <Col key="entity-id-select" span={11}>
+              <Form.Item
+                className="w-full"
+                name={[fieldName, 'arguments', index, 'input']}
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.entity-list', {
+                        entity: t('label.entity-id', {
+                          entity: t('label.data-asset'),
+                        }),
+                      }),
+                    }),
+                  },
+                ]}>
+                <Select
+                  data-testid="entity-id-select"
+                  mode="tags"
+                  open={false}
+                  placeholder={t('label.search-by-type', {
+                    type: t('label.entity-id', {
+                      entity: t('label.data-asset'),
+                    }),
                   })}
                 />
               </Form.Item>
@@ -280,7 +352,7 @@ function ObservabilityFormFiltersItem({
         </>
       );
     },
-    [getEntityByFQN, getDomainOptions]
+    [getEntityByFQN, getDomainOptions, eventTypeOptions]
   );
 
   // Render condition field based on function selected
@@ -308,11 +380,13 @@ function ObservabilityFormFiltersItem({
     <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
+          <Typography.Text className="font-medium">
+            {t('label.filter-plural')}
+          </Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
+            {t('message.alerts-filter-description')}
           </Typography.Text>
         </Col>
         <Col span={24}>
