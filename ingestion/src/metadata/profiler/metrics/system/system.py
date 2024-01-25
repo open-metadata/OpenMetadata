@@ -48,7 +48,11 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import get_value_from_cache, set_cache
+from metadata.utils.profiler_utils import (
+    SnowflakeQueryResult,
+    get_value_from_cache,
+    set_cache,
+)
 
 logger = profiler_logger()
 
@@ -287,6 +291,41 @@ def _(
     return metric_results
 
 
+def _snowflake_build_query_result(
+    session: Session,
+    table: DeclarativeMeta,
+    database: str,
+    schema: str,
+    ometa_client: OpenMetadata,
+    db_service: DatabaseService,
+) -> List[SnowflakeQueryResult]:
+    """List and parse snowflake DML query results"""
+    rows = session.execute(
+        text(
+            INFORMATION_SCHEMA_QUERY.format(
+                tablename=table.__tablename__,  # type: ignore
+                insert=DatabaseDMLOperations.INSERT.value,
+                update=DatabaseDMLOperations.UPDATE.value,
+                delete=DatabaseDMLOperations.DELETE.value,
+                merge=DatabaseDMLOperations.MERGE.value,
+            )
+        )
+    )
+    query_results = []
+    for row in rows:
+        result = get_snowflake_system_queries(
+            row=row,
+            database=database,
+            schema=schema,
+            ometa_client=ometa_client,
+            db_service=db_service,
+        )
+        if result:
+            query_results.append(result)
+
+    return query_results
+
+
 @get_system_metrics_for_dialect.register(Dialects.Snowflake)
 def _(
     dialect: str,
@@ -319,28 +358,14 @@ def _(
 
     metric_results: List[Dict] = []
 
-    rows = session.execute(
-        text(
-            INFORMATION_SCHEMA_QUERY.format(
-                tablename=table.__tablename__,  # type: ignore
-                insert=DatabaseDMLOperations.INSERT.value,
-                update=DatabaseDMLOperations.UPDATE.value,
-                delete=DatabaseDMLOperations.DELETE.value,
-                merge=DatabaseDMLOperations.MERGE.value,
-            )
-        )
+    query_results = _snowflake_build_query_result(
+        session=session,
+        table=table,
+        database=database,
+        schema=schema,
+        ometa_client=ometa_client,
+        db_service=db_service,
     )
-    query_results = []
-    for row in rows:
-        result = get_snowflake_system_queries(
-            row=row,
-            database=database,
-            schema=schema,
-            ometa_client=ometa_client,
-            db_service=db_service,
-        )
-        if result:
-            query_results.append(result)
 
     for query_result in query_results:
         rows_affected = None

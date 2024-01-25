@@ -15,7 +15,7 @@ Snowflake System Metric Queries and query operations
 
 import re
 import traceback
-from typing import Optional
+from typing import Optional, Tuple
 
 from sqlalchemy.engine.row import Row
 
@@ -85,6 +85,46 @@ def _parse_query(query: str) -> Optional[str]:
         return None
 
 
+def get_identifiers(
+    identifier: str, ometa_client: OpenMetadata, db_service: DatabaseService
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Get query identifiers and if needed, fetch them from ES"""
+    database_name, schema_name, table_name = get_identifiers_from_string(identifier)
+
+    if not table_name:
+        logger.debug("Could not extract the table name. Skipping operation.")
+        return database_name, schema_name, table_name
+
+    if not all([database_name, schema_name]):
+        logger.debug(
+            "Missing database or schema info from the query. We'll look for it in ES."
+        )
+        es_tables = search_table_entities(
+            metadata=ometa_client,
+            service_name=db_service.fullyQualifiedName.__root__,
+            database=database_name,
+            database_schema=schema_name,
+            table=table_name,
+        )
+
+        if not es_tables:
+            logger.debug("No tables match the search criteria.")
+            return database_name, schema_name, table_name
+
+        if len(es_tables) > 1:
+            logger.debug(
+                "Found more than 1 table matching the search criteria."
+                " Skipping the computation to not mix system data."
+            )
+            return database_name, schema_name, table_name
+
+        matched_table = es_tables[0]
+        database_name = matched_table.database.name
+        schema_name = matched_table.databaseSchema.name
+
+    return database_name, schema_name, table_name
+
+
 def get_snowflake_system_queries(
     row: Row,
     database: str,
@@ -117,38 +157,14 @@ def get_snowflake_system_queries(
         if not identifier:
             return None
 
-        database_name, schema_name, table_name = get_identifiers_from_string(identifier)
+        database_name, schema_name, table_name = get_identifiers(
+            identifier=identifier,
+            ometa_client=ometa_client,
+            db_service=db_service,
+        )
 
-        if not table_name:
-            logger.debug("Could not extract the table name. Skipping operation.")
+        if not all([database_name, schema_name, table_name]):
             return None
-
-        if not all([database_name, schema_name]):
-            logger.debug(
-                "Missing database or schema info from the query. We'll look for it in ES."
-            )
-            es_tables = search_table_entities(
-                metadata=ometa_client,
-                service_name=db_service.fullyQualifiedName.__root__,
-                database=database_name,
-                database_schema=schema_name,
-                table=table_name,
-            )
-
-            if not es_tables:
-                logger.debug("No tables match the search criteria.")
-                return None
-
-            if len(es_tables) > 1:
-                logger.debug(
-                    "Found more than 1 table matching the search criteria."
-                    " Skipping the computation to not mix system data."
-                )
-                return None
-
-            matched_table = es_tables[0]
-            database_name = matched_table.database.name
-            schema_name = matched_table.databaseSchema.name
 
         if (
             database.lower() == database_name.lower()
