@@ -23,6 +23,8 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.metrics.system.dml_operation import (
     DML_OPERATION_MAP,
@@ -290,6 +292,8 @@ def _(
     dialect: str,
     session: Session,
     table: DeclarativeMeta,
+    ometa_client: OpenMetadata,
+    db_service: DatabaseService,
     *args,
     **kwargs,
 ) -> Optional[List[Dict]]:
@@ -328,7 +332,13 @@ def _(
     )
     query_results = []
     for row in rows:
-        result = get_snowflake_system_queries(row, database, schema)
+        result = get_snowflake_system_queries(
+            row=row,
+            database=database,
+            schema=schema,
+            ometa_client=ometa_client,
+            db_service=db_service,
+        )
         if result:
             query_results.append(result)
 
@@ -409,12 +419,17 @@ class System(SystemMetric):
             logger.debug("Clearing system cache")
             SYSTEM_QUERY_RESULT_CACHE.clear()
 
+    def _validate_attrs(self, attr_list: List[str]) -> None:
+        """Validate the necessary attributes given via add_props"""
+        for attr in attr_list:
+            if not hasattr(self, attr):
+                raise AttributeError(
+                    f"System requires a table to be set: add_props({attr}=...)(Metrics.SYSTEM.value)"
+                )
+
     def sql(self, session: Session, **kwargs):
         """Implements the SQL logic to fetch system data"""
-        if not hasattr(self, "table"):
-            raise AttributeError(
-                "System requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
-            )
+        self._validate_attrs(["table", "ometa_client", "db_service"])
 
         conn_config = kwargs.get("conn_config")
 
@@ -423,6 +438,8 @@ class System(SystemMetric):
             session=session,
             table=self.table,  # pylint: disable=no-member
             conn_config=conn_config,
+            ometa_client=self.ometa_client,  # pylint: disable=no-member
+            db_service=self.db_service,  # pylint: disable=no-member
         )
         self._manage_cache()
         return system_metrics
