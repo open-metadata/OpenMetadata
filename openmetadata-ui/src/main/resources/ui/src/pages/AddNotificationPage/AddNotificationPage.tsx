@@ -20,7 +20,9 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
+import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -63,6 +65,26 @@ const AddNotificationPage = () => {
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<EventSubscription>();
+
+  const breadcrumb = useMemo(
+    () => [
+      {
+        name: t('label.setting-plural'),
+        url: ROUTES.SETTINGS,
+      },
+      {
+        name: t('label.notification-plural'),
+        url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
+      },
+      {
+        name: fqn
+          ? t('label.edit-entity', { entity: t('label.alert') })
+          : t('label.create-entity', { entity: t('label.alert') }),
+        url: '',
+      },
+    ],
+    [fqn]
+  );
 
   const fetchAlert = async () => {
     try {
@@ -212,6 +234,10 @@ const AddNotificationPage = () => {
         children: (
           <div className="alert-page-container">
             <Row className="page-container" gutter={[16, 16]}>
+              <Col span={24}>
+                <TitleBreadcrumb titleLinks={breadcrumb} />
+              </Col>
+
               <Col span={24}>
                 <Typography.Title level={5}>
                   {isEditMode
