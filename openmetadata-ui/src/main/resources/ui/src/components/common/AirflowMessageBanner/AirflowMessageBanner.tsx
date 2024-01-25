@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, SpaceProps, Typography } from 'antd';
+import { Space, SpaceProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { FC } from 'react';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import './airflow-message-banner.less';
 
 const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
@@ -32,7 +33,10 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
       data-testid="no-airflow-placeholder"
       size={16}>
       <IconRetry className="align-middle" height={24} width={24} />
-      <Typography.Text>{reason}</Typography.Text>
+      <RichTextEditorPreviewer
+        enableSeeMoreVariant={false}
+        markdown={reason ?? ''}
+      />
     </Space>
   );
 };
