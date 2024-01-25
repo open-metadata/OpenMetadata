@@ -139,7 +139,7 @@ const TaskFeedCard = ({
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss">{entityType}</Typography.Text>
+            <Typography.Text className="p-l-xss">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
