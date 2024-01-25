@@ -30,8 +30,10 @@ const dragConnection = (sourceId, targetId) => {
     .click({ force: true }); // Adding force true for handles because it can be hidden behind the node
 };
 
-const performFitView = () => {
-  cy.get('.react-flow__controls-fitview').click({ force: true });
+const performZoomOut = () => {
+  for (let i = 0; i < 7; i++) {
+    cy.get('.react-flow__controls-zoomout').click({ force: true });
+  }
 };
 
 const connectEdgeBetweenNodes = (fromNode, toNode) => {
@@ -63,7 +65,6 @@ const connectEdgeBetweenNodes = (fromNode, toNode) => {
 };
 
 const verifyNodePresent = (node) => {
-  performFitView();
   cy.get(`[data-testid="lineage-node-${node.fqn}"]`).should('be.visible');
   cy.get(
     `[data-testid="lineage-node-${node.fqn}"] [data-testid="entity-header-name"]`
@@ -71,7 +72,6 @@ const verifyNodePresent = (node) => {
 };
 
 const deleteNode = (node) => {
-  performFitView();
   interceptURL('DELETE', '/api/v1/lineage/**', 'lineageDeleteApi');
   cy.get(`[data-testid="lineage-node-${node.fqn}"]`).click({ force: true });
   // Adding force true for handles because it can be hidden behind the node
@@ -142,6 +142,9 @@ const addPipelineBetweenNodes = (
 
   cy.get('[data-testid="lineage"]').click();
   cy.get('[data-testid="edit-lineage"]').click();
+
+  performZoomOut();
+
   connectEdgeBetweenNodes(sourceEntity, targetEntity);
   if (pipelineItem) {
     applyPipelineFromModal(sourceEntity, targetEntity, pipelineItem);
@@ -166,11 +169,8 @@ const expandCols = (nodeFqn) => {
 
 const addColumnLineage = (fromNode, toNode) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
-  performFitView();
   expandCols(fromNode.fqn);
-  performFitView();
   expandCols(toNode.fqn);
-  performFitView();
   dragConnection(
     `column-${fromNode.columns[0]}`,
     `column-${toNode.columns[0]}`
@@ -198,6 +198,8 @@ describe('Lineage verification', () => {
       cy.get('[data-testid="lineage"]').click();
       cy.get('[data-testid="edit-lineage"]').click();
 
+      performZoomOut();
+
       // Connect the current entity to all others in the array except itself
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
         if (i !== index) {
@@ -207,6 +209,8 @@ describe('Lineage verification', () => {
 
       cy.get('[data-testid="edit-lineage"]').click();
       cy.reload();
+
+      performZoomOut();
 
       // Verify Added Nodes
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
@@ -227,6 +231,8 @@ describe('Lineage verification', () => {
 
       cy.get('[data-testid="lineage"]').click();
       cy.get('[data-testid="edit-lineage"]').click();
+
+      performZoomOut();
 
       // Delete Nodes
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
