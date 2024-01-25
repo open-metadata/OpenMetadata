@@ -52,7 +52,6 @@ import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -220,38 +219,42 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
-      ([tabSearchIndex, tabDetail]) => ({
-        key: tabSearchIndex,
-        label: (
-          <div
-            className="d-flex items-center justify-between"
-            data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            <div className="d-flex items-center">
-              <span className="explore-icon d-flex m-r-xs">
-                {getEntityIcon(tabSearchIndex)}
+      ([tabSearchIndex, tabDetail]) => {
+        const Icon = tabDetail.icon;
+
+        return {
+          key: tabSearchIndex,
+          label: (
+            <div
+              className="d-flex items-center justify-between"
+              data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+              <div className="d-flex items-center">
+                <span className="explore-icon d-flex m-r-xs">
+                  <Icon />
+                </span>
+                <Typography.Text
+                  className={
+                    tabSearchIndex === searchIndex ? 'text-primary' : ''
+                  }>
+                  {tabDetail.label}
+                </Typography.Text>
+              </div>
+              <span>
+                {!isNil(searchHitCounts)
+                  ? getCountBadge(
+                      searchHitCounts[tabSearchIndex as ExploreSearchIndex],
+                      '',
+                      tabSearchIndex === searchIndex
+                    )
+                  : getCountBadge()}
               </span>
-              <Typography.Text
-                className={
-                  tabSearchIndex === searchIndex ? 'text-primary' : ''
-                }>
-                {tabDetail.label}
-              </Typography.Text>
             </div>
-            <span>
-              {!isNil(searchHitCounts)
-                ? getCountBadge(
-                    searchHitCounts[tabSearchIndex as ExploreSearchIndex],
-                    '',
-                    tabSearchIndex === searchIndex
-                  )
-                : getCountBadge()}
-            </span>
-          </div>
-        ),
-        count: searchHitCounts
-          ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
-          : 0,
-      })
+          ),
+          count: searchHitCounts
+            ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
+            : 0,
+        };
+      }
     );
 
     return searchQueryParam
