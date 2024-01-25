@@ -308,7 +308,7 @@ function ObservabilityFormFiltersItem({
     <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text>{heading}</Typography.Text>
+          <Typography.Text className="font-medium">{heading}</Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">

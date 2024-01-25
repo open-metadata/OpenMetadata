@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { GlobalSettingOptions } from '../../src/constants/GlobalSettings.constants';
 import { uuid } from '../common/common';
 import { SERVICE_CATEGORIES } from './service.constants';
+import { GlobalSettingOptions } from './settings.constant';
 
 export const OWNER = 'Amber Green';
 export const REVIEWER = 'Amanda York';

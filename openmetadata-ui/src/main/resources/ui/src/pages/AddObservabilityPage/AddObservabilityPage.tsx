@@ -40,6 +40,7 @@ import {
   getResourceFunctions,
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
+import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './add-observability-page.less';
 import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
@@ -172,7 +173,7 @@ function AddObservabilityPage() {
           entity: t('label.alert-plural'),
         })
       );
-      history.push(ROUTES.OBSERVABILITY_ALERTS);
+      history.push(getObservabilityAlertDetailsPath(data.name));
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -281,7 +282,7 @@ function AddObservabilityPage() {
                       <ObservabilityFormActionItem
                         filterResources={filterResources}
                         heading={t('label.action-plural')}
-                        subHeading={t('message.alerts-filter-description')}
+                        subHeading={t('message.alerts-action-description')}
                       />
                     </Col>
                     <Form.Item

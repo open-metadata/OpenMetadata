@@ -11,22 +11,37 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
-import { isEmpty, isNil, startCase, toString } from 'lodash';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { isEmpty, isNil, startCase } from 'lodash';
 import React, {
   Fragment,
   ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   ArgumentsInput,
   EventSubscription,
@@ -41,9 +56,11 @@ import '../AddObservabilityPage/add-observability-page.less';
 function ObservabilityAlertDetailsPage() {
   const { t } = useTranslation();
   const { fqn } = useFqn();
+  const history = useHistory();
 
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [loading, setLoading] = useState<boolean>(true);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
 
   const { resource, filters, actions, destinations } = useMemo(
     () => ({
@@ -86,6 +103,10 @@ function ObservabilityAlertDetailsPage() {
     [alertDetails]
   );
 
+  const handleAlertDelete = useCallback(async () => {
+    history.push(ROUTES.OBSERVABILITY_ALERTS);
+  }, [history]);
+
   const getObservabilityDetailsItem = ({
     heading,
     subHeading,
@@ -98,7 +119,7 @@ function ObservabilityAlertDetailsPage() {
     <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text>{heading}</Typography.Text>
+          <Typography.Text className="font-medium">{heading}</Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">
@@ -138,14 +159,19 @@ function ObservabilityAlertDetailsPage() {
                 <Col className="border rounded-4 p-sm" span={20}>
                   {filterDetails.arguments?.map((argument) => (
                     <Row gutter={[0, 8]} key={argument.name}>
-                      <Col className="font-medium" span={5}>
+                      <Col className="font-medium" span={24}>
                         <Typography.Text>{argument.name}</Typography.Text>
                       </Col>
-                      <Col span={1}>:</Col>
-                      <Col span={18}>
-                        <Typography.Text>
-                          {toString(argument.input).replaceAll(',', ', ')}
-                        </Typography.Text>
+                      <Col span={24}>
+                        {argument.input?.map((inputItem) => (
+                          <Tooltip key={inputItem} title={inputItem}>
+                            <Tag className="m-b-xs w-max-full">
+                              <Typography.Text ellipsis>
+                                {inputItem}
+                              </Typography.Text>
+                            </Tag>
+                          </Tooltip>
+                        ))}
                       </Col>
                     </Row>
                   ))}
@@ -186,18 +212,23 @@ function ObservabilityAlertDetailsPage() {
                       <Row gutter={[0, 8]}>
                         {destination.config?.receivers && (
                           <>
-                            <Col className="font-medium" span={5}>
+                            <Col className="font-medium" span={24}>
                               <Typography.Text>
                                 {t('label.receiver-plural')}
                               </Typography.Text>
                             </Col>
-                            <Col span={1}>:</Col>
-                            <Col span={18}>
-                              <Typography.Text>
-                                {toString(
-                                  destination.config?.receivers
-                                ).replaceAll(',', ', ')}
-                              </Typography.Text>
+                            <Col span={24}>
+                              {destination.config?.receivers?.map(
+                                (receiver) => (
+                                  <Tooltip key={receiver} title={receiver}>
+                                    <Tag className="m-b-xs w-max-full">
+                                      <Typography.Text ellipsis>
+                                        {receiver}
+                                      </Typography.Text>
+                                    </Tag>
+                                  </Tooltip>
+                                )
+                              )}
                             </Col>
                           </>
                         )}
@@ -248,18 +279,28 @@ function ObservabilityAlertDetailsPage() {
                     </Space>
                   </Col>
                   <Col>
-                    <Link to={getObservabilityAlertsEditPath(fqn)}>
-                      <Button data-testid="edit-button" type="primary">
-                        {t('label.edit')}
-                      </Button>
-                    </Link>
+                    <Space size={8}>
+                      <Link to={getObservabilityAlertsEditPath(fqn)}>
+                        <Button
+                          className="flex flex-center"
+                          data-testid="edit-button"
+                          icon={<EditIcon height={16} width={16} />}
+                        />
+                      </Link>
+                      <Button
+                        className="flex flex-center"
+                        data-testid="delete-button"
+                        icon={<DeleteIcon height={16} width={16} />}
+                        onClick={() => setShowDeleteModal(true)}
+                      />
+                    </Space>
                   </Col>
                 </Row>
               </Col>
 
               <Col span={24}>
                 <Space direction="vertical">
-                  <Typography.Text className="font-bold">
+                  <Typography.Text className="font-medium">
                     {`${t('label.name')} :`}
                   </Typography.Text>
                   <Typography.Text>
@@ -269,10 +310,11 @@ function ObservabilityAlertDetailsPage() {
               </Col>
               {alertDetails?.description && (
                 <Col span={24}>
-                  <Typography.Text className="font-bold">{`${t(
+                  <Typography.Text className="font-medium">{`${t(
                     'label.description'
                   )} :`}</Typography.Text>
                   <RichTextEditorPreviewer
+                    className="p-t-xs"
                     data-testid="description"
                     markdown={alertDetails.description}
                   />
@@ -290,19 +332,21 @@ function ObservabilityAlertDetailsPage() {
                   subHeading: t('message.alerts-trigger-description'),
                 })}
               </Col>
-              <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: getFilterDetails(true, filters),
-                  heading: t('label.filter-plural'),
-                  subHeading: t('message.alerts-filter-description'),
-                })}
-              </Col>
-              {actions && (
+              {!isEmpty(filters) && !isNil(filters) && (
+                <Col span={24}>
+                  {getObservabilityDetailsItem({
+                    details: getFilterDetails(true, filters),
+                    heading: t('label.filter-plural'),
+                    subHeading: t('message.alerts-filter-description'),
+                  })}
+                </Col>
+              )}
+              {!isEmpty(actions) && !isNil(actions) && (
                 <Col span={24}>
                   {getObservabilityDetailsItem({
                     details: getFilterDetails(false, actions),
                     heading: t('label.action-plural'),
-                    subHeading: t('message.alerts-filter-description'),
+                    subHeading: t('message.alerts-action-description'),
                   })}
                 </Col>
               )}
@@ -314,6 +358,17 @@ function ObservabilityAlertDetailsPage() {
                 })}
               </Col>
             </Row>
+            <DeleteWidgetModal
+              afterDeleteAction={handleAlertDelete}
+              allowSoftDelete={false}
+              entityId={alertDetails?.id ?? ''}
+              entityName={getEntityName(alertDetails)}
+              entityType={EntityType.SUBSCRIPTION}
+              visible={showDeleteModal}
+              onCancel={() => {
+                setShowDeleteModal(false);
+              }}
+            />
           </div>
         ),
         minWidth: 700,
