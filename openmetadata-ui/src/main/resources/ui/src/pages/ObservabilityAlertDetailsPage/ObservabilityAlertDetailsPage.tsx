@@ -323,7 +323,7 @@ function ObservabilityAlertDetailsPage() {
               <Col span={24}>
                 {getObservabilityDetailsItem({
                   details: (
-                    <div className="d-flex items-center gap-2">
+                    <div className="d-flex items-center gap-2 m-l-sm">
                       {getIconForEntity(resource ?? '')}
                       <span>{startCase(resource)}</span>
                     </div>

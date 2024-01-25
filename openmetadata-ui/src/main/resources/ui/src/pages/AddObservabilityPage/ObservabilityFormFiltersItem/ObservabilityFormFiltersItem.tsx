@@ -12,35 +12,19 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  FormListFieldData,
-  Row,
-  Select,
-  Switch,
-  Typography,
-} from 'antd';
-import { isEmpty, isNil, map } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { Button, Card, Col, Form, Row, Select, Switch, Typography } from 'antd';
+import { isEmpty, isNil } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import {
-  ENTITY_TO_SEARCH_INDEX_MAP,
-  SearchIndex,
-} from '../../../enums/search.enum';
 import {
   CreateEventSubscription,
   Effect,
 } from '../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
-import { EventType } from '../../../generated/events/failedEvent';
-import { InputType } from '../../../generated/events/filterResourceDescriptor';
-import { searchData } from '../../../rest/miscAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getConditionalField,
+  getSupportedFilterOptions,
+} from '../../../utils/Alerts/AlertsUtil';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
 
 function ObservabilityFormFiltersItem({
@@ -51,330 +35,18 @@ function ObservabilityFormFiltersItem({
   const form = Form.useFormInstance();
 
   // Watchers
-  const filters = Form.useWatch<EventFilterRule[]>(['input', 'filters'], form);
+  const selectedFilters = Form.useWatch<EventFilterRule[]>(
+    ['input', 'filters'],
+    form
+  );
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
 
-  const searchEntity = useCallback(
-    async (search: string, searchIndex: SearchIndex, filters?: string) => {
-      try {
-        const response = await searchData(
-          search,
-          1,
-          PAGE_SIZE_LARGE,
-          filters ?? '',
-          '',
-          '',
-          searchIndex
-        );
-
-        return response.data.hits.hits.map((d) => ({
-          label: getEntityName(d._source),
-          value: d._source.fullyQualifiedName,
-        }));
-      } catch (error) {
-        return [];
-      }
-    },
-    []
-  );
-
-  const getEntityByFQN = useCallback(
-    async (searchText: string) => {
-      return searchEntity(
-        searchText,
-        ENTITY_TO_SEARCH_INDEX_MAP[selectedTrigger]
-      );
-    },
-    [searchEntity, selectedTrigger]
-  );
-
-  const getTableSuggestions = useCallback(
-    async (searchText: string) => {
-      return searchEntity(searchText, SearchIndex.TABLE);
-    },
-    [searchEntity]
-  );
-
-  const getDomainOptions = useCallback(
-    async (searchText: string) => {
-      return searchEntity(searchText, SearchIndex.DOMAIN);
-    },
-    [searchEntity]
-  );
-
-  const getOwnerOptions = useCallback(
-    async (searchText: string) => {
-      return searchEntity(searchText, SearchIndex.USER, 'isBot:false');
-    },
-    [searchEntity]
-  );
-
-  const eventTypeOptions = useMemo(() => {
-    return map(EventType, (eventType) => ({
-      label: eventType,
-      value: eventType,
-    }));
-  }, []);
-
   // Run time values needed for conditional rendering
-  const functions = useMemo(() => {
-    return supportedFilters?.map((func) => ({
-      label: getEntityName(func),
-      value: func.name,
-      disabled: filters?.some((d) => d.name === func.name),
-    }));
-  }, [supportedFilters, filters]);
-
-  const showAddFilter = useCallback(
-    (fields: FormListFieldData[]) =>
-      fields.length < (supportedFilters?.length ?? 1),
-    [supportedFilters]
-  );
-
-  const getFieldByArgumentType = useCallback(
-    (fieldName: number, argument: string, index: number) => {
-      let field: JSX.Element;
-      switch (argument) {
-        case 'fqnList':
-          field = (
-            <Col key="fqn-list-select" span={11}>
-              <Form.Item
-                className="w-full"
-                name={[fieldName, 'arguments', index, 'input']}
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.entity-list', {
-                        entity: t('label.fqn-uppercase'),
-                      }),
-                    }),
-                  },
-                ]}>
-                <AsyncSelect
-                  api={getEntityByFQN}
-                  data-testid="fqn-list-select"
-                  mode="multiple"
-                  placeholder={t('label.search-by-type', {
-                    type: t('label.fqn-uppercase'),
-                  })}
-                  showArrow={false}
-                />
-              </Form.Item>
-            </Col>
-          );
-
-          break;
-
-        case 'domainList':
-          field = (
-            <Col key="domain-select" span={11}>
-              <Form.Item
-                className="w-full"
-                name={[fieldName, 'arguments', index, 'input']}
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.entity-list', {
-                        entity: t('label.domain'),
-                      }),
-                    }),
-                  },
-                ]}>
-                <AsyncSelect
-                  api={getDomainOptions}
-                  data-testid="domain-select"
-                  mode="multiple"
-                  placeholder={t('label.search-by-type', {
-                    type: t('label.domain-lowercase'),
-                  })}
-                />
-              </Form.Item>
-            </Col>
-          );
-
-          break;
-
-        case 'tableNameList':
-          field = (
-            <Col key="domain-select" span={11}>
-              <Form.Item
-                className="w-full"
-                name={[fieldName, 'arguments', index, 'input']}
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.entity-list', {
-                        entity: t('label.entity-name', {
-                          entity: t('label.table'),
-                        }),
-                      }),
-                    }),
-                  },
-                ]}>
-                <AsyncSelect
-                  api={getTableSuggestions}
-                  data-testid="table-select"
-                  mode="multiple"
-                  placeholder={t('label.search-by-type', {
-                    type: t('label.table-lowercase'),
-                  })}
-                />
-              </Form.Item>
-            </Col>
-          );
-
-          break;
-
-        case 'ownerNameList':
-        case 'updateByUserList':
-          field = (
-            <Col key="owner-select" span={11}>
-              <Form.Item
-                className="w-full"
-                name={[fieldName, 'arguments', index, 'input']}
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.entity-list', {
-                        entity: t('label.entity-name', {
-                          entity:
-                            argument === 'ownerNameList'
-                              ? t('label.owner')
-                              : t('label.user'),
-                        }),
-                      }),
-                    }),
-                  },
-                ]}>
-                <AsyncSelect
-                  api={getOwnerOptions}
-                  data-testid="owner-select"
-                  mode="multiple"
-                  placeholder={t('label.search-by-type', {
-                    type:
-                      argument === 'ownerNameList'
-                        ? t('label.owner-lowercase')
-                        : t('label.user'),
-                  })}
-                />
-              </Form.Item>
-            </Col>
-          );
-
-          break;
-
-        case 'eventTypeList':
-          field = (
-            <Col key="event-type-select" span={11}>
-              <Form.Item
-                className="w-full"
-                name={[fieldName, 'arguments', index, 'input']}
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.entity-list', {
-                        entity: t('label.entity-name', {
-                          entity: t('label.event'),
-                        }),
-                      }),
-                    }),
-                  },
-                ]}>
-                <Select
-                  data-testid="event-type-select"
-                  mode="multiple"
-                  options={eventTypeOptions}
-                  placeholder={t('label.search-by-type', {
-                    type: t('label.event-type-lowercase'),
-                  })}
-                />
-              </Form.Item>
-            </Col>
-          );
-
-          break;
-
-        case 'entityIdList':
-          field = (
-            <Col key="entity-id-select" span={11}>
-              <Form.Item
-                className="w-full"
-                name={[fieldName, 'arguments', index, 'input']}
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.entity-list', {
-                        entity: t('label.entity-id', {
-                          entity: t('label.data-asset'),
-                        }),
-                      }),
-                    }),
-                  },
-                ]}>
-                <Select
-                  data-testid="entity-id-select"
-                  mode="tags"
-                  open={false}
-                  placeholder={t('label.search-by-type', {
-                    type: t('label.entity-id', {
-                      entity: t('label.data-asset'),
-                    }),
-                  })}
-                />
-              </Form.Item>
-            </Col>
-          );
-
-          break;
-
-        default:
-          field = <></>;
-      }
-
-      return (
-        <>
-          {field}
-          <Form.Item
-            hidden
-            dependencies={[fieldName, 'arguments', index, 'input']}
-            initialValue={argument}
-            key={`${argument}-name`}
-            name={[fieldName, 'arguments', index, 'name']}
-          />
-        </>
-      );
-    },
-    [getEntityByFQN, getDomainOptions, eventTypeOptions]
-  );
-
-  // Render condition field based on function selected
-  const getConditionField = (condition: string, name: number) => {
-    const selectedFilter = supportedFilters?.find(
-      (filter) => filter.name === condition
-    );
-    const requireInput = selectedFilter?.inputType === InputType.Runtime;
-    const requiredArguments = selectedFilter?.arguments;
-
-    if (!requireInput) {
-      return <></>;
-    }
-
-    return (
-      <>
-        {requiredArguments?.map((argument, index) => {
-          return getFieldByArgumentType(name, argument, index);
-        })}
-      </>
-    );
-  };
+  const filterOptions = useMemo(() => {
+    return getSupportedFilterOptions(selectedFilters, supportedFilters);
+  }, [selectedFilters, supportedFilters]);
 
   return (
     <Card className="alert-form-item-container">
@@ -391,91 +63,108 @@ function ObservabilityFormFiltersItem({
         </Col>
         <Col span={24}>
           <Form.List name={['input', 'filters']}>
-            {(fields, { add, remove }, { errors }) => (
-              <Row gutter={[16, 16]} key="filters">
-                {fields.map(({ key, name }) => {
-                  const effect =
-                    form.getFieldValue(['input', 'filters', name, 'effect']) ??
-                    Effect.Include;
+            {(fields, { add, remove }, { errors }) => {
+              const showAddFilterButton =
+                fields.length < (supportedFilters?.length ?? 1);
 
-                  return (
-                    <Col key={`observability-${key}`} span={24}>
-                      <Row gutter={[8, 8]}>
-                        <Col span={11}>
-                          <Form.Item
-                            key={`filter-${key}`}
-                            name={[name, 'name']}
-                            rules={[
-                              {
-                                required: true,
-                                message: t('message.field-text-is-required', {
-                                  fieldText: t('label.filter'),
-                                }),
-                              },
-                            ]}>
-                            <Select
-                              options={functions}
-                              placeholder={t('label.select-field', {
-                                field: t('label.filter'),
-                              })}
-                              onChange={() => {
-                                form.setFieldValue(
-                                  ['input', 'filters', name, 'arguments'],
-                                  []
-                                );
-                              }}
+              return (
+                <Row gutter={[16, 16]} key="filters">
+                  {fields.map(({ key, name }) => {
+                    const effect =
+                      form.getFieldValue([
+                        'input',
+                        'filters',
+                        name,
+                        'effect',
+                      ]) ?? Effect.Include;
+
+                    const showConditionalFields =
+                      !isNil(supportedFilters) &&
+                      !isEmpty(selectedFilters) &&
+                      selectedFilters[name];
+
+                    return (
+                      <Col key={`observability-${key}`} span={24}>
+                        <Row gutter={[8, 8]}>
+                          <Col span={11}>
+                            <Form.Item
+                              key={`filter-${key}`}
+                              name={[name, 'name']}
+                              rules={[
+                                {
+                                  required: true,
+                                  message: t('message.field-text-is-required', {
+                                    fieldText: t('label.filter'),
+                                  }),
+                                },
+                              ]}>
+                              <Select
+                                options={filterOptions}
+                                placeholder={t('label.select-field', {
+                                  field: t('label.filter'),
+                                })}
+                                onChange={() => {
+                                  form.setFieldValue(
+                                    ['input', 'filters', name, 'arguments'],
+                                    []
+                                  );
+                                }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          {showConditionalFields &&
+                            getConditionalField(
+                              selectedFilters[name].name ?? '',
+                              name,
+                              selectedTrigger,
+                              supportedFilters
+                            )}
+                          <Col span={2}>
+                            <Button
+                              data-testid={`remove-filter-rule-${name}`}
+                              icon={<CloseOutlined />}
+                              onClick={() => remove(name)}
                             />
-                          </Form.Item>
-                        </Col>
-                        {!isNil(supportedFilters) &&
-                          !isEmpty(filters) &&
-                          filters[name] &&
-                          getConditionField(filters[name].name ?? '', name)}
-                        <Col span={2}>
-                          <Button
-                            data-testid={`remove-filter-rule-${name}`}
-                            icon={<CloseOutlined />}
-                            onClick={() => remove(name)}
-                          />
-                        </Col>
-                      </Row>
-                      <Form.Item
-                        label={
-                          <Typography.Text>
-                            {t('label.include')}
-                          </Typography.Text>
+                          </Col>
+                        </Row>
+                        <Form.Item
+                          label={
+                            <Typography.Text>
+                              {t('label.include')}
+                            </Typography.Text>
+                          }
+                          name={[name, 'effect']}
+                          normalize={(value) =>
+                            value ? Effect.Include : Effect.Exclude
+                          }>
+                          <Switch checked={effect === Effect.Include} />
+                        </Form.Item>
+                      </Col>
+                    );
+                  })}
+                  {showAddFilterButton ? (
+                    <Col span={24}>
+                      <Button
+                        data-testid="add-filters"
+                        disabled={
+                          isEmpty(selectedTrigger) || isNil(selectedTrigger)
                         }
-                        name={[name, 'effect']}
-                        normalize={(value) =>
-                          value ? Effect.Include : Effect.Exclude
+                        type="primary"
+                        onClick={() =>
+                          add({
+                            effect: Effect.Include,
+                          })
                         }>
-                        <Switch checked={effect === Effect.Include} />
-                      </Form.Item>
+                        {t('label.add-entity', {
+                          entity: t('label.filter'),
+                        })}
+                      </Button>
                     </Col>
-                  );
-                })}
-                {showAddFilter(fields) ? (
-                  <Col span={24}>
-                    <Button
-                      data-testid="add-filters"
-                      disabled={
-                        isEmpty(selectedTrigger) || isNil(selectedTrigger)
-                      }
-                      type="primary"
-                      onClick={() =>
-                        add({
-                          effect: Effect.Include,
-                        })
-                      }>
-                      {t('label.add-entity', {
-                        entity: t('label.filter'),
-                      })}
-                    </Button>
-                  </Col>
-                ) : null}
-                <Form.ErrorList errors={errors} />
-              </Row>
-            )}
+                  ) : null}
+                  <Form.ErrorList errors={errors} />
+                </Row>
+              );
+            }}
           </Form.List>
         </Col>
       </Row>
