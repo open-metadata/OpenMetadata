@@ -90,7 +90,7 @@ const IndexNotFoundBanner = () => {
                 i18nKey="message.configure-search-re-index"
                 renderElement={
                   <Link
-                    className="alert-link text-xs"
+                    className="alert-link"
                     to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
                   />
                 }
