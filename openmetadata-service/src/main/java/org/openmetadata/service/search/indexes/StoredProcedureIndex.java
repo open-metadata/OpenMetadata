@@ -34,6 +34,9 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(storedProcedure.getOwner()));
     doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
+    doc.put(
+        "votes",
+        storedProcedure.getVotes().getUpVotes() - storedProcedure.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(storedProcedure.getDomain()));
     return doc;
   }

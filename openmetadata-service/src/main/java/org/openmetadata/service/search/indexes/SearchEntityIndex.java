@@ -33,6 +33,7 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     doc.put("owner", getEntityWithDisplayName(searchIndex.getOwner()));
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
     doc.put("lineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
+    doc.put("votes", searchIndex.getVotes().getUpVotes() - searchIndex.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(searchIndex.getDomain()));
     return doc;
   }

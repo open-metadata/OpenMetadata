@@ -33,6 +33,10 @@ export const tableSortingFields: SortingField[] = [
     name: i18n.t('label.weekly-usage'),
     value: 'usageSummary.weeklyStats.count',
   },
+  {
+    name: i18n.t('label.popularity'),
+    value: 'votes',
+  },
   { name: i18n.t('label.relevance'), value: '_score' },
 ];
 
@@ -40,6 +44,10 @@ export const entitySortingFields = [
   {
     name: i18n.t('label.last-updated'),
     value: 'updatedAt',
+  },
+  {
+    name: i18n.t('label.popularity'),
+    value: 'votes',
   },
   { name: i18n.t('label.relevance'), value: '_score' },
 ];

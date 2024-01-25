@@ -26,6 +26,7 @@ public record DatabaseIndex(Database database) implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE);
+    doc.put("votes", database.getVotes().getUpVotes() - database.getVotes().getDownVotes());
     doc.put("owner", getEntityWithDisplayName(database.getOwner()));
     doc.put("domain", getEntityWithDisplayName(database.getDomain()));
     return doc;

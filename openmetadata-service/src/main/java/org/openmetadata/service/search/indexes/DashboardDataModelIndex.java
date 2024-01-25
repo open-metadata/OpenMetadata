@@ -66,6 +66,9 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
     doc.put("lineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
+    doc.put(
+        "votes",
+        dashboardDataModel.getVotes().getUpVotes() - dashboardDataModel.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
     return doc;
   }

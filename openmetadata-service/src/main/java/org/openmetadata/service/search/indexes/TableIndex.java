@@ -79,6 +79,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("schema_suggest", schemaSuggest);
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
+    doc.put("votes", table.getVotes().getUpVotes() - table.getVotes().getDownVotes());
     doc.put("serviceType", table.getServiceType());
     doc.put("owner", getEntityWithDisplayName(table.getOwner()));
     doc.put("service", getEntityWithDisplayName(table.getService()));

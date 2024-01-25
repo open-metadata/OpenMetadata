@@ -56,6 +56,7 @@ public class DashboardIndex implements SearchIndex {
     doc.put("entityType", Entity.DASHBOARD);
     doc.put("serviceType", dashboard.getServiceType());
     doc.put("lineage", SearchIndex.getLineageData(dashboard.getEntityReference()));
+    doc.put("votes", dashboard.getVotes().getUpVotes() - dashboard.getVotes().getDownVotes());
     doc.put("fqnParts", suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList()));
     doc.put("owner", getEntityWithDisplayName(dashboard.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboard.getService()));
