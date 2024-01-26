@@ -140,6 +140,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             ManifestMetadataConfig
         ] = self.get_manifest_file()
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
         if self.source_config.storageMetadataConfigSource and not isinstance(
             self.source_config.storageMetadataConfigSource,
