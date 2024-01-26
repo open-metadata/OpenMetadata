@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Confest for profiler tests
+Conftest for profiler tests
 """
 
 from uuid import UUID
@@ -71,7 +71,7 @@ class Row:
         self.QUERY_TEXT = query_text
 
     def __iter__(self):
-        """implemetation to support dict(row)"""
+        """implementation to support dict(row)"""
         yield "QUERY_ID", self.QUERY_ID
         yield "QUERY_TYPE", self.QUERY_TYPE
         yield "START_TIME", self.START_TIME
@@ -92,7 +92,7 @@ class LowerRow:
         self.QUERY_TEXT = query_text
 
     def __iter__(self):
-        """implemetation to support dict(row)"""
+        """implementation to support dict(row)"""
         yield "query_id", self.QUERY_ID
         yield "query_type", self.QUERY_TYPE
         yield "start_time", self.START_TIME
