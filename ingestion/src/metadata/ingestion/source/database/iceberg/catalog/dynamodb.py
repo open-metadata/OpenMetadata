@@ -26,11 +26,12 @@ from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatal
 
 
 class CustomDynamoDbCatalog(DynamoDbCatalog):
-    """ Custom DynamoDb Catalog implementation to override the PyIceberg one.
+    """Custom DynamoDb Catalog implementation to override the PyIceberg one.
     This is needed due to PyIceberg not handling the __init__ method correctly by
     instantiating the Boto3 Client without the correct configuration and having side
     effects on it.
     """
+
     @staticmethod
     def get_boto3_client(parameters: dict):
         """
