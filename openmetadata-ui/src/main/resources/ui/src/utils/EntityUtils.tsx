@@ -1506,7 +1506,7 @@ export const getBreadcrumbForTestCase = (entity: TestCase) => [
     name: entity.name,
     url: getEntityLinkFromType(
       entity.fullyQualifiedName ?? '',
-      (entity as SourceType).entityType as EntityType
+      (entity as SourceType)?.entityType as EntityType
     ),
   },
 ];
