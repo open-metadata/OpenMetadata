@@ -444,12 +444,12 @@ site_menu:
     url: /connectors/database/hive
   - category: Connectors / Database / Hive / Run Externally
     url: /connectors/database/hive/yaml
+  - category: Connectors / Database / Hive / Troubleshooting
+    url: /connectors/database/hive/troubleshooting
   - category: Connectors / Database / Iceberg
     url: /connectors/database/iceberg
   - category: Connectors / Database / Iceberg / Run Externally
     url: /connectors/database/iceberg/yaml
-  - category: Connectors / Database / Hive / Troubleshooting
-    url: /connectors/database/hive/troubleshooting
   - category: Connectors / Database / Impala
     url: /connectors/database/impala
   - category: Connectors / Database / Impala / Run Externally
