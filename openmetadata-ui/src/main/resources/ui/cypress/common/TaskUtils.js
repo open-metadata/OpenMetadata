@@ -26,7 +26,11 @@ export const verifyTaskDetails = (regexPattern) => {
   cy.get('[data-testid="task-title"]')
     .invoke('text')
     .then((textContent) => {
+      cy.log('textContent', textContent);
+      cy.log('regexPattern', regexPattern);
       const matches = textContent.match(regexPattern);
+
+      cy.log(matches);
 
       expect(matches).to.not.be.null;
     });
@@ -102,7 +106,7 @@ export const createAndUpdateDescriptionTask = (value) => {
   createDescriptionTask(value);
 
   // verify the task details
-  verifyTaskDetails(/#(\d+) UpdateDescriptionfordescription/);
+  verifyTaskDetails(/#(\d+) Request to update description for/);
 
   // edit task assignees
   editAssignee();
