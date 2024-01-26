@@ -114,3 +114,47 @@ class TestConnectionAutomationTest(TestCase):
             entity_id=str(automation_workflow.id.__root__),
             hard_delete=True,
         )
+
+    def test_connection_workflow_ko(self):
+        """Test connection that will fail"""
+        wrong_service_connection = MysqlConnection(
+            username="openmetadata_user",
+            authType=BasicAuth(password="openmetadata_password"),
+            hostPort="localhost:8585",  # There's something running there, but it's not MySQL
+            databaseSchema="openmetadata_db",
+        )
+
+        wrong_workflow_request = CreateWorkflowRequest(
+            name="test-connection-mysql-bad",
+            description="description",
+            workflowType=WorkflowType.TEST_CONNECTION,
+            request=TestServiceConnectionRequest(
+                serviceType=ServiceType.Database,
+                connectionType=MySQLType.Mysql.value,
+                connection=DatabaseConnection(
+                    config=wrong_service_connection,
+                ),
+            ),
+        )
+
+        automation_workflow: Workflow = self.metadata.create_or_update(
+            data=wrong_workflow_request
+        )
+        engine: Engine = get_connection(wrong_service_connection)
+
+        test_connection_fn = get_test_connection_fn(wrong_service_connection)
+        test_connection_fn(
+            self.metadata, engine, wrong_service_connection, automation_workflow
+        )
+
+        final_workflow: Workflow = self.metadata.get_by_name(
+            entity=Workflow, fqn="test-connection-mysql-bad"
+        )
+
+        self.assertEqual(final_workflow.response.status, StatusType.Failed)
+
+        self.metadata.delete(
+            entity=Workflow,
+            entity_id=str(automation_workflow.id.__root__),
+            hard_delete=True,
+        )
