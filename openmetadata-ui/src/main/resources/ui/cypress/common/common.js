@@ -683,13 +683,29 @@ export const mySqlConnectionInput = () => {
 
 export const login = (username, password) => {
   cy.visit('/');
+  interceptURL('POST', '/api/v1/users/login', 'loginUser');
   cy.get('[id="email"]').should('be.visible').clear().type(username);
   cy.get('[id="password"]').should('be.visible').clear().type(password);
 
   // Don't want to show any popup in the tests
   cy.setCookie(`STAR_OMD_USER_${username.split('@')[0]}`, 'true');
 
+  // Get version and set cookie to hide version banner
+  cy.request({
+    method: 'GET',
+    url: `api/v1/system/version`,
+  }).then((res) => {
+    const version = res.body.version;
+    const versionCookie = `VERSION_${version
+      .split('-')[0]
+      .replaceAll('.', '_')}`;
+
+    cy.setCookie(versionCookie, 'true');
+    window.localStorage.setItem('loggedInUsers', username.split('@')[0]);
+  });
+
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
+  verifyResponseStatusCode('@loginUser', 200);
 };
 
 export const selectTeamHierarchy = (index) => {
