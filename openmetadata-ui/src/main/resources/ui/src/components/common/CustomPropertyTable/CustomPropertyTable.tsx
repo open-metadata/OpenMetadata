@@ -64,6 +64,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   entityDetails,
   maxDataCap = 5,
+  isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -212,7 +213,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    isUndefined(entityDetails?.extension)
+    isUndefined(entityDetails?.extension) &&
+    // in case of right panel, we don't want to show the placeholder
+    !isRenderedInRightPanel
   ) {
     return (
       <div className="flex-center tab-content-height">
@@ -229,7 +232,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
                 />
               }
               values={{
-                docs: 'label.doc-plural-lowercase',
+                docs: t('label.doc-plural-lowercase'),
               }}
             />
           }
@@ -243,33 +246,39 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     <ExtensionTable extension={entityDetails?.extension} />
   ) : (
     <>
-      <div className="d-flex justify-between m-b-xs">
-        <Typography.Text className="right-panel-label">
-          {t('label.custom-property-plural')}
-        </Typography.Text>
-        {entityTypeDetail.customProperties &&
-          entityTypeDetail.customProperties?.length >= maxDataCap &&
-          entityDetails.fullyQualifiedName && (
-            <Link
-              to={getEntityDetailLink(
-                entityType,
-                entityDetails.fullyQualifiedName,
-                EntityTabs.CUSTOM_PROPERTIES
-              )}>
-              {t('label.view-all')}
-            </Link>
-          )}
-      </div>
-      <Table
-        bordered
-        columns={tableColumn}
-        data-testid="custom-properties-table"
-        dataSource={entityTypeDetail?.customProperties?.slice(0, maxDataCap)}
-        loading={entityTypeDetailLoading}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
+      {!isEmpty(entityTypeDetail.customProperties) && (
+        <>
+          <div className="d-flex justify-between m-b-xs">
+            <Typography.Text className="right-panel-label">
+              {t('label.custom-property-plural')}
+            </Typography.Text>
+            {(entityTypeDetail.customProperties ?? []).length >= maxDataCap &&
+              entityDetails.fullyQualifiedName && (
+                <Link
+                  to={getEntityDetailLink(
+                    entityType,
+                    entityDetails.fullyQualifiedName,
+                    EntityTabs.CUSTOM_PROPERTIES
+                  )}>
+                  {t('label.view-all')}
+                </Link>
+              )}
+          </div>
+          <Table
+            bordered
+            columns={tableColumn}
+            data-testid="custom-properties-table"
+            dataSource={entityTypeDetail?.customProperties?.slice(
+              0,
+              maxDataCap
+            )}
+            loading={entityTypeDetailLoading}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
+        </>
+      )}
     </>
   );
 };

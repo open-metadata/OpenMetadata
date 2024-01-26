@@ -10,22 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags } from 'Models';
 import { Space } from 'antd';
+import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
-import DataProductsContainer from '../../DataProductsContainer/DataProductsContainer.component';
-import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import type {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import DataProductsContainer from '../../DataProductsContainer/DataProductsContainer.component';
+import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
 interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   dataProducts: EntityReference[];
@@ -105,6 +105,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         )}
         {customProperties && (
           <CustomPropertyTable
+            isRenderedInRightPanel
             entityDetails={customProperties}
             entityType={entityType as ExtentionEntitiesKeys}
             hasEditAccess={false}
