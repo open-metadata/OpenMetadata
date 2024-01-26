@@ -13,22 +13,97 @@
 import {
   interceptURL,
   login,
+  uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
 import {
+  createSingleLevelEntity,
+  generateRandomContainer,
+  generateRandomDashboard,
+  generateRandomMLModel,
+  generateRandomPipeline,
   generateRandomTable,
+  generateRandomTopic,
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
-import { DATABASE_SERVICE, USER_DETAILS } from '../../constants/EntityConstant';
+import { generateRandomUser } from '../../common/Utils/Owner';
+import {
+  DATABASE_SERVICE,
+  SINGLE_LEVEL_SERVICE,
+} from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
-let userId = '';
+const user1 = generateRandomUser();
+let user1Id = '';
+const user2 = generateRandomUser();
+let user2Id = '';
 
 // generate schema for 20 tables
 const tables = Array(20)
   .fill(undefined)
   .map(() => generateRandomTable());
+
+const entities = {
+  table: {
+    request: {
+      url: '/api/v1/tables',
+      body1: generateRandomTable(),
+      body2: generateRandomTable(),
+    },
+    id1: '',
+    id2: '',
+  },
+  topic: {
+    request: {
+      url: '/api/v1/topics',
+      body1: generateRandomTopic(),
+      body2: generateRandomTopic(),
+    },
+    id1: '',
+    id2: '',
+  },
+  dashboard: {
+    request: {
+      url: '/api/v1/dashboards',
+      body1: generateRandomDashboard(),
+      body2: generateRandomDashboard(),
+    },
+    id1: '',
+    id2: '',
+  },
+  pipeline: {
+    request: {
+      url: '/api/v1/pipelines',
+      body1: generateRandomPipeline(),
+      body2: generateRandomPipeline(),
+    },
+    id1: '',
+    id2: '',
+  },
+  mlmodel: {
+    request: {
+      url: '/api/v1/mlmodels',
+      body1: generateRandomMLModel(),
+      body2: generateRandomMLModel(),
+    },
+    id1: '',
+    id2: '',
+  },
+  container: {
+    request: {
+      url: '/api/v1/containers',
+      body1: generateRandomContainer(),
+      body2: generateRandomContainer(),
+    },
+    id1: '',
+    id2: '',
+  },
+};
+const team = {
+  name: `cy-test-team-${uuid()}`,
+  id: '',
+};
 
 const verifyEntities = ({ url }) => {
   interceptURL('GET', url, 'getEntities');
@@ -48,19 +123,87 @@ const verifyEntities = ({ url }) => {
   });
 };
 
+const updateOwnerAndVerify = ({ url, body, type, entityName, newOwner }) => {
+  interceptURL('GET', '/api/v1/users/loggedInUser?*', 'loggedInUser');
+  interceptURL(
+    'GET',
+    '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*',
+    'feedData'
+  );
+  cy.getAllLocalStorage().then((data) => {
+    const token = Object.values(data)[0].oidcIdToken;
+    cy.request({
+      method: 'PATCH',
+      url,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json-patch+json',
+      },
+      body,
+    }).then(() => {
+      cy.get('[id*="tab-mentions"]').click();
+      cy.get('[data-testid="no-data-placeholder-container"]').should(
+        'be.visible'
+      );
+      cy.get('[id*="tab-all"]').click();
+      verifyResponseStatusCode('@feedData', 200);
+      cy.get('[data-testid="message-container"]').first().as('message');
+      cy.get('@message')
+        .find('[data-testid="entityType"]')
+        .should('contain', type);
+      cy.get('@message')
+        .find('[data-testid="entitylink"]')
+        .should('contain', entityName);
+      cy.get('@message')
+        .find('[data-testid="viewer-container"]')
+        .should('contain', `Added owner: ${newOwner}`);
+    });
+  });
+};
+
 const prepareData = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
     const token = Object.values(data)[0].oidcIdToken;
-
+    SINGLE_LEVEL_SERVICE.forEach((data) => {
+      createSingleLevelEntity({
+        token,
+        ...data,
+        entity: [],
+      });
+    });
     // create user
     cy.request({
       method: 'POST',
       url: `/api/v1/users/signup`,
       headers: { Authorization: `Bearer ${token}` },
-      body: USER_DETAILS,
+      body: user1,
     }).then((response) => {
-      userId = response.body.id;
+      user1Id = response.body.id;
+
+      // create team
+      cy.request({
+        method: 'GET',
+        url: `/api/v1/teams/name/Organization`,
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((teamResponse) => {
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/teams`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            name: team.name,
+            displayName: team.name,
+            teamType: 'Group',
+            parents: [teamResponse.body.id],
+            users: [response.body.id],
+          },
+        }).then((teamResponse) => {
+          team.id = teamResponse.body.id;
+        });
+      });
+
+      // create database service
       createEntityTableViaREST({
         token,
         ...DATABASE_SERVICE,
@@ -87,6 +230,34 @@ const prepareData = () => {
         });
       });
     });
+
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/users/signup`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: user2,
+    }).then((response) => {
+      user2Id = response.body.id;
+    });
+
+    Object.entries(entities).forEach(([key, value]) => {
+      cy.request({
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        url: value.request.url,
+        body: value.request.body1,
+      }).then((response) => {
+        entities[key].id1 = response.body.id;
+      });
+      cy.request({
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        url: value.request.url,
+        body: value.request.body2,
+      }).then((response) => {
+        entities[key].id2 = response.body.id;
+      });
+    });
   });
   cy.logout();
 };
@@ -100,9 +271,23 @@ const cleanUp = () => {
       serviceFqn: DATABASE_SERVICE.service.name,
       serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
     });
+    SINGLE_LEVEL_SERVICE.forEach((data) => {
+      hardDeleteService({
+        token,
+        serviceFqn: data.service.name,
+        serviceType: data.serviceType,
+      });
+    });
+    [user1Id, user2Id].forEach((id) => {
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
     cy.request({
       method: 'DELETE',
-      url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+      url: `/api/v1/teams/${team.id}?hardDelete=true&recursive=true`,
       headers: { Authorization: `Bearer ${token}` },
     });
   });
@@ -112,12 +297,9 @@ describe('My Data page', () => {
   before(prepareData);
   after(cleanUp);
 
-  beforeEach(() => {
-    // login with newly created user
-    login(USER_DETAILS.email, USER_DETAILS.password);
-  });
-
   it('Verify my data widget', () => {
+    // login with newly created user
+    login(user1.email, user1.password);
     cy.get('[data-testid="my-data-widget"]').scrollIntoView();
 
     // verify total count
@@ -130,9 +312,13 @@ describe('My Data page', () => {
     verifyEntities({
       url: '/api/v1/search/query?q=*&index=all&from=0&size=25',
     });
+
+    cy.logout();
   });
 
   it('Verify following widget', () => {
+    // login with newly created user
+    login(user1.email, user1.password);
     cy.get('[data-testid="following-widget"]').scrollIntoView();
 
     // verify total count
@@ -143,5 +329,57 @@ describe('My Data page', () => {
     verifyEntities({
       url: '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25',
     });
+    cy.logout();
+  });
+
+  it('Verify user as owner feed widget', () => {
+    // login with newly created user
+    login(user2.email, user2.password);
+    cy.get('[data-testid="no-data-placeholder-container"]')
+      .scrollIntoView()
+      .should(
+        'contain',
+        // eslint-disable-next-line max-len
+        "Right now, there are no updates in the data assets you own or follow. Haven't explored yet? Dive in and claim ownership or follow the data assets that interest you to stay informed about their latest activities!"
+      );
+
+    Object.entries(entities).forEach(([key, value]) => {
+      updateOwnerAndVerify({
+        url: `${value.request.url}/${value.id1}`,
+        body: [
+          {
+            op: 'add',
+            path: '/owner',
+            value: { id: user2Id, type: 'user' },
+          },
+        ],
+        type: key,
+        entityName: value.request.body1.name,
+        newOwner: `${user2.firstName}${user2.lastName}`,
+      });
+    });
+    cy.logout();
+  });
+
+  it('Verify team as owner feed widget', () => {
+    // login with newly created user
+    login(user1.email, user1.password);
+
+    Object.entries(entities).forEach(([key, value]) => {
+      updateOwnerAndVerify({
+        url: `${value.request.url}/${value.id2}`,
+        body: [
+          {
+            op: 'add',
+            path: '/owner',
+            value: { id: team.id, type: 'team' },
+          },
+        ],
+        type: key,
+        entityName: value.request.body2.name,
+        newOwner: team.name,
+      });
+    });
+    cy.logout();
   });
 });
