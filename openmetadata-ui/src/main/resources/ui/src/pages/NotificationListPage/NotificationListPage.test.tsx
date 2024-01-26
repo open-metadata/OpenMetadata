@@ -14,7 +14,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
-import AlertsPage from './NotificationListPage';
+import NotificationListPage from './NotificationListPage';
 
 const MOCK_DATA = [
   {
@@ -79,19 +79,25 @@ jest.mock(
 
 describe('Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
-    const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });
+    const { findByText } = render(<NotificationListPage />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(await findByText('label.notification-plural')).toBeInTheDocument();
   });
 
   it('SubTitle should be rendered', async () => {
-    const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });
+    const { findByText } = render(<NotificationListPage />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(await findByText(/message.alerts-description/)).toBeInTheDocument();
   });
 
   it('Add alert button should be rendered', async () => {
-    const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });
+    const { findByText } = render(<NotificationListPage />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(await findByText(/label.create-entity/)).toBeInTheDocument();
   });

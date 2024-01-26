@@ -235,7 +235,7 @@ const AddNotificationPage = () => {
     [selectedTrigger, supportedFilters]
   );
 
-  if (loadingCount) {
+  if (loadingCount > 0) {
     return <Loader />;
   }
 

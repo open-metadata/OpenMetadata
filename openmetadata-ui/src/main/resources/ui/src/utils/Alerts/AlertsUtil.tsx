@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Select, Typography } from 'antd';
+import { Col, Input, Select, Switch, Typography } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import i18next, { t } from 'i18next';
 import { isEqual, map, startCase } from 'lodash';
@@ -22,12 +22,12 @@ import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
-import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
-import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import {
-  ENTITY_TO_SEARCH_INDEX_MAP,
-  SearchIndex,
-} from '../../enums/search.enum';
+  DESTINATION_TYPE_BASED_PLACEHOLDERS,
+  EXTERNAL_CATEGORY_OPTIONS,
+} from '../../constants/Alerts.constants';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   EventFilterRule,
@@ -38,6 +38,8 @@ import {
 import { EventType } from '../../generated/type/changeEvent';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../EntityUtils';
+import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
+import searchClassBase from '../SearchClassBase';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -191,8 +193,12 @@ const getDomainOptions = async (searchText: string) => {
   return searchEntity(searchText, SearchIndex.DOMAIN);
 };
 
-const getOwnerOptions = async (searchText: string) => {
+const getUserOptions = async (searchText: string) => {
   return searchEntity(searchText, SearchIndex.USER, 'isBot:false');
+};
+
+const getTeamOptions = async (searchText: string) => {
+  return searchEntity(searchText, SearchIndex.TEAM);
 };
 
 const eventTypeOptions = map(EventType, (eventType) => ({
@@ -227,6 +233,110 @@ export const getSupportedFilterOptions = (
     disabled: selectedFilters?.some((d) => d.name === func.name),
   }));
 
+export const getDestinationConfigField = (
+  type: SubscriptionType | SubscriptionCategory,
+  fieldName: number
+) => {
+  switch (type) {
+    case SubscriptionType.Slack:
+    case SubscriptionType.MSTeams:
+    case SubscriptionType.GChat:
+    case SubscriptionType.Generic:
+      return (
+        <Form.Item
+          name={[fieldName, 'config', 'endpoint']}
+          rules={[
+            {
+              required: true,
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.endpoint-url'),
+              }),
+            },
+          ]}>
+          <Input
+            placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+          />
+        </Form.Item>
+      );
+    case SubscriptionType.Email:
+      return (
+        <Form.Item
+          label=""
+          name={[fieldName, 'config', 'receivers']}
+          rules={[
+            {
+              required: true,
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.email'),
+              }),
+            },
+          ]}>
+          <Select
+            mode="tags"
+            open={false}
+            placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+          />
+        </Form.Item>
+      );
+    case SubscriptionCategory.Teams:
+    case SubscriptionCategory.Users:
+      return (
+        <Form.Item
+          name={[fieldName, 'config', 'receivers']}
+          rules={[
+            {
+              required: true,
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.entity-list', {
+                  entity: t('label.entity-name', {
+                    entity:
+                      type === SubscriptionCategory.Teams
+                        ? t('label.team')
+                        : t('label.owner'),
+                  }),
+                }),
+              }),
+            },
+          ]}>
+          <AsyncSelect
+            api={
+              type === SubscriptionCategory.Teams
+                ? getTeamOptions
+                : getUserOptions
+            }
+            className="w-full"
+            data-testid={`${
+              type === SubscriptionCategory.Teams
+                ? t('label.team')
+                : t('label.user')
+            }-select`}
+            mode="multiple"
+            placeholder={t('label.search-by-type', {
+              type:
+                type === SubscriptionCategory.Teams
+                  ? t('label.team-lowercase')
+                  : t('label.owner-lowercase'),
+            })}
+          />
+        </Form.Item>
+      );
+    case SubscriptionCategory.Admins:
+    case SubscriptionCategory.Owners:
+    case SubscriptionCategory.Followers:
+      return (
+        <Form.Item
+          hidden
+          initialValue
+          label=""
+          name={[fieldName, 'config', getConfigFieldFromDestinationType(type)]}>
+          <Switch />
+        </Form.Item>
+      );
+    default:
+      return null;
+  }
+};
+
 export const getFieldByArgumentType = (
   fieldName: number,
   argument: string,
@@ -236,10 +346,10 @@ export const getFieldByArgumentType = (
   let field: JSX.Element;
 
   const getEntityByFQN = async (searchText: string) => {
-    return searchEntity(
-      searchText,
-      ENTITY_TO_SEARCH_INDEX_MAP[selectedTrigger]
-    );
+    const searchIndexMapping =
+      searchClassBase.getEntityTypeSearchIndexMapping();
+
+    return searchEntity(searchText, searchIndexMapping[selectedTrigger]);
   };
 
   switch (argument) {
@@ -358,7 +468,7 @@ export const getFieldByArgumentType = (
               },
             ]}>
             <AsyncSelect
-              api={getOwnerOptions}
+              api={getUserOptions}
               className="w-full"
               data-testid="owner-select"
               mode="multiple"

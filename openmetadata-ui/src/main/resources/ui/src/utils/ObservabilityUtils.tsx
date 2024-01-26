@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { MailOutlined } from '@ant-design/icons';
-import { includes } from 'lodash';
+import { includes, isNil } from 'lodash';
 import React from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
@@ -23,25 +23,47 @@ import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
 export const getAlertDestinationCategoryIcons = (type: string) => {
+  let Icon;
+
   switch (type) {
     case 'Teams':
-      return <TeamIcon height={16} width={16} />;
+      Icon = TeamIcon;
+
+      break;
     case 'Users':
-      return <UserIcon height={16} width={16} />;
+      Icon = UserIcon;
+
+      break;
     case 'Admins':
-      return <AdminIcon height={16} width={16} />;
+      Icon = AdminIcon;
+
+      break;
     case 'GChat':
-      return <GChatIcon height={16} width={16} />;
+      Icon = GChatIcon;
+
+      break;
     case 'Slack':
-      return <SlackIcon height={16} width={16} />;
+      Icon = SlackIcon;
+
+      break;
     case 'Email':
-      return <MailOutlined height={16} width={16} />;
+      Icon = MailOutlined;
+
+      break;
     case 'MsTeams':
     case 'Followers':
-      return <MSTeamsIcon height={16} width={16} />;
+      Icon = MSTeamsIcon;
+
+      break;
     case 'Generic':
     case 'Owners':
-      return <GenericIcon height={16} width={16} />;
+      Icon = GenericIcon;
+
+      break;
+  }
+
+  if (!isNil(Icon)) {
+    return <Icon height={16} width={16} />;
   }
 
   return null;

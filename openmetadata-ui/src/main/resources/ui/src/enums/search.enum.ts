@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { EntityType } from './entity.enum';
-
 export enum SearchIndex {
   ALL = 'all',
   DATA_ASSET = 'dataAsset',
@@ -44,35 +42,3 @@ export enum SearchIndex {
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
   DATA_PRODUCT = 'data_product_search_index',
 }
-
-export const ENTITY_TO_SEARCH_INDEX_MAP: Record<string, SearchIndex> =
-  Object.freeze({
-    [EntityType.TABLE]: SearchIndex.TABLE,
-    [EntityType.TOPIC]: SearchIndex.TOPIC,
-    [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
-    [EntityType.PIPELINE]: SearchIndex.PIPELINE,
-    [EntityType.USER]: SearchIndex.USER,
-    [EntityType.TEAM]: SearchIndex.TEAM,
-    [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
-    [EntityType.MLMODEL]: SearchIndex.MLMODEL,
-    [EntityType.TAG]: SearchIndex.TAG,
-    [EntityType.CONTAINER]: SearchIndex.CONTAINER,
-    [EntityType.TEST_CASE]: SearchIndex.TEST_CASE,
-    [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
-    [EntityType.DATABASE_SCHEMA]: SearchIndex.DATABASE_SCHEMA,
-    [EntityType.DATABASE]: SearchIndex.DATABASE,
-    [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
-    [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
-    [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
-    [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
-    [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
-    [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
-    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
-    [EntityType.DOMAIN]: SearchIndex.DOMAIN,
-    [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
-    [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
-    [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
-    [EntityType.DATA_PRODUCT]: SearchIndex.DATA_PRODUCT,
-    [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
-    [EntityType.ALL]: SearchIndex.ALL,
-  });

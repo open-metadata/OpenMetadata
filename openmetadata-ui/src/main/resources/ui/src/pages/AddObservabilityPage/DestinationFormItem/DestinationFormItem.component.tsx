@@ -23,31 +23,19 @@ import {
   Tabs,
   Typography,
 } from 'antd';
-import Input from 'antd/lib/input/Input';
 import { SelectProps } from 'antd/lib/select';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Switch } from 'react-router-dom';
-import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
 import { DESTINATION_SOURCE_ITEMS } from '../../../constants/Alerts.constants';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { SearchIndex } from '../../../enums/search.enum';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
+import { SubscriptionCategory } from '../../../generated/events/eventSubscription';
 import {
-  SubscriptionCategory,
-  SubscriptionType,
-} from '../../../generated/events/eventSubscription';
-import { searchData } from '../../../rest/miscAPI';
-import {
+  getDestinationConfigField,
   getSubscriptionTypeOptions,
   listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtil';
-import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  checkIfDestinationIsInternal,
-  getConfigFieldFromDestinationType,
-} from '../../../utils/ObservabilityUtils';
+import { checkIfDestinationIsInternal } from '../../../utils/ObservabilityUtils';
 import { ModifiedDestination } from '../AddObservabilityPage.interface';
 import './destination-form-item.less';
 
@@ -81,167 +69,6 @@ function DestinationFormItem({
       disabled: selectedDestinations?.some((d) => d.type === o.value),
     };
   });
-
-  const getPlaceholder = (type: SubscriptionType) => {
-    switch (type) {
-      case SubscriptionType.Slack:
-        return 'https://hooks.slack.com/services/XXXXX/XXXXX/XXXXX';
-      case SubscriptionType.MSTeams:
-        return 'https://outlook.office.com/webhook/XXXXX/XXXXX/XXXXX';
-      case SubscriptionType.GChat:
-        return 'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX';
-      case SubscriptionType.Generic:
-        return 'https://example.com';
-      case SubscriptionType.Email:
-        return 'Add ↵ seprated Email addresses';
-      default:
-        return '';
-    }
-  };
-
-  const searchEntity = useCallback(
-    async (search: string, searchIndex: SearchIndex, filters?: string) => {
-      try {
-        const response = await searchData(
-          search,
-          1,
-          PAGE_SIZE_LARGE,
-          filters ?? '',
-          '',
-          '',
-          searchIndex
-        );
-
-        return response.data.hits.hits.map((d) => ({
-          label: getEntityName(d._source),
-          value: d._source.fullyQualifiedName,
-        }));
-      } catch (error) {
-        return [];
-      }
-    },
-    []
-  );
-
-  const getUserOptions = useCallback(
-    async (searchText: string) => {
-      return searchEntity(searchText, SearchIndex.USER, 'isBot:false');
-    },
-    [searchEntity]
-  );
-
-  const getTeamOptions = useCallback(
-    async (searchText: string) => {
-      return searchEntity(searchText, SearchIndex.TEAM);
-    },
-    [searchEntity]
-  );
-
-  const getConfigField = (
-    type: SubscriptionType | SubscriptionCategory,
-    fieldName: number
-  ) => {
-    switch (type) {
-      case SubscriptionType.Slack:
-      case SubscriptionType.MSTeams:
-      case SubscriptionType.GChat:
-      case SubscriptionType.Generic:
-        return (
-          <Form.Item
-            name={[fieldName, 'config', 'endpoint']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.endpoint-url'),
-                }),
-              },
-            ]}>
-            <Input placeholder={getPlaceholder(type)} />
-          </Form.Item>
-        );
-      case SubscriptionType.Email:
-        return (
-          <Form.Item
-            label=""
-            name={[fieldName, 'config', 'receivers']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.email'),
-                }),
-              },
-            ]}>
-            <Select
-              mode="tags"
-              open={false}
-              placeholder={getPlaceholder(type)}
-            />
-          </Form.Item>
-        );
-      case SubscriptionCategory.Teams:
-      case SubscriptionCategory.Users:
-        return (
-          <Form.Item
-            className="w-full"
-            name={[fieldName, 'config', 'receivers']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.entity-name', {
-                      entity:
-                        type === SubscriptionCategory.Teams
-                          ? t('label.team')
-                          : t('label.owner'),
-                    }),
-                  }),
-                }),
-              },
-            ]}>
-            <AsyncSelect
-              api={
-                type === SubscriptionCategory.Teams
-                  ? getTeamOptions
-                  : getUserOptions
-              }
-              data-testid={`${
-                type === SubscriptionCategory.Teams
-                  ? t('label.team')
-                  : t('label.user')
-              }-select`}
-              mode="multiple"
-              placeholder={t('label.search-by-type', {
-                type:
-                  type === SubscriptionCategory.Teams
-                    ? t('label.team-lowercase')
-                    : t('label.owner-lowercase'),
-              })}
-            />
-          </Form.Item>
-        );
-      case SubscriptionCategory.Admins:
-      case SubscriptionCategory.Owners:
-      case SubscriptionCategory.Followers:
-        return (
-          <Form.Item
-            hidden
-            initialValue
-            label=""
-            name={[
-              fieldName,
-              'config',
-              getConfigFieldFromDestinationType(type),
-            ]}>
-            <Switch />
-          </Form.Item>
-        );
-      default:
-        return null;
-    }
-  };
 
   const showAddDestination = useMemo(
     () => filteredOptions.some((o) => !o.disabled),
@@ -379,7 +206,7 @@ function DestinationFormItem({
                           {selectedDestinations &&
                             !isEmpty(selectedDestinations[name]) &&
                             selectedDestinations[name] &&
-                            getConfigField(
+                            getDestinationConfigField(
                               selectedDestinations[name]?.destinationType,
                               name
                             )}

@@ -49,3 +49,14 @@ export const DESTINATION_SOURCE_ITEMS = {
   internal: INTERNAL_CATEGORY_OPTIONS,
   external: EXTERNAL_CATEGORY_OPTIONS,
 };
+
+export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
+  [SubscriptionType.Slack]:
+    'https://hooks.slack.com/services/XXXXX/XXXXX/XXXXX',
+  [SubscriptionType.MSTeams]:
+    'https://outlook.office.com/webhook/XXXXX/XXXXX/XXXXX',
+  [SubscriptionType.GChat]:
+    'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX',
+  [SubscriptionType.Generic]: 'https://example.com',
+  [SubscriptionType.Email]: 'Add ↵ seprated Email addresses',
+};
