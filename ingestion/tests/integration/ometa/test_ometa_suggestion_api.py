@@ -18,8 +18,9 @@ from metadata.generated.schema.api.feed.createSuggestion import CreateSuggestion
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.feed.suggestion import SuggestionType
+from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -134,3 +135,38 @@ class OMetaSuggestionTest(TestCase):
 
         # Suggestions only support POST (not PUT)
         self.metadata.create(suggestion_request)
+
+    def test_list(self):
+        """List filtering by creator"""
+
+        admin_user: User = self.metadata.get_by_name(
+            entity=User, fqn="admin", nullable=False
+        )
+
+        create_table = get_create_entity(
+            entity=Table,
+            name=self.schema_name,
+            reference=self.schema.fullyQualifiedName.__root__,
+        )
+        table: Table = self.metadata.create_or_update(create_table)
+
+        suggestion_request = CreateSuggestionRequest(
+            description="something",
+            type=SuggestionType.SuggestDescription,
+            entityLink=EntityLink(
+                __root__=get_entity_link(Table, fqn=table.fullyQualifiedName.__root__)
+            ),
+        )
+
+        # Suggestions only support POST (not PUT)
+        self.metadata.create(suggestion_request)
+
+        suggestions = self.metadata.list_all_entities(
+            entity=Suggestion,
+            params={
+                "entityFQN": table.fullyQualifiedName.__root__,
+                "userId": str(admin_user.id.__root__),
+            },
+        )
+
+        self.assertTrue(len(list(suggestions)))

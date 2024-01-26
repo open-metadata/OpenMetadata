@@ -91,6 +91,7 @@ from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteR
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.entity.automations.workflow import Workflow
+from metadata.generated.schema.entity.bot import Bot
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
@@ -183,6 +184,7 @@ ROUTES = {
     User.__name__: "/users",
     CreateUserRequest.__name__: "/users",
     AuthenticationMechanism.__name__: "/users/auth-mechanism",
+    Bot.__name__: "/bots",  # We won't allow bot creation from the client
     # Roles
     Role.__name__: "/roles",
     CreateRoleRequest.__name__: "/roles",
