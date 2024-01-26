@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import _ from 'lodash';
+import { lowerCase } from 'lodash';
+import {
+  addCustomPropertiesForEntity,
+  deleteCreatedProperty,
+  descriptionBox,
+  editCreatedProperty,
+  interceptURL,
+  verifyResponseStatusCode,
+} from '../../common/common';
+import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
   CustomPropertyType,
   deleteCustomPropertyForEntity,
@@ -21,15 +30,6 @@ import {
 } from '../../common/Utils/CustomProperty';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
-  descriptionBox,
-  editCreatedProperty,
-  interceptURL,
-  verifyResponseStatusCode,
-} from '../../common/common';
-import { SidebarItem } from '../../constants/Entity.interface';
-import {
   ENTITIES,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -38,16 +38,11 @@ import {
   NEW_GLOSSARY_TERMS,
   uuid,
 } from '../../constants/constants';
-import { GlobalSettingOptions } from '../../constants/settings.constant';
-
-const userName = `test_dataconsumer${uuid()}`;
+import { SidebarItem } from '../../constants/Entity.interface';
 
 const CREDENTIALS = {
-  firstName: 'Cypress',
-  lastName: 'UserDC',
-  email: `${userName}@openmetadata.org`,
-  password: 'User@OMD123',
-  username: 'CypressUserDC',
+  name: 'aaron_johnson0',
+  displayName: 'Aaron Johnson',
 };
 
 const glossaryTerm = {
@@ -58,6 +53,25 @@ const glossaryTerm = {
   markdownValue: 'This is markdown value',
   entityApiType: 'glossaryTerm',
 };
+
+const customPropertyValue = {
+  Integer: {
+    value: '123',
+    newValue: '456',
+    property: generateCustomProperty(CustomPropertyType.INTEGER),
+  },
+  String: {
+    value: '123',
+    newValue: '456',
+    property: generateCustomProperty(CustomPropertyType.STRING),
+  },
+  Markdown: {
+    value: '**Bold statement**',
+    newValue: '__Italic statement__',
+    property: generateCustomProperty(CustomPropertyType.MARKDOWN),
+  },
+};
+
 const validateForm = () => {
   // error messages
   cy.get('#name_help')
@@ -140,8 +154,8 @@ const createGlossary = (glossaryData) => {
   if (glossaryData.addReviewer) {
     // Add reviewer
     cy.get('[data-testid="add-reviewers"]').scrollIntoView().click();
-    cy.get('[data-testid="searchbar"]').type(CREDENTIALS.username);
-    cy.get(`[title="${CREDENTIALS.username}"]`)
+    cy.get('[data-testid="searchbar"]').type(CREDENTIALS.displayName);
+    cy.get(`[title="${CREDENTIALS.displayName}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -219,7 +233,7 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
   // check for parent glossary reviewer
   if (glossary.name === NEW_GLOSSARY.name) {
     cy.get('[data-testid="user-tag"]')
-      .contains(CREDENTIALS.username)
+      .contains(CREDENTIALS.displayName)
       .should('be.visible');
   }
 };
@@ -433,26 +447,9 @@ describe('Custom Properties should work properly', () => {
     });
   });
 
-  describe('Create custom properties for glossary', () => {
+  describe('Custom properties for glossary and glossary terms', () => {
     const propertyName = `addcyentity${glossaryTerm.name}test${uuid()}`;
     const properties = Object.values(CustomPropertyType).join(', ');
-    const customPropertyValue = {
-      Integer: {
-        value: '123',
-        newValue: '456',
-        property: generateCustomProperty(CustomPropertyType.INTEGER),
-      },
-      String: {
-        value: '123',
-        newValue: '456',
-        property: generateCustomProperty(CustomPropertyType.STRING),
-      },
-      Markdown: {
-        value: '**Bold statement**',
-        newValue: '__Italic statement__',
-        property: generateCustomProperty(CustomPropertyType.MARKDOWN),
-      },
-    };
 
     it('test custom properties in advanced search modal', () => {
       cy.settingClick(glossaryTerm.entityApiType, true);
@@ -504,10 +501,12 @@ describe('Custom Properties should work properly', () => {
       deleteCreatedProperty(propertyName);
     });
 
-    it(`Set ${properties} Custom Property `, () => {
+    it(`Add update and delete ${properties} custom properties for glossary term `, () => {
       interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
       interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
+
       cy.sidebarClick(SidebarItem.GLOSSARY);
+
       createGlossary(NEW_GLOSSARY);
       createGlossaryTerm(
         NEW_GLOSSARY_TERMS.term_1,
@@ -517,9 +516,10 @@ describe('Custom Properties should work properly', () => {
       );
 
       cy.settingClick(glossaryTerm.entityApiType, true);
+
       Object.values(CustomPropertyType).forEach((type) => {
         addCustomPropertiesForEntity(
-          _.lowerCase(type),
+          lowerCase(type),
           glossaryTerm,
           type,
           `${type}-(${uuid()})`,
@@ -527,6 +527,7 @@ describe('Custom Properties should work properly', () => {
         );
         cy.settingClick(glossaryTerm.entityApiType, true);
       });
+
       visitEntityDetailsPage({
         term: NEW_GLOSSARY_TERMS.term_1.name,
         serviceName: NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName,
@@ -536,35 +537,39 @@ describe('Custom Properties should work properly', () => {
 
       // set custom property value
       Object.values(CustomPropertyType).forEach((type) => {
-        setValueForProperty(_.lowerCase(type), customPropertyValue[type].value);
+        setValueForProperty(lowerCase(type), customPropertyValue[type].value);
         validateValueForProperty(
-          _.lowerCase(type),
+          lowerCase(type),
           customPropertyValue[type].value
         );
       });
+
       // update custom property value
       Object.values(CustomPropertyType).forEach((type) => {
         setValueForProperty(
-          _.lowerCase(type),
+          lowerCase(type),
           customPropertyValue[type].newValue
         );
         validateValueForProperty(
-          _.lowerCase(type),
+          lowerCase(type),
           customPropertyValue[type].newValue
         );
       });
 
       // delete custom properties
-      Object.values(CustomPropertyType).forEach((type) => {
-        deleteCustomPropertyForEntity(
-          customPropertyValue[type],
-          glossaryTerm.entityApiType
-        );
-      });
-      cy.settingClick(GlobalSettingOptions.GLOSSARY_TERM, true);
+      Object.values(CustomPropertyType).forEach((customPropertyType) => {
+        const type = glossaryTerm.entityApiType;
+        const property = customPropertyValue[customPropertyType].property ?? {};
 
-      verifyResponseStatusCode('@getEntity', 200);
-      deleteCreatedProperty(NEW_GLOSSARY.name);
+        deleteCustomPropertyForEntity({
+          property: { ...property, name: lowerCase(customPropertyType) },
+          type,
+        });
+      });
+
+      // delete glossary and glossary term
+      cy.sidebarClick(SidebarItem.GLOSSARY);
+      deleteGlossary(NEW_GLOSSARY.name);
     });
   });
 });
