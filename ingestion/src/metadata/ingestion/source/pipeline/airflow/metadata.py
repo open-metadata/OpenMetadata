@@ -192,7 +192,7 @@ class AirflowSource(PipelineServiceSource):
                     TaskInstance.dag_id == dag_id,
                     TaskInstance.run_id == run_id,
                     # updating old runs flag deleted tasks as `removed`
-                    TaskInstance.state != AirflowTaskStatus.REMOVED,
+                    TaskInstance.state != AirflowTaskStatus.REMOVED.value,
                 )
                 .all()
             )
