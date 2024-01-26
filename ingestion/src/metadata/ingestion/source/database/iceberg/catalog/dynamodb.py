@@ -25,11 +25,14 @@ from metadata.generated.schema.entity.services.connections.database.iceberg.iceb
 from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatalogBase
 
 
-class IcebergDynamoDbCatalog(IcebergCatalogBase):
-    """Responsible for building a PyIceberg DynamoDB Catalog."""
-
+class CustomDynamoDbCatalog(DynamoDbCatalog):
+    """ Custom DynamoDb Catalog implementation to override the PyIceberg one.
+    This is needed due to PyIceberg not handling the __init__ method correctly by
+    instantiating the Boto3 Client without the correct configuration and having side
+    effects on it.
+    """
     @staticmethod
-    def override_boto3_dyamo_client(catalog: DynamoDbCatalog, parameters: dict):
+    def get_boto3_client(parameters: dict):
         """
         Overrides the boto3 client created by PyIceberg.
         PyIceberg doesn't handle the Boto3 Session.
@@ -45,8 +48,20 @@ class IcebergDynamoDbCatalog(IcebergCatalogBase):
         session_config = {
             k: v for k, v in parameters.items() if k in boto_session_config_keys
         }
+
         session = boto3.Session(**session_config)
-        catalog.dynamodb = session.client("dynamodb")
+        return session.client("dynamodb")
+
+    def __init__(self, name: str, **properties: str):
+        # HACK: Runs Catalog.__init__ without running DynamoDbCatalog.__init__
+        super(DynamoDbCatalog, self).__init__(name, **properties)
+
+        self.dynamodb = self.get_boto3_client(properties)
+        self.dynamodb_table_name = self.properties.get("table-name", "iceberg")
+
+
+class IcebergDynamoDbCatalog(IcebergCatalogBase):
+    """Responsible for building a PyIceberg DynamoDB Catalog."""
 
     @classmethod
     def get_catalog(cls, catalog: IcebergCatalog) -> Catalog:
@@ -81,10 +96,4 @@ class IcebergDynamoDbCatalog(IcebergCatalogBase):
                 **cls.get_fs_parameters(aws_config),
             }
 
-        dynamodb_catalog = DynamoDbCatalog(catalog.name, **parameters)
-
-        # HACK: Overriding the Boto3 DynamoDB client due to PyIceberg not handling the
-        # Boto3 Session correctly
-        cls.override_boto3_dyamo_client(dynamodb_catalog, parameters)
-
-        return dynamodb_catalog
+        return CustomDynamoDbCatalog(catalog.name, **parameters)
