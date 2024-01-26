@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -42,6 +43,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
+  private FeedMessageDecorator feedMessageDecorator = new FeedMessageDecorator();
 
   public void init(OpenMetadataApplicationConfig config) {
     this.mapper = new ObjectMapper();
@@ -81,10 +83,11 @@ public class ChangeEventHandler implements EventHandler {
         // every change event
         // for the event to appear in activity feeds
         if (!changeEvent.getEntityType().equals(Entity.THREAD)
-            && Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())
             && (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))) {
           for (Thread thread :
-              listOrEmpty(FeedUtils.getThreadWithMessage(changeEvent, loggedInUserName))) {
+              listOrEmpty(
+                  FeedUtils.getThreadWithMessage(
+                      feedMessageDecorator, changeEvent, loggedInUserName))) {
             // Don't create a thread if there is no message
             if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
               feedRepository.create(thread, changeEvent);

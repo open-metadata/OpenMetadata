@@ -11,22 +11,17 @@
  *  limitations under the License.
  */
 
-.alert-page-container {
-  width: 70%;
-  margin: 16px auto 0;
-  padding-bottom: 16px;
-  .ant-form-item {
-    margin: 0px;
-  }
+import {
+  Destination,
+  EventSubscription,
+  SubscriptionCategory,
+  SubscriptionType,
+} from '../../generated/events/eventSubscription';
 
-  .ant-card {
-    border-radius: 10px;
-  }
+export interface ModifiedDestination extends Destination {
+  destinationType: SubscriptionType | SubscriptionCategory;
 }
 
-.alert-form-item-container {
-  background-color: #f9f9f9;
-  .ant-card-body {
-    padding: 20px;
-  }
+export interface ModifiedEventSubscription extends EventSubscription {
+  destinations: ModifiedDestination[];
 }

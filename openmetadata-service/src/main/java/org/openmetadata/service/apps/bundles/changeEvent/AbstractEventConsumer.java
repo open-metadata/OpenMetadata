@@ -292,15 +292,15 @@ public abstract class AbstractEventConsumer
                         failedEvent -> Set.of(failedEvent.getFailingSubscriptionId())));
         eventsWithReceivers.putAll(failedChangeEvents);
       }
-
+      // Publish Events
+      if (!eventsWithReceivers.isEmpty()) {
+        alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
+        publishEvents(eventsWithReceivers);
+      }
     } catch (Exception e) {
       LOG.error("Error in executing the Job : {} ", e.getMessage());
     } finally {
       if (!eventsWithReceivers.isEmpty()) {
-        // Publish Events
-        alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
-        publishEvents(eventsWithReceivers);
-
         // Commit the Offset
         offset += batchSize;
         commit(jobExecutionContext);

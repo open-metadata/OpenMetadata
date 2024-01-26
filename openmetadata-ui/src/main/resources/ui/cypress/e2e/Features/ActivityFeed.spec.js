@@ -357,7 +357,9 @@ describe('Activity feed', () => {
     cy.get('[data-testid="message-container"]')
       .invoke('text')
       .then((textContent) => {
-        const matches = textContent.match(/#(\d+) UpdateDescriptionfortable/);
+        const matches = textContent.match(
+          /#(\d+) Request to update description for/
+        );
 
         expect(matches).to.not.be.null;
       });
