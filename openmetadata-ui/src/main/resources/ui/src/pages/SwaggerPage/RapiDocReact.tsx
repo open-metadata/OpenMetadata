@@ -103,7 +103,7 @@ declare global {
   }
 }
 
-export const RapiDocReact = React.forwardRef<HTMLDivElement, RapiDocProps>(
+const RapiDocReact = React.forwardRef<HTMLDivElement, RapiDocProps>(
   (
     {
       beforeRender,

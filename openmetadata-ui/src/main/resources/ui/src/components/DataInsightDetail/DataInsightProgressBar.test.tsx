@@ -17,10 +17,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import DataInsightProgressBar from './DataInsightProgressBar';
 
-jest.mock('./ChangeInValueIndicator', () => {
-  return jest.fn().mockReturnValue(<p>ChangeInValueIndicator</p>);
-});
-
 const MOCK_DATA = {
   changeInValue: -0.32000000000000006,
   className: 'm-b-md',
