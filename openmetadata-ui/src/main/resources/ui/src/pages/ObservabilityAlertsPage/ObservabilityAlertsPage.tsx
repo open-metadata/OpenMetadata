@@ -17,25 +17,20 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { PLACEHOLDER_ROUTE_FQN } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
+  AlertType,
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
@@ -43,12 +38,13 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import {
+  getObservabilityAlertDetailsPath,
+  getObservabilityAlertsEditPath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const AlertsPage = () => {
+const ObservabilityAlertsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
@@ -64,12 +60,6 @@ const AlertsPage = () => {
     paging,
   } = usePaging();
 
-  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () =>
-      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.NOTIFICATIONS),
-    []
-  );
-
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
       setLoading(true);
@@ -78,6 +68,7 @@ const AlertsPage = () => {
           after: params?.after,
           before: params?.before,
           limit: pageSize,
+          alertType: AlertType.Observability,
         });
 
         setAlerts(data.filter((d) => d.provider !== ProviderType.System));
@@ -124,7 +115,14 @@ const AlertsPage = () => {
         width: '200px',
         key: 'name',
         render: (name: string, record: EventSubscription) => {
-          return <Link to={`notifications/alert/${record.id}`}>{name}</Link>;
+          return (
+            <Link
+              to={getObservabilityAlertDetailsPath(
+                record.fullyQualifiedName ?? ''
+              )}>
+              {name}
+            </Link>
+          );
         },
       },
       {
@@ -154,22 +152,17 @@ const AlertsPage = () => {
       },
       {
         title: t('label.action-plural'),
-        dataIndex: 'id',
+        dataIndex: 'fullyQualifiedName',
         width: 120,
-        key: 'id',
-        render: (id: string, record: EventSubscription) => {
+        key: 'fullyQualifiedName',
+        render: (fqn: string, record: EventSubscription) => {
           return (
             <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link
-                  to={getSettingPath(
-                    GlobalSettingsMenuCategory.NOTIFICATIONS,
-                    GlobalSettingOptions.EDIT_ALERTS,
-                    true
-                  ).replace(PLACEHOLDER_ROUTE_FQN, id)}>
+                <Link to={getObservabilityAlertsEditPath(fqn)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
-                    data-testid={`alert-edit-${record.name}`}
+                    data-testid={`edit-${record.name}`}
                     icon={<EditIcon width={16} />}
                     type="text"
                   />
@@ -177,9 +170,9 @@ const AlertsPage = () => {
               </Tooltip>
               <Tooltip placement="bottom" title={t('label.delete')}>
                 <Button
-                  data-testid={`alert-delete-${record.name}`}
+                  data-testid={`delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
+                  icon={<DeleteIcon height={16} width={16} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />
@@ -192,22 +185,23 @@ const AlertsPage = () => {
     [handleAlertDelete]
   );
 
+  const pageHeaderData = useMemo(
+    () => ({
+      header: t('label.observability'),
+      subHeader: t('message.alerts-description'),
+    }),
+    []
+  );
+
   return (
     <PageLayoutV1 pageTitle={t('label.alert-plural')}>
-      <Row className="page-container" gutter={[16, 16]}>
-        <Col span={24}>
-          <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
+      <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
-            <Link
-              to={getSettingPath(
-                GlobalSettingsMenuCategory.NOTIFICATIONS,
-                GlobalSettingOptions.ADD_ALERTS
-              )}>
-              <Button data-testid="create-alert" type="primary">
-                {t('label.create-entity', { entity: 'alert' })}
+            <PageHeader data={pageHeaderData} />
+            <Link to={ROUTES.ADD_OBSERVABILITY_ALERTS}>
+              <Button data-testid="create" type="primary">
+                {t('label.create-entity', { entity: t('label.observability') })}
               </Button>
             </Link>
           </div>
@@ -226,14 +220,7 @@ const AlertsPage = () => {
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() =>
-                    history.push(
-                      getSettingPath(
-                        GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_ALERTS
-                      )
-                    )
-                  }
+                  onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}
                 />
               ),
             }}
@@ -270,4 +257,4 @@ const AlertsPage = () => {
   );
 };
 
-export default AlertsPage;
+export default ObservabilityAlertsPage;
