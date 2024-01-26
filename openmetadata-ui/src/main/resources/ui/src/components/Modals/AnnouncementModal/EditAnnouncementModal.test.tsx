@@ -11,37 +11,46 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { mockShowErrorToast } from '../../../mocks/CustomizablePage.mock';
 import EditAnnouncementModal from './EditAnnouncementModal';
 
-jest.mock('../../../utils/AnnouncementsUtils', () => ({
-  validateMessages: {
-    title: '',
-  },
-}));
-
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityFeedLink: jest.fn(),
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: mockShowErrorToast,
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 
+const mockUpdateAnnouncement = jest.fn();
+
+jest.mock(
+  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
+      selectedThread: {
+        message: 'announcement title',
+        announcement: {
+          description: '',
+          startTime: 1678900280,
+          endTime: 1678900780,
+        },
+      },
+      updateAnnouncement: () => {
+        mockUpdateAnnouncement();
+      },
+    })),
+  })
+);
+
 const onCancel = jest.fn();
-const onConfirm = jest.fn();
 
 const mockProps = {
   open: true,
-  announcement: {
-    description: '',
-    startTime: 1678900280,
-    endTime: 1678900780,
-  },
-  announcementTitle: 'title',
   onCancel,
-  onConfirm,
 };
 
 describe('Test Edit Announcement modal', () => {
@@ -62,8 +71,18 @@ describe('Test Edit Announcement modal', () => {
 
     const cancelButton = await screen.findByText('Cancel');
 
-    fireEvent.click(cancelButton);
+    userEvent.click(cancelButton);
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('on submit should call the updateAnnouncement', async () => {
+    render(<EditAnnouncementModal {...mockProps} />);
+
+    const saveButton = await screen.findByText('label.save');
+
+    userEvent.click(saveButton);
+
+    expect(mockUpdateAnnouncement).toHaveBeenCalled();
   });
 });
