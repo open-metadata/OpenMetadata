@@ -14,6 +14,7 @@ import { Operation } from 'fast-json-patch';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
+import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import {
   Post,
   ReactionType,
@@ -55,6 +56,11 @@ export interface ActivityFeedProviderContextType {
     fqn?: string
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
+  showEditAnnouncementModal: (thread: Thread) => void;
+  updateAnnouncement: (
+    title: string,
+    updatedAnnouncement: AnnouncementDetails
+  ) => void;
   hideDrawer: () => void;
   updateEditorFocus: (isFocused: boolean) => void;
   updateReactions: (

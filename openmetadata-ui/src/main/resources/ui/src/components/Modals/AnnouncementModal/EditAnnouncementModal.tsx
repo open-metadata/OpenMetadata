@@ -13,31 +13,33 @@
 
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
 import moment from 'moment';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { CreateAnnouncement } from './AddAnnouncementModal';
 import './announcement-modal.less';
 
 interface Props {
-  announcement: AnnouncementDetails;
-  announcementTitle: string;
+  announcement?: AnnouncementDetails;
+  announcementTitle?: string;
   open: boolean;
   onCancel: () => void;
-  onConfirm: (title: string, announcement: AnnouncementDetails) => void;
+  onConfirm?: (title: string, announcement: AnnouncementDetails) => void;
 }
 
-const EditAnnouncementModal: FC<Props> = ({
-  open,
-  onCancel,
-  onConfirm,
-  announcementTitle,
-  announcement,
-}) => {
+const EditAnnouncementModal: FC<Props> = ({ open, onCancel }) => {
+  const { updateAnnouncement, selectedThread } = useActivityFeedProvider();
+
+  const announcement = useMemo(
+    () => selectedThread?.announcement,
+    [selectedThread]
+  );
+
   const { t } = useTranslation();
 
   const handleConfirm = ({
@@ -59,7 +61,7 @@ const EditAnnouncementModal: FC<Props> = ({
         endTime: endTimeMs,
       };
 
-      onConfirm(title, updatedAnnouncement);
+      updateAnnouncement(title, updatedAnnouncement);
     }
   };
 
@@ -84,10 +86,10 @@ const EditAnnouncementModal: FC<Props> = ({
         data-testid="announcement-form"
         id="announcement-form"
         initialValues={{
-          title: announcementTitle,
-          description: announcement.description,
-          startTime: moment.unix(announcement.startTime),
-          endTime: moment.unix(announcement.endTime),
+          title: selectedThread?.message,
+          description: announcement?.description,
+          startTime: moment.unix(announcement?.startTime as number),
+          endTime: moment.unix(announcement?.endTime as number),
         }}
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}

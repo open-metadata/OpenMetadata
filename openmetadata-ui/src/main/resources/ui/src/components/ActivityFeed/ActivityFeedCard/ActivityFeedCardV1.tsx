@@ -55,13 +55,18 @@ const ActivityFeedCardV1 = ({
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
-  const { showDrawer, updateFeed, updateReactions } = useActivityFeedProvider();
+  const { showDrawer, updateFeed, updateReactions, showEditAnnouncementModal } =
+    useActivityFeedProvider();
 
   const showReplies = () => {
     showDrawer?.(feed);
   };
 
   const onEditPost = () => {
+    if (feed.type === ThreadType.Announcement && !isPost) {
+      return showEditAnnouncementModal(feed);
+    }
+
     setIsEditPost(!isEditPost);
   };
 

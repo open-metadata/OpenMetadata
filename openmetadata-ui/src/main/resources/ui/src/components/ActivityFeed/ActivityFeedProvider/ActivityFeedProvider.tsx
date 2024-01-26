@@ -28,6 +28,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
+  AnnouncementDetails,
   Post,
   TaskType,
   Thread,
@@ -50,6 +51,7 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
@@ -72,6 +74,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [loading, setLoading] = useState(false);
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isEditAnnouncement, setIsEditAnnouncement] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
     TestCaseResolutionStatus[]
@@ -321,7 +324,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const updateFeed = useCallback(
     async (
       threadId: string,
-      postId: string,
+      postId: string | undefined,
       isThread: boolean,
       data: Operation[]
     ) => {
@@ -330,12 +333,38 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           // ignore since error is displayed in toast in the parent promise.
         });
       } else {
-        updatePostHandler(threadId, postId, data).catch(() => {
+        updatePostHandler(threadId, postId as string, data).catch(() => {
           // ignore since error is displayed in toast in the parent promise.
         });
       }
     },
     []
+  );
+
+  const updateAnnouncement = useCallback(
+    (title: string, announcement: AnnouncementDetails) => {
+      // EditAnnouncement modal will be open only for the thread.type === 'announcement'
+      // i.e. selected thread will be always announcement type in this context
+      const existingAnnouncement = {
+        ...selectedThread,
+      };
+
+      const updatedAnnouncement = {
+        ...selectedThread,
+        message: title,
+        announcement,
+      };
+
+      const patch = compare(existingAnnouncement, updatedAnnouncement);
+
+      updateFeed(selectedThread?.id as string, undefined, true, patch).catch(
+        () => {
+          // ignore since error is displayed in toast in the parent promise.
+        }
+      );
+      setIsEditAnnouncement(false);
+    },
+    [selectedThread]
   );
 
   const updateReactions = (
@@ -389,6 +418,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     });
   }, []);
 
+  const showEditAnnouncementModal = (thread: Thread) => {
+    setActiveThread(thread);
+    setIsEditAnnouncement(true);
+  };
+
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
     setIsDrawerOpen(false);
@@ -424,6 +458,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       testCaseResolutionStatus,
       fetchUpdatedThread,
       updateTestCaseIncidentStatus,
+      showEditAnnouncementModal,
+      updateAnnouncement,
     };
   }, [
     entityThread,
@@ -448,6 +484,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     testCaseResolutionStatus,
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
+    showEditAnnouncementModal,
+    updateAnnouncement,
   ]);
 
   return (
@@ -457,6 +495,14 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         <>
           <ActivityFeedDrawer open={isDrawerOpen} />
         </>
+      )}
+      {isEditAnnouncement && selectedThread ? (
+        <EditAnnouncementModal
+          open={isEditAnnouncement}
+          onCancel={() => setIsEditAnnouncement(false)}
+        />
+      ) : (
+        <></>
       )}
     </ActivityFeedContext.Provider>
   );
