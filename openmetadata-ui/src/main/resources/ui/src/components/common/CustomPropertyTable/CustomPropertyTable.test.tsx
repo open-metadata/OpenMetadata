@@ -182,6 +182,23 @@ describe('Test CustomProperty Table Component', () => {
     expect(noDataPlaceHolder).toBeInTheDocument();
   });
 
+  it('Should not render no data placeholder if custom properties list is empty and isRenderedInRightPanel', async () => {
+    (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ customProperties: [] })
+    );
+    await act(async () => {
+      render(
+        <CustomPropertyTable
+          {...mockProp}
+          isRenderedInRightPanel
+          entityType={EntityType.TABLE}
+        />
+      );
+    });
+
+    expect(screen.queryByText('ErrorPlaceHolder.component')).toBeNull();
+  });
+
   it('Loader should be shown while loading the custom properties', async () => {
     (getTypeByFQN as jest.Mock).mockResolvedValueOnce(Promise.resolve({}));
     render(<CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />);
