@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import org.openmetadata.schema.services.connections.database.IcebergConnection;
 import org.openmetadata.schema.services.connections.database.iceberg.DynamoDbCatalogConnection;
 import org.openmetadata.schema.services.connections.database.iceberg.GlueCatalogConnection;
 import org.openmetadata.schema.services.connections.database.iceberg.HiveCatalogConnection;
@@ -21,27 +22,32 @@ import org.openmetadata.schema.services.connections.database.iceberg.IcebergCata
 import org.openmetadata.schema.services.connections.database.iceberg.RestCatalogConnection;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `IcebergCatalog` object. */
-public class IcebergCatalogClassConverter extends ClassConverter {
+/** Converter class to get an `IcebergConnection` object. */
+public class IcebergConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONNECTION_CLASSES =
+    /** The GlueCatalogConnection has a subschema of the DynamoDbCatalogConnection. */
       List.of(
-          DynamoDbCatalogConnection.class,
           GlueCatalogConnection.class,
+          DynamoDbCatalogConnection.class,
           HiveCatalogConnection.class,
           RestCatalogConnection.class);
 
-  public IcebergCatalogClassConverter() {
-    super(IcebergCatalog.class);
+  public IcebergConnectionClassConverter() {
+    super(IcebergConnection.class);
   }
 
   @Override
   public Object convert(Object object) {
-    IcebergCatalog icebergCatalog = (IcebergCatalog) JsonUtils.convertValue(object, this.clazz);
+    IcebergConnection icebergConnection = (IcebergConnection) JsonUtils.convertValue(object, this.clazz);
+
+    IcebergCatalog icebergCatalog = icebergConnection.getCatalog();
 
     tryToConvertOrFail(icebergCatalog.getConnection(), CONNECTION_CLASSES)
         .ifPresent(icebergCatalog::setConnection);
 
-    return icebergCatalog;
+    icebergConnection.setCatalog(icebergCatalog);
+
+    return icebergConnection;
   }
 }
