@@ -226,7 +226,7 @@ def test_connection_steps(
     service_type: str,
     test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: int = 2 * 60,
+    timeout_seconds: int = 3 * 60,
 ) -> None:
     """
     Test the connection steps with a given timeout
