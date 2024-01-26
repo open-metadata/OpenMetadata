@@ -131,6 +131,10 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         self.connection_obj = self.connection
         self.test_connection()
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     @abstractmethod
     def yield_search_index(
         self, search_index_details: Any
