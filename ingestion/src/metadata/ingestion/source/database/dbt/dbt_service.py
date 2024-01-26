@@ -138,6 +138,10 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContext.create(topology)
     source_config: DbtPipeline
 
+    @property
+    def name(self) -> str:
+        return "dbt"
+
     def remove_manifest_non_required_keys(self, manifest_dict: dict):
         """
         Method to remove the non required keys from manifest file

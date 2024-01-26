@@ -52,6 +52,7 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
+
   const { tab: activeTab } = useParams<{ tab: string }>();
   const [feedCount, setFeedCount] = useState<number>(0);
   const [isDescriptionEditable, setIsDescriptionEditable] =
@@ -167,6 +168,7 @@ const GlossaryDetails = ({
         <Col className="p-y-md" span={6}>
           <GlossaryDetailsRightPanel
             isGlossary
+            entityType={EntityType.GLOSSARY_TERM}
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossary}
@@ -254,7 +256,6 @@ const GlossaryDetails = ({
       </Col>
       <Col span={24}>
         <Tabs
-          destroyInactiveTabPane
           activeKey={activeTab ?? GlossaryTabs.TERMS}
           className="glossary-details-page-tabs"
           data-testid="tabs"

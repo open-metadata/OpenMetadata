@@ -603,7 +603,6 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
       EntityType.STORAGE_SERVICE,
       EntityType.SEARCH_SERVICE,
       EntityType.TYPE,
-      EntityType.MLMODEL,
     ].includes(entityType as EntityType)
   ) {
     displayName = getPartialNameFromFQN(entityFQN, ['service']);

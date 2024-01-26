@@ -216,6 +216,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.connection_obj = self.client
         self.test_connection()
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     @abstractmethod
     def yield_dashboard(
         self, dashboard_details: Any

@@ -178,7 +178,7 @@ set json = jsonb_set(json::jsonb, '{connection,config,supportsQueryComment}', 't
 where serviceType = 'Mssql';
 
 DELETE FROM event_subscription_entity;
-DELETE FROM change_event_consumers
+DELETE FROM change_event_consumers;
 DELETE FROM consumers_dlq;
 
 CREATE TABLE IF NOT EXISTS suggestions (

@@ -204,7 +204,7 @@ Cypress.Commands.add('settingClick', (dataTestId, isCustomProperty) => {
 
   cy.sidebarClick(SidebarItem.SETTINGS);
 
-  paths.forEach((path) => {
+  (paths ?? []).forEach((path) => {
     cy.get(`[data-testid="${path}"]`).scrollIntoView().click();
   });
 });

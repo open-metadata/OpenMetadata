@@ -135,6 +135,10 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.connection_obj = self.connection
         self.test_connection()
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     @abstractmethod
     def yield_topic(self, topic_details: Any) -> Iterable[Either[CreateTopicRequest]]:
         """

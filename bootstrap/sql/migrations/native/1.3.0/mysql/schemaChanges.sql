@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS change_event_consumers (
 DELETE FROM event_subscription_entity ese where name = 'DataInsightReport';
 
 -- Update Change Event Table
-ALTER TABLE change_event ADD COLUMN offset INT AUTO_INCREMENT;
+ALTER TABLE change_event ADD COLUMN offset INT AUTO_INCREMENT, ADD PRIMARY KEY (offset);
 
 CREATE TABLE IF NOT EXISTS consumers_dlq (
     id VARCHAR(36) NOT NULL,
@@ -166,7 +166,7 @@ set json = JSON_SET(json, '$.connection.config.supportsQueryComment', true)
 where serviceType = 'Mssql';
 
 DELETE FROM event_subscription_entity;
-DELETE FROM change_event_consumers
+DELETE FROM change_event_consumers;
 DELETE FROM consumers_dlq;
 
 CREATE TABLE IF NOT EXISTS suggestions (

@@ -179,8 +179,10 @@ const GlossaryOverviewTab = ({
           </Col>
         </Row>
       </Col>
+
       <Col className="p-t-md" span={6}>
         <GlossaryDetailsRightPanel
+          entityType={EntityType.GLOSSARY_TERM}
           isGlossary={false}
           isVersionView={isVersionView}
           permissions={permissions}
@@ -189,6 +191,7 @@ const GlossaryOverviewTab = ({
           onUpdate={onUpdate}
         />
       </Col>
+
       {tagsUpdatating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={selectedData as GlossaryTerm}

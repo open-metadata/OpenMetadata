@@ -239,23 +239,6 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
   }
 
-  //
-  // List of entities whose changes should not be published to the Activity Feed
-  //
-  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
-      List.of(
-          TEAM,
-          ROLE,
-          POLICY,
-          BOT,
-          INGESTION_PIPELINE,
-          DATABASE_SERVICE,
-          PIPELINE_SERVICE,
-          DASHBOARD_SERVICE,
-          MESSAGING_SERVICE,
-          WORKFLOW,
-          DOCUMENT);
-
   private Entity() {}
 
   public static void initializeRepositories(OpenMetadataApplicationConfig config, Jdbi jdbi) {
@@ -371,11 +354,6 @@ public final class Entity {
     EntityRepository<?> entityRepository = getEntityRepository(entityType);
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     ref.withHref(href);
-  }
-
-  /** Returns true if the change events of the given entity type should be published to the activity feed. */
-  public static boolean shouldDisplayEntityChangeOnFeed(@NonNull String entityType) {
-    return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
   public static Fields getFields(String entityType, List<String> fields) {

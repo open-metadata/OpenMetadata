@@ -314,34 +314,30 @@ const SchemaTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 180,
+        width: 200,
         fixed: 'left',
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group">
-              <div className="inline">
+            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+              <div className="d-inline-flex items-baseline">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,
                   tableConstraints,
                 })}
-                {/* If we do not have displayName name only be shown in the bold from the below code */}
-
                 <Typography.Text
-                  className="m-b-0 d-block text-grey-muted"
-                  data-testid="column-name"
-                  ellipsis={{ tooltip: true }}>
+                  className="m-b-0 d-block text-grey-muted break-word"
+                  data-testid="column-name">
                   {name}
                 </Typography.Text>
               </div>
               {!isEmpty(displayName) ? (
                 // It will render displayName fallback to name
                 <Typography.Text
-                  className="m-b-0 d-block"
-                  data-testid="column-display-name"
-                  ellipsis={{ tooltip: true }}>
+                  className="m-b-0 d-block break-word"
+                  data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
