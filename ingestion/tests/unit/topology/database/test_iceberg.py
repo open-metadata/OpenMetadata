@@ -362,7 +362,7 @@ MOCK_COLUMN_MAP = {
     },
 }
 
-MOCK_ICEBERG_CONFIG = {
+MOCK_HIVE_CONFIG = {
     "source": {
         "type": "iceberg",
         "serviceName": "test_iceberg",
@@ -371,8 +371,97 @@ MOCK_ICEBERG_CONFIG = {
                 "type": "Iceberg",
                 "catalog": {
                     "name": "Batata",
-                    "type": {"uri": "thrift://localhost:9083"},
-                    "fileSystem": None,
+                    "connection": {"uri": "thrift://localhost:9083"},
+                },
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "token"},
+        }
+    },
+}
+
+MOCK_REST_CONFIG = {
+    "source": {
+        "type": "iceberg",
+        "serviceName": "test_iceberg",
+        "serviceConnection": {
+            "config": {
+                "type": "Iceberg",
+                "catalog": {
+                    "name": "Batata",
+                    "connection": {"uri": "http://localhost:8181"},
+                },
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "token"},
+        }
+    },
+}
+
+MOCK_GLUE_CONFIG = {
+    "source": {
+        "type": "iceberg",
+        "serviceName": "test_iceberg",
+        "serviceConnection": {
+            "config": {
+                "type": "Iceberg",
+                "catalog": {
+                    "name": "Batata",
+                    "connection": {
+                        "awsConfig": {
+                            "awsAccessKeyId": "access_key",
+                            "awsSecretAccessKey": "secret",
+                            "awsRegion": "us-east-2",
+                            "awsSessionToken": "token",
+                        },
+                    },
+                },
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "token"},
+        }
+    },
+}
+
+MOCK_DYNAMO_CONFIG = {
+    "source": {
+        "type": "iceberg",
+        "serviceName": "test_iceberg",
+        "serviceConnection": {
+            "config": {
+                "type": "Iceberg",
+                "catalog": {
+                    "name": "Batata",
+                    "connection": {
+                        "tableName": "table",
+                        "awsConfig": {
+                            "awsAccessKeyId": "access_key",
+                            "awsSecretAccessKey": "secret",
+                            "awsRegion": "us-east-2",
+                            "awsSessionToken": "token",
+                        },
+                    },
                 },
             }
         },
@@ -422,12 +511,18 @@ class IcebergUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = parse_workflow_config_gracefully(MOCK_ICEBERG_CONFIG)
 
-        self.iceberg = IcebergSource.create(
-            MOCK_ICEBERG_CONFIG["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-        )
+        for config in [
+            MOCK_DYNAMO_CONFIG,
+            MOCK_GLUE_CONFIG,
+            MOCK_REST_CONFIG,
+            MOCK_HIVE_CONFIG,
+        ]:
+            self.config = parse_workflow_config_gracefully(config)
+            self.iceberg = IcebergSource.create(
+                config["source"],
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+            )
 
         self.iceberg.context.database_service = "test_iceberg"
         self.iceberg.context.database = "default"
@@ -574,9 +669,9 @@ class IcebergUnitTest(TestCase):
 
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
-    def test_get_owner_details(self):
+    def test_get_owner_ref(self):
         """
-        Asserts 'get_owner_details' returns:
+        Asserts 'get_owner_ref' returns:
             - None if there is no Owner
             - EntityReference if there is an Owner
         """
@@ -611,9 +706,7 @@ class IcebergUnitTest(TestCase):
 
         with patch.object(OpenMetadata, "get_reference_by_email", return_value=ref):
             self.assertEqual(
-                self.iceberg.get_owner_details(
-                    self.iceberg.context.database_schema, table_name
-                ),
+                self.iceberg.get_owner_ref(table_name),
                 ref,
             )
 
@@ -644,9 +737,7 @@ class IcebergUnitTest(TestCase):
         )
 
         self.assertEqual(
-            self.iceberg.get_owner_details(
-                self.iceberg.context.database_schema, table_name
-            ),
+            self.iceberg.get_owner_ref(table_name),
             None,
         )
 
