@@ -22,5 +22,5 @@ export const TASK_TYPES = {
     'message.request-test-case-failure-resolution-message'
   ),
   RequestApproval: i18n.t('message.request-approval-message'),
-  Generic: i18n.t('message.generic-message'),
+  Generic: i18n.t('message.request-tags-message'),
 };
