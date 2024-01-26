@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.schema.services.connections.database.iceberg.RestCatalogConnection",
   "properties": {
     "uri": {
-      "title": "Uri",
+      "title": "URI",
       "description": "Uri to the REST catalog. Example: 'http://rest-catalog/ws/'",
       "type": "string",
       "format": "uri"

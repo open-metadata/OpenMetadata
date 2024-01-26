@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.schema.services.connections.database.iceberg.HiveCatalogConnection",
   "properties": {
     "uri": {
-      "title": "Uri",
+      "title": "URI",
       "description": "Uri to the Hive Metastore. Example: 'thrift://localhost:9083'",
       "type": "string",
       "format": "uri"
