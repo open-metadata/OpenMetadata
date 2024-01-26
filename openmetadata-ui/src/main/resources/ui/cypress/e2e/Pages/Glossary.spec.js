@@ -489,7 +489,7 @@ const updateTerms = (newTerm) => {
 const updateReferences = (newRef) => {
   cy.get('[data-testid="section-References"]')
     .find('[data-testid="edit-button"]')
-    .should('exist')
+    .scrollIntoView()
     .click();
   cy.get('[data-testid="add-references-button"]').should('be.visible').click();
   cy.get('#references_1_name').should('be.visible').type(newRef.name);
@@ -510,7 +510,7 @@ const updateDescription = (newDescription, isGlossary) => {
     interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveData');
   }
 
-  cy.get('[data-testid="edit-description"]').should('be.visible').click();
+  cy.get('[data-testid="edit-description"]').scrollIntoView().click();
   cy.get('.ant-modal-wrap').should('be.visible');
   cy.get(descriptionBox).should('be.visible').as('description');
   cy.get('@description').clear();
@@ -745,9 +745,9 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
 
     // Remove Tag
-    cy.get(
-      '[data-testid="tags-container"] [data-testid="edit-button"]'
-    ).click();
+    cy.get('[data-testid="tags-container"] [data-testid="edit-button"]')
+      .scrollIntoView()
+      .click();
 
     cy.get('[data-testid="remove-tags"]').should('be.visible').click();
     interceptURL('PATCH', '/api/v1/glossaries/*', 'updateGlossary');
@@ -978,7 +978,9 @@ describe('Glossary page should work properly', () => {
         // If "Add Tag" is not visible, click on "Edit Tag"
         cy.get(
           '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="edit-button"]'
-        ).click();
+        )
+          .scrollIntoView()
+          .click();
         cy.get('[data-testid="remove-tags"]')
           .should('be.visible')
           .click({ multiple: true });
@@ -1123,7 +1125,9 @@ describe('Glossary page should work properly', () => {
     // Remove all added tags
     cy.get(
       '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="edit-button"]'
-    ).click();
+    )
+      .scrollIntoView()
+      .click();
     cy.get('[data-testid="remove-tags"]')
       .should('be.visible')
       .click({ multiple: true });
@@ -1142,6 +1146,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .trigger('mouseover')
       .find('[data-testid="edit-button"]')
+      .scrollIntoView()
       .click();
 
     cy.get(
