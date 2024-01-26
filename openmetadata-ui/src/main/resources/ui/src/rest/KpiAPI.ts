@@ -51,14 +51,9 @@ export const putKPI = async (data: CreateKpiRequest) => {
 };
 
 export const patchKPI = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Kpi>>(
     `/kpi/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

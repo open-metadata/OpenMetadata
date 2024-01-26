@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 
 import { PagingResponse } from 'Models';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import {
   AuthenticationMechanism,
@@ -51,14 +52,9 @@ export const getUsers = async (params: UsersQueryParams) => {
 };
 
 export const updateUserDetail = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<User>>(
     `/users/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -145,9 +141,6 @@ export const getUserToken = async (id: string) => {
 };
 
 export const generateUserToken = async (id: string, expiry: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
   const payload = {
     JWTTokenExpiry: expiry,
   };
@@ -155,7 +148,7 @@ export const generateUserToken = async (id: string, expiry: string) => {
   const response = await APIClient.put<typeof payload, AxiosResponse<JwtAuth>>(
     `/users/generateToken/${id}`,
     payload,
-    configOptions
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 
   return response.data;
@@ -196,14 +189,9 @@ export const getBotByName = async (name: string, params?: ListParams) => {
 };
 
 export const updateBotDetail = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Bot>>(
     `/bots/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

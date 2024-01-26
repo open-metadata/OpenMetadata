@@ -15,7 +15,10 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
-import { PAGE_SIZE } from '../constants/constants';
+import {
+  APPLICATION_JSON_CONTENT_TYPE_HEADER,
+  PAGE_SIZE,
+} from '../constants/constants';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -87,41 +90,35 @@ export const getDashboardByFqn = async (fqn: string, params?: ListParams) => {
 };
 
 export const addFollower = async (dashboardID: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${dashboardID}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${dashboardID}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (dashboardID: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<{
     changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
-  }>(`${BASE_URL}/${dashboardID}/followers/${userId}`, configOptions);
+  }>(
+    `${BASE_URL}/${dashboardID}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const patchDashboardDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Dashboard>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

@@ -780,10 +780,6 @@ export const getKpiPath = (kpiName: string) => {
   return path;
 };
 
-export const configOptions = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
 
@@ -842,4 +838,8 @@ export const ICON_DIMENSION = {
 
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
+};
+
+export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
+  headers: { 'Content-type': 'application/json' },
 };

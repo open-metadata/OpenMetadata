@@ -19,7 +19,7 @@ import {
   ServicesUpdateRequest,
 } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { configOptions, PAGE_SIZE } from '../constants/constants';
+import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
@@ -138,7 +138,7 @@ export const patchService = async (
   const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<ServicesType>
-  >(`/services/${serviceCat}/${id}`, options, configOptions);
+  >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
 };
@@ -151,7 +151,7 @@ export const patchDomainSupportedService = async (
   const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<DomainSupportedServiceTypes>
-  >(`/services/${serviceCat}/${id}`, options, configOptions);
+  >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
 };

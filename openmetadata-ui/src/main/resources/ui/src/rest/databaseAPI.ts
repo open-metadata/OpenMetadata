@@ -70,14 +70,9 @@ export const getDatabaseDetailsByFQN = async (
 };
 
 export const patchDatabaseDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Database>>(
     `/databases/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -87,14 +82,10 @@ export const patchDatabaseSchemaDetails = async (
   id: string,
   data: Operation[]
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<DatabaseSchema>
-  >(`/databaseSchemas/${id}`, data, configOptions);
+  >(`/databaseSchemas/${id}`, data);
 
   return response.data;
 };

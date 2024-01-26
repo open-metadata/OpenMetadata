@@ -41,14 +41,9 @@ export const addDomains = async (data: CreateDomain) => {
 };
 
 export const patchDomains = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Domain>>(
     `/domains/${id}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;

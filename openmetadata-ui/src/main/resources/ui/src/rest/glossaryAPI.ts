@@ -62,14 +62,9 @@ export const updateGlossaries = (
 };
 
 export const patchGlossaries = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
     `/glossaries/${id}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;
@@ -131,14 +126,10 @@ export const addGlossaryTerm = (
 };
 
 export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<GlossaryTerm>
-  >(`/glossaryTerms/${id}`, patch, configOptions);
+  >(`/glossaryTerms/${id}`, patch);
 
   return response.data;
 };

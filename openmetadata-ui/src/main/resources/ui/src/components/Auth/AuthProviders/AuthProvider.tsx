@@ -479,6 +479,10 @@ export const AuthProvider = ({
         }
       }
 
+      if (config.method === 'patch' && config.headers) {
+        config.headers['Content-type'] = 'application/json-patch+json';
+      }
+
       return withDomainFilter(config);
     });
 

@@ -26,14 +26,9 @@ export const getChartById = async (id: string, params?: ListParams) => {
 };
 
 export const updateChart = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<ChartType>>(
     `/charts/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

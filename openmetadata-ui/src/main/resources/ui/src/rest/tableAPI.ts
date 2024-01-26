@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfile,
@@ -74,14 +75,9 @@ export const getTableDetailsByFQN = async (
 };
 
 export const patchTableDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Table>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -97,31 +93,30 @@ export const restoreTable = async (id: string) => {
 };
 
 export const addFollower = async (tableId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${tableId}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${tableId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (tableId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${tableId}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${tableId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -138,14 +133,14 @@ export const putTableProfileConfig = async (
   tableId: string,
   data: TableProfilerConfig
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     TableProfilerConfig,
     AxiosResponse<Table>
-  >(`${BASE_URL}/${tableId}/tableProfilerConfig`, data, configOptions);
+  >(
+    `${BASE_URL}/${tableId}/tableProfilerConfig`,
+    data,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };

@@ -55,15 +55,11 @@ export const addPropertyToEntity = async (
 };
 
 export const updateType = async (entityTypeId: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
   const path = `/metadata/types/${entityTypeId}`;
 
   const response = await APIClient.patch<Operation[], AxiosResponse<Type>>(
     path,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

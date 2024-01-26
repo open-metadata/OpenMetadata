@@ -66,14 +66,9 @@ export const createTeam = async (data: CreateTeam) => {
 };
 
 export const patchTeamDetail = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Team>>(
     `/teams/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

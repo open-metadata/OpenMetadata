@@ -14,6 +14,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Container } from '../generated/entity/data/container';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -23,14 +24,6 @@ import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
-
-const configOptionsForPatch = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
-const configOptions = {
-  headers: { 'Content-type': 'application/json' },
-};
 
 const BASE_URL = '/containers';
 
@@ -73,8 +66,7 @@ export const getContainerByName = async (name: string, params?: ListParams) => {
 export const patchContainerDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Container>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptionsForPatch
+    data
   );
 
   return response.data;
@@ -86,7 +78,11 @@ export const addContainerFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${id}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -106,7 +102,10 @@ export const removeContainerFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${id}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };

@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import {
   EntityReference,
   SearchIndex,
@@ -64,14 +65,10 @@ export const patchSearchIndexDetails = async (
   id: string,
   data: Operation[]
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<SearchIndex>
-  >(`/searchIndexes/${id}`, data, configOptions);
+  >(`/searchIndexes/${id}`, data);
 
   return response.data;
 };
@@ -86,31 +83,30 @@ export const restoreSearchIndex = async (id: string) => {
 };
 
 export const addFollower = async (searchIndexId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/searchIndexes/${searchIndexId}/followers`, userId, configOptions);
+  >(
+    `/searchIndexes/${searchIndexId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (searchIndexId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/searchIndexes/${searchIndexId}/followers/${userId}`, configOptions);
+  >(
+    `/searchIndexes/${searchIndexId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };

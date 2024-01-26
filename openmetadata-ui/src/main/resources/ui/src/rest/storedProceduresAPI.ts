@@ -14,6 +14,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -33,14 +34,6 @@ export interface ListStoredProcedureParams {
 }
 
 const URL = '/storedProcedures';
-
-const configOptionsForPatch = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
-const configOptions = {
-  headers: { 'Content-type': 'application/json' },
-};
 
 export const getStoredProceduresList = async (
   params?: ListStoredProcedureParams
@@ -76,7 +69,7 @@ export const patchStoredProceduresDetails = async (
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<StoredProcedure>
-  >(`${URL}/${id}`, data, configOptionsForPatch);
+  >(`${URL}/${id}`, data);
 
   return response.data;
 };
@@ -90,7 +83,7 @@ export const addStoredProceduresFollower = async (
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers`, userId, configOptions);
+  >(`${URL}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };
@@ -104,7 +97,7 @@ export const removeStoredProceduresFollower = async (
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers/${userId}`, configOptions);
+  >(`${URL}/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };
