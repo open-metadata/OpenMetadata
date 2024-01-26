@@ -15,7 +15,7 @@ slug: /connectors/database/databricks
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
 | Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
+| Tags               | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | Databricks Runtime Version 9+ |
 
@@ -26,6 +26,11 @@ slug: /connectors/database/databricks
 | Column-level | {% icon iconName="check" /%} |
 
 {% /multiTablesWrapper %}
+
+{% note %}
+As per the [documentation](https://docs.databricks.com/en/data-governance/unity-catalog/tags.html#manage-tags-with-sql-commands) here, note that we only support metadata `tag` extraction for databricks version 13.3 version and higher.
+{% /note %}
+
 
 In this section, we provide guides and references to use the Databricks connector.
 

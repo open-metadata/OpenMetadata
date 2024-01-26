@@ -347,7 +347,8 @@ class HiveUnitTest(TestCase):
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
-            either.right for either in self.hive.yield_database(MOCK_DATABASE.name)
+            either.right
+            for either in self.hive.yield_database(MOCK_DATABASE.name.__root__)
         ]
 
         self.hive.context.__dict__[

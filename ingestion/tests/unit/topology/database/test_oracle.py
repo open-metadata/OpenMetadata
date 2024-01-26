@@ -201,7 +201,8 @@ class OracleUnitTest(TestCase):
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
-            either.right for either in self.oracle.yield_database(MOCK_DATABASE.name)
+            either.right
+            for either in self.oracle.yield_database(MOCK_DATABASE.name.__root__)
         ]
 
         self.oracle.context.__dict__["database"] = MOCK_DATABASE.name.__root__
