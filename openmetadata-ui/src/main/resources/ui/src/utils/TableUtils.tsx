@@ -39,6 +39,7 @@ import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg'
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as TestCaseIcon } from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -219,6 +220,13 @@ export const getServiceIcon = (source: SourceType) => {
   } else if (source.entityType === EntityType.DOMAIN) {
     return (
       <DomainIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
+  } else if (source.entityType === EntityType.TEST_CASE) {
+    return (
+      <TestCaseIcon
         className="service-icon h-7"
         style={{ color: DE_ACTIVE_COLOR }}
       />
