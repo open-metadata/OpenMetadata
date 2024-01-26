@@ -125,7 +125,7 @@ const IncidentManagerDetailPage = () => {
           'incidentId',
         ],
       });
-      setTestCaseData((prev) => ({ ...prev, data: response.data }));
+      setTestCaseData((prev) => ({ ...prev, data: response }));
     } catch (error) {
       showErrorToast(
         error as AxiosError,

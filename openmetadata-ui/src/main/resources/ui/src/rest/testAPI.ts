@@ -106,7 +106,7 @@ export const getTestCaseByFqn = async (
     }
   );
 
-  return response;
+  return response.data;
 };
 export const getTestCaseById = async (
   id: string,

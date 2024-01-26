@@ -59,6 +59,7 @@ import {
   getTagsDetailsPath,
   getTopicDetailsPath,
   NO_DATA,
+  ROUTES,
 } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -94,6 +95,7 @@ import {
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { TestCase } from '../generated/tests/testCase';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -112,6 +114,7 @@ import {
   getDataProductsDetailsPath,
   getDomainPath,
   getGlossaryPath,
+  getIncidentManagerDetailPagePath,
   getSettingPath,
 } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
@@ -1371,6 +1374,8 @@ export const getEntityLinkFromType = (
         fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
       );
+    case EntityType.TEST_CASE:
+      return getIncidentManagerDetailPagePath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1490,6 +1495,21 @@ export const getBreadcrumbForContainer = (data: {
       : []),
   ];
 };
+
+export const getBreadcrumbForTestCase = (entity: TestCase) => [
+  {
+    name: i18next.t('label.incident-manager'),
+    url: ROUTES.INCIDENT_MANAGER,
+  },
+
+  {
+    name: entity.name,
+    url: getEntityLinkFromType(
+      entity.fullyQualifiedName ?? '',
+      (entity as SourceType)?.entityType as EntityType
+    ),
+  },
+];
 
 export const getEntityBreadcrumbs = (
   entity:
@@ -1703,6 +1723,10 @@ export const getEntityBreadcrumbs = (
           url: getDomainPath(data.domain.fullyQualifiedName),
         },
       ];
+    }
+
+    case EntityType.TEST_CASE: {
+      return getBreadcrumbForTestCase(entity as TestCase);
     }
 
     case EntityType.TOPIC:

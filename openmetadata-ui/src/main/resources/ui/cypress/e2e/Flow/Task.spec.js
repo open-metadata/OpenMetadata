@@ -123,8 +123,8 @@ describe('Task flow should work', () => {
     // verify the task details
     verifyTaskDetails(
       value.tagCount > 0
-        ? /#(\d+) UpdateTagfortags/
-        : /#(\d+) RequestTagfortags/
+        ? /#(\d+) Request to update tags for/
+        : /#(\d+) Request tags for/
     );
 
     // edit task assignees
