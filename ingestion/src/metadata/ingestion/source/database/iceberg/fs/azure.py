@@ -40,5 +40,5 @@ class AzureFileSystem(IcebergFileSystemBase):
             "adlfs.account-name": fs_config.accountName,
             "adlfs.tenant-id": fs_config.tenantId,
             "adlfs.client-id": fs_config.clientId,
-            "adlfs.client-secret": fs_config.clientSecret,
+            "adlfs.client-secret": fs_config.clientSecret.get_secret_value(),
         }

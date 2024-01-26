@@ -38,7 +38,10 @@ class IcebergRestCatalog(IcebergCatalogBase):
             )
 
         if catalog.connection.credential:
-            credential = f"{catalog.connection.credential.clientId}:{catalog.connection.credential.clientSecret}"
+            client_id = catalog.connection.credential.clientId.get_secret_value()
+            client_secret = catalog.connection.credential.clientSecret.get_secret_value()
+
+            credential = f"{client_id}:{client_secret}"
         else:
             credential = None
 
@@ -46,7 +49,7 @@ class IcebergRestCatalog(IcebergCatalogBase):
             "warehouse": catalog.warehouseLocation,
             "uri": catalog.connection.uri,
             "credential": credential,
-            "token": catalog.connection.token,
+            "token": catalog.connection.token.get_secret_value() if catalog.connection.token else None,
         }
 
         if catalog.connection.fileSystem:

@@ -30,7 +30,11 @@
           "format": "password"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "clientId",
+        "clientSecret"
+      ]
     },
     "token": {
       "title": "Token",
