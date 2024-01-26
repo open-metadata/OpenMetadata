@@ -2,8 +2,8 @@
   {
     "name": "filterBySource",
     "fullyQualifiedName": "eventSubscription.filterBySource",
-    "displayName": "Filter By Source of Change Event",
-    "description" : "Filter By Source of Change Event",
+    "displayName": "Source of Change Event",
+    "description" : "Event Filtering By Source of Change Event",
     "effect" : "include",
     "condition": "matchAnySource(${sourceList})",
     "arguments": [
@@ -14,8 +14,8 @@
   {
     "name": "filterByOwnerName",
     "fullyQualifiedName": "eventSubscription.filterByOwnerName",
-    "displayName": "Filter By Owner",
-    "description" : "Filter By Owner of the Asset",
+    "displayName": "Owner",
+    "description" : "Event Filtering By Owner of the Asset",
     "effect" : "include",
     "condition": "matchAnyOwnerName(${ownerNameList})",
     "arguments": [
@@ -26,8 +26,8 @@
   {
     "name": "filterByFqn",
     "fullyQualifiedName": "eventSubscription.filterByFqn",
-    "displayName": "Filter By ENtity FQN",
-    "description" : "Filter A Change Event By Entity FQN",
+    "displayName": "Entity FQN",
+    "description" : "Event Filtering By Entity FQN",
     "effect" : "include",
     "condition": "matchAnyEntityFqn(${fqnList})",
     "arguments": [
@@ -38,8 +38,8 @@
   {
     "name": "filterByEntityId",
     "fullyQualifiedName": "eventSubscription.filterByEntityId",
-    "displayName": "Filter By Entity Id",
-    "description" : "Filter A Change Event By Entity Id",
+    "displayName": "Entity Id",
+    "description" : "Event Filtering By Entity Id",
     "effect" : "include",
     "condition": "matchAnyEntityId(${entityIdList})",
     "arguments": [
@@ -50,8 +50,8 @@
   {
     "name": "filterByEventType",
     "fullyQualifiedName": "eventSubscription.filterByEventType",
-    "displayName": "Filter By Event Type",
-    "description" : "Filter By Type of Event like entityCreated, entityUpdated, etc.",
+    "displayName": "Event Type",
+    "description" : "Event Filtering by Event Type like entityCreated, entityUpdated, etc.",
     "effect" : "include",
     "condition": "matchAnyEventType(${eventTypeList})",
     "arguments": [
@@ -62,8 +62,8 @@
   {
     "name": "filterByUpdaterName",
     "fullyQualifiedName": "eventSubscription.filterByUpdaterName",
-    "displayName": "Filter By Update Name",
-    "description" : "Filter An Change Event if the Entity is Updated By Any of the Users",
+    "displayName": "Updater Name",
+    "description" : "Event Filtering by Updaters Name",
     "effect" : "include",
     "condition": "matchUpdatedBy(${updateByUserList})",
     "arguments": [
@@ -74,8 +74,8 @@
   {
     "name": "filterByFieldChange",
     "fullyQualifiedName": "eventSubscription.filterByFieldChange",
-    "displayName": "Filter By Field Change",
-    "description" : "Filter By a specific field change",
+    "displayName": "Field Change",
+    "description" : "Event Filtering By a specific field change",
     "effect" : "include",
     "condition": "matchAnyFieldChange(${fieldChangeList})",
     "arguments": [
@@ -86,13 +86,34 @@
   {
     "name": "filterByDomain",
     "fullyQualifiedName": "eventSubscription.filterByDomain",
-    "displayName": "Filter By Domain",
-    "description" : "Filter An Change Event By Domain a Entity Belongs To",
+    "displayName": "Domain",
+    "description" : "Event Filtering By Domain a Entity Belongs To",
     "effect" : "include",
     "condition": "matchAnyDomain(${domainList})",
     "arguments": [
       "domainList"
     ],
     "inputType": "runtime"
+  },
+  {
+    "name": "filterByMentionedName",
+    "fullyQualifiedName": "eventSubscription.filterByMentionedName",
+    "displayName": "Mentioned Users",
+    "description" : "Event Filtering An Conversation User Mentioned",
+    "effect" : "include",
+    "condition": "matchConversationUser(${userList})",
+    "arguments": [
+      "userList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByGeneralMetadataEvents",
+    "fullyQualifiedName": "eventSubscription.filterByGeneralMetadataEvents",
+    "displayName": "General Metadata Events",
+    "description" : "Event Filtering By General MetadataEvents",
+    "effect" : "include",
+    "condition": "matchAnyFieldChange({'description', 'tags'})",
+    "inputType": "none"
   }
 ]
