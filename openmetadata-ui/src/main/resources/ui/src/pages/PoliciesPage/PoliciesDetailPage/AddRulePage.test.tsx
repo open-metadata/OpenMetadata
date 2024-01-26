@@ -44,12 +44,6 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
-jest.mock('../../../constants/GlobalSettings.constants', () => ({
-  GlobalSettingOptions: {
-    POLICIES: 'policies',
-  },
-}));
-
 jest.mock('../../../utils/CommonUtils', () => ({
   getEntityName: jest.fn(),
 }));
