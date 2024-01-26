@@ -174,6 +174,7 @@ class CommonDbSourceService(
                 service=self.context.database_service,
                 description=self.get_database_description(database_name),
                 sourceUrl=self.get_source_url(database_name=database_name),
+                tags=self.get_database_tag_labels(database_name=database_name),
             )
         )
 
@@ -462,6 +463,7 @@ class CommonDbSourceService(
                     database_name=self.context.database,
                     table_type=table_type,
                 ),
+                owner=self.get_owner_ref(table_name=table_name),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(

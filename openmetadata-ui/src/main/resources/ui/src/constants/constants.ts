@@ -75,6 +75,7 @@ export const refreshTokenKey = 'refreshToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
+export const DISABLED = 'disabled';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
@@ -323,7 +324,17 @@ export const ROUTES = {
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
+  // Observability
   OBSERVABILITY: '/observability',
+  OBSERVABILITY_ALERTS: '/observability/alerts',
+  OBSERVABILITY_ALERT_DETAILS: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
+  EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Notification Alerts
+  NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
+  NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {

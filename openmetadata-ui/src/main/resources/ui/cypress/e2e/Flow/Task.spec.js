@@ -17,7 +17,6 @@ import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
-  visitEntityDetailsPage,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
@@ -26,6 +25,7 @@ import {
   editAssignee,
   verifyTaskDetails,
 } from '../../common/TaskUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner } from '../../common/Utils/Owner';
 import { DATA_ASSETS } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
@@ -123,8 +123,8 @@ describe('Task flow should work', () => {
     // verify the task details
     verifyTaskDetails(
       value.tagCount > 0
-        ? /#(\d+) UpdateTagfortags/
-        : /#(\d+) RequestTagfortags/
+        ? /#(\d+) Request to update tags for/
+        : /#(\d+) Request tags for/
     );
 
     // edit task assignees

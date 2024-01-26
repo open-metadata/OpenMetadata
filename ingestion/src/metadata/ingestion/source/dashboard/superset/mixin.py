@@ -100,19 +100,23 @@ class SupersetSourceMixin(DashboardServiceSource):
             return self.metadata.get_reference_by_email(email)
         return None
 
-    def get_owner_details(
+    def get_owner_ref(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
     ) -> EntityReference:
-        if hasattr(dashboard_details, "owner"):
-            for owner in dashboard_details.owners or []:
-                if owner.email:
-                    user = self._get_user_by_email(owner.email)
-                    if user:
-                        return user
-        if dashboard_details.email:
-            user = self._get_user_by_email(dashboard_details.email)
-            if user:
-                return user
+        try:
+            if hasattr(dashboard_details, "owners"):
+                for owner in dashboard_details.owners or []:
+                    if owner.email:
+                        user = self._get_user_by_email(owner.email)
+                        if user:
+                            return user
+            if dashboard_details.email:
+                user = self._get_user_by_email(dashboard_details.email)
+                if user:
+                    return user
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def _get_charts_of_dashboard(
