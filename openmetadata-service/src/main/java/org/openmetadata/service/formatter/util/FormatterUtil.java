@@ -202,13 +202,13 @@ public class FormatterUtil {
     List<FieldChange> fieldsDeleted = changeDescription.getFieldsDeleted();
     if (fieldsAdded.isEmpty() || fieldsDeleted.isEmpty()) {
       if (!fieldsAdded.isEmpty()) {
-        messages =
+        messages.putAll(
             getFormattedMessagesForAllFieldChange(
-                messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD);
+                messageFormatter, entity, fieldsAdded, CHANGE_TYPE.ADD));
       } else if (!fieldsDeleted.isEmpty()) {
-        messages =
+        messages.putAll(
             getFormattedMessagesForAllFieldChange(
-                messageFormatter, entity, fieldsDeleted, CHANGE_TYPE.DELETE);
+                messageFormatter, entity, fieldsDeleted, CHANGE_TYPE.DELETE));
       }
       return messages;
     }

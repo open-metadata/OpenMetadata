@@ -48,12 +48,12 @@ export enum GlobalSettingOptions {
   SEARCH_INDEXES = 'searchIndexes',
   DATA_INSIGHT = 'dataInsight',
   EMAIL = 'email',
-  ALERTS = 'alerts',
-  ALERT = 'alert',
+  NOTIFICATIONS = 'notifications',
+  NOTIFICATION = 'notification',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
-  ADD_ALERTS = 'add-alerts',
-  EDIT_ALERTS = 'edit-alert',
+  ADD_NOTIFICATION = 'add-notification',
+  EDIT_NOTIFICATION = 'edit-notification',
   ADD_OBSERVABILITY = 'add-observability',
   STORAGES = 'storages',
   DATA_INSIGHT_REPORT_ALERT = 'dataInsightReport',
@@ -164,6 +164,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.LOGIN_CONFIGURATION]: [
     GlobalSettingsMenuCategory.OPEN_METADATA,
     `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
+  ],
+  [GlobalSettingOptions.GLOSSARY_TERM]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
   ],
 };
 

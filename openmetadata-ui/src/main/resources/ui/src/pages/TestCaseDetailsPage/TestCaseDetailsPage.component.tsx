@@ -39,7 +39,7 @@ function TestCaseDetailsPage() {
       const response = await getTestCaseByFqn(testCaseFQN, {
         fields: ['testSuite', 'testCaseResult'],
       });
-      setTestCaseData(response.data);
+      setTestCaseData(response);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
