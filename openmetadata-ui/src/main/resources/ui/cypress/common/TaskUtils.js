@@ -26,11 +26,7 @@ export const verifyTaskDetails = (regexPattern) => {
   cy.get('[data-testid="task-title"]')
     .invoke('text')
     .then((textContent) => {
-      cy.log('textContent', textContent);
-      cy.log('regexPattern', regexPattern);
       const matches = textContent.match(regexPattern);
-
-      cy.log(matches);
 
       expect(matches).to.not.be.null;
     });
