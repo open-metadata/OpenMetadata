@@ -57,9 +57,8 @@ class S3FileSystem(IcebergFileSystemBase):
         unused_keys = []
 
         for key, value in fs_config.dict().items():
-            if key not in SUPPORTED_KEYS:
-                if value:
-                    unused_keys.append(key)
+            if key not in SUPPORTED_KEYS and value:
+                unused_keys.append(key)
 
         if unused_keys:
             logger.warning(

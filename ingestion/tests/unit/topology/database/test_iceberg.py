@@ -736,9 +736,8 @@ class IcebergUnitTest(TestCase):
             **iceberg_table_without_owner
         )
 
-        self.assertEqual(
+        self.assertIsNone(
             self.iceberg.get_owner_ref(table_name),
-            None,
         )
 
     def test_yield_table(self):

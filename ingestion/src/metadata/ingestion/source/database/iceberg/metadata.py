@@ -214,7 +214,6 @@ class IcebergSource(DatabaseServiceSource):
                 continue
             except Exception as exc:
                 table_name = ".".join(table_identifier)
-                # TODO: Uncomment when understand why 'send_failed_status_callback()' is breaking
                 self.status.failed(
                     StackTraceError(
                         name=table_name,
@@ -309,4 +308,4 @@ class IcebergSource(DatabaseServiceSource):
         yield from []
 
     def close(self):
-        pass
+        """There is no connection to close."""
