@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.trigger-item-container {
-  background-color: #f9f9f9;
-  .ant-card-body {
-    padding: 20px;
-  }
+
+export interface ObservabilityAlertDetailsPageProps {
+  isNotificationAlert: boolean;
 }

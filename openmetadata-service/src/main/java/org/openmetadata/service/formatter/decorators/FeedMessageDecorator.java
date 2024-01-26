@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.formatter.util.FeedMessage;
 
@@ -49,8 +51,13 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn) {
-    return String.format("[%s](/%s/%s)", fqn, entityType, fqn.trim());
+  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+    return String.format(
+        "[%s](/%s/%s%s)",
+        fqn,
+        entityType,
+        fqn.trim(),
+        nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 
   @Override

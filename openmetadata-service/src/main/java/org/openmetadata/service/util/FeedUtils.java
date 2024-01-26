@@ -27,9 +27,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
@@ -37,7 +35,7 @@ public final class FeedUtils {
   private FeedUtils() {}
 
   public static List<Thread> getThreadWithMessage(
-      ChangeEvent changeEvent, String loggedInUserName) {
+      MessageDecorator<?> messageDecorator, ChangeEvent changeEvent, String loggedInUserName) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return Collections.emptyList(); // Response has no entity to produce change event from
     }
@@ -48,7 +46,7 @@ public final class FeedUtils {
       return Collections.emptyList();
       // return List.of(AlertsRuleEvaluator.getThread(changeEvent));
     } else if (Entity.getEntityList().contains(changeEvent.getEntityType())) {
-      return populateMessageForDataAssets(changeEvent, loggedInUserName);
+      return populateMessageForDataAssets(messageDecorator, changeEvent, loggedInUserName);
     } else {
       LOG.error(
           "Invalid Entity Type: {}, Currently Change Events are expected as Thread or Data Assets",
@@ -63,7 +61,7 @@ public final class FeedUtils {
   }
 
   private static List<Thread> populateMessageForDataAssets(
-      ChangeEvent changeEvent, String loggedInUserName) {
+      MessageDecorator<?> messageDecorator, ChangeEvent changeEvent, String loggedInUserName) {
     String message;
     EntityInterface entityInterface = getEntity(changeEvent);
     MessageParser.EntityLink about =
@@ -79,7 +77,7 @@ public final class FeedUtils {
         yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
       }
       case ENTITY_UPDATED -> getThreadWithMessage(
-          entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
+          messageDecorator, entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
       case ENTITY_SOFT_DELETED -> {
         message =
             String.format(
@@ -106,18 +104,23 @@ public final class FeedUtils {
           yield Collections.emptyList();
         }
         yield getThreadWithMessage(
-            entityInterface, entityInterface.getChangeDescription(), loggedInUserName);
+            messageDecorator,
+            entityInterface,
+            entityInterface.getChangeDescription(),
+            loggedInUserName);
       }
     };
   }
 
   private static List<Thread> getThreadWithMessage(
-      EntityInterface entity, ChangeDescription changeDescription, String loggedInUserName) {
+      MessageDecorator<?> messageDecorator,
+      EntityInterface entity,
+      ChangeDescription changeDescription,
+      String loggedInUserName) {
     List<Thread> threads = new ArrayList<>();
 
-    MessageDecorator<FeedMessage> feedFormatter = new FeedMessageDecorator();
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(feedFormatter, changeDescription, entity);
+        getFormattedMessages(messageDecorator, changeDescription, entity);
 
     // Create an automated thread
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {

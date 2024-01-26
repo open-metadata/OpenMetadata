@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
@@ -54,9 +55,13 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn) {
+  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
     return String.format(
-        "[%s](/%s/%s)", fqn.trim(), getSmtpSettings().getOpenMetadataUrl(), entityType);
+        "[%s](/%s/%s%s)",
+        fqn.trim(),
+        getSmtpSettings().getOpenMetadataUrl(),
+        entityType,
+        nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 
   @Override

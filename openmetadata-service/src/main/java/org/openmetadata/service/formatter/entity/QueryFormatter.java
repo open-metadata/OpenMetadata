@@ -58,7 +58,7 @@ public class QueryFormatter implements EntityFormatter {
       field.append("Query Used in :- ");
       int i = 1;
       for (EntityReference ref : tableRefs) {
-        field.append(messageFormatter.getEntityUrl(ref.getType(), ref.getFullyQualifiedName()));
+        field.append(messageFormatter.getEntityUrl(ref.getType(), ref.getFullyQualifiedName(), ""));
         if (i < tableRefs.size()) {
           field.append(", ");
         }

@@ -8,6 +8,11 @@
     "resources": ["all"],
     "rules": [
       {
+        "name": "matchAnySource",
+        "effect": "include",
+        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic','testSuite','testCase'})"
+      },
+      {
         "name": "matchUpdatedBy",
         "effect": "exclude",
         "condition": "matchUpdatedBy({'ingestion-bot'})"
@@ -28,6 +33,35 @@
   ],
   "input": {
     "filters": [
+      {
+        "name": "filterBySource",
+        "effect" : "include",
+        "arguments": [
+          {
+            "name": "sourceList",
+            "input": [
+              "chart",
+              "container",
+              "dashboard",
+              "dashboardDataModel",
+              "database",
+              "databaseSchema",
+              "glossary",
+              "glossaryTerm",
+              "mlmodel",
+              "pipeline",
+              "query",
+              "report",
+              "searchIndex",
+              "storedProcedure",
+              "table",
+              "topic",
+              "testSuite",
+              "testCase"
+            ]
+          }
+        ]
+      },
       {
         "name": "filterByUpdaterName",
         "effect" : "exclude",

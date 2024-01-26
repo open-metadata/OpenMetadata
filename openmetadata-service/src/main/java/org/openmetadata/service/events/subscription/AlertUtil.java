@@ -108,7 +108,8 @@ public final class AlertUtil {
     // Trigger Specific Settings
     if (entityType.equals(THREAD)
         && (config.getResources().get(0).equals("announcement")
-            || config.getResources().get(0).equals("task"))) {
+            || config.getResources().get(0).equals("task")
+            || config.getResources().get(0).equals("conversation"))) {
       return true;
     }
 

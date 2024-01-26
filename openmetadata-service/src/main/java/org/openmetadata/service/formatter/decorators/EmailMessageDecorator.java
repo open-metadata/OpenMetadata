@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
@@ -52,10 +53,14 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn) {
+  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
     return String.format(
-        "<a href = '%s/%s/%s'>%s</a>",
-        getSmtpSettings().getOpenMetadataUrl(), entityType, fqn.trim(), fqn.trim());
+        "<a href = '%s/%s/%s%s'>%s</a>",
+        getSmtpSettings().getOpenMetadataUrl(),
+        entityType,
+        fqn.trim(),
+        nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
+        fqn.trim());
   }
 
   @Override

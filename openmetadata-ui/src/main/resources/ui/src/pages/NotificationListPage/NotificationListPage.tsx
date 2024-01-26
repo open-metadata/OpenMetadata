@@ -12,40 +12,50 @@
  */
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
+  AlertType,
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { getAllAlerts } from '../../rest/alertsAPI';
+import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import {
+  getNotificationAlertDetailsPath,
+  getNotificationAlertsEditPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const ObservabilityPage = () => {
+const NotificationListPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [loading, setLoading] = useState(true);
+  const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
   const {
@@ -58,24 +68,40 @@ const ObservabilityPage = () => {
     paging,
   } = usePaging();
 
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.NOTIFICATIONS),
+    []
+  );
+
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
-      setLoading(true);
+      setLoadingCount((count) => count + 1);
       try {
         const { data, paging } = await getAllAlerts({
           after: params?.after,
           before: params?.before,
           limit: pageSize,
+          alertType: AlertType.Notification,
         });
 
-        setAlerts(data.filter((d) => d.provider !== ProviderType.System));
+        if (isUndefined(params?.after)) {
+          // Fetch and show the system created activity feed alert when fetching results fro page 1
+          const activityFeedAlert = await getAlertsFromName(
+            'ActivityFeedAlert'
+          );
+          setAlerts([activityFeedAlert, ...data]);
+        } else {
+          setAlerts(data);
+        }
+
         handlePagingChange(paging);
       } catch (error) {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
       } finally {
-        setLoading(false);
+        setLoadingCount((count) => count - 1);
       }
     },
     [pageSize]
@@ -112,7 +138,14 @@ const ObservabilityPage = () => {
         width: '200px',
         key: 'name',
         render: (name: string, record: EventSubscription) => {
-          return <Link to={`alert/${record.id}`}>{name}</Link>;
+          return (
+            record.fullyQualifiedName && (
+              <Link
+                to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
+                {name}
+              </Link>
+            )
+          );
         },
       },
       {
@@ -142,14 +175,14 @@ const ObservabilityPage = () => {
       },
       {
         title: t('label.action-plural'),
-        dataIndex: 'id',
+        dataIndex: 'fullyQualifiedName',
         width: 120,
-        key: 'id',
+        key: 'fullyQualifiedName',
         render: (id: string, record: EventSubscription) => {
           return (
             <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link to={`edit-alert/${id}`}>
+                <Link to={getNotificationAlertsEditPath(id)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
                     data-testid={`alert-edit-${record.name}`}
@@ -162,7 +195,7 @@ const ObservabilityPage = () => {
                 <Button
                   data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
+                  icon={<DeleteIcon height={16} width={16} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />
@@ -175,85 +208,82 @@ const ObservabilityPage = () => {
     [handleAlertDelete]
   );
 
-  const pageHeaderData = useMemo(
-    () => ({
-      header: t('label.observability'),
-      subHeader: t('message.alerts-description'),
-    }),
-    []
-  );
-
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <div className="d-flex justify-between">
-          <PageHeader data={pageHeaderData} />
-          <Link
-            to={getSettingPath(
-              GlobalSettingsMenuCategory.NOTIFICATIONS,
-              GlobalSettingOptions.ADD_OBSERVABILITY
-            )}>
-            <Button data-testid="create-observability" type="primary">
-              {t('label.create-entity', { entity: t('label.observability') })}
-            </Button>
-          </Link>
-        </div>
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          dataSource={alerts}
-          loading={loading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                permission
-                className="p-y-md"
-                doc={ALERTS_DOCS}
-                heading={t('label.alert')}
-                type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                onClick={() =>
-                  history.push(
-                    getSettingPath(
-                      GlobalSettingsMenuCategory.NOTIFICATIONS,
-                      GlobalSettingOptions.ADD_OBSERVABILITY
+    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+      <Row className="page-container" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <div className="d-flex justify-between">
+            <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
+            <Link
+              to={getSettingPath(
+                GlobalSettingsMenuCategory.NOTIFICATIONS,
+                GlobalSettingOptions.ADD_NOTIFICATION
+              )}>
+              <Button data-testid="create-notification" type="primary">
+                {t('label.create-entity', { entity: t('label.notification') })}
+              </Button>
+            </Link>
+          </div>
+        </Col>
+        <Col span={24}>
+          <Table
+            bordered
+            columns={columns}
+            dataSource={alerts}
+            loading={Boolean(loadingCount)}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  permission
+                  className="p-y-md"
+                  doc={ALERTS_DOCS}
+                  heading={t('label.alert')}
+                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                  onClick={() =>
+                    history.push(
+                      getSettingPath(
+                        GlobalSettingsMenuCategory.NOTIFICATIONS,
+                        GlobalSettingOptions.ADD_NOTIFICATION
+                      )
                     )
-                  )
-                }
-              />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={onPageChange}
-            onShowSizeChange={handlePageSizeChange}
+                  }
+                />
+              ),
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
           />
-        )}
+        </Col>
+        <Col span={24}>
+          {showPagination && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={onPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
 
-        <DeleteWidgetModal
-          afterDeleteAction={handleAlertDelete}
-          allowSoftDelete={false}
-          entityId={selectedAlert?.id ?? ''}
-          entityName={getEntityName(selectedAlert)}
-          entityType={EntityType.SUBSCRIPTION}
-          visible={Boolean(selectedAlert)}
-          onCancel={() => {
-            setSelectedAlert(undefined);
-          }}
-        />
-      </Col>
-    </Row>
+          <DeleteWidgetModal
+            afterDeleteAction={handleAlertDelete}
+            allowSoftDelete={false}
+            entityId={selectedAlert?.id ?? ''}
+            entityName={getEntityName(selectedAlert)}
+            entityType={EntityType.SUBSCRIPTION}
+            visible={Boolean(selectedAlert)}
+            onCancel={() => {
+              setSelectedAlert(undefined);
+            }}
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 
-export default ObservabilityPage;
+export default NotificationListPage;

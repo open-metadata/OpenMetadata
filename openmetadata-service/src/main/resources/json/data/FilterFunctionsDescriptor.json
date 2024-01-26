@@ -26,7 +26,7 @@
   {
     "name": "filterByFqn",
     "fullyQualifiedName": "eventSubscription.filterByFqn",
-    "displayName": "Filter By ENtity FQN",
+    "displayName": "Filter By Entity FQN",
     "description" : "Filter A Change Event By Entity FQN",
     "effect" : "include",
     "condition": "matchAnyEntityFqn(${fqnList})",
@@ -94,5 +94,26 @@
       "domainList"
     ],
     "inputType": "runtime"
+  },
+  {
+    "name": "filterByMentionedName",
+    "fullyQualifiedName": "eventSubscription.filterByMentionedName",
+    "displayName": "Filter By Mentioned Users",
+    "description" : "Filter An Conversation User Mentioned",
+    "effect" : "include",
+    "condition": "matchConversationUser(${userList})",
+    "arguments": [
+      "userList"
+    ],
+    "inputType": "runtime"
+  },
+  {
+    "name": "filterByGeneralMetadataEvents",
+    "fullyQualifiedName": "eventSubscription.filterByGeneralMetadataEvents",
+    "displayName": "Filter By General Metadata Events",
+    "description" : "Filter By General MetadataEvents",
+    "effect" : "include",
+    "condition": "matchAnyFieldChange('description', 'tags')",
+    "inputType": "none"
   }
 ]

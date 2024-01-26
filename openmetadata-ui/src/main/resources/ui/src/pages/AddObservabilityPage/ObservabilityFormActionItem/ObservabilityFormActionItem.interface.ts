@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import { FilterResourceDescriptor } from '../../../generated/events/filterResourceDescriptor';
+import { EventFilterRule } from '../../../generated/events/eventSubscription';
 
 export interface ObservabilityFormActionItemProps {
-  heading: string;
-  subHeading: string;
-  filterResources: FilterResourceDescriptor[];
+  supportedActions?: EventFilterRule[];
 }
