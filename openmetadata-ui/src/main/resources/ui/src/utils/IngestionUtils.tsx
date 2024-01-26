@@ -35,7 +35,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { Connection } from '../generated/entity/services/databaseService';
+import { HiveMetastoreConnection as Connection } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
