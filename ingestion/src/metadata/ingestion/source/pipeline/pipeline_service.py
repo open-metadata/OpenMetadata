@@ -138,6 +138,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.client = self.connection
         self.test_connection()
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     @abstractmethod
     def yield_pipeline(
         self, pipeline_details: Any

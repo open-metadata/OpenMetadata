@@ -57,6 +57,10 @@ class QueryParserSource(Source, ABC):
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.engine = get_connection(self.service_connection) if get_engine else None
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     def prepare(self):
         """By default, there's nothing to prepare"""
 

@@ -71,6 +71,10 @@ class AutoTaggerApp(AppRunner):
         self._ner_scanner = None
         self.confidence_threshold = config.confidenceLevel or DEFAULT_CONFIDENCE
 
+    @property
+    def name(self) -> str:
+        return "Auto Tagger"
+
     @staticmethod
     def build_column_tag(tag_fqn: str, column_fqn: str) -> ColumnTag:
         """

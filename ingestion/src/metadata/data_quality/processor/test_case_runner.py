@@ -65,6 +65,10 @@ class TestCaseRunner(Processor):
             )
         )
 
+    @property
+    def name(self) -> str:
+        return "Data Quality"
+
     def _run(self, record: TableAndTests) -> Either:
         # First, create the executable test suite if it does not exist yet
         # This could happen if the process is executed from YAML and not the UI

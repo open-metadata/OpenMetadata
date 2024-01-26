@@ -65,6 +65,10 @@ class TableUsageStage(Stage):
         init_staging_dir(self.config.filename)
         self.wrote_something = False
 
+    @property
+    def name(self) -> str:
+        return "Table Usage"
+
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = TableStageConfig.parse_obj(config_dict)

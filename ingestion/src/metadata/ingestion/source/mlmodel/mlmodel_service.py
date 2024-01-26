@@ -123,6 +123,10 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
         self.client = self.connection
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 

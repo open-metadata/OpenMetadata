@@ -69,6 +69,10 @@ class PIIProcessor(Processor):
         self.confidence_threshold = self.source_config.confidence
 
     @property
+    def name(self) -> str:
+        return "PII Processor"
+
+    @property
     def ner_scanner(self) -> NERScanner:
         """Load the NER Scanner only if called"""
         if self._ner_scanner is None:

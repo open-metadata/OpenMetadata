@@ -87,6 +87,10 @@ class QueryParserProcessor(Processor):
         self.metadata = metadata
         self.connection_type = connection_type
 
+    @property
+    def name(self) -> str:
+        return "Query Parser"
+
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata, **kwargs):
         config = ConfigModel.parse_obj(config_dict)

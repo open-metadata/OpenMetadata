@@ -88,6 +88,10 @@ class MetadataUsageBulkSink(BulkSink):
         self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
 
+    @property
+    def name(self) -> str:
+        return "OpenMetadata"
+
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
