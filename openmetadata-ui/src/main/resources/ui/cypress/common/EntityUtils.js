@@ -12,9 +12,14 @@
  */
 
 import {
+  DASHBOARD_SERVICE_DETAILS,
   DATABASE_DETAILS,
   DATABASE_SERVICE_DETAILS,
+  MESSAGING_SERVICE_DETAILS,
+  ML_MODEL_SERVICE_DETAILS,
+  PIPELINE_SERVICE_DETAILS,
   SCHEMA_DETAILS,
+  STORAGE_SERVICE_DETAILS,
 } from '../constants/EntityConstant';
 import { uuid } from './common';
 
@@ -152,6 +157,107 @@ export const generateRandomTable = () => {
   };
 
   return table;
+};
+
+export const generateRandomTopic = () => {
+  const topicName = `cypress-topic-${uuid()}`;
+  const topicDetails = {
+    name: topicName,
+    service: MESSAGING_SERVICE_DETAILS.name,
+    messageSchema: {
+      schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
+    "properties":{"first_name":{"type":"string"},"last_name":{"type":"string"}}},"age":{"type":"integer"},"club_name":{"type":"string"}}}`,
+      schemaType: 'JSON',
+      schemaFields: [
+        {
+          name: 'default',
+          dataType: 'RECORD',
+          fullyQualifiedName: `${MESSAGING_SERVICE_DETAILS.name}.${topicName}.default`,
+          tags: [],
+          children: [
+            {
+              name: 'name',
+              dataType: 'RECORD',
+              fullyQualifiedName: `${MESSAGING_SERVICE_DETAILS.name}.${topicName}.default.name`,
+              tags: [],
+              children: [
+                {
+                  name: 'first_name',
+                  dataType: 'STRING',
+                  description: 'Description for schema field first_name',
+                  fullyQualifiedName: `${MESSAGING_SERVICE_DETAILS.name}.${topicName}.default.name.first_name`,
+                  tags: [],
+                },
+                {
+                  name: 'last_name',
+                  dataType: 'STRING',
+                  fullyQualifiedName: `${MESSAGING_SERVICE_DETAILS.name}.${topicName}.default.name.last_name`,
+                  tags: [],
+                },
+              ],
+            },
+            {
+              name: 'age',
+              dataType: 'INT',
+              fullyQualifiedName: `${MESSAGING_SERVICE_DETAILS.name}.${topicName}.default.age`,
+              tags: [],
+            },
+            {
+              name: 'club_name',
+              dataType: 'STRING',
+              fullyQualifiedName: `${MESSAGING_SERVICE_DETAILS.name}.${topicName}.default.club_name`,
+              tags: [],
+            },
+          ],
+        },
+      ],
+    },
+    partitions: 128,
+  };
+
+  return topicDetails;
+};
+
+export const generateRandomDashboard = () => {
+  const dashboardName = `cypress-dashboard-${uuid()}`;
+
+  const dashboardDetails = {
+    name: dashboardName,
+    displayName: dashboardName,
+    service: DASHBOARD_SERVICE_DETAILS.name,
+  };
+
+  return dashboardDetails;
+};
+
+export const generateRandomPipeline = () => {
+  return {
+    name: `cypress-pipeline-${uuid()}`,
+    service: PIPELINE_SERVICE_DETAILS.name,
+    tasks: [{ name: 'snowflake_task' }],
+  };
+};
+
+export const generateRandomMLModel = () => {
+  return {
+    name: `cypress-mlmodel-${uuid()}`,
+    service: ML_MODEL_SERVICE_DETAILS.name,
+    algorithm: 'Time Series',
+    mlFeatures: [
+      {
+        name: 'sales',
+        dataType: 'numerical',
+        description: 'Sales amount',
+      },
+    ],
+  };
+};
+
+export const generateRandomContainer = () => {
+  return {
+    name: `cypress-container-${uuid()}`,
+    service: STORAGE_SERVICE_DETAILS.name,
+  };
 };
 
 /**
