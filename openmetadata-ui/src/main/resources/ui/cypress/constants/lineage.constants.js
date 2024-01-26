@@ -16,14 +16,14 @@ export const PIPELINE_SUPPORTED_TYPES = ['Table', 'Topic'];
 
 export const LINEAGE_ITEMS = [
   {
-    term: 'fact_sale',
-    displayName: 'fact_sale',
+    term: 'marketing',
+    displayName: 'marketing',
     entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     entityType: 'Table',
-    fqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+    fqn: 'sample_data.ecommerce_db.shopify.marketing',
     searchIndex: SEARCH_INDEX.tables,
-    columns: ['sample_data.ecommerce_db.shopify.fact_sale.shop_id'],
+    columns: ['sample_data.ecommerce_db.shopify.marketing.ad_id'],
   },
   {
     term: 'fact_session',
@@ -60,6 +60,14 @@ export const LINEAGE_ITEMS = [
     entityType: 'Container',
     fqn: 's3_storage_sample.departments.media',
     searchIndex: SEARCH_INDEX.containers,
+  },
+  {
+    term: 'customers',
+    entity: DATA_ASSETS.dashboards,
+    serviceName: 'sample_looker',
+    entityType: 'Dashboard',
+    fqn: 'sample_looker.customers',
+    searchIndex: SEARCH_INDEX.dashboards,
   },
 ];
 
