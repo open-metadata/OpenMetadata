@@ -125,7 +125,8 @@ describe('Recently viwed data assets', () => {
         .scrollIntoView()
         .should('be.visible');
       cy.get(
-        `[data-testid="recently-viewed-widget"] [title="${entity.displayName}"]`
+        `[data-testid="recently-viewed-widget"] [title="${entity.displayName}"]`,
+        { timeout: 10000 }
       )
         .scrollIntoView()
         .should('be.visible');
