@@ -166,6 +166,16 @@ export const visitEntityDetailsPage = ({
   entityType?: EntityType;
   entityFqn?: string;
 }) => {
+  if (entity === EntityType.DataModel) {
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels/name/*',
+      'getEntityDetails'
+    );
+  } else {
+    interceptURL('GET', `/api/v1/${entity}/name/*`, 'getEntityDetails');
+  }
+
   interceptURL(
     'GET',
     `/api/v1/search/query?q=**&from=*&size=*&index=*`,
@@ -212,18 +222,10 @@ export const visitEntityDetailsPage = ({
           .click();
       }
     });
-    if (entity === EntityType.DataModel) {
-      interceptURL(
-        'GET',
-        '/api/v1/dashboard/datamodels/name/*',
-        'getEntityDetails'
-      );
-    } else {
-      interceptURL('GET', `/api/v1/${entity}/name/*`, 'getEntityDetails');
-    }
+
+    cy.wait('@getEntityDetails');
     cy.clickOutside();
     cy.get('[data-testid="searchBox"]').clear();
-    verifyResponseStatusCode('@getEntityDetails', 200);
   });
 };
 
