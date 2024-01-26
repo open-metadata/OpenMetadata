@@ -43,8 +43,8 @@ import { getContainerByFQN } from '../../../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
+import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
@@ -101,8 +101,8 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.TEST_CASE:
-        promise = getTableDetailsByFQN(getTableFQNFromColumnFQN(decodedFqn), {
-          fields,
+        promise = getTestCaseByFqn(decodedFqn, {
+          fields: ['owner'],
         });
 
         break;

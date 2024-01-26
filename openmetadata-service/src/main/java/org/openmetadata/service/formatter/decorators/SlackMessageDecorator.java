@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
@@ -54,12 +55,13 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return "~";
   }
 
-  public String getEntityUrl(String entityType, String fqn) {
+  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
     return String.format(
-        "<%s/%s/%s|%s>",
+        "<%s/%s/%s%s|%s>",
         getSmtpSettings().getOpenMetadataUrl(),
         entityType,
         fqn.trim().replaceAll(" ", "%20"),
+        nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());
   }
 
