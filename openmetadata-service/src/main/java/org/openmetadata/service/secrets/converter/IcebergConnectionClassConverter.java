@@ -26,7 +26,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class IcebergConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONNECTION_CLASSES =
-    /** The GlueCatalogConnection has a subschema of the DynamoDbCatalogConnection. */
+      /** The GlueCatalogConnection has a subschema of the DynamoDbCatalogConnection. */
       List.of(
           GlueCatalogConnection.class,
           DynamoDbCatalogConnection.class,
@@ -39,7 +39,8 @@ public class IcebergConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    IcebergConnection icebergConnection = (IcebergConnection) JsonUtils.convertValue(object, this.clazz);
+    IcebergConnection icebergConnection =
+        (IcebergConnection) JsonUtils.convertValue(object, this.clazz);
 
     IcebergCatalog icebergCatalog = icebergConnection.getCatalog();
 
