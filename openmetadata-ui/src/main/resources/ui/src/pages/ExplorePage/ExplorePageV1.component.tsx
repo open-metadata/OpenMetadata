@@ -36,6 +36,7 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
 import {
@@ -52,7 +53,6 @@ import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -75,6 +75,14 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
+    useState<boolean>(false);
+
+  useEffect(() => {
+    setShowIndexNotFoundAlert(false);
+    setSearchResults(undefined);
+  }, [tab]);
 
   const [updatedAggregations, setUpdatedAggregations] =
     useState<Aggregations>();
@@ -220,38 +228,42 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
-      ([tabSearchIndex, tabDetail]) => ({
-        key: tabSearchIndex,
-        label: (
-          <div
-            className="d-flex items-center justify-between"
-            data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            <div className="d-flex items-center">
-              <span className="explore-icon d-flex m-r-xs">
-                {getEntityIcon(tabSearchIndex)}
+      ([tabSearchIndex, tabDetail]) => {
+        const Icon = tabDetail.icon;
+
+        return {
+          key: tabSearchIndex,
+          label: (
+            <div
+              className="d-flex items-center justify-between"
+              data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+              <div className="d-flex items-center">
+                <span className="explore-icon d-flex m-r-xs">
+                  <Icon />
+                </span>
+                <Typography.Text
+                  className={
+                    tabSearchIndex === searchIndex ? 'text-primary' : ''
+                  }>
+                  {tabDetail.label}
+                </Typography.Text>
+              </div>
+              <span>
+                {!isNil(searchHitCounts)
+                  ? getCountBadge(
+                      searchHitCounts[tabSearchIndex as ExploreSearchIndex],
+                      '',
+                      tabSearchIndex === searchIndex
+                    )
+                  : getCountBadge()}
               </span>
-              <Typography.Text
-                className={
-                  tabSearchIndex === searchIndex ? 'text-primary' : ''
-                }>
-                {tabDetail.label}
-              </Typography.Text>
             </div>
-            <span>
-              {!isNil(searchHitCounts)
-                ? getCountBadge(
-                    searchHitCounts[tabSearchIndex as ExploreSearchIndex],
-                    '',
-                    tabSearchIndex === searchIndex
-                  )
-                : getCountBadge()}
-            </span>
-          </div>
-        ),
-        count: searchHitCounts
-          ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
-          : 0,
-      })
+          ),
+          count: searchHitCounts
+            ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
+            : 0,
+        };
+      }
     );
 
     return searchQueryParam
@@ -364,9 +376,14 @@ const ExplorePageV1: FunctionComponent = () => {
         setSearchHitCounts(counts as SearchHitCounts);
       }),
     ])
-      .catch((err) => {
-        showErrorToast(err);
+      .catch((error) => {
+        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
+          setShowIndexNotFoundAlert(true);
+        } else {
+          showErrorToast(error);
+        }
       })
+
       .finally(() => setIsLoading(false));
   };
 
@@ -401,6 +418,7 @@ const ExplorePageV1: FunctionComponent = () => {
     <ExploreV1
       activeTabKey={searchIndex}
       aggregations={updatedAggregations}
+      isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
       searchIndex={searchIndex}
