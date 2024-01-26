@@ -86,6 +86,11 @@ class SearchClassBase {
       [EntityType.DATA_PRODUCT]: SearchIndex.DATA_PRODUCT,
       [EntityType.DATABASE]: SearchIndex.DATABASE,
       [EntityType.DATABASE_SCHEMA]: SearchIndex.DATABASE_SCHEMA,
+      [EntityType.USER]: SearchIndex.USER,
+      [EntityType.TEAM]: SearchIndex.TEAM,
+      [EntityType.TEST_CASE]: SearchIndex.TEST_CASE,
+      [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
+      [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
     };
   }
 
@@ -236,7 +241,12 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutTier() {
-    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
+    return [
+      EntityType.GLOSSARY_TERM,
+      EntityType.TAG,
+      EntityType.DATA_PRODUCT,
+      EntityType.TEST_CASE,
+    ];
   }
 
   public getServiceIcon(source: SearchSourceAlias) {
@@ -244,7 +254,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [];
+    return [EntityType.TEST_CASE];
   }
 
   public getEntityBreadcrumbs(

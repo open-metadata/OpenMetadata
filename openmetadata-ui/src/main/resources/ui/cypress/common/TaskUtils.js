@@ -102,7 +102,7 @@ export const createAndUpdateDescriptionTask = (value) => {
   createDescriptionTask(value);
 
   // verify the task details
-  verifyTaskDetails(/#(\d+) UpdateDescriptionfordescription/);
+  verifyTaskDetails(/#(\d+) Request to update description for/);
 
   // edit task assignees
   editAssignee();

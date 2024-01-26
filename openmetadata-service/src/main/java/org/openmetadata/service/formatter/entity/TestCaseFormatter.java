@@ -20,6 +20,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -52,7 +53,8 @@ public class TestCaseFormatter implements EntityFormatter {
               messageFormatter.getBold(),
               messageFormatter.getBold(),
               MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
-      return String.format(format, testCaseName, getStatusMessage(result.getTestCaseStatus()));
+      return String.format(
+          format, testCaseName, getStatusMessage(messageFormatter, result.getTestCaseStatus()));
     }
     String format =
         String.format(
@@ -64,12 +66,21 @@ public class TestCaseFormatter implements EntityFormatter {
         MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
   }
 
-  private String getStatusMessage(TestCaseStatus status) {
-    return switch (status) {
-      case Success -> "<span style=\"color:#48CA9E\">Passed</span>";
-      case Failed -> "<span style=\"color:#F24822\">Failed</span>";
-      case Aborted -> "<span style=\"color:#FFBE0E\">Aborted</span>";
-      case Queued -> "<span style=\"color:#959595\">Queued</span>";
-    };
+  private String getStatusMessage(MessageDecorator<?> messageDecorator, TestCaseStatus status) {
+    if (messageDecorator instanceof FeedMessageDecorator) {
+      return switch (status) {
+        case Success -> "<span style=\"color:#48CA9E\">Passed</span>";
+        case Failed -> "<span style=\"color:#F24822\">Failed</span>";
+        case Aborted -> "<span style=\"color:#FFBE0E\">Aborted</span>";
+        case Queued -> "<span style=\"color:#959595\">Queued</span>";
+      };
+    } else {
+      return switch (status) {
+        case Success -> "Passed";
+        case Failed -> "Failed";
+        case Aborted -> "Aborted";
+        case Queued -> "Queued";
+      };
+    }
   }
 }

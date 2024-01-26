@@ -635,3 +635,35 @@ export const getPersonaDetailsPath = (fqn: string) => {
 
   return path;
 };
+
+export const getObservabilityAlertsEditPath = (fqn: string) => {
+  let path = ROUTES.EDIT_OBSERVABILITY_ALERTS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+
+export const getNotificationAlertsEditPath = (fqn: string) => {
+  let path = ROUTES.EDIT_NOTIFICATION_ALERTS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+
+export const getObservabilityAlertDetailsPath = (fqn: string) => {
+  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+
+export const getNotificationAlertDetailsPath = (fqn: string) => {
+  let path = ROUTES.NOTIFICATION_ALERT_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
