@@ -13,6 +13,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetailsRightPanel from './GlossaryDetailsRightPanel.component';
@@ -67,6 +68,7 @@ describe('GlossaryDetailsRightPanel', () => {
       <BrowserRouter>
         <GlossaryDetailsRightPanel
           isGlossary
+          entityType={EntityType.GLOSSARY_TERM}
           permissions={mockPermissions}
           selectedData={mockedGlossaries[0]}
           onThreadLinkSelect={jest.fn()}

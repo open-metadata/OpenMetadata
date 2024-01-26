@@ -165,6 +165,10 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.OPEN_METADATA,
     `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
   ],
+  [GlobalSettingOptions.GLOSSARY_TERM]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
+  ],
 };
 
 export const SETTING_CUSTOM_PROPERTIES_PATH = {

@@ -49,4 +49,5 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   className?: string;
   hasPermission: boolean;
   maxDataCap?: number;
+  isRenderedInRightPanel?: boolean;
 }

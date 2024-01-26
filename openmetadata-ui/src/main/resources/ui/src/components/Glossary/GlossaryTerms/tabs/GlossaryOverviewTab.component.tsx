@@ -23,10 +23,10 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import GlossaryTermReferences from './GlossaryTermReferences';
@@ -179,8 +179,10 @@ const GlossaryOverviewTab = ({
           </Col>
         </Row>
       </Col>
+
       <Col className="p-t-md" span={6}>
         <GlossaryDetailsRightPanel
+          entityType={EntityType.GLOSSARY_TERM}
           isGlossary={false}
           isVersionView={isVersionView}
           permissions={permissions}
@@ -189,6 +191,7 @@ const GlossaryOverviewTab = ({
           onUpdate={onUpdate}
         />
       </Col>
+
       {tagsUpdatating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={selectedData as GlossaryTerm}
