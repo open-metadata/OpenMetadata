@@ -136,15 +136,16 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
   let pipelineType = [];
   const config = serviceDetails?.connection?.config as Connection;
   if (config) {
-    config.supportsMetadataExtraction &&
+    config?.supportsMetadataExtraction &&
       pipelineType.push(PipelineType.Metadata);
-    config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-    config.supportsLineageExtraction && pipelineType.push(PipelineType.Lineage);
-    config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
-    config.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
-    (config as MetadataConnection).supportsDataInsightExtraction &&
+    config?.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
+    config?.supportsLineageExtraction &&
+      pipelineType.push(PipelineType.Lineage);
+    config?.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+    config?.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
+    (config as MetadataConnection)?.supportsDataInsightExtraction &&
       pipelineType.push(PipelineType.DataInsight);
-    (config as MetadataConnection).supportsElasticSearchReindexingExtraction &&
+    (config as MetadataConnection)?.supportsElasticSearchReindexingExtraction &&
       pipelineType.push(PipelineType.ElasticSearchReindex);
   } else {
     pipelineType = [
