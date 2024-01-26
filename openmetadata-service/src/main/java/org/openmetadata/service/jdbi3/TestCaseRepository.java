@@ -426,6 +426,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       ResultSummary resultSummary) {
     if (!isDeleted) {
       resultSummaries.add(resultSummary);
+      return;
     }
     // If the result was deleted, we need to update the summary
     // with the latest one from the database (if one exists)
@@ -440,7 +441,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
       resultSummaries.add(newResultSummary);
     }
-    // if no result exists then we'll return the original list
   }
 
   private ResultSummary findMatchingResultSummary(
