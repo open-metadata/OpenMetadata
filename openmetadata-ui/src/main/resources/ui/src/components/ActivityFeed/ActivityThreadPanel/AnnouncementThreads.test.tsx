@@ -17,6 +17,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { mockThreadData } from './ActivityThread.mock';
 import AnnouncementThreads from './AnnouncementThreads';
 
+jest.mock('../../../utils/AnnouncementsUtils', () => ({
+  isActiveAnnouncement: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock('../../../utils/FeedUtils', () => ({
   getFeedListWithRelativeDays: jest.fn().mockReturnValue({
     updatedFeedList: mockThreadData,
@@ -26,24 +30,10 @@ jest.mock('../../../utils/FeedUtils', () => ({
 
 const mockAnnouncementThreadsProp = {
   threads: mockThreadData,
-  selectedThreadId: '',
-  postFeed: jest.fn(),
-  onThreadIdSelect: jest.fn(),
-  onThreadSelect: jest.fn(),
-  onConfirmation: jest.fn(),
-  updateThreadHandler: jest.fn(),
 };
 
-jest.mock('../ActivityFeedCard/ActivityFeedCard', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedCard</p>);
-});
-
-jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
-});
-
-jest.mock('../ActivityFeedCard/FeedCardFooter/FeedCardFooter', () => {
-  return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
+jest.mock('../ActivityFeedCard/ActivityFeedCardV1', () => {
+  return jest.fn().mockReturnValue(<p>ActivityFeedCardV1</p>);
 });
 
 describe('Test AnnouncementThreads Component', () => {
@@ -52,7 +42,7 @@ describe('Test AnnouncementThreads Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const threads = await screen.findAllByTestId('announcement-card');
+    const threads = screen.getAllByText('ActivityFeedCardV1');
 
     expect(threads).toHaveLength(2);
   });
