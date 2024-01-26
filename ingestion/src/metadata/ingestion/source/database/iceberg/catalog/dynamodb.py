@@ -55,7 +55,7 @@ class CustomDynamoDbCatalog(DynamoDbCatalog):
 
     def __init__(self, name: str, **properties: str):
         # HACK: Runs Catalog.__init__ without running DynamoDbCatalog.__init__
-        super(DynamoDbCatalog, self).__init__(name, **properties)
+        super(DynamoDbCatalog, self).__init__(name, **properties)  # pylint: disable=E1003
 
         self.dynamodb = self.get_boto3_client(properties)
         self.dynamodb_table_name = self.properties.get("table-name", "iceberg")
