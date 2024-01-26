@@ -170,3 +170,29 @@ class OMetaSuggestionTest(TestCase):
         )
 
         self.assertTrue(len(list(suggestions)))
+
+    def test_update_suggestion(self):
+        """Update an existing suggestion"""
+
+        create_table = get_create_entity(
+            entity=Table,
+            name=self.schema_name,
+            reference=self.schema.fullyQualifiedName.__root__,
+        )
+        table: Table = self.metadata.create_or_update(create_table)
+
+        suggestion_request = CreateSuggestionRequest(
+            description="something",
+            type=SuggestionType.SuggestDescription,
+            entityLink=EntityLink(
+                __root__=get_entity_link(Table, fqn=table.fullyQualifiedName.__root__)
+            ),
+        )
+
+        # Suggestions only support POST (not PUT)
+        res: Suggestion = self.metadata.create(suggestion_request)
+        self.assertEqual(res.description, "something")
+
+        res.description = "new"
+        new = self.metadata.update_suggestion(res)
+        self.assertEqual(new.description, "new")

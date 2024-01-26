@@ -31,7 +31,9 @@ from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import utils_logger
@@ -241,6 +243,24 @@ def find_column_in_table(
 
     return next(
         (col for col in table.columns if equals(col.name.__root__, column_name)), None
+    )
+
+
+def find_suggestion(
+    suggestions: List[Suggestion],
+    suggestion_type: SuggestionType,
+    entity_link: EntityLink,
+) -> Optional[Suggestion]:
+    """Given a list of suggestions, a suggestion type and an entity link, find
+    one suggestion in the list that matches the criteria
+    """
+    return next(
+        (
+            sugg
+            for sugg in suggestions
+            if sugg.type == suggestion_type and sugg.entityLink == entity_link
+        ),
+        None,
     )
 
 
