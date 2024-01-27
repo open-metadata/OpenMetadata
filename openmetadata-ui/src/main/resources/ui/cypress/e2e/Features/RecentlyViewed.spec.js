@@ -109,7 +109,10 @@ describe('Recently viwed data assets', () => {
         serviceName: entity.serviceName,
         entity: entity.entity,
       });
-
+      cy.get('[data-testid="entity-header-display-name"]').should(
+        'contain',
+        entity.term
+      );
       interceptURL(
         'GET',
         '/api/v1/feed?type=Announcement&activeAnnouncement=true',
