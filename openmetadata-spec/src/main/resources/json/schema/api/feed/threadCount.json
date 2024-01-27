@@ -16,6 +16,11 @@
       "type": "integer",
       "minimum": 0
     },
+    "closedTaskCount": {
+      "description": "Total count of all the tasks.",
+      "type": "integer",
+      "minimum": 0
+    },
     "totalTaskCount": {
       "description": "Total count of all the tasks.",
       "type": "integer",

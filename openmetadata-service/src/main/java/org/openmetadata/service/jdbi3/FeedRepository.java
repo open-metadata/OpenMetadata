@@ -554,10 +554,11 @@ public class FeedRepository {
               if (taskStatus.equals("Open")) {
                 threadCount.setOpenTaskCount(count);
               } else if (taskStatus.equals("Closed")) {
-                threadCount.setTotalTaskCount(count);
+                threadCount.setClosedTaskCount(count);
               }
             }
           });
+      computeTotalTaskCount(threadCount);
       threadCounts.add(threadCount);
     } else {
       mentions = 0;
@@ -581,13 +582,20 @@ public class FeedRepository {
               if (taskStatus.equals("Open")) {
                 threadCount.setOpenTaskCount(count);
               } else if (taskStatus.equals("Closed")) {
-                threadCount.setTotalTaskCount(count);
+                threadCount.setClosedTaskCount(count);
               }
             }
+            computeTotalTaskCount(threadCount);
             threadCounts.add(threadCount);
           });
     }
     return threadCounts;
+  }
+
+  private void computeTotalTaskCount(ThreadCount threadCount) {
+    threadCount.setTotalTaskCount(
+        (threadCount.getOpenTaskCount() != null ? threadCount.getOpenTaskCount() : 0)
+            + (threadCount.getClosedTaskCount() != null ? threadCount.getClosedTaskCount() : 0));
   }
 
   public List<Post> listPosts(UUID threadId) {

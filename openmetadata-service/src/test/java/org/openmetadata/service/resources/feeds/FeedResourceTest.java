@@ -1637,7 +1637,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     FeedResource.ThreadCountList threadCounts = listThreadsCount(entityLink, authHeaders);
     for (ThreadCount threadCount : threadCounts.getData()) {
-      if (threadCount.getEntityLink().equals(entityLink)) {
+      if (threadCount.getEntityLink().equalsIgnoreCase(entityLink)) {
         return threadCount.getConversationCount();
       }
     }
