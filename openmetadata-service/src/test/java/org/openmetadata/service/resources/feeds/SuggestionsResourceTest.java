@@ -210,9 +210,20 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     assertEquals(suggestionCount, suggestionList.getPaging().getTotal());
     assertEquals(10, suggestionList.getData().size());
     suggestionList =
-        listSuggestions(TABLE.getFullyQualifiedName(), 10, null, suggestionList.getPaging().getAfter(), USER_AUTH_HEADERS);
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            10,
+            null,
+            suggestionList.getPaging().getAfter(),
+            USER_AUTH_HEADERS);
     assertEquals(1, suggestionList.getData().size());
-    suggestionList = listSuggestions(TABLE.getFullyQualifiedName(), null, suggestionList.getPaging().getBefore(), null, USER_AUTH_HEADERS);
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            suggestionList.getPaging().getBefore(),
+            null,
+            USER_AUTH_HEADERS);
     assertEquals(10, suggestionList.getData().size());
     create = create().withEntityLink(TABLE_COLUMN1_LINK);
     createAndCheck(create, USER2_AUTH_HEADERS);
@@ -235,15 +246,16 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
         listSuggestions(TABLE2.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
             .getTotal());
-    suggestionList = listSuggestions(
-        TABLE.getFullyQualifiedName(),
-        null,
-        USER_AUTH_HEADERS,
-        USER2.getId(),
-        null,
-        null,
-        null,
-        null);
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            USER2.getId(),
+            null,
+            null,
+            null,
+            null);
     assertEquals(2, suggestionList.getPaging().getTotal());
     assertNull(suggestionList.getPaging().getBefore());
     assertNull(suggestionList.getPaging().getAfter());
@@ -251,7 +263,8 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     createAndCheck(create, USER_AUTH_HEADERS);
     assertEquals(
         1,
-        listSuggestions(TABLE_WITHOUT_OWNER.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
+        listSuggestions(
+                TABLE_WITHOUT_OWNER.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS)
             .getPaging()
             .getTotal());
     /*  deleteSuggestions("table", TABLE.getFullyQualifiedName(), USER_AUTH_HEADERS);
@@ -368,7 +381,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
 
   public void updateSuggestion(UUID id, Suggestion update, Map<String, String> authHeaders)
       throws HttpResponseException {
-   TestUtils.put(getResource("suggestions/" + id), update, CREATED, authHeaders);
+    TestUtils.put(getResource("suggestions/" + id), update, CREATED, authHeaders);
   }
 
   public CreateSuggestion create() {

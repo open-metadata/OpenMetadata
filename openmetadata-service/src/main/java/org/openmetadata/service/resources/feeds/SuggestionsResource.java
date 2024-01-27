@@ -277,7 +277,7 @@ public class SuggestionsResource {
           UUID id,
       @Valid Suggestion suggestion) {
     Suggestion origSuggestion = dao.get(id);
-    dao.checkPermissionsForUpdateSuggestion(origSuggestion,  securityContext);
+    dao.checkPermissionsForUpdateSuggestion(origSuggestion, securityContext);
     suggestion.setCreatedAt(origSuggestion.getCreatedAt());
     suggestion.setCreatedBy(origSuggestion.getCreatedBy());
     addHref(uriInfo, dao.update(suggestion, securityContext.getUserPrincipal().getName()));

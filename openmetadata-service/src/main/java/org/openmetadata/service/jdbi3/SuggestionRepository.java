@@ -232,7 +232,8 @@ public class SuggestionRepository {
       Suggestion suggestion, SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
-    if (Boolean.FALSE.equals(user.getIsAdmin()) && !userName.equalsIgnoreCase(suggestion.getCreatedBy().getName())) {
+    if (Boolean.FALSE.equals(user.getIsAdmin())
+        && !userName.equalsIgnoreCase(suggestion.getCreatedBy().getName())) {
       throw new AuthorizationException(
           CatalogExceptionMessage.suggestionOperationNotAllowed(userName, "Update"));
     }
@@ -289,7 +290,9 @@ public class SuggestionRepository {
     String mySqlCondition = filter.getCondition(true);
     String postgresCondition = filter.getCondition(true);
     List<String> jsons =
-        dao.suggestionDAO().listBefore(mySqlCondition, postgresCondition, limit + 1, RestUtil.decodeCursor(before));
+        dao.suggestionDAO()
+            .listBefore(
+                mySqlCondition, postgresCondition, limit + 1, RestUtil.decodeCursor(before));
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor = null;
     String afterCursor;
@@ -309,7 +312,8 @@ public class SuggestionRepository {
     String mySqlCondition = filter.getCondition(true);
     String postgresCondition = filter.getCondition(true);
     List<String> jsons =
-        dao.suggestionDAO().listAfter(mySqlCondition, postgresCondition, limit + 1, RestUtil.decodeCursor(after));
+        dao.suggestionDAO()
+            .listAfter(mySqlCondition, postgresCondition, limit + 1, RestUtil.decodeCursor(after));
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor;
     String afterCursor = null;
