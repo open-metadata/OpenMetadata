@@ -4382,10 +4382,10 @@ public interface CollectionDAO {
         @Bind("before") String before);
 
     @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM suggestions <mysqlCond>  ORDER BY updatedAt LIMIT :limit",
+        value = "SELECT json FROM suggestions <mysqlCond>  ORDER BY updatedAt DESC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM suggestions <psqlCond>  ORDER BY updatedAt LIMIT :limit",
+        value = "SELECT json FROM suggestions <psqlCond>  ORDER BY updatedAt DESC LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("mysqlCond") String mysqlCond,

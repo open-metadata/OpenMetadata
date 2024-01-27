@@ -168,9 +168,9 @@ public class SuggestionsResource {
             .build();
     ResultList<Suggestion> suggestions;
     if (before != null) {
-      suggestions = dao.listAfter(filter, limitParam, after);
-    } else {
       suggestions = dao.listBefore(filter, limitParam, before);
+    } else {
+      suggestions = dao.listAfter(filter, limitParam, after);
     }
     addHref(uriInfo, suggestions.getData());
     return suggestions;
@@ -269,16 +269,17 @@ public class SuggestionsResource {
           @ExternalDocumentation(
               description = "JsonPatch RFC",
               url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateSuggestion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Suggestion", schema = @Schema(type = "string"))
           @PathParam("id")
-          String id,
+          UUID id,
       @Valid Suggestion suggestion) {
-    suggestion.setCreatedBy(UserUtil.getUserOrBot(securityContext.getUserPrincipal().getName()));
-    suggestion.setCreatedAt(System.currentTimeMillis());
+    Suggestion origSuggestion = dao.get(id);
+    dao.checkPermissionsForUpdateSuggestion(origSuggestion,  securityContext);
+    suggestion.setCreatedAt(origSuggestion.getCreatedAt());
+    suggestion.setCreatedBy(origSuggestion.getCreatedBy());
     addHref(uriInfo, dao.update(suggestion, securityContext.getUserPrincipal().getName()));
     return Response.created(suggestion.getHref())
         .entity(suggestion)
