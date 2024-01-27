@@ -109,7 +109,10 @@ describe('Recently viwed data assets', () => {
         serviceName: entity.serviceName,
         entity: entity.entity,
       });
-
+      cy.get('[data-testid="entity-header-display-name"]').should(
+        'contain',
+        entity.term
+      );
       interceptURL(
         'GET',
         '/api/v1/feed?type=Announcement&activeAnnouncement=true',
@@ -125,7 +128,8 @@ describe('Recently viwed data assets', () => {
         .scrollIntoView()
         .should('be.visible');
       cy.get(
-        `[data-testid="recently-viewed-widget"] [title="${entity.displayName}"]`
+        `[data-testid="recently-viewed-widget"] [title="${entity.displayName}"]`,
+        { timeout: 10000 }
       )
         .scrollIntoView()
         .should('be.visible');

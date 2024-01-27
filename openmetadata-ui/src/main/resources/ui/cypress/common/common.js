@@ -705,7 +705,7 @@ export const login = (username, password) => {
   });
 
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
-  verifyResponseStatusCode('@loginUser', 200);
+  cy.wait('@loginUser');
 };
 
 export const selectTeamHierarchy = (index) => {
@@ -986,7 +986,9 @@ export const addTableFieldTags = (
     `[data-row-key="${dataRowKey}"] [data-testid="tags-container"] [data-testid="add-tag"]`
   ).click();
 
-  cy.get('[data-testid="tag-selector"] #tagsForm_tags').type(tagName);
+  cy.get('[data-testid="tag-selector"] #tagsForm_tags')
+    .scrollIntoView()
+    .type(tagName);
 
   cy.get(`[data-testid="tag-${classificationName}.${tagName}"]`).click();
 

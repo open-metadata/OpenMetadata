@@ -87,7 +87,7 @@ describe('Teams flow should work properly', () => {
 
   it('Update email of created team', () => {
     interceptURL('PATCH', '/api/v1/teams/*', 'updateEmail');
-    interceptURL('GET', '/api/v1/teams/name/*', 'getTeam');
+    interceptURL('GET', `/api/v1/teams/name/${TEAM_DETAILS.name}?*`, 'getTeam');
 
     // Clicking on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)

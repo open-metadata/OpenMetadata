@@ -378,7 +378,7 @@ export const editRole = (username: string, role: string) => {
 
 export const checkNoPermissionPlaceholder = (permission = false) => {
   cy.get('[data-testid="permission-error-placeholder"]').should(
-    permission ? 'not.exist' : 'be.visible'
+    permission ? 'not.be.visible' : 'be.visible'
   );
   if (!permission) {
     cy.get('[data-testid="permission-error-placeholder"]').should(

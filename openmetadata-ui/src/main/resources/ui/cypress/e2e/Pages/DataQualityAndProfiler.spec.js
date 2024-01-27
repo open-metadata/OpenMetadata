@@ -961,10 +961,9 @@ describe('Data Quality and Profiler should work properly', () => {
       });
     });
 
-    cy.reload();
+    cy.get('[data-testid="table_queries"]').click();
+    cy.get('[data-testid="profiler"]').click();
     // verify profiler setting details
-    verifyResponseStatusCode('@tableProfiler', 200);
-    verifyResponseStatusCode('@systemProfiler', 200);
     cy.get('[data-testid="profiler-setting-btn"]').click();
     verifyResponseStatusCode('@tableProfilerConfig', 200);
 

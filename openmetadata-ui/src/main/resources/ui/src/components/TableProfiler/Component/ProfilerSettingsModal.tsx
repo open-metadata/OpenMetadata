@@ -401,7 +401,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const handleEnablePartition = handleChange('enablePartition');
 
   useEffect(() => {
-    fetchProfileConfig();
+    if (tableId) {
+      fetchProfileConfig();
+    }
   }, []);
 
   return (
