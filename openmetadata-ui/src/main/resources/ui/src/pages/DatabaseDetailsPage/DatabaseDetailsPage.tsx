@@ -53,6 +53,7 @@ import {
   getExplorePath,
   getVersionPathWithTab,
 } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -61,7 +62,7 @@ import { Database } from '../../generated/entity/data/database';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useFqn } from '../../hooks/useFqn';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
+import { FeedCounts } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
@@ -69,13 +70,14 @@ import {
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
-import { getFeedCount, postThread } from '../../rest/feedsAPI';
+import { postThread } from '../../rest/feedsAPI';
 import {
   getEntityMissingError,
+  getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
@@ -107,10 +109,9 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
 
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -154,19 +155,12 @@ const DatabaseDetails: FunctionComponent = () => {
     setThreadLink('');
   };
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, decodedDatabaseFQN))
-      .then((res) => {
-        if (res) {
-          setFeedCount(res.totalCount);
-          setEntityFieldThreadCount(res.counts);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch(() => {
-        // Error
-      });
+    getFeedCounts(EntityType.DATABASE, decodedDatabaseFQN, handleFeedCount);
   };
 
   const fetchDatabaseSchemaCount = useCallback(async () => {
@@ -553,7 +547,7 @@ const DatabaseDetails: FunctionComponent = () => {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-plural')}
@@ -598,12 +592,11 @@ const DatabaseDetails: FunctionComponent = () => {
       database,
       description,
       databaseName,
-      entityFieldThreadCount,
       decodedDatabaseFQN,
       activeTab,
       databasePermission,
       schemaInstanceCount,
-      feedCount,
+      feedCount.totalCount,
       editTagsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
@@ -652,6 +645,7 @@ const DatabaseDetails: FunctionComponent = () => {
               afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
+              openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}

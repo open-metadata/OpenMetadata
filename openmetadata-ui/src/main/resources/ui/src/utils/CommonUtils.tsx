@@ -63,12 +63,14 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
+import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getFeedCount } from '../rest/feedsAPI';
@@ -505,16 +507,52 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
 
+/**
+ * Get feed counts for given entity type and fqn
+ * @param entityType - entity type
+ * @param entityFQN - entity fqn
+ * @param onDataFetched - callback function which return FeedCounts object
+ */
+
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
-  conversationCallback: (value: React.SetStateAction<number>) => void
+  feedCountCallback: (countValue: FeedCounts) => void
 ) => {
-  // To get conversation count
   getFeedCount(getEntityFeedLink(entityType, entityFQN))
     .then((res) => {
       if (res) {
-        conversationCallback(res.totalCount);
+        const {
+          conversationCount,
+          openTaskCount,
+          closedTaskCount,
+          totalTasksCount,
+          totalCount,
+          mentionCount,
+        } = res.reduce((acc, item) => {
+          const conversationCount =
+            acc.conversationCount + (item.conversationCount || 0);
+          const totalTasksCount =
+            acc.totalTasksCount + (item.totalTaskCount || 0);
+
+          return {
+            conversationCount,
+            totalTasksCount,
+            openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+            closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+            totalCount: conversationCount + totalTasksCount,
+            mentionCount: acc.mentionCount + (item.mentionCount || 0),
+          };
+        }, FEED_COUNT_INITIAL_DATA);
+
+        feedCountCallback({
+          conversationCount,
+          totalTasksCount,
+          openTaskCount,
+          closedTaskCount,
+          totalCount,
+          mentionCount,
+        });
       } else {
         throw t('server.entity-feed-fetch-error');
       }
