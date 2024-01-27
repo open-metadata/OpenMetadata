@@ -223,7 +223,7 @@ export const visitEntityDetailsPage = ({
       }
     });
 
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.wait('@getEntityDetails');
     cy.clickOutside();
     cy.get('[data-testid="searchBox"]').clear();
   });

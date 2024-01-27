@@ -120,6 +120,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata)
 
+    @property
+    def name(self) -> str:
+        return "OpenMetadata"
+
     @singledispatchmethod
     def _run_dispatch(self, record: Entity) -> Either[Any]:
         logger.debug(f"Processing Create request {type(record)}")
