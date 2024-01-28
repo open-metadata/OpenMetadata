@@ -667,6 +667,8 @@ const ContainerPage = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.CONTAINER}
             fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}

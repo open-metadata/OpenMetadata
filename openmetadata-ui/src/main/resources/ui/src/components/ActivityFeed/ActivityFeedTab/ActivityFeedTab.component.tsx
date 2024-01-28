@@ -20,6 +20,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,19 +80,22 @@ export const ActivityFeedTab = ({
   owner,
   columns,
   entityType,
+  refetchFeed,
+  entityFeedTotalCount,
   isForFeedTab = true,
   onUpdateEntityDetails,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
+  const initialRender = useRef(true);
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const { subTab: activeTab = ActivityFeedTabs.ALL } =
-    useParams<{ subTab: ActivityFeedTabs }>();
+  const { tab, subTab: activeTab = ActivityFeedTabs.ALL } =
+    useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const { isAdminUser } = useAuth();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [count, setCount] = useState<FeedCounts>(FEED_COUNT_INITIAL_DATA);
@@ -190,6 +194,11 @@ export const ActivityFeedTab = ({
     }
   }, []);
 
+  const isActivityFeedTab = useMemo(
+    () => tab === EntityTabs.ACTIVITY_FEED,
+    [tab]
+  );
+
   useEffect(() => {
     if (fqn) {
       fetchFeedsCount();
@@ -214,6 +223,35 @@ export const ActivityFeedTab = ({
     },
     [threadType, feedFilter, entityType, fqn, getFeedData]
   );
+
+  const refetchFeedData = useCallback(() => {
+    if (
+      entityFeedTotalCount !== count.totalCount &&
+      isActivityFeedTab &&
+      refetchFeed
+    ) {
+      fetchFeedsCount();
+      getFeedData(feedFilter, undefined, threadType, entityType, fqn);
+    }
+  }, [
+    fqn,
+    feedFilter,
+    threadType,
+    entityType,
+    refetchFeed,
+    count.totalCount,
+    entityFeedTotalCount,
+    isActivityFeedTab,
+  ]);
+
+  useEffect(() => {
+    if (initialRender.current) {
+      initialRender.current = false;
+
+      return;
+    }
+    refetchFeedData();
+  }, [refetchFeedData]);
 
   useEffect(() => {
     if (fqn) {

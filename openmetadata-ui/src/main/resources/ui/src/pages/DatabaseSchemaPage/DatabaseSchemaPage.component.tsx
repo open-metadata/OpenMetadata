@@ -637,6 +637,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       children: (
         <ActivityFeedProvider>
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE_SCHEMA}
             fqn={databaseSchema.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}

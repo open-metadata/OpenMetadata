@@ -363,6 +363,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TOPIC}
             fqn={topicDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}

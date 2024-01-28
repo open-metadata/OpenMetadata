@@ -440,6 +440,8 @@ function SearchIndexDetailsPage() {
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
+              refetchFeed
+              entityFeedTotalCount={feedCount.totalCount}
               entityType={EntityType.SEARCH_INDEX}
               fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
               owner={searchIndexDetails?.owner}

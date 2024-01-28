@@ -605,6 +605,8 @@ const StoredProcedurePage = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.STORED_PROCEDURE}
             fqn={entityFQN}
             onFeedUpdate={getEntityFeedCount}
