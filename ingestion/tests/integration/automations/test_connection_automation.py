@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.automations.workflow import (
     WorkflowStatus,
     WorkflowType,
 )
-from metadata.generated.schema.entity.data.pipeline import StatusType
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -37,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    StatusType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
