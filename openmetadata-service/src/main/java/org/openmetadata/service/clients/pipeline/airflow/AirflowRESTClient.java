@@ -132,11 +132,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
-          ingestionPipeline.getName(), DEPLOYEMENT_ERROR, e.getMessage());
+          ingestionPipeline.getName(), DEPLOYMENT_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw IngestionPipelineDeploymentException.byMessage(
-          ingestionPipeline.getName(), DEPLOYEMENT_ERROR, e.getMessage());
+          ingestionPipeline.getName(), DEPLOYMENT_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(
@@ -329,8 +329,13 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return getResponse(200, response.body());
       }
     } catch (IOException | URISyntaxException e) {
+      // We can end up here if the test connection is not sending back anything after the POST
+      // request
+      // due to the connection to the source service not being properly resolved.
       throw IngestionPipelineDeploymentException.byMessage(
-          workflow.getName(), TRIGGER_ERROR, e.getMessage());
+          workflow.getName(),
+          TRIGGER_ERROR,
+          "No response from the test connection. Make sure your service is reachable and accepting connections");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw IngestionPipelineDeploymentException.byMessage(
@@ -368,11 +373,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
-          workflowPayload, DEPLOYEMENT_ERROR, e.getMessage());
+          workflowPayload, DEPLOYMENT_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw IngestionPipelineDeploymentException.byMessage(
-          workflowPayload, DEPLOYEMENT_ERROR, e.getMessage());
+          workflowPayload, DEPLOYMENT_ERROR, e.getMessage());
     }
     throw new PipelineServiceClientException(
         String.format(
