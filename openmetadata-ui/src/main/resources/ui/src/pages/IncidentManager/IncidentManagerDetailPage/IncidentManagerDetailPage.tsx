@@ -32,16 +32,15 @@ import { usePermissionProvider } from '../../../components/PermissionProvider/Pe
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { ThreadType } from '../../../generated/api/feed/createThread';
-import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { useFqn } from '../../../hooks/useFqn';
-import { getFeedCount } from '../../../rest/feedsAPI';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
@@ -69,7 +68,9 @@ const IncidentManagerDetailPage = () => {
     data: undefined,
     isLoading: true,
   });
-  const [taskCount, setTaskCount] = useState(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const { permissions } = usePermissionProvider();
   const hasViewPermission = useMemo(() => {
@@ -101,7 +102,7 @@ const IncidentManagerDetailPage = () => {
       {
         label: (
           <TabsLabel
-            count={taskCount}
+            count={feedCount.openTaskCount}
             id="incident"
             name={t('label.incident')}
           />
@@ -110,7 +111,7 @@ const IncidentManagerDetailPage = () => {
         children: <TestCaseIncidentTab owner={testCaseData.data?.owner} />,
       },
     ],
-    [testCaseData, taskCount]
+    [testCaseData, feedCount.openTaskCount]
   );
 
   const fetchTestCaseData = async () => {
@@ -188,17 +189,12 @@ const IncidentManagerDetailPage = () => {
     }
   };
 
-  const getEntityFeedCount = useCallback(async () => {
-    try {
-      const response = await getFeedCount(
-        getEntityFeedLink(EntityType.TEST_CASE, decodedTestCaseFQN),
-        ThreadType.Task,
-        ThreadTaskStatus.Open
-      );
-      setTaskCount(response.totalCount);
-    } catch (err) {
-      setTaskCount(0);
-    }
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
+  const getEntityFeedCount = useCallback(() => {
+    getFeedCounts(EntityType.TEST_CASE, decodedTestCaseFQN, handleFeedCount);
   }, [decodedTestCaseFQN]);
 
   useEffect(() => {

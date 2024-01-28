@@ -90,8 +90,7 @@ export const getFeedCount = async (
   taskStatus?: ThreadTaskStatus
 ) => {
   const response = await APIClient.get<{
-    totalCount: number;
-    counts: EntityFieldThreadCount[];
+    data: EntityFieldThreadCount[];
   }>(`/feed/count`, {
     params: {
       entityLink: entityLink,
@@ -100,7 +99,7 @@ export const getFeedCount = async (
     },
   });
 
-  return response.data;
+  return response.data.data;
 };
 
 export const postThread = async (data: CreateThread) => {

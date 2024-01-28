@@ -87,6 +87,7 @@ export type DataAssetWithDomains =
 
 export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
+  openTaskCount?: number;
   allowSoftDelete?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
