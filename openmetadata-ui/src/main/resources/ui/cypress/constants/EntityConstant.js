@@ -451,3 +451,10 @@ export const PERSONA_DETAILS = {
   displayName: `persona ${uuid()}`,
   description: `Persona description.`,
 };
+
+export const DOMAIN_CREATION_DETAILS = {
+  name: `domain-name-${uuid()}`,
+  description: `Description for`,
+  domainType: 'Aggregate',
+  experts: [],
+};
