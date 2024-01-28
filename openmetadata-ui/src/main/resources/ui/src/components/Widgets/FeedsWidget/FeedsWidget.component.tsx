@@ -171,7 +171,6 @@ const FeedsWidget = ({
                   hidePopover={isEditView}
                   isLoading={loading && !isTourOpen}
                   showThread={false}
-                  tab={ActivityFeedTabs.ALL}
                 />
                 {moreButton}
               </>
@@ -188,7 +187,6 @@ const FeedsWidget = ({
                   hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
-                  tab={ActivityFeedTabs.MENTIONS}
                 />
                 {moreButton}
               </>
@@ -210,7 +208,6 @@ const FeedsWidget = ({
                   hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
-                  tab={ActivityFeedTabs.TASKS}
                 />
                 {moreButton}
               </>

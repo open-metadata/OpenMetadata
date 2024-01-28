@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -76,44 +77,38 @@ export const getPipelineByFqn = async (fqn: string, params?: ListParams) => {
 };
 
 export const addFollower = async (pipelineID: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${pipelineID}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${pipelineID}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (pipelineID: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${pipelineID}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${pipelineID}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const patchPipelineDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Pipeline>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

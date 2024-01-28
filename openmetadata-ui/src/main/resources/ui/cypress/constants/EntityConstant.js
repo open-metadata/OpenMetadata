@@ -291,9 +291,11 @@ export const DASHBOARD_DATA_MODEL_DETAILS = {
   ],
   dataModelType: 'SupersetDataModel',
 };
+const PIPELINE_NAME = `cypress-pipeline-${uuid()}`;
 
 export const PIPELINE_DETAILS = {
-  name: `cypress-pipeline-${uuid()}`,
+  name: PIPELINE_NAME,
+  displayName: PIPELINE_NAME,
   service: PIPELINE_SERVICE_DETAILS.name,
   tasks: [{ name: 'snowflake_task' }],
 };
@@ -450,4 +452,11 @@ export const PERSONA_DETAILS = {
   name: `persona-${uuid()}`,
   displayName: `persona ${uuid()}`,
   description: `Persona description.`,
+};
+
+export const DOMAIN_CREATION_DETAILS = {
+  name: `domain-name-${uuid()}`,
+  description: `Description for`,
+  domainType: 'Aggregate',
+  experts: [],
 };

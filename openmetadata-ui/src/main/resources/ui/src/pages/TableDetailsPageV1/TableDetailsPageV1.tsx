@@ -50,6 +50,7 @@ import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableTabPath, getVersionPath } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
@@ -64,6 +65,7 @@ import { JoinedWith, Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -103,7 +105,9 @@ const TableDetailsPageV1 = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = currentUser?.id ?? '';
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -279,8 +283,12 @@ const TableDetailsPageV1 = () => {
     }
   }, [tableFqn]);
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, datasetFQN, setFeedCount);
+    getFeedCounts(EntityType.TABLE, datasetFQN, handleFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -585,7 +593,7 @@ const TableDetailsPageV1 = () => {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -594,7 +602,9 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
             columns={tableDetails?.columns}
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
             owner={tableDetails?.owner}
@@ -745,7 +755,8 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     deleted,
     tableDetails,
-    feedCount,
+    feedCount.conversationCount,
+    feedCount.totalTasksCount,
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
@@ -962,6 +973,7 @@ const TableDetailsPageV1 = () => {
             afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
+            openTaskCount={feedCount.openTaskCount}
             permissions={tablePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}

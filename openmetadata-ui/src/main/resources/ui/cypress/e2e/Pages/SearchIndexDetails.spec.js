@@ -161,7 +161,7 @@ describe('SearchIndexDetails page should work properly for data consumer role', 
   beforeEach(() => {
     // Login with the created user
     login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
-    cy.goToHomePage(true);
+
     cy.url().should('eq', `${BASE_URL}/my-data`);
   });
 
@@ -234,7 +234,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
   beforeEach(() => {
     // Login with the created user
     login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
-    cy.goToHomePage(true);
+
     cy.url().should('eq', `${BASE_URL}/my-data`);
   });
 

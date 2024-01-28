@@ -58,13 +58,9 @@ export const createPersona = async (data: CreatePersona) => {
 };
 
 export const updatePersona = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
   const response = await axiosClient.patch<Operation[], AxiosResponse<Persona>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

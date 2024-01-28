@@ -195,10 +195,6 @@ jest.mock('../../utils/EntityUtils', () => ({
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
 }));
 
-jest.mock('../../utils/FeedUtils', () => ({
-  getEntityFieldThreadCounts: jest.fn().mockReturnValue(0),
-}));
-
 jest.mock('../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: {},
 }));

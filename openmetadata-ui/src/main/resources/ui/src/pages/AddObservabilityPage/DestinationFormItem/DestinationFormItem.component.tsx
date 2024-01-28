@@ -23,11 +23,14 @@ import {
   Tabs,
   Typography,
 } from 'antd';
-import { SelectProps } from 'antd/lib/select';
-import { isEmpty, isNil } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { isEmpty, isNil, map } from 'lodash';
+import React, { ReactElement, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DESTINATION_SOURCE_ITEMS } from '../../../constants/Alerts.constants';
+import {
+  DESTINATION_DROPDOWN_TABS,
+  DESTINATION_SOURCE_ITEMS,
+} from '../../../constants/Alerts.constants';
+import { WHITE_COLOR } from '../../../constants/constants';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import { SubscriptionCategory } from '../../../generated/events/eventSubscription';
 import {
@@ -50,6 +53,9 @@ function DestinationFormItem({
 }>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
+  const [activeTab, setActiveTab] = useState(
+    DESTINATION_DROPDOWN_TABS.internal
+  );
   const [destinationOptions, setDestinationOptions] = useState(
     DESTINATION_SOURCE_ITEMS.internal
   );
@@ -76,33 +82,54 @@ function DestinationFormItem({
   );
 
   const handleTabChange = useCallback((key) => {
+    setActiveTab(key);
     setDestinationOptions(
       DESTINATION_SOURCE_ITEMS[key as keyof typeof DESTINATION_SOURCE_ITEMS]
     );
   }, []);
 
-  const customDestinationDropdown: SelectProps['dropdownRender'] = useCallback(
-    (menu: React.ReactElement) => {
+  const getTabItems = useCallback(
+    (children: ReactElement) =>
+      map(DESTINATION_DROPDOWN_TABS, (tabName) => ({
+        key: tabName,
+        label: (
+          <span data-testid={`tab-label-${tabName}`}>
+            {t(`label.${tabName}`)}
+          </span>
+        ),
+        children,
+      })),
+    []
+  );
+
+  const customDestinationDropdown = useCallback(
+    (menu: ReactElement, name: number) => {
       return (
         <Tabs
           centered
+          activeKey={activeTab}
           className="destination-select-dropdown"
-          defaultActiveKey="internal"
+          data-testid={`destination-category-dropdown-${name}`}
+          defaultActiveKey={DESTINATION_DROPDOWN_TABS.internal}
+          items={getTabItems(menu)}
+          key={`destination-tabs-${name}`}
           tabBarStyle={{
-            background: 'white',
+            background: WHITE_COLOR,
           }}
-          onTabClick={handleTabChange}>
-          <Tabs.TabPane key="internal" tab={t('label.internal')}>
-            {menu}
-          </Tabs.TabPane>
-          <Tabs.TabPane key="external" tab={t('label.external')}>
-            {menu}
-          </Tabs.TabPane>
-        </Tabs>
+          onTabClick={handleTabChange}
+        />
       );
     },
-    [handleTabChange]
+    [handleTabChange, getTabItems, activeTab]
   );
+
+  const afterDropdownVisibleChange = (isOpen: boolean) => {
+    if (isOpen) {
+      return;
+    }
+    setActiveTab(DESTINATION_DROPDOWN_TABS.internal);
+    setDestinationOptions(DESTINATION_SOURCE_ITEMS.internal);
+  };
 
   const getHiddenDestinationFields = (
     isInternalDestination: boolean,
@@ -144,6 +171,7 @@ function DestinationFormItem({
         </Col>
         <Col span={24}>
           <Form.List
+            data-testid="destination-list"
             name={['destinations']}
             rules={[
               {
@@ -171,24 +199,35 @@ function DestinationFormItem({
                     return (
                       <Row
                         className="p-b-md"
+                        data-testid={`destination-${name}`}
                         gutter={[16, 16]}
                         justify="space-between"
                         key={key}>
                         <Col flex="1 1 auto">
                           <Form.Item
                             required
-                            messageVariables={{
-                              fieldName: t('label.data-asset-plural'),
-                            }}
-                            name={[name, 'destinationType']}>
+                            name={[name, 'destinationType']}
+                            rules={[
+                              {
+                                required: true,
+                                message: t('message.field-text-is-required', {
+                                  fieldText: t('label.destination'),
+                                }),
+                              },
+                            ]}>
                             <Select
                               className="w-full"
-                              data-testid="triggerConfig-type"
-                              dropdownRender={customDestinationDropdown}
+                              data-testid={`destination-category-select-${name}`}
+                              dropdownRender={(menu) =>
+                                customDestinationDropdown(menu, key)
+                              }
                               options={destinationOptions}
                               placeholder={t('label.select-field', {
                                 field: t('label.destination'),
                               })}
+                              onDropdownVisibleChange={
+                                afterDropdownVisibleChange
+                              }
                               onSelect={(value) => {
                                 form.setFieldValue(['destinations', name], {
                                   destinationType: value,
@@ -213,7 +252,7 @@ function DestinationFormItem({
                         </Col>
                         <Col className="d-flex justify-end" flex="0 0 32px">
                           <Button
-                            data-testid={`remove-action-rule-${name}`}
+                            data-testid={`remove-destination-${name}`}
                             icon={<CloseOutlined />}
                             onClick={() => remove(name)}
                           />
@@ -245,13 +284,21 @@ function DestinationFormItem({
                                     />
                                   )
                                 }
-                                messageVariables={{
-                                  fieldName: t('label.data-asset-plural'),
-                                }}
-                                name={[name, 'type']}>
+                                name={[name, 'type']}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: t(
+                                      'message.field-text-is-required',
+                                      {
+                                        fieldText: t('label.field'),
+                                      }
+                                    ),
+                                  },
+                                ]}>
                                 <Select
                                   className="w-full"
-                                  data-testid="triggerConfig-type"
+                                  data-testid={`destination-type-select-${name}`}
                                   options={getSubscriptionTypeOptions(
                                     destinationType
                                   )}
@@ -269,6 +316,7 @@ function DestinationFormItem({
                   {showAddDestination && (
                     <Col span={24}>
                       <Button
+                        data-testid="add-destination-button"
                         disabled={
                           isEmpty(selectedTrigger) || isNil(selectedTrigger)
                         }

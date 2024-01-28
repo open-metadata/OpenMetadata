@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { Settings, SettingType } from '../generated/settings/settings';
@@ -50,14 +51,10 @@ export const getLoginConfig = async () => {
 };
 
 export const testEmailConnection = async (email: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await axiosClient.put<string>(
     '/system/email/test',
     email,
-    configOptions
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 
   return response;
