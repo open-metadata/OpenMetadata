@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
+  SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -36,9 +37,12 @@ const LeftSidebar = () => {
   const sideBarItems = leftSidebarClassBase.getSidebarItems();
 
   const selectedKeys = useMemo(() => {
-    const pathArray = location.pathname.split('/').splice(0, 2).join('/');
+    const pathArray = location.pathname.split('/');
+    const deepPath = [...pathArray].splice(0, 3).join('/');
 
-    return [pathArray];
+    return SIDEBAR_NESTED_KEYS[deepPath]
+      ? [deepPath]
+      : [pathArray.splice(0, 2).join('/')];
   }, [location.pathname]);
 
   const handleLogoutClick = useCallback(() => {
