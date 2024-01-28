@@ -67,7 +67,7 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
     doc.put("lineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
     doc.put(
-        "votes",
+        "totalVotes",
         dashboardDataModel.getVotes().getUpVotes() - dashboardDataModel.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
     return doc;

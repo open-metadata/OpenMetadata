@@ -70,7 +70,7 @@ public record ContainerIndex(Container container) implements ColumnIndex {
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(container.getOwner()));
     doc.put("service", getEntityWithDisplayName(container.getService()));
-    doc.put("votes", container.getVotes().getUpVotes() - container.getVotes().getDownVotes());
+    doc.put("totalVotes", container.getVotes().getUpVotes() - container.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(container.getDomain()));
     return doc;
   }

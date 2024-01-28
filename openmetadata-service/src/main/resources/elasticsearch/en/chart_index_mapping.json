@@ -48,6 +48,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -59,6 +63,10 @@
         "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          },
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
@@ -99,10 +107,13 @@
       "chartType": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "keyword"
+      },
       "href": {
         "type": "text"
       },
-      "sourceUrl": {
+      "entityType": {
         "type": "keyword"
       },
       "owner": {
@@ -229,6 +240,9 @@
       "deleted": {
         "type": "text"
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "domain" : {
         "properties": {
           "id": {
@@ -325,6 +339,12 @@
             "type": "text"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

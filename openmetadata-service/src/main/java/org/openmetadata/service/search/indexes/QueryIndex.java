@@ -36,6 +36,7 @@ public class QueryIndex implements SearchIndex {
     doc.put("followers", SearchIndexUtils.parseFollowers(query.getFollowers()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.QUERY);
+    doc.put("totalVotes", query.getVotes().getUpVotes() - query.getVotes().getDownVotes());
     doc.put(
         "fqnParts",
         getFQNParts(

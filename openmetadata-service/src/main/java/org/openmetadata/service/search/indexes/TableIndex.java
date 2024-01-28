@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -71,15 +70,14 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            table.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);
     doc.put("schema_suggest", schemaSuggest);
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
-    doc.put("votes", table.getVotes().getUpVotes() - table.getVotes().getDownVotes());
+    doc.put("totalVotes", table.getVotes().getUpVotes() - table.getVotes().getDownVotes());
     doc.put("serviceType", table.getServiceType());
     doc.put("owner", getEntityWithDisplayName(table.getOwner()));
     doc.put("service", getEntityWithDisplayName(table.getService()));

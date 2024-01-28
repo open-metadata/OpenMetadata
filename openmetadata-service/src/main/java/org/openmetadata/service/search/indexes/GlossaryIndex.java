@@ -33,7 +33,7 @@ public class GlossaryIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY);
     doc.put("owner", getEntityWithDisplayName(glossary.getOwner()));
-    doc.put("votes", glossary.getVotes().getUpVotes() - glossary.getVotes().getDownVotes());
+    doc.put("totalVotes", glossary.getVotes().getUpVotes() - glossary.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(glossary.getDomain()));
     return doc;
   }

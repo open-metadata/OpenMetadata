@@ -47,7 +47,7 @@ public class PipelineIndex implements SearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.PIPELINE);
     doc.put("serviceType", pipeline.getServiceType());
-    doc.put("votes", pipeline.getVotes().getUpVotes() - pipeline.getVotes().getDownVotes());
+    doc.put("totalVotes", pipeline.getVotes().getUpVotes() - pipeline.getVotes().getDownVotes());
     doc.put("lineage", SearchIndex.getLineageData(pipeline.getEntityReference()));
     doc.put(
         "fqnParts",
