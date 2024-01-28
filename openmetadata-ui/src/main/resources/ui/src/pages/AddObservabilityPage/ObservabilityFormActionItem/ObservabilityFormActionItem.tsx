@@ -83,7 +83,10 @@ function ObservabilityFormActionItem({
                       selectedActions[name];
 
                     return (
-                      <Col key={`observability-${key}`} span={24}>
+                      <Col
+                        data-testid={`action-${name}`}
+                        key={`observability-${key}`}
+                        span={24}>
                         <Row gutter={[8, 8]}>
                           <Col span={11}>
                             <Form.Item
@@ -98,6 +101,7 @@ function ObservabilityFormActionItem({
                                 },
                               ]}>
                               <Select
+                                data-testid={`action-select-${name}`}
                                 options={actionOptions}
                                 placeholder={t('label.select-field', {
                                   field: t('label.action'),
@@ -136,7 +140,10 @@ function ObservabilityFormActionItem({
                           normalize={(value) =>
                             value ? Effect.Include : Effect.Exclude
                           }>
-                          <Switch checked={effect === Effect.Include} />
+                          <Switch
+                            checked={effect === Effect.Include}
+                            data-testid={`action-switch-${name}`}
+                          />
                         </Form.Item>
                       </Col>
                     );
@@ -144,7 +151,7 @@ function ObservabilityFormActionItem({
                   {showAddActionButton && (
                     <Col span={24}>
                       <Button
-                        data-testid="add-action"
+                        data-testid="add-actions"
                         disabled={
                           isEmpty(selectedTrigger) || isNil(selectedTrigger)
                         }

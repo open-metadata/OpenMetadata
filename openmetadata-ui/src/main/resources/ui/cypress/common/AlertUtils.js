@@ -38,12 +38,19 @@ export const deleteAlertSteps = (name) => {
   toastNotification(`"${name}" deleted successfully!`);
 };
 
-export const addOwnerFilter = (filterNumber, ownerName, exclude = false) => {
+export const addOwnerFilter = (
+  filterNumber,
+  ownerName,
+  exclude = false,
+  selectId = 'Owner'
+) => {
   // Select owner filter
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
-  cy.get('[data-testid="Owner-filter-option"]').filter(':visible').click();
+  cy.get(`[data-testid="${selectId}-filter-option"]`)
+    .filter(':visible')
+    .click();
 
   // Search and select owner
   cy.get('[data-testid="owner-name-select"]').click().type(ownerName);
@@ -62,13 +69,16 @@ export const addOwnerFilter = (filterNumber, ownerName, exclude = false) => {
 export const addEntityFQNFilter = (
   filterNumber,
   entityFQN,
-  exclude = false
+  exclude = false,
+  selectId = 'Entity FQN'
 ) => {
   // Select entity FQN filter
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
-  cy.get('[data-testid="Entity FQN-filter-option"]').filter(':visible').click();
+  cy.get(`[data-testid="${selectId}-filter-option"]`)
+    .filter(':visible')
+    .click();
 
   // Search and select entity
   cy.get('[data-testid="fqn-list-select"]').click().type(entityFQN);
@@ -216,30 +226,7 @@ export const addInternalDestination = (
   );
 };
 
-export const verifyAlertDetails = (alertDetails) => {
-  const { name, description, filteringRules, input, destinations } =
-    alertDetails;
-
-  const triggerName = filteringRules.resources[0];
-  const filters = input.filters;
-
-  // Check created alert details
-  cy.get('[data-testid="alert-details-container"]').should('exist');
-
-  // Check alert name
-  cy.get('[data-testid="alert-name"]').should('contain', name);
-
-  if (description) {
-    // Check alert name
-    cy.get('[data-testid="alert-description"]').should('contain', description);
-  }
-
-  // Check trigger name
-  cy.get('[data-testid="resource-name"]').should(
-    'contain',
-    startCase(triggerName)
-  );
-
+const checkActionOrFilterDetails = (filters) => {
   if (!isEmpty(filters)) {
     filters.forEach((filter) => {
       // Check filter
@@ -269,6 +256,44 @@ export const verifyAlertDetails = (alertDetails) => {
       }
     });
   }
+};
+
+export const verifyAlertDetails = (
+  alertDetails,
+  isObservabilityAlert = false
+) => {
+  const { name, description, filteringRules, input, destinations } =
+    alertDetails;
+
+  const triggerName = filteringRules.resources[0];
+  const filters = input.filters;
+
+  // Check created alert details
+  cy.get('[data-testid="alert-details-container"]').should('exist');
+
+  // Check alert name
+  cy.get('[data-testid="alert-name"]').should('contain', name);
+
+  if (description) {
+    // Check alert name
+    cy.get('[data-testid="alert-description"]').should('contain', description);
+  }
+
+  // Check trigger name
+  cy.get('[data-testid="resource-name"]').should(
+    'contain',
+    startCase(triggerName)
+  );
+
+  // Check filter details
+  checkActionOrFilterDetails(filters);
+
+  if (isObservabilityAlert) {
+    const actions = input.actions;
+
+    // Check action details
+    checkActionOrFilterDetails(actions);
+  }
 
   if (!isEmpty(destinations)) {
     destinations.forEach((destination) => {
@@ -289,5 +314,52 @@ export const verifyAlertDetails = (alertDetails) => {
         });
       }
     });
+  }
+};
+
+export const addGetSchemaChangesAction = (filterNumber, exclude = false) => {
+  // Select owner filter
+  cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
+    waitForAnimations: true,
+  });
+  cy.get(`[data-testid="Get Schema Changes-filter-option"]`)
+    .filter(':visible')
+    .click();
+
+  if (exclude) {
+    // Change filter effect
+    cy.get(`[data-testid="filter-switch-${filterNumber}"]`)
+      .scrollIntoView()
+      .click();
+  }
+};
+
+export const addPipelineStatusUpdatesAction = (
+  filterNumber,
+  statusName,
+  exclude = false
+) => {
+  // Select domain filter
+  cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
+    waitForAnimations: true,
+  });
+  cy.get('[data-testid="Get Pipeline Status Updates-filter-option"]')
+    .filter(':visible')
+    .click();
+
+  // Search and select domain
+  cy.get('[data-testid="pipeline-status-select"]').click().type(statusName);
+  cy.get(`[title="${statusName}"]`).filter(':visible').scrollIntoView().click();
+  cy.get('[data-testid="pipeline-status-select"]').should(
+    'contain',
+    statusName
+  );
+  cy.clickOutside();
+
+  if (exclude) {
+    // Change filter effect
+    cy.get(`[data-testid="filter-switch-${filterNumber}"]`)
+      .scrollIntoView()
+      .click();
   }
 };
