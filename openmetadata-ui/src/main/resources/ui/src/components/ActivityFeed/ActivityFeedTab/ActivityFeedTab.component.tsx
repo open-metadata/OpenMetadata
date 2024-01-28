@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Menu, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import {
@@ -33,6 +34,7 @@ import {
   ICON_DIMENSION,
   ROUTES,
 } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -43,16 +45,19 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getAllFeeds, getFeedCount } from '../../../rest/feedsAPI';
+import { FeedCounts } from '../../../interface/feed.interface';
+import { getFeedCount } from '../../../rest/feedsAPI';
 import {
   getCountBadge,
   getEntityDetailLink,
+  getFeedCounts,
   Transi18next,
 } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
-  getEntityFeedLink,
+  getEntityUserLink,
 } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
@@ -89,8 +94,7 @@ export const ActivityFeedTab = ({
     useParams<{ subTab: ActivityFeedTabs }>();
   const { isAdminUser } = useAuth();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
-  const [allCount, setAllCount] = useState(0);
-  const [tasksCount, setTasksCount] = useState(0);
+  const [count, setCount] = useState<FeedCounts>(FEED_COUNT_INITIAL_DATA);
 
   const {
     postFeed,
@@ -99,7 +103,6 @@ export const ActivityFeedTab = ({
     entityThread,
     getFeedData,
     loading,
-    userId,
     entityPaging,
   } = useActivityFeedProvider();
 
@@ -149,64 +152,43 @@ export const ActivityFeedTab = ({
     }
   }, [activeTab]);
 
-  const fetchFeedsCount = () => {
-    if (!isUserEntity) {
-      // To get conversation count
-      getFeedCount(
-        getEntityFeedLink(entityType, fqn),
-        ThreadType.Conversation
-      ).then((res) => {
-        if (res) {
-          setAllCount(res.totalCount);
-        } else {
-          throw t('server.entity-feed-fetch-error');
-        }
-      });
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setCount(data);
+  }, []);
 
-      // To get open tasks count
-      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
-        (res) => {
-          if (res) {
-            setTasksCount(res.totalCount);
-          } else {
-            throw t('server.entity-feed-fetch-error');
-          }
-        }
-      );
+  const fetchFeedsCount = async () => {
+    if (isUserEntity) {
+      try {
+        const res = await getFeedCount(
+          getEntityUserLink(
+            isAdminUser ? currentUser?.fullyQualifiedName ?? '' : fqn
+          )
+        );
+        setCount({
+          conversationCount: res[0].conversationCount ?? 0,
+          totalTasksCount: res[0].totalTaskCount,
+          openTaskCount: res[0].openTaskCount ?? 0,
+          closedTaskCount: res[0].closedTaskCount ?? 0,
+          totalCount: res[0].conversationCount ?? 0 + res[0].totalTaskCount,
+          mentionCount: res[0].mentionCount ?? 0,
+        });
+      } catch (err) {
+        showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+      }
     } else {
-      // count for task on userProfile page
-      getAllFeeds(
-        undefined,
-        undefined,
-        ThreadType.Task,
-        isAdminUser ? undefined : FeedFilter.OWNER,
-        undefined,
-        userId
-      ).then((res) => {
-        if (res) {
-          setTasksCount(res.paging.total);
-        } else {
-          throw t('server.entity-feed-fetch-error');
-        }
-      });
-
-      // count for all on userProfile page
-      getAllFeeds(
-        undefined,
-        undefined,
-        ThreadType.Conversation,
-        isAdminUser ? undefined : FeedFilter.OWNER,
-        undefined,
-        userId
-      ).then((res) => {
-        if (res) {
-          setAllCount(res.paging.total);
-        } else {
-          throw t('server.entity-feed-fetch-error');
-        }
-      });
+      getFeedCounts(entityType, fqn, handleFeedCount);
     }
   };
+
+  const getThreadType = useCallback((activeTab) => {
+    if (activeTab === ActivityFeedTabs.TASKS) {
+      return ThreadType.Task;
+    } else if (activeTab === ActivityFeedTabs.ALL) {
+      return ThreadType.Conversation;
+    } else {
+      return;
+    }
+  }, []);
 
   useEffect(() => {
     if (fqn) {
@@ -221,8 +203,7 @@ export const ActivityFeedTab = ({
     const filter = isUserEntity ? currentFilter : undefined;
 
     return {
-      threadType:
-        activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
+      threadType: getThreadType(activeTab),
       feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isUserEntity, currentUser]);
@@ -323,7 +304,7 @@ export const ActivityFeedTab = ({
 
                 <span>
                   {getCountBadge(
-                    allCount,
+                    count.conversationCount,
                     '',
                     activeTab === ActivityFeedTabs.ALL
                   )}
@@ -332,15 +313,32 @@ export const ActivityFeedTab = ({
             ),
             key: 'all',
           },
-          {
-            label: (
-              <Space align="center" size="small">
-                <MentionIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
-                <span>{t('label.mention-plural')}</span>
-              </Space>
-            ),
-            key: 'mentions',
-          },
+          ...(isUserEntity
+            ? [
+                {
+                  label: (
+                    <div className="d-flex justify-between">
+                      <Space align="center" size="small">
+                        <MentionIcon
+                          style={COMMON_ICON_STYLES}
+                          {...ICON_DIMENSION}
+                        />
+                        <span>{t('label.mention-plural')}</span>
+                      </Space>
+
+                      <span>
+                        {getCountBadge(
+                          count.mentionCount,
+                          '',
+                          activeTab === ActivityFeedTabs.MENTIONS
+                        )}
+                      </span>
+                    </div>
+                  ),
+                  key: 'mentions',
+                },
+              ]
+            : []),
           {
             label: (
               <div className="d-flex justify-between">
@@ -351,7 +349,9 @@ export const ActivityFeedTab = ({
                   />
                   <span>{t('label.task-plural')}</span>
                 </Space>
-                <span>{getCountBadge(tasksCount, '', isTaskActiveTab)}</span>
+                <span>
+                  {getCountBadge(count.totalTasksCount, '', isTaskActiveTab)}
+                </span>
               </div>
             ),
             key: 'tasks',
@@ -403,7 +403,6 @@ export const ActivityFeedTab = ({
           isForFeedTab={isForFeedTab}
           isLoading={false}
           showThread={false}
-          tab={activeTab}
           onFeedClick={handleFeedClick}
         />
         {loader}

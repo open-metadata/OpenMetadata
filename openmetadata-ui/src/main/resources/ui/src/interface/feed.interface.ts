@@ -21,8 +21,21 @@ export type ThreadUpdatedFunc = (
 ) => void;
 
 export interface EntityFieldThreadCount {
-  count: number;
   entityLink: string;
+  mentionCount: number;
+  totalTaskCount: number;
+  openTaskCount?: number;
+  closedTaskCount?: number;
+  conversationCount?: number;
+}
+
+export interface FeedCounts {
+  conversationCount: number;
+  totalTasksCount: number;
+  openTaskCount: number;
+  closedTaskCount: number;
+  totalCount: number;
+  mentionCount: number;
 }
 
 export type EntityThreadField =

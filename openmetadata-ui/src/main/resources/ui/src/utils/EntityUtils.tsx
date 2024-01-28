@@ -61,7 +61,6 @@ import {
   NO_DATA,
   ROUTES,
 } from '../constants/constants';
-import { EntityField } from '../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
@@ -101,14 +100,12 @@ import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { Votes } from '../generated/type/votes';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
 import {
   getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
-import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
 import {
   getDataProductsDetailsPath,
@@ -1059,6 +1056,14 @@ export const getEntityFeedLink = (
   }>`;
 };
 
+/*
+  params: userName - fullyQualifiedName
+  return : <#E::user::userName>
+*/
+export const getEntityUserLink = (userName: string): string => {
+  return `<#E${ENTITY_LINK_SEPARATOR}user${ENTITY_LINK_SEPARATOR}${userName}>`;
+};
+
 export const isSupportedTest = (dataType: string) => {
   return dataType === 'ARRAY' || dataType === 'STRUCT';
 };
@@ -1755,17 +1760,6 @@ export const getBreadcrumbsFromFqn = (fqn: string, includeCurrent = false) => {
       url: '',
     })),
   ];
-};
-
-export const getEntityThreadLink = (
-  entityFieldThreadCount: EntityFieldThreadCount[]
-) => {
-  const thread = getEntityFieldThreadCounts(
-    EntityField.TAGS,
-    entityFieldThreadCount
-  );
-
-  return thread[0]?.entityLink;
 };
 
 /**

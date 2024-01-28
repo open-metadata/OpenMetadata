@@ -14,13 +14,13 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
   mockGetDatabaseSchemaDetailsByFQNData,
-  mockGetFeedCountData,
   mockPatchDatabaseSchemaDetailsData,
   mockPostThreadData,
 } from './mocks/DatabaseSchemaPage.mock';
@@ -115,15 +115,11 @@ jest.mock('../../rest/tableAPI', () => ({
 
 jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
+  getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
-}));
-
-jest.mock('../../utils/EntityUtils', () => ({
-  getEntityFeedLink: jest.fn(),
-  getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
 jest.mock('../../utils/TableUtils', () => ({
@@ -152,9 +148,6 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../rest/feedsAPI', () => ({
-  getFeedCount: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockGetFeedCountData)),
   postThread: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockPostThreadData)),

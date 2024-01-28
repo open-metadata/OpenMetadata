@@ -116,6 +116,10 @@ public class FeedResource {
     /* Required for serde */
   }
 
+  public static class ThreadCountList extends ResultList<ThreadCount> {
+    /* Required for serde */
+  }
+
   @GET
   @Operation(
       operationId = "listThreads",
@@ -373,41 +377,17 @@ public class FeedResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ThreadCount.class)))
+                    schema = @Schema(implementation = ThreadCountList.class)))
       })
-  public ThreadCount getThreadCount(
+  public ResultList<ThreadCount> getThreadCount(
       @Context UriInfo uriInfo,
       @Parameter(
               description = "Filter threads by entity link",
               schema =
                   @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
-          String entityLink,
-      @Parameter(
-              description =
-                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
-              schema = @Schema(implementation = ThreadType.class))
-          @QueryParam("type")
-          ThreadType threadType,
-      @Parameter(
-              description =
-                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
-              schema = @Schema(implementation = TaskStatus.class))
-          @QueryParam("taskStatus")
-          TaskStatus taskStatus,
-      @Parameter(
-              description = "Filter threads by whether it is active or resolved",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("false")
-          @QueryParam("isResolved")
-          Boolean isResolved) {
-    FeedFilter filter =
-        FeedFilter.builder()
-            .threadType(threadType)
-            .taskStatus(taskStatus)
-            .resolved(isResolved)
-            .build();
-    return dao.getThreadsCount(filter, entityLink);
+          String entityLink) {
+    return new ResultList<>(dao.getThreadsCount(entityLink));
   }
 
   @POST

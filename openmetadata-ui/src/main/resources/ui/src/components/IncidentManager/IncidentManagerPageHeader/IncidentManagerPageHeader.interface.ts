@@ -16,5 +16,5 @@ import { TestCase } from '../../../generated/tests/testCase';
 export interface IncidentManagerPageHeaderProps {
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   testCaseData?: TestCase;
-  fetchTaskCount: () => Promise<void>;
+  fetchTaskCount: () => void;
 }
