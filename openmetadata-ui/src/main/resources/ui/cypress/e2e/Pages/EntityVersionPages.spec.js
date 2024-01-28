@@ -24,8 +24,8 @@ import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { visitEntityDetailsVersionPage } from '../../common/VersionUtils';
+import { DOMAIN_CREATION_DETAILS } from '../../constants/EntityConstant';
 import {
-  DOMAIN_CREATION_DETAILS,
   ENTITY_DETAILS_FOR_VERSION_TEST,
   OWNER,
   TIER,

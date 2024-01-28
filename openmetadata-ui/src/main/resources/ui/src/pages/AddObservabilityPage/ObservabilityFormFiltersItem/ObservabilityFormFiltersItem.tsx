@@ -68,7 +68,7 @@ function ObservabilityFormFiltersItem({
                 fields.length < (supportedFilters?.length ?? 1);
 
               return (
-                <Row gutter={[16, 16]} key="filters">
+                <Row data-testid="filters-list" gutter={[16, 16]} key="filters">
                   {fields.map(({ key, name }) => {
                     const effect =
                       form.getFieldValue([
@@ -84,7 +84,10 @@ function ObservabilityFormFiltersItem({
                       selectedFilters[name];
 
                     return (
-                      <Col key={`observability-${key}`} span={24}>
+                      <Col
+                        data-testid={`filter-${name}`}
+                        key={`observability-${key}`}
+                        span={24}>
                         <Row gutter={[8, 8]}>
                           <Col span={11}>
                             <Form.Item
@@ -99,6 +102,7 @@ function ObservabilityFormFiltersItem({
                                 },
                               ]}>
                               <Select
+                                data-testid={`filter-select-${name}`}
                                 options={filterOptions}
                                 placeholder={t('label.select-field', {
                                   field: t('label.filter'),
@@ -121,7 +125,7 @@ function ObservabilityFormFiltersItem({
                             )}
                           <Col span={2}>
                             <Button
-                              data-testid={`remove-filter-rule-${name}`}
+                              data-testid={`remove-filter-${name}`}
                               icon={<CloseOutlined />}
                               onClick={() => remove(name)}
                             />
@@ -137,7 +141,10 @@ function ObservabilityFormFiltersItem({
                           normalize={(value) =>
                             value ? Effect.Include : Effect.Exclude
                           }>
-                          <Switch checked={effect === Effect.Include} />
+                          <Switch
+                            checked={effect === Effect.Include}
+                            data-testid={`filter-switch-${name}`}
+                          />
                         </Form.Item>
                       </Col>
                     );
