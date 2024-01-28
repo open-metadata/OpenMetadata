@@ -223,6 +223,8 @@ const GlossaryDetails = ({
               key: GlossaryTabs.ACTIVITY_FEED,
               children: (
                 <ActivityFeedTab
+                  refetchFeed
+                  entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   fqn={glossary.fullyQualifiedName ?? ''}
                   onFeedUpdate={getEntityFeedCount}

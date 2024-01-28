@@ -556,6 +556,8 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE}
             fqn={database?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}

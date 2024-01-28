@@ -454,6 +454,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.MLMODEL}
             fqn={mlModelDetail?.fullyQualifiedName ?? ''}
             onFeedUpdate={fetchEntityFeedCount}
