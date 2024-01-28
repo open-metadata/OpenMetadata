@@ -24,8 +24,6 @@ import {
   addUpdaterNameFilter,
   deleteAlertSteps,
   verifyAlertDetails,
-  visitAddAlertPage,
-  visitAlertDetailsPage,
 } from '../../common/AlertUtils';
 import {
   descriptionBox,
@@ -59,6 +57,7 @@ describe('Notification Alert Flow', () => {
     cy.getAllLocalStorage().then((storageData) => {
       const token = Object.values(storageData)[0].oidcIdToken;
 
+      // Create a dashboard
       createSingleLevelEntity({
         token,
         ...DASHBOARD_SERVICE,
@@ -128,13 +127,17 @@ describe('Notification Alert Flow', () => {
   });
 
   it('Create new alert', () => {
-    visitAddAlertPage();
+    verifyResponseStatusCode('@alertsPage', 200);
+
+    cy.get('[data-testid="create-notification"]').click();
+
     // Enter alert name
     cy.get('#name').should('be.visible').type(ALERT_NAME);
+
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
 
-    // Click on all data assets
+    // Select all trigger
     cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
 
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
@@ -162,21 +165,29 @@ describe('Notification Alert Flow', () => {
     });
     toastNotification('Alerts created successfully.');
 
-    // Check created alert details
+    // Check if the alert details page is visible
     verifyResponseStatusCode('@alertDetails', 200);
     cy.get('[data-testid="alert-details-container"]').should('exist');
   });
 
   it('Alert details page', () => {
     const { id: alertId } = data.alertDetails;
+    verifyResponseStatusCode('@alertsPage', 200);
 
-    visitAlertDetailsPage(alertId, ALERT_NAME);
+    cy.get(`[data-row-key="${alertId}"] [data-testid="alert-name"]`)
+      .should('contain', ALERT_NAME)
+      .click();
 
+    verifyResponseStatusCode('@alertDetails', 200);
+
+    // Verify alert details
     verifyAlertDetails(data.alertDetails);
   });
 
   it('Edit created alert', () => {
     const { id: alertId } = data.alertDetails;
+
+    // Go to edit alert page
     cy.get('table').should('contain', ALERT_NAME).click();
 
     cy.get(
@@ -199,11 +210,11 @@ describe('Notification Alert Flow', () => {
     // Filters should reset after trigger change
     cy.get('[data-testid="filter-select-0"]').should('not.exist');
 
+    // Add multiple filters
     [...Array(6).keys()].forEach(() => {
       cy.get('[data-testid="add-filters"]').scrollIntoView().click();
     });
 
-    // Select filters
     addOwnerFilter(0, data.user.displayName);
     addEntityFQNFilter(1, DASHBOARD_SERVICE.entity.displayName, true);
     addEventTypeFilter(2, 'entityCreated');
@@ -211,6 +222,7 @@ describe('Notification Alert Flow', () => {
     addDomainFilter(4, data.domain.name);
     addGMEFilter(5);
 
+    // Add multiple destinations
     [...Array(3).keys()].forEach(() => {
       cy.get('[data-testid="add-destination-button"]').scrollIntoView().click();
     });

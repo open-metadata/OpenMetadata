@@ -38,22 +38,6 @@ export const deleteAlertSteps = (name) => {
   toastNotification(`"${name}" deleted successfully!`);
 };
 
-export const visitAddAlertPage = () => {
-  verifyResponseStatusCode('@alertsPage', 200);
-
-  cy.get('[data-testid="create-notification"]').click();
-};
-
-export const visitAlertDetailsPage = (alertId, alertName) => {
-  verifyResponseStatusCode('@alertsPage', 200);
-
-  cy.get(`[data-row-key="${alertId}"] [data-testid="alert-name"]`)
-    .should('contain', alertName)
-    .click();
-
-  verifyResponseStatusCode('@alertDetails', 200);
-};
-
 export const addOwnerFilter = (filterNumber, ownerName, exclude = false) => {
   // Select owner filter
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
@@ -200,7 +184,7 @@ export const addInternalDestination = (
   typeId,
   searchText
 ) => {
-  // Select Destination
+  // Select destination category
   cy.get(`[data-testid="destination-category-select-${destinationNumber}"]`)
     .scrollIntoView()
     .click();
@@ -208,6 +192,8 @@ export const addInternalDestination = (
     .filter(':visible')
     .scrollIntoView()
     .click();
+
+  // Select the receivers
   if (typeId) {
     cy.get(`[data-testid="${typeId}"]`).click().type(searchText);
     verifyResponseStatusCode('@getSearchResult', 200);
@@ -217,11 +203,14 @@ export const addInternalDestination = (
       .click();
     cy.clickOutside();
   }
+
+  // Select destination type
   cy.get(`[data-testid="destination-type-select-${destinationNumber}"]`)
     .scrollIntoView()
     .click();
   cy.get(`[data-testid="${type}-external-option"]`).filter(':visible').click();
 
+  // Check the added destination type
   cy.get(
     `[data-testid="destination-type-select-${destinationNumber}"] [data-testid="${type}-external-option"]`
   );
