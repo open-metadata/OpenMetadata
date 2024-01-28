@@ -20,9 +20,6 @@ import { getEntityIcon } from '../../../utils/TableUtils';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
-  heading,
-  subHeading,
-  buttonLabel,
   filterResources,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
   const { t } = useTranslation();
@@ -40,7 +37,9 @@ function ObservabilityFormTriggerItem({
     () =>
       filterResources.map((resource) => ({
         label: (
-          <div className="d-flex items-center gap-2">
+          <div
+            className="d-flex items-center gap-2"
+            data-testid={`${resource.name}-option`}>
             <div className="d-flex h-4 w-4">
               {getEntityIcon(resource.name ?? '')}
             </div>
@@ -62,11 +61,13 @@ function ObservabilityFormTriggerItem({
     <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
+          <Typography.Text className="font-medium">
+            {t('label.trigger')}
+          </Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
+            {t('message.alerts-trigger-description')}
           </Typography.Text>
         </Col>
         <Col span={24}>
@@ -92,7 +93,7 @@ function ObservabilityFormTriggerItem({
             {isEditMode || fqn ? (
               <Select
                 className="w-full"
-                data-testid="triggerConfig-type"
+                data-testid="trigger-select"
                 options={resourcesOptions}
                 placeholder={t('label.select-field', {
                   field: t('label.data-asset-plural'),
@@ -101,8 +102,13 @@ function ObservabilityFormTriggerItem({
                 onChange={handleTriggerChange}
               />
             ) : (
-              <Button type="primary" onClick={handleAddTriggerClick}>
-                {buttonLabel}
+              <Button
+                data-testid="add-trigger-button"
+                type="primary"
+                onClick={handleAddTriggerClick}>
+                {t('label.add-entity', {
+                  entity: t('label.trigger'),
+                })}
               </Button>
             )}
           </Form.Item>

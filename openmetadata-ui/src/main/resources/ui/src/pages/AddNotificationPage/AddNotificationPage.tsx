@@ -304,12 +304,7 @@ const AddNotificationPage = () => {
                       </Col>
                       <Col span={24}>
                         <ObservabilityFormTriggerItem
-                          buttonLabel={t('label.add-entity', {
-                            entity: t('label.trigger'),
-                          })}
                           filterResources={entityFunctions}
-                          heading={t('label.trigger')}
-                          subHeading={t('message.alerts-trigger-description')}
                         />
                       </Col>
                       {shouldShowFiltersSection && (
@@ -344,6 +339,7 @@ const AddNotificationPage = () => {
                       <Col flex="300px" pull="right">
                         <Button
                           className="m-l-sm float-right"
+                          data-testid="save-button"
                           htmlType="submit"
                           loading={isButtonLoading}
                           type="primary">
@@ -351,6 +347,7 @@ const AddNotificationPage = () => {
                         </Button>
                         <Button
                           className="float-right"
+                          data-testid="cancel-button"
                           onClick={() => history.goBack()}>
                           {t('label.cancel')}
                         </Button>

@@ -19,12 +19,19 @@ import {
 } from '../generated/events/eventSubscription';
 import { getAlertDestinationCategoryIcons } from '../utils/ObservabilityUtils';
 
+export const DESTINATION_DROPDOWN_TABS = {
+  internal: 'internal',
+  external: 'external',
+};
+
 export const INTERNAL_CATEGORY_OPTIONS = filter(
   SubscriptionCategory,
   (value) => value !== SubscriptionCategory.External
 ).map((value) => ({
   label: (
-    <div className="d-flex items-center gap-2">
+    <div
+      className="d-flex items-center gap-2"
+      data-testid={`${startCase(value)}-internal-option`}>
       {getAlertDestinationCategoryIcons(value)}
       <span>{startCase(value)}</span>
     </div>
@@ -37,7 +44,9 @@ export const EXTERNAL_CATEGORY_OPTIONS = filter(
   (value) => value !== SubscriptionType.ActivityFeed
 ).map((value) => ({
   label: (
-    <div className="d-flex items-center gap-2">
+    <div
+      className="d-flex items-center gap-2"
+      data-testid={`${startCase(value)}-external-option`}>
       {getAlertDestinationCategoryIcons(value)}
       <span>{startCase(value)}</span>
     </div>
@@ -46,8 +55,8 @@ export const EXTERNAL_CATEGORY_OPTIONS = filter(
 }));
 
 export const DESTINATION_SOURCE_ITEMS = {
-  internal: INTERNAL_CATEGORY_OPTIONS,
-  external: EXTERNAL_CATEGORY_OPTIONS,
+  [DESTINATION_DROPDOWN_TABS.internal]: INTERNAL_CATEGORY_OPTIONS,
+  [DESTINATION_DROPDOWN_TABS.external]: EXTERNAL_CATEGORY_OPTIONS,
 };
 
 export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {

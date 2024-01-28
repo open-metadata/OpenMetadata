@@ -23,8 +23,8 @@ import { hardDeleteService } from '../../common/EntityUtils';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
+import { DOMAIN_CREATION_DETAILS } from '../../constants/EntityConstant';
 import {
-  DOMAIN_CREATION_DETAILS,
   OWNER,
   SERVICE_DETAILS_FOR_VERSION_TEST,
   TIER,

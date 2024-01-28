@@ -162,7 +162,7 @@ export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-
 
 const searchEntity = async (
   search: string,
-  searchIndex: SearchIndex,
+  searchIndex: SearchIndex | SearchIndex[],
   filters?: string
 ) => {
   try {
@@ -191,6 +191,14 @@ const getTableSuggestions = async (searchText: string) => {
 
 const getDomainOptions = async (searchText: string) => {
   return searchEntity(searchText, SearchIndex.DOMAIN);
+};
+
+const getOwnerOptions = async (searchText: string) => {
+  return searchEntity(
+    searchText,
+    [SearchIndex.TEAM, SearchIndex.USER],
+    'isBot:false'
+  );
 };
 
 const getUserOptions = async (searchText: string) => {
@@ -228,7 +236,11 @@ export const getSupportedFilterOptions = (
   supportedFilters?: EventFilterRule[]
 ) =>
   supportedFilters?.map((func) => ({
-    label: getEntityName(func),
+    label: (
+      <span data-testid={`${getEntityName(func)}-filter-option`}>
+        {getEntityName(func)}
+      </span>
+    ),
     value: func.name,
     disabled: selectedFilters?.some((d) => d.name === func.name),
   }));
@@ -254,6 +266,7 @@ export const getDestinationConfigField = (
             },
           ]}>
           <Input
+            data-testid={`endpoint-input-${fieldName}`}
             placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
           />
         </Form.Item>
@@ -261,7 +274,6 @@ export const getDestinationConfigField = (
     case SubscriptionType.Email:
       return (
         <Form.Item
-          label=""
           name={[fieldName, 'config', 'receivers']}
           rules={[
             {
@@ -272,6 +284,8 @@ export const getDestinationConfigField = (
             },
           ]}>
           <Select
+            className="w-full"
+            data-testid={`email-input-${fieldName}`}
             mode="tags"
             open={false}
             placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
@@ -292,7 +306,7 @@ export const getDestinationConfigField = (
                     entity:
                       type === SubscriptionCategory.Teams
                         ? t('label.team')
-                        : t('label.owner'),
+                        : t('label.user'),
                   }),
                 }),
               }),
@@ -315,7 +329,7 @@ export const getDestinationConfigField = (
               type:
                 type === SubscriptionCategory.Teams
                   ? t('label.team-lowercase')
-                  : t('label.owner-lowercase'),
+                  : t('label.user-lowercase'),
             })}
           />
         </Form.Item>
@@ -327,7 +341,6 @@ export const getDestinationConfigField = (
         <Form.Item
           hidden
           initialValue
-          label=""
           name={[fieldName, 'config', getConfigFieldFromDestinationType(type)]}>
           <Switch />
         </Form.Item>
@@ -434,7 +447,7 @@ export const getFieldByArgumentType = (
             <AsyncSelect
               api={getTableSuggestions}
               className="w-full"
-              data-testid="table-select"
+              data-testid="table-name-select"
               mode="multiple"
               placeholder={t('label.search-by-type', {
                 type: t('label.table-lowercase'),
@@ -447,6 +460,37 @@ export const getFieldByArgumentType = (
       break;
 
     case 'ownerNameList':
+      field = (
+        <Col key="owner-select" span={11}>
+          <Form.Item
+            name={[fieldName, 'arguments', index, 'input']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.entity-name', {
+                      entity: t('label.owner'),
+                    }),
+                  }),
+                }),
+              },
+            ]}>
+            <AsyncSelect
+              api={getOwnerOptions}
+              className="w-full"
+              data-testid="owner-name-select"
+              mode="multiple"
+              placeholder={t('label.search-by-type', {
+                type: t('label.owner-lowercase'),
+              })}
+            />
+          </Form.Item>
+        </Col>
+      );
+
+      break;
+
     case 'updateByUserList':
       field = (
         <Col key="owner-select" span={11}>
@@ -458,10 +502,7 @@ export const getFieldByArgumentType = (
                 message: t('message.field-text-is-required', {
                   fieldText: t('label.entity-list', {
                     entity: t('label.entity-name', {
-                      entity:
-                        argument === 'ownerNameList'
-                          ? t('label.owner')
-                          : t('label.user'),
+                      entity: t('label.user'),
                     }),
                   }),
                 }),
@@ -470,13 +511,10 @@ export const getFieldByArgumentType = (
             <AsyncSelect
               api={getUserOptions}
               className="w-full"
-              data-testid="owner-select"
+              data-testid="user-name-select"
               mode="multiple"
               placeholder={t('label.search-by-type', {
-                type:
-                  argument === 'ownerNameList'
-                    ? t('label.owner-lowercase')
-                    : t('label.user'),
+                type: t('label.user'),
               })}
             />
           </Form.Item>

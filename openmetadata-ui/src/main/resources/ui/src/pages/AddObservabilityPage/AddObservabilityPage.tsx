@@ -298,12 +298,7 @@ function AddObservabilityPage() {
                     </Col>
                     <Col span={24}>
                       <ObservabilityFormTriggerItem
-                        buttonLabel={t('label.add-entity', {
-                          entity: t('label.trigger'),
-                        })}
                         filterResources={filterResources}
-                        heading={t('label.trigger')}
-                        subHeading={t('message.alerts-trigger-description')}
                       />
                     </Col>
                     {shouldShowFiltersSection && (
@@ -343,6 +338,7 @@ function AddObservabilityPage() {
                     <Col flex="300px" pull="right">
                       <Button
                         className="m-l-sm float-right"
+                        data-testid="save-button"
                         htmlType="submit"
                         loading={saving}
                         type="primary">
@@ -350,6 +346,7 @@ function AddObservabilityPage() {
                       </Button>
                       <Button
                         className="float-right"
+                        data-testid="cancel-button"
                         onClick={() => history.goBack()}>
                         {t('label.cancel')}
                       </Button>

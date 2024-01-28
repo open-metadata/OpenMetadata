@@ -143,7 +143,9 @@ function ObservabilityAlertDetailsPage({
     subHeading: ReactNode;
     details: ReactNode;
   }) => (
-    <Card className="alert-form-item-container">
+    <Card
+      className="alert-form-item-container"
+      data-testid={`${heading}-container`}>
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Typography.Text className="font-medium">{heading}</Typography.Text>
@@ -164,35 +166,49 @@ function ObservabilityAlertDetailsPage({
     <div className="p-md">
       {filters?.map((filterDetails, index) => (
         <Fragment key={filterDetails.name}>
-          <Row gutter={[0, 8]}>
+          <Row data-testid={`filter-${filterDetails.name}`} gutter={[0, 8]}>
             <Col className="font-medium" span={3}>
               {t('label.effect')}
             </Col>
             <Col span={1}>:</Col>
-            <Col span={20}>{startCase(filterDetails.effect)}</Col>
+            <Col data-testid="effect-value" span={20}>
+              {startCase(filterDetails.effect)}
+            </Col>
             <Col className="font-medium" span={3}>
               {t('label.entity-name', {
                 entity: isFilter ? t('label.filter') : t('label.action'),
               })}
             </Col>
             <Col span={1}>:</Col>
-            <Col span={20}>{startCase(filterDetails.name)}</Col>
+            <Col data-testid="filter-name" span={20}>
+              {startCase(filterDetails.name)}
+            </Col>
             {!isEmpty(filterDetails.arguments) && (
               <>
                 <Col className="font-medium" span={3}>
                   {t('label.argument-plural')}
                 </Col>
                 <Col span={1}>:</Col>
-                <Col className="border rounded-4 p-sm" span={20}>
+                <Col
+                  className="border rounded-4 p-sm"
+                  data-testid="arguments-container"
+                  span={20}>
                   {filterDetails.arguments?.map((argument) => (
-                    <Row gutter={[0, 8]} key={argument.name}>
+                    <Row
+                      data-testid={`argument-container-${argument.name}`}
+                      gutter={[0, 8]}
+                      key={argument.name}>
                       <Col className="font-medium" span={24}>
-                        <Typography.Text>{argument.name}</Typography.Text>
+                        <Typography.Text data-testid="argument-name">
+                          {argument.name}
+                        </Typography.Text>
                       </Col>
                       <Col span={24}>
                         {argument.input?.map((inputItem) => (
                           <Tooltip key={inputItem} title={inputItem}>
-                            <Tag className="m-b-xs w-max-full">
+                            <Tag
+                              className="m-b-xs w-max-full"
+                              data-testid="argument-value">
                               <Typography.Text ellipsis>
                                 {inputItem}
                               </Typography.Text>
@@ -217,17 +233,23 @@ function ObservabilityAlertDetailsPage({
       <div className="p-md">
         {destinations?.map((destination, index) => (
           <Fragment key={`${destination.category}-${destination.type}`}>
-            <Row gutter={[0, 8]}>
+            <Row
+              data-testid={`destination-${destination.category}`}
+              gutter={[0, 8]}>
               <Col className="font-medium" span={3}>
                 {t('label.category')}
               </Col>
               <Col span={1}>:</Col>
-              <Col span={20}>{startCase(destination.category)}</Col>
+              <Col data-testid="category-value" span={20}>
+                {startCase(destination.category)}
+              </Col>
               <Col className="font-medium" span={3}>
                 {t('label.type')}
               </Col>
               <Col span={1}>:</Col>
-              <Col span={20}>{startCase(destination.type)}</Col>
+              <Col data-testid="destination-type" span={20}>
+                {startCase(destination.type)}
+              </Col>
               {!isEmpty(destination.config?.receivers) &&
                 !isNil(destination.config?.receivers) && (
                   <>
@@ -244,11 +266,13 @@ function ObservabilityAlertDetailsPage({
                                 {t('label.receiver-plural')}
                               </Typography.Text>
                             </Col>
-                            <Col span={24}>
+                            <Col data-testid="receivers-value" span={24}>
                               {destination.config?.receivers?.map(
                                 (receiver) => (
                                   <Tooltip key={receiver} title={receiver}>
-                                    <Tag className="m-b-xs w-max-full">
+                                    <Tag
+                                      className="m-b-xs w-max-full"
+                                      data-testid={`receiver-${receiver}`}>
                                       <Typography.Text ellipsis>
                                         {receiver}
                                       </Typography.Text>
@@ -283,7 +307,9 @@ function ObservabilityAlertDetailsPage({
         children: loading ? (
           <Loader />
         ) : (
-          <div className="alert-page-container">
+          <div
+            className="alert-page-container"
+            data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"
               gutter={[16, 16]}>
@@ -335,19 +361,18 @@ function ObservabilityAlertDetailsPage({
                   <Typography.Text className="font-medium">
                     {`${t('label.name')} :`}
                   </Typography.Text>
-                  <Typography.Text>
+                  <Typography.Text data-testid="alert-name">
                     {getEntityName(alertDetails)}
                   </Typography.Text>
                 </Space>
               </Col>
               {alertDetails?.description && (
-                <Col span={24}>
+                <Col data-testid="alert-description" span={24}>
                   <Typography.Text className="font-medium">{`${t(
                     'label.description'
                   )} :`}</Typography.Text>
                   <RichTextEditorPreviewer
                     className="p-t-xs"
-                    data-testid="description"
                     markdown={alertDetails.description}
                   />
                 </Col>
@@ -359,7 +384,9 @@ function ObservabilityAlertDetailsPage({
                       <div className="d-flex h-4 w-4">
                         {getEntityIcon(resource ?? '')}
                       </div>
-                      <span>{startCase(resource)}</span>
+                      <span data-testid="resource-name">
+                        {startCase(resource)}
+                      </span>
                     </div>
                   ),
                   heading: t('label.trigger'),
