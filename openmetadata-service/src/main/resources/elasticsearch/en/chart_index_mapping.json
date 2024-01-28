@@ -81,9 +81,6 @@
       "fqnParts": {
         "type": "keyword"
       },
-      "entityType": {
-        "type": "keyword"
-      },
       "suggest": {
         "type": "completion",
         "contexts": [
@@ -239,9 +236,6 @@
       },
       "deleted": {
         "type": "text"
-      },
-      "lifeCycle": {
-        "type": "object"
       },
       "domain" : {
         "properties": {
