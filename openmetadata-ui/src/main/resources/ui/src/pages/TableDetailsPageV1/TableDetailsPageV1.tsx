@@ -602,7 +602,9 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
             columns={tableDetails?.columns}
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
             owner={tableDetails?.owner}

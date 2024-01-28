@@ -648,6 +648,8 @@ const PipelineDetails = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.PIPELINE}
             fqn={pipelineDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
