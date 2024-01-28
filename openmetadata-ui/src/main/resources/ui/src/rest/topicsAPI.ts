@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -78,25 +79,21 @@ export const getTopicByFqn = async (fqn: string, params?: ListParams) => {
 };
 
 export const addFollower = async (topicId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${topicId}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${topicId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (topicId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
@@ -104,20 +101,18 @@ export const removeFollower = async (topicId: string, userId: string) => {
         fieldsDeleted: { oldValue: EntityReference[] }[];
       };
     }>
-  >(`${BASE_URL}/${topicId}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${topicId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const patchTopicDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Topic>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

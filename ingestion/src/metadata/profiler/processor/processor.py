@@ -51,6 +51,10 @@ class ProfilerProcessor(Processor):
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
 
+    @property
+    def name(self) -> str:
+        return "Profiler"
+
     def _run(self, record: ProfilerSourceAndEntity) -> Either[ProfilerResponse]:
 
         profiler_runner: Profiler = record.profiler_source.get_profiler_runner(

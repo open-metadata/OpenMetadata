@@ -862,7 +862,9 @@ class MetricsTest(TestCase):
         assert res == 61
 
     def test_system_metric(self):
-        system = add_props(table=User)(Metrics.SYSTEM.value)
+        system = add_props(table=User, ometa_client=None, db_service=None)(
+            Metrics.SYSTEM.value
+        )
         session = self.sqa_profiler_interface.session
         system().sql(session)
 
