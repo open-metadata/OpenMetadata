@@ -9,6 +9,7 @@ source:
       connectionOptions:
         sampleDataFolder: "./examples/sample_data"
         extendedSampleDataFolder: "./examples/extended_sample_data"
+        includeGlossary: False
   sourceConfig: {}
 sink:
   type: metadata-rest

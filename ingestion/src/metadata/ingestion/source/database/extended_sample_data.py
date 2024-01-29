@@ -24,6 +24,10 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
+from metadata.generated.schema.api.data.createGlossaryTerm import (
+    CreateGlossaryTermRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -91,9 +95,14 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         self.store_table_fqn = set()
         self.store_data_model_fqn = []
         self.store_dashboard_fqn = []
+        self.main_glossary = None
+        self.glossary_term_list = []
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
             "sampleDataFolder"
+        )
+        self.includeGlossary = self.service_connection.connectionOptions.__root__.get(
+            "includeGlossary"
         )
         extneded_sample_data_folder = (
             self.service_connection.connectionOptions.__root__.get(
@@ -230,7 +239,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         Generate sample data for dashboard and database service,
         with lineage between them, having long names, special characters and description
         """
-
+        if self.includeGlossary:
+            yield from self.create_glossary()
+            yield from self.create_glossary_term()
+            
         db = self.create_database_request("extended_sample_data", self.generate_text())
         yield Either(right=db)
 
@@ -403,6 +415,45 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                             )
                         )
                     )
+
+
+        
+
+    def create_glossary(self):
+        self.main_glossary = CreateGlossaryRequest(
+            name="NestedGlossaryTest",
+            displayName="NestedGlossaryTest",
+            description="Description of test glossary",
+        )
+        yield Either(right=self.main_glossary)
+
+    def create_glossary_term(self):
+        for _ in range(20):
+            random_name = self.fake.first_name()
+            yield Either(
+                right=CreateGlossaryTermRequest(
+                    glossary="NestedGlossary",
+                    name=random_name,
+                    displayName=random_name,
+                    description="Test glossary term 1",
+                    parent=self.glossary_term_list[-1] if len(self.glossary_term_list) > 3 else None
+                )
+            )
+            if len(self.glossary_term_list) > 3 and self.glossary_term_list[-1]:
+                self.glossary_term_list.append(f"{self.glossary_term_list[-1]}.{random_name}")
+            else:    
+                self.glossary_term_list.append(f"NestedGlossary.{random_name}")
+                
+        for _ in range(500):
+            random_name = self.fake.first_name()
+            yield Either(
+                right=CreateGlossaryTermRequest(
+                    glossary="NestedGlossary",
+                    name=random_name,
+                    displayName=random_name,
+                    description="Test glossary term 1"
+                )
+            )
 
     def generate_name(self):
         return f"Sample-@!3_(%t3st@)%_^{self.fake.name()}"
