@@ -11,90 +11,107 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Select, Space, Typography } from 'antd';
+import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
 import { startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTestSuite } from '../../../assets/svg/icon-test-suite.svg';
+import { useFqn } from '../../../hooks/useFqn';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import './observability-form-trigger-item.less';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
-  heading,
-  subHeading,
-  buttonLabel,
   filterResources,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
-  const [editMode, setEditMode] = useState<boolean>(false);
   const { t } = useTranslation();
+  const form = Form.useFormInstance();
+  const { fqn } = useFqn();
+  const [selectedResource, setSelectedResource] = useState<string[]>([]);
 
-  const getIconForEntity = (type: string) => {
-    switch (type) {
-      case 'container':
-      case 'pipeline':
-      case 'topic':
-      case 'table':
-        return getEntityIcon(type);
-      case 'testCase':
-      case 'testSuite':
-        return <IconTestSuite height={16} width={16} />;
-    }
-
-    return null;
-  };
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const handleAddTriggerClick = useCallback(() => {
-    setEditMode(true);
+    setIsEditMode(true);
   }, []);
 
   const resourcesOptions = useMemo(
     () =>
       filterResources.map((resource) => ({
         label: (
-          <Space align="center" size={4}>
-            {getIconForEntity(resource.name ?? '')}
-            {startCase(resource.name)}
-          </Space>
+          <div
+            className="d-flex items-center gap-2"
+            data-testid={`${resource.name}-option`}>
+            <div className="d-flex h-4 w-4">
+              {getEntityIcon(resource.name ?? '')}
+            </div>
+            <span>{startCase(resource.name)}</span>
+          </div>
         ),
         value: resource.name,
       })),
     [filterResources]
   );
 
+  const handleTriggerChange = (value: string) => {
+    form.setFieldValue('input', {});
+    setSelectedResource([value]);
+    form.setFieldValue('resources', [value]);
+  };
+
   return (
-    <Card className="trigger-item-container">
+    <Card className="alert-form-item-container">
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text>{heading}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
+          <Typography.Text className="font-medium">
+            {t('label.trigger')}
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {editMode ? (
-            <Form.Item
-              required
-              messageVariables={{
-                fieldName: t('label.data-asset-plural'),
-              }}
-              name={['resources']}>
+          <Typography.Text className="text-xs text-grey-muted">
+            {t('message.alerts-trigger-description')}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          <Form.Item
+            required
+            initialValue={
+              fqn
+                ? form.getFieldValue(['filteringRules', 'resources'])
+                : undefined
+            }
+            messageVariables={{
+              fieldName: t('label.data-asset-plural'),
+            }}
+            name={['resources']}
+            rules={[
+              {
+                required: true,
+                message: t('label.please-select-entity', {
+                  entity: t('label.data-asset'),
+                }),
+              },
+            ]}>
+            {isEditMode || fqn ? (
               <Select
                 className="w-full"
-                data-testid="triggerConfig-type"
+                data-testid="trigger-select"
                 options={resourcesOptions}
                 placeholder={t('label.select-field', {
                   field: t('label.data-asset-plural'),
                 })}
+                value={selectedResource[0]}
+                onChange={handleTriggerChange}
               />
-            </Form.Item>
-          ) : (
-            <Button type="primary" onClick={handleAddTriggerClick}>
-              {buttonLabel}
-            </Button>
-          )}
+            ) : (
+              <Button
+                data-testid="add-trigger-button"
+                type="primary"
+                onClick={handleAddTriggerClick}>
+                {t('label.add-entity', {
+                  entity: t('label.trigger'),
+                })}
+              </Button>
+            )}
+          </Form.Item>
         </Col>
       </Row>
     </Card>

@@ -203,6 +203,9 @@
       "deleted": {
         "type": "text"
       },
+      "isBot": {
+        "type": "boolean"
+      },
       "entityType": {
         "type": "keyword"
       },

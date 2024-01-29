@@ -41,6 +41,7 @@ export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
+export const WHITE_COLOR = '#ffffff';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -324,7 +325,17 @@ export const ROUTES = {
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
+  // Observability
   OBSERVABILITY: '/observability',
+  OBSERVABILITY_ALERTS: '/observability/alerts',
+  OBSERVABILITY_ALERT_DETAILS: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
+  EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Notification Alerts
+  NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
+  NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -770,10 +781,6 @@ export const getKpiPath = (kpiName: string) => {
   return path;
 };
 
-export const configOptions = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
 
@@ -832,4 +839,8 @@ export const ICON_DIMENSION = {
 
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
+};
+
+export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
+  headers: { 'Content-type': 'application/json' },
 };

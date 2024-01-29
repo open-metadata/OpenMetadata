@@ -29,6 +29,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getTopicDetailsPath } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -37,6 +38,7 @@ import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { restoreTopic } from '../../rest/topicsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import {
@@ -78,7 +80,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -247,8 +251,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     await onTopicUpdate(updatedTopicDetails, 'dataProducts');
   };
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.TOPIC, decodedTopicFQN, setFeedCount);
+    getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
@@ -346,7 +354,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -355,6 +363,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TOPIC}
             fqn={topicDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
@@ -430,7 +440,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     [
       isEdit,
       activeTab,
-      feedCount,
+      feedCount.totalCount,
       topicTags,
       entityName,
       topicDetails,
@@ -470,6 +480,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             afterDomainUpdateAction={updateTopicDetailsState}
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
+            openTaskCount={feedCount.openTaskCount}
             permissions={topicPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}

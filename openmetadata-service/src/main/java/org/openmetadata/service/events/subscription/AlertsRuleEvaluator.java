@@ -5,6 +5,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELAS
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.schema.type.ThreadType.Conversation;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Post;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -87,6 +89,12 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     EntityReference ownerReference = entity.getOwner();
+    if (ownerReference == null) {
+      entity =
+          Entity.getEntity(
+              changeEvent.getEntityType(), entity.getId(), "owner", Include.NON_DELETED);
+      ownerReference = entity.getOwner();
+    }
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
         User user = Entity.getEntity(Entity.USER, ownerReference.getId(), "", Include.NON_DELETED);
@@ -126,12 +134,6 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
-      if (changeEvent.getEntityType().equals(TEST_CASE)
-          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink())
-              .getEntityFQN()
-              .equals(name))) {
-        return true;
-      }
       if (entity.getFullyQualifiedName().equals(name)) {
         return true;
       }
@@ -215,7 +217,7 @@ public class AlertsRuleEvaluator {
             JsonUtils.readOrConvertValue(fieldChange.getNewValue(), TestCaseResult.class);
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
         for (String givenStatus : testResults) {
-          if (givenStatus.equals(status.value())) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
             return true;
           }
         }
@@ -422,6 +424,57 @@ public class AlertsRuleEvaluator {
         String.format(
             "Change Event Data Asset is not an entity %s",
             JsonUtils.pojoToJson(event.getEntity())));
+  }
+
+  @Function(
+      name = "matchConversationUser",
+      input = "List of comma separated user names to matchConversationUser",
+      description = "Returns true if the conversation mentions the user names in the list",
+      examples = {"matchConversationUser({'user1', 'user2'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchConversationUser(List<String> usersOrTeamName) {
+    if (changeEvent == null || changeEvent.getEntityType() == null) {
+      return false;
+    }
+
+    // Filter does not apply to Thread Change Events
+    if (!changeEvent.getEntityType().equals(THREAD)) {
+      return false;
+    }
+
+    if (usersOrTeamName.size() == 1 && usersOrTeamName.get(0).equals("all")) {
+      return true;
+    }
+
+    Thread thread = getThread(changeEvent);
+
+    if (!thread.getType().equals(Conversation)) {
+      // Only applies to Conversation
+      return false;
+    }
+
+    List<MessageParser.EntityLink> mentions;
+    if (thread.getPostsCount() == 0) {
+      mentions = MessageParser.getEntityLinks(thread.getMessage());
+    } else {
+      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
+      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
+    }
+    for (MessageParser.EntityLink entityLink : mentions) {
+      String fqn = entityLink.getEntityFQN();
+      if (USER.equals(entityLink.getEntityType())) {
+        User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
+        if (usersOrTeamName.contains(user.getName())) {
+          return true;
+        }
+      } else if (TEAM.equals(entityLink.getEntityType())) {
+        Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
+        if (usersOrTeamName.contains(team.getName())) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   public static Thread getThread(ChangeEvent event) {

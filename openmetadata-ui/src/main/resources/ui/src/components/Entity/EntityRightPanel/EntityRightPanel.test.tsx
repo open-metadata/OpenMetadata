@@ -27,14 +27,6 @@ jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <div>TagsContainerV2</div>);
 });
 
-jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
-  CustomPropertyTable: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
-    )),
-}));
-
 jest.mock('../../../utils/EntityRightPanelClassBase');
 
 jest.mock('react-router-dom', () => ({
@@ -209,9 +201,7 @@ describe('EntityRightPanel component test', () => {
       />
     );
 
-    expect(
-      screen.getByText('label.custom-property-plural')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('custom-properties-table')).toBeVisible();
     expect(
       screen.queryByText('message.no-access-placeholder')
     ).not.toBeInTheDocument();

@@ -43,11 +43,6 @@ import { SearchIndex } from '../enums/search.enum';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import {
-  EntityFieldThreadCount,
-  EntityFieldThreads,
-  EntityThreadField,
-} from '../interface/feed.interface';
-import {
   deletePostById,
   deleteThread,
   getFeedById,
@@ -139,26 +134,6 @@ export const getReplyText = (
   return `${count} ${
     plural ? plural : i18next.t('label.older-reply-plural-lowercase')
   }`;
-};
-
-export const getEntityFieldThreadCounts = (
-  field: EntityThreadField,
-  entityFieldThreadCount: EntityFieldThreadCount[]
-) => {
-  const entityFieldThreads: EntityFieldThreads[] = [];
-
-  entityFieldThreadCount.map((fieldCount) => {
-    const entityField = getEntityField(fieldCount.entityLink);
-    if (entityField?.startsWith(field)) {
-      entityFieldThreads.push({
-        entityLink: fieldCount.entityLink,
-        count: fieldCount.count,
-        entityField,
-      });
-    }
-  });
-
-  return entityFieldThreads;
 };
 
 export const getThreadField = (
@@ -603,7 +578,6 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
       EntityType.STORAGE_SERVICE,
       EntityType.SEARCH_SERVICE,
       EntityType.TYPE,
-      EntityType.MLMODEL,
     ].includes(entityType as EntityType)
   ) {
     displayName = getPartialNameFromFQN(entityFQN, ['service']);

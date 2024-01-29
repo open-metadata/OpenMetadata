@@ -27,11 +27,11 @@ import deltaLakeConnection from '../jsons/connectionSchemas/connections/database
 import domoDatabaseConnection from '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json';
 import dorisConnection from '../jsons/connectionSchemas/connections/database/dorisConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
-import duckdbConnection from '../jsons/connectionSchemas/connections/database/duckdbConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
+import icebergConnection from '../jsons/connectionSchemas/connections/database/icebergConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
 import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
@@ -232,13 +232,13 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
-    case DatabaseServiceType.DuckDB: {
-      schema = duckdbConnection;
+    case DatabaseServiceType.SAS: {
+      schema = sasConnection;
 
       break;
     }
-    case DatabaseServiceType.SAS: {
-      schema = sasConnection;
+    case DatabaseServiceType.Iceberg: {
+      schema = icebergConnection;
 
       break;
     }

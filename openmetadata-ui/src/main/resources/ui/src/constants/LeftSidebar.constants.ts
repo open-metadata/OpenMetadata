@@ -29,6 +29,10 @@ import { SidebarItem } from '../enums/sidebar.enum';
 import { getDataInsightPathWithFqn } from '../utils/DataInsightUtils';
 import { ROUTES } from './constants';
 
+export const SIDEBAR_NESTED_KEYS = {
+  [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
+};
+
 export const SIDEBAR_LIST = [
   {
     key: ROUTES.EXPLORE,
@@ -59,8 +63,9 @@ export const SIDEBAR_LIST = [
         isBeta: true,
       },
       {
-        key: ROUTES.OBSERVABILITY,
+        key: ROUTES.OBSERVABILITY_ALERTS,
         label: i18next.t('label.alert-plural'),
+        redirect_url: ROUTES.OBSERVABILITY_ALERTS,
         icon: AlertIcon,
         dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
       },
@@ -113,7 +118,7 @@ export const SETTING_ITEM = {
 };
 
 export const LOGOUT_ITEM = {
-  key: 'logout',
+  key: SidebarItem.LOGOUT,
   label: i18next.t('label.logout'),
   icon: LogoutIcon,
   dataTestId: `app-bar-item-${SidebarItem.LOGOUT}`,

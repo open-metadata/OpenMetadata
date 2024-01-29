@@ -59,8 +59,8 @@ import {
   getTagsDetailsPath,
   getTopicDetailsPath,
   NO_DATA,
+  ROUTES,
 } from '../constants/constants';
-import { EntityField } from '../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
@@ -94,24 +94,24 @@ import {
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { TestCase } from '../generated/tests/testCase';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { Votes } from '../generated/type/votes';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
 import {
   getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
-import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
 import {
   getDataProductsDetailsPath,
   getDomainPath,
   getGlossaryPath,
+  getIncidentManagerDetailPagePath,
   getSettingPath,
 } from './RouterUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
@@ -1056,6 +1056,14 @@ export const getEntityFeedLink = (
   }>`;
 };
 
+/*
+  params: userName - fullyQualifiedName
+  return : <#E::user::userName>
+*/
+export const getEntityUserLink = (userName: string): string => {
+  return `<#E${ENTITY_LINK_SEPARATOR}user${ENTITY_LINK_SEPARATOR}${userName}>`;
+};
+
 export const isSupportedTest = (dataType: string) => {
   return dataType === 'ARRAY' || dataType === 'STRUCT';
 };
@@ -1371,6 +1379,8 @@ export const getEntityLinkFromType = (
         fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
       );
+    case EntityType.TEST_CASE:
+      return getIncidentManagerDetailPagePath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1490,6 +1500,21 @@ export const getBreadcrumbForContainer = (data: {
       : []),
   ];
 };
+
+export const getBreadcrumbForTestCase = (entity: TestCase) => [
+  {
+    name: i18next.t('label.incident-manager'),
+    url: ROUTES.INCIDENT_MANAGER,
+  },
+
+  {
+    name: entity.name,
+    url: getEntityLinkFromType(
+      entity.fullyQualifiedName ?? '',
+      (entity as SourceType)?.entityType as EntityType
+    ),
+  },
+];
 
 export const getEntityBreadcrumbs = (
   entity:
@@ -1705,6 +1730,10 @@ export const getEntityBreadcrumbs = (
       ];
     }
 
+    case EntityType.TEST_CASE: {
+      return getBreadcrumbForTestCase(entity as TestCase);
+    }
+
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
     case EntityType.PIPELINE:
@@ -1731,17 +1760,6 @@ export const getBreadcrumbsFromFqn = (fqn: string, includeCurrent = false) => {
       url: '',
     })),
   ];
-};
-
-export const getEntityThreadLink = (
-  entityFieldThreadCount: EntityFieldThreadCount[]
-) => {
-  const thread = getEntityFieldThreadCounts(
-    EntityField.TAGS,
-    entityFieldThreadCount
-  );
-
-  return thread[0]?.entityLink;
 };
 
 /**

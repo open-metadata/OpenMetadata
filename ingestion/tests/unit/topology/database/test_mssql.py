@@ -321,7 +321,8 @@ class MssqlUnitTest(TestCase):
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
-            either.right for either in self.mssql.yield_database(MOCK_DATABASE.name)
+            either.right
+            for either in self.mssql.yield_database(MOCK_DATABASE.name.__root__)
         ]
 
         self.mssql.context.__dict__[

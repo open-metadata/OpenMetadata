@@ -60,6 +60,10 @@ class TestSuiteSource(Source):
 
         self.test_connection()
 
+    @property
+    def name(self) -> str:
+        return "OpenMetadata"
+
     def _get_table_entity(self) -> Optional[Table]:
         """given an entity fqn return the table entity
 
