@@ -122,7 +122,7 @@
     "react-toastify": "^8.2.0",
     "reactflow": "^11.10.2",
     "reactjs-localstorage": "^1.0.1",
-    "recharts": "2.5.0",
+    "recharts": "2.10.3",
     "showdown": "^2.1.0",
     "socket.io-client": "^4.5.1",
     "styled-components": "^6.1.8",
