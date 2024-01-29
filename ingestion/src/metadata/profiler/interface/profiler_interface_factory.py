@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    Db2Connection,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
@@ -49,6 +52,9 @@ from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
 )
 from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
     DatabricksProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.db2.profiler_interface import (
+    DB2ProfilerInterface,
 )
 from metadata.profiler.interface.sqlalchemy.mariadb.profiler_interface import (
     MariaDBProfilerInterface,
@@ -111,6 +117,7 @@ profilers = {
     TrinoConnection.__name__: TrinoProfilerInterface,
     UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
     DatabricksConnection.__name__: DatabricksProfilerInterface,
+    Db2Connection.__name__: DB2ProfilerInterface,
 }
 
 profiler_interface_factory.register_many(profilers)
