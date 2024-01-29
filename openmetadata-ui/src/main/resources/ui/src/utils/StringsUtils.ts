@@ -230,7 +230,6 @@ export const escapeESReservedCharacters = (text?: string) => {
  * if the JSON string is invalid, return the original JSON string
  * @param jsonString - JSON string to format
  * @returns Formatted JSON string
- * @example formatJsonString('{"a":1,"b":2}') => '{\n  "a": 1,\n  "b": 2\n}'
  */
 export const formatJsonString = (jsonString: string) => {
   try {
