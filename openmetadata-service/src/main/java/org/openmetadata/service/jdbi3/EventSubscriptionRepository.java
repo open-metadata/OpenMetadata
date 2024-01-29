@@ -73,21 +73,23 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   public void prepare(EventSubscription entity, boolean update) {
     // Sort Filters and Actions
-    if(entity.getInput() != null){
-      listOrEmpty(entity.getInput().getFilters()).sort(Comparator.comparing(ArgumentsInput::getName));
-      listOrEmpty(entity.getInput().getActions()).sort(Comparator.comparing(ArgumentsInput::getName));
+    if (entity.getInput() != null) {
+      listOrEmpty(entity.getInput().getFilters())
+          .sort(Comparator.comparing(ArgumentsInput::getName));
+      listOrEmpty(entity.getInput().getActions())
+          .sort(Comparator.comparing(ArgumentsInput::getName));
 
       // Sort Input Args
       listOrEmpty(entity.getInput().getFilters())
-              .forEach(
-                      filter ->
-                              listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
+          .forEach(
+              filter ->
+                  listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
       listOrEmpty(entity.getInput().getActions())
-              .forEach(
-                      filter ->
-                              listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
+          .forEach(
+              filter ->
+                  listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
     }
-    
+
     if (!nullOrEmpty(entity.getFilteringRules())) {
       entity.setFilteringRules(
           validateAndBuildFilteringConditions(
