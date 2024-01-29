@@ -101,10 +101,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
             "sampleDataFolder"
         )
-        self.includeGlossary = self.service_connection.connectionOptions.__root__.get(
+        self.include_glossary = self.service_connection.connectionOptions.__root__.get(
             "includeGlossary"
         )
-        self.includeLineageStressTesting = (
+        self.include_lineage_stress_testing = (
             self.service_connection.connectionOptions.__root__.get(
                 "includeLineageStressTesting"
             )
@@ -239,15 +239,17 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
             )
         )
 
-    def generate_sample_data(self):  # pylint: disable=too-many-locals
+    def generate_sample_data(
+        self,
+    ):  # pylint: disable=too-many-locals,too-many-statements
         """
         Generate sample data for dashboard and database service,
         with lineage between them, having long names, special characters and description
         """
-        if self.includeGlossary:
+        if self.include_glossary:
             yield from self.create_glossary()
             yield from self.create_glossary_term()
-        if self.includeLineageStressTesting:
+        if self.include_lineage_stress_testing:
             db = self.create_database_request(
                 "extended_sample_data", self.generate_text()
             )
@@ -436,6 +438,9 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         yield Either(right=self.main_glossary)
 
     def create_glossary_term(self):
+        """
+        Create Glossary Terms
+        """
         for _ in range(20):
             random_name = self.fake.first_name()
             yield Either(
