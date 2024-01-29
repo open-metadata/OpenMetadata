@@ -139,6 +139,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         // Schedule
         if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+          app.setOpenMetadataServerConnection(
+              new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+                  .build());
           ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
@@ -571,10 +574,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    App updatedApp = (App) response.getEntity();
+    updatedApp.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+            .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(
-          (App) response.getEntity(), Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
+    // We don't want to store this information
+    updatedApp.setOpenMetadataServerConnection(null);
     return response;
   }
 
@@ -604,9 +612,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+            .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
+    // We don't want to store this information
+    app.setOpenMetadataServerConnection(null);
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
@@ -684,9 +697,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
+      app.setOpenMetadataServerConnection(
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+              .build());
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
         ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
       }
+      // We don't want to store this information
+      app.setOpenMetadataServerConnection(null);
     }
     return response;
   }
@@ -717,6 +735,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+            .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
