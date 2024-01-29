@@ -242,7 +242,7 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         if self.includeGlossary:
             yield from self.create_glossary()
             yield from self.create_glossary_term()
-            
+
         db = self.create_database_request("extended_sample_data", self.generate_text())
         yield Either(right=db)
 
@@ -416,9 +416,6 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                         )
                     )
 
-
-        
-
     def create_glossary(self):
         self.main_glossary = CreateGlossaryRequest(
             name="NestedGlossaryTest",
@@ -436,14 +433,18 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                     name=random_name,
                     displayName=random_name,
                     description="Test glossary term 1",
-                    parent=self.glossary_term_list[-1] if len(self.glossary_term_list) > 3 else None
+                    parent=self.glossary_term_list[-1]
+                    if len(self.glossary_term_list) > 3
+                    else None,
                 )
             )
             if len(self.glossary_term_list) > 3 and self.glossary_term_list[-1]:
-                self.glossary_term_list.append(f"{self.glossary_term_list[-1]}.{random_name}")
-            else:    
+                self.glossary_term_list.append(
+                    f"{self.glossary_term_list[-1]}.{random_name}"
+                )
+            else:
                 self.glossary_term_list.append(f"NestedGlossary.{random_name}")
-                
+
         for _ in range(500):
             random_name = self.fake.first_name()
             yield Either(
@@ -451,7 +452,7 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                     glossary="NestedGlossary",
                     name=random_name,
                     displayName=random_name,
-                    description="Test glossary term 1"
+                    description="Test glossary term 1",
                 )
             )
 
