@@ -158,11 +158,11 @@ const ObservabilityAlertsPage = () => {
         key: 'fullyQualifiedName',
         render: (fqn: string, record: EventSubscription) => {
           return (
-            <div className="d-flex items-center">
+            <div className="d-flex flex-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
                 <Link to={getObservabilityAlertsEditPath(fqn)}>
                   <Button
-                    className="d-inline-flex items-center justify-center"
+                    className="flex flex-center"
                     data-testid={`alert-edit-${record.name}`}
                     icon={<EditIcon width={16} />}
                     type="text"
@@ -171,6 +171,7 @@ const ObservabilityAlertsPage = () => {
               </Tooltip>
               <Tooltip placement="bottom" title={t('label.delete')}>
                 <Button
+                  className="flex flex-center"
                   data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
                   icon={<DeleteIcon height={16} width={16} />}

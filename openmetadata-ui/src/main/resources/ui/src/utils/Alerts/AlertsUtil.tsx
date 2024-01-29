@@ -13,8 +13,9 @@
 
 import { Col, Input, Select, Switch, Typography } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
+import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
-import { isEqual, map, startCase } from 'lodash';
+import { isEqual, isUndefined, map, startCase } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -26,11 +27,14 @@ import {
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   EventFilterRule,
+  EventSubscription,
   InputType,
   SubscriptionCategory,
   SubscriptionType,
@@ -40,6 +44,7 @@ import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../EntityUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
+import { showErrorToast, showSuccessToast } from '../ToastUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -696,4 +701,90 @@ export const getConditionalField = (
       })}
     </>
   );
+};
+
+export const handleAlertSave = async ({
+  data,
+  fqn,
+  createAlertAPI,
+  updateAlertAPI,
+  afterSaveAction,
+}: {
+  data: CreateEventSubscription;
+  createAlertAPI: (
+    alert: CreateEventSubscription
+  ) => Promise<EventSubscription>;
+  updateAlertAPI: (
+    alert: CreateEventSubscription
+  ) => Promise<EventSubscription>;
+  afterSaveAction: () => void;
+  fqn?: string;
+}) => {
+  try {
+    const destinations = data.destinations?.map((d) => ({
+      type: d.type,
+      config: d.config,
+      category: d.category,
+    }));
+
+    if (fqn && !isUndefined(alert)) {
+      const {
+        alertType,
+        description,
+        displayName,
+        enabled,
+        input,
+        name,
+        owner,
+        provider,
+        resources,
+        trigger,
+      } = data;
+
+      const newData = {
+        alertType,
+        description,
+        destinations,
+        displayName,
+        enabled,
+        input,
+        name,
+        owner,
+        provider,
+        resources,
+        trigger,
+      };
+
+      await updateAlertAPI(newData);
+    } else {
+      await createAlertAPI({
+        ...data,
+        destinations,
+      });
+    }
+
+    showSuccessToast(
+      t(`server.${'create'}-entity-success`, {
+        entity: t('label.alert-plural'),
+      })
+    );
+    afterSaveAction();
+  } catch (error) {
+    if ((error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT) {
+      showErrorToast(
+        t('server.entity-already-exist', {
+          entity: t('label.alert'),
+          entityPlural: t('label.alert-lowercase-plural'),
+          name: data.name,
+        })
+      );
+    } else {
+      showErrorToast(
+        error as AxiosError,
+        t(`server.${'entity-creation-error'}`, {
+          entity: t('label.alert-lowercase'),
+        })
+      );
+    }
+  }
 };
