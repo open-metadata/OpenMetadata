@@ -141,6 +141,7 @@ const NotificationListPage = () => {
           return (
             record.fullyQualifiedName && (
               <Link
+                data-testid="alert-name"
                 to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
                 {name}
               </Link>

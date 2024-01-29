@@ -401,26 +401,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
 
       if (storedResultSummary != null) {
+        // if the state already exists then we'll remove it before adding the new one
         resultSummaries.removeIf(
             summary -> summary.getTestCaseName().equals(resultSummary.getTestCaseName()));
       }
 
-      if (!isDeleted) {
-        resultSummaries.add(resultSummary);
-      } else {
-        // Add the latest state when removing a state
-        String json =
-            daoCollection
-                .dataQualityDataTimeSeriesDao()
-                .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION);
-        TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-        ResultSummary newResultSummary =
-            getResultSummary(
-                testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
-        resultSummaries.add(newResultSummary);
-      }
+      updateResultSummaries(testCase, isDeleted, resultSummaries, resultSummary);
 
-      // Update test case result summary for the test suite
+      // Update test case result summary attribute for the test suite
       testSuite.setTestCaseResultSummary(resultSummaries);
       daoCollection
           .testSuiteDAO()
@@ -428,6 +416,30 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               testSuite.getId(),
               testSuite.getFullyQualifiedName(),
               JsonUtils.pojoToJson(testSuite));
+    }
+  }
+
+  private void updateResultSummaries(
+      TestCase testCase,
+      boolean isDeleted,
+      List<ResultSummary> resultSummaries,
+      ResultSummary resultSummary) {
+    if (!isDeleted) {
+      resultSummaries.add(resultSummary);
+      return;
+    }
+    // If the result was deleted, we need to update the summary
+    // with the latest one from the database (if one exists)
+    String json =
+        daoCollection
+            .dataQualityDataTimeSeriesDao()
+            .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION);
+    if (json != null) {
+      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      ResultSummary newResultSummary =
+          getResultSummary(
+              testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus());
+      resultSummaries.add(newResultSummary);
     }
   }
 
