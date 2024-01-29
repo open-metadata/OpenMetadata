@@ -242,7 +242,7 @@ const IncidentManagerPageHeader = ({
   }, [testCaseStatusData, isLoading, activeTask]);
 
   return (
-    <Space align="center">
+    <Space wrap align="center">
       <OwnerLabel
         hasPermission={hasEditPermission}
         owner={testCaseData?.owner}

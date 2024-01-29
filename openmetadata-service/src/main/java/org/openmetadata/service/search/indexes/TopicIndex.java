@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
@@ -76,12 +76,16 @@ public class TopicIndex implements SearchIndex {
     doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
     doc.put("lineage", SearchIndex.getLineageData(topic.getEntityReference()));
+    doc.put(
+        "totalVotes",
+        CommonUtil.nullOrEmpty(topic.getVotes())
+            ? 0
+            : topic.getVotes().getUpVotes() - topic.getVotes().getDownVotes());
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
     doc.put(
         "fqnParts",
         getFQNParts(
-            topic.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(topic.getOwner()));
     doc.put("service", getEntityWithDisplayName(topic.getService()));
     doc.put("domain", getEntityWithDisplayName(topic.getDomain()));
