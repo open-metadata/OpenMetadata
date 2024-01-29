@@ -113,7 +113,7 @@ describe('Observability Alert Flow', () => {
 
   beforeEach(() => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
-    interceptURL('PATCH', '/api/v1/events/subscriptions/*', 'updateAlert');
+    interceptURL('PUT', '/api/v1/events/subscriptions', 'updateAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     interceptURL('GET', '/api/v1/events/subscriptions/name/*', 'alertDetails');
     interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
