@@ -226,6 +226,35 @@ export const addInternalDestination = (
   );
 };
 
+export const addExternalDestination = (destinationNumber, category, input) => {
+  // Select destination category
+  cy.get(`[data-testid="destination-category-select-${destinationNumber}"]`)
+    .scrollIntoView()
+    .click();
+
+  // Select external tab
+  cy.get(`[data-testid="tab-label-external"]`).filter(':visible').click();
+
+  // Select destination category option
+  cy.get(
+    `[data-testid="destination-category-dropdown-${destinationNumber}"] [data-testid="${category}-external-option"]`
+  )
+    .filter(':visible')
+    .click();
+
+  // Input the destination receivers value
+  if (category === 'Email') {
+    cy.get(`[data-testid="email-input-${destinationNumber}"]`)
+      .click()
+      .type(input)
+      .type('{enter}');
+  } else {
+    cy.get(`[data-testid="endpoint-input-${destinationNumber}"]`)
+      .click()
+      .type(input);
+  }
+};
+
 const checkActionOrFilterDetails = (filters) => {
   if (!isEmpty(filters)) {
     filters.forEach((filter) => {
@@ -339,7 +368,7 @@ export const addPipelineStatusUpdatesAction = (
   statusName,
   exclude = false
 ) => {
-  // Select domain filter
+  // Select pipeline status action
   cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
@@ -347,7 +376,7 @@ export const addPipelineStatusUpdatesAction = (
     .filter(':visible')
     .click();
 
-  // Search and select domain
+  // Search and select pipeline status input
   cy.get('[data-testid="pipeline-status-select"]').click().type(statusName);
   cy.get(`[title="${statusName}"]`).filter(':visible').scrollIntoView().click();
   cy.get('[data-testid="pipeline-status-select"]').should(
@@ -357,8 +386,8 @@ export const addPipelineStatusUpdatesAction = (
   cy.clickOutside();
 
   if (exclude) {
-    // Change filter effect
-    cy.get(`[data-testid="filter-switch-${filterNumber}"]`)
+    // Change action effect
+    cy.get(`[data-testid="action-switch-${filterNumber}"]`)
       .scrollIntoView()
       .click();
   }
