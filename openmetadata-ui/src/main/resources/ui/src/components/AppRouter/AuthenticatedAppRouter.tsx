@@ -1346,6 +1346,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
       />
       {routeElements}
+      <Route exact path={ROUTES.SIGNIN}>
+        <Redirect to={ROUTES.MY_DATA} />
+      </Route>
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
