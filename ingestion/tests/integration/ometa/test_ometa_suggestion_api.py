@@ -169,7 +169,7 @@ class OMetaSuggestionTest(TestCase):
             },
         )
 
-        self.assertTrue(len(list(suggestions)))
+        self.assertEqual(len(list(suggestions)), 1)
 
     def test_update_suggestion(self):
         """Update an existing suggestion"""
