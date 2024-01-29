@@ -1,0 +1,75 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/iceberg/restCatalogConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RestCatalogConnection",
+  "description": "Iceberg REST Catalog configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.iceberg.RestCatalogConnection",
+  "properties": {
+    "uri": {
+      "title": "URI",
+      "description": "Uri to the REST catalog. Example: 'http://rest-catalog/ws/'",
+      "type": "string",
+      "format": "uri"
+    },
+    "credential": {
+      "title": "OAuth2 Credential",
+      "description": "OAuth2 credential to use when initializing the catalog.",
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "title": "Client ID",
+          "description": "OAuth2 Client ID.",
+          "type": "string",
+          "format": "password"
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "OAuth2 Client Secret",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "clientId",
+        "clientSecret"
+      ]
+    },
+    "token": {
+      "title": "Token",
+      "description": "Berarer token to use for the 'Authorization' header.",
+      "type": "string",
+      "format": "password"
+    },
+    "ssl": {
+      "title": "SSL",
+      "description": "SSL Configuration details.",
+      "$ref": "../../common/sslCertPaths.json"
+    },
+    "sigv4": {
+      "title": "Sigv4",
+      "description": "Sign requests to the REST Server using AWS SigV4 protocol.",
+      "type": "object",
+      "properties": {
+        "signingRegion": {
+          "title": "Signing AWS Region",
+          "description": "AWS Region to use when SigV4 signs a request.",
+          "type": "string"
+        },
+        "signingName": {
+          "title": "Signing Name",
+          "description": "The service signing name to use when SigV4 signs a request.",
+          "type": "string"
+        }
+      }
+    },
+    "fileSystem": {
+      "$ref": "./icebergFileSystem.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "uri"
+  ]
+}

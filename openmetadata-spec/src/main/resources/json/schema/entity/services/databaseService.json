@@ -53,7 +53,8 @@
         "Doris",
         "UnityCatalog",
         "DuckDb",
-        "SAS"
+        "SAS",
+        "Iceberg"
       ],
       "javaEnums": [
         {
@@ -172,6 +173,9 @@
         },
         {
           "name": "SAS"
+        },
+        {
+          "name": "Iceberg"
         }
       ]
     },
@@ -295,6 +299,9 @@
             },
             {
               "$ref": "./connections/database/sasConnection.json"
+            },
+            {
+              "$ref": "./connections/database/icebergConnection.json"
             }
           ]
         }

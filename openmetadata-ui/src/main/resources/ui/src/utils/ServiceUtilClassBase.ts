@@ -43,6 +43,7 @@ import {
   GREENPLUM,
   HIVE,
   IBMDB2,
+  ICEBERGE,
   IMPALA,
   KAFKA,
   KINESIS,
@@ -254,6 +255,9 @@ class ServiceUtilClassBase {
 
       case DatabaseServiceType.Greenplum:
         return GREENPLUM;
+
+      case DatabaseServiceType.Iceberg:
+        return ICEBERGE;
 
       case MessagingServiceType.Kafka:
         return KAFKA;

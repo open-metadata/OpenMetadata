@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/iceberg/icebergFileSystem.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IcebergFileSystem",
+  "description": "Iceberg File System configuration, based on where the Iceberg Warehouse is located.",
+  "javaType": "org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem",
+  "type": "object",
+  "properties": {
+    "type": {
+      "oneOf": [
+        {
+          "title": "Local",
+          "description": "Local File System.",
+          "type": "null"
+        },
+        {
+          "title": "AWS",
+          "$ref": "../../../../../security/credentials/awsCredentials.json"
+        },
+        {
+          "title": "Azure",
+          "$ref": "../../../../../security/credentials/azureCredentials.json"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

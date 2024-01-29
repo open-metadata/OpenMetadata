@@ -40,6 +40,7 @@ import glue from '../assets/img/service-icon-glue.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
+import iceberge from '../assets/img/service-icon-iceberg.png';
 import impala from '../assets/img/service-icon-impala.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import kinesis from '../assets/img/service-icon-kinesis.png';
@@ -197,6 +198,7 @@ export const OPEN_SEARCH = openSearch;
 export const DUCKDB = duckdb;
 export const PLUS = plus;
 export const NOSERVICE = noService;
+export const ICEBERGE = iceberge;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -387,6 +389,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Couchbase,
   SearchServiceType.ElasticSearch,
   DatabaseServiceType.Greenplum,
+  DatabaseServiceType.Iceberg,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

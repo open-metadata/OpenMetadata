@@ -46,6 +46,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 - [Glue](/connectors/database/glue)
 - [Greenplum](/connectors/database/greenplum)
 - [Hive](/connectors/database/hive)
+- [Iceberg](/connectors/database/iceberg)
 - [Impala](/connectors/database/impala)
 - [MariaDB](/connectors/database/mariadb)
 - [MongoDB](/connectors/database/mongodb)

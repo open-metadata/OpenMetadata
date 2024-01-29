@@ -224,7 +224,7 @@ site_menu:
     url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
-    
+
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
   - category: How-to Guides / Guide for Data Users / Understanding the Basics of OpenMetadata
@@ -315,7 +315,7 @@ site_menu:
   - category: How-to Guides / Data Insights / Cost Analysis
     url: /how-to-guides/data-insights/cost-analysis
   - category: How-to Guides / Data Insights / Configure the Data Insights Report
-    url: /how-to-guides/data-insights/email-report 
+    url: /how-to-guides/data-insights/email-report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
 
@@ -332,9 +332,9 @@ site_menu:
   - category: How-to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
     url: /how-to-guides/data-governance/glossary/import
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
-    url: /how-to-guides/data-governance/glossary/approval  
+    url: /how-to-guides/data-governance/glossary/approval
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
-    url: /how-to-guides/data-governance/glossary/styling 
+    url: /how-to-guides/data-governance/glossary/styling
   - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
     url: /how-to-guides/data-governance/glossary/assets
   - category: How-to Guides / Data Governance / Glossary / Best Practices for Glossary
@@ -397,7 +397,7 @@ site_menu:
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
-    url: /connectors/database/couchbase/yaml 
+    url: /connectors/database/couchbase/yaml
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Run Externally
@@ -446,6 +446,10 @@ site_menu:
     url: /connectors/database/hive/yaml
   - category: Connectors / Database / Hive / Troubleshooting
     url: /connectors/database/hive/troubleshooting
+  - category: Connectors / Database / Iceberg
+    url: /connectors/database/iceberg
+  - category: Connectors / Database / Iceberg / Run Externally
+    url: /connectors/database/iceberg/yaml
   - category: Connectors / Database / Impala
     url: /connectors/database/impala
   - category: Connectors / Database / Impala / Run Externally
@@ -459,7 +463,7 @@ site_menu:
   - category: Connectors / Database / MongoDB
     url: /connectors/database/mongodb
   - category: Connectors / Database / MongoDB / Run Externally
-    url: /connectors/database/mongodb/yaml 
+    url: /connectors/database/mongodb/yaml
   - category: Connectors / Database / MSSQL
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
