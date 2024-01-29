@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -365,7 +364,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private Map<String, Double> getTierData(List<TotalEntitiesByTier> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
-    Map<String, Double> data = new HashMap<>();
+    Map<String, Double> data = new TreeMap<>();
     for (TotalEntitiesByTier obj : entitiesByTypeList) {
       data.put(obj.getEntityTier(), obj.getEntityCountFraction() * 100);
     }
