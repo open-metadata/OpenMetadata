@@ -104,6 +104,11 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         self.includeGlossary = self.service_connection.connectionOptions.__root__.get(
             "includeGlossary"
         )
+        self.includeLineageStressTesting = (
+            self.service_connection.connectionOptions.__root__.get(
+                "includeLineageStressTesting"
+            )
+        )
         extneded_sample_data_folder = (
             self.service_connection.connectionOptions.__root__.get(
                 "extendedSampleDataFolder"
@@ -242,38 +247,61 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         if self.includeGlossary:
             yield from self.create_glossary()
             yield from self.create_glossary_term()
-
-        db = self.create_database_request("extended_sample_data", self.generate_text())
-        yield Either(right=db)
-
-        schema = self.create_database_schema_request(
-            "extended_sample_database_schema", self.generate_text(), db
-        )
-        yield Either(right=schema)
-        for table in self.extended_tables["tables"]:
-            text = self.generate_text()
-            table_request = self.create_table_request(
-                table["name"], text, schema, table
+        if self.includeLineageStressTesting:
+            db = self.create_database_request(
+                "extended_sample_data", self.generate_text()
             )
-            yield Either(right=table_request)
-            downstream_node_fqn_table = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.database_service.name.__root__,
-                database_name=db.name.__root__,
-                schema_name=schema.name.__root__,
-                table_name=table_request.name.__root__,
-            )
-            to_table = self.metadata.get_by_name(
-                entity=Table, fqn=downstream_node_fqn_table
-            )
-            main_table = to_table
-            self.store_table_fqn.add(downstream_node_fqn_table)
+            yield Either(right=db)
 
+            schema = self.create_database_schema_request(
+                "extended_sample_database_schema", self.generate_text(), db
+            )
+            yield Either(right=schema)
+            for table in self.extended_tables["tables"]:
+                text = self.generate_text()
+                table_request = self.create_table_request(
+                    table["name"], text, schema, table
+                )
+                yield Either(right=table_request)
+                downstream_node_fqn_table = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.database_service.name.__root__,
+                    database_name=db.name.__root__,
+                    schema_name=schema.name.__root__,
+                    table_name=table_request.name.__root__,
+                )
+                to_table = self.metadata.get_by_name(
+                    entity=Table, fqn=downstream_node_fqn_table
+                )
+                main_table = to_table
+                self.store_table_fqn.add(downstream_node_fqn_table)
+
+                for _ in range(40):
+                    # 40 Dynamic Lineage Depths
+                    name = self.generate_name()
+                    table_request = self.create_table_request(name, text, schema, table)
+                    yield Either(right=table_request)
+                    upstream_node_fqn_table = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.database_service.name.__root__,
+                        database_name=db.name.__root__,
+                        schema_name=schema.name.__root__,
+                        table_name=table_request.name.__root__,
+                    )
+                    from_table = self.metadata.get_by_name(
+                        entity=Table, fqn=upstream_node_fqn_table
+                    )
+                    yield from self.create_depth_nodes(
+                        from_table=from_table, to_table=to_table
+                    )
+                    to_table = from_table
             for _ in range(40):
-                # 40 Dynamic Lineage Depths
                 name = self.generate_name()
-                table_request = self.create_table_request(name, text, schema, table)
+                table_request = self.create_table_request(
+                    name, text, schema, self.extended_tables["tables"][-1]
+                )
                 yield Either(right=table_request)
                 upstream_node_fqn_table = fqn.build(
                     self.metadata,
@@ -287,127 +315,75 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                     entity=Table, fqn=upstream_node_fqn_table
                 )
                 yield from self.create_depth_nodes(
+                    from_table=from_table, to_table=main_table
+                )
+
+            for table in self.tables["tables"]:
+                text = self.generate_text()
+                table_request = self.create_table_request(
+                    table["name"], text, schema, table
+                )
+                yield Either(right=table_request)
+                table_entity_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.database_service.name.__root__,
+                    database_name=db.name.__root__,
+                    schema_name=schema.name.__root__,
+                    table_name=table_request.name.__root__,
+                )
+                from_table = self.metadata.get_by_name(
+                    entity=Table, fqn=table_entity_fqn
+                )
+
+                yield from self.create_depth_nodes(
                     from_table=from_table, to_table=to_table
                 )
-                to_table = from_table
-        for _ in range(40):
-            name = self.generate_name()
-            table_request = self.create_table_request(
-                name, text, schema, self.extended_tables["tables"][-1]
-            )
-            yield Either(right=table_request)
-            upstream_node_fqn_table = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.database_service.name.__root__,
-                database_name=db.name.__root__,
-                schema_name=schema.name.__root__,
-                table_name=table_request.name.__root__,
-            )
-            from_table = self.metadata.get_by_name(
-                entity=Table, fqn=upstream_node_fqn_table
-            )
-            yield from self.create_depth_nodes(
-                from_table=from_table, to_table=main_table
-            )
 
-        for table in self.tables["tables"]:
-            text = self.generate_text()
-            table_request = self.create_table_request(
-                table["name"], text, schema, table
-            )
-            yield Either(right=table_request)
-            table_entity_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.database_service.name.__root__,
-                database_name=db.name.__root__,
-                schema_name=schema.name.__root__,
-                table_name=table_request.name.__root__,
-            )
-            from_table = self.metadata.get_by_name(entity=Table, fqn=table_entity_fqn)
-
-            yield from self.create_depth_nodes(from_table=from_table, to_table=to_table)
-
-        self.dashboard_service_json["name"] = name
-        self.dashboard_service_json["description"] = text
-        for chart in self.charts["charts"]:
-            yield Either(
-                right=CreateChartRequest(
-                    name=chart["name"],
-                    displayName=chart["displayName"],
-                    description=chart["description"],
-                    chartType=get_standard_chart_type(chart["chartType"]),
-                    sourceUrl=chart["sourceUrl"],
-                    service=self.dashboard_service.fullyQualifiedName,
-                )
-            )
-        for data_model in self.data_models["datamodels"]:
-            name = self.generate_name()
-            text = self.generate_text()
-            data_model_request = self.create_dashboard_data_model_request(
-                name, text, data_model
-            )
-            yield Either(right=data_model_request)
-            data_model_entity_fqn = fqn.build(
-                self.metadata,
-                entity_type=DashboardDataModel,
-                service_name=self.dashboard_service.name.__root__,
-                data_model_name=data_model_request.name.__root__,
-            )
-            self.store_data_model_fqn.append(data_model_entity_fqn)
-
-        for table_fqn in self.store_table_fqn:
-            from_table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            for dashboard_datamodel_fqn in self.store_data_model_fqn:
-                to_datamodel = self.metadata.get_by_name(
-                    entity=DashboardDataModel, fqn=dashboard_datamodel_fqn
-                )
-
+            self.dashboard_service_json["name"] = name
+            self.dashboard_service_json["description"] = text
+            for chart in self.charts["charts"]:
                 yield Either(
-                    right=AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_table.id.__root__, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=to_datamodel.id.__root__,
-                                type="dashboardDataModel",
-                            ),
-                            lineageDetails=LineageDetails(
-                                source=LineageSource.DashboardLineage
-                            ),
-                        )
-                    )
-                )
-                for dashboard in self.dashboards["dashboards"]:
-                    dashboard_request = CreateDashboardRequest(
-                        name=dashboard["name"],
-                        displayName=dashboard["displayName"],
-                        description=dashboard["description"],
-                        sourceUrl=dashboard["sourceUrl"],
-                        charts=dashboard["charts"],
+                    right=CreateChartRequest(
+                        name=chart["name"],
+                        displayName=chart["displayName"],
+                        description=chart["description"],
+                        chartType=get_standard_chart_type(chart["chartType"]),
+                        sourceUrl=chart["sourceUrl"],
                         service=self.dashboard_service.fullyQualifiedName,
                     )
-                    yield Either(right=dashboard_request)
-                    dashboard_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Dashboard,
-                        service_name=self.dashboard_service.name.__root__,
-                        dashboard_name=dashboard_request.name.__root__,
+                )
+            for data_model in self.data_models["datamodels"]:
+                name = self.generate_name()
+                text = self.generate_text()
+                data_model_request = self.create_dashboard_data_model_request(
+                    name, text, data_model
+                )
+                yield Either(right=data_model_request)
+                data_model_entity_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.dashboard_service.name.__root__,
+                    data_model_name=data_model_request.name.__root__,
+                )
+                self.store_data_model_fqn.append(data_model_entity_fqn)
+
+            for table_fqn in self.store_table_fqn:
+                from_table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                for dashboard_datamodel_fqn in self.store_data_model_fqn:
+                    to_datamodel = self.metadata.get_by_name(
+                        entity=DashboardDataModel, fqn=dashboard_datamodel_fqn
                     )
-                    to_dashboard = self.metadata.get_by_name(
-                        entity=Dashboard, fqn=dashboard_fqn
-                    )
+
                     yield Either(
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=to_datamodel.id.__root__,
-                                    type="dashboardDataModel",
+                                    id=from_table.id.__root__, type="table"
                                 ),
                                 toEntity=EntityReference(
-                                    id=to_dashboard.id.__root__, type="dashboard"
+                                    id=to_datamodel.id.__root__,
+                                    type="dashboardDataModel",
                                 ),
                                 lineageDetails=LineageDetails(
                                     source=LineageSource.DashboardLineage
@@ -415,6 +391,41 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                             )
                         )
                     )
+                    for dashboard in self.dashboards["dashboards"]:
+                        dashboard_request = CreateDashboardRequest(
+                            name=dashboard["name"],
+                            displayName=dashboard["displayName"],
+                            description=dashboard["description"],
+                            sourceUrl=dashboard["sourceUrl"],
+                            charts=dashboard["charts"],
+                            service=self.dashboard_service.fullyQualifiedName,
+                        )
+                        yield Either(right=dashboard_request)
+                        dashboard_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Dashboard,
+                            service_name=self.dashboard_service.name.__root__,
+                            dashboard_name=dashboard_request.name.__root__,
+                        )
+                        to_dashboard = self.metadata.get_by_name(
+                            entity=Dashboard, fqn=dashboard_fqn
+                        )
+                        yield Either(
+                            right=AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=to_datamodel.id.__root__,
+                                        type="dashboardDataModel",
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=to_dashboard.id.__root__, type="dashboard"
+                                    ),
+                                    lineageDetails=LineageDetails(
+                                        source=LineageSource.DashboardLineage
+                                    ),
+                                )
+                            )
+                        )
 
     def create_glossary(self):
         self.main_glossary = CreateGlossaryRequest(
@@ -429,10 +440,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
             random_name = self.fake.first_name()
             yield Either(
                 right=CreateGlossaryTermRequest(
-                    glossary="NestedGlossary",
+                    glossary="NestedGlossaryTest",
                     name=random_name,
                     displayName=random_name,
-                    description="Test glossary term 1",
+                    description="Test glossary term ",
                     parent=self.glossary_term_list[-1]
                     if len(self.glossary_term_list) > 3
                     else None,
@@ -443,13 +454,13 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                     f"{self.glossary_term_list[-1]}.{random_name}"
                 )
             else:
-                self.glossary_term_list.append(f"NestedGlossary.{random_name}")
+                self.glossary_term_list.append(f"NestedGlossaryTest.{random_name}")
 
         for _ in range(500):
             random_name = self.fake.first_name()
             yield Either(
                 right=CreateGlossaryTermRequest(
-                    glossary="NestedGlossary",
+                    glossary="NestedGlossaryTest",
                     name=random_name,
                     displayName=random_name,
                     description="Test glossary term 1",
