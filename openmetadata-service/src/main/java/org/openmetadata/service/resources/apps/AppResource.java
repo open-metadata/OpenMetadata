@@ -140,7 +140,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         // Schedule
         if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
           app.setOpenMetadataServerConnection(
-              new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+              new OpenMetadataConnectionBuilder(
+                      openMetadataApplicationConfig, app.getBot().getName())
                   .build());
           ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
@@ -579,7 +580,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
             .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(
+          updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
     updatedApp.setOpenMetadataServerConnection(null);

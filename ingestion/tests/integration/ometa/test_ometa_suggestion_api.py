@@ -75,7 +75,7 @@ class OMetaSuggestionTest(TestCase):
 
         create_table = get_create_entity(
             entity=Table,
-            name=cls.schema_name,
+            name=cls.table_name,
             reference=cls.schema.fullyQualifiedName.__root__,
         )
         cls.table: Table = cls.metadata.create_or_update(create_table)
@@ -145,7 +145,6 @@ class OMetaSuggestionTest(TestCase):
 
         create_table = get_create_entity(
             entity=Table,
-            name=self.schema_name,
             reference=self.schema.fullyQualifiedName.__root__,
         )
         table: Table = self.metadata.create_or_update(create_table)
