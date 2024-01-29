@@ -14,7 +14,7 @@
 import { Select, SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Loader from '../Loader/Loader';
 
 /**
@@ -38,13 +38,16 @@ export const AsyncSelect = ({
     setOptionsInternal(options);
   }, [options]);
 
-  const fetchOptions = debounce((value: string) => {
-    setLoadingOptions(true);
-    api(value).then((res) => {
-      setOptionsInternal(res);
-      setLoadingOptions(false);
-    });
-  }, 300);
+  const fetchOptions = useCallback(
+    debounce((value: string) => {
+      setLoadingOptions(true);
+      api(value).then((res) => {
+        setOptionsInternal(res);
+        setLoadingOptions(false);
+      });
+    }, 400),
+    [api]
+  );
 
   return (
     <Select
