@@ -75,6 +75,7 @@ const ObservabilityAlertsPage = () => {
         handlePagingChange(paging);
       } catch (error) {
         showErrorToast(
+          error as AxiosError,
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
       } finally {
