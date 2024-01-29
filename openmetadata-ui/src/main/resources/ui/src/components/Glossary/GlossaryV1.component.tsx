@@ -406,8 +406,6 @@ const GlossaryV1 = ({
       {isEditModalOpen && (
         <GlossaryTermModal
           editMode={editMode}
-          glossaryName={selectedData.name}
-          glossaryReviewers={isGlossaryActive ? selectedData.reviewers : []}
           glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
           visible={isEditModalOpen}
           onCancel={() => setIsEditModalOpen(false)}

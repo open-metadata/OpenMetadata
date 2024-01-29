@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../../generated/entity/type';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../Loader/Loader';
@@ -24,9 +23,7 @@ import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.comp
 import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
 
 interface Props {
-  glossaryName: string;
   glossaryTermFQN: string | undefined;
-  glossaryReviewers?: EntityReference[];
   onSave: (value: GlossaryTermForm) => void;
   onCancel: () => void;
   visible: boolean;
@@ -35,10 +32,8 @@ interface Props {
 
 const GlossaryTermModal: FC<Props> = ({
   editMode,
-  glossaryName,
   visible,
   glossaryTermFQN,
-  glossaryReviewers = [],
   onSave,
   onCancel,
 }) => {
@@ -46,7 +41,7 @@ const GlossaryTermModal: FC<Props> = ({
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(true);
 
-  const [activeEntity, setActiveEntity] = useState<GlossaryTerm | undefined>();
+  const [glossaryTerm, setGlossaryTerm] = useState<GlossaryTerm>();
 
   const dialogTitle = useMemo(() => {
     return editMode
@@ -59,7 +54,7 @@ const GlossaryTermModal: FC<Props> = ({
       const data = await getGlossaryTermByFQN(glossaryTermFQN, {
         fields: 'tags,reviewers,relatedTerms,owner',
       });
-      setActiveEntity(data);
+      setGlossaryTerm(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -110,9 +105,7 @@ const GlossaryTermModal: FC<Props> = ({
           isLoading
           editMode={editMode}
           formRef={form}
-          glossaryName={glossaryName}
-          glossaryReviewers={glossaryReviewers}
-          glossaryTerm={activeEntity}
+          glossaryTerm={glossaryTerm}
           onCancel={onCancel}
           onSave={onSave}
         />
