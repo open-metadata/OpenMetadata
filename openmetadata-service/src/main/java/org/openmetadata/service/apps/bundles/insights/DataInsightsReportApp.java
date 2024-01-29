@@ -47,6 +47,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
+import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -99,7 +100,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private void sendReportsToTeams(
       SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws IOException {
+      throws SearchIndexException {
     PaginatedEntitiesSource teamReader =
         new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {

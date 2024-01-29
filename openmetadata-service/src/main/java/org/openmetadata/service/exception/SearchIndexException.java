@@ -13,18 +13,18 @@
 
 package org.openmetadata.service.exception;
 
-import java.io.IOException;
+import lombok.Getter;
+import org.openmetadata.schema.system.IndexingError;
 
-public class SourceException extends IOException {
-  public SourceException(String msg, Throwable throwable) {
-    super(msg, throwable);
-  }
+public class SearchIndexException extends Exception {
+  @Getter private IndexingError indexingError;
 
-  public SourceException(Throwable throwable) {
+  public SearchIndexException(Throwable throwable) {
     super(throwable);
   }
 
-  public SourceException(String msg) {
-    super(msg);
+  public SearchIndexException(IndexingError error) {
+    super(error.getMessage());
+    this.indexingError = error;
   }
 }
