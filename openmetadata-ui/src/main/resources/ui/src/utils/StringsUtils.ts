@@ -224,3 +224,26 @@ export const escapeESReservedCharacters = (text?: string) => {
     ? text.replace(reUnescapedHtml, getReplacedChar)
     : text ?? '';
 };
+
+/**
+ * @description Format JSON string to pretty print format with 2 spaces indentation.
+ * if the JSON string is invalid, return the original JSON string
+ * @param jsonString - JSON string to format
+ * @returns Formatted JSON string
+ */
+export const formatJsonString = (jsonString: string) => {
+  try {
+    let formattedJson = '';
+    const jsonObj = JSON.parse(jsonString);
+
+    // loop through the keys and values and format append the formatted string to formattedJson like [key]: [value]
+    for (const [key, value] of Object.entries(jsonObj)) {
+      formattedJson += `[${key}]: ${value}\n`;
+    }
+
+    return formattedJson;
+  } catch (error) {
+    // Return the original JSON string if parsing fails
+    return jsonString;
+  }
+};

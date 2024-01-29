@@ -111,6 +111,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -631,7 +632,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    List<String> errors = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
     List<T> entities = new ArrayList<>();
     int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
     int currentOffset = beforeOffset;
@@ -649,11 +650,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entities.add(withHref(uriInfo, entity));
         } catch (Exception e) {
           clearFieldsInternal(parsedEntity, fields);
-          String errorEntity = JsonUtils.pojoToJson(parsedEntity);
-          LOG.error("Failed in Set Fields for Entity with Json : {}", errorEntity);
-          errors.add(
-              String.format(
-                  "Error Message : %s , %n Entity Json : %s", e.getMessage(), errorEntity));
+          EntityError entityError =
+              new EntityError().withMessage(e.getMessage()).withEntity(parsedEntity);
+          errors.add(entityError);
+          LOG.error("[ListForIndexing] Failed for Entity : {}", entityError);
         }
       }
       currentOffset = currentOffset + limitParam;
@@ -1127,7 +1127,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final ResultList<T> getResultList(
-      List<T> entities, List<String> errors, String beforeCursor, String afterCursor, int total) {
+      List<T> entities,
+      List<EntityError> errors,
+      String beforeCursor,
+      String afterCursor,
+      int total) {
     return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 

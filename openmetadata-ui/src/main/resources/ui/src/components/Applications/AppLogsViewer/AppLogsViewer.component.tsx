@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import { formatDateTimeWithTimezone } from '../../../utils/date-time/DateTimeUtils';
+import { formatJsonString } from '../../../utils/StringsUtils';
 import CopyToClipboardButton from '../../CopyToClipboardButton/CopyToClipboardButton';
 import { AppLogsViewerProps, JobStats } from './AppLogsViewer.interface';
 
@@ -145,7 +146,13 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
     <>
       {successContext?.stats && statsRender(successContext?.stats.jobStats)}
       {failureContext?.stats && statsRender(failureContext?.stats.jobStats)}
-      {logsRender(failureContext?.stackTrace ?? failureContext?.failure)}
+      {logsRender(
+        formatJsonString(
+          JSON.stringify(
+            failureContext?.stackTrace ?? failureContext?.failure ?? {}
+          )
+        )
+      )}
     </>
   );
 };

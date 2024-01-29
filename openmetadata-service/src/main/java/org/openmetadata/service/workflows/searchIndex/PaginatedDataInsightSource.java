@@ -20,11 +20,14 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.exception.SourceException;
+import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -52,7 +55,8 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   }
 
   @Override
-  public ResultList<ReportData> readNext(Map<String, Object> contextData) throws SourceException {
+  public ResultList<ReportData> readNext(Map<String, Object> contextData)
+      throws SearchIndexException {
     if (!isDone) {
       ResultList<ReportData> data = read(cursor);
       cursor = data.getPaging().getAfter();
@@ -70,7 +74,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     isDone = false;
   }
 
-  private ResultList<ReportData> read(String afterCursor) throws SourceException {
+  private ResultList<ReportData> read(String afterCursor) throws SearchIndexException {
     LOG.debug("[DataInsightReader] Fetching a Batch of Size: {} ", batchSize);
     ResultList<ReportData> result = null;
     try {
@@ -82,11 +86,17 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
           0);
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception ex) {
-      String errMsg =
-          String.format(
-              "[DataInsightReader] Failing Completely. Batch Stats :- Submitted : %s Success: %s Failed: %s",
-              batchSize, 0, batchSize);
-      LOG.debug(errMsg);
+      IndexingError indexingError =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.READER)
+              .withSubmittedCount(batchSize)
+              .withSuccessCount(0)
+              .withFailedCount(batchSize)
+              .withMessage("Issues in Reading A Batch For Data Insight Data.")
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(ex));
+      LOG.debug(
+          "[DataInsightReader] Failing Completely. Details : {}",
+          JsonUtils.pojoToJson(indexingError));
       if (result != null) {
         if (result.getPaging().getAfter() == null) {
           isDone = true;
@@ -100,10 +110,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
         updateStats(0, batchSize);
       }
 
-      // Add the error to the list
-      readerErrors.add(errMsg);
-
-      throw new SourceException(errMsg, ex);
+      throw new SearchIndexException(indexingError);
     }
 
     return result;
