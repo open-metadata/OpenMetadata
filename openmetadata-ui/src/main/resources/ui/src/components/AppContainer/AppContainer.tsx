@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { Layout } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
@@ -23,8 +25,11 @@ import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import './app-container.less';
 
 const AppContainer = () => {
+  const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useAuthContext();
+
+  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
   return (
     <Switch>
@@ -33,7 +38,11 @@ const AppContainer = () => {
       </Route>
 
       <Layout className="app-container">
-        <Sider className="left-sidebar-col" width={60}>
+        <Sider
+          className={classNames('left-sidebar-col', {
+            'left-sidebar-col-rtl': isDirectionRTL,
+          })}
+          width={60}>
           <LeftSidebar />
         </Sider>
         <Layout>
