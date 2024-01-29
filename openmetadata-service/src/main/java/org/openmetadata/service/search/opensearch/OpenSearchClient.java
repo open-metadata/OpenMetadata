@@ -376,7 +376,8 @@ public class OpenSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("all")) {
+    if (request.getIndex().equalsIgnoreCase("all")
+        || request.getIndex().equalsIgnoreCase("dataAsset")) {
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
