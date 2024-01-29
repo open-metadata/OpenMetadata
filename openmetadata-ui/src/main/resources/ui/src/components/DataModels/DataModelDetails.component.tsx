@@ -199,6 +199,12 @@ const DataModelDetails = ({
     };
   }, [dataModelPermissions, deleted]);
 
+  const onDescriptionUpdate = async (value: string) => {
+    await handleUpdateDescription(value);
+
+    setIsEditDescription(false);
+  };
+
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
@@ -215,7 +221,7 @@ const DataModelDetails = ({
               showActions={!deleted}
               onCancel={() => setIsEditDescription(false)}
               onDescriptionEdit={() => setIsEditDescription(true)}
-              onDescriptionUpdate={handleUpdateDescription}
+              onDescriptionUpdate={onDescriptionUpdate}
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <ModelTab
