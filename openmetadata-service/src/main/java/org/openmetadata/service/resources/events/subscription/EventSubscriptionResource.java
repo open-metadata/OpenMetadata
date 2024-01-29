@@ -120,10 +120,10 @@ public class EventSubscriptionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
+      repository.initSeedDataFromResources();
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -599,7 +599,9 @@ public class EventSubscriptionResource
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withFilteringRules(validateAndBuildFilteringConditions(create))
+        .withFilteringRules(
+            validateAndBuildFilteringConditions(
+                create.getResources(), create.getAlertType(), create.getInput()))
         .withDestinations(getSubscriptions(create.getDestinations()))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())

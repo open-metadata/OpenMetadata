@@ -281,7 +281,10 @@ public class EventSubscriptionResourceTest
         change,
         "filteringRules",
         createdAlert.getFilteringRules(),
-        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
+        AlertUtil.validateAndBuildFilteringConditions(
+            genericWebhookActionRequest.getResources(),
+            genericWebhookActionRequest.getAlertType(),
+            genericWebhookActionRequest.getInput()));
 
     createdAlert =
         updateAndCheckEntity(
@@ -299,7 +302,10 @@ public class EventSubscriptionResourceTest
         change,
         "filteringRules",
         createdAlert.getFilteringRules(),
-        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
+        AlertUtil.validateAndBuildFilteringConditions(
+            genericWebhookActionRequest.getResources(),
+            genericWebhookActionRequest.getAlertType(),
+            genericWebhookActionRequest.getInput()));
 
     createdAlert =
         updateAndCheckEntity(
@@ -317,7 +323,10 @@ public class EventSubscriptionResourceTest
         change,
         "filteringRules",
         createdAlert.getFilteringRules(),
-        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
+        AlertUtil.validateAndBuildFilteringConditions(
+            genericWebhookActionRequest.getResources(),
+            genericWebhookActionRequest.getAlertType(),
+            genericWebhookActionRequest.getInput()));
 
     createdAlert =
         updateAndCheckEntity(
