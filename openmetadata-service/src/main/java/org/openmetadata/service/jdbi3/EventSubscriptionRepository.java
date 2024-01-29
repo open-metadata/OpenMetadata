@@ -90,7 +90,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                   listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
     }
 
-    if (!nullOrEmpty(entity.getFilteringRules())) {
+    if (!entity.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)
+        && !nullOrEmpty(entity.getFilteringRules())) {
       entity.setFilteringRules(
           validateAndBuildFilteringConditions(
               entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
