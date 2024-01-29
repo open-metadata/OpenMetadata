@@ -39,6 +39,7 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
+import { StatusType } from '../../generated/tests/testSuite';
 import { EventType } from '../../generated/type/changeEvent';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../EntityUtils';
@@ -192,6 +193,10 @@ const searchEntity = async (
 
 const getTableSuggestions = async (searchText: string) => {
   return searchEntity(searchText, SearchIndex.TABLE);
+};
+
+const getTestSuiteSuggestions = async (searchText: string) => {
+  return searchEntity(searchText, SearchIndex.TEST_SUITE);
 };
 
 const getDomainOptions = async (searchText: string) => {
@@ -434,7 +439,7 @@ export const getFieldByArgumentType = (
 
     case 'tableNameList':
       field = (
-        <Col key="domain-select" span={11}>
+        <Col key="table-name-select" span={11}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -498,7 +503,7 @@ export const getFieldByArgumentType = (
 
     case 'updateByUserList':
       field = (
-        <Col key="owner-select" span={11}>
+        <Col key="user-select" span={11}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -627,6 +632,39 @@ export const getFieldByArgumentType = (
 
       break;
 
+    case 'testStatusList':
+      field = (
+        <Col key="test-status-select" span={11}>
+          <Form.Item
+            name={[fieldName, 'arguments', index, 'input']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.test-suite-status'),
+                  }),
+                }),
+              },
+            ]}>
+            <Select
+              className="w-full"
+              data-testid="test-status-select"
+              mode="multiple"
+              options={map(StatusType, (state) => ({
+                label: startCase(state),
+                value: state,
+              }))}
+              placeholder={t('label.select-field', {
+                field: t('label.test-suite-status'),
+              })}
+            />
+          </Form.Item>
+        </Col>
+      );
+
+      break;
+
     case 'testResultList':
       field = (
         <Col key="test-result-select" span={11}>
@@ -660,6 +698,35 @@ export const getFieldByArgumentType = (
 
       break;
 
+    case 'testSuiteList':
+      field = (
+        <Col key="test-suite-select" span={11}>
+          <Form.Item
+            name={[fieldName, 'arguments', index, 'input']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.test-suite'),
+                  }),
+                }),
+              },
+            ]}>
+            <AsyncSelect
+              api={getTestSuiteSuggestions}
+              className="w-full"
+              data-testid="test-suite-select"
+              mode="multiple"
+              placeholder={t('label.search-by-type', {
+                type: t('label.test-suite'),
+              })}
+            />
+          </Form.Item>
+        </Col>
+      );
+
+      break;
     default:
       field = <></>;
   }
