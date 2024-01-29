@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -34,7 +35,9 @@ public class GlossaryTermIndex implements SearchIndex {
     doc.put("entityType", Entity.GLOSSARY_TERM);
     doc.put(
         "totalVotes",
-        glossaryTerm.getVotes().getUpVotes() - glossaryTerm.getVotes().getDownVotes());
+        CommonUtil.nullOrEmpty(glossaryTerm.getVotes())
+            ? 0
+            : glossaryTerm.getVotes().getUpVotes() - glossaryTerm.getVotes().getDownVotes());
     doc.put("owner", getEntityWithDisplayName(glossaryTerm.getOwner()));
     doc.put("domain", getEntityWithDisplayName(glossaryTerm.getDomain()));
     return doc;

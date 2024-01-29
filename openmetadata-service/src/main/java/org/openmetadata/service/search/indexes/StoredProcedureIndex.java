@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -36,7 +37,9 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
     doc.put(
         "totalVotes",
-        storedProcedure.getVotes().getUpVotes() - storedProcedure.getVotes().getDownVotes());
+        CommonUtil.nullOrEmpty(storedProcedure.getVotes())
+            ? 0
+            : storedProcedure.getVotes().getUpVotes() - storedProcedure.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(storedProcedure.getDomain()));
     return doc;
   }

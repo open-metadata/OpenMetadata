@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -34,7 +35,10 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
     doc.put("lineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
     doc.put(
-        "totalVotes", searchIndex.getVotes().getUpVotes() - searchIndex.getVotes().getDownVotes());
+        "totalVotes",
+        CommonUtil.nullOrEmpty(searchIndex.getVotes())
+            ? 0
+            : searchIndex.getVotes().getUpVotes() - searchIndex.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(searchIndex.getDomain()));
     return doc;
   }

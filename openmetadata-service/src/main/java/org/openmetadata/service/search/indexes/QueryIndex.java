@@ -6,6 +6,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -36,7 +37,11 @@ public class QueryIndex implements SearchIndex {
     doc.put("followers", SearchIndexUtils.parseFollowers(query.getFollowers()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.QUERY);
-    doc.put("totalVotes", query.getVotes().getUpVotes() - query.getVotes().getDownVotes());
+    doc.put(
+        "totalVotes",
+        CommonUtil.nullOrEmpty(query.getVotes())
+            ? 0
+            : query.getVotes().getUpVotes() - query.getVotes().getDownVotes());
     doc.put(
         "fqnParts",
         getFQNParts(

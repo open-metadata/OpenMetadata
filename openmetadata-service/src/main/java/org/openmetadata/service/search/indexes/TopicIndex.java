@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
@@ -75,7 +76,11 @@ public class TopicIndex implements SearchIndex {
     doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
     doc.put("lineage", SearchIndex.getLineageData(topic.getEntityReference()));
-    doc.put("totalVotes", topic.getVotes().getUpVotes() - topic.getVotes().getDownVotes());
+    doc.put(
+        "totalVotes",
+        CommonUtil.nullOrEmpty(topic.getVotes())
+            ? 0
+            : topic.getVotes().getUpVotes() - topic.getVotes().getDownVotes());
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
     doc.put(
         "fqnParts",

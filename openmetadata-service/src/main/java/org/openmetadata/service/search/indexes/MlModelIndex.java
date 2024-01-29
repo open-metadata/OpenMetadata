@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -35,7 +36,11 @@ public class MlModelIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL);
     doc.put("serviceType", mlModel.getServiceType());
-    doc.put("totalVotes", mlModel.getVotes().getUpVotes() - mlModel.getVotes().getDownVotes());
+    doc.put(
+        "totalVotes",
+        CommonUtil.nullOrEmpty(mlModel.getVotes())
+            ? 0
+            : mlModel.getVotes().getUpVotes() - mlModel.getVotes().getDownVotes());
     doc.put("lineage", SearchIndex.getLineageData(mlModel.getEntityReference()));
     doc.put(
         "fqnParts",

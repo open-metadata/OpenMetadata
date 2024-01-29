@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -55,7 +56,11 @@ public class DashboardIndex implements SearchIndex {
     doc.put("entityType", Entity.DASHBOARD);
     doc.put("serviceType", dashboard.getServiceType());
     doc.put("lineage", SearchIndex.getLineageData(dashboard.getEntityReference()));
-    doc.put("totalVotes", dashboard.getVotes().getUpVotes() - dashboard.getVotes().getDownVotes());
+    doc.put(
+        "totalVotes",
+        CommonUtil.nullOrEmpty(dashboard.getVotes())
+            ? 0
+            : dashboard.getVotes().getUpVotes() - dashboard.getVotes().getDownVotes());
     doc.put("fqnParts", suggest.stream().map(SearchSuggest::getInput).toList());
     doc.put("owner", getEntityWithDisplayName(dashboard.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboard.getService()));
