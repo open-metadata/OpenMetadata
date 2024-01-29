@@ -229,7 +229,10 @@ public class ElasticSearchClient implements SearchClient {
         // creating alias for indexes
         createAliases(indexMapping);
       } catch (Exception e) {
-        LOG.error("Failed to create Elastic Search indexes due to", e);
+        LOG.error(
+            String.format(
+                "Failed to create index for %s due to", indexMapping.getIndexName(clusterAlias)),
+            e);
       }
     } else {
       LOG.error(
