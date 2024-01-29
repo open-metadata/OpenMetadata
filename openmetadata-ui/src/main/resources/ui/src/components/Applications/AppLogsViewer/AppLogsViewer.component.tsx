@@ -147,7 +147,9 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
       {successContext?.stats && statsRender(successContext?.stats.jobStats)}
       {failureContext?.stats && statsRender(failureContext?.stats.jobStats)}
       {logsRender(
-        formatJsonString(failureContext?.stackTrace ?? failureContext?.failure)
+        formatJsonString(
+          JSON.stringify(failureContext?.stackTrace ?? failureContext?.failure)
+        )
       )}
     </>
   );
