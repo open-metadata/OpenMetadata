@@ -115,7 +115,7 @@ const LeftSidebar = () => {
               alt="OpenMetadata Logo"
               className="vertical-middle"
               dataTestId="image"
-              height={30}
+              height={isSidebarCollapsed ? 30 : 34}
               isMonoGram={isSidebarCollapsed}
               width={isSidebarCollapsed ? 30 : 'auto'}
             />
