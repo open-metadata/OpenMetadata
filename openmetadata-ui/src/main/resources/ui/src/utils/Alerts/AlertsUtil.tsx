@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Input, Select, Switch, Typography } from 'antd';
+import { Col, Input, Select, Switch, Tooltip, Typography } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
@@ -247,9 +247,11 @@ export const getSupportedFilterOptions = (
 ) =>
   supportedFilters?.map((func) => ({
     label: (
-      <span data-testid={`${getEntityName(func)}-filter-option`}>
-        {getEntityName(func)}
-      </span>
+      <Tooltip mouseEnterDelay={0.8} title={getEntityName(func)}>
+        <span data-testid={`${getEntityName(func)}-filter-option`}>
+          {getEntityName(func)}
+        </span>
+      </Tooltip>
     ),
     value: func.name,
     disabled: selectedFilters?.some((d) => d.name === func.name),
