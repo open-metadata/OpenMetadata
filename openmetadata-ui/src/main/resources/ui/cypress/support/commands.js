@@ -40,8 +40,8 @@ import { interceptURL, verifyResponseStatusCode } from '../common/common';
 import { BASE_URL, LOGIN } from '../constants/constants';
 import { SidebarItem } from '../constants/Entity.interface';
 import {
-  SETTING_CUSTOM_PROPERTIES_PATH,
   SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constants/settings.constant';
 import { SIDEBAR_LIST_ITEMS } from '../constants/sidebar.constant';
 
@@ -159,7 +159,10 @@ Cypress.Commands.add('sidebarHoverOutside', function () {
 
 Cypress.Commands.add('logout', () => {
   interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-  cy.get('[data-testid="app-bar-item-logout"]').scrollIntoView().click();
+  cy.sidebarHover();
+  cy.get(`[data-testid="app-bar-item-${SidebarItem.LOGOUT}"]`)
+    .scrollIntoView()
+    .click();
 
   cy.get('[data-testid="confirm-logout"]').click();
 
