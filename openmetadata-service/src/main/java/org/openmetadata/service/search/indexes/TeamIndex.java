@@ -32,6 +32,7 @@ public class TeamIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEAM);
+    doc.put("isBot", false);
     doc.put(
         "displayName",
         CommonUtil.nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName());
