@@ -28,19 +28,6 @@ on:
       - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
 
 permissions:
   contents: read

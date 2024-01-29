@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -23,7 +22,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
         "fqnParts",
         getFQNParts(
             testSuite.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_SUITE);
     doc.put("owner", getEntityWithDisplayName(testSuite.getOwner()));

@@ -332,6 +332,7 @@ const GlossaryDetailsRightPanel = ({
       <Col data-testid="entity-right-panel" span="22">
         {!isGlossary && selectedData && (
           <CustomPropertyTable
+            isRenderedInRightPanel
             entityDetails={selectedData as GlossaryTerm}
             entityType={entityType as ExtentionEntitiesKeys}
             hasEditAccess={false}
