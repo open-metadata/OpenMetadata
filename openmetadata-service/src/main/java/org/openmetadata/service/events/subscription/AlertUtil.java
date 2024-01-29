@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
@@ -186,19 +187,18 @@ public final class AlertUtil {
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(
-      CreateEventSubscription createEventSubscription) {
+      List<String> resource,
+      CreateEventSubscription.AlertType alertType,
+      AlertFilteringInput input) {
     // Resource Validation
     List<EventFilterRule> finalRules = new ArrayList<>();
     List<EventFilterRule> actions = new ArrayList<>();
-    List<String> resource = createEventSubscription.getResources();
     if (resource.size() > 1) {
       throw new BadRequestException(
           "Only one resource can be specified. Multiple resources are not supported.");
     }
 
-    if (createEventSubscription
-        .getAlertType()
-        .equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
+    if (alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
       Map<String, EventFilterRule> supportedFilters =
           EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
               .getSupportedFilters()
@@ -209,8 +209,8 @@ public final class AlertUtil {
                       eventFilterRule ->
                           JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
       // Input validation
-      if (createEventSubscription.getInput() != null) {
-        listOrEmpty(createEventSubscription.getInput().getFilters())
+      if (input != null) {
+        listOrEmpty(input.getFilters())
             .forEach(
                 argumentsInput ->
                     finalRules.add(
@@ -223,9 +223,7 @@ public final class AlertUtil {
           .withResources(resource)
           .withRules(finalRules)
           .withActions(Collections.emptyList());
-    } else if (createEventSubscription
-        .getAlertType()
-        .equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
+    } else if (alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
       // Build a Map of Entity Filter Name
       Map<String, EventFilterRule> supportedFilters =
           EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
@@ -248,8 +246,8 @@ public final class AlertUtil {
                           JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
 
       // Input validation
-      if (createEventSubscription.getInput() != null) {
-        listOrEmpty(createEventSubscription.getInput().getFilters())
+      if (input != null) {
+        listOrEmpty(input.getFilters())
             .forEach(
                 argumentsInput ->
                     finalRules.add(
@@ -257,7 +255,7 @@ public final class AlertUtil {
                             supportedFilters,
                             argumentsInput,
                             buildInputArgumentsMap(argumentsInput))));
-        listOrEmpty(createEventSubscription.getInput().getActions())
+        listOrEmpty(input.getActions())
             .forEach(
                 argumentsInput ->
                     actions.add(

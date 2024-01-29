@@ -599,7 +599,9 @@ public class EventSubscriptionResource
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withFilteringRules(validateAndBuildFilteringConditions(create))
+        .withFilteringRules(
+            validateAndBuildFilteringConditions(
+                create.getResources(), create.getAlertType(), create.getInput()))
         .withDestinations(getSubscriptions(create.getDestinations()))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
