@@ -22,6 +22,7 @@ import {
   SETTING_ITEM,
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
+import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
@@ -78,7 +79,8 @@ const LeftSidebar = () => {
           <LeftSidebarItem
             data={{
               ...item,
-              onClick: item.key === 'logout' ? handleLogoutClick : noop,
+              onClick:
+                item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
             }}
           />
         ),

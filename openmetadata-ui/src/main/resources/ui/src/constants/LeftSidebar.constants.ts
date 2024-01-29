@@ -118,7 +118,7 @@ export const SETTING_ITEM = {
 };
 
 export const LOGOUT_ITEM = {
-  key: 'logout',
+  key: SidebarItem.LOGOUT,
   label: i18next.t('label.logout'),
   icon: LogoutIcon,
   dataTestId: `app-bar-item-${SidebarItem.LOGOUT}`,
