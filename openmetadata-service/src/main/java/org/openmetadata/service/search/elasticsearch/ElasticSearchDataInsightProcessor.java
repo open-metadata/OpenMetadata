@@ -9,11 +9,13 @@ import es.org.elasticsearch.xcontent.XContentType;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.ProcessorException;
+import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.indexes.ReportDataIndexes;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
@@ -31,7 +33,7 @@ public class ElasticSearchDataInsightProcessor
 
   @Override
   public BulkRequest process(ResultList<ReportData> input, Map<String, Object> contextData)
-      throws ProcessorException {
+      throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
       throw new IllegalArgumentException(
@@ -52,14 +54,18 @@ public class ElasticSearchDataInsightProcessor
           0);
       updateStats(input.getData().size(), 0);
     } catch (Exception e) {
-      LOG.debug(
-          "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          input.getData().size(),
-          0,
-          input.getData().size());
+      IndexingError error =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
+              .withSubmittedCount(input.getData().size())
+              .withFailedCount(input.getData().size())
+              .withSuccessCount(0)
+              .withMessage(
+                  "Data Insights Processor Encountered Failure. Converting requests to Es Request.")
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      LOG.debug("[EsDataInsightsProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
       updateStats(0, input.getData().size());
-      throw new ProcessorException(
-          "[EsDataInsightProcessor] Batch encountered Exception. Failing Completely.", e);
+      throw new SearchIndexException(error);
     }
     return requests;
   }
