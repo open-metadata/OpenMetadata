@@ -370,7 +370,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           })}
         </Typography.Paragraph>
         <Typography.Paragraph>
-          {t('message.select-longer-duration')}
+          {t('message.try-extending-time-frame')}
         </Typography.Paragraph>
       </ErrorPlaceHolder>
     );

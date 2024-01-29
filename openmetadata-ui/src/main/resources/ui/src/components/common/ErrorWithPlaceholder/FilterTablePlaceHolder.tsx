@@ -14,11 +14,15 @@
 import React from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
+import { FilterTablePlaceHolderProps } from './placeholder.interface';
 
-const FilterTablePlaceHolder = () => {
+const FilterTablePlaceHolder = ({
+  placeholderText,
+}: FilterTablePlaceHolderProps) => {
   return (
     <ErrorPlaceHolder
       className="mt-0-important p-y-lg"
+      placeholderText={placeholderText}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.FILTER}
     />
