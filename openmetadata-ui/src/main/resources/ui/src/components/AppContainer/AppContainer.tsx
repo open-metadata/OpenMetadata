@@ -26,11 +26,10 @@ import './app-container.less';
 
 const AppContainer = () => {
   const { i18n } = useTranslation();
-  const direction = i18n.dir();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useAuthContext();
 
-  const isDirectionRTL = useMemo(() => direction === 'rtl', [direction]);
+  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
   return (
     <Switch>
