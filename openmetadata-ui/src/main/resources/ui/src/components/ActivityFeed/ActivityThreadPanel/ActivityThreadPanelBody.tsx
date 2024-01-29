@@ -45,6 +45,7 @@ import AnnouncementThreads from './AnnouncementThreads';
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
+  editAnnouncementPermission,
   onCancel,
   postFeedHandler,
   createThread,
@@ -314,7 +315,14 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             {isAnnouncementType ? (
               <AnnouncementThreads
                 className={classNames(className)}
+                editAnnouncementPermission={editAnnouncementPermission}
+                postFeed={postFeed}
+                selectedThreadId={selectedThreadId}
                 threads={threads}
+                updateThreadHandler={onUpdateThread}
+                onConfirmation={onConfirmation}
+                onThreadIdSelect={onThreadIdSelect}
+                onThreadSelect={onThreadSelect}
               />
             ) : (
               <ActivityThreadList
