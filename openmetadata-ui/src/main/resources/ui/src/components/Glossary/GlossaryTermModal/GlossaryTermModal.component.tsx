@@ -23,7 +23,7 @@ import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.comp
 import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
 
 interface Props {
-  glossaryTermFQN: string | undefined;
+  glossaryTermFQN?: string;
   onSave: (value: GlossaryTermForm) => void;
   onCancel: () => void;
   visible: boolean;
