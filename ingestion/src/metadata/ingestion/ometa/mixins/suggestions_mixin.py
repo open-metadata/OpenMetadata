@@ -33,7 +33,6 @@ class OMetaSuggestionsMixin:
         """
         Update an existing Suggestion with new fields
         """
-        # TODO: FIXME
         resp = self.client.put(
             f"{self.get_suffix(Suggestion)}/{str(suggestion.id.__root__)}",
             data=suggestion.json(),
