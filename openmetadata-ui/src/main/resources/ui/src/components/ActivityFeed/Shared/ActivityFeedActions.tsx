@@ -114,7 +114,11 @@ const ActivityFeedActions = ({
   };
 
   const editCheck = useMemo(() => {
-    if (feed.type === ThreadType.Announcement && !isPost) {
+    if (
+      feed.type === ThreadType.Announcement &&
+      !isPost &&
+      (isAuthor || currentUser?.isAdmin)
+    ) {
       return true;
     } else if (feed.type === ThreadType.Task && !isPost) {
       return false;

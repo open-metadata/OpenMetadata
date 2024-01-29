@@ -129,7 +129,6 @@ const AnnouncementDrawer: FC<Props> = ({
             className="p-0"
             createThread={createThread}
             deletePostHandler={deletePostHandler}
-            editAnnouncementPermission={createPermission}
             key={uniqueId()}
             postFeedHandler={postFeedHandler}
             showHeader={false}
