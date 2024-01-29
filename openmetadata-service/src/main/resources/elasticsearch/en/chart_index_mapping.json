@@ -73,9 +73,6 @@
       "fqnParts": {
         "type": "keyword"
       },
-      "entityType": {
-        "type": "keyword"
-      },
       "suggest": {
         "type": "completion",
         "contexts": [
@@ -99,10 +96,13 @@
       "chartType": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "keyword"
+      },
       "href": {
         "type": "text"
       },
-      "sourceUrl": {
+      "entityType": {
         "type": "keyword"
       },
       "owner": {
@@ -325,6 +325,12 @@
             "type": "text"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

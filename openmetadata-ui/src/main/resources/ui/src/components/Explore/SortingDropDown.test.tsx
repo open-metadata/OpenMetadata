@@ -73,7 +73,7 @@ describe('Test Sorting DropDown Component', () => {
         fireEvent.click(menuItems[0]);
       });
 
-      expect(handleFieldDropDown).toHaveBeenCalledWith('updatedAt');
+      expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
     });
   });
 });

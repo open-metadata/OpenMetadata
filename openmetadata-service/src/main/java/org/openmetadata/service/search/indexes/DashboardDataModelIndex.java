@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -66,6 +67,12 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
     doc.put("lineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
+    doc.put(
+        "totalVotes",
+        CommonUtil.nullOrEmpty(dashboardDataModel.getVotes())
+            ? 0
+            : dashboardDataModel.getVotes().getUpVotes()
+                - dashboardDataModel.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
     return doc;
   }

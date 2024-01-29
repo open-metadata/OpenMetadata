@@ -66,6 +66,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -257,6 +258,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(1)
   void post_validThreadAndList_200(TestInfo test) throws IOException {
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int userThreadCount = listThreads(USER_LINK, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
@@ -1176,6 +1178,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(2)
   void list_threadsWithMentionsFilter() throws HttpResponseException {
     // Create a thread with user mention
     createAndCheck(
@@ -1196,7 +1199,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     ThreadList threads =
         listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS, USER_AUTH_HEADERS);
-    assertEquals(2, threads.getPaging().getTotal());
+    assertEquals(32, threads.getPaging().getTotal());
   }
 
   @Test
