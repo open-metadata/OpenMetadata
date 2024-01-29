@@ -12,16 +12,20 @@
  */
 import { Button, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import React, { FC, useEffect, useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
+import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../Loader/Loader';
 import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.component';
 import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
 
 interface Props {
   glossaryName: string;
-  glossaryTerm: GlossaryTerm | undefined;
+  glossaryTermFQN: string | undefined;
   glossaryReviewers?: EntityReference[];
   onSave: (value: GlossaryTermForm) => void;
   onCancel: () => void;
@@ -33,13 +37,16 @@ const GlossaryTermModal: FC<Props> = ({
   editMode,
   glossaryName,
   visible,
-  glossaryTerm,
+  glossaryTermFQN,
   glossaryReviewers = [],
   onSave,
   onCancel,
 }) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [activeEntity, setActiveEntity] = useState<GlossaryTerm | undefined>();
 
   const dialogTitle = useMemo(() => {
     return editMode
@@ -47,7 +54,25 @@ const GlossaryTermModal: FC<Props> = ({
       : t('label.add-entity', { entity: t('label.glossary-term') });
   }, [editMode]);
 
+  const fetchCurrentEntity = useCallback(async () => {
+    try {
+      const data = await getGlossaryTermByFQN(glossaryTermFQN, {
+        fields: 'tags,reviewers,relatedTerms,owner',
+      });
+      setActiveEntity(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [glossaryTermFQN]);
+
   useEffect(() => {
+    if (editMode) {
+      fetchCurrentEntity();
+    } else {
+      setIsLoading(false);
+    }
     !visible && form.resetFields();
   }, [visible]);
 
@@ -77,17 +102,21 @@ const GlossaryTermModal: FC<Props> = ({
       title={dialogTitle}
       width={800}
       onCancel={onCancel}>
-      <AddGlossaryTermForm
-        isFormInModal
-        isLoading
-        editMode={editMode}
-        formRef={form}
-        glossaryName={glossaryName}
-        glossaryReviewers={glossaryReviewers}
-        glossaryTerm={glossaryTerm}
-        onCancel={onCancel}
-        onSave={onSave}
-      />
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <AddGlossaryTermForm
+          isFormInModal
+          isLoading
+          editMode={editMode}
+          formRef={form}
+          glossaryName={glossaryName}
+          glossaryReviewers={glossaryReviewers}
+          glossaryTerm={activeEntity}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      )}
     </Modal>
   );
 };

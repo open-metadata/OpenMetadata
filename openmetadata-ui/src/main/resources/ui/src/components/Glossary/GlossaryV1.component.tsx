@@ -128,7 +128,7 @@ const GlossaryV1 = ({
       const { data } = await getGlossaryTerms({
         ...params,
         limit: API_RES_MAX_SIZE,
-        fields: 'tags,children,reviewers,relatedTerms,owner,parent,extension',
+        fields: 'children,owner,parent',
       });
       setGlossaryTerms(data);
     } catch (error) {
@@ -408,7 +408,7 @@ const GlossaryV1 = ({
           editMode={editMode}
           glossaryName={selectedData.name}
           glossaryReviewers={isGlossaryActive ? selectedData.reviewers : []}
-          glossaryTerm={activeGlossaryTerm}
+          glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
           visible={isEditModalOpen}
           onCancel={() => setIsEditModalOpen(false)}
           onSave={handleGlossaryTermSave}
