@@ -13,28 +13,30 @@
 
 import { Col, Row, Space, Tabs } from 'antd';
 import { noop } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import './glossary-details.less';
 import {
   GlossaryDetailsProps,
   GlossaryTabs,
 } from './GlossaryDetails.interface';
-import './glossary-details.less';
 
 const GlossaryDetails = ({
   permissions,
@@ -54,15 +56,21 @@ const GlossaryDetails = ({
   const history = useHistory();
 
   const { tab: activeTab } = useParams<{ tab: string }>();
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY,
       glossary.fullyQualifiedName ?? '',
-      setFeedCount
+      handleFeedCount
     );
   };
 
@@ -206,7 +214,7 @@ const GlossaryDetails = ({
             {
               label: (
                 <TabsLabel
-                  count={feedCount}
+                  count={feedCount.totalCount}
                   id={GlossaryTabs.ACTIVITY_FEED}
                   isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
                   name={t('label.activity-feed-and-task-plural')}
@@ -215,6 +223,8 @@ const GlossaryDetails = ({
               key: GlossaryTabs.ACTIVITY_FEED,
               children: (
                 <ActivityFeedTab
+                  refetchFeed
+                  entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   fqn={glossary.fullyQualifiedName ?? ''}
                   onFeedUpdate={getEntityFeedCount}
@@ -228,7 +238,8 @@ const GlossaryDetails = ({
   }, [
     detailsContent,
     glossary.fullyQualifiedName,
-    feedCount,
+    feedCount.conversationCount,
+    feedCount.totalTasksCount,
     activeTab,
     isVersionView,
   ]);

@@ -28,6 +28,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getMlModelDetailsPath } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -35,10 +36,10 @@ import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { restoreMlmodel } from '../../rest/mlModelAPI';
 import { getEmptyPlaceholder, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
@@ -80,7 +81,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { fqn: decodedMlModelFqn } = useFqn();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const [mlModelPermissions, setMlModelPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -132,8 +135,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     };
   }, [mlModelDetail, mlModelName]);
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const fetchEntityFeedCount = () => {
-    getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, setFeedCount);
+    getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, handleFeedCount);
   };
 
   useEffect(() => {
@@ -438,7 +445,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -447,6 +454,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.MLMODEL}
             fqn={mlModelDetail?.fullyQualifiedName ?? ''}
             onFeedUpdate={fetchEntityFeedCount}
@@ -502,7 +511,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       },
     ],
     [
-      feedCount,
+      feedCount.totalCount,
       activeTab,
       mlModelDetail,
       mlModelName,
@@ -516,7 +525,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       handleThreadLinkSelect,
       onDescriptionUpdate,
       onDescriptionEdit,
-      getEntityFieldThreadCounts,
       deleted,
       editTagsPermission,
       editDescriptionPermission,
@@ -540,6 +548,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             afterDomainUpdateAction={updateMlModelDetailsState}
             dataAsset={mlModelDetail}
             entityType={EntityType.MLMODEL}
+            openTaskCount={feedCount.openTaskCount}
             permissions={mlModelPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMlModel}

@@ -19,8 +19,6 @@ export const OWNER = 'Amber Green';
 export const REVIEWER = 'Amanda York';
 export const TIER = 'Tier1';
 
-const DOMAIN_NAME = `cypress_version_test_domain-${uuid()}`;
-
 const TABLE_NAME = `cypress_version_table-${uuid()}`;
 const TOPIC_NAME = `cypress_version_topic-${uuid()}`;
 const DASHBOARD_NAME = `cypress_version_dashboard-${uuid()}`;
@@ -30,13 +28,6 @@ const CONTAINER_NAME = `cypress_version_container-${uuid()}`;
 const SEARCH_INDEX_NAME = `cypress_version_search_index-${uuid()}`;
 const STORED_PROCEDURE_NAME = `cypress_version_stored_procedure-${uuid()}`;
 const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
-
-export const DOMAIN_CREATION_DETAILS = {
-  name: DOMAIN_NAME,
-  description: `Description for ${DOMAIN_NAME}`,
-  domainType: 'Aggregate',
-  experts: [],
-};
 
 const TABLE_DETAILS_FOR_VERSION_TEST = {
   name: TABLE_NAME,

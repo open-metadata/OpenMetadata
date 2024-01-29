@@ -47,6 +47,7 @@ import {
   getContainerDetailPath,
   getVersionPath,
 } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -56,6 +57,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
@@ -72,7 +74,6 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
@@ -101,7 +102,9 @@ const ContainerPage = () => {
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -150,8 +153,12 @@ const ContainerPage = () => {
     }
   };
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
+    getFeedCounts(EntityType.CONTAINER, decodedContainerName, handleFeedCount);
 
   const fetchResourcePermission = async (containerFQN: string) => {
     try {
@@ -651,7 +658,7 @@ const ContainerPage = () => {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={tab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -660,6 +667,8 @@ const ContainerPage = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.CONTAINER}
             fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}
@@ -721,11 +730,10 @@ const ContainerPage = () => {
       owner,
       isChildrenLoading,
       tags,
-      feedCount,
+      feedCount.totalCount,
       containerChildrenData,
       handleUpdateDataModel,
       handleUpdateDescription,
-      getEntityFieldThreadCounts,
       handleTagSelection,
       onThreadLinkSelect,
       handleExtensionUpdate,
@@ -786,6 +794,7 @@ const ContainerPage = () => {
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
+            openTaskCount={feedCount.openTaskCount}
             permissions={containerPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}

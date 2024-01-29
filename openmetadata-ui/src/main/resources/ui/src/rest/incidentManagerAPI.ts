@@ -67,14 +67,10 @@ export const updateTestCaseIncidentById = async (
   id: string,
   data: Operation[]
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<TestCaseResolutionStatus>
-  >(`${testCaseIncidentUrl}/${id}`, data, configOptions);
+  >(`${testCaseIncidentUrl}/${id}`, data);
 
   return response.data;
 };
