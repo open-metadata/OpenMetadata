@@ -90,15 +90,13 @@ const ExplorePageV1: FunctionComponent = () => {
   const [advancesSearchQuickFilters, setAdvancedSearchQuickFilters] =
     useState<QueryFilterInterface>();
 
-  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
-
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
   const [isLoading, setIsLoading] = useState(true);
 
   const { queryFilter } = useAdvanceSearch();
 
-  const [parsedSearch, searchQueryParam, sortValue] = useMemo(() => {
+  const [parsedSearch, searchQueryParam, sortValue, sortOrder] = useMemo(() => {
     const parsedSearch = Qs.parse(
       location.search.startsWith('?')
         ? location.search.substring(1)
@@ -113,7 +111,11 @@ const ExplorePageV1: FunctionComponent = () => {
       ? parsedSearch.sort
       : INITIAL_SORT_FIELD;
 
-    return [parsedSearch, searchQueryParam, sortValue];
+    const sortOrder = isString(parsedSearch.sortOrder)
+      ? parsedSearch.sortOrder
+      : SORT_ORDER.DESC;
+
+    return [parsedSearch, searchQueryParam, sortValue, sortOrder];
   }, [location.search]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
@@ -129,6 +131,17 @@ const ExplorePageV1: FunctionComponent = () => {
         page,
         size: size ?? PAGE_SIZE,
         sort: sortVal,
+      }),
+    });
+  };
+
+  const handleSortOrderChange = (page: number, sortOrderVal: string) => {
+    history.push({
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? PAGE_SIZE,
+        sortOrder: sortOrderVal,
       }),
     });
   };
@@ -177,11 +190,14 @@ const ExplorePageV1: FunctionComponent = () => {
           getExplorePath({
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
-              sort: searchQueryParam ? '_score' : INITIAL_SORT_FIELD,
+              sort: searchQueryParam
+                ? '_score'
+                : tabsInfo[nSearchIndex].sortField,
               page: '1',
               quickFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
                 : undefined,
+              sortOrder: tabsInfo[nSearchIndex]?.sortOrder ?? SORT_ORDER.DESC,
             },
             isPersistFilters: false,
           })
@@ -229,7 +245,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
       ([tabSearchIndex, tabDetail]) => {
-        const Icon = tabDetail.icon;
+        const Icon = tabDetail.icon as React.FC;
 
         return {
           key: tabSearchIndex,
@@ -339,7 +355,7 @@ const ExplorePageV1: FunctionComponent = () => {
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: sortValue,
-        sortOrder,
+        sortOrder: sortOrder,
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
@@ -436,9 +452,8 @@ const ExplorePageV1: FunctionComponent = () => {
       onChangePage={handlePageChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
-      onChangeSortOder={(sort) => {
-        handlePageChange(1);
-        setSortOrder(sort);
+      onChangeSortOder={(sortOrderVal) => {
+        handleSortOrderChange(1, sortOrderVal);
       }}
       onChangeSortValue={(sortVal) => {
         handleSortValueChange(1, sortVal);
