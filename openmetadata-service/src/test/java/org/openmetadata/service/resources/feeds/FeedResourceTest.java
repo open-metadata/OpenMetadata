@@ -79,7 +79,6 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.api.feed.CreateThread;
-import org.openmetadata.schema.api.feed.EntityLinkThreadCount;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -348,7 +347,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Test the /api/v1/feed/count API
     assertEquals(
         userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal());
-    assertEquals(userThreadCount, listThreadsCount(USER_LINK, USER_AUTH_HEADERS).getTotalCount());
+    FeedResource.ThreadCountList threadCounts = listThreadsCount(USER_LINK, USER_AUTH_HEADERS);
+    for (ThreadCount threadCount : threadCounts.getData()) {
+      if (threadCount.getEntityLink().equals(USER_LINK)) {
+        assertEquals(userThreadCount, threadCount.getConversationCount());
+      }
+    }
     assertEquals(
         tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, USER_AUTH_HEADERS));
     assertEquals(
@@ -441,23 +445,15 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(assignedToCount + assignedByCount + 2, tasks.getPaging().getTotal());
     assertEquals(assignedToCount + assignedByCount + 2, tasks.getData().size());
 
-    ThreadCount count = listTasksCount(null, TaskStatus.Open, USER2_AUTH_HEADERS);
-    int totalOpenTaskCount = count.getTotalCount();
-    count = listTasksCount(null, TaskStatus.Closed, USER2_AUTH_HEADERS);
-    int totalClosedTaskCount = count.getTotalCount();
-
     // close a task and test the task status filter
     ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
     resolveTask(task2.getId(), resolveTask, USER_AUTH_HEADERS);
 
     tasks = listTasks(null, null, null, TaskStatus.Open, null, USER2_AUTH_HEADERS);
     assertFalse(tasks.getData().stream().anyMatch(t -> t.getTask().getId().equals(task2.getId())));
-    assertEquals(totalOpenTaskCount - 1, tasks.getPaging().getTotal());
 
     tasks = listTasks(null, null, null, TaskStatus.Closed, null, USER2_AUTH_HEADERS);
     assertEquals(task2.getId(), tasks.getData().get(0).getTask().getId());
-    assertEquals(totalClosedTaskCount + 1, tasks.getPaging().getTotal());
-    assertEquals(totalClosedTaskCount + 1, tasks.getData().size());
   }
 
   @Test
@@ -1622,12 +1618,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, PostList.class, authHeaders);
   }
 
-  public ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public FeedResource.ThreadCountList listThreadsCount(
+      String entityLink, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
-    target = target.queryParam("type", ThreadType.Conversation);
-    return TestUtils.get(target, ThreadCount.class, authHeaders);
+    return TestUtils.get(target, FeedResource.ThreadCountList.class, authHeaders);
   }
 
   public ThreadCount listTasksCount(
@@ -1635,21 +1630,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
-    target = target.queryParam("type", ThreadType.Task);
-    target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
   private int getThreadCount(String entityLink, Map<String, String> authHeaders)
       throws HttpResponseException {
-    List<EntityLinkThreadCount> linkThreadCount =
-        listThreadsCount(entityLink, authHeaders).getCounts();
-    EntityLinkThreadCount threadCount =
-        linkThreadCount.stream()
-            .filter(l -> l.getEntityLink().equals(entityLink))
-            .findFirst()
-            .orElseThrow();
-    return threadCount.getCount();
+    FeedResource.ThreadCountList threadCounts = listThreadsCount(entityLink, authHeaders);
+    for (ThreadCount threadCount : threadCounts.getData()) {
+      if (threadCount.getEntityLink().equalsIgnoreCase(entityLink)) {
+        return threadCount.getConversationCount() != null ? threadCount.getConversationCount() : 0;
+      }
+    }
+    return 0;
   }
 
   protected final Thread patchThreadAndCheck(

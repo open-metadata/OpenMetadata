@@ -116,8 +116,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.util.EntitiesCount;
@@ -1179,34 +1177,30 @@ public interface CollectionDAO {
     void update(@BindUUID("id") UUID id, @Bind("json") String json);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQNHash=MD5(te.id) "
-            + "WHERE (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash=:fqnPrefixHash) AND "
-            + "(:toType IS NULL OR fr.toType like concat(:toType, '.%') OR fr.toType=:toType) AND fr.fromType = :fromType "
-            + "AND fr.relation = :relation AND te.resolved= :isResolved AND (:status IS NULL OR te.taskStatus = :status) "
-            + "AND (:type IS NULL OR te.type = :type) "
-            + "GROUP BY entityLink")
-    @RegisterRowMapper(CountFieldMapper.class)
+        "SELECT te.entityLink, te.type, te.taskStatus, COUNT(id) count FROM thread_entity te "
+            + " where entityId = :entityId  OR "
+            + " MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= 3) "
+            + "GROUP BY te.type, te.taskStatus, entityLink")
+    @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
+        @BindUUID("entityId") UUID entityId,
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
-        @Bind("fromType") String fromType,
-        @Bind("toType") String toType,
-        @Bind("relation") int relation,
-        @Bind("type") ThreadType type,
-        @Bind("status") TaskStatus status,
-        @Bind("isResolved") boolean isResolved);
+        @Bind("toType") String toType);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM thread_entity <condition> AND "
+        "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
             + "(entityId in (SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
-            + "GROUP BY entityLink")
-    @RegisterRowMapper(CountFieldMapper.class)
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+            + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
+            + "GROUP BY te.type, te.taskStatus")
+    @RegisterRowMapper(OwnerCountFieldMapper.class)
     List<List<String>> listCountByOwner(
-        @BindUUID("userId") UUID userId,
-        @BindList("teamIds") List<String> teamIds,
-        @Define("condition") String condition);
+        @BindUUID("userId") UUID userId, @BindList("teamIds") List<String> teamIds);
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
@@ -1295,10 +1289,22 @@ public interface CollectionDAO {
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
 
-    class CountFieldMapper implements RowMapper<List<String>> {
+    class OwnerCountFieldMapper implements RowMapper<List<String>> {
       @Override
       public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Arrays.asList(rs.getString("entityLink"), rs.getString("count"));
+        return Arrays.asList(
+            rs.getString("type"), rs.getString("taskStatus"), rs.getString("count"));
+      }
+    }
+
+    class ThreadCountFieldMapper implements RowMapper<List<String>> {
+      @Override
+      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Arrays.asList(
+            rs.getString("entityLink"),
+            rs.getString("type"),
+            rs.getString("taskStatus"),
+            rs.getString("count"));
       }
     }
   }

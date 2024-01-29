@@ -41,6 +41,7 @@ export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
+export const WHITE_COLOR = '#ffffff';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -780,10 +781,6 @@ export const getKpiPath = (kpiName: string) => {
   return path;
 };
 
-export const configOptions = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
 
@@ -842,4 +839,8 @@ export const ICON_DIMENSION = {
 
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
+};
+
+export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
+  headers: { 'Content-type': 'application/json' },
 };

@@ -117,6 +117,7 @@ const ObservabilityAlertsPage = () => {
         render: (name: string, record: EventSubscription) => {
           return (
             <Link
+              data-testid="alert-name"
               to={getObservabilityAlertDetailsPath(
                 record.fullyQualifiedName ?? ''
               )}>
@@ -162,7 +163,7 @@ const ObservabilityAlertsPage = () => {
                 <Link to={getObservabilityAlertsEditPath(fqn)}>
                   <Button
                     className="d-inline-flex items-center justify-center"
-                    data-testid={`edit-${record.name}`}
+                    data-testid={`alert-edit-${record.name}`}
                     icon={<EditIcon width={16} />}
                     type="text"
                   />
@@ -170,7 +171,7 @@ const ObservabilityAlertsPage = () => {
               </Tooltip>
               <Tooltip placement="bottom" title={t('label.delete')}>
                 <Button
-                  data-testid={`delete-${record.name}`}
+                  data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
                   icon={<DeleteIcon height={16} width={16} />}
                   type="text"
@@ -200,7 +201,7 @@ const ObservabilityAlertsPage = () => {
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
             <Link to={ROUTES.ADD_OBSERVABILITY_ALERTS}>
-              <Button data-testid="create" type="primary">
+              <Button data-testid="create-observability" type="primary">
                 {t('label.create-entity', { entity: t('label.observability') })}
               </Button>
             </Link>

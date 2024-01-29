@@ -22,6 +22,7 @@ import React, {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -31,6 +32,7 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
@@ -75,7 +77,9 @@ const GlossaryTermsV1 = ({
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [assetCount, setAssetCount] = useState<number>(0);
 
   const assetPermissions = useMemo(() => {
@@ -98,11 +102,15 @@ const GlossaryTermsV1 = ({
     });
   };
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY_TERM,
       glossaryTerm.fullyQualifiedName ?? '',
-      setFeedCount
+      handleFeedCount
     );
   };
 
@@ -222,7 +230,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <TabsLabel
-                  count={feedCount}
+                  count={feedCount.totalCount}
                   id={GlossaryTabs.ACTIVITY_FEED}
                   isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
                   name={t('label.activity-feed-and-task-plural')}
@@ -273,7 +281,8 @@ const GlossaryTermsV1 = ({
     termsLoading,
     activeTab,
     assetCount,
-    feedCount,
+    feedCount.conversationCount,
+    feedCount.totalTasksCount,
     isSummaryPanelOpen,
     isVersionView,
     assetPermissions,
