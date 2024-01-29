@@ -135,9 +135,9 @@ public interface SearchIndex {
   static Map<String, Float> getDefaultFields() {
     Map<String, Float> fields = new HashMap<>();
     fields.put(FIELD_DISPLAY_NAME, 10.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 2.0f);
+    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_NAME, 10.0f);
-    fields.put(FIELD_NAME_NGRAM, 2.0f);
+    fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 8.0f);
     fields.put(NAME_KEYWORD, 8.0f);
     fields.put(FIELD_DESCRIPTION, 1.0f);
