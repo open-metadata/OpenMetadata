@@ -12,6 +12,7 @@
  */
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, {
   createContext,
   useCallback,
@@ -28,6 +29,7 @@ import {
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import {
   MetaPilotContextProps,
   MetaPilotContextType,
@@ -46,6 +48,8 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
   const [entityFqn, setEntityFqn] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshEntity, setRefreshEntity] = useState<() => void>();
+  const { permissions } = usePermissionProvider();
 
   const fetchSuggestions = useCallback(async (entityFQN: string) => {
     setLoading(true);
@@ -71,11 +75,16 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       try {
         await updateSuggestionStatus(suggestion, status);
         await fetchSuggestions(entityFqn);
+
+        setActiveSuggestion(undefined);
+        if (status === SuggestionAction.Accept) {
+          refreshEntity?.();
+        }
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
     },
-    [entityFqn]
+    [entityFqn, refreshEntity]
   );
 
   const onToggleSuggestionsVisible = useCallback((state: boolean) => {
@@ -94,16 +103,27 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
     setEntityFqn(entityFqn);
   }, []);
 
-  const resetMetaPilot = () => {
+  const resetMetaPilot = useCallback(() => {
     setSuggestionsVisible(false);
     setIsMetaPilotEnabled(false);
     setActiveSuggestion(undefined);
     setEntityFqn('');
-  };
+  }, []);
+
+  const initMetaPilot = useCallback(
+    (entityFqn: string, refreshEntity?: () => void) => {
+      setIsMetaPilotEnabled(true);
+      setEntityFqn(entityFqn);
+      setRefreshEntity(() => refreshEntity);
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchSuggestions(entityFqn);
-  }, [entityFqn]);
+    if (!isEmpty(permissions) && !isEmpty(entityFqn)) {
+      fetchSuggestions(entityFqn);
+    }
+  }, [permissions, entityFqn]);
 
   const metaPilotContextObj = useMemo(() => {
     return {
@@ -113,12 +133,14 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       activeSuggestion,
       entityFqn,
       loading,
+      refreshEntity,
       onToggleSuggestionsVisible,
       onUpdateEntityFqn,
       onMetaPilotEnableUpdate,
       onUpdateActiveSuggestion,
       fetchSuggestions,
       acceptRejectSuggestion,
+      initMetaPilot,
       resetMetaPilot,
     };
   }, [
@@ -128,12 +150,14 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
     activeSuggestion,
     entityFqn,
     loading,
+    refreshEntity,
     onToggleSuggestionsVisible,
     onUpdateEntityFqn,
     onMetaPilotEnableUpdate,
     onUpdateActiveSuggestion,
     fetchSuggestions,
     acceptRejectSuggestion,
+    initMetaPilot,
     resetMetaPilot,
   ]);
 

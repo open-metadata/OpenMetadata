@@ -64,6 +64,7 @@ const TableDescription = ({
   if (activeSuggestion?.entityLink === entityLink) {
     return (
       <MetaPilotDescriptionAlert
+        hasEditAccess={hasEditPermission}
         showHeading={false}
         suggestion={activeSuggestion}
       />
@@ -71,7 +72,13 @@ const TableDescription = ({
   }
 
   if (suggestionForEmptyData) {
-    return <MetaPilotDescriptionAlert suggestion={suggestionForEmptyData} />;
+    return (
+      <MetaPilotDescriptionAlert
+        hasEditAccess={hasEditPermission}
+        showHeading={false}
+        suggestion={suggestionForEmptyData}
+      />
+    );
   }
 
   return (

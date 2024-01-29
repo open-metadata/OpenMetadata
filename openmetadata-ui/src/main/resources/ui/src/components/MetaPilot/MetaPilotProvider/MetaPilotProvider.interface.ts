@@ -22,6 +22,7 @@ export interface MetaPilotContextType {
   suggestions: Suggestion[];
   loading: boolean;
   entityFqn: string;
+  refreshEntity: (() => void) | undefined;
   onUpdateActiveSuggestion: (suggestion?: Suggestion) => void;
   fetchSuggestions: (entityFqn: string) => void;
   acceptRejectSuggestion: (
@@ -30,6 +31,7 @@ export interface MetaPilotContextType {
   ) => void;
   onUpdateEntityFqn: (entityFqn: string) => void;
   resetMetaPilot: () => void;
+  initMetaPilot: (entityFqn: string, refreshEntity?: () => void) => void;
 }
 
 export interface MetaPilotContextProps {

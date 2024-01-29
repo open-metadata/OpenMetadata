@@ -15,4 +15,5 @@ import { Suggestion } from '../../../generated/entity/feed/suggestion';
 export interface MetaPilotDescriptionAlertProps {
   showHeading?: boolean;
   suggestion: Suggestion;
+  hasEditAccess?: boolean;
 }

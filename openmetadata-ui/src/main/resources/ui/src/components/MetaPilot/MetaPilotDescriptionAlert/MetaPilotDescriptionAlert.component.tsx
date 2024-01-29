@@ -24,6 +24,7 @@ import { MetaPilotDescriptionAlertProps } from './MetaPilotDescriptionAlert.inte
 const MetaPilotDescriptionAlert = ({
   showHeading = true,
   suggestion,
+  hasEditAccess = false,
 }: MetaPilotDescriptionAlertProps) => {
   const { t } = useTranslation();
   const { onUpdateActiveSuggestion, acceptRejectSuggestion } =
@@ -65,25 +66,27 @@ const MetaPilotDescriptionAlert = ({
           <CloseOutlined onClick={() => onUpdateActiveSuggestion(undefined)} />
         </div>
         <RichTextEditorPreviewer markdown={suggestion.description ?? ''} />
-        <div className="d-flex justify-end p-t-sm gap-2">
-          <Button
-            ghost
-            icon={<CloseOutlined />}
-            type="primary"
-            onClick={() =>
-              acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
-            }>
-            {t('label.reject')}
-          </Button>
-          <Button
-            icon={<CheckOutlined />}
-            type="primary"
-            onClick={() =>
-              acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
-            }>
-            {t('label.accept')}
-          </Button>
-        </div>
+        {hasEditAccess && (
+          <div className="d-flex justify-end p-t-sm gap-2">
+            <Button
+              ghost
+              icon={<CloseOutlined />}
+              type="primary"
+              onClick={() =>
+                acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
+              }>
+              {t('label.reject')}
+            </Button>
+            <Button
+              icon={<CheckOutlined />}
+              type="primary"
+              onClick={() =>
+                acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
+              }>
+              {t('label.accept')}
+            </Button>
+          </div>
+        )}
       </Card>
     </Space>
   );

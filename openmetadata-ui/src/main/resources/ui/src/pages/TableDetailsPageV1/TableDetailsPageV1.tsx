@@ -115,8 +115,7 @@ const TableDetailsPageV1 = () => {
     ThreadType.Conversation
   );
   const [queryCount, setQueryCount] = useState(0);
-  const { onMetaPilotEnableUpdate, onUpdateEntityFqn, resetMetaPilot } =
-    useMetaPilotContext();
+  const { resetMetaPilot, initMetaPilot } = useMetaPilotContext();
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -138,7 +137,7 @@ const TableDetailsPageV1 = () => {
     [datasetFQN]
   );
 
-  const fetchTableDetails = async () => {
+  const fetchTableDetails = useCallback(async () => {
     setLoading(true);
     try {
       let fields = defaultFields;
@@ -162,7 +161,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tableFqn]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -281,16 +280,15 @@ const TableDetailsPageV1 = () => {
   );
 
   useEffect(() => {
-    if (tableFqn) {
+    if (tableFqn && fetchTableDetails) {
       fetchResourcePermission(tableFqn);
-      onMetaPilotEnableUpdate(true);
-      onUpdateEntityFqn(tableFqn);
+      initMetaPilot(tableFqn, fetchTableDetails);
     }
 
     return () => {
       resetMetaPilot();
     };
-  }, [tableFqn]);
+  }, [tableFqn, fetchTableDetails]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);

@@ -183,11 +183,21 @@ const DescriptionV1 = ({
   }, [suggestions, description]);
 
   if (activeSuggestion?.entityLink === entityLinkWithoutField) {
-    return <MetaPilotDescriptionAlert suggestion={activeSuggestion} />;
+    return (
+      <MetaPilotDescriptionAlert
+        hasEditAccess={hasEditAccess}
+        suggestion={activeSuggestion}
+      />
+    );
   }
 
   if (suggestionForEmptyData) {
-    return <MetaPilotDescriptionAlert suggestion={suggestionForEmptyData} />;
+    return (
+      <MetaPilotDescriptionAlert
+        hasEditAccess={hasEditAccess}
+        suggestion={suggestionForEmptyData}
+      />
+    );
   }
 
   const content = (
