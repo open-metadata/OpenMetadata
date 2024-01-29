@@ -15,7 +15,7 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.19.3</org.testcontainers.version>
+    <org.testcontainers.version>1.19.4</org.testcontainers.version>
     <awssdk.version>2.23.3</awssdk.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
@@ -619,7 +619,7 @@
                 <argLine>-Xmx1G</argLine>
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                  <jdbcContainerImage>mysql:8.2.0</jdbcContainerImage>
+                  <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
