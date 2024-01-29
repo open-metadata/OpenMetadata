@@ -77,9 +77,15 @@ public class ListFilter {
 
   private String getEventSubscriptionAlertType() {
     String alertType = queryParams.get("alertType");
-    return alertType == null
-        ? ""
-        : String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
+    if (alertType == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
+      } else {
+        return String.format("json->>'alertType' = '%s'", alertType);
+      }
+    }
   }
 
   private String getTestCaseResolutionStatusType() {
