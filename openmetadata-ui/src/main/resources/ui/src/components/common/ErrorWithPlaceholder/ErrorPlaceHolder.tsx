@@ -66,7 +66,12 @@ const ErrorPlaceHolder = ({
 
       case ERROR_PLACEHOLDER_TYPE.FILTER:
         return (
-          <FilterErrorPlaceHolder className={className} doc={doc} size={size} />
+          <FilterErrorPlaceHolder
+            className={className}
+            doc={doc}
+            placeholderText={placeholderText}
+            size={size}
+          />
         );
 
       case ERROR_PLACEHOLDER_TYPE.PERMISSION:

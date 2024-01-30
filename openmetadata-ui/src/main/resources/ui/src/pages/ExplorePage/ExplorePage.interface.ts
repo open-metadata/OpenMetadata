@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { SortingField } from '../../components/Explore/SortingDropDown';
+import { SORT_ORDER } from '../../enums/common.enum';
+
 export interface QueryFieldValueInterface {
   term: Record<string, string>;
 }
@@ -32,3 +35,12 @@ export interface QueryFilterInterface {
     };
   };
 }
+
+export type TabsInfoData = {
+  label: string;
+  sortingFields: SortingField[];
+  sortField: string;
+  sortOrder?: SORT_ORDER;
+  path: string;
+  icon: React.ReactNode;
+};
