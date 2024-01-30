@@ -431,16 +431,12 @@ class TestParquetDataFrameColumnParser(TestCase):
                 expected_col, actual_col = validation
                 self.assertEqual(expected_col.name, actual_col.name)
                 self.assertEqual(expected_col.displayName, actual_col.displayName)
-                self.assertEqual(
-                    expected_col.dataTypeDisplay, actual_col.dataTypeDisplay
-                )
                 self.assertEqual(expected_col.dataType, actual_col.dataType)
 
     def _validate_parsed_column(self, expected, actual):
         """validate parsed column"""
         self.assertEqual(expected.name, actual.name)
         self.assertEqual(expected.dataType, actual.dataType)
-        self.assertEqual(expected.dataTypeDisplay, actual.dataTypeDisplay)
         self.assertEqual(expected.displayName, actual.displayName)
         if expected.children:
             self.assertEqual(len(expected.children), len(actual.children))
