@@ -180,3 +180,6 @@ where serviceType = 'Mssql';
 DELETE FROM event_subscription_entity;
 DELETE FROM change_event_consumers;
 DELETE FROM consumers_dlq;
+
+UPDATE ingestion_pipeline_entity SET json = JSONB_SET(json::jsonb, '{provider}', '"user"', true)
+WHERE json->>'name' = 'OpenMetadata_dataInsight';
