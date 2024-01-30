@@ -81,7 +81,8 @@ public class AbstractNativeApplication implements NativeApplication {
    * Load the apps' private parameters, if needed
    */
   private void loadPrivateParameters(AppsPrivateConfiguration privateConfiguration) {
-    if (privateConfiguration != null && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
+    if (privateConfiguration != null
+        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
       for (AppConfig appConfig : privateConfiguration.getAppsPrivateConfiguration()) {
         if (this.app.getName().equals(appConfig.getName())) {
           this.privateParameters = appConfig.getParameters();

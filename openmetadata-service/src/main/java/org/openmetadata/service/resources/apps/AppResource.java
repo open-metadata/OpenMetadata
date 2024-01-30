@@ -788,7 +788,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
             .build());
     try {
-      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository, privateConfiguration);
+      ApplicationHandler.configureApplication(
+          app, repository.getDaoCollection(), searchRepository, privateConfiguration);
       return Response.status(Response.Status.OK).entity("App has been configured.").build();
     } catch (RuntimeException e) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
