@@ -48,16 +48,8 @@ export interface ActivityThreadPanelBodyProp
   showHeader?: boolean;
 }
 
-export interface ActivityThreadListProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
-  editAnnouncementPermission?: boolean;
+export interface ActivityThreadListProp extends HTMLAttributes<HTMLDivElement> {
   threads: Thread[];
-  selectedThreadId: string;
-  postFeed: (value: string) => void;
-  onThreadIdSelect: (value: string) => void;
-  onThreadSelect: (value: string) => void;
-  onConfirmation?: (data: ConfirmState) => void;
 }
 export interface ActivityThreadProp
   extends HTMLAttributes<HTMLDivElement>,

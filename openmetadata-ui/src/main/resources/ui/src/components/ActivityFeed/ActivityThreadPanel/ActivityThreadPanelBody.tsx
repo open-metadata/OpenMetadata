@@ -320,13 +320,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             ) : (
               <ActivityThreadList
                 className={classNames(className)}
-                postFeed={postFeed}
-                selectedThreadId={selectedThreadId}
                 threads={threads}
-                updateThreadHandler={onUpdateThread}
-                onConfirmation={onConfirmation}
-                onThreadIdSelect={onThreadIdSelect}
-                onThreadSelect={onThreadSelect}
               />
             )}
             <div

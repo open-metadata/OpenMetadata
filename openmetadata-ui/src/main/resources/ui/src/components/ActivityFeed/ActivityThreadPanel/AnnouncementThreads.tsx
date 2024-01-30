@@ -22,9 +22,10 @@ import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 import './announcement.less';
 
-const AnnouncementThreads: FC<
-  Pick<ActivityThreadListProp, 'threads' | 'className'>
-> = ({ threads, className }) => {
+const AnnouncementThreads: FC<ActivityThreadListProp> = ({
+  threads,
+  className,
+}) => {
   const { t } = useTranslation();
   const { updatedFeedList: updatedThreads } =
     getFeedListWithRelativeDays(threads);
