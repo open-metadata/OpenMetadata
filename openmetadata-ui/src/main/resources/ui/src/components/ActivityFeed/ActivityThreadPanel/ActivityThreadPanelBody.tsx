@@ -12,28 +12,31 @@
  */
 
 import { Space, Switch, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isUndefined } from 'lodash';
-import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
+import React, {
+  FC,
+  Fragment,
+  RefObject,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { FeedFilter } from '../../../enums/mydata.enum';
 import {
-  Thread,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getAllFeeds } from '../../../rest/feedsAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
 import AnnouncementThreads from './AnnouncementThreads';
@@ -41,66 +44,55 @@ import AnnouncementThreads from './AnnouncementThreads';
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
   onCancel,
-  postFeedHandler,
   createThread,
-  deletePostHandler,
-  updateThreadHandler,
   className,
   showHeader = true,
   threadType,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [selectedThread, setSelectedThread] = useState<Thread>();
+  const {
+    getFeedData,
+    selectedThread,
+    entityThread,
+    entityPaging: paging,
+    loading: isThreadLoading,
+  } = useActivityFeedProvider();
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);
 
   const [elementRef, isInView] = useElementInView(observerOptions);
 
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const [isThreadLoading, setIsThreadLoading] = useState(false);
-
   const [taskStatus, setTaskStatus] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
 
-  const isTaskType = isEqual(threadType, ThreadType.Task);
-
-  const isConversationType = isEqual(threadType, ThreadType.Conversation);
+  const { isTaskType, isConversationType, isAnnouncementType } = useMemo(
+    () => ({
+      isTaskType: isEqual(threadType, ThreadType.Task),
+      isConversationType: isEqual(threadType, ThreadType.Conversation),
+      isAnnouncementType: isEqual(threadType, ThreadType.Announcement),
+    }),
+    [threadType]
+  );
 
   const isTaskClosed = isEqual(taskStatus, ThreadTaskStatus.Closed);
 
-  const isAnnouncementType = threadType === ThreadType.Announcement;
+  const getThreads = () => {
+    const entityType = getEntityType(threadLink) ?? '';
+    const entityFQN = getEntityFQN(threadLink) ?? '';
 
-  const getThreads = (after?: string) => {
-    const status = isTaskType ? taskStatus : undefined;
-    setIsThreadLoading(true);
-    getAllFeeds(threadLink, after, threadType, FeedFilter.ALL, status)
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        setThreads((prevData) => {
-          if (after) {
-            return [...prevData, ...data];
-          } else {
-            return [...data];
-          }
-        });
-        setPaging(pagingObj);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.thread-plural-lowercase'),
-          })
-        );
-      })
-      .finally(() => {
-        setIsThreadLoading(false);
-      });
+    getFeedData(
+      undefined,
+      undefined,
+      threadType,
+      entityType,
+      entityFQN,
+      isTaskType ? taskStatus : undefined
+    );
   };
+
+  useEffect(getThreads, [threadLink, threadType, taskStatus]);
 
   const loadNewThreads = () => {
     setTimeout(() => {
@@ -110,13 +102,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
-  };
-
-  const onThreadSelect = (id: string) => {
-    const thread = threads.find((f) => f.id === id);
-    if (thread) {
-      setSelectedThread(thread);
-    }
   };
 
   const onPostThread = (value: string) => {
@@ -133,15 +118,15 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return isThreadLoading ? <Loader /> : null;
   };
 
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      getThreads(pagingObj.after);
-    }
-  };
+  //   const fetchMoreThread = (
+  //     isElementInView: boolean,
+  //     pagingObj: Paging,
+  //     isLoading: boolean
+  //   ) => {
+  //     if (isElementInView && pagingObj?.after && !isLoading) {
+  //       getThreads(pagingObj.after);
+  //     }
+  //   };
 
   const onSwitchChange = (checked: boolean) => {
     if (checked) {
@@ -164,17 +149,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     };
   }, []);
 
-  useEffect(() => {
-    onThreadSelect(selectedThread?.id as string);
-  }, [threads]);
-
-  useEffect(() => {
-    getThreads();
-  }, [threadLink, threadType, taskStatus]);
-
-  useEffect(() => {
-    fetchMoreThread(isInView, paging, isThreadLoading);
-  }, [paging, isThreadLoading, isInView]);
+  //   useEffect(() => {
+  //     fetchMoreThread(isInView, paging, isThreadLoading);
+  //   }, [paging, isThreadLoading, isInView]);
 
   return (
     <Fragment>
@@ -189,7 +166,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             }
             onCancel={() => onCancel?.()}
             onShowNewConversation={
-              threads.length > 0 && isUndefined(selectedThread)
+              entityThread.length > 0 && isUndefined(selectedThread)
                 ? onShowNewConversation
                 : undefined
             }
@@ -206,7 +183,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         )}
 
         <Fragment>
-          {showNewConversation || isEqual(threads.length, 0) ? (
+          {showNewConversation || isEqual(entityThread.length, 0) ? (
             <>
               {isConversationType && (
                 <Space className="w-full" direction="vertical">
@@ -243,12 +220,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           {isAnnouncementType ? (
             <AnnouncementThreads
               className={classNames(className)}
-              threads={threads}
+              threads={entityThread}
             />
           ) : (
             <ActivityThreadList
               className={classNames(className)}
-              threads={threads}
+              threads={entityThread}
             />
           )}
           <div

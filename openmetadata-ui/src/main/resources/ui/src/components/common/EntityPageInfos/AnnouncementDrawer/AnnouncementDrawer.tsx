@@ -14,21 +14,16 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { Operation } from 'fast-json-patch';
-import { uniqueId } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CreateThread,
   ThreadType,
 } from '../../../../generated/api/feed/createThread';
-import { Post } from '../../../../generated/entity/feed/thread';
-import { postFeedById, postThread } from '../../../../rest/feedsAPI';
+import { postThread } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
-import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
@@ -49,7 +44,6 @@ const AnnouncementDrawer: FC<Props> = ({
   createPermission,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
 
   const title = (
@@ -69,37 +63,6 @@ const AnnouncementDrawer: FC<Props> = ({
     postThread(data).catch((err: AxiosError) => {
       showErrorToast(err);
     });
-  };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread);
-  };
-
-  const postFeedHandler = (value: string, id: string) => {
-    const data = {
-      message: value,
-      from: currentUser?.name,
-    } as Post;
-    postFeedById(id, data).catch((err: AxiosError) => {
-      showErrorToast(err);
-    });
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    const callback = () => {
-      return;
-    };
-
-    updateThreadData(threadId, postId, isThread, data, callback);
   };
 
   return (
@@ -128,13 +91,9 @@ const AnnouncementDrawer: FC<Props> = ({
           <ActivityThreadPanelBody
             className="p-0"
             createThread={createThread}
-            deletePostHandler={deletePostHandler}
-            key={uniqueId()}
-            postFeedHandler={postFeedHandler}
             showHeader={false}
             threadLink={getEntityFeedLink(entityType, entityFQN)}
             threadType={ThreadType.Announcement}
-            updateThreadHandler={updateThreadHandler}
           />
         </Drawer>
       </div>

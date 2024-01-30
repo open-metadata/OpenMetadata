@@ -19,6 +19,7 @@ import {
   Post,
   ReactionType,
   Thread,
+  ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
@@ -53,7 +54,8 @@ export interface ActivityFeedProviderContextType {
     after?: string,
     type?: ThreadType,
     entityType?: EntityType,
-    fqn?: string
+    fqn?: string,
+    status?: ThreadTaskStatus
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   showEditAnnouncementModal: (thread: Thread) => void;

@@ -65,11 +65,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           <TabPane key={PanelTab.TASKS} tab={t('label.task-plural')}>
             <ActivityThreadPanelBody
               createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              postFeedHandler={postFeedHandler}
               threadLink={threadLink}
               threadType={ThreadType.Task}
-              updateThreadHandler={updateThreadHandler}
               onCancel={onCancel}
             />
           </TabPane>
@@ -78,11 +75,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             tab={t('label.conversation-plural')}>
             <ActivityThreadPanelBody
               createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              postFeedHandler={postFeedHandler}
               threadLink={threadLink}
               threadType={ThreadType.Conversation}
-              updateThreadHandler={updateThreadHandler}
               onCancel={onCancel}
             />
           </TabPane>
