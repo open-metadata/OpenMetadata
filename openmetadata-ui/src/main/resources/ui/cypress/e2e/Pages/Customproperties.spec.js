@@ -229,13 +229,6 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
   if (term.color) {
     cy.get('[data-testid="color-input"]').scrollIntoView().type(term.color);
   }
-
-  // check for parent glossary reviewer
-  if (glossary.name === NEW_GLOSSARY.name) {
-    cy.get('[data-testid="user-tag"]')
-      .contains(CREDENTIALS.displayName)
-      .should('be.visible');
-  }
 };
 const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
   fillGlossaryTermDetails(term, glossary, isMutually);
@@ -262,6 +255,17 @@ const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
   )
     .should('be.visible')
     .contains(status);
+
+  if (glossary.name === NEW_GLOSSARY.name) {
+    cy.get(`[data-testid="${NEW_GLOSSARY_TERMS.term_1.name}"]`)
+      .scrollIntoView()
+      .click();
+
+    cy.get('[data-testid="glossary-reviewer-name"]')
+      .scrollIntoView()
+      .contains(CREDENTIALS.displayName)
+      .should('be.visible');
+  }
 };
 
 describe('Custom Properties should work properly', () => {

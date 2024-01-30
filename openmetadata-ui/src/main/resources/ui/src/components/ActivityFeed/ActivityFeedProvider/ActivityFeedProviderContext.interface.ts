@@ -25,6 +25,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 
@@ -61,11 +62,6 @@ export interface ActivityFeedProviderContextType {
     status?: ThreadTaskStatus
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
-  showEditAnnouncementModal: (thread: Thread) => void;
-  updateAnnouncement: (
-    title: string,
-    updatedAnnouncement: AnnouncementDetails
-  ) => void;
   hideDrawer: () => void;
   updateEditorFocus: (isFocused: boolean) => void;
   updateReactions: (
@@ -77,5 +73,11 @@ export interface ActivityFeedProviderContextType {
   ) => void;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
+   showEditAnnouncementModal: (thread: Thread) => void;
+  updateAnnouncement: (
+    title: string,
+    updatedAnnouncement: AnnouncementDetails
+  ) => void;
   createThread: (data: CreateThread) => void;
+  initialAssignees: EntityReference[];
 }

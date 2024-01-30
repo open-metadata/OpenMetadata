@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
-import { isEqual, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getDatabaseDetailsPath,
@@ -43,6 +43,7 @@ import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Field, Topic } from '../generated/entity/data/topic';
 import { TaskType, Thread } from '../generated/entity/feed/thread';
+import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
 import {
@@ -191,12 +192,19 @@ export const fetchOptions = ({
   setOptions,
   onlyUsers,
   currentUserId,
+  initialOptions,
 }: {
   query: string;
   setOptions: (value: React.SetStateAction<Option[]>) => void;
   onlyUsers?: boolean;
   currentUserId?: string;
+  initialOptions?: Option[];
 }) => {
+  if (isEmpty(query) && initialOptions) {
+    setOptions(initialOptions);
+
+    return;
+  }
   getUserSuggestions(query, onlyUsers)
     .then((res) => {
       const hits = res.data.suggest['metadata-suggest'][0]['options'];
@@ -210,6 +218,15 @@ export const fetchOptions = ({
       setOptions(suggestOptions.filter((item) => item.value !== currentUserId));
     })
     .catch((err: AxiosError) => showErrorToast(err));
+};
+
+export const generateOptions = (assignees: EntityReference[]) => {
+  return assignees.map((assignee) => ({
+    label: getEntityName(assignee),
+    value: assignee.id || '',
+    type: assignee.type,
+    name: assignee.name,
+  }));
 };
 
 export const getEntityColumnsDetails = (
@@ -547,6 +564,17 @@ export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.edit-amp-accept-suggestion'),
     key: TaskActionMode.EDIT,
+  },
+];
+
+export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
+  {
+    label: i18Next.t('label.re-assign'),
+    key: TaskActionMode.RE_ASSIGN,
+  },
+  {
+    label: i18Next.t('label.resolve'),
+    key: TaskActionMode.RESOLVE,
   },
 ];
 

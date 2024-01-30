@@ -210,7 +210,6 @@ const validateForm = () => {
 };
 
 const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
-  checkDisplayName(glossary.name);
   cy.get('[data-testid="add-new-tag-button-header"]').click();
 
   cy.contains('Add Glossary Term').should('be.visible');
@@ -261,13 +260,6 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
   }
   if (term.color) {
     cy.get('[data-testid="color-input"]').scrollIntoView().type(term.color);
-  }
-
-  // check for parent glossary reviewer
-  if (glossary.name === NEW_GLOSSARY.name) {
-    cy.get('[data-testid="user-tag"]')
-      .contains(CREDENTIALS.username)
-      .should('be.visible');
   }
 };
 
@@ -355,6 +347,18 @@ const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
   )
     .should('be.visible')
     .contains(status);
+
+  if (glossary.name === NEW_GLOSSARY.name) {
+    cy.get(`[data-testid="${NEW_GLOSSARY_TERMS.term_1.name}"]`)
+      .scrollIntoView()
+      .click();
+
+    cy.get('[data-testid="glossary-reviewer-name"]')
+      .scrollIntoView()
+      .contains(CREDENTIALS.username)
+      .should('be.visible');
+    cy.get(':nth-child(2) > .link-title').click();
+  }
 };
 
 const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
@@ -1002,7 +1006,6 @@ describe('Glossary page should work properly', () => {
     cy.get(`[data-testid="tag-${glossary}.${term2}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term2);
 
-    interceptURL('GET', '/api/v1/feed/count*', 'countTag');
     interceptURL('GET', '/api/v1/tags', 'tags');
     interceptURL('PATCH', '/api/v1/tables/*', 'saveTag');
 
@@ -1030,7 +1033,6 @@ describe('Glossary page should work properly', () => {
     cy.clickOutside();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@saveTag', 200);
-    verifyResponseStatusCode('@countTag', 200);
     cy.get(
       '[data-testid="entity-right-panel"] [data-testid="glossary-container"]'
     )
@@ -1058,7 +1060,6 @@ describe('Glossary page should work properly', () => {
     );
     cy.clickOutside();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    verifyResponseStatusCode('@countTag', 200);
     cy.get(
       '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )

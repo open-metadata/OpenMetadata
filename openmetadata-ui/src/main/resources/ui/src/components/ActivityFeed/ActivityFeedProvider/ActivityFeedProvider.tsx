@@ -19,11 +19,15 @@ import React, {
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import {
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
@@ -36,6 +40,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
@@ -50,7 +55,11 @@ import {
   updateThread,
 } from '../../../rest/feedsAPI';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getUsers } from '../../../rest/userAPI';
+import {
+  getEntityFeedLink,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -82,6 +91,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
     TestCaseResolutionStatus[]
   >([]);
+  const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
+    []
+  );
   const { currentUser } = useAuthContext();
 
   const fetchTestCaseResolution = useCallback(async (id: string) => {
@@ -461,6 +473,27 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     },
     [setTestCaseResolutionStatus]
   );
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setInitialAssignees(filterData);
+    } catch (error) {
+      setInitialAssignees([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users once and store in state
+    fetchInitialAssign();
+  }, []);
 
   const activityFeedContextValues = useMemo(() => {
     return {
@@ -488,6 +521,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       showEditAnnouncementModal,
       updateAnnouncement,
       createThread,
+      initialAssignees,
     };
   }, [
     entityThread,
@@ -515,6 +549,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     showEditAnnouncementModal,
     updateAnnouncement,
     createThread,
+    initialAssignees,
   ]);
 
   return (

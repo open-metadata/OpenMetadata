@@ -128,7 +128,7 @@ export const removeOwner = (ownerName: string, dataTestId?: string) => {
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
-  cy.get('[data-testid="remove-owner"]').click();
+  cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
@@ -206,7 +206,7 @@ export const removeTeamAsOwner = (teamName: string, dataTestId?: string) => {
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
-  cy.get('[data-testid="remove-owner"]').click();
+  cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get('[data-testid="owner-link"]').should('not.contain', teamName);
