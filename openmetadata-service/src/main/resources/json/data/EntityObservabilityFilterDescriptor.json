@@ -266,9 +266,9 @@
         "displayName": "Get Ingestion Pipeline Status Updates",
         "description" : "Get Updates for Ingestion Pipeline Status Changes",
         "effect" : "include",
-        "condition": "matchIngestionPipelineState(${pipelineStateList})",
+        "condition": "matchIngestionPipelineState(${ingestionPipelineStateList})",
         "arguments": [
-          "pipelineStateList"
+          "ingestionPipelineStateList"
         ],
         "inputType": "runtime"
       }
