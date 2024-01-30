@@ -28,7 +28,7 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     try {
-      const res = await testEmailConnection(values.email);
+      const res = await testEmailConnection(values);
       showSuccessToast(res.data);
     } catch (error) {
       showErrorToast(error as AxiosError);
