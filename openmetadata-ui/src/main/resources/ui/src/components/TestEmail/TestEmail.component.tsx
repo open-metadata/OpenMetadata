@@ -43,6 +43,7 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
       open
       closable={false}
       closeIcon={null}
+      data-testid="test-email-modal"
       maskClosable={false}
       okButtonProps={{
         htmlType: 'submit',
@@ -65,6 +66,7 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
           rules={[{ type: 'email', required: true }]}>
           <Input
             autoFocus
+            data-testid="test-email-input"
             placeholder={t('label.enter-entity', {
               entity: t('label.email-lowercase'),
             })}
