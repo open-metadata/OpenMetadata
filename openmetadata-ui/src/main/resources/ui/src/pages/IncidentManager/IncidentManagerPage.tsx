@@ -481,7 +481,11 @@ const IncidentManagerPage = () => {
             dataSource={testCaseListData.data}
             loading={testCaseListData.isLoading}
             locale={{
-              emptyText: <FilterTablePlaceHolder />,
+              emptyText: (
+                <FilterTablePlaceHolder
+                  placeholderText={t('message.no-incident-found')}
+                />
+              ),
             }}
             pagination={false}
             rowKey="id"
