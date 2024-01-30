@@ -369,6 +369,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             fqn={topicDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTopic}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -449,7 +450,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       deleted,
       onCancel,
       onDescriptionEdit,
-      getEntityFeedCount,
+      handleFeedCount,
       onExtensionUpdate,
       onThreadLinkSelect,
       handleTagSelection,
