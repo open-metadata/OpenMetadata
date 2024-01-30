@@ -89,41 +89,48 @@ function ObservabilityFormFiltersItem({
                         key={`observability-${key}`}
                         span={24}>
                         <Row gutter={[8, 8]}>
-                          <Col span={11}>
-                            <Form.Item
-                              key={`filter-${key}`}
-                              name={[name, 'name']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: t('message.field-text-is-required', {
-                                    fieldText: t('label.filter'),
-                                  }),
-                                },
-                              ]}>
-                              <Select
-                                data-testid={`filter-select-${name}`}
-                                options={filterOptions}
-                                placeholder={t('label.select-field', {
-                                  field: t('label.filter'),
-                                })}
-                                onChange={() => {
-                                  form.setFieldValue(
-                                    ['input', 'filters', name, 'arguments'],
-                                    []
-                                  );
-                                }}
-                              />
-                            </Form.Item>
+                          <Col flex="1 1 auto">
+                            <Row gutter={[8, 8]}>
+                              <Col span={12}>
+                                <Form.Item
+                                  key={`filter-${key}`}
+                                  name={[name, 'name']}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.filter'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Select
+                                    data-testid={`filter-select-${name}`}
+                                    options={filterOptions}
+                                    placeholder={t('label.select-field', {
+                                      field: t('label.filter'),
+                                    })}
+                                    onChange={() => {
+                                      form.setFieldValue(
+                                        ['input', 'filters', name, 'arguments'],
+                                        []
+                                      );
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              {showConditionalFields &&
+                                getConditionalField(
+                                  selectedFilters[name].name ?? '',
+                                  name,
+                                  selectedTrigger,
+                                  supportedFilters
+                                )}
+                            </Row>
                           </Col>
-                          {showConditionalFields &&
-                            getConditionalField(
-                              selectedFilters[name].name ?? '',
-                              name,
-                              selectedTrigger,
-                              supportedFilters
-                            )}
-                          <Col flex="0 0 32px">
+                          <Col flex="0 0 40px">
                             <Button
                               data-testid={`remove-filter-${name}`}
                               icon={<CloseOutlined />}

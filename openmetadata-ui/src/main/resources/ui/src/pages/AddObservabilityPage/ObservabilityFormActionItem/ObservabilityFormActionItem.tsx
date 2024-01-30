@@ -88,41 +88,48 @@ function ObservabilityFormActionItem({
                         key={`observability-${key}`}
                         span={24}>
                         <Row gutter={[8, 8]}>
-                          <Col span={11}>
-                            <Form.Item
-                              key={`action-${key}`}
-                              name={[name, 'name']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: t('message.field-text-is-required', {
-                                    fieldText: t('label.action'),
-                                  }),
-                                },
-                              ]}>
-                              <Select
-                                data-testid={`action-select-${name}`}
-                                options={actionOptions}
-                                placeholder={t('label.select-field', {
-                                  field: t('label.action'),
-                                })}
-                                onChange={() => {
-                                  form.setFieldValue(
-                                    ['input', 'actions', name, 'arguments'],
-                                    []
-                                  );
-                                }}
-                              />
-                            </Form.Item>
+                          <Col flex="1 1 auto">
+                            <Row gutter={[8, 8]}>
+                              <Col span={12}>
+                                <Form.Item
+                                  key={`action-${key}`}
+                                  name={[name, 'name']}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.action'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Select
+                                    data-testid={`action-select-${name}`}
+                                    options={actionOptions}
+                                    placeholder={t('label.select-field', {
+                                      field: t('label.action'),
+                                    })}
+                                    onChange={() => {
+                                      form.setFieldValue(
+                                        ['input', 'actions', name, 'arguments'],
+                                        []
+                                      );
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              {showConditionalFields &&
+                                getConditionalField(
+                                  selectedActions[name].name ?? '',
+                                  name,
+                                  selectedTrigger,
+                                  supportedActions
+                                )}
+                            </Row>
                           </Col>
-                          {showConditionalFields &&
-                            getConditionalField(
-                              selectedActions[name].name ?? '',
-                              name,
-                              selectedTrigger,
-                              supportedActions
-                            )}
-                          <Col flex="0 0 32px">
+                          <Col flex="0 0 40px">
                             <Button
                               data-testid={`remove-action-rule-${name}`}
                               icon={<CloseOutlined />}

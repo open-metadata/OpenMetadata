@@ -199,115 +199,127 @@ function DestinationFormItem({
                       checkIfDestinationIsInternal(destinationType);
 
                     return (
-                      <Col key={key} span={24}>
-                        <Row
-                          className="p-b-md"
-                          data-testid={`destination-${name}`}
-                          gutter={[16, 16]}>
-                          <Col span={11}>
-                            <Form.Item
-                              required
-                              name={[name, 'destinationType']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: t('message.field-text-is-required', {
-                                    fieldText: t('label.destination'),
-                                  }),
-                                },
-                              ]}>
-                              <Select
-                                className="w-full"
-                                data-testid={`destination-category-select-${name}`}
-                                dropdownRender={(menu) =>
-                                  customDestinationDropdown(menu, key)
-                                }
-                                options={destinationOptions}
-                                placeholder={t('label.select-field', {
-                                  field: t('label.destination'),
-                                })}
-                                onDropdownVisibleChange={
-                                  afterDropdownVisibleChange
-                                }
-                                onSelect={(value) => {
-                                  form.setFieldValue(['destinations', name], {
-                                    destinationType: value,
-                                  });
-                                }}
-                              />
-                            </Form.Item>
-                          </Col>
-                          {getHiddenDestinationFields(
-                            isInternalDestinationSelected,
-                            name,
-                            destinationType
-                          )}
-                          {selectedDestinations &&
-                            !isEmpty(selectedDestinations[name]) &&
-                            selectedDestinations[name] &&
-                            getDestinationConfigField(
-                              selectedDestinations[name]?.destinationType,
-                              name
-                            )}
-                          <Col flex="0 0 32px">
-                            <Button
-                              data-testid={`remove-destination-${name}`}
-                              icon={<CloseOutlined />}
-                              onClick={() => remove(name)}
-                            />
-                          </Col>
-                          {destinationType &&
-                            checkIfDestinationIsInternal(destinationType) && (
-                              <Col span={24}>
+                      <Col
+                        data-testid={`destination-${name}`}
+                        key={key}
+                        span={24}>
+                        <Row gutter={[8, 8]}>
+                          <Col flex="1 1 auto">
+                            <Row gutter={[8, 8]}>
+                              <Col span={12}>
                                 <Form.Item
                                   required
-                                  extra={
-                                    destinationType &&
-                                    subscriptionType && (
-                                      <Alert
-                                        closable
-                                        className="m-t-sm"
-                                        message={
-                                          <Typography.Text className="font-medium text-sm">
-                                            {t(
-                                              'message.destination-selection-warning',
-                                              {
-                                                subscriptionCategory:
-                                                  destinationType,
-                                                subscriptionType,
-                                              }
-                                            )}
-                                          </Typography.Text>
-                                        }
-                                        type="warning"
-                                      />
-                                    )
-                                  }
-                                  name={[name, 'type']}
+                                  name={[name, 'destinationType']}
                                   rules={[
                                     {
                                       required: true,
                                       message: t(
                                         'message.field-text-is-required',
                                         {
-                                          fieldText: t('label.field'),
+                                          fieldText: t('label.destination'),
                                         }
                                       ),
                                     },
                                   ]}>
                                   <Select
                                     className="w-full"
-                                    data-testid={`destination-type-select-${name}`}
-                                    options={getSubscriptionTypeOptions(
-                                      destinationType
-                                    )}
+                                    data-testid={`destination-category-select-${name}`}
+                                    dropdownRender={(menu) =>
+                                      customDestinationDropdown(menu, key)
+                                    }
+                                    options={destinationOptions}
                                     placeholder={t('label.select-field', {
                                       field: t('label.destination'),
                                     })}
+                                    onDropdownVisibleChange={
+                                      afterDropdownVisibleChange
+                                    }
+                                    onSelect={(value) => {
+                                      form.setFieldValue(
+                                        ['destinations', name],
+                                        {
+                                          destinationType: value,
+                                        }
+                                      );
+                                    }}
                                   />
                                 </Form.Item>
                               </Col>
-                            )}{' '}
+                              {getHiddenDestinationFields(
+                                isInternalDestinationSelected,
+                                name,
+                                destinationType
+                              )}
+                              {selectedDestinations &&
+                                !isEmpty(selectedDestinations[name]) &&
+                                selectedDestinations[name] &&
+                                getDestinationConfigField(
+                                  selectedDestinations[name]?.destinationType,
+                                  name
+                                )}
+                              {destinationType &&
+                                checkIfDestinationIsInternal(
+                                  destinationType
+                                ) && (
+                                  <Col span={24}>
+                                    <Form.Item
+                                      required
+                                      extra={
+                                        destinationType &&
+                                        subscriptionType && (
+                                          <Alert
+                                            closable
+                                            className="m-t-sm"
+                                            message={
+                                              <Typography.Text className="font-medium text-sm">
+                                                {t(
+                                                  'message.destination-selection-warning',
+                                                  {
+                                                    subscriptionCategory:
+                                                      destinationType,
+                                                    subscriptionType,
+                                                  }
+                                                )}
+                                              </Typography.Text>
+                                            }
+                                            type="warning"
+                                          />
+                                        )
+                                      }
+                                      name={[name, 'type']}
+                                      rules={[
+                                        {
+                                          required: true,
+                                          message: t(
+                                            'message.field-text-is-required',
+                                            {
+                                              fieldText: t('label.field'),
+                                            }
+                                          ),
+                                        },
+                                      ]}>
+                                      <Select
+                                        className="w-full"
+                                        data-testid={`destination-type-select-${name}`}
+                                        options={getSubscriptionTypeOptions(
+                                          destinationType
+                                        )}
+                                        placeholder={t('label.select-field', {
+                                          field: t('label.destination'),
+                                        })}
+                                      />
+                                    </Form.Item>
+                                  </Col>
+                                )}
+                            </Row>
+                          </Col>
+                          <Col flex="0 0 40px">
+                            <Button
+                              data-testid={`remove-destination-${name}`}
+                              icon={<CloseOutlined />}
+                              onClick={() => remove(name)}
+                            />
+                          </Col>
                         </Row>
                       </Col>
                     );

@@ -15,7 +15,7 @@ import { Col, Input, Select, Switch, Tooltip, Typography } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
-import { isEqual, isUndefined, map, startCase } from 'lodash';
+import { isEqual, isUndefined, map, startCase, uniqBy } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -182,10 +182,17 @@ const searchEntity = async (
       searchIndex
     );
 
-    return response.data.hits.hits.map((d) => ({
-      label: getEntityName(d._source),
-      value: d._source.fullyQualifiedName,
-    }));
+    return uniqBy(
+      response.data.hits.hits.map((d) => ({
+        label: (
+          <Tooltip mouseEnterDelay={0.8} title={getEntityName(d._source)}>
+            <span>{getEntityName(d._source)}</span>
+          </Tooltip>
+        ),
+        value: d._source.fullyQualifiedName,
+      })),
+      'value'
+    );
   } catch (error) {
     return [];
   }
@@ -267,7 +274,7 @@ export const getDestinationConfigField = (
     case SubscriptionType.GChat:
     case SubscriptionType.Generic:
       return (
-        <Col flex="1 1 auto">
+        <Col span={12}>
           <Form.Item
             name={[fieldName, 'config', 'endpoint']}
             rules={[
@@ -287,7 +294,7 @@ export const getDestinationConfigField = (
       );
     case SubscriptionType.Email:
       return (
-        <Col flex="1 1 auto">
+        <Col span={12}>
           <Form.Item
             name={[fieldName, 'config', 'receivers']}
             rules={[
@@ -311,7 +318,7 @@ export const getDestinationConfigField = (
     case SubscriptionCategory.Teams:
     case SubscriptionCategory.Users:
       return (
-        <Col flex="1 1 auto">
+        <Col span={12}>
           <Form.Item
             name={[fieldName, 'config', 'receivers']}
             rules={[
@@ -386,7 +393,7 @@ export const getFieldByArgumentType = (
   switch (argument) {
     case 'fqnList':
       field = (
-        <Col flex="1 1 auto" key="fqn-list-select">
+        <Col key="fqn-list-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -403,7 +410,9 @@ export const getFieldByArgumentType = (
               api={getEntityByFQN}
               className="w-full"
               data-testid="fqn-list-select"
+              maxTagTextLength={45}
               mode="tags"
+              optionFilterProp="label"
               placeholder={t('label.search-by-type', {
                 type: t('label.fqn-uppercase'),
               })}
@@ -417,7 +426,7 @@ export const getFieldByArgumentType = (
 
     case 'domainList':
       field = (
-        <Col flex="1 1 auto" key="domain-select">
+        <Col key="domain-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -447,7 +456,7 @@ export const getFieldByArgumentType = (
 
     case 'tableNameList':
       field = (
-        <Col flex="1 1 auto" key="table-name-select">
+        <Col key="table-name-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -466,7 +475,9 @@ export const getFieldByArgumentType = (
               api={getTableSuggestions}
               className="w-full"
               data-testid="table-name-select"
+              maxTagTextLength={45}
               mode="tags"
+              optionFilterProp="label"
               placeholder={t('label.search-by-type', {
                 type: t('label.table-lowercase'),
               })}
@@ -479,7 +490,7 @@ export const getFieldByArgumentType = (
 
     case 'ownerNameList':
       field = (
-        <Col flex="1 1 auto" key="owner-select">
+        <Col key="owner-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -511,7 +522,7 @@ export const getFieldByArgumentType = (
 
     case 'updateByUserList':
       field = (
-        <Col flex="1 1 auto" key="user-select">
+        <Col key="user-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -543,7 +554,7 @@ export const getFieldByArgumentType = (
 
     case 'eventTypeList':
       field = (
-        <Col flex="1 1 auto" key="event-type-select">
+        <Col key="event-type-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -575,7 +586,7 @@ export const getFieldByArgumentType = (
 
     case 'entityIdList':
       field = (
-        <Col flex="1 1 auto" key="entity-id-select">
+        <Col key="entity-id-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -609,7 +620,7 @@ export const getFieldByArgumentType = (
 
     case 'pipelineStateList':
       field = (
-        <Col flex="1 1 auto" key="pipeline-state-select">
+        <Col key="pipeline-state-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -675,7 +686,7 @@ export const getFieldByArgumentType = (
 
     case 'testResultList':
       field = (
-        <Col flex="1 1 auto" key="test-result-select">
+        <Col key="test-result-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
