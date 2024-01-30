@@ -101,6 +101,19 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
     setPreviewAsset(asset);
   }, []);
 
+  const handleTabRedirection = useCallback(() => {
+    if (!isLoggedInUser && activeTab === UserPageTabs.ACCESS_TOKEN) {
+      history.push({
+        pathname: getUserPath(decodedUsername, UserPageTabs.ACTIVITY),
+        search: location.search,
+      });
+    }
+  }, [activeTab, decodedUsername, isLoggedInUser]);
+
+  useEffect(() => {
+    handleTabRedirection();
+  }, [activeTab]);
+
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
       await updateUserDetails({ ...userData, personas });
