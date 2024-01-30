@@ -1093,6 +1093,7 @@
     "test-case-plural": "Casos de Teste",
     "test-case-result": "Test Case Results",
     "test-email": "Email de Teste",
+    "test-email-connection": "Test Email Connection",
     "test-entity": "Teste {{entity}}",
     "test-plural": "Testes",
     "test-suite": "Conjunto de Testes",

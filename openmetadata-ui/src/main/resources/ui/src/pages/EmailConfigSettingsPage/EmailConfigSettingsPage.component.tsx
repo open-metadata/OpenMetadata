@@ -164,7 +164,7 @@ function EmailConfigSettingsPage() {
               />
             </Col>
             <Col className="d-flex">
-              {isAdminUser && (
+              {isAdminUser && emailConfigValues?.senderMail && (
                 <Button type="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}
                 </Button>
