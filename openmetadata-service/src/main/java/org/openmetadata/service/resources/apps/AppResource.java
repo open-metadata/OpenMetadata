@@ -46,6 +46,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -97,6 +98,7 @@ import org.quartz.SchedulerException;
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private AppsPrivateConfiguration privateConfiguration;
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
@@ -104,6 +106,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
+    this.privateConfiguration = config.getAppsPrivateConfiguration();
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
@@ -114,7 +117,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
 
     try {
-      AppScheduler.initialize(dao, searchRepository);
+      AppScheduler.initialize(dao, searchRepository, privateConfiguration);
 
       // Get Create App Requests
       List<CreateApp> createAppsReq =
@@ -143,7 +146,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
               new OpenMetadataConnectionBuilder(
                       openMetadataApplicationConfig, app.getBot().getName())
                   .build());
-          ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+          ApplicationHandler.installApplication(
+              app, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
         }
       }
     } catch (SchedulerException | IOException ex) {
@@ -538,8 +542,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
             .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
-      ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
+      ApplicationHandler.configureApplication(
+          app, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
     }
     // We don't want to store this information
     app.setOpenMetadataServerConnection(null);
@@ -581,7 +587,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(
-          updatedApp, Entity.getCollectionDAO(), searchRepository);
+          updatedApp, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
     }
     // We don't want to store this information
     updatedApp.setOpenMetadataServerConnection(null);
@@ -618,7 +624,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
             .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
     }
     // We don't want to store this information
     app.setOpenMetadataServerConnection(null);
@@ -703,7 +710,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
               .build());
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-        ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+        ApplicationHandler.installApplication(
+            app, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
       }
       // We don't want to store this information
       app.setOpenMetadataServerConnection(null);
@@ -741,7 +749,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
             .build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, repository.getDaoCollection(), searchRepository, privateConfiguration);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -779,7 +788,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
             .build());
     try {
-      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository, privateConfiguration);
       return Response.status(Response.Status.OK).entity("App has been configured.").build();
     } catch (RuntimeException e) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -813,7 +822,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(
-          app, Entity.getCollectionDAO(), searchRepository);
+          app, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -862,7 +871,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, Entity.getCollectionDAO(), searchRepository, privateConfiguration);
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
       if (!app.getPipelines().isEmpty()) {

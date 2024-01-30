@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.AppRuntime;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.AppSchedule;
@@ -35,16 +36,23 @@ public class AppScheduler {
   public static final String APP_INFO_KEY = "applicationInfoKey";
   public static final String COLLECTION_DAO_KEY = "daoKey";
   public static final String SEARCH_CLIENT_KEY = "searchClientKey";
+  public static final String APPS_PRIVATE_CONFIG_KEY = "privateConfigurationKey";
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   private final Scheduler scheduler;
   private static final ConcurrentHashMap<UUID, JobDetail> appJobsKeyMap = new ConcurrentHashMap<>();
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchClient;
+  private final AppsPrivateConfiguration privateConfiguration;
 
-  private AppScheduler(CollectionDAO dao, SearchRepository searchClient) throws SchedulerException {
+  private AppScheduler(
+      CollectionDAO dao,
+      SearchRepository searchClient,
+      AppsPrivateConfiguration privateConfiguration)
+      throws SchedulerException {
     this.collectionDAO = dao;
     this.searchClient = searchClient;
+    this.privateConfiguration = privateConfiguration;
     this.scheduler = new StdSchedulerFactory().getScheduler();
     // Add OMJob Listener
     this.scheduler
@@ -53,10 +61,13 @@ public class AppScheduler {
     this.scheduler.start();
   }
 
-  public static void initialize(CollectionDAO dao, SearchRepository searchClient)
+  public static void initialize(
+      CollectionDAO dao,
+      SearchRepository searchClient,
+      AppsPrivateConfiguration privateConfiguration)
       throws SchedulerException {
     if (!initialized) {
-      instance = new AppScheduler(dao, searchClient);
+      instance = new AppScheduler(dao, searchClient, privateConfiguration);
       initialized = true;
     } else {
       LOG.info("Reindexing Handler is already initialized");
@@ -104,6 +115,7 @@ public class AppScheduler {
     dataMap.put(APP_INFO_KEY, app);
     dataMap.put(COLLECTION_DAO_KEY, collectionDAO);
     dataMap.put(SEARCH_CLIENT_KEY, searchClient);
+    dataMap.put(APPS_PRIVATE_CONFIG_KEY, privateConfiguration);
     dataMap.put("triggerType", AppRunType.Scheduled.value());
     Class<? extends NativeApplication> clz =
         (Class<? extends NativeApplication>) Class.forName(app.getClassName());

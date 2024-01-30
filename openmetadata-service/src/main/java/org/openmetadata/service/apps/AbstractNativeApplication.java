@@ -1,7 +1,9 @@
 package org.openmetadata.service.apps;
 
 import static com.cronutils.model.CronType.QUARTZ;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_PRIVATE_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
@@ -16,6 +18,9 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
+import org.openmetadata.schema.api.configuration.apps.AppConfig;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
+import org.openmetadata.schema.api.configuration.apps.Parameters;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -50,6 +55,7 @@ import org.quartz.SchedulerException;
 public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private @Getter App app;
+  private @Getter Parameters privateParameters = null;
   protected SearchRepository searchRepository;
   private final @Getter CronMapper cronMapper = CronMapper.fromQuartzToUnix();
   private final @Getter CronParser cronParser =
@@ -59,10 +65,29 @@ public class AbstractNativeApplication implements NativeApplication {
   private static final String SERVICE_NAME = "OpenMetadata";
 
   @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
+  public void init(
+      App app,
+      CollectionDAO dao,
+      SearchRepository searchRepository,
+      AppsPrivateConfiguration privateConfiguration) {
     this.collectionDAO = dao;
     this.searchRepository = searchRepository;
     this.app = app;
+
+    this.loadPrivateParameters(privateConfiguration);
+  }
+
+  /**
+   * Load the apps' private parameters, if needed
+   */
+  private void loadPrivateParameters(AppsPrivateConfiguration privateConfiguration) {
+    if (privateConfiguration != null && !nullOrEmpty(privateConfiguration.getAppsConfiguration())) {
+      for (AppConfig appConfig : privateConfiguration.getAppsConfiguration()) {
+        if (this.app.getName().equals(appConfig.getName())) {
+          this.privateParameters = appConfig.getParameters();
+        }
+      }
+    }
   }
 
   @Override
@@ -211,8 +236,11 @@ public class AbstractNativeApplication implements NativeApplication {
     SearchRepository searchRepositoryForJob =
         (SearchRepository)
             jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
+    AppsPrivateConfiguration privateConfiguration =
+        (AppsPrivateConfiguration)
+            jobExecutionContext.getJobDetail().getJobDataMap().get(APPS_PRIVATE_CONFIG_KEY);
     // Initialise the Application
-    this.init(jobApp, dao, searchRepositoryForJob);
+    this.init(jobApp, dao, searchRepositoryForJob, privateConfiguration);
 
     // Trigger
     this.startApp(jobExecutionContext);

@@ -17,6 +17,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppRunType;
@@ -94,8 +95,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
 
   @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    super.init(app, dao, searchRepository);
+  public void init(
+      App app,
+      CollectionDAO dao,
+      SearchRepository searchRepository,
+      AppsPrivateConfiguration privateConfiguration) {
+    super.init(app, dao, searchRepository, privateConfiguration);
     // request for reindexing
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
