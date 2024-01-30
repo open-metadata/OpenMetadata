@@ -309,7 +309,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     )}
                   </ErrorPlaceHolder>
                 )}
-                {getLoader()}
               </>
             ) : null}
             {isAnnouncementType ? (
