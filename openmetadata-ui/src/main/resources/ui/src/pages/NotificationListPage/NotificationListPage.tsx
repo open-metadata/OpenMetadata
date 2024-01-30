@@ -225,7 +225,7 @@ const NotificationListPage = () => {
                 GlobalSettingOptions.ADD_NOTIFICATION
               )}>
               <Button data-testid="create-notification" type="primary">
-                {t('label.create-entity', { entity: t('label.notification') })}
+                {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
             </Link>
           </div>

@@ -203,7 +203,7 @@ const ObservabilityAlertsPage = () => {
             <PageHeader data={pageHeaderData} />
             <Link to={ROUTES.ADD_OBSERVABILITY_ALERTS}>
               <Button data-testid="create-observability" type="primary">
-                {t('label.create-entity', { entity: t('label.observability') })}
+                {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
             </Link>
           </div>
