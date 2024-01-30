@@ -192,3 +192,6 @@ CREATE TABLE IF NOT EXISTS suggestions (
     status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED NOT NULL,
     PRIMARY KEY (id)
 );
+
+UPDATE ingestion_pipeline_entity SET json = JSONB_SET(json::jsonb, '{provider}', '"user"', true)
+WHERE json->>'name' = 'OpenMetadata_dataInsight';

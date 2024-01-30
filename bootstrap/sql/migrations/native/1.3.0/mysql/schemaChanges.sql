@@ -180,3 +180,6 @@ CREATE TABLE IF NOT EXISTS suggestions (
     status VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json -> '$.status')) NOT NULL,
     PRIMARY KEY (id)
 );
+
+UPDATE ingestion_pipeline_entity SET json = JSON_SET(json, '$.provider', 'user')
+WHERE JSON_EXTRACT(json, '$.name') = 'OpenMetadata_dataInsight';
