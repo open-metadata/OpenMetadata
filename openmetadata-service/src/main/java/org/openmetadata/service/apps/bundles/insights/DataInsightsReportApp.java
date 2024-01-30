@@ -74,8 +74,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     AppSchedule scheduleConfiguration = app.getAppSchedule();
-    long scheduleTime =
-        currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
+    long scheduleTime = currentTime - 604800000L;
     int numberOfDaysChange = getNumberOfDays(scheduleConfiguration);
     try {
       DataInsightsReportAppConfig insightAlertConfig =

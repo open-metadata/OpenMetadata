@@ -128,6 +128,16 @@ const AppSchedule = ({
     );
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
 
+  const initialOptions = useMemo(() => {
+    if (appData.name === 'DataInsightsReportApplication') {
+      return ['Week'];
+    } else if (appData.appType === AppType.External) {
+      return ['Day'];
+    }
+
+    return undefined;
+  }, [appData.name, appData.appType]);
+
   useEffect(() => {
     fetchPipelineDetails();
   }, []);
@@ -220,9 +230,7 @@ const AppSchedule = ({
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
-          includePeriodOptions={
-            appData.appType === AppType.External ? ['Day'] : undefined
-          }
+          includePeriodOptions={initialOptions}
           initialData={getIngestionFrequency(PipelineType.Application)}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}

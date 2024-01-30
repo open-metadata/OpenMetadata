@@ -20,6 +20,7 @@ import {
   toastNotification,
   verifyResponseStatusCode,
 } from '../common';
+import { visitServiceDetailsPage } from '../serviceUtils';
 import { visitEntityDetailsPage } from '../Utils/Entity';
 import {
   deleteService,
@@ -179,6 +180,7 @@ class ServiceBaseClass {
     cy.get('[data-testid="view-service-button"]').click();
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@ingestionPipelines', 200);
+
     this.handleIngestionRetry();
   }
 
@@ -274,6 +276,10 @@ class ServiceBaseClass {
             responseTimeout: 50000,
           });
         }
+
+        // Check cron schedule for Hour here
+        // Being set from this.scheduleIngestion method
+        cy.get('.ant-table-cell').should('contain', '0 * * * *');
       }
     };
     const checkSuccessState = () => {
@@ -319,6 +325,91 @@ class ServiceBaseClass {
 
   updateService() {
     this.updateDescriptionForIngestedTables();
+  }
+
+  updateScheduleOptions() {
+    visitServiceDetailsPage(
+      { type: this.category, name: this.serviceName },
+      false
+    );
+
+    interceptURL(
+      'GET',
+      `/api/v1/services/ingestionPipelines/**`,
+      'pipelineServices'
+    );
+
+    cy.get('[data-testid="ingestions"]').click();
+
+    verifyResponseStatusCode('@pipelineServices', 200);
+
+    // click and edit pipeline schedule for Minutes
+
+    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="submit-btn"]').click();
+
+    // select schedule
+    cy.get('[data-testid="cron-type"]').click();
+    cy.get('.ant-select-item-option-content').contains('Minutes').click();
+    cy.get('[data-testid="minute-segment-options"]').click();
+    cy.get('.ant-select-item-option-content').contains('10').click();
+
+    // Deploy with scehdule
+    cy.get('[data-testid="deploy-button"]').click();
+    cy.get('[data-testid="view-service-button"]').click();
+
+    cy.get('.ant-table-cell').should('contain', '*/10 * * * *');
+
+    // click and edit pipeline schedule for Day
+    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="submit-btn"]').click();
+    cy.get('[data-testid="cron-type"]').click();
+    cy.get('.ant-select-item-option-content').contains('Day').click();
+
+    cy.get('[data-testid="hour-options"]').click();
+    cy.get('.ant-select-item-option-content').contains('4').click();
+    cy.get('[data-testid="minute-options"]').click();
+    cy.get('.ant-select-item-option-content')
+      .filter(':visible')
+      .contains('4')
+      .click();
+
+    // Deploy with scehdule
+    cy.get('[data-testid="deploy-button"]').click();
+    cy.get('[data-testid="view-service-button"]').click();
+
+    cy.get('.ant-table-cell').should('contain', '4 4 * * *');
+
+    // click and edit pipeline schedule for Week
+    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="submit-btn"]').click();
+    cy.get('[data-testid="cron-type"]').click();
+    cy.get('.ant-select-item-option-content').contains('Week').click();
+    cy.get('[data-value="6"]').click();
+    cy.get('[data-testid="hour-options"]').click();
+    cy.get('.ant-select-item-option-content').contains('5').click();
+    cy.get('[data-testid="minute-options"]').click();
+    cy.get('.ant-select-item-option-content')
+      .filter(':visible')
+      .contains('05')
+      .click();
+
+    // Deploy with scehdule
+    cy.get('[data-testid="deploy-button"]').click();
+    cy.get('[data-testid="view-service-button"]').click();
+
+    cy.get('.ant-table-cell').should('contain', '5 5 * * 6');
+
+    // click and edit pipeline schedule for Custom
+    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="submit-btn"]').click();
+    cy.get('[data-testid="cron-type"]').click();
+    cy.get('.ant-select-item-option-content').contains('Custom').click();
+    cy.get('#cron').clear().type('* * * 2 6');
+
+    cy.get('[data-testid="deploy-button"]').click();
+    cy.get('[data-testid="view-service-button"]').click();
+    cy.get('.ant-table-cell').should('contain', '* * * 2 6');
   }
 
   updateDescriptionForIngestedTables() {

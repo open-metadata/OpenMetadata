@@ -34,6 +34,10 @@ class MlFlowIngestionClass extends ServiceBaseClass {
     // Do nothing here
   }
 
+  updateScheduleOptions() {
+    // Do nothing here as we are not ingesting anything here
+  }
+
   fillConnectionDetails() {
     cy.get('#root\\/trackingUri').type('mlModelTrackingUri');
     checkServiceFieldSectionHighlighting('trackingUri');
