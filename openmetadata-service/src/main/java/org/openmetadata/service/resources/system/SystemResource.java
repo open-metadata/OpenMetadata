@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.system;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import freemarker.template.TemplateException;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -29,6 +31,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
@@ -155,10 +158,16 @@ public class SystemResource {
                     schema = @Schema(implementation = String.class)))
       })
   public Response sendTestEmail(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String email)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid EmailRequest emailRequest)
       throws TemplateException, IOException {
+    if (nullOrEmpty(emailRequest.getEmail())) {
+      throw new IllegalArgumentException("Email address is required.");
+    }
+
     authorizer.authorizeAdmin(securityContext);
-    EmailUtil.sendTestEmail(email);
+    EmailUtil.sendTestEmail(emailRequest.getEmail());
     return Response.status(Response.Status.OK).entity("Test Email Sent Successfully.").build();
   }
 
@@ -208,11 +217,7 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Response restoreDefaultEmailSetting(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
-          @PathParam("settingName")
-          String name) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.createOrUpdate(
         new Settings()
