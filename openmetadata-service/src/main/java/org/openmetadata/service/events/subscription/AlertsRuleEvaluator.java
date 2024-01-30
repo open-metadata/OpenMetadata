@@ -15,6 +15,8 @@ import static org.openmetadata.service.Entity.USER;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
@@ -134,7 +136,9 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
-      if (entity.getFullyQualifiedName().equals(name)) {
+      Pattern pattern = Pattern.compile(name);
+      Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
+      if (matcher.find()) {
         return true;
       }
     }
@@ -249,7 +253,9 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : tableNameList) {
-      if (entity.getFullyQualifiedName().contains(name)) {
+      Pattern pattern = Pattern.compile(name);
+      Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
+      if (matcher.find()) {
         return true;
       }
     }

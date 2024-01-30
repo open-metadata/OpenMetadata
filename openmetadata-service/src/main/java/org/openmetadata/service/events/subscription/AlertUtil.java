@@ -190,9 +190,9 @@ public final class AlertUtil {
       List<String> resource,
       CreateEventSubscription.AlertType alertType,
       AlertFilteringInput input) {
-    if (resource.size() > 1) {
+    if (resource.size() != 1) {
       throw new BadRequestException(
-          "Only one resource can be specified. Multiple resources are not supported.");
+          "One resource can be specified. Zero or Multiple resources are not supported.");
     }
 
     if (alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
