@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getAllAlerts } from '../../rest/alertsAPI';
 import ObservabilityAlertsPage from './ObservabilityAlertsPage';
 
 const MOCK_DATA = [
@@ -55,29 +56,72 @@ jest.mock('../../rest/alertsAPI', () => ({
     })
   ),
 }));
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
-describe.skip('Alerts Page Tests', () => {
+describe('Observability Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
-    const { findByText } = render(<ObservabilityAlertsPage />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    expect(await findByText('label.alert-plural')).toBeInTheDocument();
+    expect(await screen.findByText('label.observability')).toBeInTheDocument();
   });
 
   it('SubTitle should be rendered', async () => {
-    const { findByText } = render(<ObservabilityAlertsPage />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    expect(await findByText(/message.alerts-description/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/message.alerts-description/)
+    ).toBeInTheDocument();
   });
 
   it('Add alert button should be rendered', async () => {
-    const { findByText } = render(<ObservabilityAlertsPage />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    expect(await findByText(/label.create-entity/)).toBeInTheDocument();
+    expect(await screen.findByText(/label.create-entity/)).toBeInTheDocument();
+  });
+
+  it('Table should render alerts data', async () => {
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const alertNameElement = await screen.findByText('alert-test');
+
+    expect(alertNameElement).toBeInTheDocument();
+  });
+
+  it('Table should render no data', async () => {
+    (getAllAlerts as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: 1 },
+      })
+    );
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const alertNameElement = await screen.findByText(
+      'message.adding-new-entity-is-easy-just-give-it-a-spin'
+    );
+
+    expect(alertNameElement).toBeInTheDocument();
   });
 });
