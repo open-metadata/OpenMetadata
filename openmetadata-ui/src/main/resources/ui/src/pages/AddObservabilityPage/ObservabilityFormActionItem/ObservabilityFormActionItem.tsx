@@ -122,7 +122,7 @@ function ObservabilityFormActionItem({
                               selectedTrigger,
                               supportedActions
                             )}
-                          <Col span={2}>
+                          <Col flex="0 0 32px">
                             <Button
                               data-testid={`remove-action-rule-${name}`}
                               icon={<CloseOutlined />}

@@ -123,7 +123,7 @@ function ObservabilityFormFiltersItem({
                               selectedTrigger,
                               supportedFilters
                             )}
-                          <Col span={2}>
+                          <Col flex="0 0 32px">
                             <Button
                               data-testid={`remove-filter-${name}`}
                               icon={<CloseOutlined />}

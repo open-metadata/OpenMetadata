@@ -267,84 +267,90 @@ export const getDestinationConfigField = (
     case SubscriptionType.GChat:
     case SubscriptionType.Generic:
       return (
-        <Form.Item
-          name={[fieldName, 'config', 'endpoint']}
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.endpoint-url'),
-              }),
-            },
-          ]}>
-          <Input
-            data-testid={`endpoint-input-${fieldName}`}
-            placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-          />
-        </Form.Item>
+        <Col flex="1 1 auto">
+          <Form.Item
+            name={[fieldName, 'config', 'endpoint']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.endpoint-url'),
+                }),
+              },
+            ]}>
+            <Input
+              data-testid={`endpoint-input-${fieldName}`}
+              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+            />
+          </Form.Item>
+        </Col>
       );
     case SubscriptionType.Email:
       return (
-        <Form.Item
-          name={[fieldName, 'config', 'receivers']}
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.email'),
-              }),
-            },
-          ]}>
-          <Select
-            className="w-full"
-            data-testid={`email-input-${fieldName}`}
-            mode="tags"
-            open={false}
-            placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-          />
-        </Form.Item>
+        <Col flex="1 1 auto">
+          <Form.Item
+            name={[fieldName, 'config', 'receivers']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.email'),
+                }),
+              },
+            ]}>
+            <Select
+              className="w-full"
+              data-testid={`email-input-${fieldName}`}
+              mode="tags"
+              open={false}
+              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+            />
+          </Form.Item>
+        </Col>
       );
     case SubscriptionCategory.Teams:
     case SubscriptionCategory.Users:
       return (
-        <Form.Item
-          name={[fieldName, 'config', 'receivers']}
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.entity-list', {
-                  entity: t('label.entity-name', {
-                    entity:
-                      type === SubscriptionCategory.Teams
-                        ? t('label.team')
-                        : t('label.user'),
+        <Col flex="1 1 auto">
+          <Form.Item
+            name={[fieldName, 'config', 'receivers']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.entity-name', {
+                      entity:
+                        type === SubscriptionCategory.Teams
+                          ? t('label.team')
+                          : t('label.user'),
+                    }),
                   }),
                 }),
-              }),
-            },
-          ]}>
-          <AsyncSelect
-            api={
-              type === SubscriptionCategory.Teams
-                ? getTeamOptions
-                : getUserOptions
-            }
-            className="w-full"
-            data-testid={`${
-              type === SubscriptionCategory.Teams
-                ? t('label.team')
-                : t('label.user')
-            }-select`}
-            mode="multiple"
-            placeholder={t('label.search-by-type', {
-              type:
+              },
+            ]}>
+            <AsyncSelect
+              api={
                 type === SubscriptionCategory.Teams
-                  ? t('label.team-lowercase')
-                  : t('label.user-lowercase'),
-            })}
-          />
-        </Form.Item>
+                  ? getTeamOptions
+                  : getUserOptions
+              }
+              className="w-full"
+              data-testid={`${
+                type === SubscriptionCategory.Teams
+                  ? t('label.team')
+                  : t('label.user')
+              }-select`}
+              mode="multiple"
+              placeholder={t('label.search-by-type', {
+                type:
+                  type === SubscriptionCategory.Teams
+                    ? t('label.team-lowercase')
+                    : t('label.user-lowercase'),
+              })}
+            />
+          </Form.Item>
+        </Col>
       );
     case SubscriptionCategory.Admins:
     case SubscriptionCategory.Owners:
@@ -380,7 +386,7 @@ export const getFieldByArgumentType = (
   switch (argument) {
     case 'fqnList':
       field = (
-        <Col key="fqn-list-select" span={11}>
+        <Col flex="1 1 auto" key="fqn-list-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -411,7 +417,7 @@ export const getFieldByArgumentType = (
 
     case 'domainList':
       field = (
-        <Col key="domain-select" span={11}>
+        <Col flex="1 1 auto" key="domain-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -441,7 +447,7 @@ export const getFieldByArgumentType = (
 
     case 'tableNameList':
       field = (
-        <Col key="table-name-select" span={11}>
+        <Col flex="1 1 auto" key="table-name-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -473,7 +479,7 @@ export const getFieldByArgumentType = (
 
     case 'ownerNameList':
       field = (
-        <Col key="owner-select" span={11}>
+        <Col flex="1 1 auto" key="owner-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -505,7 +511,7 @@ export const getFieldByArgumentType = (
 
     case 'updateByUserList':
       field = (
-        <Col key="user-select" span={11}>
+        <Col flex="1 1 auto" key="user-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -537,7 +543,7 @@ export const getFieldByArgumentType = (
 
     case 'eventTypeList':
       field = (
-        <Col key="event-type-select" span={11}>
+        <Col flex="1 1 auto" key="event-type-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -569,7 +575,7 @@ export const getFieldByArgumentType = (
 
     case 'entityIdList':
       field = (
-        <Col key="entity-id-select" span={11}>
+        <Col flex="1 1 auto" key="entity-id-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -603,7 +609,7 @@ export const getFieldByArgumentType = (
 
     case 'pipelineStateList':
       field = (
-        <Col key="pipeline-state-select" span={11}>
+        <Col flex="1 1 auto" key="pipeline-state-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -669,7 +675,7 @@ export const getFieldByArgumentType = (
 
     case 'testResultList':
       field = (
-        <Col key="test-result-select" span={11}>
+        <Col flex="1 1 auto" key="test-result-select">
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -702,7 +708,7 @@ export const getFieldByArgumentType = (
 
     case 'testSuiteList':
       field = (
-        <Col key="test-suite-select" span={11}>
+        <Col key="test-suite-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
