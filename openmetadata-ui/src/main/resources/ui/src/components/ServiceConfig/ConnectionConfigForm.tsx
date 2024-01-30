@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { IChangeEvent } from '@rjsf/core';
+import Form, { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
-import { cloneDeep, isNil } from 'lodash';
+import { t } from 'i18next';
+import { cloneDeep, isEmpty, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { Fragment, FunctionComponent } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
@@ -26,7 +33,9 @@ import { DatabaseServiceType } from '../../generated/entity/services/databaseSer
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../generated/entity/services/searchService';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
+import { getPipelineServiceHostIp } from '../../rest/ingestionPipelineAPI';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
@@ -37,6 +46,7 @@ import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
+import TestConnection from '../common/TestConnection/TestConnection';
 
 interface Props {
   data?: ServicesType;
@@ -66,6 +76,34 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   const config = !isNil(data)
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
+
+  const formRef = useRef<Form<ConfigData>>(null);
+
+  const { isAirflowAvailable } = useAirflowStatus();
+  const [hostIp, setHostIp] = useState<string>();
+
+  const fetchHostIp = async () => {
+    try {
+      const { status, data } = await getPipelineServiceHostIp();
+      if (status === 200) {
+        setHostIp(data?.ip || '[unknown]');
+      } else {
+        setHostIp(undefined);
+      }
+    } catch (error) {
+      setHostIp('[error - unknown]');
+    }
+  };
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      fetchHostIp();
+    }
+  }, [isAirflowAvailable]);
+
+  const handleRequiredFieldsValidation = () => {
+    return Boolean(formRef.current?.validateForm());
+  };
 
   const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
@@ -135,20 +173,44 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     return (
       <FormBuilder
         cancelText={cancelText}
-        disableTestConnection={disableTestConnection}
         formData={validConfig}
         okText={okText}
+        ref={formRef}
         schema={connSch.schema}
         serviceCategory={serviceCategory}
-        serviceName={data?.name}
-        serviceType={serviceType}
         status={status}
         uiSchema={connSch.uiSchema}
         validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
-        onSubmit={handleSave}
-      />
+        onSubmit={handleSave}>
+        {isEmpty(connSch.schema) && (
+          <div className="text-grey-muted text-center">
+            {t('message.no-config-available')}
+          </div>
+        )}
+        {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
+          <div
+            className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
+            data-testid="ip-address">
+            <div className="self-center">
+              {t('message.airflow-host-ip-address', { hostIp })}
+            </div>
+          </div>
+        )}
+        {!isEmpty(connSch.schema) &&
+          isAirflowAvailable &&
+          formRef.current?.state?.formData && (
+            <TestConnection
+              connectionType={serviceType}
+              getData={() => formRef.current?.state?.formData}
+              isTestingDisabled={disableTestConnection}
+              serviceCategory={serviceCategory}
+              serviceName={data?.name}
+              onValidateFormRequiredFields={handleRequiredFieldsValidation}
+            />
+          )}
+      </FormBuilder>
     );
   };
 

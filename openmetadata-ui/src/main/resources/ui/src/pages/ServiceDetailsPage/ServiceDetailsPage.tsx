@@ -843,7 +843,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
                     }>
                     <TestConnection
                       connectionType={serviceDetails?.serviceType ?? ''}
-                      formData={connectionDetails as ConfigData}
+                      getData={() => connectionDetails}
                       isTestingDisabled={isTestingDisabled}
                       serviceCategory={serviceCategory as ServiceCategory}
                       serviceName={serviceDetails?.name}

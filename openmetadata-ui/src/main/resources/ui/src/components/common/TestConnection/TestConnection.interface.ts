@@ -18,7 +18,7 @@ export interface TestConnectionProps {
   isTestingDisabled: boolean;
   connectionType: string;
   serviceCategory: ServiceCategory;
-  formData: ConfigData;
+  getData: () => ConfigData | undefined;
   showDetails?: boolean;
   serviceName?: string;
   shouldValidateForm?: boolean;
