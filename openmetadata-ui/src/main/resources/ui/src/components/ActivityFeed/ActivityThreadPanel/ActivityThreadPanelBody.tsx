@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Switch, Typography } from 'antd';
+import { Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -34,11 +34,9 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
-import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
-import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
 import AnnouncementThreads from './AnnouncementThreads';
@@ -258,88 +256,60 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Space>
         )}
 
-        {/* When user selects a thread will show that particular thread from here */}
-        {!isUndefined(selectedThread) ? (
-          <Fragment>
-            <Button
-              className="m-b-sm p-0"
-              size="small"
-              type="link"
-              onClick={onBack}>
-              {t('label.back')}
-            </Button>
-            <ActivityThread
-              postFeed={postFeed}
-              selectedThread={selectedThread}
-              updateThreadHandler={onUpdateThread}
-              onConfirmation={onConfirmation}
-            />
-          </Fragment>
-        ) : (
-          <Fragment>
-            {showNewConversation || isEqual(threads.length, 0) ? (
-              <>
-                {isConversationType && (
-                  <Space className="w-full" direction="vertical">
+        <Fragment>
+          {showNewConversation || isEqual(threads.length, 0) ? (
+            <>
+              {isConversationType && (
+                <Space className="w-full" direction="vertical">
+                  <Typography.Paragraph>
+                    {t('message.new-conversation')}
+                  </Typography.Paragraph>
+                  <ActivityFeedEditor
+                    placeHolder={t('message.enter-a-field', {
+                      field: t('label.message-lowercase'),
+                    })}
+                    onSave={onPostThread}
+                  />
+                </Space>
+              )}
+              {(isAnnouncementType || isTaskType) && !isThreadLoading && (
+                <ErrorPlaceHolder
+                  className="mt-24"
+                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                  {isTaskType ? (
                     <Typography.Paragraph>
-                      {t('message.new-conversation')}
+                      {isTaskClosed
+                        ? t('message.no-closed-task')
+                        : t('message.no-open-task')}
                     </Typography.Paragraph>
-                    <ActivityFeedEditor
-                      placeHolder={t('message.enter-a-field', {
-                        field: t('label.message-lowercase'),
-                      })}
-                      onSave={onPostThread}
-                    />
-                  </Space>
-                )}
-                {(isAnnouncementType || isTaskType) && !isThreadLoading && (
-                  <ErrorPlaceHolder
-                    className="mt-24"
-                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    {isTaskType ? (
-                      <Typography.Paragraph>
-                        {isTaskClosed
-                          ? t('message.no-closed-task')
-                          : t('message.no-open-task')}
-                      </Typography.Paragraph>
-                    ) : (
-                      <Typography.Paragraph data-testid="announcement-error">
-                        {t('message.no-announcement-message')}
-                      </Typography.Paragraph>
-                    )}
-                  </ErrorPlaceHolder>
-                )}
-              </>
-            ) : null}
-            {isAnnouncementType ? (
-              <AnnouncementThreads
-                className={classNames(className)}
-                threads={threads}
-              />
-            ) : (
-              <ActivityThreadList
-                className={classNames(className)}
-                threads={threads}
-              />
-            )}
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
-            </div>
-          </Fragment>
-        )}
+                  ) : (
+                    <Typography.Paragraph data-testid="announcement-error">
+                      {t('message.no-announcement-message')}
+                    </Typography.Paragraph>
+                  )}
+                </ErrorPlaceHolder>
+              )}
+            </>
+          ) : null}
+          {isAnnouncementType ? (
+            <AnnouncementThreads
+              className={classNames(className)}
+              threads={threads}
+            />
+          ) : (
+            <ActivityThreadList
+              className={classNames(className)}
+              threads={threads}
+            />
+          )}
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}>
+            {getLoader()}
+          </div>
+        </Fragment>
       </div>
-      <ConfirmationModal
-        bodyText={t('message.confirm-delete-message')}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.delete')}
-        header={t('message.delete-message-question-mark')}
-        visible={confirmationState.state}
-        onCancel={onDiscard}
-        onConfirm={onPostDelete}
-      />
     </Fragment>
   );
 };
