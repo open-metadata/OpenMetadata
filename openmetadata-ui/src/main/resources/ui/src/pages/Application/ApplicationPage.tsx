@@ -133,7 +133,7 @@ const ApplicationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.application-plural')}>
-      <Row className="page-container" gutter={[16, 16]}>
+      <Row className="page-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -141,7 +141,7 @@ const ApplicationPage = () => {
           <PageHeader data={PAGE_HEADERS.APPLICATION} />
         </Col>
         <Col className="d-flex justify-end" span={8}>
-          <Space>
+          <Space size="middle">
             <div>
               <Switch
                 checked={showDisabled}
@@ -161,7 +161,7 @@ const ApplicationPage = () => {
           </Space>
         </Col>
       </Row>
-      <Row className="m-t-lg">
+      <Row className="page-container m-t-lg">
         {isLoading &&
           [1, 2].map((key) => (
             <Col key={key} span={12}>

@@ -339,7 +339,7 @@ export const UserTab = ({
   }
 
   return (
-    <Row className="p-md" gutter={[16, 16]}>
+    <Row className="p-y-md" gutter={[0, 16]}>
       <Col span={24}>
         <Row justify="space-between">
           <Col span={8}>

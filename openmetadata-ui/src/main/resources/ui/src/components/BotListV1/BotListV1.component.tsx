@@ -243,7 +243,7 @@ const BotListV1 = ({
       </Col>
     </Row>
   ) : (
-    <Row className="page-container" gutter={[16, 16]}>
+    <Row className="page-container" gutter={[0, 16]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </Col>

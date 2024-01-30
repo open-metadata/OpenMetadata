@@ -654,7 +654,7 @@ const TeamDetailsV1 = ({
     ) : (
       <Row
         className="team-list-container"
-        gutter={[8, 16]}
+        gutter={[0, 16]}
         justify="space-between">
         <Col span={8}>
           <Searchbar
@@ -789,7 +789,7 @@ const TeamDetailsV1 = ({
           ),
         })
       ) : (
-        <Row className="roles-and-policy p-md" gutter={[0, 10]}>
+        <Row className="roles-and-policy p-y-md" gutter={[0, 10]}>
           {entityPermissions.EditAll && !isTeamDeleted && (
             <Col className="d-flex justify-end" span={24}>
               <Button
@@ -860,7 +860,7 @@ const TeamDetailsV1 = ({
           ),
         })
       ) : (
-        <Row className="roles-and-policy p-md" gutter={[0, 10]}>
+        <Row className="roles-and-policy p-y-md" gutter={[0, 10]}>
           {entityPermissions.EditAll && !isTeamDeleted && (
             <Col className="d-flex justify-end" span={24}>
               <Button
@@ -1035,7 +1035,7 @@ const TeamDetailsV1 = ({
 
   const tabsChildrenRender = useCallback(
     (key: TeamsPageTab) => (
-      <Row className="teams-tabs-content-container">
+      <Row className="teams-tabs-content-container p-x-lg">
         <Col className="teams-scroll-component" span={previewAsset ? 18 : 24}>
           {isFetchingAdvancedDetails ? <Loader /> : getTabChildren(key)}
         </Col>
@@ -1104,16 +1104,16 @@ const TeamDetailsV1 = ({
   }
 
   return (
-    <div className="teams-layout page-container">
+    <div className="teams-layout">
       <Row className="h-full" data-testid="team-details-container">
         {isOrganization && (
-          <Col className="p-x-md p-y-sm" span={24}>
+          <Col className="p-x-lg p-y-sm" span={24}>
             <TitleBreadcrumb titleLinks={breadcrumbs} />
           </Col>
         )}
 
         <Col
-          className="teams-profile-container"
+          className="teams-profile-container p-x-lg"
           data-testid="team-detail-header"
           span={24}>
           <Collapse
