@@ -353,7 +353,7 @@ public class AlertsRuleEvaluator {
             JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
         PipelineStatusType status = pipelineStatus.getPipelineState();
         for (String givenStatus : pipelineState) {
-          if (givenStatus.equals(status.value())) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
             return true;
           }
         }
@@ -391,7 +391,7 @@ public class AlertsRuleEvaluator {
                 org.openmetadata.schema.entity.data.PipelineStatus.class);
         StatusType status = pipelineStatus.getExecutionStatus();
         for (String givenStatus : pipelineState) {
-          if (givenStatus.equals(status.value())) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
             return true;
           }
         }
