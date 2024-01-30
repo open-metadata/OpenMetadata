@@ -199,10 +199,6 @@
       "description": "Application Configuration object.",
       "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
     },
-    "privateConfiguration": {
-      "description": "Application Private configuration loaded at runtime.",
-      "$ref": "./configuration/applicationConfig.json#/definitions/privateConfig"
-    },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReferenceList.json"
