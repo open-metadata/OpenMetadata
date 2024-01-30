@@ -269,7 +269,6 @@ function SearchIndexDetailsPage() {
           [key]: res[key],
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -447,6 +446,7 @@ function SearchIndexDetailsPage() {
               owner={searchIndexDetails?.owner}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchSearchIndexDetails}
+              onUpdateFeedCount={handleFeedCount}
             />
           </ActivityFeedProvider>
         ),
@@ -529,6 +529,7 @@ function SearchIndexDetailsPage() {
     feedCount.totalTasksCount,
     entityName,
     onExtensionUpdate,
+    handleFeedCount,
     getEntityFeedCount,
     viewSampleDataPermission,
     editLineagePermission,
@@ -607,7 +608,6 @@ function SearchIndexDetailsPage() {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -616,7 +616,7 @@ function SearchIndexDetailsPage() {
         })
       );
     }
-  }, [USERId, searchIndexId, getEntityFeedCount]);
+  }, [USERId, searchIndexId]);
 
   const unFollowSearchIndex = useCallback(async () => {
     try {
@@ -634,7 +634,6 @@ function SearchIndexDetailsPage() {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -643,7 +642,7 @@ function SearchIndexDetailsPage() {
         })
       );
     }
-  }, [USERId, searchIndexId, getEntityFeedCount]);
+  }, [USERId, searchIndexId]);
 
   const onUpdateVote = async (data: QueryVote, id: string) => {
     try {

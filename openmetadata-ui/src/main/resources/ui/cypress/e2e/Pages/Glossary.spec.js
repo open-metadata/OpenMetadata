@@ -1006,7 +1006,6 @@ describe('Glossary page should work properly', () => {
     cy.get(`[data-testid="tag-${glossary}.${term2}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term2);
 
-    interceptURL('GET', '/api/v1/feed/count*', 'countTag');
     interceptURL('GET', '/api/v1/tags', 'tags');
     interceptURL('PATCH', '/api/v1/tables/*', 'saveTag');
 
@@ -1034,7 +1033,6 @@ describe('Glossary page should work properly', () => {
     cy.clickOutside();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@saveTag', 200);
-    verifyResponseStatusCode('@countTag', 200);
     cy.get(
       '[data-testid="entity-right-panel"] [data-testid="glossary-container"]'
     )
@@ -1062,7 +1060,6 @@ describe('Glossary page should work properly', () => {
     );
     cy.clickOutside();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    verifyResponseStatusCode('@countTag', 200);
     cy.get(
       '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )

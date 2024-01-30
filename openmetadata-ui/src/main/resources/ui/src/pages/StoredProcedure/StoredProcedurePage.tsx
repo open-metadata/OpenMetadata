@@ -248,8 +248,6 @@ const StoredProcedurePage = () => {
           [key]: res[key],
         };
       });
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -267,7 +265,6 @@ const StoredProcedurePage = () => {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -297,7 +294,6 @@ const StoredProcedurePage = () => {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -611,6 +607,7 @@ const StoredProcedurePage = () => {
             fqn={entityFQN}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchStoredProcedureDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -664,6 +661,7 @@ const StoredProcedurePage = () => {
       editDescriptionPermission,
       editCustomAttributePermission,
       viewAllPermission,
+      handleFeedCount,
     ]
   );
 

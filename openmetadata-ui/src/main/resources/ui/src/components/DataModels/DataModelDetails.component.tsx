@@ -300,6 +300,7 @@ const DataModelDetails = ({
             fqn={dataModelData?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDataModel}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -359,6 +360,7 @@ const DataModelDetails = ({
     dataModelData?.sql,
     modelComponent,
     deleted,
+    handleFeedCount,
     editLineagePermission,
   ]);
 

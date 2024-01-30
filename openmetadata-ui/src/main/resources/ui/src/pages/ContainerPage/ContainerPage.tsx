@@ -153,9 +153,10 @@ const ContainerPage = () => {
     }
   };
 
-  const handleFeedCount = useCallback((data: FeedCounts) => {
-    setFeedCount(data);
-  }, []);
+  const handleFeedCount = useCallback(
+    (data: FeedCounts) => setFeedCount(data),
+    []
+  );
 
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.CONTAINER, decodedContainerName, handleFeedCount);
@@ -284,7 +285,6 @@ const ContainerPage = () => {
         description: newDescription,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -312,7 +312,6 @@ const ContainerPage = () => {
           version,
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -341,7 +340,6 @@ const ContainerPage = () => {
           followers: [...(containerData?.followers ?? []), ...newValue],
         }));
       }
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -360,7 +358,6 @@ const ContainerPage = () => {
           owner: newOwner,
           version,
         }));
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -381,7 +378,6 @@ const ContainerPage = () => {
         tags: newTags,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -453,17 +449,11 @@ const ContainerPage = () => {
           ...response,
           tags: sortTagsCaseInsensitive(response.tags ?? []),
         });
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [
-      containerData,
-      handleUpdateContainerData,
-      getEntityFeedCount,
-      setContainerData,
-    ]
+    [containerData, handleUpdateContainerData, setContainerData]
   );
 
   const handleExtensionUpdate = useCallback(
@@ -481,17 +471,11 @@ const ContainerPage = () => {
           ...response,
           tags: sortTagsCaseInsensitive(response.tags ?? []),
         });
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [
-      containerData,
-      handleUpdateContainerData,
-      getEntityFeedCount,
-      setContainerData,
-    ]
+    [containerData, handleUpdateContainerData, setContainerData]
   );
 
   const handleUpdateDataModel = async (
@@ -509,7 +493,6 @@ const ContainerPage = () => {
         dataModel: newDataModel,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -675,6 +658,7 @@ const ContainerPage = () => {
             onUpdateEntityDetails={() =>
               fetchContainerDetail(decodedContainerName)
             }
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -732,6 +716,7 @@ const ContainerPage = () => {
       tags,
       feedCount.totalCount,
       containerChildrenData,
+      handleFeedCount,
       handleUpdateDataModel,
       handleUpdateDescription,
       handleTagSelection,

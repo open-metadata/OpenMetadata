@@ -139,9 +139,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     setFeedCount(data);
   }, []);
 
-  const fetchEntityFeedCount = () => {
+  const fetchEntityFeedCount = () =>
     getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, handleFeedCount);
-  };
 
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
@@ -460,6 +459,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             fqn={mlModelDetail?.fullyQualifiedName ?? ''}
             onFeedUpdate={fetchEntityFeedCount}
             onUpdateEntityDetails={fetchMlModel}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -520,6 +520,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       getMlHyperParameters,
       getMlModelStore,
       onCancel,
+      handleFeedCount,
       onExtensionUpdate,
       onFeaturesUpdate,
       handleThreadLinkSelect,
