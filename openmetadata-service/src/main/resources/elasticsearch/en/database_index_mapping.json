@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -401,6 +409,12 @@
       },
       "deleted": {
         "type": "text"
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

@@ -26,6 +26,7 @@ import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-p
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   Option,
   SearchSuggestions,
@@ -48,10 +49,14 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
+  tagSortingFields,
+  TAGS_INITIAL_SORT_FIELD,
+  TAGS_INITIAL_SORT_ORDER,
 } from '../constants/explore.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   getEntityBreadcrumbs,
   getEntityLinkFromType,
@@ -94,7 +99,7 @@ class SearchClassBase {
     };
   }
 
-  public getTabsInfo() {
+  public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {
       [SearchIndex.TABLE]: {
         label: i18n.t('label.table-plural'),
@@ -182,15 +187,17 @@ class SearchClassBase {
       },
       [SearchIndex.TAG]: {
         label: i18n.t('label.tag-plural'),
-        sortingFields: entitySortingFields,
-        sortField: INITIAL_SORT_FIELD,
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: 'tags',
         icon: ClassificationIcon,
       },
       [SearchIndex.DATA_PRODUCT]: {
         label: i18n.t('label.data-product-plural'),
-        sortingFields: tableSortingFields,
-        sortField: INITIAL_SORT_FIELD,
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: 'dataProducts',
         icon: DataProductIcon,
       },
