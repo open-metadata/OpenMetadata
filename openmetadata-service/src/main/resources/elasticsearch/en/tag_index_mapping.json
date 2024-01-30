@@ -111,6 +111,7 @@
           },
           "name": {
             "type": "text",
+            "analyzer": "om_analyzer",
             "fields": {
               "keyword": {
                 "type": "keyword",

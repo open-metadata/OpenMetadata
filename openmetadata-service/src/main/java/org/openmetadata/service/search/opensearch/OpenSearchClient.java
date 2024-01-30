@@ -296,6 +296,11 @@ public class OpenSearchClient implements SearchClient {
               request.getQuery(), request.getFrom(), request.getSize());
           case "table_search_index", "table" -> buildTableSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
+          case "database_schema_search_index",
+              "databaseSchema",
+              "database_search_index",
+              "database" -> buildGenericDataAssetSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
           case "user_search_index",
               "user",
               "team_search_index",
@@ -843,10 +848,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildSearchAcrossIndexesBuilder(
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(SearchIndex.getAllFields())
-            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-            .fuzziness(Fuzziness.AUTO);
+        buildSearchQueryBuilder(query, SearchIndex.getAllFields());
     FieldValueFactorFunctionBuilder boostScoreBuilder =
         ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
             .missing(0)
@@ -862,12 +864,26 @@ public class OpenSearchClient implements SearchClient {
     return addAggregation(searchSourceBuilder);
   }
 
+  private static SearchSourceBuilder buildGenericDataAssetSearchBuilder(
+      String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
+
+    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightName);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
+  }
+
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TableIndex.getFields())
-            .type(MultiMatchQueryBuilder.Type.BEST_FIELDS)
-            .fuzziness(Fuzziness.AUTO);
+        buildSearchQueryBuilder(query, TableIndex.getFields());
+    ;
     FieldValueFactorFunctionBuilder boostScoreBuilder =
         ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
             .missing(0)
@@ -1176,7 +1192,12 @@ public class OpenSearchClient implements SearchClient {
 
   private static QueryStringQueryBuilder buildSearchQueryBuilder(
       String query, Map<String, Float> fields) {
-    return QueryBuilders.queryStringQuery(query).fields(fields).fuzziness(Fuzziness.AUTO);
+    return QueryBuilders.queryStringQuery(query)
+        .fields(fields)
+        .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+        .defaultOperator(Operator.AND)
+        .fuzziness(Fuzziness.AUTO)
+        .tieBreaker(0.9f);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
