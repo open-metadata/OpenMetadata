@@ -13,16 +13,10 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../../../generated/api/feed/createThread';
-import { postThread } from '../../../../rest/feedsAPI';
+import { ThreadType } from '../../../../generated/api/feed/createThread';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
@@ -59,12 +53,6 @@ const AnnouncementDrawer: FC<Props> = ({
     </Space>
   );
 
-  const createThread = (data: CreateThread) => {
-    postThread(data).catch((err: AxiosError) => {
-      showErrorToast(err);
-    });
-  };
-
   return (
     <>
       <div data-testid="announcement-drawer">
@@ -90,7 +78,6 @@ const AnnouncementDrawer: FC<Props> = ({
 
           <ActivityThreadPanelBody
             className="p-0"
-            createThread={createThread}
             showHeader={false}
             threadLink={getEntityFeedLink(entityType, entityFQN)}
             threadType={ThreadType.Announcement}

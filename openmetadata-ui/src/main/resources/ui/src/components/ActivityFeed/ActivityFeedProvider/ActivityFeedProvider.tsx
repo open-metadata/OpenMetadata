@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEqual, orderBy } from 'lodash';
+import { isEmpty, isEqual, orderBy } from 'lodash';
 import React, {
   createContext,
   ReactNode,
@@ -27,6 +27,7 @@ import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
+import { CreateThread } from '../../../generated/api/feed/createThread';
 import {
   AnnouncementDetails,
   Post,
@@ -44,13 +45,14 @@ import {
   getAllFeeds,
   getFeedById,
   postFeedById,
+  postThread,
   updatePost,
   updateThread,
 } from '../../../rest/feedsAPI';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
@@ -194,6 +196,29 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     },
     [currentUser, user]
   );
+
+  const createThread = useCallback(async (data: CreateThread) => {
+    const isAnnouncementThread = !isEmpty(data.announcementDetails);
+    try {
+      const res = await postThread(data);
+
+      setEntityThread((prev) => [...prev, res]);
+      if (isAnnouncementThread && res) {
+        showSuccessToast(t('message.announcement-created-successfully'));
+      }
+    } catch (error) {
+      if (isAnnouncementThread) {
+        showErrorToast(error as AxiosError);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.conversation'),
+          })
+        );
+      }
+    }
+  }, []);
 
   // Here value is the post message and id can be thread id or post id.
   const postFeed = useCallback(async (value: string, id: string) => {
@@ -462,6 +487,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       updateTestCaseIncidentStatus,
       showEditAnnouncementModal,
       updateAnnouncement,
+      createThread,
     };
   }, [
     entityThread,
@@ -488,6 +514,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     updateTestCaseIncidentStatus,
     showEditAnnouncementModal,
     updateAnnouncement,
+    createThread,
   ]);
 
   return (

@@ -14,7 +14,10 @@ import { Operation } from 'fast-json-patch';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
-import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
+import {
+  AnnouncementDetails,
+  CreateThread,
+} from '../../../generated/api/feed/createThread';
 import {
   Post,
   ReactionType,
@@ -74,4 +77,5 @@ export interface ActivityFeedProviderContextType {
   ) => void;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
+  createThread: (data: CreateThread) => void;
 }

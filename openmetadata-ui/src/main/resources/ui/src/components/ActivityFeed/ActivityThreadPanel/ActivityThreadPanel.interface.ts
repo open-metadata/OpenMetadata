@@ -35,7 +35,7 @@ export interface ActivityThreadPanelProp
 
 export interface ActivityThreadPanelBodyProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'threadLink' | 'onCancel' | 'createThread'> {
+    Pick<ActivityThreadPanelProp, 'threadLink' | 'onCancel'> {
   threadType: ThreadType;
   showHeader?: boolean;
 }

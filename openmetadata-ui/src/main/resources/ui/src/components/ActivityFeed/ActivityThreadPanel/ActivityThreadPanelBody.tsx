@@ -44,7 +44,6 @@ import AnnouncementThreads from './AnnouncementThreads';
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
   onCancel,
-  createThread,
   className,
   showHeader = true,
   threadType,
@@ -53,6 +52,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const { currentUser } = useAuthContext();
   const {
     getFeedData,
+    createThread,
     selectedThread,
     entityThread,
     entityPaging: paging,

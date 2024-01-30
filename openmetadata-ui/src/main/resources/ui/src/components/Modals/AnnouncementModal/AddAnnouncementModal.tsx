@@ -12,7 +12,6 @@
  */
 
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
-import { AxiosError } from 'axios';
 import { Moment } from 'moment';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,10 +20,10 @@ import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
-import { postThread } from '../../../rest/feedsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import './announcement-modal.less';
@@ -49,6 +48,7 @@ const AddAnnouncementModal: FC<Props> = ({
   entityType,
   entityFQN,
 }) => {
+  const { createThread } = useActivityFeedProvider();
   const { currentUser } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -80,13 +80,8 @@ const AddAnnouncementModal: FC<Props> = ({
       };
       try {
         setIsLoading(true);
-        const data = await postThread(announcementData);
-        if (data) {
-          showSuccessToast(t('message.announcement-created-successfully'));
-        }
+        createThread(announcementData);
         onCancel();
-      } catch (error) {
-        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
