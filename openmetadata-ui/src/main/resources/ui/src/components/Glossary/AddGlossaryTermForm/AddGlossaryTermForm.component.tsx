@@ -41,7 +41,6 @@ const AddGlossaryTermForm = ({
   onSave,
   onCancel,
   isLoading,
-  glossaryReviewers = [],
   glossaryTerm,
   isFormInModal = false,
   formRef: form,
@@ -111,8 +110,8 @@ const AddGlossaryTermForm = ({
   };
 
   useEffect(() => {
-    if (glossaryReviewers.length > 0) {
-      form.setFieldValue('reviewers', glossaryReviewers);
+    if (glossaryTerm?.reviewers && glossaryTerm.reviewers.length > 0) {
+      form.setFieldValue('reviewers', glossaryTerm?.reviewers);
     }
     if (editMode && glossaryTerm) {
       const {
@@ -154,7 +153,7 @@ const AddGlossaryTermForm = ({
         form.setFieldValue('owner', owner);
       }
     }
-  }, [editMode, glossaryTerm, glossaryReviewers, form]);
+  }, [editMode, glossaryTerm, glossaryTerm?.reviewers, form]);
 
   const formFields: FieldProp[] = [
     {

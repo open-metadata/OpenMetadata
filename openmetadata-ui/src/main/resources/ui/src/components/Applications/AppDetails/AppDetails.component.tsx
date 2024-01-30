@@ -319,15 +319,12 @@ const AppDetails = () => {
               children: (
                 <div>
                   <FormBuilder
-                    disableTestConnection
                     useSelectWidget
                     cancelText={t('label.back')}
                     formData={appData.appConfiguration}
                     okText={t('label.submit')}
                     schema={jsonSchema}
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                    serviceType=""
-                    showTestConnection={false}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}

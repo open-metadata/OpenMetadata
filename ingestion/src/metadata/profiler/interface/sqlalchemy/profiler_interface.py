@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy import Column, inspect, text
-from sqlalchemy.exc import ProgrammingError, ResourceClosedError
+from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
@@ -230,7 +230,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 ],
             )
             return dict(row)
-        except ProgrammingError as exc:
+        except (ProgrammingError, DBAPIError) as exc:
             return self._programming_error_static_metric(
                 runner, column, exc, session, metrics
             )
@@ -579,9 +579,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """
         Override Programming Error for Static Metrics
         """
-        logger.error(
-            f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
-        )
+        raise exc
 
     def get_columns(self):
         """get columns from entity"""

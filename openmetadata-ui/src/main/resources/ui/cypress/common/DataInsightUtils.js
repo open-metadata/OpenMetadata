@@ -39,9 +39,9 @@ export const checkDataInsightSuccessStatus = (
         cy.get('@checkRun').should('have.text', 'Success');
 
         return true;
-      } else {
-        return false;
       }
+
+      return false;
     }
   });
 };
