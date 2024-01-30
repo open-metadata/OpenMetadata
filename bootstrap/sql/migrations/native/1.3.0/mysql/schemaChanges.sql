@@ -168,3 +168,6 @@ where serviceType = 'Mssql';
 DELETE FROM event_subscription_entity;
 DELETE FROM change_event_consumers;
 DELETE FROM consumers_dlq;
+
+UPDATE ingestion_pipeline_entity SET json = JSON_SET(json, '$.provider', 'user') 
+WHERE JSON_EXTRACT(json, '$.name') = 'OpenMetadata_dataInsight';

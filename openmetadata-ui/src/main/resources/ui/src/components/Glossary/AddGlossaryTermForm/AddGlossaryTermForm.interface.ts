@@ -26,8 +26,6 @@ export interface AddGlossaryTermFormProps {
   onSave: (value: GlossaryTermForm) => void;
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;
-  glossaryName: string;
-  glossaryReviewers?: EntityReference[];
   isFormInModal?: boolean;
   formRef: FormInstance<CreateGlossaryTerm>;
 }
