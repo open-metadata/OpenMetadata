@@ -110,7 +110,6 @@ def get_dagbag():
 
 class ScanDagsTask(Process):
     def run(self):
-
         if airflow_version >= "2.6":
             scheduler_job = self._run_new_scheduler_job()
         else:

@@ -465,7 +465,6 @@ class SasSource(
                 or table_entity.extension.__root__.get("analysisTimeStamp")
                 != table_extension.get("analysisTimeStamp")
             ):
-
                 # create the columns of the table
                 columns, col_profile_list = self.create_columns_and_profiles(
                     col_entity_instances, table_entity_instance

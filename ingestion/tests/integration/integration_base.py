@@ -294,7 +294,6 @@ def get_create_test_case(
 def get_test_dag(name: str) -> DAG:
     """Get a DAG with the tasks created in the CreatePipelineRequest"""
     with DAG(name, start_date=datetime(2021, 1, 1)) as dag:
-
         tasks = [
             BashOperator(
                 task_id=task_id,
