@@ -24,15 +24,14 @@ import {
 
 export const deleteAlertSteps = (name) => {
   cy.get('table').should('contain', name).click();
-  cy.get(`[data-testid="alert-delete-${name}"]`).should('be.visible').click();
-  cy.get('.ant-modal-header')
-    .should('be.visible')
-    .should('contain', `Delete subscription "${name}"`);
-  cy.get('[data-testid="confirmation-text-input"]')
-    .should('be.visible')
-    .type(DELETE_TERM);
+  cy.get(`[data-testid="alert-delete-${name}"]`).click();
+  cy.get('.ant-modal-header').should(
+    'contain',
+    `Delete subscription "${name}"`
+  );
+  cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
   interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
-  cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+  cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@deleteAlert', 200);
 
   toastNotification(`"${name}" deleted successfully!`);
@@ -53,6 +52,7 @@ export const addOwnerFilter = (
     .click();
 
   // Search and select owner
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="owner-name-select"]').click().type(ownerName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${ownerName}"]`).filter(':visible').scrollIntoView().click();
@@ -81,6 +81,7 @@ export const addEntityFQNFilter = (
     .click();
 
   // Search and select entity
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="fqn-list-select"]').click().type(entityFQN);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${entityFQN}"]`).filter(':visible').scrollIntoView().click();
@@ -106,6 +107,7 @@ export const addEventTypeFilter = (
   cy.get('[data-testid="Event Type-filter-option"]').filter(':visible').click();
 
   // Search and select event type
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="event-type-select"]').click().type(eventType);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${eventType}"]`).filter(':visible').scrollIntoView().click();
@@ -133,6 +135,7 @@ export const addUpdaterNameFilter = (
     .click();
 
   // Search and select user
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="user-name-select"]').click().type(updaterName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${updaterName}"]`)
@@ -157,6 +160,7 @@ export const addDomainFilter = (filterNumber, domainName, exclude = false) => {
   cy.get('[data-testid="Domain-filter-option"]').filter(':visible').click();
 
   // Search and select domain
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="domain-select"]').click().type(domainName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${domainName}"]`).filter(':visible').scrollIntoView().click();
@@ -205,6 +209,7 @@ export const addInternalDestination = (
 
   // Select the receivers
   if (typeId) {
+    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.get(`[data-testid="${typeId}"]`).click().type(searchText);
     verifyResponseStatusCode('@getSearchResult', 200);
     cy.get(`[title="${searchText}"]`)

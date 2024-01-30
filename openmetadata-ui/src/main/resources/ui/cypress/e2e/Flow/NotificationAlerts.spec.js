@@ -118,7 +118,6 @@ describe('Notification Alert Flow', () => {
   beforeEach(() => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('PUT', '/api/v1/events/subscriptions', 'updateAlert');
-    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     interceptURL('GET', '/api/v1/events/subscriptions/name/*', 'alertDetails');
     cy.login();
     cy.sidebarClick(SidebarItem.SETTINGS);
@@ -135,7 +134,7 @@ describe('Notification Alert Flow', () => {
     cy.get('[data-testid="create-notification"]').click();
 
     // Enter alert name
-    cy.get('#name').should('be.visible').type(ALERT_NAME);
+    cy.get('#name').type(ALERT_NAME);
 
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
@@ -200,16 +199,10 @@ describe('Notification Alert Flow', () => {
 
     cy.get(
       `[data-row-key="${alertId}"] [data-testid="alert-edit-${ALERT_NAME}"]`
-    )
-      .should('be.visible')
-      .click();
+    ).click();
 
     // Update description
-    cy.get(descriptionBox)
-      .should('be.visible')
-      .click()
-      .clear()
-      .type(ALERT_UPDATED_DESCRIPTION);
+    cy.get(descriptionBox).click().clear().type(ALERT_UPDATED_DESCRIPTION);
 
     // Update trigger
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
@@ -269,7 +262,7 @@ describe('Notification Alert Flow', () => {
     cy.get('[data-testid="create-notification"]').click();
 
     // Enter alert name
-    cy.get('#name').should('be.visible').type(ALERT_NAME);
+    cy.get('#name').type(ALERT_NAME);
 
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
@@ -334,12 +327,10 @@ describe('Notification Alert Flow', () => {
 
     cy.get(
       `[data-row-key="${alertId}"] [data-testid="alert-edit-${ALERT_NAME}"]`
-    )
-      .should('be.visible')
-      .click();
+    ).click();
 
     // Remove description
-    cy.get(descriptionBox).should('be.visible').click().clear();
+    cy.get(descriptionBox).click().clear();
 
     // Remove all filters
     [...Array(6).keys()].forEach(() => {

@@ -186,7 +186,6 @@ describe('Observability Alert Flow', () => {
   beforeEach(() => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('PUT', '/api/v1/events/subscriptions', 'updateAlert');
-    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     interceptURL('GET', '/api/v1/events/subscriptions/name/*', 'alertDetails');
     interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.login();
@@ -199,7 +198,7 @@ describe('Observability Alert Flow', () => {
     cy.get('[data-testid="create-observability"]').click();
 
     // Enter alert name
-    cy.get('#name').should('be.visible').type(ALERT_NAME);
+    cy.get('#name').type(ALERT_NAME);
 
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
@@ -264,16 +263,10 @@ describe('Observability Alert Flow', () => {
 
     cy.get(
       `[data-row-key="${alertId}"] [data-testid="alert-edit-${ALERT_NAME}"]`
-    )
-      .should('be.visible')
-      .click();
+    ).click();
 
     // Update description
-    cy.get(descriptionBox)
-      .should('be.visible')
-      .click()
-      .clear()
-      .type(ALERT_UPDATED_DESCRIPTION);
+    cy.get(descriptionBox).click().clear().type(ALERT_UPDATED_DESCRIPTION);
 
     // Update trigger
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
@@ -333,7 +326,7 @@ describe('Observability Alert Flow', () => {
         cy.get('[data-testid="create-observability"]').click();
 
         // Enter alert name
-        cy.get('#name').should('be.visible').type(ALERT_NAME);
+        cy.get('#name').type(ALERT_NAME);
 
         // Enter description
         cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
@@ -365,9 +358,13 @@ describe('Observability Alert Flow', () => {
             .click();
 
           // Search and select filter input value
+          interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
           cy.get(`[data-testid="${filter.inputSelector}"]`)
             .click()
             .type(filter.inputValue);
+
+          // Adding manual wait here as as safe since debounced API is not being detected in the cypress
+          cy.wait(500);
           verifyResponseStatusCode('@getSearchResult', 200);
           cy.get(`[title="${filter.inputValue}"]`)
             .filter(':visible')
@@ -401,6 +398,11 @@ describe('Observability Alert Flow', () => {
           if (!isEmpty(action.inputs)) {
             action.inputs.forEach((input) => {
               // Search and select domain
+              interceptURL(
+                'GET',
+                `/api/v1/search/query?q=*`,
+                'getSearchResult'
+              );
               cy.get(`[data-testid="${input.inputSelector}"]`)
                 .click()
                 .type(input.inputValue);
@@ -479,14 +481,13 @@ describe('Observability Alert Flow', () => {
 
         // Delete alert
         cy.get('[data-testid="delete-button"]').scrollIntoView().click();
-        cy.get('.ant-modal-header')
-          .should('be.visible')
-          .should('contain', `Delete subscription "${ALERT_NAME}"`);
-        cy.get('[data-testid="confirmation-text-input"]')
-          .should('be.visible')
-          .type(DELETE_TERM);
+        cy.get('.ant-modal-header').should(
+          'contain',
+          `Delete subscription "${ALERT_NAME}"`
+        );
+        cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
         interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
-        cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+        cy.get('[data-testid="confirm-button"]').click();
         verifyResponseStatusCode('@deleteAlert', 200);
 
         toastNotification(`"${ALERT_NAME}" deleted successfully!`);
