@@ -28,7 +28,7 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
+import { isEmpty, isEqual, isUndefined, startCase, unionBy } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -77,11 +77,11 @@ import { updateTask, updateThread } from '../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   fetchOptions,
+  generateOptions,
   getTaskDetailPath,
   isDescriptionTask,
   isTagsTask,
@@ -131,6 +131,7 @@ export const TaskTab = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
+    initialAssignees: usersList,
   } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -139,16 +140,15 @@ export const TaskTab = ({
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
 
-  const initialAssignees = useMemo(
-    () =>
-      taskDetails?.assignees.map((assignee) => ({
-        label: getEntityName(assignee),
-        value: assignee.id || '',
-        type: assignee.type,
-        name: assignee.name,
-      })) ?? [],
-    [taskDetails]
-  );
+  const { initialAssignees, assigneeOptions } = useMemo(() => {
+    const initialAssignees = generateOptions(taskDetails?.assignees ?? []);
+    const assigneeOptions = unionBy(
+      [...initialAssignees, ...generateOptions(usersList)],
+      'value'
+    );
+
+    return { initialAssignees, assigneeOptions };
+  }, [taskDetails, usersList]);
 
   const taskColumnName = useMemo(() => {
     const columnName = EntityLink.getTableColumnName(taskThread.about) ?? '';
@@ -603,8 +603,8 @@ export const TaskTab = ({
 
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
-    setOptions(initialAssignees);
-  }, [initialAssignees]);
+    setOptions(assigneeOptions);
+  }, [initialAssignees, assigneeOptions]);
 
   const taskHeader = isTaskTestCaseResult ? (
     <TaskTabIncidentManagerHeader thread={taskThread} />
@@ -651,6 +651,7 @@ export const TaskTab = ({
                       query,
                       setOptions,
                       currentUserId: currentUser?.id,
+                      initialOptions: assigneeOptions,
                     })
                   }
                 />
@@ -903,7 +904,13 @@ export const TaskTab = ({
                 onChange={(values) =>
                   assigneesForm.setFieldValue('assignees', values)
                 }
-                onSearch={(query) => fetchOptions({ query, setOptions })}
+                onSearch={(query) =>
+                  fetchOptions({
+                    query,
+                    setOptions,
+                    initialOptions: assigneeOptions,
+                  })
+                }
               />
             </Form.Item>
           </Form>
