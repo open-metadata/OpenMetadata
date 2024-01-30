@@ -12,6 +12,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPL
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
@@ -757,7 +758,11 @@ public class OpenSearchClient implements SearchClient {
     HighlightBuilder.Field highlightTaskDescriptions =
         new HighlightBuilder.Field("tasks.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
@@ -780,7 +785,11 @@ public class OpenSearchClient implements SearchClient {
     HighlightBuilder.Field highlightTaskDescriptions =
         new HighlightBuilder.Field("mlFeatures.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
@@ -796,9 +805,13 @@ public class OpenSearchClient implements SearchClient {
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTopicName);
+    hb.field(highlightDisplayNameNgram);
     hb.field(
         new HighlightBuilder.Field("messageSchema.schemaFields.description")
             .highlighterType(UNIFIED));
@@ -827,8 +840,12 @@ public class OpenSearchClient implements SearchClient {
     HighlightBuilder.Field highlightChartDescriptions =
         new HighlightBuilder.Field("charts.description");
     highlightChartDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
 
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightDashboardName);
     hb.field(highlightCharts);
@@ -868,12 +885,15 @@ public class OpenSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightName);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
@@ -908,6 +928,10 @@ public class OpenSearchClient implements SearchClient {
     HighlightBuilder.Field highlightColumnChildren =
         new HighlightBuilder.Field("columns.children.name");
     highlightColumnDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightTableName);
     hb.field(highlightColumns);
@@ -953,7 +977,11 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightGlossaryDisplayName);
@@ -977,7 +1005,11 @@ public class OpenSearchClient implements SearchClient {
     highlightTagDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
@@ -1008,6 +1040,10 @@ public class OpenSearchClient implements SearchClient {
     HighlightBuilder.Field highlightColumnChildren =
         new HighlightBuilder.Field("dataModel.columns.children.name");
     highlightColumnDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightContainerName);
     hb.field(highlightColumns);
@@ -1034,7 +1070,11 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(QUERY);
     highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightQuery);
@@ -1077,7 +1117,11 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightName);
     hb.preTags(PRE_TAG);
@@ -1097,7 +1141,11 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightName);
 
@@ -1127,7 +1175,11 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightName);
 
@@ -1147,7 +1199,11 @@ public class OpenSearchClient implements SearchClient {
     highlightName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDisplayName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgram =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgram.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgram);
     hb.field(highlightDescription);
     hb.field(highlightName);
     hb.field(highlightDisplayName);

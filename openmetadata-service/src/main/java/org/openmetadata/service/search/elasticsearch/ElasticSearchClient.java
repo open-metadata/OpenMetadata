@@ -12,6 +12,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPL
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
@@ -744,12 +745,16 @@ public class ElasticSearchClient implements SearchClient {
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
     highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions =
         new HighlightBuilder.Field("tasks.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
@@ -767,12 +772,16 @@ public class ElasticSearchClient implements SearchClient {
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
     highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions =
         new HighlightBuilder.Field("mlFeatures.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
@@ -787,7 +796,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightTopicName);
     hb.field(
@@ -813,6 +826,9 @@ public class ElasticSearchClient implements SearchClient {
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("charts.name");
     highlightCharts.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightChartDescriptions =
@@ -820,6 +836,7 @@ public class ElasticSearchClient implements SearchClient {
     highlightChartDescriptions.highlighterType(UNIFIED);
 
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightDashboardName);
     hb.field(highlightCharts);
@@ -864,7 +881,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightName);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
@@ -887,6 +908,9 @@ public class ElasticSearchClient implements SearchClient {
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTableName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTableNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
@@ -900,6 +924,7 @@ public class ElasticSearchClient implements SearchClient {
     highlightColumnDescriptions.highlighterType(UNIFIED);
     hb.field(highlightDescription);
     hb.field(highlightTableName);
+    hb.field(highlightTableNameNgrams);
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
@@ -940,7 +965,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightGlossaryDisplayName);
@@ -964,7 +993,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightTagDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
@@ -984,6 +1017,9 @@ public class ElasticSearchClient implements SearchClient {
     highlightContainerName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
     highlightColumns.highlighterType(UNIFIED);
@@ -993,6 +1029,7 @@ public class ElasticSearchClient implements SearchClient {
     HighlightBuilder.Field highlightColumnChildren =
         new HighlightBuilder.Field("dataModel.columns.children.name");
     highlightColumnDescriptions.highlighterType(UNIFIED);
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightContainerName);
     hb.field(highlightColumns);
@@ -1016,9 +1053,13 @@ public class ElasticSearchClient implements SearchClient {
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(QUERY);
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightQuery);
@@ -1059,7 +1100,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightName);
 
@@ -1078,7 +1123,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightName);
 
@@ -1126,10 +1175,14 @@ public class ElasticSearchClient implements SearchClient {
     highlightName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDisplayName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightName);
     hb.field(highlightDisplayName);
+    hb.field(highlightDisplayNameNgrams);
 
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
@@ -1192,7 +1245,10 @@ public class ElasticSearchClient implements SearchClient {
     highlightName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDisplayName.highlighterType(UNIFIED);
-
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightName);
     hb.field(highlightDisplayName);
