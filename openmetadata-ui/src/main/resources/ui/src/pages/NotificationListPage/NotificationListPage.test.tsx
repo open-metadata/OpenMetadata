@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -53,6 +53,12 @@ jest.mock('../../rest/alertsAPI', () => ({
     Promise.resolve({
       data: MOCK_DATA,
       paging: { total: 1 },
+    })
+  ),
+  getAlertsFromName: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      name: 'ActivityFeedAlert',
+      params: 'all',
     })
   ),
 }));
@@ -100,5 +106,17 @@ describe('Alerts Page Tests', () => {
     });
 
     expect(await findByText(/label.create-entity/)).toBeInTheDocument();
+  });
+
+  it('Table should render alerts data', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const alertNameElement = await screen.findByTestId('alert-name');
+
+    expect(alertNameElement).toBeInTheDocument();
   });
 });
