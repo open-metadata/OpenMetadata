@@ -269,9 +269,9 @@ const CustomEntityDetailV1 = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.custom-property')}>
       <Row
-        className="m-y-xs page-container"
+        className="page-container"
         data-testid="custom-entity-container"
-        gutter={[16, 16]}>
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
