@@ -14,11 +14,9 @@
 import { Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -34,7 +32,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
-import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import ActivityThreadList from './ActivityThreadList';
@@ -56,13 +53,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const { currentUser } = useAuthContext();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
-  const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);
-
-  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
-    confirmStateInitialValue
-  );
 
   const [elementRef, isInView] = useElementInView(observerOptions);
 
@@ -110,43 +102,14 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       });
   };
 
-  const onDiscard = () => {
-    setConfirmationState(confirmStateInitialValue);
-  };
-
   const loadNewThreads = () => {
     setTimeout(() => {
       getThreads();
     }, 500);
   };
 
-  const onPostDelete = () => {
-    if (confirmationState.postId && confirmationState.threadId) {
-      deletePostHandler?.(
-        confirmationState.threadId,
-        confirmationState.postId,
-        confirmationState.isThread
-      );
-    }
-    onDiscard();
-    loadNewThreads();
-  };
-
-  const onConfirmation = (data: ConfirmState) => {
-    setConfirmationState(data);
-  };
-
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
-  };
-
-  const postFeed = (value: string) => {
-    postFeedHandler?.(value, selectedThread?.id ?? selectedThreadId);
-    loadNewThreads();
-  };
-
-  const onThreadIdSelect = (id: string) => {
-    setSelectedThreadId(id);
   };
 
   const onThreadSelect = (id: string) => {
@@ -156,10 +119,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     }
   };
 
-  const onBack = () => {
-    setSelectedThread(undefined);
-  };
-
   const onPostThread = (value: string) => {
     const data = {
       message: value,
@@ -167,16 +126,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       about: threadLink,
     };
     createThread(data);
-    loadNewThreads();
-  };
-
-  const onUpdateThread = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadHandler(threadId, postId, isThread, data);
     loadNewThreads();
   };
 
