@@ -446,7 +446,6 @@ const ExplorePageV1: FunctionComponent = () => {
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
-      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
