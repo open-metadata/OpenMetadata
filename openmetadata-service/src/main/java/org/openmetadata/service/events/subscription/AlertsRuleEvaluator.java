@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARA
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.schema.type.ThreadType.Conversation;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
+import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.THREAD;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -324,7 +326,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchIngestionPipelineState",
-      input = "List of comma separated pipeline states",
+      input = "List of comma separated ingestion pipeline states",
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {
@@ -350,6 +352,44 @@ public class AlertsRuleEvaluator {
         PipelineStatus pipelineStatus =
             JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
         PipelineStatusType status = pipelineStatus.getPipelineState();
+        for (String givenStatus : pipelineState) {
+          if (givenStatus.equals(status.value())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchPipelineState",
+      input = "List of comma separated pipeline states",
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"matchPipelineState({'Successful', 'Failed', 'Pending', 'Skipped'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchPipelineState(List<String> pipelineState) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
+      return false;
+    }
+    if (!changeEvent.getEntityType().equals(PIPELINE)) {
+      // in case the entity is not ingestion pipeline return since the filter doesn't apply
+      return true;
+    }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
+    for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
+      if (fieldChange.getName().equals("pipelineStatus") && fieldChange.getNewValue() != null) {
+        org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(),
+                org.openmetadata.schema.entity.data.PipelineStatus.class);
+        StatusType status = pipelineStatus.getExecutionStatus();
         for (String givenStatus : pipelineState) {
           if (givenStatus.equals(status.value())) {
             return true;
