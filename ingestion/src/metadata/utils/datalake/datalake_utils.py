@@ -258,8 +258,9 @@ class GenericDataFrameColumnParser:
 
     @classmethod
     def unique_json_structure(cls, dicts: List[Dict]) -> Dict:
-        """Given a sample of `n` json objects, return a json object that represents the unique structure of all `n` objects.
-        Note that the type of the key will be that of the last object seen in the sample.
+        """Given a sample of `n` json objects, return a json object that represents the unique
+        structure of all `n` objects. Note that the type of the key will be that of
+        the last object seen in the sample.
 
         Args:
             dicts: list of json objects
