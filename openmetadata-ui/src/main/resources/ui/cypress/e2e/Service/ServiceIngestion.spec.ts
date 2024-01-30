@@ -52,6 +52,10 @@ services.forEach((service) => {
       service.updateService();
     });
 
+    it(`Update schedule options and verify`, () => {
+      service.updateScheduleOptions();
+    });
+
     service.runAdditionalTests();
 
     it(`Delete ${service.serviceType} service`, () => {

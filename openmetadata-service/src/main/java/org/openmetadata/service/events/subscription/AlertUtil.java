@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
@@ -98,7 +99,7 @@ public final class AlertUtil {
 
   public static boolean shouldTriggerAlert(String entityType, FilteringRules config) {
     if (config == null) {
-      return false;
+      return true;
     }
     // OpenMetadataWide Setting apply to all ChangeEvents
     if (config.getResources().size() == 1 && config.getResources().get(0).equals("all")) {
@@ -186,92 +187,71 @@ public final class AlertUtil {
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(
-      CreateEventSubscription createEventSubscription) {
-    // Resource Validation
-    List<EventFilterRule> finalRules = new ArrayList<>();
-    List<EventFilterRule> actions = new ArrayList<>();
-    List<String> resource = createEventSubscription.getResources();
-    if (resource.size() > 1) {
+      List<String> resource,
+      CreateEventSubscription.AlertType alertType,
+      AlertFilteringInput input) {
+    if (resource.size() != 1) {
       throw new BadRequestException(
-          "Only one resource can be specified. Multiple resources are not supported.");
+          "One resource can be specified. Zero or Multiple resources are not supported.");
     }
 
-    if (createEventSubscription
-        .getAlertType()
-        .equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
+    if (alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
       Map<String, EventFilterRule> supportedFilters =
-          EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
-              .getSupportedFilters()
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      EventFilterRule::getName,
-                      eventFilterRule ->
-                          JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+          buildFilteringRulesMap(
+              EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
+                  .getSupportedFilters());
       // Input validation
-      if (createEventSubscription.getInput() != null) {
-        listOrEmpty(createEventSubscription.getInput().getFilters())
-            .forEach(
-                argumentsInput ->
-                    finalRules.add(
-                        getFilterRule(
-                            supportedFilters,
-                            argumentsInput,
-                            buildInputArgumentsMap(argumentsInput))));
+      if (input != null) {
+        return new FilteringRules()
+            .withResources(resource)
+            .withRules(buildRulesList(supportedFilters, input.getFilters()))
+            .withActions(Collections.emptyList());
       }
-      return new FilteringRules()
-          .withResources(resource)
-          .withRules(finalRules)
-          .withActions(Collections.emptyList());
-    } else if (createEventSubscription
-        .getAlertType()
-        .equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
+    } else if (alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
       // Build a Map of Entity Filter Name
       Map<String, EventFilterRule> supportedFilters =
-          EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
-              .getSupportedFilters()
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      EventFilterRule::getName,
-                      eventFilterRule ->
-                          JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+          buildFilteringRulesMap(
+              EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
+                  .getSupportedFilters());
+
       // Build a Map of Actions
       Map<String, EventFilterRule> supportedActions =
-          EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
-              .getSupportedActions()
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      EventFilterRule::getName,
-                      eventFilterRule ->
-                          JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+          buildFilteringRulesMap(
+              EventsSubscriptionRegistry.getObservabilityDescriptor(resource.get(0))
+                  .getSupportedActions());
 
       // Input validation
-      if (createEventSubscription.getInput() != null) {
-        listOrEmpty(createEventSubscription.getInput().getFilters())
-            .forEach(
-                argumentsInput ->
-                    finalRules.add(
-                        getFilterRule(
-                            supportedFilters,
-                            argumentsInput,
-                            buildInputArgumentsMap(argumentsInput))));
-        listOrEmpty(createEventSubscription.getInput().getActions())
-            .forEach(
-                argumentsInput ->
-                    actions.add(
-                        getFilterRule(
-                            supportedActions,
-                            argumentsInput,
-                            buildInputArgumentsMap(argumentsInput))));
+      if (input != null) {
+        return new FilteringRules()
+            .withResources(resource)
+            .withRules(buildRulesList(supportedFilters, input.getFilters()))
+            .withActions(buildRulesList(supportedActions, input.getActions()));
       }
-      return new FilteringRules()
-          .withResources(resource)
-          .withRules(finalRules)
-          .withActions(actions);
     }
-    return null;
+    return new FilteringRules()
+        .withResources(resource)
+        .withRules(Collections.emptyList())
+        .withActions(Collections.emptyList());
+  }
+
+  private static Map<String, EventFilterRule> buildFilteringRulesMap(
+      List<EventFilterRule> filteringRules) {
+    return filteringRules.stream()
+        .collect(
+            Collectors.toMap(
+                EventFilterRule::getName,
+                eventFilterRule -> JsonUtils.deepCopy(eventFilterRule, EventFilterRule.class)));
+  }
+
+  private static List<EventFilterRule> buildRulesList(
+      Map<String, EventFilterRule> lookUp, List<ArgumentsInput> input) {
+    List<EventFilterRule> rules = new ArrayList<>();
+    listOrEmpty(input)
+        .forEach(
+            argumentsInput ->
+                rules.add(
+                    getFilterRule(lookUp, argumentsInput, buildInputArgumentsMap(argumentsInput))));
+    return rules;
   }
 
   private static Map<String, List<String>> buildInputArgumentsMap(ArgumentsInput filter) {

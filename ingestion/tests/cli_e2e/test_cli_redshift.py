@@ -15,8 +15,6 @@ Redshift E2E tests
 
 from typing import List
 
-from metadata.generated.schema.entity.data.table import Histogram
-
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
@@ -158,17 +156,17 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
                         "firstQuartile": -451.0775,
-                        "histogram": Histogram(
-                            boundaries=[
-                                "-999.63 to -665.73",
-                                "-665.73 to -331.83",
-                                "-331.83 to 2.06",
-                                "2.06 to 335.96",
-                                "335.96 to 669.86",
-                                "669.86 and up",
+                        "histogram": {
+                            "boundaries": [
+                                "-999.630 to -665.732",
+                                "-665.732 to -331.834",
+                                "-331.834 to 2.064",
+                                "2.064 to 335.962",
+                                "335.962 to 669.859",
+                                "669.859 and up",
                             ],
-                            frequencies=[3, 7, 6, 1, 2, 3],
-                        ),
+                            "frequencies": [3, 7, 6, 1, 2, 3],
+                        },
                         "interQuartileRange": 467.7975,
                         "max": 856.41,
                         "maxLength": None,
