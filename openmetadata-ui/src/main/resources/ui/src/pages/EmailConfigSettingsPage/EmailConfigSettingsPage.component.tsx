@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Skeleton, Space, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,25 +24,25 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import TestEmail from '../../components/TestEmail/TestEmail.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
-import {
-  getSettingsConfigFromConfigType,
-  testEmailConnection,
-} from '../../rest/settingConfigAPI';
+import { useAuth } from '../../hooks/authHooks';
+import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();
   const history = useHistory();
-
+  const { isAdminUser } = useAuth();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
+  const [isTeamEmailOpen, setIsTestEmailOpen] = useState<boolean>(false);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -78,17 +78,9 @@ function EmailConfigSettingsPage() {
     history.push(ROUTES.SETTINGS_EDIT_EMAIL_CONFIG);
   };
 
-  const handleTestEmailConnection = async () => {
-    try {
-      const res = await testEmailConnection(
-        emailConfigValues?.senderMail ?? ''
-      );
-
-      showSuccessToast(res.data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const handleTestEmailModal = useCallback(() => {
+    setIsTestEmailOpen((prev) => !prev);
+  }, [setIsTestEmailOpen]);
 
   const configValues = useMemo(() => {
     if (isUndefined(emailConfigValues)) {
@@ -162,7 +154,7 @@ function EmailConfigSettingsPage() {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={24}>
-          <Row align="middle" justify="space-between">
+          <Row align="top" justify="space-between">
             <Col>
               <PageHeader
                 data={{
@@ -171,29 +163,32 @@ function EmailConfigSettingsPage() {
                 }}
               />
             </Col>
-            <Col>
-              <Space>
-                <Button type="primary" onClick={handleTestEmailConnection}>
+            <Col className="d-flex">
+              {isAdminUser && (
+                <Button type="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}
                 </Button>
+              )}
 
-                <Button
-                  icon={
-                    !isUndefined(emailConfigValues) && (
-                      <Icon component={IconEdit} size={12} />
-                    )
-                  }
-                  onClick={handleEditClick}>
-                  {isUndefined(emailConfigValues)
-                    ? t('label.add')
-                    : t('label.edit')}
-                </Button>
-              </Space>
+              <Button
+                className="m-l-md"
+                icon={
+                  !isUndefined(emailConfigValues) && (
+                    <Icon component={IconEdit} size={12} />
+                  )
+                }
+                onClick={handleEditClick}>
+                {isUndefined(emailConfigValues)
+                  ? t('label.add')
+                  : t('label.edit')}
+              </Button>
             </Col>
           </Row>
         </Col>
         <Col span={24}>{configValuesContainer}</Col>
       </Row>
+
+      {isTeamEmailOpen && <TestEmail onCancel={handleTestEmailModal} />}
     </PageLayoutV1>
   );
 }
