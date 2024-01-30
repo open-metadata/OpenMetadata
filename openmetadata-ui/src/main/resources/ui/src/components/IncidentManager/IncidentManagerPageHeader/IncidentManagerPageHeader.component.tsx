@@ -70,6 +70,7 @@ const IncidentManagerPageHeader = ({
     getFeedData,
     testCaseResolutionStatus,
     updateTestCaseIncidentStatus,
+    initialAssignees,
   } = useActivityFeedProvider();
 
   const tableFqn = useMemo(
@@ -214,6 +215,7 @@ const IncidentManagerPageHeader = ({
 
           <TestCaseIncidentManagerStatus
             data={testCaseStatusData}
+            usersList={initialAssignees}
             onSubmit={onIncidentStatusUpdate}
           />
         </Typography.Text>
@@ -239,7 +241,7 @@ const IncidentManagerPageHeader = ({
         </Typography.Text>
       </>
     );
-  }, [testCaseStatusData, isLoading, activeTask]);
+  }, [testCaseStatusData, isLoading, activeTask, initialAssignees]);
 
   return (
     <Space wrap align="center">

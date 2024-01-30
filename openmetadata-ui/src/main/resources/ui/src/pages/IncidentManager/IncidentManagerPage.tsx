@@ -34,11 +34,15 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { getTableTabPath, PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  getTableTabPath,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { DEFAULT_SELECTED_RANGE } from '../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, FqnPart } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
 import {
@@ -59,6 +63,7 @@ import {
 } from '../../rest/incidentManagerAPI';
 import { getUserSuggestions } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { getUsers } from '../../rest/userAPI';
 import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
@@ -68,7 +73,10 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from '../TasksPage/shared/Assignees';
@@ -94,6 +102,9 @@ const IncidentManagerPage = () => {
   });
   const [testCaseInitialOptions, setTestCaseInitialOptions] =
     useState<DefaultOptionType[]>();
+  const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
+    []
+  );
 
   const { t } = useTranslation();
 
@@ -294,6 +305,29 @@ const IncidentManagerPage = () => {
   useEffect(() => {
     getInitialOptions();
   }, []);
+
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setInitialAssignees(filterData);
+    } catch (error) {
+      setInitialAssignees([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users once and store in state
+    fetchInitialAssign();
+  }, []);
+
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
       fetchTestCaseIncidents(filters);
@@ -366,6 +400,7 @@ const IncidentManagerPage = () => {
         render: (_, record: TestCaseResolutionStatus) => (
           <TestCaseIncidentManagerStatus
             data={record}
+            usersList={initialAssignees}
             onSubmit={handleStatusSubmit}
           />
         ),
@@ -397,7 +432,7 @@ const IncidentManagerPage = () => {
         ),
       },
     ],
-    [testCaseListData.data]
+    [testCaseListData.data, initialAssignees]
   );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {

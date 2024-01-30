@@ -702,6 +702,11 @@ describe('Data Quality and Profiler should work properly', () => {
 
     interceptURL(
       'GET',
+      '/api/v1/dataQuality/testCases/name/*?fields=*',
+      'getTestCaseDetails'
+    );
+    interceptURL(
+      'GET',
       '/api/v1/dataQuality/testCases/*/testCaseResult?*',
       'getTestResult'
     );
@@ -710,6 +715,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get(`[data-testid="${testCaseName}"]`).click();
+    verifyResponseStatusCode('@getTestCaseDetails', 200);
     cy.wait('@getTestResult').then(() => {
       cy.get(`[id="${testCaseName}_graph"]`)
         .scrollIntoView()

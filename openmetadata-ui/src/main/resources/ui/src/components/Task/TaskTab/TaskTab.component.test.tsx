@@ -94,6 +94,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   isDescriptionTask: jest.fn().mockReturnValue(false),
   isTagsTask: jest.fn().mockReturnValue(true),
   TASK_ACTION_LIST: jest.fn().mockReturnValue([]),
+  generateOptions: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({

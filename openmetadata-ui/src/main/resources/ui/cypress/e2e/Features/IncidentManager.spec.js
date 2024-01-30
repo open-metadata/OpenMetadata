@@ -48,6 +48,29 @@ const goToProfilerTab = () => {
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
+const verifySuccessStatus = (time = 20000) => {
+  const newTime = time / 2;
+  interceptURL('GET', '/api/v1/tables/name/*?fields=testSuite*', 'testSuite');
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
+    'pipelineStatus'
+  );
+  cy.wait(time);
+  cy.reload();
+  verifyResponseStatusCode('@testSuite', 200);
+  cy.get('[id*="tab-pipeline"]').click();
+  verifyResponseStatusCode('@pipelineStatus', 200);
+  cy.get('[data-testid="pipeline-status"]').then(($el) => {
+    const text = $el.text();
+    if (text !== 'Success' && text !== 'Failed' && newTime > 0) {
+      verifySuccessStatus(newTime);
+    } else {
+      cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
+    }
+  });
+};
+
 const acknowledgeTask = (testCase) => {
   goToProfilerTab();
 
@@ -104,6 +127,7 @@ const triggerTestCasePipeline = () => {
   verifyResponseStatusCode('@getPipelineStatus', 200);
   cy.get('[data-testid="run"]').click();
   cy.wait('@triggerPipeline');
+  verifySuccessStatus();
 };
 
 const assignIncident = (testCaseName) => {

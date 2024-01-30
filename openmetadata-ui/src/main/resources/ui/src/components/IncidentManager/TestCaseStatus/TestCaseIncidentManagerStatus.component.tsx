@@ -32,6 +32,7 @@ import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerSta
 const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,
+  usersList,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
 
@@ -86,6 +87,7 @@ const TestCaseIncidentManagerStatus = ({
           data={data}
           open={isEditStatus}
           testCaseFqn={data.testCaseReference?.fullyQualifiedName ?? ''}
+          usersList={usersList}
           onCancel={onCancel}
           onSubmit={onSubmit}
         />
