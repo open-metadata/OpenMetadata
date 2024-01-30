@@ -403,7 +403,7 @@ export const getFieldByArgumentType = (
               api={getEntityByFQN}
               className="w-full"
               data-testid="fqn-list-select"
-              mode="multiple"
+              mode="tags"
               placeholder={t('label.search-by-type', {
                 type: t('label.fqn-uppercase'),
               })}
@@ -466,7 +466,7 @@ export const getFieldByArgumentType = (
               api={getTableSuggestions}
               className="w-full"
               data-testid="table-name-select"
-              mode="multiple"
+              mode="tags"
               placeholder={t('label.search-by-type', {
                 type: t('label.table-lowercase'),
               })}
