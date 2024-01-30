@@ -17,7 +17,6 @@ import Qs from 'qs';
 import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -121,22 +120,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
 export const ES_UPDATE_DELAY = 500;
-
-export const globalSearchOptions = [
-  { value: '', label: t('label.all') },
-  { value: SearchIndex.TABLE, label: t('label.table') },
-  { value: SearchIndex.TOPIC, label: t('label.topic') },
-  { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
-  { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
-  { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
-  { value: SearchIndex.CONTAINER, label: t('label.container') },
-  { value: SearchIndex.STORED_PROCEDURE, label: t('label.stored-procedure') },
-  { value: SearchIndex.DASHBOARD_DATA_MODEL, label: t('label.data-model') },
-  { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
-  { value: SearchIndex.TAG, label: t('label.tag') },
-  { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
-  { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
-];
 
 export const DESCRIPTIONLENGTH = 100;
 
