@@ -112,7 +112,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   useEffect(() => {
     handleTabRedirection();
-  }, [activeTab]);
+  }, []);
 
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
