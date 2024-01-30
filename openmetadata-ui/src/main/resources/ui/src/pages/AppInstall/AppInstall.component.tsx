@@ -152,15 +152,12 @@ const AppInstall = () => {
         return (
           <div className="w-500 p-md border rounded-4">
             <FormBuilder
-              disableTestConnection
               showFormHeader
               useSelectWidget
               cancelText={t('label.back')}
               okText={t('label.submit')}
               schema={jsonSchema}
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-              serviceType=""
-              showTestConnection={false}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
