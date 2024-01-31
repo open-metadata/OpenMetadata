@@ -274,7 +274,7 @@ const TableDetailsPageV1 = () => {
         setLoading(false);
       }
     },
-    [tableFqn, getEntityPermissionByFqn, setTablePermissions]
+    [getEntityPermissionByFqn, setTablePermissions]
   );
 
   useEffect(() => {
@@ -288,7 +288,7 @@ const TableDetailsPageV1 = () => {
   }, []);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, datasetFQN, handleFeedCount);
+    getFeedCounts(EntityType.TABLE, tableFqn, handleFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
