@@ -241,10 +241,7 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
         rest.onAfterClose?.();
-
-        if (isTaskGlossaryApproval) {
-          rest.onUpdateEntityDetails?.();
-        }
+        rest.onUpdateEntityDetails?.();
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -350,10 +347,7 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-closed-successfully'));
         rest.onAfterClose?.();
-
-        if (isTaskGlossaryApproval) {
-          rest.onUpdateEntityDetails?.();
-        }
+        rest.onUpdateEntityDetails?.();
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
