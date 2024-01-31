@@ -112,6 +112,14 @@ After the migration is finished, you can revert this changes.
 
 ## 1.3.0
 
+### New Alerts and Observability
+
+We have fully reworked how we manage alerts to make the experience easier for end users. Now, alerts have been
+split between Alerts and Observability, both working with a full new backend implementation.
+
+This means that there is no automatic way for us to migrate alerts from the old system to the new feature.
+**You will need to recreate your alerts manually.**
+
 ### Secrets Manager
 
 The Secrets Manager `noop` option has been renamed to `db`. You can find this in the config below:
@@ -132,6 +140,10 @@ the option to tag the created resources.
 
 In 1.2.0 we introduced the Elasticsearch reindex job as part of the OpenMetadata server. In this release, we 
 removed triggering ES job from Python workflows. Everything happens in the server now. The image will not ship the `metadata_to_es` DAG anymore.
+
+### Ingestion & Ingestion Base Python Version
+
+The `openmetadata/ingestion` and `openmetadata/ingestion-base` images now use Python 3.10.
 
 ### Python SDK Auth Mechanisms
 

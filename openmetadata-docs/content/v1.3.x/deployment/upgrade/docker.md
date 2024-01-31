@@ -3,6 +3,10 @@ title: Upgrade on Docker
 slug: /deployment/upgrade/docker
 ---
 
+{% note noteType="Warning" %}
+**Please note that the release 1.3 is still in BETA. Only upgrade your dev and test instances.**
+{% /note %}
+
 # Upgrade on Docker
 
 To run OpenMetadata with Docker, you can simply download the `docker-compose.yml` file. Optionally, we added some
