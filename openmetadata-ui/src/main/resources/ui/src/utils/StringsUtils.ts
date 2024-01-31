@@ -226,19 +226,26 @@ export const escapeESReservedCharacters = (text?: string) => {
 };
 
 /**
- * @description Format JSON string to pretty print format with 2 spaces indentation.
+ * @description Format JSON string to a readable format
  * if the JSON string is invalid, return the original JSON string
  * @param jsonString - JSON string to format
+ * @param indent - Indentation string
  * @returns Formatted JSON string
+ * @example formatJsonString('{"key1": "value1", "key2": "value2"}') => '[key1]: value1\n[key2]: value2\n'
  */
-export const formatJsonString = (jsonString: string) => {
+export const formatJsonString = (jsonString: string, indent = '') => {
   try {
     let formattedJson = '';
     const jsonObj = JSON.parse(jsonString);
 
-    // loop through the keys and values and format append the formatted string to formattedJson like [key]: [value]
     for (const [key, value] of Object.entries(jsonObj)) {
-      formattedJson += `[${key}]: ${value}\n`;
+      if (typeof value === 'object' && value !== null) {
+        formattedJson += `${indent}[${key}]:\n`;
+        // Recursively format nested objects
+        formattedJson += formatJsonString(JSON.stringify(value), indent + '  ');
+      } else {
+        formattedJson += `${indent}[${key}]: ${value}\n`;
+      }
     }
 
     return formattedJson;
