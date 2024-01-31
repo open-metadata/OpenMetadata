@@ -39,6 +39,7 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { StatusType } from '../../generated/tests/testSuite';
 import { EventType } from '../../generated/type/changeEvent';
 import { searchData } from '../../rest/miscAPI';
@@ -184,11 +185,7 @@ const searchEntity = async (
 
     return uniqBy(
       response.data.hits.hits.map((d) => ({
-        label: (
-          <Tooltip mouseEnterDelay={0.8} title={getEntityName(d._source)}>
-            <span>{getEntityName(d._source)}</span>
-          </Tooltip>
-        ),
+        label: getEntityName(d._source),
         value: d._source.fullyQualifiedName,
       })),
       'value'
@@ -226,10 +223,11 @@ const getTeamOptions = async (searchText: string) => {
   return searchEntity(searchText, SearchIndex.TEAM);
 };
 
-const eventTypeOptions = map(EventType, (eventType) => ({
-  label: eventType,
-  value: eventType,
-}));
+const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
+  map(type, (value) => ({
+    label: startCase(value),
+    value,
+  }));
 
 // Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
 // Since there is no provision for webhook subscription for users
@@ -573,7 +571,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="event-type-select"
               mode="multiple"
-              options={eventTypeOptions}
+              options={getSelectOptionsFromEnum(EventType)}
               placeholder={t('label.search-by-type', {
                 type: t('label.event-type-lowercase'),
               })}
@@ -637,10 +635,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="pipeline-status-select"
               mode="multiple"
-              options={map(PipelineState, (state) => ({
-                label: startCase(state),
-                value: state,
-              }))}
+              options={getSelectOptionsFromEnum(PipelineState)}
               placeholder={t('label.select-field', {
                 field: t('label.pipeline-state'),
               })}
@@ -653,7 +648,7 @@ export const getFieldByArgumentType = (
 
     case 'testStatusList':
       field = (
-        <Col key="test-status-select" span={11}>
+        <Col key="test-status-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -670,10 +665,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="test-status-select"
               mode="multiple"
-              options={map(StatusType, (state) => ({
-                label: startCase(state),
-                value: state,
-              }))}
+              options={getSelectOptionsFromEnum(StatusType)}
               placeholder={t('label.select-field', {
                 field: t('label.test-suite-status'),
               })}
@@ -703,10 +695,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="test-result-select"
               mode="multiple"
-              options={map(['success', 'aborted', 'failed'], (state) => ({
-                label: startCase(state),
-                value: state,
-              }))}
+              options={getSelectOptionsFromEnum(TestCaseStatus)}
               placeholder={t('label.select-field', {
                 field: t('label.test-case-result'),
               })}

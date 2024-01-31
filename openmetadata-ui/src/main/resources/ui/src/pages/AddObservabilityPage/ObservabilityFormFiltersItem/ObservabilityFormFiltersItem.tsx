@@ -88,8 +88,8 @@ function ObservabilityFormFiltersItem({
                         data-testid={`filter-${name}`}
                         key={`observability-${key}`}
                         span={24}>
-                        <Row gutter={[8, 8]}>
-                          <Col flex="1 1 auto">
+                        <div className="flex gap-4">
+                          <div className="flex-1 w-min-0">
                             <Row gutter={[8, 8]}>
                               <Col span={12}>
                                 <Form.Item
@@ -129,15 +129,15 @@ function ObservabilityFormFiltersItem({
                                   supportedFilters
                                 )}
                             </Row>
-                          </Col>
-                          <Col flex="0 0 40px">
+                          </div>
+                          <div>
                             <Button
                               data-testid={`remove-filter-${name}`}
                               icon={<CloseOutlined />}
                               onClick={() => remove(name)}
                             />
-                          </Col>
-                        </Row>
+                          </div>
+                        </div>
                         <Form.Item
                           label={
                             <Typography.Text>

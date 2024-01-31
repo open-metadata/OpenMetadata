@@ -203,8 +203,8 @@ function DestinationFormItem({
                         data-testid={`destination-${name}`}
                         key={key}
                         span={24}>
-                        <Row gutter={[8, 8]}>
-                          <Col flex="1 1 auto">
+                        <div className="flex gap-4">
+                          <div className="flex-1 w-min-0">
                             <Row gutter={[8, 8]}>
                               <Col span={12}>
                                 <Form.Item
@@ -307,20 +307,21 @@ function DestinationFormItem({
                                         placeholder={t('label.select-field', {
                                           field: t('label.destination'),
                                         })}
+                                        popupClassName="select-options-container"
                                       />
                                     </Form.Item>
                                   </Col>
                                 )}
                             </Row>
-                          </Col>
-                          <Col flex="0 0 40px">
+                          </div>
+                          <div>
                             <Button
                               data-testid={`remove-destination-${name}`}
                               icon={<CloseOutlined />}
                               onClick={() => remove(name)}
                             />
-                          </Col>
-                        </Row>
+                          </div>
+                        </div>
                       </Col>
                     );
                   })}
