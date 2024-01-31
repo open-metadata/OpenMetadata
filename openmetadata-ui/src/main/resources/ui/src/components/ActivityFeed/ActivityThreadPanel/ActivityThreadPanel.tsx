@@ -18,8 +18,13 @@ import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
-import ActivityThreadPanelBody from './ActivityThreadPanelBody';
+import ActivityThreadPanelBodyComponent from './ActivityThreadPanelBody';
+
+const ActivityThreadPanelBody = withActivityFeed(
+  ActivityThreadPanelBodyComponent
+);
 
 const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   threadLink,

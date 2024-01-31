@@ -35,7 +35,6 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
-import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
@@ -241,4 +240,4 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   );
 };
 
-export default withActivityFeed(ActivityThreadPanelBody);
+export default ActivityThreadPanelBody;
