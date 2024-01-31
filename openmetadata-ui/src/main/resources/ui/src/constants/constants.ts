@@ -17,6 +17,7 @@ import Qs from 'qs';
 import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
+import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -341,8 +342,8 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
 
 export const getTagsDetailsPath = (entityFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
 
   return path;
 };
