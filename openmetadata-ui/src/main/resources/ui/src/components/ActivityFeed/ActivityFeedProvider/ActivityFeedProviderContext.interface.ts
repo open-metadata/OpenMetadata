@@ -59,6 +59,7 @@ export interface ActivityFeedProviderContextType {
     type?: ThreadType,
     entityType?: EntityType,
     fqn?: string,
+    entityField?: string,
     status?: ThreadTaskStatus
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
@@ -73,7 +74,7 @@ export interface ActivityFeedProviderContextType {
   ) => void;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
-   showEditAnnouncementModal: (thread: Thread) => void;
+  showEditAnnouncementModal: (thread: Thread) => void;
   updateAnnouncement: (
     title: string,
     updatedAnnouncement: AnnouncementDetails

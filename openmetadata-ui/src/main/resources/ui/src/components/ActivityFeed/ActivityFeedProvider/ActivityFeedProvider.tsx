@@ -171,6 +171,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
+      entityField?: string,
       status?: ThreadTaskStatus
     ) => {
       try {
@@ -185,7 +186,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
         const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER && fqn
-            ? getEntityFeedLink(entityType, fqn)
+            ? getEntityFeedLink(entityType, fqn, entityField)
             : undefined,
           after,
           type,

@@ -30,7 +30,11 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import {
+  getEntityField,
+  getEntityFQN,
+  getEntityType,
+} from '../../../utils/FeedUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
@@ -81,6 +85,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const getThreads = () => {
     const entityType = getEntityType(threadLink) ?? '';
     const entityFQN = getEntityFQN(threadLink) ?? '';
+    const entityField = getEntityField(threadLink) ?? '';
 
     getFeedData(
       undefined,
@@ -88,6 +93,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       threadType,
       entityType,
       entityFQN,
+      entityField,
       isTaskType ? taskStatus : undefined
     );
   };
