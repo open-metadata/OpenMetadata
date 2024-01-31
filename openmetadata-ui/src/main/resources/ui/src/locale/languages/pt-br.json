@@ -1514,7 +1514,6 @@
     "no-ingestion-pipeline-found": "Nenhum pipeline de ingestão encontrado. Clique no botão Deploy para configurar o pipeline de ingestão.",
     "no-inherited-roles-found": "Nenhum papel herdado encontrado",
     "no-installed-applications-found": "Nenhuma aplicação instalada atualmente. Clique no botão 'Adicionar Aplicativos' para instalar um.",
-    "no-kpi": "Your organization hasn't set any Key Performance Indicators (KPIs) yet! Establishing KPIs in OpenMetadata can guide you in setting clear goals for improved documentation, effective ownership, and efficient tiering.",
     "no-kpi": "Sua organização ainda não definiu nenhum Indicador Chave de Desempenho (KPI)! Criar KPIs no OpenMetadata pode orientá-lo na definição de metas claras para melhorar a documentação, apropriação efetiva e segmentação eficiente.",
     "no-kpi-available-add-new-one": "Nenhum KPI disponível. Clique no botão Adicionar KPI para adicionar um.",
     "no-kpi-found": "Nenhum KPI encontrado com o nome {{name}}",
