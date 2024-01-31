@@ -148,7 +148,7 @@ describe('Feed Utils', () => {
     // eslint-disable-next-line no-useless-escape
     const expectedResult = `<#E::user::\"admin\"|<#E::user::admin|[@admin](http://localhost:3000/users/admin)>> test`;
 
-    expect(result).toBe(expectedResult);
+    expect(result).toStrictEqual(expectedResult);
   });
 
   it('should return correct backend format for a given message having . in username', () => {
@@ -158,6 +158,6 @@ describe('Feed Utils', () => {
     // eslint-disable-next-line no-useless-escape
     const expectedResult = `<#E::user::\"admin.test\"|<#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
 
-    expect(result).toBe(expectedResult);
+    expect(result).toStrictEqual(expectedResult);
   });
 });
