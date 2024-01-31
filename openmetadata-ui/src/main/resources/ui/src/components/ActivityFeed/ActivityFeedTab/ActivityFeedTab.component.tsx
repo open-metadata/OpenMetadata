@@ -44,7 +44,6 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { useAuth } from '../../../hooks/authHooks';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
@@ -99,7 +98,6 @@ export const ActivityFeedTab = ({
     tab = EntityTabs.ACTIVITY_FEED,
     subTab: activeTab = ActivityFeedTabs.ALL,
   } = useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
-  const { isAdminUser } = useAuth();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [count, setCount] = useState<FeedCounts>(FEED_COUNT_INITIAL_DATA);
 
@@ -167,11 +165,7 @@ export const ActivityFeedTab = ({
   const fetchFeedsCount = async () => {
     if (isUserEntity) {
       try {
-        const res = await getFeedCount(
-          getEntityUserLink(
-            isAdminUser ? currentUser?.fullyQualifiedName ?? '' : fqn
-          )
-        );
+        const res = await getFeedCount(getEntityUserLink(fqn));
         setCount({
           conversationCount: res[0].conversationCount ?? 0,
           totalTasksCount: res[0].totalTaskCount,
@@ -210,9 +204,10 @@ export const ActivityFeedTab = ({
   }, [fqn, isActivityFeedTab]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    const currentFilter = currentUser?.isAdmin
-      ? FeedFilter.ALL
-      : FeedFilter.OWNER_OR_FOLLOWS;
+    const currentFilter =
+      currentUser?.isAdmin && currentUser?.fullyQualifiedName === fqn
+        ? FeedFilter.ALL
+        : FeedFilter.OWNER_OR_FOLLOWS;
     const filter = isUserEntity ? currentFilter : undefined;
 
     return {
