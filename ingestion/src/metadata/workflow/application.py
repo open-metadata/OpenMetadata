@@ -53,7 +53,7 @@ class AppRunner(Step, ABC):
     ):
         self.app_config = config.appConfig.__root__ if config.appConfig else None
         self.private_config = (
-            config.appPrivateConfig.__root__ if config.appConfig else None
+            config.appPrivateConfig.__root__ if config.appPrivateConfig else None
         )
         self.metadata = metadata
 
