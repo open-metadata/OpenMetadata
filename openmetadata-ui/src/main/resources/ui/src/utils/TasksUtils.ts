@@ -567,6 +567,17 @@ export const TASK_ACTION_LIST: TaskAction[] = [
   },
 ];
 
+export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
+  {
+    label: i18Next.t('label.re-assign'),
+    key: TaskActionMode.RE_ASSIGN,
+  },
+  {
+    label: i18Next.t('label.resolve'),
+    key: TaskActionMode.RESOLVE,
+  },
+];
+
 export const isDescriptionTask = (taskType: TaskType) =>
   [TaskType.RequestDescription, TaskType.UpdateDescription].includes(taskType);
 
