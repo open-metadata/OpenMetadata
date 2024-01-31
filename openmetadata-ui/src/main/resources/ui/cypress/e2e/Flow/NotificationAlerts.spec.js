@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { startCase } from 'lodash';
 import {
   addDomainFilter,
   addEntityFQNFilter,
@@ -50,7 +49,9 @@ import {
 } from '../../constants/EntityConstant';
 
 const TRIGGER_NAME_1 = 'all';
+const TRIGGER_DISPLAY_NAME_1 = 'All';
 const TRIGGER_NAME_2 = 'dashboard';
+const TRIGGER_DISPLAY_NAME_2 = 'Dashboard';
 
 describe('Notification Alert Flow', () => {
   let data = {};
@@ -145,12 +146,12 @@ describe('Notification Alert Flow', () => {
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
 
     cy.get(`[data-testid="${TRIGGER_NAME_1}-option"]`)
-      .contains(startCase(TRIGGER_NAME_1))
+      .contains(TRIGGER_DISPLAY_NAME_1)
       .click();
 
     cy.get('[data-testid="trigger-select"]').should(
       'contain',
-      startCase(TRIGGER_NAME_1)
+      TRIGGER_DISPLAY_NAME_1
     );
 
     // Select filters
@@ -207,7 +208,7 @@ describe('Notification Alert Flow', () => {
     // Update trigger
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
     cy.get(`[data-testid="${TRIGGER_NAME_2}-option"]`)
-      .contains(startCase(TRIGGER_NAME_2))
+      .contains(TRIGGER_DISPLAY_NAME_2)
       .click();
 
     // Filters should reset after trigger change
@@ -273,12 +274,12 @@ describe('Notification Alert Flow', () => {
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
 
     cy.get(`[data-testid="${TRIGGER_NAME_1}-option"]`)
-      .contains(startCase(TRIGGER_NAME_1))
+      .contains(TRIGGER_DISPLAY_NAME_1)
       .click();
 
     cy.get('[data-testid="trigger-select"]').should(
       'contain',
-      startCase(TRIGGER_NAME_1)
+      TRIGGER_DISPLAY_NAME_1
     );
 
     // Add multiple filters

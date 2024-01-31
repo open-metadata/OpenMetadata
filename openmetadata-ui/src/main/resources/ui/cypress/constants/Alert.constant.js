@@ -30,6 +30,7 @@ export const TEST_SUITE_FQN = `${TABLE_FQN}.testSuite`;
 
 export const OBSERVABILITY_CREATION_DETAILS = {
   table: {
+    triggerDisplayName: 'Table',
     filters: [
       {
         name: 'Table Name',
@@ -74,6 +75,7 @@ export const OBSERVABILITY_CREATION_DETAILS = {
     ],
   },
   testCase: {
+    triggerDisplayName: 'Test Case',
     filters: [
       {
         name: 'Test Case Name',
@@ -137,6 +139,7 @@ export const OBSERVABILITY_CREATION_DETAILS = {
     ],
   },
   testSuite: {
+    triggerDisplayName: 'Test Suite',
     filters: [
       {
         name: 'Test Suite Name',

@@ -14,7 +14,6 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
-import { isEmpty, startCase } from 'lodash';
 import {
   addDomainFilter,
   addEntityFQNFilter,
@@ -337,12 +336,12 @@ describe('Observability Alert Flow', () => {
         cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
 
         cy.get(`[data-testid="${trigger}-option"]`)
-          .contains(startCase(trigger))
+          .contains(alertDetails.triggerDisplayName)
           .click();
 
         cy.get('[data-testid="trigger-select"]').should(
           'contain',
-          startCase(trigger)
+          alertDetails.triggerDisplayName
         );
 
         // Add filters
@@ -396,7 +395,7 @@ describe('Observability Alert Flow', () => {
             .filter(':visible')
             .click();
 
-          if (!isEmpty(action.inputs)) {
+          if (action.inputs && action.inputs.length > 0) {
             action.inputs.forEach((input) => {
               // Search and select domain
               interceptURL(
