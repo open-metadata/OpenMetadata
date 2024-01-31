@@ -12,6 +12,7 @@
  */
 
 import {
+  getBackendFormat,
   getEntityField,
   getEntityFQN,
   getEntityType,
@@ -97,6 +98,7 @@ jest.mock('../rest/miscAPI', () => ({
 
 jest.mock('./StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
 jest.mock('./FeedUtils', () => ({
@@ -137,5 +139,25 @@ describe('Feed Utils', () => {
         name: 'John Doe',
       },
     ]);
+  });
+
+  it('should return correct backend format for a given message', () => {
+    const message = `<#E::user::"admin"|[@admin](http://localhost:3000/users/admin)> test`;
+    const result = getBackendFormat(message);
+
+    // eslint-disable-next-line no-useless-escape
+    const expectedResult = `<#E::user::\"admin\"|<#E::user::admin|[@admin](http://localhost:3000/users/admin)>> test`;
+
+    expect(result).toBe(expectedResult);
+  });
+
+  it('should return correct backend format for a given message having . in username', () => {
+    const message = `<#E::user::"admin.test"|[@admin.test](http://localhost:3000/users/%22admin.test%22)> test`;
+    const result = getBackendFormat(message);
+
+    // eslint-disable-next-line no-useless-escape
+    const expectedResult = `<#E::user::\"admin.test\"|<#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
+
+    expect(result).toBe(expectedResult);
   });
 });
