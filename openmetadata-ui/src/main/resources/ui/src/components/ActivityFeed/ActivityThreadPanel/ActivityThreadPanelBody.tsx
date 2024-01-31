@@ -182,7 +182,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         )}
 
         <Fragment>
-          {showNewConversation || isEqual(entityThread.length, 0) ? (
+          {showNewConversation ||
+          (isEqual(entityThread.length, 0) && !isThreadLoading) ? (
             <>
               {isConversationType && (
                 <Space className="w-full" direction="vertical">

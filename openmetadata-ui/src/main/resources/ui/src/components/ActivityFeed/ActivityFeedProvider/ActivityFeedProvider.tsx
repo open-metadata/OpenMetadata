@@ -277,30 +277,37 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
-      if (isThread) {
-        const data = await deleteThread(threadId);
-        setEntityThread((prev) =>
-          prev.filter((thread) => thread.id !== data.id)
-        );
-      } else {
-        const deleteResponse = await deletePostById(threadId, postId);
-        if (deleteResponse) {
-          const data = await getUpdatedThread(threadId);
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === data.id) {
-                return {
-                  ...thread,
-                  posts: data.posts?.slice(-3),
-                  postsCount: data.postsCount,
-                };
-              } else {
-                return thread;
-              }
+      try {
+        setLoading(true);
+        if (isThread) {
+          const data = await deleteThread(threadId);
+          setEntityThread((prev) =>
+            prev.filter((thread) => thread.id !== data.id)
+          );
+        } else {
+          const deleteResponse = await deletePostById(threadId, postId);
+          if (deleteResponse) {
+            const data = await getUpdatedThread(threadId);
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts?.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
             });
-          });
-          setActiveThread(data);
+            setActiveThread(data);
+          }
         }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setLoading(false);
       }
     },
     []
