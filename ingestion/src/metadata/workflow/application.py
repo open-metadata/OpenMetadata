@@ -15,12 +15,6 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.generated.schema.configuration.appsPrivateConfiguration import (
-    AppPrivateConfig,
-)
-from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
-    AppConfig,
-)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -54,12 +48,11 @@ class AppRunner(Step, ABC):
 
     def __init__(
         self,
-        config: AppConfig.__fields__["__root__"].type_,
-        private_config: AppPrivateConfig.__fields__["__root__"].type_,
+        config: OpenMetadataApplicationConfig,
         metadata: OpenMetadata,
     ):
-        self.config = config
-        self.private_config = private_config
+        self.app_config = config.appConfig
+        self.private_config = config.appPrivateConfig
         self.metadata = metadata
 
         super().__init__()
@@ -74,7 +67,8 @@ class AppRunner(Step, ABC):
 
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
-        return cls(config=config_dict, metadata=metadata)
+        config = OpenMetadataApplicationConfig.parse_obj(config_dict)
+        return cls(config=config, metadata=metadata)
 
 
 class ApplicationWorkflow(BaseWorkflow, ABC):
@@ -121,12 +115,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
 
         try:
             self.runner = runner_class(
-                config=self.config.appConfig.__root__
-                if self.config.appConfig
-                else None,
-                private_config=self.config.appPrivateConfig.__root__
-                if self.config.appPrivateConfig
-                else None,
+                config=self.config,
                 metadata=self.metadata,
             )
         except Exception as exc:
