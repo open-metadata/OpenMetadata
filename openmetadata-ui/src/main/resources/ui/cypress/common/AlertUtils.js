@@ -110,8 +110,14 @@ export const addEventTypeFilter = (
   interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="event-type-select"]').click().type(eventType);
   verifyResponseStatusCode('@getSearchResult', 200);
-  cy.get(`[title="${eventType}"]`).filter(':visible').scrollIntoView().click();
-  cy.get('[data-testid="event-type-select"]').should('contain', eventType);
+  cy.get(`[title="${startCase(eventType)}"]`)
+    .filter(':visible')
+    .scrollIntoView()
+    .click();
+  cy.get('[data-testid="event-type-select"]').should(
+    'contain',
+    startCase(eventType)
+  );
 
   if (exclude) {
     // Change filter effect
@@ -223,7 +229,9 @@ export const addInternalDestination = (
   cy.get(`[data-testid="destination-type-select-${destinationNumber}"]`)
     .scrollIntoView()
     .click();
-  cy.get(`[data-testid="${type}-external-option"]`).filter(':visible').click();
+  cy.get(`.select-options-container [data-testid="${type}-external-option"]`)
+    .filter(':visible')
+    .click();
 
   // Check the added destination type
   cy.get(

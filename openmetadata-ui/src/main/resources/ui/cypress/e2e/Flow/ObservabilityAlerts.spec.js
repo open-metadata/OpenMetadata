@@ -370,10 +370,11 @@ describe('Observability Alert Flow', () => {
             .filter(':visible')
             .scrollIntoView()
             .click();
-          cy.get(`[data-testid="${filter.inputSelector}"]`).should(
-            'contain',
-            filter.inputValue
-          );
+
+          // Check if option is selected
+          cy.get(
+            `[title="${filter.inputValue}"] .ant-select-item-option-state`
+          ).should('exist');
 
           if (filter.exclude) {
             // Change filter effect
