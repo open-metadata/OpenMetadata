@@ -185,6 +185,8 @@ site_menu:
     url: /deployment/upgrade/versions
   - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
     url: /deployment/upgrade/versions/100-to-110
+  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.1.x to 1.2.x
+    url: /deployment/upgrade/versions/110-to-120
   - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.2.x to 1.3.x
     url: /deployment/upgrade/versions/120-to-130
 
@@ -686,7 +688,7 @@ site_menu:
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
-    url: /connectors/metadata/
+    url: /connectors/metadata/atlas/external
   - category: Connectors / Metadata / Alation
     url: /connectors/metadata/alation
   - category: Connectors / Metadata / Alation / Run Externally

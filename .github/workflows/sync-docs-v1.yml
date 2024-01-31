@@ -28,6 +28,7 @@ jobs:
 
     - name: Push content
       id: push_content
+      continue-on-error: true
       uses: cpina/github-action-push-to-another-repository@main
       env:
         SSH_DEPLOY_KEY: ${{ secrets.DOCS_V1_SSH_DEPLOY_KEY }}
@@ -42,6 +43,7 @@ jobs:
 
     - name: Push images
       id: push_images
+      continue-on-error: true
       uses: cpina/github-action-push-to-another-repository@main
       env:
         SSH_DEPLOY_KEY: ${{ secrets.DOCS_V1_SSH_DEPLOY_KEY }}
@@ -53,3 +55,20 @@ jobs:
         user-email: openmetadata@getcollate.io
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
         target-branch: publish
+
+    - name: Slack on Failure
+      if: steps.push_content.outcome != 'success'
+      uses: slackapi/slack-github-action@v1.23.0
+      with:
+        payload: |
+          {
+            "text": "🔥 Docs sync failed! 🔥"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+    - name: Force failure
+      if: steps.push_content.outcome != 'success'
+      run: |
+        exit 1
