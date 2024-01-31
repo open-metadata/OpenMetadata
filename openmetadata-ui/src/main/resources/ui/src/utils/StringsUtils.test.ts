@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
+import { formatJsonString, getDecodedFqn, getEncodedFqn } from './StringsUtils';
 
 describe('StringsUtils', () => {
   it('getEncodedFqn should return encoded Fqn', () => {
@@ -39,5 +39,37 @@ describe('StringsUtils', () => {
     const decodedFqn = 'sample_data.db_sample.schema_sample.dim client.';
 
     expect(getDecodedFqn(fqn, true)).toEqual(decodedFqn);
+  });
+
+  describe('formatJsonString', () => {
+    it('should format a simple JSON string', () => {
+      const jsonString = JSON.stringify({ key1: 'value1', key2: 'value2' });
+      const expectedOutput = '[key1]: value1\n[key2]: value2\n';
+
+      expect(formatJsonString(jsonString)).toStrictEqual(expectedOutput);
+    });
+
+    it('should format a deeply nested JSON string', () => {
+      const jsonString = JSON.stringify({
+        key1: 'value1',
+        key2: {
+          subKey1: 'subValue1',
+          subKey2: {
+            subSubKey1: 'subSubValue1',
+            subSubKey2: 'subSubValue2',
+          },
+        },
+      });
+      const expectedOutput =
+        '[key1]: value1\n[key2]:\n  [subKey1]: subValue1\n  [subKey2]:\n    [subSubKey1]: subSubValue1\n    [subSubKey2]: subSubValue2\n';
+
+      expect(formatJsonString(jsonString)).toStrictEqual(expectedOutput);
+    });
+
+    it('should return the original string if it is not valid JSON', () => {
+      const jsonString = 'not valid JSON';
+
+      expect(formatJsonString(jsonString)).toStrictEqual(jsonString);
+    });
   });
 });
