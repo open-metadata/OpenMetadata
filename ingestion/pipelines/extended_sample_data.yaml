@@ -9,6 +9,8 @@ source:
       connectionOptions:
         sampleDataFolder: "./examples/sample_data"
         extendedSampleDataFolder: "./examples/extended_sample_data"
+        includeGlossary: True
+        includeLineageStressTesting: True
   sourceConfig: {}
 sink:
   type: metadata-rest
