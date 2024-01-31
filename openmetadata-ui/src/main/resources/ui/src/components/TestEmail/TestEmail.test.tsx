@@ -13,10 +13,11 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { testEmailConnection } from '../../rest/settingConfigAPI';
 import TestEmail from './TestEmail.component';
 
 jest.mock('../../rest/settingConfigAPI', () => ({
-  testEmailConnection: jest.fn(),
+  testEmailConnection: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -71,6 +72,8 @@ describe('Test Email component', () => {
       fireEvent.click(submitButton);
     });
 
+    expect(testEmailConnection).not.toHaveBeenCalled();
+
     expect(mockOnCancel).not.toHaveBeenCalled();
   });
 
@@ -86,6 +89,8 @@ describe('Test Email component', () => {
     await act(async () => {
       fireEvent.click(submitButton);
     });
+
+    expect(testEmailConnection).toHaveBeenCalled();
 
     expect(mockOnCancel).toHaveBeenCalled();
   });
