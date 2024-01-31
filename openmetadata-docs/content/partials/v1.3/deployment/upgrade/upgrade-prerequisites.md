@@ -141,6 +141,10 @@ the option to tag the created resources.
 In 1.2.0 we introduced the Elasticsearch reindex job as part of the OpenMetadata server. In this release, we 
 removed triggering ES job from Python workflows. Everything happens in the server now. The image will not ship the `metadata_to_es` DAG anymore.
 
+### Ingestion & Ingestion Base Python Version
+
+The `openmetadata/ingestion` and `openmetadata/ingestion-base` images now use Python 3.10.
+
 ### Python SDK Auth Mechanisms
 
 We cleaned all the Python SDK code related to any auth system that is not JWT token. Bots deprecated that behavior 2 releases ago
