@@ -13,7 +13,7 @@
 
 import { Space, Switch, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEqual, isUndefined } from 'lodash';
+import { isEqual } from 'lodash';
 import React, {
   FC,
   Fragment,
@@ -57,7 +57,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const {
     getFeedData,
     createThread,
-    selectedThread,
     entityThread,
     entityPaging: paging,
     loading: isThreadLoading,
@@ -157,7 +156,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
-            entityLink={selectedThread?.about ?? threadLink}
+            entityLink={threadLink}
             noun={
               isConversationType
                 ? t('label.conversation-plural')
@@ -165,9 +164,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             }
             onCancel={() => onCancel?.()}
             onShowNewConversation={
-              entityThread.length > 0 && isUndefined(selectedThread)
-                ? onShowNewConversation
-                : undefined
+              entityThread.length > 0 ? onShowNewConversation : undefined
             }
           />
         )}
