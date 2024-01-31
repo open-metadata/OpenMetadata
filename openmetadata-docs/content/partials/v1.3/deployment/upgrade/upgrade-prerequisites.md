@@ -182,6 +182,13 @@ Due to this, we need to update one import and one of its properties' names.
 
 And we renamed its property `stack_trace` to `stackTrace` to follow the naming conventions in JSON Schemas.
 
+### SQL Lineage
+
+With 1.3.0 we have renamed the `sqllineage` package to `collate_sqllineage`, this change has been made to avoid any conflict with open source version of `sqllineage`. In case you are using this package in your python scripts please make sure to rename your imports: 
+
+- From `from sqllineage.xxx import xxx`
+- To `from collate_sqllineage.xxx import xxx`
+
 ### Other Changes
 
 - ...
