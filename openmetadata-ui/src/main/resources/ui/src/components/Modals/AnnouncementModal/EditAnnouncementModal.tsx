@@ -16,7 +16,6 @@ import moment from 'moment';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -24,15 +23,15 @@ import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { CreateAnnouncement } from './AddAnnouncementModal';
 import './announcement-modal.less';
 
-interface Props {
-  announcement?: AnnouncementDetails;
-  announcementTitle?: string;
+interface EditAnnouncementModalProps {
   open: boolean;
   onCancel: () => void;
-  onConfirm?: (title: string, announcement: AnnouncementDetails) => void;
 }
 
-const EditAnnouncementModal: FC<Props> = ({ open, onCancel }) => {
+const EditAnnouncementModal: FC<EditAnnouncementModalProps> = ({
+  open,
+  onCancel,
+}) => {
   const { updateAnnouncement, selectedThread } = useActivityFeedProvider();
 
   const announcement = useMemo(
