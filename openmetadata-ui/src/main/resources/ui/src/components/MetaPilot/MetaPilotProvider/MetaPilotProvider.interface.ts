@@ -17,7 +17,6 @@ export interface MetaPilotContextType {
   suggestionsVisible: boolean;
   isMetaPilotEnabled: boolean;
   onToggleSuggestionsVisible: (state: boolean) => void;
-  onMetaPilotEnableUpdate: (state: boolean) => void;
   activeSuggestion?: Suggestion;
   suggestions: Suggestion[];
   loading: boolean;

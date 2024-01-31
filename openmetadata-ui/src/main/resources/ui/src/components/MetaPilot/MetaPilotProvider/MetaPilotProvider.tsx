@@ -24,6 +24,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MetaPilotIcon } from '../../../assets/svg/MetaPilotApplication.svg';
 import { Suggestion } from '../../../generated/entity/feed/suggestion';
+import { Include } from '../../../generated/type/include';
+import { getApplicationByName } from '../../../rest/applicationAPI';
 import {
   getMetaPilotSuggestionsList,
   updateSuggestionStatus,
@@ -50,6 +52,18 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
   const [loading, setLoading] = useState(false);
   const [refreshEntity, setRefreshEntity] = useState<() => void>();
   const { permissions } = usePermissionProvider();
+
+  const fetchMetaPilotAppDetails = useCallback(async () => {
+    try {
+      await getApplicationByName('MetaPilotApplication', {
+        fields: 'owner',
+        include: Include.All,
+      });
+      setIsMetaPilotEnabled(true);
+    } catch (error) {
+      setIsMetaPilotEnabled(false);
+    }
+  }, []);
 
   const fetchSuggestions = useCallback(async (entityFQN: string) => {
     setLoading(true);
@@ -91,10 +105,6 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
     setSuggestionsVisible(state);
   }, []);
 
-  const onMetaPilotEnableUpdate = useCallback((state: boolean) => {
-    setIsMetaPilotEnabled(state);
-  }, []);
-
   const onUpdateActiveSuggestion = useCallback((suggestion?: Suggestion) => {
     setActiveSuggestion(suggestion);
   }, []);
@@ -105,14 +115,12 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
 
   const resetMetaPilot = useCallback(() => {
     setSuggestionsVisible(false);
-    setIsMetaPilotEnabled(false);
     setActiveSuggestion(undefined);
     setEntityFqn('');
   }, []);
 
   const initMetaPilot = useCallback(
     (entityFqn: string, refreshEntity?: () => void) => {
-      setIsMetaPilotEnabled(true);
       setEntityFqn(entityFqn);
       setRefreshEntity(() => refreshEntity);
     },
@@ -120,10 +128,16 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
   );
 
   useEffect(() => {
-    if (!isEmpty(permissions) && !isEmpty(entityFqn)) {
+    if (isMetaPilotEnabled && !isEmpty(entityFqn)) {
       fetchSuggestions(entityFqn);
     }
-  }, [permissions, entityFqn]);
+  }, [isMetaPilotEnabled, entityFqn]);
+
+  useEffect(() => {
+    if (!isEmpty(permissions)) {
+      fetchMetaPilotAppDetails();
+    }
+  }, [permissions]);
 
   const metaPilotContextObj = useMemo(() => {
     return {
@@ -136,7 +150,6 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       refreshEntity,
       onToggleSuggestionsVisible,
       onUpdateEntityFqn,
-      onMetaPilotEnableUpdate,
       onUpdateActiveSuggestion,
       fetchSuggestions,
       acceptRejectSuggestion,
@@ -153,7 +166,6 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
     refreshEntity,
     onToggleSuggestionsVisible,
     onUpdateEntityFqn,
-    onMetaPilotEnableUpdate,
     onUpdateActiveSuggestion,
     fetchSuggestions,
     acceptRejectSuggestion,
