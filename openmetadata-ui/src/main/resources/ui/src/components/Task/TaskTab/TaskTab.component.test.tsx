@@ -89,11 +89,11 @@ jest.mock('../../../utils/FeedUtils', () => ({
 }));
 
 jest.mock('../../../utils/TasksUtils', () => ({
+  ...jest.requireActual('../../../utils/TasksUtils'),
   fetchOptions: jest.fn().mockReturnValue('getEntityLink'),
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
   isDescriptionTask: jest.fn().mockReturnValue(false),
   isTagsTask: jest.fn().mockReturnValue(true),
-  TASK_ACTION_LIST: jest.fn().mockReturnValue([]),
   generateOptions: jest.fn().mockReturnValue([]),
 }));
 

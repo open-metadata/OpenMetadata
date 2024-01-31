@@ -332,7 +332,7 @@ const TestSuiteDetailsPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
       })}>
-      <Row className="page-container" gutter={[16, 32]}>
+      <Row className="page-container" gutter={[0, 32]}>
         <Col span={24}>
           <Space align="center" className="justify-between w-full">
             <TitleBreadcrumb

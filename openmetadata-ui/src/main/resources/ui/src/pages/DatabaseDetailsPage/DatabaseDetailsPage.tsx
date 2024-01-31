@@ -232,7 +232,6 @@ const DatabaseDetails: FunctionComponent = () => {
         if (response) {
           setDatabase(response);
           setDescription(updatedHTML);
-          getEntityFeedCount();
         } else {
           throw t('server.unexpected-response');
         }
@@ -272,7 +271,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
         return res;
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -562,6 +560,7 @@ const DatabaseDetails: FunctionComponent = () => {
             fqn={database?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={getDetailsByFQN}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -604,6 +603,7 @@ const DatabaseDetails: FunctionComponent = () => {
       editCustomAttributePermission,
       viewAllPermission,
       deleted,
+      handleFeedCount,
     ]
   );
 
