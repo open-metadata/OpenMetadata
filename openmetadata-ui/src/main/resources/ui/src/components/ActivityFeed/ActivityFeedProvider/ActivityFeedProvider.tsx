@@ -196,7 +196,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
-        setActiveThread(undefined);
       } catch (err) {
         showErrorToast(
           err as AxiosError,

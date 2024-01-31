@@ -59,6 +59,7 @@ import {
   getEntityUserLink,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
@@ -75,7 +76,7 @@ import {
   TaskFilter,
 } from './ActivityFeedTab.interface';
 
-export const ActivityFeedTab = ({
+const ActivityFeedTabComponent = ({
   fqn,
   owner,
   columns,
@@ -507,3 +508,5 @@ export const ActivityFeedTab = ({
     </div>
   );
 };
+
+export const ActivityFeedTab = withActivityFeed(ActivityFeedTabComponent);

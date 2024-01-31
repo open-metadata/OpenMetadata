@@ -19,9 +19,7 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
@@ -437,18 +435,16 @@ function SearchIndexDetailsPage() {
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              refetchFeed
-              entityFeedTotalCount={feedCount.totalCount}
-              entityType={EntityType.SEARCH_INDEX}
-              fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
-              owner={searchIndexDetails?.owner}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchSearchIndexDetails}
-              onUpdateFeedCount={handleFeedCount}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
+            entityType={EntityType.SEARCH_INDEX}
+            fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
+            owner={searchIndexDetails?.owner}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchSearchIndexDetails}
+            onUpdateFeedCount={handleFeedCount}
+          />
         ),
       },
       {
