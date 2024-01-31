@@ -347,7 +347,6 @@ const TableDetailsPageV1 = () => {
 
         return updatedObj;
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -617,6 +616,7 @@ const TableDetailsPageV1 = () => {
             owner={tableDetails?.owner}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTableDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -762,11 +762,11 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     deleted,
     tableDetails,
-    feedCount.conversationCount,
-    feedCount.totalTasksCount,
+    feedCount.totalCount,
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    handleFeedCount,
     tableDetails?.dataModel,
     viewAllPermission,
     editCustomAttributePermission,
@@ -839,7 +839,6 @@ const TableDetailsPageV1 = () => {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -848,7 +847,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, setTableDetails, getEntityFeedCount]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const unFollowTable = useCallback(async () => {
     try {
@@ -866,7 +865,6 @@ const TableDetailsPageV1 = () => {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -875,7 +873,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, getEntityFeedCount, setTableDetails]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {

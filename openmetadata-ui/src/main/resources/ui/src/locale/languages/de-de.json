@@ -1096,6 +1096,7 @@
     "test-case-plural": "Testfälle",
     "test-case-result": "Test Case Results",
     "test-email": "Test Email",
+    "test-email-connection": "Test Email Connection",
     "test-entity": "{{entity}}-Test",
     "test-plural": "Tests",
     "test-suite": "Test-Suite",

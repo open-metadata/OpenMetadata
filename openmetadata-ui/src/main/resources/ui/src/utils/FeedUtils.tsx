@@ -74,7 +74,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -361,7 +361,9 @@ export const getBackendFormat = (message: string) => {
   mentionList.forEach((m, i) => {
     const updatedDetails = mentionDetails[i].slice(-2);
     const entityType = urlEntries.find((e) => e[1] === updatedDetails[0])?.[0];
-    const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${updatedDetails[1]}|${m}>`;
+    const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${getDecodedFqn(
+      updatedDetails[1]
+    )}|${m}>`;
     updatedMessage = updatedMessage.replaceAll(m, entityLink);
   });
   hashtagList.forEach((h, i) => {

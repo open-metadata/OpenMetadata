@@ -50,10 +50,10 @@ export const getLoginConfig = async () => {
   return response.data;
 };
 
-export const testEmailConnection = async (email: string) => {
+export const testEmailConnection = async (data: { email: string }) => {
   const response = await axiosClient.put<string>(
     '/system/email/test',
-    email,
+    data,
     APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 
