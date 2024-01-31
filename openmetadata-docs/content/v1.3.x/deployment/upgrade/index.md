@@ -3,9 +3,13 @@ title: Upgrade OpenMetadata
 slug: /deployment/upgrade
 ---
 
+{% note noteType="Warning" %}
+**Please note that the release 1.3 is still in BETA. Only upgrade your dev and test instances.**
+{% /note %}
+
 # Upgrade OpenMetadata
 
-In this guide, you will find all the necessary information to safely upgrade your OpenMetadata instance to 1.2.x.
+In this guide, you will find all the necessary information to safely upgrade your OpenMetadata instance to 1.3.x.
 
 {% partial file="/v1.3/deployment/upgrade/upgrade-prerequisites.md" /%}
 
