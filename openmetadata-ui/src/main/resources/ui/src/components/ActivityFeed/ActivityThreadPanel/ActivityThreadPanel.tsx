@@ -36,7 +36,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   const { refreshActivityFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { TabPane } = Tabs;
-  const [activeTab, setActiveTab] = useState<PanelTab>(PanelTab.TASKS);
+  const [activeTab, setActiveTab] = useState<PanelTab>(PanelTab.CONVERSATIONS);
 
   const onTabChange = (key: string) => {
     setActiveTab(key as PanelTab);
