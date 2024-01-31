@@ -112,6 +112,14 @@ After the migration is finished, you can revert this changes.
 
 ## 1.3.0
 
+### New Alerts and Observability
+
+We have fully reworked how we manage alerts to make the experience easier for end users. Now, alerts have been
+split between Alerts and Observability, both working with a full new backend implementation.
+
+This means that there is no automatic way for us to migrate alerts from the old system to the new feature.
+**You will need to recreate your alerts manually.**
+
 ### Secrets Manager
 
 The Secrets Manager `noop` option has been renamed to `db`. You can find this in the config below:
