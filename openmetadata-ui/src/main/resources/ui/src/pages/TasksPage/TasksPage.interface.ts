@@ -59,6 +59,8 @@ export interface TaskAction {
 export enum TaskActionMode {
   VIEW = 'view',
   EDIT = 'edit',
+  RE_ASSIGN = 're-assign',
+  RESOLVE = 'resolve',
 }
 
 export enum TaskTabs {

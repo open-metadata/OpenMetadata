@@ -265,7 +265,7 @@ const PoliciesListPage = () => {
       <Row
         className="policies-list-container page-container"
         data-testid="policies-list-container"
-        gutter={[16, 16]}>
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

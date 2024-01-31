@@ -132,7 +132,7 @@ export const PersonaPage = () => {
       <Row
         className="user-listing page-container p-b-md"
         data-testid="user-list-v1-component"
-        gutter={[16, 16]}>
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

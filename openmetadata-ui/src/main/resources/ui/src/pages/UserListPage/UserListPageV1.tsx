@@ -395,7 +395,7 @@ const UserListPageV1 = () => {
       <Row
         className="user-listing p-b-md page-container"
         data-testid="user-list-v1-component"
-        gutter={[16, 16]}>
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
