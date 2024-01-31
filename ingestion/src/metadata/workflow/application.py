@@ -52,7 +52,9 @@ class AppRunner(Step, ABC):
         metadata: OpenMetadata,
     ):
         self.app_config = config.appConfig.__root__ if config.appConfig else None
-        self.private_config = config.appPrivateConfig.__root__ if config.appConfig else None
+        self.private_config = (
+            config.appPrivateConfig.__root__ if config.appConfig else None
+        )
         self.metadata = metadata
 
         super().__init__()
