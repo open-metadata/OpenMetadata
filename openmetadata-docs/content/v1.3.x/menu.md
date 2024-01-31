@@ -688,7 +688,7 @@ site_menu:
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
-    url: /connectors/metadata/
+    url: /connectors/metadata/atlas/external
   - category: Connectors / Metadata / Alation
     url: /connectors/metadata/alation
   - category: Connectors / Metadata / Alation / Run Externally

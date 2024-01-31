@@ -69,6 +69,6 @@ jobs:
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
-      if: steps.monitor.outcome != 'success'
+      if: steps.push_content.outcome != 'success'
       run: |
         exit 1
