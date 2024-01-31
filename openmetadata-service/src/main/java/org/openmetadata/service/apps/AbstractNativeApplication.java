@@ -18,7 +18,7 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
-import org.openmetadata.schema.api.configuration.apps.AppConfig;
+import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.api.configuration.apps.Parameters;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -83,9 +83,9 @@ public class AbstractNativeApplication implements NativeApplication {
   private void loadPrivateParameters(AppsPrivateConfiguration privateConfiguration) {
     if (privateConfiguration != null
         && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
-      for (AppConfig appConfig : privateConfiguration.getAppsPrivateConfiguration()) {
-        if (this.app.getName().equals(appConfig.getName())) {
-          this.privateParameters = appConfig.getParameters();
+      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
+        if (this.app.getName().equals(appPrivateConfig.getName())) {
+          this.privateParameters = appPrivateConfig.getParameters();
         }
       }
     }

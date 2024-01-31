@@ -6,10 +6,10 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration",
   "definitions": {
-    "appConfig": {
+    "appPrivateConfig": {
       "type": "object",
-      "javaType": "org.openmetadata.schema.api.configuration.apps.AppConfig",
-      "title": "Application Configuration",
+      "javaType": "org.openmetadata.schema.api.configuration.apps.AppPrivateConfig",
+      "title": "AppPrivateConfig",
       "description": "Single Application Configuration Definition",
       "properties": {
         "name": {
@@ -34,7 +34,7 @@
       "description": "List of configuration for apps",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/appConfig"
+        "$ref": "#/definitions/appPrivateConfig"
       }
     }
   },
