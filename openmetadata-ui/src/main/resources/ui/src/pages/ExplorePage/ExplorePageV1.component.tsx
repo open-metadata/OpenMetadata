@@ -232,7 +232,7 @@ const ExplorePageV1: FunctionComponent = () => {
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (searchHitCounts && isNil(tabInfo)) {
-      const activeKey = findActiveSearchIndex(searchHitCounts);
+      const activeKey = findActiveSearchIndex(searchHitCounts, tabsInfo);
 
       return activeKey ?? SearchIndex.TABLE;
     }

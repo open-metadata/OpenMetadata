@@ -72,27 +72,6 @@ jest.mock('../rest/miscAPI', () => ({
       },
     },
   }),
-  getSuggestions: jest.fn().mockResolvedValue({
-    data: {
-      suggest: {
-        'metadata-suggest': [
-          {
-            options: [
-              {
-                _source: {
-                  entityType: 'Table',
-                  name: 'Table1',
-                  displayName: 'Table 1',
-                  fullyQualifiedName: 'db.schema.Table1',
-                },
-                _id: '1',
-              },
-            ],
-          },
-        ],
-      },
-    },
-  }),
 }));
 
 jest.mock('./StringsUtils', () => ({
@@ -130,11 +109,12 @@ describe('Feed Utils', () => {
 
     expect(result).toEqual([
       {
+        displayName: 'Table 1',
         id: '1',
-        value: '@John Doe',
-        link: 'http://localhost/undefined/John Doe',
+        value: '@Table1',
+        link: 'http://localhost/undefined/Table1',
+        name: 'Table1',
         type: 'team',
-        name: 'John Doe',
       },
     ]);
   });
