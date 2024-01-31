@@ -33,6 +33,7 @@ export const AsyncSelect = ({
 }) => {
   const [optionsInternal, setOptionsInternal] = useState<DefaultOptionType[]>();
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     setOptionsInternal(options);
@@ -49,14 +50,19 @@ export const AsyncSelect = ({
     [api]
   );
 
+  useEffect(() => {
+    fetchOptions(searchText);
+  }, [searchText]);
+
   return (
     <Select
       filterOption={false}
       notFoundContent={loadingOptions ? <Loader size="small" /> : null}
       options={optionsInternal}
-      suffixIcon={loadingOptions && <Loader size="small" />}
+      searchValue={searchText}
+      suffixIcon={loadingOptions && <Loader size="small" />} // Controlling the search value to get the initial suggestions when not typed anything
       onSearch={(value: string) => {
-        fetchOptions(value);
+        setSearchText(value);
         setLoadingOptions(true);
       }}
       {...restProps}
