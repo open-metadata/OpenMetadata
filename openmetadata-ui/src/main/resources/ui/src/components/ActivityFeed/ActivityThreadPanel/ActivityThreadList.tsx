@@ -10,31 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { GLOBAL_BORDER, TASK_BORDER } from '../../../constants/Feeds.constants';
 import {
   Post,
   Thread,
-  ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
-import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
 import FeedListSeparator from '../FeedListSeparator/FeedListSeparator';
-import TaskBadge from '../Shared/TaskBadge';
+import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
   className,
   threads,
 }) => {
-  const { t } = useTranslation();
   const history = useHistory();
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -68,7 +63,6 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       key={`${index} - card`}
                       style={{
                         marginTop: '20px',
-                        paddingTop: isTask ? '8px' : '',
                         border: isTask
                           ? `1px solid ${TASK_BORDER}`
                           : `1px solid ${GLOBAL_BORDER}`,
@@ -76,12 +70,15 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       onClick={() =>
                         thread.task && handleCardClick(thread, isTask)
                       }>
-                      {isTask && (
-                        <TaskBadge
-                          status={thread.task?.status as ThreadTaskStatus}
+                      {isTask ? (
+                        <TaskFeedCard
+                          className="m-0"
+                          feed={thread}
+                          hidePopover={false}
+                          post={mainFeed}
+                          showThread={false}
                         />
-                      )}
-                      <div data-testid="main-message">
+                      ) : (
                         <ActivityFeedCardV1
                           className="m-0"
                           feed={thread}
@@ -90,16 +87,6 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           post={mainFeed}
                           showThread={false}
                         />
-                      </div>
-                      {thread.task && (
-                        <Space wrap className="m-y-xs" size={4}>
-                          <span className="text-grey-muted">
-                            {t('label.assignee-plural')}:{' '}
-                          </span>
-                          <AssigneeList
-                            assignees={thread.task.assignees || []}
-                          />
-                        </Space>
                       )}
                     </div>
                   </Fragment>
