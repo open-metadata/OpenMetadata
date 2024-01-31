@@ -94,12 +94,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   useEffect(getThreads, [threadLink, threadType, taskStatus]);
 
-  const loadNewThreads = () => {
-    setTimeout(() => {
-      getThreads();
-    }, 500);
-  };
-
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
   };
@@ -111,7 +105,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       about: threadLink,
     };
     createThread(data);
-    loadNewThreads();
   };
 
   const getLoader = () => {

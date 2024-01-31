@@ -195,6 +195,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
+        setActiveThread(undefined);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -214,7 +215,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     try {
       const res = await postThread(data);
 
-      setEntityThread((prev) => [...prev, res]);
+      setEntityThread((prev) => [res, ...prev]);
       if (isAnnouncementThread && res) {
         showSuccessToast(t('message.announcement-created-successfully'));
       }
