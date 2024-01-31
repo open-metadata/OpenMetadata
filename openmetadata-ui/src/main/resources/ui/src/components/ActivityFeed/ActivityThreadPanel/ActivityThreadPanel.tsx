@@ -18,6 +18,7 @@ import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
@@ -32,6 +33,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   updateThreadHandler,
   threadType,
 }) => {
+  const { refreshActivityFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { TabPane } = Tabs;
   const [activeTab, setActiveTab] = useState<PanelTab>(PanelTab.TASKS);
@@ -50,6 +52,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     document.body.style.overflow = 'hidden';
   }, []);
 
+  useEffect(() => {
+    refreshActivityFeed([]);
+  }, [activeTab]);
+
   return (
     <Drawer
       className={classNames('feed-drawer', className)}
@@ -59,6 +65,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       onClose={onCancel}>
       <div id="thread-panel">
         <Tabs
+          destroyInactiveTabPane
           activeKey={activeTab}
           className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
           onChange={onTabChange}>

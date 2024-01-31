@@ -214,6 +214,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const createThread = useCallback(async (data: CreateThread) => {
     const isAnnouncementThread = !isEmpty(data.announcementDetails);
     try {
+      setLoading(true);
       const res = await postThread(data);
 
       setEntityThread((prev) => [res, ...prev]);
@@ -231,6 +232,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           })
         );
       }
+    } finally {
+      setLoading(false);
     }
   }, []);
 
