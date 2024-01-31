@@ -62,6 +62,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
 
       return (
         <Alert
+          className="m-t-md"
           description={
             <ActivityFeedCardV1
               className="p-y-xss"
@@ -89,9 +90,13 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   return (
     <div className={className}>
       {getAnnouncements(activeAnnouncements)}
+      {activeAnnouncements.length && inActiveAnnouncements.length ? (
+        <Divider />
+      ) : (
+        <></>
+      )}
       {Boolean(inActiveAnnouncements.length) && (
         <>
-          <Divider />
           <Typography.Text
             className="font-medium"
             data-testid="inActive-announcements">
