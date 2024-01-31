@@ -60,11 +60,6 @@ const AppInstall = () => {
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
 
-  const isExternalApp = useMemo(
-    () => appData?.appType === AppType.External,
-    [appData]
-  );
-
   const stepperList = useMemo(
     () =>
       !appData?.allowConfiguration
@@ -126,6 +121,16 @@ const AppInstall = () => {
     setActiveServiceStep(3);
   };
 
+  const initialOptions = useMemo(() => {
+    if (appData?.name === 'DataInsightsReportApplication') {
+      return ['Week'];
+    } else if (appData?.appType === AppType.External) {
+      return ['Day'];
+    }
+
+    return undefined;
+  }, [appData?.name, appData?.appType]);
+
   const RenderSelectedTab = useCallback(() => {
     if (!appData || !jsonSchema) {
       return <></>;
@@ -170,7 +175,7 @@ const AppInstall = () => {
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
               isQuartzCron
-              includePeriodOptions={isExternalApp ? ['Day'] : undefined}
+              includePeriodOptions={initialOptions}
               initialData={getIngestionFrequency(PipelineType.Application)}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
@@ -182,7 +187,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, isExternalApp]);
+  }, [activeServiceStep, appData, jsonSchema, initialOptions]);
 
   useEffect(() => {
     fetchAppDetails();
