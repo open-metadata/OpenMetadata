@@ -116,7 +116,7 @@ describe('Notification Alerts Page Tests', () => {
       });
     });
 
-    expect(await screen.findByText(/label.create-entity/)).toBeInTheDocument();
+    expect(await screen.findByText(/label.add-entity/)).toBeInTheDocument();
   });
 
   it('Table should render alerts data', async () => {
