@@ -52,7 +52,6 @@ class TestSecretsManagerFactory(TestCase):
             )
 
     def test_invalid_config_secret_manager(self):
-
         om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
             SecretsManagerProvider.db,
             SecretsManagerClientLoader.noop,

@@ -111,7 +111,6 @@ class ElasticsearchSource(SearchServiceSource):
         Method to Get Sample Data of Search Index Entity
         """
         if self.source_config.includeSampleData and self.context.search_index:
-
             sample_data = self.client.search(
                 index=self.context.search_index,
                 q=WILDCARD_SEARCH,

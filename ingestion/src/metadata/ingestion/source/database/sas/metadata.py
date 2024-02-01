@@ -465,7 +465,6 @@ class SasSource(
                 or table_entity.extension.__root__.get("analysisTimeStamp")
                 != table_extension.get("analysisTimeStamp")
             ):
-
                 # create the columns of the table
                 columns, col_profile_list = self.create_columns_and_profiles(
                     col_entity_instances, table_entity_instance
@@ -711,10 +710,10 @@ class SasSource(
                 if "state" in table_resource and table_resource["state"] == "unloaded":
                     self.sas_client.load_table(table_uri + "/state?value=loaded")
 
-            except HTTPError as e:
+            except HTTPError as exc:
                 # append http error to table description if it can't be found
                 logger.error(f"table_uri: {table_uri}")
-                self.report_description.append(str(e))
+                self.report_description.append(str(exc))
                 name_index = table_uri.rindex("/")
                 table_name = table_uri[name_index + 1 :]
                 param = f"filter=eq(name,'{table_name}')"

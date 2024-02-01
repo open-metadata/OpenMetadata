@@ -235,7 +235,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             service = self._get_ingestion_pipeline_service()
 
             if service is not None:
-
                 return self.metadata.create_or_update(
                     CreateIngestionPipelineRequest(
                         name=pipeline_name,
