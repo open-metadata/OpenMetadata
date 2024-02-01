@@ -238,10 +238,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           isEqual
         );
 
-        setEntityLineage({
-          nodes: allNodes,
-          edges: allEdges,
-          entity: res.entity,
+        setEntityLineage((prev) => {
+          return {
+            ...prev,
+            nodes: allNodes,
+            edges: allEdges,
+          };
         });
       } catch (err) {
         showErrorToast(
