@@ -65,10 +65,12 @@ const AnnouncementDrawer: FC<Props> = ({
     </Space>
   );
 
-  const createThread = (data: CreateThread) => {
-    postThread(data).catch((err: AxiosError) => {
-      showErrorToast(err);
-    });
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   };
 
   const deletePostHandler = (
