@@ -163,7 +163,8 @@ public class AbstractNativeApplication implements NativeApplication {
                     .withConfig(
                         new ApplicationPipeline()
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
-                            .withAppConfig(config)))
+                            .withAppConfig(config)
+                            .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
             .withAirflowConfig(
                 new AirflowConfig()
                     .withScheduleInterval(this.getCronMapper().map(quartzCron).asString()))

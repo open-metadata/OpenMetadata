@@ -33,6 +33,7 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import Lineage from '../../components/Lineage/Lineage.component';
 import LineageProvider from '../../components/LineageProvider/LineageProvider';
 import Loader from '../../components/Loader/Loader';
+import { useMetaPilotContext } from '../../components/MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -62,6 +63,7 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
+import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
@@ -84,6 +86,7 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import EntityLink from '../../utils/EntityLink';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -114,6 +117,7 @@ const TableDetailsPageV1 = () => {
     ThreadType.Conversation
   );
   const [queryCount, setQueryCount] = useState(0);
+  const { resetMetaPilot, initMetaPilot } = useMetaPilotContext();
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -135,7 +139,7 @@ const TableDetailsPageV1 = () => {
     [datasetFQN]
   );
 
-  const fetchTableDetails = async () => {
+  const fetchTableDetails = useCallback(async () => {
     setLoading(true);
     try {
       let fields = defaultFields;
@@ -159,7 +163,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tableFqn]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -277,11 +281,59 @@ const TableDetailsPageV1 = () => {
     [tableFqn, getEntityPermissionByFqn, setTablePermissions]
   );
 
+  const updateDescriptionFromMetaPilot = useCallback(
+    (suggestion: Suggestion) => {
+      setTableDetails((prev) => {
+        if (!prev) {
+          return;
+        }
+
+        const activeCol = prev?.columns.find((column) => {
+          return (
+            EntityLink.getTableEntityLink(
+              prev.fullyQualifiedName ?? '',
+              column.name ?? ''
+            ) === suggestion.entityLink
+          );
+        });
+
+        if (!activeCol) {
+          return {
+            ...prev,
+            description: suggestion.description,
+          };
+        } else {
+          const updatedColumns = prev.columns.map((column) => {
+            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
+              return {
+                ...column,
+                description: suggestion.description,
+              };
+            } else {
+              return column;
+            }
+          });
+
+          return {
+            ...prev,
+            columns: updatedColumns,
+          };
+        }
+      });
+    },
+    []
+  );
+
   useEffect(() => {
-    if (tableFqn) {
+    if (tableFqn && updateDescriptionFromMetaPilot) {
       fetchResourcePermission(tableFqn);
+      initMetaPilot(tableFqn, updateDescriptionFromMetaPilot);
     }
-  }, [tableFqn]);
+
+    return () => {
+      resetMetaPilot();
+    };
+  }, [tableFqn, updateDescriptionFromMetaPilot]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -340,7 +392,6 @@ const TableDetailsPageV1 = () => {
 
         return updatedObj;
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -610,6 +661,7 @@ const TableDetailsPageV1 = () => {
             owner={tableDetails?.owner}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTableDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -755,11 +807,11 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     deleted,
     tableDetails,
-    feedCount.conversationCount,
-    feedCount.totalTasksCount,
+    feedCount.totalCount,
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    handleFeedCount,
     tableDetails?.dataModel,
     viewAllPermission,
     editCustomAttributePermission,
@@ -832,7 +884,6 @@ const TableDetailsPageV1 = () => {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -841,7 +892,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, setTableDetails, getEntityFeedCount]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const unFollowTable = useCallback(async () => {
     try {
@@ -859,7 +910,6 @@ const TableDetailsPageV1 = () => {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -868,7 +918,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, getEntityFeedCount, setTableDetails]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {

@@ -292,9 +292,9 @@ const PipelineDetails = ({
 
   const followPipeline = useCallback(async () => {
     if (isFollowing) {
-      await unFollowPipelineHandler(getEntityFeedCount);
+      await unFollowPipelineHandler();
     } else {
-      await followPipelineHandler(getEntityFeedCount);
+      await followPipelineHandler();
     }
   }, [isFollowing, followPipelineHandler, unFollowPipelineHandler]);
 
@@ -654,6 +654,7 @@ const PipelineDetails = ({
             fqn={pipelineDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchPipeline}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -720,6 +721,7 @@ const PipelineDetails = ({
       tasksDAGView,
       taskColumns,
       tasksInternal,
+      handleFeedCount,
       handleTagSelection,
       onExtensionUpdate,
       onCancel,
@@ -736,7 +738,7 @@ const PipelineDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [pipelineFQN, description, pipelineDetails]);
+  }, [pipelineFQN]);
 
   return (
     <PageLayoutV1

@@ -312,7 +312,7 @@ function AlertDetailsPage({
             data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"
-              gutter={[16, 16]}>
+              gutter={[0, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Col>

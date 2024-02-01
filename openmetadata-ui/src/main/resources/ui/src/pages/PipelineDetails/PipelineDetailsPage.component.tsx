@@ -149,53 +149,43 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const followPipeline = useCallback(
-    async (fetchCount: () => void) => {
-      try {
-        const res = await addFollower(pipelineId, USERId);
-        const { newValue } = res.changeDescription.fieldsAdded[0];
-        const newFollowers = [...(followers ?? []), ...newValue];
-        setPipelineDetails((prev) => {
-          return { ...prev, followers: newFollowers };
-        });
+  const followPipeline = useCallback(async () => {
+    try {
+      const res = await addFollower(pipelineId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setPipelineDetails((prev) => {
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
+  }, [followers, USERId]);
 
-        fetchCount();
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-follow-error', {
-            entity: getEntityName(pipelineDetails),
-          })
-        );
-      }
-    },
-    [followers, USERId]
-  );
-
-  const unFollowPipeline = useCallback(
-    async (fetchCount: () => void) => {
-      try {
-        const res = await removeFollower(pipelineId, USERId);
-        const { oldValue } = res.changeDescription.fieldsDeleted[0];
-        setPipelineDetails((prev) => ({
-          ...prev,
-          followers: followers.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        }));
-
-        fetchCount();
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-unfollow-error', {
-            entity: getEntityName(pipelineDetails),
-          })
-        );
-      }
-    },
-    [followers, USERId]
-  );
+  const unFollowPipeline = useCallback(async () => {
+    try {
+      const res = await removeFollower(pipelineId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setPipelineDetails((prev) => ({
+        ...prev,
+        followers: followers.filter(
+          (follower) => follower.id !== oldValue[0].id
+        ),
+      }));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
+  }, [followers, USERId]);
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {

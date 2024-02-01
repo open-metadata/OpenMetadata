@@ -273,7 +273,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           if (response) {
             setDatabaseSchema(response);
             setDescription(updatedHTML);
-            getEntityFeedCount();
           } else {
             throw t('server.unexpected-response');
           }
@@ -286,7 +285,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setIsEdit(false);
       }
     },
-    [description, databaseSchema, getEntityFeedCount]
+    [description, databaseSchema]
   );
 
   const activeTabHandler = useCallback(
@@ -341,7 +340,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           ...res,
           tags: sortTagsCaseInsensitive(res.tags ?? []),
         });
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
@@ -365,7 +363,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         updatedSchemaDetails as DatabaseSchema
       );
       setDatabaseSchema(res);
-      getEntityFeedCount();
     },
     [saveUpdatedDatabaseSchemaData, databaseSchema]
   );
@@ -380,12 +377,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const res = await saveUpdatedDatabaseSchemaData(updatedData);
         setDatabaseSchema(res);
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
     },
-    [databaseSchema, saveUpdatedDatabaseSchemaData, getEntityFeedCount]
+    [databaseSchema, saveUpdatedDatabaseSchemaData]
   );
 
   const createThread = useCallback(
@@ -643,6 +639,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             fqn={databaseSchema.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         </ActivityFeedProvider>
       ),

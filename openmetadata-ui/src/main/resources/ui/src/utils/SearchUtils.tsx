@@ -51,17 +51,19 @@ export const getSearchAPIQueryParams = (
   sortOrder: string,
   searchIndex: SearchIndex | SearchIndex[],
   onlyDeleted = false,
-  trackTotalHits = false
+  trackTotalHits = false,
+  wildcard = true
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
 
   const encodedQueryString = queryString
     ? escapeESReservedCharacters(queryString)
     : '';
+
   const query =
-    encodedQueryString === WILD_CARD_CHAR
-      ? encodedQueryString
-      : `*${encodedQueryString}*`;
+    wildcard && encodedQueryString !== WILD_CARD_CHAR
+      ? `*${encodedQueryString}*`
+      : encodedQueryString;
 
   const params: Record<string, string | boolean | number | string[]> = {
     q: query + (filters ? ` AND ${filters}` : ''),

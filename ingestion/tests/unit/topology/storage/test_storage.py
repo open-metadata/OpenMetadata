@@ -308,7 +308,6 @@ class StorageUnitTest(TestCase):
                 )
             ],
         ):
-
             Column.__eq__ = custom_column_compare
             self.assertListEqual(
                 [

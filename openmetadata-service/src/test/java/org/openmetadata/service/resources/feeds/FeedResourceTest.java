@@ -34,6 +34,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1;
+import static org.openmetadata.service.resources.EntityResourceTest.USER2_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -559,12 +560,15 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void put_resolveTaskByUser_description_200() throws IOException {
+  void put_resolveTaskByUser_description_200(TestInfo testInfo) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable = tableResourceTest.createRequest(testInfo).withOwner(USER2_REF);
+    Table table = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     // Create a task from User to User2
     String about =
         String.format(
             "<#E::%s::%s::columns::%s::description>",
-            Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+            Entity.TABLE, table.getFullyQualifiedName(), C1);
     Thread taskThread =
         createTaskThread(
             USER.getName(),
@@ -588,7 +592,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // User2 who is assigned the task can resolve the task
     resolveTask(taskId, resolveTask, USER2_AUTH_HEADERS);
-    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, USER_AUTH_HEADERS);
+    table = TABLE_RESOURCE_TEST.getEntity(table.getId(), null, USER_AUTH_HEADERS);
     assertEquals("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
 
     taskThread = getTask(taskId, USER_AUTH_HEADERS);

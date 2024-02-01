@@ -109,6 +109,7 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.EntityError;
@@ -1681,7 +1682,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final EntityReference getOwner(EntityReference ref) {
-    return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+    return !supportsOwner ? null : getFromEntityRef(ref.getId(), Relationship.OWNS, null, false);
   }
 
   public final void inheritDomain(T entity, Fields fields, EntityInterface parent) {
@@ -1931,6 +1932,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
     }
+  }
+
+  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(Suggestion suggestion) {
+    return new SuggestionRepository.SuggestionWorkflow(suggestion);
+  }
+
+  public EntityInterface applySuggestion(
+      EntityInterface entity, String childFQN, Suggestion suggestion) {
+    return entity;
   }
 
   public final void validateTaskThread(ThreadContext threadContext) {
