@@ -85,7 +85,7 @@ export const addEntityFQNFilter = (
   cy.get('[data-testid="fqn-list-select"]').click().type(entityFQN);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${entityFQN}"]`).filter(':visible').scrollIntoView().click();
-  cy.get('[data-testid="fqn-list-select"]').should('contain', entityFQN);
+  cy.get(`[title="${entityFQN}"] [aria-label="check"]`).should('exist');
 
   if (exclude) {
     // Change filter effect
