@@ -59,7 +59,9 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
@@ -83,6 +85,8 @@ public final class Entity {
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
   @Getter @Setter private static TokenRepository tokenRepository;
+  @Getter @Setter private static PolicyRepository policyRepository;
+  @Getter @Setter private static RoleRepository roleRepository;
   @Getter @Setter private static FeedRepository feedRepository;
   @Getter @Setter private static LineageRepository lineageRepository;
   @Getter @Setter private static UsageRepository usageRepository;
@@ -244,6 +248,10 @@ public final class Entity {
   public static void initializeRepositories(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     if (!initializedRepositories) {
       tokenRepository = new TokenRepository();
+      policyRepository = new PolicyRepository();
+      roleRepository = new RoleRepository();
+      ENTITY_REPOSITORY_MAP.put(POLICY, policyRepository);
+      ENTITY_REPOSITORY_MAP.put(ROLE, roleRepository);
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
