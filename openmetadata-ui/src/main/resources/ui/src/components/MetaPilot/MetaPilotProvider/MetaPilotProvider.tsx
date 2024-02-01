@@ -50,7 +50,8 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
   const [entityFqn, setEntityFqn] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [refreshEntity, setRefreshEntity] = useState<() => void>();
+  const [refreshEntity, setRefreshEntity] =
+    useState<(suggestion?: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
   const fetchMetaPilotAppDetails = useCallback(async () => {
@@ -89,10 +90,9 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       try {
         await updateSuggestionStatus(suggestion, status);
         await fetchSuggestions(entityFqn);
-
         setActiveSuggestion(undefined);
         if (status === SuggestionAction.Accept) {
-          refreshEntity?.();
+          refreshEntity?.(suggestion);
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -120,7 +120,7 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
   }, []);
 
   const initMetaPilot = useCallback(
-    (entityFqn: string, refreshEntity?: () => void) => {
+    (entityFqn: string, refreshEntity?: (suggestion: Suggestion) => void) => {
       setEntityFqn(entityFqn);
       setRefreshEntity(() => refreshEntity);
     },

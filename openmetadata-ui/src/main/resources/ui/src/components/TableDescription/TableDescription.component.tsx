@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
+import { Button, Popover, Space } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -23,7 +24,7 @@ import { EntityType } from '../../enums/entity.enum';
 import EntityTasks from '../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import EntityLink from '../../utils/EntityLink';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import MetaPilotDescriptionAlert from '../MetaPilot/MetaPilotDescriptionAlert/MetaPilotDescriptionAlert.component';
+import MetaPilotPopoverContent from '../MetaPilot/MetaPilotPopoverContent/MetaPilotPopoverContent.component';
 import { useMetaPilotContext } from '../MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
 
@@ -39,6 +40,7 @@ const TableDescription = ({
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
   const { activeSuggestion, suggestions } = useMetaPilotContext();
+  const [showSuggestionPopover, setShowSuggestionPopover] = useState(false);
 
   const entityLink = useMemo(
     () =>
@@ -61,68 +63,80 @@ const TableDescription = ({
     return null;
   }, [suggestions, columnData.field, entityLink]);
 
-  if (activeSuggestion?.entityLink === entityLink) {
-    return (
-      <MetaPilotDescriptionAlert
-        hasEditAccess={hasEditPermission}
-        showHeading={false}
-        suggestion={activeSuggestion}
-      />
-    );
-  }
+  const suggestionData = useMemo(() => {
+    if (activeSuggestion?.entityLink === entityLink) {
+      setShowSuggestionPopover(true);
 
-  if (suggestionForEmptyData) {
-    return (
-      <MetaPilotDescriptionAlert
-        hasEditAccess={hasEditPermission}
-        showHeading={false}
-        suggestion={suggestionForEmptyData}
-      />
-    );
-  }
+      return (
+        <MetaPilotPopoverContent
+          hasEditAccess={hasEditPermission}
+          suggestion={activeSuggestion}
+        />
+      );
+    }
+    setShowSuggestionPopover(false);
+
+    return null;
+  }, [hasEditPermission, suggestionForEmptyData, activeSuggestion]);
 
   return (
-    <Space
-      className="hover-icon-group"
-      data-testid="description"
-      direction="vertical"
-      id={`field-description-${index}`}>
-      {columnData.field ? (
-        <RichTextEditorPreviewer markdown={columnData.field} />
-      ) : (
-        <span className="text-grey-muted">
-          {t('label.no-entity', {
-            entity: t('label.description'),
-          })}
-        </span>
-      )}
-      {!isReadOnly ? (
-        <Space align="baseline" size="middle">
-          {hasEditPermission && (
-            <Button
-              className="cursor-pointer hover-cell-icon"
-              data-testid="edit-button"
-              style={{
-                color: DE_ACTIVE_COLOR,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
-              }}
-              onClick={onClick}>
-              <EditIcon />
-            </Button>
-          )}
+    <Popover
+      align={{ targetOffset: [0, 40] }}
+      content={suggestionData}
+      open={showSuggestionPopover}
+      overlayClassName="metapilot-popover"
+      overlayStyle={{
+        bottom: 'auto',
+      }}
+      placement="bottom"
+      trigger="click"
+      onOpenChange={(data) => {
+        setShowSuggestionPopover(data);
+      }}>
+      <Space
+        className={classNames('hover-icon-group', {
+          'has-suggestion': Boolean(suggestionData),
+        })}
+        data-testid="description"
+        direction="vertical"
+        id={`field-description-${index}`}>
+        {columnData.field ? (
+          <RichTextEditorPreviewer markdown={columnData.field} />
+        ) : (
+          <span className="text-grey-muted">
+            {t('label.no-entity', {
+              entity: t('label.description'),
+            })}
+          </span>
+        )}
+        {!isReadOnly ? (
+          <Space align="baseline" size="middle">
+            {hasEditPermission && (
+              <Button
+                className="cursor-pointer hover-cell-icon"
+                data-testid="edit-button"
+                style={{
+                  color: DE_ACTIVE_COLOR,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                }}
+                onClick={onClick}>
+                <EditIcon />
+              </Button>
+            )}
 
-          <EntityTasks
-            data={columnData}
-            entityFqn={entityFqn}
-            entityTaskType={EntityField.DESCRIPTION}
-            entityType={entityType}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        </Space>
-      ) : null}
-    </Space>
+            <EntityTasks
+              data={columnData}
+              entityFqn={entityFqn}
+              entityTaskType={EntityField.DESCRIPTION}
+              entityType={entityType}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+          </Space>
+        ) : null}
+      </Space>
+    </Popover>
   );
 };
 
