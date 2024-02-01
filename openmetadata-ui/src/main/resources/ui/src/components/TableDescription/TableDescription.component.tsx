@@ -14,7 +14,7 @@
 import { Button, Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -39,7 +39,8 @@ const TableDescription = ({
   onThreadLinkSelect,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
-  const { activeSuggestion, suggestions } = useMetaPilotContext();
+  const { activeSuggestion, suggestions, onUpdateActiveSuggestion } =
+    useMetaPilotContext();
   const [showSuggestionPopover, setShowSuggestionPopover] = useState(false);
 
   const entityLink = useMemo(
@@ -65,8 +66,6 @@ const TableDescription = ({
 
   const suggestionData = useMemo(() => {
     if (activeSuggestion?.entityLink === entityLink) {
-      setShowSuggestionPopover(true);
-
       return (
         <MetaPilotPopoverContent
           hasEditAccess={hasEditPermission}
@@ -74,10 +73,27 @@ const TableDescription = ({
         />
       );
     }
-    setShowSuggestionPopover(false);
 
     return null;
   }, [hasEditPermission, suggestionForEmptyData, activeSuggestion]);
+
+  useEffect(() => {
+    if (activeSuggestion?.entityLink === entityLink) {
+      setShowSuggestionPopover(true);
+    } else {
+      setShowSuggestionPopover(false);
+    }
+  }, [activeSuggestion, entityLink]);
+
+  const onPopoverOpenChange = useCallback(
+    (data: boolean) => {
+      setShowSuggestionPopover(data);
+      if (!data) {
+        onUpdateActiveSuggestion();
+      }
+    },
+    [onUpdateActiveSuggestion]
+  );
 
   return (
     <Popover
@@ -90,9 +106,7 @@ const TableDescription = ({
       }}
       placement="bottom"
       trigger="click"
-      onOpenChange={(data) => {
-        setShowSuggestionPopover(data);
-      }}>
+      onOpenChange={onPopoverOpenChange}>
       <Space
         className={classNames('hover-icon-group', {
           'has-suggestion': Boolean(suggestionData),

@@ -21,7 +21,6 @@ export interface MetaPilotContextType {
   suggestions: Suggestion[];
   loading: boolean;
   entityFqn: string;
-  refreshEntity: ((suggestion: Suggestion) => void) | undefined;
   onUpdateActiveSuggestion: (suggestion?: Suggestion) => void;
   fetchSuggestions: (entityFqn: string) => void;
   acceptRejectSuggestion: (

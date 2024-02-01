@@ -16,7 +16,7 @@ import { Card, Popover, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -77,7 +77,8 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
-  const { activeSuggestion, suggestions } = useMetaPilotContext();
+  const { activeSuggestion, suggestions, onUpdateActiveSuggestion } =
+    useMetaPilotContext();
   const [showSuggestionPopover, setShowSuggestionPopover] = useState(false);
   const handleRequestDescription = useCallback(() => {
     history.push(
@@ -185,8 +186,6 @@ const DescriptionV1 = ({
 
   const suggestionData = useMemo(() => {
     if (activeSuggestion?.entityLink === entityLinkWithoutField) {
-      setShowSuggestionPopover(true);
-
       return (
         <MetaPilotPopoverContent
           hasEditAccess={hasEditAccess}
@@ -194,10 +193,27 @@ const DescriptionV1 = ({
         />
       );
     }
-    setShowSuggestionPopover(false);
 
     return null;
   }, [hasEditAccess, suggestionForEmptyData, activeSuggestion]);
+
+  useEffect(() => {
+    if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+      setShowSuggestionPopover(true);
+    } else {
+      setShowSuggestionPopover(false);
+    }
+  }, [activeSuggestion, entityLinkWithoutField]);
+
+  const onPopoverOpenChange = useCallback(
+    (data: boolean) => {
+      setShowSuggestionPopover(data);
+      if (!data) {
+        onUpdateActiveSuggestion();
+      }
+    },
+    [onUpdateActiveSuggestion]
+  );
 
   const content = (
     <Popover
@@ -206,9 +222,7 @@ const DescriptionV1 = ({
       overlayClassName="metapilot-popover"
       placement="bottom"
       trigger="click"
-      onOpenChange={(data) => {
-        setShowSuggestionPopover(data);
-      }}>
+      onOpenChange={onPopoverOpenChange}>
       <Space
         className={classNames('schema-description d-flex', {
           'has-suggestion': Boolean(suggestionData),
