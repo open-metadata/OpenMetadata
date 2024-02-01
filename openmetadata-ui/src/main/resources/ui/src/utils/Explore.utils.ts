@@ -23,6 +23,7 @@ import {
   QueryFieldInterface,
   QueryFieldValueInterface,
   QueryFilterInterface,
+  TabsInfoData,
 } from '../pages/ExplorePage/ExplorePage.interface';
 
 /**
@@ -97,10 +98,11 @@ export const getSelectedValuesFromQuickFilter = (
 };
 
 export const findActiveSearchIndex = (
-  obj: SearchHitCounts
+  obj: SearchHitCounts,
+  tabsData: Record<ExploreSearchIndex, TabsInfoData>
 ): ExploreSearchIndex | null => {
-  const keys = Object.keys(obj) as ExploreSearchIndex[];
-  const filteredKeys = keys.filter((key) => obj[key] > 0);
+  const keysInOrder = Object.keys(tabsData) as ExploreSearchIndex[];
+  const filteredKeys = keysInOrder.filter((key) => obj[key] > 0);
 
   return filteredKeys.length > 0 ? filteredKeys[0] : null;
 };

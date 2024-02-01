@@ -33,6 +33,7 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import Lineage from '../../components/Lineage/Lineage.component';
 import LineageProvider from '../../components/LineageProvider/LineageProvider';
 import Loader from '../../components/Loader/Loader';
+import { useMetaPilotContext } from '../../components/MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -114,6 +115,7 @@ const TableDetailsPageV1 = () => {
     ThreadType.Conversation
   );
   const [queryCount, setQueryCount] = useState(0);
+  const { resetMetaPilot, initMetaPilot } = useMetaPilotContext();
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -135,7 +137,7 @@ const TableDetailsPageV1 = () => {
     [datasetFQN]
   );
 
-  const fetchTableDetails = async () => {
+  const fetchTableDetails = useCallback(async () => {
     setLoading(true);
     try {
       let fields = defaultFields;
@@ -159,7 +161,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tableFqn]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -278,10 +280,15 @@ const TableDetailsPageV1 = () => {
   );
 
   useEffect(() => {
-    if (tableFqn) {
+    if (tableFqn && fetchTableDetails) {
       fetchResourcePermission(tableFqn);
+      initMetaPilot(tableFqn, fetchTableDetails);
     }
-  }, [tableFqn]);
+
+    return () => {
+      resetMetaPilot();
+    };
+  }, [tableFqn, fetchTableDetails]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -340,7 +347,6 @@ const TableDetailsPageV1 = () => {
 
         return updatedObj;
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -610,6 +616,7 @@ const TableDetailsPageV1 = () => {
             owner={tableDetails?.owner}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTableDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -755,11 +762,11 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     deleted,
     tableDetails,
-    feedCount.conversationCount,
-    feedCount.totalTasksCount,
+    feedCount.totalCount,
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    handleFeedCount,
     tableDetails?.dataModel,
     viewAllPermission,
     editCustomAttributePermission,
@@ -832,7 +839,6 @@ const TableDetailsPageV1 = () => {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -841,7 +847,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, setTableDetails, getEntityFeedCount]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const unFollowTable = useCallback(async () => {
     try {
@@ -859,7 +865,6 @@ const TableDetailsPageV1 = () => {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -868,7 +873,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, getEntityFeedCount, setTableDetails]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {

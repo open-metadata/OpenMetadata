@@ -14,6 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
@@ -29,6 +30,8 @@ import {
   getUpdateDescriptionPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
+import MetaPilotDescriptionAlert from '../../MetaPilot/MetaPilotDescriptionAlert/MetaPilotDescriptionAlert.component';
+import { useMetaPilotContext } from '../../MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 const { Text } = Typography;
@@ -73,6 +76,7 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
+  const { activeSuggestion, suggestions } = useMetaPilotContext();
 
   const handleRequestDescription = useCallback(() => {
     history.push(
@@ -86,10 +90,19 @@ const DescriptionV1 = ({
     );
   }, [entityType, entityFqn]);
 
-  const entityLink = useMemo(
-    () => getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION),
-    [entityType, entityFqn]
-  );
+  const { entityLink, entityLinkWithoutField } = useMemo(() => {
+    const entityLink = getEntityFeedLink(
+      entityType,
+      entityFqn,
+      EntityField.DESCRIPTION
+    );
+    const entityLinkWithoutField = getEntityFeedLink(entityType, entityFqn);
+
+    return {
+      entityLink,
+      entityLinkWithoutField,
+    };
+  }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
     const hasDescription = Boolean(description.trim());
@@ -158,6 +171,34 @@ const DescriptionV1 = ({
       onThreadLinkSelect,
     ]
   );
+
+  const suggestionForEmptyData = useMemo(() => {
+    if (isEmpty(description.trim())) {
+      return suggestions.find(
+        (suggestion) => suggestion.entityLink === entityLinkWithoutField
+      );
+    }
+
+    return null;
+  }, [suggestions, description]);
+
+  if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+    return (
+      <MetaPilotDescriptionAlert
+        hasEditAccess={hasEditAccess}
+        suggestion={activeSuggestion}
+      />
+    );
+  }
+
+  if (suggestionForEmptyData) {
+    return (
+      <MetaPilotDescriptionAlert
+        hasEditAccess={hasEditAccess}
+        suggestion={suggestionForEmptyData}
+      />
+    );
+  }
 
   const content = (
     <Space

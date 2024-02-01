@@ -45,6 +45,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
@@ -70,6 +72,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
@@ -735,6 +738,25 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  @Override
+  public Table applySuggestion(EntityInterface entity, String columnFQN, Suggestion suggestion) {
+    Table table = Entity.getEntity(TABLE, entity.getId(), "columns,tags", ALL);
+    for (Column col : table.getColumns()) {
+      if (col.getFullyQualifiedName().equals(columnFQN)) {
+        if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
+          List<TagLabel> tags = new ArrayList<>(col.getTags());
+          tags.addAll(suggestion.getTagLabels());
+          col.setTags(tags);
+        } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
+          col.setDescription(suggestion.getDescription());
+        } else {
+          throw new WebApplicationException("Invalid suggestion Type");
+        }
+      }
+    }
+    return table;
   }
 
   @Override

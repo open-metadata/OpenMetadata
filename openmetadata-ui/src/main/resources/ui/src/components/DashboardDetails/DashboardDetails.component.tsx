@@ -661,6 +661,7 @@ const DashboardDetails = ({
             fqn={dashboardDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDashboard}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -710,6 +711,7 @@ const DashboardDetails = ({
       entityName,
       dashboardTags,
       onCancel,
+      handleFeedCount,
       onDescriptionEdit,
       onDescriptionUpdate,
       onThreadLinkSelect,

@@ -9,8 +9,6 @@ Check the Helm information [here](https://artifacthub.io/packages/search?repo=op
 
 Get the `Client Id` and `Tenant ID` from Azure Application configured in [Step 3](/deployment/security/azure#step-3-where-to-find-the-credentials).
 
-Get the Azure Service Application `Client Id`, `Client Secret`, `Authority`, `Scopes` from the information collected in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
-
 See the snippet below for an example of where to place the values and update the authorizer configurations in the `values.yaml`.
 
 ```yaml

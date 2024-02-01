@@ -12,6 +12,7 @@
  */
 
 import {
+  getBackendFormat,
   getEntityField,
   getEntityFQN,
   getEntityType,
@@ -72,31 +73,11 @@ jest.mock('../rest/miscAPI', () => ({
       },
     },
   }),
-  getSuggestions: jest.fn().mockResolvedValue({
-    data: {
-      suggest: {
-        'metadata-suggest': [
-          {
-            options: [
-              {
-                _source: {
-                  entityType: 'Table',
-                  name: 'Table1',
-                  displayName: 'Table 1',
-                  fullyQualifiedName: 'db.schema.Table1',
-                },
-                _id: '1',
-              },
-            ],
-          },
-        ],
-      },
-    },
-  }),
 }));
 
 jest.mock('./StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
 jest.mock('./FeedUtils', () => ({
@@ -130,12 +111,33 @@ describe('Feed Utils', () => {
 
     expect(result).toEqual([
       {
+        displayName: 'Table 1',
         id: '1',
-        value: '@John Doe',
-        link: 'http://localhost/undefined/John Doe',
+        value: '@Table1',
+        link: 'http://localhost/undefined/Table1',
+        name: 'Table1',
         type: 'team',
-        name: 'John Doe',
       },
     ]);
+  });
+
+  it('should return correct backend format for a given message', () => {
+    const message = `<#E::user::"admin"|[@admin](http://localhost:3000/users/admin)> test`;
+    const result = getBackendFormat(message);
+
+    // eslint-disable-next-line no-useless-escape
+    const expectedResult = `<#E::user::\"admin\"|<#E::user::admin|[@admin](http://localhost:3000/users/admin)>> test`;
+
+    expect(result).toStrictEqual(expectedResult);
+  });
+
+  it('should return correct backend format for a given message having . in username', () => {
+    const message = `<#E::user::"admin.test"|[@admin.test](http://localhost:3000/users/%22admin.test%22)> test`;
+    const result = getBackendFormat(message);
+
+    // eslint-disable-next-line no-useless-escape
+    const expectedResult = `<#E::user::\"admin.test\"|<#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
+
+    expect(result).toStrictEqual(expectedResult);
   });
 });

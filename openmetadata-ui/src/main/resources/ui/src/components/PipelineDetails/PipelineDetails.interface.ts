@@ -23,8 +23,8 @@ export interface PipeLineDetailsProp {
   pipelineDetails: Pipeline;
   paging: Paging;
   fetchPipeline: () => void;
-  followPipelineHandler: (fetchCount: () => void) => Promise<void>;
-  unFollowPipelineHandler: (fetchCount: () => void) => Promise<void>;
+  followPipelineHandler: () => Promise<void>;
+  unFollowPipelineHandler: () => Promise<void>;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
