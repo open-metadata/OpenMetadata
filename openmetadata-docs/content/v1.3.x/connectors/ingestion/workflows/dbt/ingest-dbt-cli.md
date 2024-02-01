@@ -10,6 +10,12 @@ Learn how to configure the dbt workflow from the cli to ingest dbt data from you
 
 Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add the dbt information.
 
+Using python pip, Please make sure you provide appropriate version of ingestion in below command
+```code
+ pip install 'openmetadata-ingestion[dbt]==X.Y.Z.X'
+```
+
+
 This will populate the dbt tab from the Table Entity Page.
 
 {% image
