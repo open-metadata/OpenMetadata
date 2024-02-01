@@ -11,13 +11,6 @@
  *  limitations under the License.
  */
 
-export const mockFormData = {
-  name: 'Sample Name',
-  email: 'sample123@sample.com',
-  picture: 'Profile Picture',
-  userName: 'sample123',
-};
-
 export const mockChangedFormData = {
   fullName: 'f_name m_name l_name',
   userName: 'mockUserName',
