@@ -30,6 +30,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+
 # pylint: disable=too-many-locals
 class Histogram(HybridMetric):
     """

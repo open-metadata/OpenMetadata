@@ -23,7 +23,6 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 
 class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
        CREATE TABLE admin.admin_emp (
          empno      NUMBER(5) PRIMARY KEY,

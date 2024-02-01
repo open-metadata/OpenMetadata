@@ -99,6 +99,6 @@ describe('Alerts Page Tests', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(await findByText(/label.create-entity/)).toBeInTheDocument();
+    expect(await findByText(/label.add-entity/)).toBeInTheDocument();
   });
 });
