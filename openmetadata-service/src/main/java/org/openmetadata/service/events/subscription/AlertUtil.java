@@ -156,8 +156,7 @@ public final class AlertUtil {
 
   private static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
-    boolean triggerChangeEvent =
-        AlertUtil.shouldTriggerAlert(event, filteringRules);
+    boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
     if (triggerChangeEvent) {
       // Evaluate Rules
