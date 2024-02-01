@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isArray } from 'lodash';
 import React, { Fragment } from 'react';
@@ -62,14 +61,17 @@ export const AlertDetailsComponent = ({
           <Space size={16}>
             {allowEdit && (
               <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
-                <Button icon={<Icon component={IconEdit} size={12} />}>
+                <Button
+                  className="flex flex-center"
+                  icon={<IconEdit height={12} />}>
                   {t('label.edit')}
                 </Button>
               </Link>
             )}
             {allowDelete && (
               <Button
-                icon={<Icon component={IconDelete} size={12} />}
+                className="flex flex-center"
+                icon={<IconDelete height={12} />}
                 onClick={onDelete}>
                 {t('label.delete')}
               </Button>
