@@ -58,11 +58,11 @@ import {
 } from '../../utils/RouterUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import '../AddObservabilityPage/add-observability-page.less';
-import { ObservabilityAlertDetailsPageProps } from './ObservabilityAlertDetailsPage.interface';
+import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
-function ObservabilityAlertDetailsPage({
-  isNotificationAlert,
-}: Readonly<ObservabilityAlertDetailsPageProps>) {
+function AlertDetailsPage({
+  isNotificationAlert = false,
+}: Readonly<AlertDetailsPageProps>) {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const history = useHistory();
@@ -441,4 +441,4 @@ function ObservabilityAlertDetailsPage({
   );
 }
 
-export default ObservabilityAlertDetailsPage;
+export default AlertDetailsPage;

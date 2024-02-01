@@ -11,6 +11,6 @@
  *  limitations under the License.
  */
 
-export interface ObservabilityAlertDetailsPageProps {
+export interface AlertDetailsPageProps {
   isNotificationAlert: boolean;
 }
