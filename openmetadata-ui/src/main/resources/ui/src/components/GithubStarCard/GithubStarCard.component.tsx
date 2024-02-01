@@ -71,27 +71,39 @@ const GithubStarCard = () => {
     }
   };
 
-  const updateGithubPopup = useCallback(
-    (show: boolean) => {
-      if (loggedInUserName && show) {
-        fetchOpenMetaData();
-        cookieStorage.setItem(userCookieName, 'true', {
-          expires: getReleaseVersionExpiry(),
-        });
-      }
-      setShowGithubStarPopup(show);
-    },
-    [
-      loggedInUserName,
-      usernameExistsInCookie,
-      userCookieName,
-      getReleaseVersionExpiry,
-    ]
-  );
-
   const handleCancel = useCallback(() => {
     setShowGithubStarPopup(false);
   }, []);
+
+  const handleClosePopup = useCallback(() => {
+    cookieStorage.setItem(userCookieName, 'true', {
+      expires: getReleaseVersionExpiry(),
+    });
+    handleCancel();
+  }, [userCookieName, handleCancel]);
+
+  const githubPopup = useCallback(
+    (show: boolean) => {
+      if (loggedInUserName && show) {
+        fetchOpenMetaData();
+      }
+      setShowGithubStarPopup(show);
+    },
+    [loggedInUserName, userCookieName]
+  );
+
+  const updateGithubPopup = useCallback(
+    (show: boolean) => {
+      if (isWhatNewAlertVisible) {
+        setTimeout(() => {
+          githubPopup(show);
+        }, 120000); // timer for 2 minutes
+      } else {
+        githubPopup(show);
+      }
+    },
+    [isWhatNewAlertVisible, githubPopup]
+  );
 
   useEffect(() => {
     updateGithubPopup(!usernameExistsInCookie);
@@ -122,7 +134,7 @@ const GithubStarCard = () => {
             data-testid="close-whats-new-alert"
             icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
             type="text"
-            onClick={handleCancel}
+            onClick={handleClosePopup}
           />
         </Space>
 
