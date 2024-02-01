@@ -90,7 +90,6 @@ import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -146,7 +145,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
-    new SearchRepository(catalogConfig.getElasticSearchConfiguration(), new SearchIndexFactory());
+    new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
 

@@ -92,8 +92,7 @@ public class SearchRepository {
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
-  public SearchRepository(
-      ElasticSearchConfiguration config, SearchIndexFactory searchIndexFactory) {
+  public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
     if (config != null
         && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
@@ -101,7 +100,20 @@ public class SearchRepository {
     } else {
       searchClient = new ElasticSearchClient(config);
     }
-    this.searchIndexFactory = searchIndexFactory;
+    try {
+      if (config != null) {
+        this.searchIndexFactory =
+            Class.forName(config.getSearchIndexFactoryClassName())
+                .asSubclass(SearchIndexFactory.class)
+                .newInstance();
+      }
+    } catch (ClassNotFoundException e) {
+      LOG.warn("Failed to initialize search index factory", e);
+    } catch (InstantiationException e) {
+      LOG.warn("Failed to initialize search index factory", e);
+    } catch (IllegalAccessException e) {
+      LOG.warn("Failed to initialize search index factory", e);
+    }
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()

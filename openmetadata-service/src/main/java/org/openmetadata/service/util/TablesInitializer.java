@@ -50,7 +50,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
@@ -299,7 +298,7 @@ public final class TablesInitializer {
             new ConnectionAwareAnnotationSqlLocator(
                 config.getDataSourceFactory().getDriverClass()));
     SearchRepository searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
+        new SearchRepository(config.getElasticSearchConfiguration());
 
     // Initialize secrets manager
     SecretsManagerFactory.createSecretsManager(
@@ -396,7 +395,7 @@ public final class TablesInitializer {
         new MigrationWorkflow(
             jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
     // Initialize search repository
-    new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
+    new SearchRepository(config.getElasticSearchConfiguration());
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
