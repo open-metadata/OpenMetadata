@@ -95,8 +95,8 @@ RUN if [[ $(uname -m) != "aarch64" ]]; \
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
-# remove all airflow providers except for docker
-RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xargs pip uninstall -y
+# remove all airflow providers except for docker and cncf kubernetes
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf" | xargs pip uninstall -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
