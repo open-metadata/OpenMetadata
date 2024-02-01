@@ -420,8 +420,9 @@ class OpenMetadataValidationAction(ValidationAction):
             test_case = self.ometa_conn.get_or_create_test_case(
                 test_case_fqn,
                 entity_link=get_entity_link(
-                    table_entity.fullyQualifiedName.__root__,
-                    fqn.split_test_case_fqn(test_case_fqn).column,
+                    Table,
+                    fqn=table_entity.fullyQualifiedName.__root__,
+                    column_name=fqn.split_test_case_fqn(test_case_fqn).column,
                 ),
                 test_suite_fqn=test_suite.fullyQualifiedName.__root__,
                 test_definition_fqn=test_definition.fullyQualifiedName.__root__,
