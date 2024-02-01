@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import EntityClass from '../../common/Entities/EntityClass';
 import { CustomPropertyType } from '../../common/Utils/CustomProperty';
 import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
@@ -30,104 +31,118 @@ const OWNER2 = 'Cynthia Meyer';
 const TEAM_OWNER_1 = 'Marketplace';
 const TEAM_OWNER_2 = 'DevOps';
 
-entities.forEach((entity) => {
-  describe(`${entity.getName()} page`, () => {
-    before(() => {
-      cy.login();
+describe('Database hierarchy details page', () => {
+  before(() => {
+    cy.login();
 
-      entity.prepareForTests();
-    });
+    EntityClass.preRequisitesForTests();
+  });
 
-    after(() => {
-      cy.login();
+  after(() => {
+    cy.login();
 
-      entity.cleanup();
-    });
+    EntityClass.postRequisitesForTests();
+  });
 
-    beforeEach(() => {
-      cy.login();
-      entity.visitEntity();
-    });
+  entities.forEach((entity) => {
+    describe(`${entity.getName()} page`, () => {
+      before(() => {
+        cy.login();
 
-    it(`Domain assign, update & delete`, () => {
-      entity.assignDomain();
-      entity.updateDomain();
-      entity.removeDomain();
-    });
-
-    it(`User as Owner assign, update & delete`, () => {
-      entity.userOwnerFlow(OWNER1, OWNER2);
-    });
-
-    it(`Team as Owner assign, update & delete`, () => {
-      entity.teamOwnerFlow(TEAM_OWNER_1, TEAM_OWNER_2);
-    });
-
-    it(`Tier assign, update & delete`, () => {
-      entity.tierFlow('Tier1', 'Tier5');
-    });
-
-    it(`Update description`, () => {
-      entity.updateDescription();
-    });
-
-    it(`Tags assign, update & delete`, () => {
-      entity.assignTags();
-      entity.updateTags();
-      entity.removeTags();
-    });
-
-    it(`GlossaryTerm assign, update & delete`, () => {
-      entity.assignGlossary();
-      entity.updateGlossary();
-      entity.removeGlossary();
-    });
-
-    it(`Update displayName`, () => {
-      entity.renameEntity();
-    });
-
-    it(`Annoucement create & delete`, () => {
-      entity.createAnnouncement();
-      entity.removeAnnouncement();
-    });
-
-    it(`Inactive annoucement create & delete`, () => {
-      entity.createInactiveAnnouncement();
-      entity.removeInactiveAnnouncement();
-    });
-
-    Object.values(CustomPropertyType).forEach((type) => {
-      it(`Set ${type} Custom Property `, () => {
-        entity.setCustomProperty(
-          entity.customPropertyValue[type].property,
-          entity.customPropertyValue[type].value
-        );
+        entity.prepareForTests();
       });
 
-      it(`Update ${type} Custom Property`, () => {
-        entity.updateCustomProperty(
-          entity.customPropertyValue[type].property,
-          entity.customPropertyValue[type].newValue
-        );
+      after(() => {
+        cy.login();
+
+        entity.cleanup();
       });
-    });
 
-    it(`UpVote & DownVote entity`, () => {
-      entity.upVote();
-      entity.downVote();
-    });
+      beforeEach(() => {
+        cy.login();
+        entity.visitEntity();
+      });
 
-    it(`follow unfollow entity`, () => {
-      entity.followUnfollowEntity();
-    });
+      it(`Domain assign, update & delete`, () => {
+        entity.assignDomain();
+        entity.updateDomain();
+        entity.removeDomain();
+      });
 
-    it(`Soft delete`, () => {
-      entity.softDeleteEntity();
-    });
+      it(`User as Owner assign, update & delete`, () => {
+        entity.userOwnerFlow(OWNER1, OWNER2);
+      });
 
-    it(`Hard delete`, () => {
-      entity.hardDeleteEntity();
+      it(`Team as Owner assign, update & delete`, () => {
+        entity.teamOwnerFlow(TEAM_OWNER_1, TEAM_OWNER_2);
+      });
+
+      it(`Tier assign, update & delete`, () => {
+        entity.tierFlow('Tier1', 'Tier5');
+      });
+
+      it(`Update description`, () => {
+        entity.updateDescription();
+      });
+
+      it(`Tags assign, update & delete`, () => {
+        entity.assignTags();
+        entity.updateTags();
+        entity.removeTags();
+      });
+
+      it(`GlossaryTerm assign, update & delete`, () => {
+        entity.assignGlossary();
+        entity.updateGlossary();
+        entity.removeGlossary();
+      });
+
+      it(`Update displayName`, () => {
+        entity.renameEntity();
+      });
+
+      it(`Annoucement create & delete`, () => {
+        entity.createAnnouncement();
+        entity.removeAnnouncement();
+      });
+
+      it(`Inactive annoucement create & delete`, () => {
+        entity.createInactiveAnnouncement();
+        entity.removeInactiveAnnouncement();
+      });
+
+      Object.values(CustomPropertyType).forEach((type) => {
+        it(`Set ${type} Custom Property `, () => {
+          entity.setCustomProperty(
+            entity.customPropertyValue[type].property,
+            entity.customPropertyValue[type].value
+          );
+        });
+
+        it(`Update ${type} Custom Property`, () => {
+          entity.updateCustomProperty(
+            entity.customPropertyValue[type].property,
+            entity.customPropertyValue[type].newValue
+          );
+        });
+      });
+
+      it(`UpVote & DownVote entity`, () => {
+        entity.upVote();
+        entity.downVote();
+      });
+
+      it(`follow unfollow entity`, () => {
+        entity.followUnfollowEntity();
+      });
+
+      it(`Soft delete`, () => {
+        entity.softDeleteEntity();
+      });
+
+      it(`Hard delete`, () => {
+        entity.hardDeleteEntity();
+      });
     });
   });
 });

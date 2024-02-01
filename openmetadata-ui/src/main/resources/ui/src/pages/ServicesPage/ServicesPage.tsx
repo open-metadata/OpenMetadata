@@ -27,6 +27,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { useAuth } from '../../hooks/authHooks';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
@@ -35,7 +36,7 @@ const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
   const location = useLocation();
   const history = useHistory();
-
+  const { isAdminUser } = useAuth();
   const search =
     qs.parse(
       location.search.startsWith('?')
@@ -85,11 +86,17 @@ const ServicesPage = () => {
                 children: <Services serviceName={serviceName} />,
                 label: 'Services',
               },
-              {
-                key: 'pipelines',
-                children: <IngestionPipelineList serviceName={serviceName} />,
-                label: 'Pipelines',
-              },
+              ...(isAdminUser
+                ? [
+                    {
+                      key: 'pipelines',
+                      children: (
+                        <IngestionPipelineList serviceName={serviceName} />
+                      ),
+                      label: 'Pipelines',
+                    },
+                  ]
+                : []),
             ]}
             onChange={(activeKey) =>
               history.push({ search: `tab=${activeKey}` })

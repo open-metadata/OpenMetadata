@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -342,49 +342,3 @@ const ManageButton: FC<ManageButtonProps> = ({
 };
 
 export default ManageButton;
-
-interface ManageButtonItemProps {
-  label: ReactNode;
-  icon: ReactNode;
-  description: string;
-  disabled: boolean;
-  onClick: () => void;
-}
-
-export const ManageButtonItem = ({
-  label,
-  icon,
-  description,
-  disabled,
-  onClick,
-}: ManageButtonItemProps) => {
-  return (
-    <Tooltip title={disabled && NO_PERMISSION_FOR_ACTION}>
-      <Row
-        className={classNames('cursor-pointer manage-button', {
-          'cursor-not-allowed opacity-50': disabled,
-        })}
-        onClick={onClick}>
-        <Col className="m-t-xss" span={3}>
-          {icon}
-        </Col>
-        <Col span={21}>
-          <Row data-testid="restore-button">
-            <Col span={21}>
-              <Typography.Text
-                className="font-medium"
-                data-testid="delete-button-title">
-                {label}
-              </Typography.Text>
-            </Col>
-            <Col className="p-t-xss">
-              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {description}
-              </Typography.Paragraph>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-    </Tooltip>
-  );
-};

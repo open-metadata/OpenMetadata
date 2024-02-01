@@ -48,7 +48,6 @@ export const IngestionPipelineList = ({
   serviceName: ServiceCategory;
 }) => {
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
-
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
   const [selectedPipelines, setSelectedPipelines] = useState<
