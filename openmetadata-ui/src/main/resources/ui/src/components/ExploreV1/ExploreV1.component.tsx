@@ -112,7 +112,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   activeTabKey,
   tabItems = [],
   searchResults,
-  tabCounts,
   onChangeAdvancedSearchQuickFilters,
   searchIndex,
   onChangeSearchIndex,
@@ -438,11 +437,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                         isSummaryPanelVisible={showSummaryPanel}
                         selectedEntityId={entityDetails?.id || ''}
-                        totalValue={
-                          tabCounts?.[searchIndex] ??
-                          searchResults?.hits.total.value ??
-                          0
-                        }
+                        totalValue={searchResults?.hits.total.value ?? 0}
                         onPaginationChange={onChangePage}
                       />
                     ) : (
