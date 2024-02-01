@@ -109,35 +109,35 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
         onSubmit={onSubmit}
         {...props}>
         {children}
-        <div className="m-t-lg d-flex justify-between">
-          <div className="text-right" data-testid="buttons">
-            <Button type="link" onClick={handleCancel}>
-              {cancelText}
+        <div
+          className="m-t-lg d-flex justify-end text-right"
+          data-testid="buttons">
+          <Button type="link" onClick={handleCancel}>
+            {cancelText}
+          </Button>
+          {status === 'waiting' ? (
+            <Button
+              disabled
+              className="p-x-md p-y-xxs h-auto rounded-6"
+              type="primary">
+              <Loader size="small" type="white" />
             </Button>
-            {status === 'waiting' ? (
-              <Button
-                disabled
-                className="p-x-md p-y-xxs h-auto rounded-6"
-                type="primary">
-                <Loader size="small" type="white" />
-              </Button>
-            ) : status === 'success' ? (
-              <Button
-                disabled
-                className="p-x-md p-y-xxs h-auto rounded-6"
-                type="primary">
-                <CheckOutlined />
-              </Button>
-            ) : (
-              <Button
-                className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-                data-testid="submit-btn"
-                htmlType="submit"
-                type="primary">
-                {okText}
-              </Button>
-            )}
-          </div>
+          ) : status === 'success' ? (
+            <Button
+              disabled
+              className="p-x-md p-y-xxs h-auto rounded-6"
+              type="primary">
+              <CheckOutlined />
+            </Button>
+          ) : (
+            <Button
+              className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+              data-testid="submit-btn"
+              htmlType="submit"
+              type="primary">
+              {okText}
+            </Button>
+          )}
         </div>
       </Form>
     );
