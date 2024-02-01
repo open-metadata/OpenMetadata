@@ -66,7 +66,7 @@ describe('ObservabilityFormTriggerItem', () => {
     expect(screen.getByTestId('trigger-select')).toBeInTheDocument();
   });
 
-  it('should sets isEditMode to true when handleAddTriggerClick is called', async () => {
+  it('should display select dropdown when clicked on add trigger button', async () => {
     render(
       <ObservabilityFormTriggerItem filterResources={MOCK_FILTER_RESOURCES} />,
       { wrapper: MemoryRouter }
@@ -76,6 +76,6 @@ describe('ObservabilityFormTriggerItem', () => {
       userEvent.click(addButton);
     });
 
-    expect(screen.getByTestId('trigger-select')).toBeInTheDocument();
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
   });
 });
