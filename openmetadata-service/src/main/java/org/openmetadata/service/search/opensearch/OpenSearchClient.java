@@ -309,8 +309,11 @@ public class OpenSearchClient implements SearchClient {
               request.getQuery(), request.getFrom(), request.getSize());
           case "query_search_index", "query" -> buildQuerySearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_search_index", "testCase" -> buildTestCaseSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
+          case "test_case_search_index",
+              "testCase",
+              "test_suite_search_index",
+              "testSuite"
+              -> buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
           case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
               request.getQuery(), request.getFrom(), request.getSize());
           case "dashboard_data_model_search_index",
