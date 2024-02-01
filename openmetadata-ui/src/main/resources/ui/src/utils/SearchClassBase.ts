@@ -99,27 +99,29 @@ class SearchClassBase {
     };
   }
 
-  public getGlobalSearchOptions = () => [
-    { value: '', label: i18n.t('label.all') },
-    { value: SearchIndex.TABLE, label: i18n.t('label.table') },
-    { value: SearchIndex.TOPIC, label: i18n.t('label.topic') },
-    { value: SearchIndex.DASHBOARD, label: i18n.t('label.dashboard') },
-    { value: SearchIndex.PIPELINE, label: i18n.t('label.pipeline') },
-    { value: SearchIndex.MLMODEL, label: i18n.t('label.ml-model') },
-    { value: SearchIndex.CONTAINER, label: i18n.t('label.container') },
-    {
-      value: SearchIndex.STORED_PROCEDURE,
-      label: i18n.t('label.stored-procedure'),
-    },
-    {
-      value: SearchIndex.DASHBOARD_DATA_MODEL,
-      label: i18n.t('label.data-model'),
-    },
-    { value: SearchIndex.GLOSSARY, label: i18n.t('label.glossary') },
-    { value: SearchIndex.TAG, label: i18n.t('label.tag') },
-    { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
-    { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
-  ];
+  public getGlobalSearchOptions() {
+    return [
+      { value: '', label: i18n.t('label.all') },
+      { value: SearchIndex.TABLE, label: i18n.t('label.table') },
+      { value: SearchIndex.TOPIC, label: i18n.t('label.topic') },
+      { value: SearchIndex.DASHBOARD, label: i18n.t('label.dashboard') },
+      { value: SearchIndex.PIPELINE, label: i18n.t('label.pipeline') },
+      { value: SearchIndex.MLMODEL, label: i18n.t('label.ml-model') },
+      { value: SearchIndex.CONTAINER, label: i18n.t('label.container') },
+      {
+        value: SearchIndex.STORED_PROCEDURE,
+        label: i18n.t('label.stored-procedure'),
+      },
+      {
+        value: SearchIndex.DASHBOARD_DATA_MODEL,
+        label: i18n.t('label.data-model'),
+      },
+      { value: SearchIndex.GLOSSARY, label: i18n.t('label.glossary') },
+      { value: SearchIndex.TAG, label: i18n.t('label.tag') },
+      { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
+      { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
+    ];
+  }
 
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {

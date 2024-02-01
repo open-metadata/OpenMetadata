@@ -192,7 +192,6 @@ class SupersetAPISource(SupersetSourceMixin):
     def yield_datamodel(
         self, dashboard_details: DashboardResult
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
-
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 try:

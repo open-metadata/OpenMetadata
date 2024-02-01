@@ -7,7 +7,7 @@ slug: /deployment/security/okta/kubernetes
 
 Check the Helm information [here](https://artifacthub.io/packages/search?repo=open-metadata).
 
-Once the `Client Id` and `Client Secret` are generated, see the snippet below for an example of where to
+Once the `Client Id` is generated, see the snippet below for an example of where to
 place the client id value and update the authorizer configurations in the `values.yaml`.
 
 This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
