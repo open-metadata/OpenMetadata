@@ -22,6 +22,7 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
 
 from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
     AppConfig,
+    PrivateConfig,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -75,7 +76,14 @@ def build_application_workflow_config(
         # We pass the generic class and let each app cast the actual object
         appConfig=AppConfig(
             __root__=application_pipeline_conf.appConfig.__root__,
-        ),
+        )
+        if application_pipeline_conf.appConfig
+        else None,
+        appPrivateConfig=PrivateConfig(
+            __root__=application_pipeline_conf.appPrivateConfig.__root__
+        )
+        if application_pipeline_conf.appPrivateConfig
+        else None,
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
         ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
     )

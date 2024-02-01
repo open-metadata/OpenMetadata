@@ -74,6 +74,12 @@ jest.mock('../../TableTags/TableTags.component', () =>
     ))
 );
 
+jest.mock('../../MetaPilot/MetaPilotProvider/MetaPilotProvider', () => ({
+  useMetaPilotContext: jest.fn().mockReturnValue({
+    suggestions: [],
+  }),
+}));
+
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest
     .fn()

@@ -20,6 +20,13 @@
           "$ref": "internal/searchIndexingAppConfig.json"
         }
       ]
+    },
+    "privateConfig": {
+      "oneOf": [
+        {
+          "$ref": "./private/external/metaPilotAppPrivateConfig.json"
+        }
+      ]
     }
   }
 }

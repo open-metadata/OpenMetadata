@@ -12,6 +12,7 @@
  */
 
 import { EntityType } from '../../enums/entity.enum';
+import { Column } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 
 export interface TableDescriptionProps {
@@ -19,6 +20,7 @@ export interface TableDescriptionProps {
   columnData: {
     fqn: string;
     field?: string;
+    record?: Column;
   };
   entityFqn: string;
   entityType: EntityType;

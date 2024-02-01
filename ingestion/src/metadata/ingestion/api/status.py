@@ -56,6 +56,10 @@ class Status(BaseModel):
             else:
                 self.records.append(log_name)
 
+    def updated(self, record: Any) -> None:
+        if log_name := get_log_name(record):
+            self.updated_records.append(log_name)
+
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
 

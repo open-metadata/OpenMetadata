@@ -43,6 +43,7 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
+import { APP_UI_SCHEMA } from '../../../constants/Applications.constant';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -325,6 +326,7 @@ const AppDetails = () => {
                     okText={t('label.submit')}
                     schema={jsonSchema}
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+                    uiSchema={APP_UI_SCHEMA}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}

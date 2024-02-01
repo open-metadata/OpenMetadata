@@ -488,7 +488,7 @@ public class FeedRepository {
   @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     deleteThreadInternal(thread.getId());
-    LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
+    LOG.debug("{} deleted thread with id {}", deletedByUser, thread.getId());
     return new DeleteResponse<>(thread, ENTITY_DELETED);
   }
 

@@ -43,6 +43,14 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
+jest.mock('../MetaPilot/MetaPilotProvider/MetaPilotProvider', () => ({
+  useMetaPilotContext: jest.fn().mockReturnValue({
+    suggestions: [],
+    initMetaPilot: jest.fn(),
+    resetMetaPilot: jest.fn(),
+  }),
+}));
+
 jest.mock('../../rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));

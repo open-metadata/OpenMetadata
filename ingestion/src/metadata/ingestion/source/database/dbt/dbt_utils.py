@@ -14,6 +14,7 @@ DBT utils methods.
 import traceback
 from typing import Optional, Union
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -81,7 +82,8 @@ def generate_entity_link(dbt_test):
     manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
     entity_link_list = [
         entity_link.get_entity_link(
-            table_fqn=table_fqn,
+            Table,
+            fqn=table_fqn,
             column_name=manifest_node.column_name
             if hasattr(manifest_node, "column_name")
             else None,

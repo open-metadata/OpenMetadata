@@ -28,7 +28,7 @@ const AppLogo = ({
         const Icon = data.ReactComponent as React.ComponentType<
           JSX.IntrinsicElements['svg']
         >;
-        setAppLogo(<Icon height={60} width={60} />);
+        setAppLogo(<Icon height={55} width={55} />);
       });
     } else {
       setAppLogo(logo);

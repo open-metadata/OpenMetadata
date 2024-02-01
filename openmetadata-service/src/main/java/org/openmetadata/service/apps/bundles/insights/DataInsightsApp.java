@@ -4,7 +4,6 @@ import com.cronutils.model.Cron;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -20,7 +19,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -30,12 +28,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private static final String SERVICE_NAME = "OpenMetadata";
   private static final String SERVICE_TYPE = "Metadata";
   private static final String PIPELINE_DESCRIPTION = "OpenMetadata DataInsight Pipeline";
-
-  @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    super.init(app, dao, searchRepository);
-    LOG.info("Data Insights App is initialized");
-  }
 
   @Override
   public void install() {

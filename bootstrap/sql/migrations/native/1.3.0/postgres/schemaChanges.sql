@@ -181,5 +181,17 @@ DELETE FROM event_subscription_entity;
 DELETE FROM change_event_consumers;
 DELETE FROM consumers_dlq;
 
+CREATE TABLE IF NOT EXISTS suggestions (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL,
+    entityLink VARCHAR(256) GENERATED ALWAYS AS (json ->> 'entityLink') STORED NOT NULL,
+    suggestionType VARCHAR(36) GENERATED ALWAYS AS (json ->> 'type') STORED NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED NOT NULL,
+    PRIMARY KEY (id)
+);
+
 UPDATE ingestion_pipeline_entity SET json = JSONB_SET(json::jsonb, '{provider}', '"user"', true)
 WHERE json->>'name' = 'OpenMetadata_dataInsight';

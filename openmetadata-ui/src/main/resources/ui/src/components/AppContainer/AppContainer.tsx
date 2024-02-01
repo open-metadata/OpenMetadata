@@ -21,6 +21,8 @@ import SignUpPage from '../../pages/SignUp/SignUpPage';
 import Appbar from '../AppBar/Appbar';
 import AuthenticatedAppRouter from '../AppRouter/AuthenticatedAppRouter';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import { useMetaPilotContext } from '../MetaPilot/MetaPilotProvider/MetaPilotProvider';
+import MetaPilotSidebar from '../MetaPilot/MetaPilotSidebar/MetaPilotSidebar';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import './app-container.less';
 
@@ -28,6 +30,7 @@ const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useAuthContext();
+  const { suggestionsVisible } = useMetaPilotContext();
 
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
@@ -49,9 +52,16 @@ const AppContainer = () => {
           <Header className="p-x-0">
             <Appbar />
           </Header>
-          <Content className="main-content">
-            <AuthenticatedAppRouter />
-          </Content>
+          <Layout>
+            <Content className="main-content">
+              <AuthenticatedAppRouter />
+            </Content>
+            {suggestionsVisible && (
+              <Sider className="right-sidebar-col" width={340}>
+                <MetaPilotSidebar />
+              </Sider>
+            )}
+          </Layout>
         </Layout>
       </Layout>
     </Switch>

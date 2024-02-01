@@ -25,6 +25,10 @@
     "appConfig": {
       "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/appConfig",
       "description": "Application configuration"
+    },
+    "appPrivateConfig": {
+      "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/privateConfig",
+      "description": "Application private configuration"
     }
   },
   "additionalProperties": false

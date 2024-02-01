@@ -60,6 +60,7 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
@@ -88,7 +89,7 @@ public final class Entity {
   @Getter @Setter private static SystemRepository systemRepository;
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
   @Getter @Setter private static SearchRepository searchRepository;
-
+  @Getter @Setter private static SuggestionRepository suggestionRepository;
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
@@ -194,6 +195,7 @@ public final class Entity {
   // Other entities
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
+  public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";
 
   //

@@ -51,11 +51,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     AuthProvider,
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
-    AirflowConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
-    BackendConnection,
+from metadata.generated.schema.entity.services.connections.pipeline.customPipelineConnection import (
+    CustomPipelineConnection,
+    CustomPipelineType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -92,7 +90,6 @@ def int_admin_ometa(url: str = "http://localhost:8585/api") -> OpenMetadata:
     )
     metadata = OpenMetadata(server_config)
     assert metadata.health_check()
-
     return metadata
 
 
@@ -123,12 +120,21 @@ def _(name: EntityName) -> C:
     """Prepare a Create service request"""
     return CreatePipelineServiceRequest(
         name=name,
-        serviceType=PipelineServiceType.Airflow,
+        serviceType=PipelineServiceType.CustomPipeline,
         connection=PipelineConnection(
-            config=AirflowConnection(
-                hostPort="http://localhost:8080",
-                connection=BackendConnection(),
-            ),
+            config=CustomPipelineConnection(type=CustomPipelineType.CustomPipeline)
+        ),
+    )
+
+
+@create_service_registry.add(DatabaseService)
+def _(name: EntityName) -> C:
+    """Prepare a Create service request"""
+    return CreateDatabaseServiceRequest(
+        name=name,
+        serviceType=DatabaseServiceType.CustomDatabase,
+        connection=DatabaseConnection(
+            config=CustomDatabaseConnection(type=CustomDatabaseType.CustomDatabase)
         ),
     )
 

@@ -329,6 +329,9 @@ public interface CollectionDAO {
   @CreateSqlObject
   DocStoreDAO docStoreDAO();
 
+  @CreateSqlObject
+  SuggestionDAO suggestionDAO();
+
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
     default String getTableName() {
@@ -3531,8 +3534,7 @@ public interface CollectionDAO {
     }
 
     default int countOfTestCases(List<UUID> testCaseIds) {
-      return countOfTestCases(
-          getTableName(), testCaseIds.stream().map(Object::toString).collect(Collectors.toList()));
+      return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).toList());
     }
 
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
@@ -4319,5 +4321,82 @@ public interface CollectionDAO {
         @Define("table") String table,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond);
+  }
+
+  interface SuggestionDAO {
+    default String getTableName() {
+      return "suggestions";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(@BindFQN("fqnHash") String fullyQualifiedName, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE suggestions SET json = :json where id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE suggestions SET json = (:json :: jsonb) where id = :id",
+        connectionType = POSTGRES)
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM suggestions WHERE id = :id")
+    String findById(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM suggestions WHERE id = :id")
+    void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM suggestions WHERE fqnHash = :fqnHash")
+    void deleteByFQN(@BindUUID("fqnHash") String fullyQualifiedName);
+
+    @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY updatedAt DESC LIMIT :limit")
+    List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM suggestions <mysqlCond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM suggestions <postgresCond>",
+        connectionType = POSTGRES)
+    int listCount(
+        @Define("mysqlCond") String mysqlCond, @Define("postgresCond") String postgresCond);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT updatedAt, json FROM suggestions <mysqlCond> "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT updatedAt, json FROM suggestions <psqlCond> "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY updatedAt",
+        connectionType = POSTGRES)
+    List<String> listBefore(
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM suggestions <mysqlCond>  ORDER BY updatedAt DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM suggestions <psqlCond>  ORDER BY updatedAt DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listAfter(
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
   }
 }

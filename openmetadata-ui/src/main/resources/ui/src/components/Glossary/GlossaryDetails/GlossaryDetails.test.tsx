@@ -53,6 +53,10 @@ jest.mock(
   }
 );
 
+jest.mock('../../common/EntityDescription/DescriptionV1', () =>
+  jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
+);
+
 const mockProps = {
   glossary: mockedGlossaries[0],
   glossaryTerms: [],
