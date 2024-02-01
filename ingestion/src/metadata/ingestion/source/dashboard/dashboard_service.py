@@ -531,7 +531,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def check_database_schema_name(self, database_schema_name: str):
-
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
 

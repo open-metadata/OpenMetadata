@@ -246,7 +246,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 if messages:
                     for message in messages:
                         try:
-
                             value = message.value()
                             sample_data.append(
                                 self.decode_message(

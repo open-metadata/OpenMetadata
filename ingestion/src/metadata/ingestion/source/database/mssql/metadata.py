@@ -114,7 +114,6 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
-
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.__root__.config.database
             self.set_inspector(database_name=configured_db)

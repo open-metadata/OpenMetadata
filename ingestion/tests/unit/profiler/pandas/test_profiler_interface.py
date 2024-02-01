@@ -62,7 +62,6 @@ class FakeConnection:
 
 
 class PandasInterfaceTest(TestCase):
-
     import pandas as pd
 
     col_names = [

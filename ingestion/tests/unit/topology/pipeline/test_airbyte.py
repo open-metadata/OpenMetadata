@@ -192,7 +192,6 @@ class AirbyteUnitTest(TestCase):
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
-
         status = [
             either.right
             for either in self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS)

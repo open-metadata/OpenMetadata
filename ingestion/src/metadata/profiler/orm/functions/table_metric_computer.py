@@ -126,7 +126,6 @@ class AbstractTableMetricComputer(ABC):
         table: Table,
         where_clause: Optional[List[ColumnOperators]] = None,
     ):
-
         query = select(*columns).select_from(table)
         if where_clause:
             query = query.where(*where_clause)

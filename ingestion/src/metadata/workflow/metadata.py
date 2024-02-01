@@ -31,7 +31,6 @@ class MetadataWorkflow(IngestionWorkflow):
     """
 
     def set_steps(self):
-
         # We keep the source registered in the workflow
         self.source = self._get_source()
         sink = self._get_sink()

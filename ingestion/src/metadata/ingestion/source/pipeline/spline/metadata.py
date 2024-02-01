@@ -131,7 +131,6 @@ class SplineSource(PipelineServiceSource):
         return None
 
     def _get_table_from_datasource_name(self, datasource: str) -> Optional[Table]:
-
         if (
             not datasource
             and not datasource.startswith("dbfs")

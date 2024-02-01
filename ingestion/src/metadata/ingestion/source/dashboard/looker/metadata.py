@@ -833,7 +833,6 @@ class LookerSource(DashboardServiceSource):
                     to_entity.id.__root__
                     not in self._added_lineage[from_entity.id.__root__]
                 ):
-
                     self._added_lineage[from_entity.id.__root__].append(
                         to_entity.id.__root__
                     )
@@ -943,7 +942,6 @@ class LookerSource(DashboardServiceSource):
         dashboard_name = self.context.dashboard
 
         try:
-
             dashboard_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Dashboard,

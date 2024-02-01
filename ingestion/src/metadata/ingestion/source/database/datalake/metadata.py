@@ -77,8 +77,8 @@ from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.datalake.datalake_utils import (
+    DataFrameColumnParser,
     fetch_dataframe,
-    get_columns,
     get_file_format_type,
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -416,9 +416,14 @@ class DatalakeSource(DatabaseServiceSource):
                     file_extension=table_extension,
                 ),
             )
-
-            # If no data_frame (due to unsupported type), ignore
-            columns = get_columns(data_frame[0]) if data_frame else None
+            if data_frame:
+                column_parser = DataFrameColumnParser.create(
+                    data_frame[0], table_extension
+                )
+                columns = column_parser.get_columns()
+            else:
+                # If no data_frame (due to unsupported type), ignore
+                columns = None
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,

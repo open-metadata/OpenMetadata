@@ -641,7 +641,6 @@ class IcebergUnitTest(TestCase):
         with patch.object(
             HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
         ), patch.object(HiveCatalog, "load_table", return_value=LoadTableMock()):
-
             for i, table in enumerate(self.iceberg.get_tables_name_and_type()):
                 self.assertEqual(table, EXPECTED_TABLE_LIST[i])
 
@@ -655,7 +654,6 @@ class IcebergUnitTest(TestCase):
         ), patch.object(
             HiveCatalog, "load_table", side_effect=raise_no_such_iceberg_table
         ):
-
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
         # When pyiceberg.exceptions.NoSuchTableError is raised
@@ -666,7 +664,6 @@ class IcebergUnitTest(TestCase):
         with patch.object(
             HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
         ), patch.object(HiveCatalog, "load_table", side_effect=raise_no_such_table):
-
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
     def test_get_owner_ref(self):
@@ -802,7 +799,6 @@ class IcebergUnitTest(TestCase):
         with patch.object(
             OpenMetadata, "get_reference_by_email", return_value=ref
         ), patch.object(fqn, "build", return_value=fq_database_schema):
-
             result = next(self.iceberg.yield_table((table_name, table_type))).right
 
             self.assertEqual(result, expected)

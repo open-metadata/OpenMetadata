@@ -29,7 +29,6 @@ def bigquery_type_mapper(_type_map: dict, col: Column):
     from sqlalchemy_bigquery import STRUCT
 
     def build_struct(_type_map: dict, col: Column):
-
         structs = []
         for child in col.children:
             if child.dataType != DataType.STRUCT:

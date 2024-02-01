@@ -149,7 +149,8 @@
         "LARGEINT",
         "QUANTILE_STATE",
         "AGG_STATE",
-        "BITMAP"
+        "BITMAP",
+        "UINT"
       ]
     },
     "constraint": {

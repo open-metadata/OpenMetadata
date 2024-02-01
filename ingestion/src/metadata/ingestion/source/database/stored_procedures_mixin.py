@@ -153,7 +153,6 @@ class StoredProcedureMixin(ABC):
             query_type=query_by_procedure.query_type,
             query_text=query_by_procedure.query_text,
         ):
-
             self.context.stored_procedure_query_lineage = True
             for either_lineage in get_lineage_by_query(
                 self.metadata,

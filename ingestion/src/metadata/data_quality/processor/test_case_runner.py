@@ -54,7 +54,6 @@ class TestCaseRunner(Processor):
     """Execute the test suite tests and create test cases from the YAML config"""
 
     def __init__(self, config: OpenMetadataWorkflowConfig, metadata: OpenMetadata):
-
         super().__init__()
 
         self.config = config

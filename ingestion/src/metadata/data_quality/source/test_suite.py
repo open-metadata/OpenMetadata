@@ -149,7 +149,6 @@ class TestSuiteSource(Source):
             )
 
         else:
-
             test_suite_cases = self._get_test_cases_from_test_suite(table.testSuite)
 
             yield Either(

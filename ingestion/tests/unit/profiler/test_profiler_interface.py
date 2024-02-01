@@ -328,7 +328,6 @@ class ProfilerInterfaceTest(TestCase):
         self.assertEqual(50, actual)
 
     def test_table_config_casting(self):
-
         expected = TableConfig(
             profileSample=200,
             profileSampleType=ProfileSampleType.PERCENTAGE,

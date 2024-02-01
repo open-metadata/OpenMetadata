@@ -94,7 +94,6 @@ class DatabricksClient:
         Method returns List the history of queries through SQL warehouses
         """
         try:
-
             data = {}
             daydiff = end_date - start_date
 

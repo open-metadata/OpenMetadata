@@ -46,7 +46,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import get_columns
+from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -217,7 +217,8 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
             df = pd.DataFrame.from_records(list(data))
-            columns = get_columns(df)
+            column_parser = DataFrameColumnParser.create(df)
+            columns = column_parser.get_columns()
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,

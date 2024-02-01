@@ -157,7 +157,6 @@ class TestAirflowLineageRuner(TestCase):
         )
 
     def test_lineage_runner(self):
-
         with DAG("test_runner", start_date=datetime(2021, 1, 1)) as dag:
             BashOperator(
                 task_id="print_date",

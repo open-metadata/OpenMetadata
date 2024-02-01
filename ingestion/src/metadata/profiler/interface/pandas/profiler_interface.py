@@ -34,7 +34,10 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, SAMPLE_DATA_DEFAULT_COUNT
-from metadata.utils.datalake.datalake_utils import fetch_col_types, fetch_dataframe
+from metadata.utils.datalake.datalake_utils import (
+    GenericDataFrameColumnParser,
+    fetch_dataframe,
+)
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -411,7 +414,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 sqalike_columns.append(
                     SQALikeColumn(
                         column_name,
-                        fetch_col_types(self.complex_dataframe_sample[0], column_name),
+                        GenericDataFrameColumnParser.fetch_col_types(
+                            self.complex_dataframe_sample[0], column_name
+                        ),
                     )
                 )
             return sqalike_columns

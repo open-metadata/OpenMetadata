@@ -800,7 +800,6 @@ class SampleDataSource(
 
         # Create table and stored procedure lineage
         for lineage_entities in self.stored_procedures["lineage"]:
-
             from_table = self.metadata.get_by_name(
                 entity=Table, fqn=lineage_entities["from_table_fqn"]
             )

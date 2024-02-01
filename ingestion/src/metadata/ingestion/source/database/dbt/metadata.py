@@ -692,7 +692,6 @@ class DbtSource(DbtServiceSource):
         )
         if table_entity:
             try:
-
                 service_name, database_name, schema_name, table_name = fqn.split(
                     table_entity.fullyQualifiedName.__root__
                 )

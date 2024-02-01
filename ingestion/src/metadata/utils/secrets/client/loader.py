@@ -63,7 +63,6 @@ def _(provider: SecretsManagerProvider) -> Optional[AWSCredentials]:
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
 def _(provider: SecretsManagerProvider) -> Optional[AWSCredentials]:
-
     if provider in {
         SecretsManagerProvider.aws,
         SecretsManagerProvider.managed_aws,

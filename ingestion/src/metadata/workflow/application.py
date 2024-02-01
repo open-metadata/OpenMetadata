@@ -80,7 +80,6 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
     runner: Optional[AppRunner]
 
     def __init__(self, config_dict: dict):
-
         self.runner = None  # Will be passed in post-init
         # TODO: Create a parse_gracefully method
         self.config = OpenMetadataApplicationConfig.parse_obj(config_dict)

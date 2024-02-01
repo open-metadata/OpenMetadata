@@ -135,7 +135,6 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
-
             patch = build_patch(
                 source=source,
                 destination=destination,

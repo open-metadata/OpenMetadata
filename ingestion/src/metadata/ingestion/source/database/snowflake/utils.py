@@ -39,7 +39,6 @@ from metadata.utils.sqlalchemy_utils import (
 
 
 def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
-
     if entity_name:
         return fqn.quote_name(entity_name)
 
