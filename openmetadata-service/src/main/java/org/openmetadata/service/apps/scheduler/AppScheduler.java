@@ -6,6 +6,7 @@ import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.AppRuntime;
@@ -37,7 +38,7 @@ public class AppScheduler {
   public static final String SEARCH_CLIENT_KEY = "searchClientKey";
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
-  private final Scheduler scheduler;
+  @Getter private final Scheduler scheduler;
   private static final ConcurrentHashMap<UUID, JobDetail> appJobsKeyMap = new ConcurrentHashMap<>();
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchClient;

@@ -252,6 +252,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
                           config.getElasticSearchConfiguration().getSearchIndexMappingLanguage()))
               .withRuntime(new ScheduledExecutionContext().withEnabled(true));
       AppScheduler.getInstance().triggerOnDemandApplication(searchIndexApp);
+      do {
+        Thread.sleep(3000l);
+      } while (!AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().isEmpty());
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
