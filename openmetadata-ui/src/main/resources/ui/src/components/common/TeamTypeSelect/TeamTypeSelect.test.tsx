@@ -15,6 +15,17 @@ import React from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import TeamTypeSelect from './TeamTypeSelect.component';
 
+const handleShowTypeSelector = jest.fn();
+const updateTeamType = jest.fn();
+
+const mockProps = {
+  showGroupOption: true,
+  handleShowTypeSelector: handleShowTypeSelector,
+  parentTeamType: TeamType.Organization,
+  teamType: TeamType.Department,
+  updateTeamType: updateTeamType,
+};
+
 jest.mock('../../../utils/TeamUtils', () => ({
   getTeamOptionsFromType: jest.fn().mockReturnValue([
     { label: 'BusinessUnit', value: 'BusinessUnit' },
@@ -26,34 +37,13 @@ jest.mock('../../../utils/TeamUtils', () => ({
 
 describe('TeamTypeSelect', () => {
   it('should render TeamTypeSelect', () => {
-    const handleShowTypeSelector = jest.fn();
-    const updateTeamType = jest.fn();
-    const { getByTestId } = render(
-      <TeamTypeSelect
-        showGroupOption
-        handleShowTypeSelector={handleShowTypeSelector}
-        parentTeamType={TeamType.Organization}
-        teamType={TeamType.Department}
-        updateTeamType={updateTeamType}
-      />
-    );
+    const { getByTestId } = render(<TeamTypeSelect {...mockProps} />);
 
     expect(getByTestId('team-type-select')).toBeInTheDocument();
   });
 
   it('should call handleCancel when cancel button is clicked', () => {
-    const handleShowTypeSelector = jest.fn();
-    const updateTeamType = jest.fn();
-
-    const { getByTestId } = render(
-      <TeamTypeSelect
-        showGroupOption
-        handleShowTypeSelector={handleShowTypeSelector}
-        parentTeamType={TeamType.Organization}
-        teamType={TeamType.Department}
-        updateTeamType={updateTeamType}
-      />
-    );
+    const { getByTestId } = render(<TeamTypeSelect {...mockProps} />);
     fireEvent.click(getByTestId('cancel-btn'));
 
     expect(handleShowTypeSelector).toHaveBeenCalledWith(false);
@@ -61,18 +51,7 @@ describe('TeamTypeSelect', () => {
   });
 
   it('should call handleSubmit when save button is clicked', () => {
-    const handleShowTypeSelector = jest.fn();
-
-    const updateTeamType = jest.fn();
-    const { getByTestId } = render(
-      <TeamTypeSelect
-        showGroupOption
-        handleShowTypeSelector={handleShowTypeSelector}
-        parentTeamType={TeamType.Organization}
-        teamType={TeamType.Department}
-        updateTeamType={updateTeamType}
-      />
-    );
+    const { getByTestId } = render(<TeamTypeSelect {...mockProps} />);
     fireEvent.click(getByTestId('save-btn'));
 
     expect(updateTeamType).toHaveBeenCalled();
