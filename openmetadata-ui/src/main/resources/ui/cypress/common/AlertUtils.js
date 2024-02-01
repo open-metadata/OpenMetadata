@@ -24,15 +24,14 @@ import {
 
 export const deleteAlertSteps = (name) => {
   cy.get('table').should('contain', name).click();
-  cy.get(`[data-testid="alert-delete-${name}"]`).should('be.visible').click();
-  cy.get('.ant-modal-header')
-    .should('be.visible')
-    .should('contain', `Delete subscription "${name}"`);
-  cy.get('[data-testid="confirmation-text-input"]')
-    .should('be.visible')
-    .type(DELETE_TERM);
+  cy.get(`[data-testid="alert-delete-${name}"]`).click();
+  cy.get('.ant-modal-header').should(
+    'contain',
+    `Delete subscription "${name}"`
+  );
+  cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
   interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
-  cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+  cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@deleteAlert', 200);
 
   toastNotification(`"${name}" deleted successfully!`);
@@ -53,6 +52,7 @@ export const addOwnerFilter = (
     .click();
 
   // Search and select owner
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="owner-name-select"]').click().type(ownerName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${ownerName}"]`).filter(':visible').scrollIntoView().click();
@@ -81,6 +81,7 @@ export const addEntityFQNFilter = (
     .click();
 
   // Search and select entity
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="fqn-list-select"]').click().type(entityFQN);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${entityFQN}"]`).filter(':visible').scrollIntoView().click();
@@ -106,10 +107,17 @@ export const addEventTypeFilter = (
   cy.get('[data-testid="Event Type-filter-option"]').filter(':visible').click();
 
   // Search and select event type
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="event-type-select"]').click().type(eventType);
   verifyResponseStatusCode('@getSearchResult', 200);
-  cy.get(`[title="${eventType}"]`).filter(':visible').scrollIntoView().click();
-  cy.get('[data-testid="event-type-select"]').should('contain', eventType);
+  cy.get(`[title="${startCase(eventType)}"]`)
+    .filter(':visible')
+    .scrollIntoView()
+    .click();
+  cy.get('[data-testid="event-type-select"]').should(
+    'contain',
+    startCase(eventType)
+  );
 
   if (exclude) {
     // Change filter effect
@@ -133,6 +141,7 @@ export const addUpdaterNameFilter = (
     .click();
 
   // Search and select user
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="user-name-select"]').click().type(updaterName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${updaterName}"]`)
@@ -157,6 +166,7 @@ export const addDomainFilter = (filterNumber, domainName, exclude = false) => {
   cy.get('[data-testid="Domain-filter-option"]').filter(':visible').click();
 
   // Search and select domain
+  interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
   cy.get('[data-testid="domain-select"]').click().type(domainName);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${domainName}"]`).filter(':visible').scrollIntoView().click();
@@ -205,6 +215,7 @@ export const addInternalDestination = (
 
   // Select the receivers
   if (typeId) {
+    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.get(`[data-testid="${typeId}"]`).click().type(searchText);
     verifyResponseStatusCode('@getSearchResult', 200);
     cy.get(`[title="${searchText}"]`)
@@ -218,12 +229,43 @@ export const addInternalDestination = (
   cy.get(`[data-testid="destination-type-select-${destinationNumber}"]`)
     .scrollIntoView()
     .click();
-  cy.get(`[data-testid="${type}-external-option"]`).filter(':visible').click();
+  cy.get(`.select-options-container [data-testid="${type}-external-option"]`)
+    .filter(':visible')
+    .click();
 
   // Check the added destination type
   cy.get(
     `[data-testid="destination-type-select-${destinationNumber}"] [data-testid="${type}-external-option"]`
   );
+};
+
+export const addExternalDestination = (destinationNumber, category, input) => {
+  // Select destination category
+  cy.get(`[data-testid="destination-category-select-${destinationNumber}"]`)
+    .scrollIntoView()
+    .click();
+
+  // Select external tab
+  cy.get(`[data-testid="tab-label-external"]`).filter(':visible').click();
+
+  // Select destination category option
+  cy.get(
+    `[data-testid="destination-category-dropdown-${destinationNumber}"] [data-testid="${category}-external-option"]`
+  )
+    .filter(':visible')
+    .click();
+
+  // Input the destination receivers value
+  if (category === 'Email') {
+    cy.get(`[data-testid="email-input-${destinationNumber}"]`)
+      .click()
+      .type(input)
+      .type('{enter}');
+  } else {
+    cy.get(`[data-testid="endpoint-input-${destinationNumber}"]`)
+      .click()
+      .type(input);
+  }
 };
 
 const checkActionOrFilterDetails = (filters) => {
@@ -339,7 +381,7 @@ export const addPipelineStatusUpdatesAction = (
   statusName,
   exclude = false
 ) => {
-  // Select domain filter
+  // Select pipeline status action
   cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
@@ -347,7 +389,7 @@ export const addPipelineStatusUpdatesAction = (
     .filter(':visible')
     .click();
 
-  // Search and select domain
+  // Search and select pipeline status input
   cy.get('[data-testid="pipeline-status-select"]').click().type(statusName);
   cy.get(`[title="${statusName}"]`).filter(':visible').scrollIntoView().click();
   cy.get('[data-testid="pipeline-status-select"]').should(
@@ -357,8 +399,8 @@ export const addPipelineStatusUpdatesAction = (
   cy.clickOutside();
 
   if (exclude) {
-    // Change filter effect
-    cy.get(`[data-testid="filter-switch-${filterNumber}"]`)
+    // Change action effect
+    cy.get(`[data-testid="action-switch-${filterNumber}"]`)
       .scrollIntoView()
       .click();
   }

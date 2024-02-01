@@ -12,10 +12,11 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Card, Space, Tooltip, Typography } from 'antd';
+import { Card, Popover, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -30,7 +31,7 @@ import {
   getUpdateDescriptionPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
-import MetaPilotDescriptionAlert from '../../MetaPilot/MetaPilotDescriptionAlert/MetaPilotDescriptionAlert.component';
+import MetaPilotPopoverContent from '../../MetaPilot/MetaPilotPopoverContent/MetaPilotPopoverContent.component';
 import { useMetaPilotContext } from '../../MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
@@ -76,8 +77,9 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
-  const { activeSuggestion, suggestions } = useMetaPilotContext();
-
+  const { activeSuggestion, suggestions, onUpdateActiveSuggestion } =
+    useMetaPilotContext();
+  const [showSuggestionPopover, setShowSuggestionPopover] = useState(false);
   const handleRequestDescription = useCallback(() => {
     history.push(
       getRequestDescriptionPath(entityType as string, entityFqn as string)
@@ -182,56 +184,79 @@ const DescriptionV1 = ({
     return null;
   }, [suggestions, description]);
 
-  if (activeSuggestion?.entityLink === entityLinkWithoutField) {
-    return (
-      <MetaPilotDescriptionAlert
-        hasEditAccess={hasEditAccess}
-        suggestion={activeSuggestion}
-      />
-    );
-  }
+  const suggestionData = useMemo(() => {
+    if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+      return (
+        <MetaPilotPopoverContent
+          hasEditAccess={hasEditAccess}
+          suggestion={activeSuggestion}
+        />
+      );
+    }
 
-  if (suggestionForEmptyData) {
-    return (
-      <MetaPilotDescriptionAlert
-        hasEditAccess={hasEditAccess}
-        suggestion={suggestionForEmptyData}
-      />
-    );
-  }
+    return null;
+  }, [hasEditAccess, suggestionForEmptyData, activeSuggestion]);
+
+  useEffect(() => {
+    if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+      setShowSuggestionPopover(true);
+    } else {
+      setShowSuggestionPopover(false);
+    }
+  }, [activeSuggestion, entityLinkWithoutField]);
+
+  const onPopoverOpenChange = useCallback(
+    (data: boolean) => {
+      setShowSuggestionPopover(data);
+      if (!data) {
+        onUpdateActiveSuggestion();
+      }
+    },
+    [onUpdateActiveSuggestion]
+  );
 
   const content = (
-    <Space
-      className="schema-description d-flex"
-      data-testid="asset-description-container"
-      direction="vertical"
-      size={16}>
-      <Space size="middle">
-        <Text className="right-panel-label">{t('label.description')}</Text>
-        {showActions && actionButtons}
-      </Space>
-      <div>
-        {description.trim() ? (
-          <RichTextEditorPreviewer
-            className={reduceDescription ? 'max-two-lines' : ''}
-            enableSeeMoreVariant={!removeBlur}
-            markdown={description}
+    <Popover
+      content={suggestionData}
+      open={showSuggestionPopover}
+      overlayClassName="metapilot-popover"
+      placement="bottom"
+      trigger="click"
+      onOpenChange={onPopoverOpenChange}>
+      <Space
+        className={classNames('schema-description d-flex', {
+          'has-suggestion': Boolean(suggestionData),
+        })}
+        data-testid="asset-description-container"
+        direction="vertical"
+        size={16}>
+        <Space size="middle">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {showActions && actionButtons}
+        </Space>
+        <div>
+          {description.trim() ? (
+            <RichTextEditorPreviewer
+              className={reduceDescription ? 'max-two-lines' : ''}
+              enableSeeMoreVariant={!removeBlur}
+              markdown={description}
+            />
+          ) : (
+            <span>{t('label.no-description')}</span>
+          )}
+          <ModalWithMarkdownEditor
+            header={t('label.edit-description-for', { entityName })}
+            placeholder={t('label.enter-entity', {
+              entity: t('label.description'),
+            })}
+            value={description}
+            visible={Boolean(isEdit)}
+            onCancel={onCancel}
+            onSave={onDescriptionUpdate}
           />
-        ) : (
-          <span>{t('label.no-description')}</span>
-        )}
-        <ModalWithMarkdownEditor
-          header={t('label.edit-description-for', { entityName })}
-          placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
-          })}
-          value={description}
-          visible={Boolean(isEdit)}
-          onCancel={onCancel}
-          onSave={onDescriptionUpdate}
-        />
-      </div>
-    </Space>
+        </div>
+      </Space>
+    </Popover>
   );
 
   return wrapInCard ? <Card>{content}</Card> : content;

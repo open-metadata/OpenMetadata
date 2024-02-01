@@ -10,26 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 @import url('../../../styles/variables.less');
 
-.meta-pilot-drawer {
-  .ant-drawer-content {
-    background-color: #f6f9fd;
+.popover-card-footer {
+  background-color: @grey-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metapilot-popover {
+  width: 350px;
+  .ant-popover-inner-content {
+    padding: 0;
   }
-  .ant-drawer-body {
-    padding: 0 16px 16px;
-  }
-  .suggestion-card {
-    border-radius: 10px;
-    cursor: pointer;
-    &:hover {
-      p {
-        color: @primary-color;
-      }
+  .markdown-parser .toastui-editor-contents {
+    p {
+      color: @text-grey-muted;
     }
-  }
-  .ant-drawer-content-wrapper {
-    box-shadow: none !important;
   }
 }

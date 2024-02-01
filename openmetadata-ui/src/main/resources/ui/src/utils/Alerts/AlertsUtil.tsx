@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Input, Select, Switch, Typography } from 'antd';
+import { Col, Input, Select, Switch, Tooltip, Typography } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
+import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
-import { isEqual, map, startCase } from 'lodash';
+import { isEqual, isUndefined, map, startCase, uniqBy } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -26,21 +27,26 @@ import {
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   EventFilterRule,
+  EventSubscription,
   InputType,
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../EntityUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
+import { showErrorToast, showSuccessToast } from '../ToastUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -179,10 +185,13 @@ const searchEntity = async (
       searchIndex
     );
 
-    return response.data.hits.hits.map((d) => ({
-      label: getEntityName(d._source),
-      value: d._source.fullyQualifiedName,
-    }));
+    return uniqBy(
+      response.data.hits.hits.map((d) => ({
+        label: getEntityName(d._source),
+        value: d._source.fullyQualifiedName,
+      })),
+      'value'
+    );
   } catch (error) {
     return [];
   }
@@ -190,6 +199,10 @@ const searchEntity = async (
 
 const getTableSuggestions = async (searchText: string) => {
   return searchEntity(searchText, SearchIndex.TABLE);
+};
+
+const getTestSuiteSuggestions = async (searchText: string) => {
+  return searchEntity(searchText, SearchIndex.TEST_SUITE);
 };
 
 const getDomainOptions = async (searchText: string) => {
@@ -212,10 +225,11 @@ const getTeamOptions = async (searchText: string) => {
   return searchEntity(searchText, SearchIndex.TEAM);
 };
 
-const eventTypeOptions = map(EventType, (eventType) => ({
-  label: eventType,
-  value: eventType,
-}));
+const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
+  map(type, (value) => ({
+    label: startCase(value),
+    value,
+  }));
 
 // Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
 // Since there is no provision for webhook subscription for users
@@ -240,9 +254,11 @@ export const getSupportedFilterOptions = (
 ) =>
   supportedFilters?.map((func) => ({
     label: (
-      <span data-testid={`${getEntityName(func)}-filter-option`}>
-        {getEntityName(func)}
-      </span>
+      <Tooltip mouseEnterDelay={0.8} title={getEntityName(func)}>
+        <span data-testid={`${getEntityName(func)}-filter-option`}>
+          {getEntityName(func)}
+        </span>
+      </Tooltip>
     ),
     value: func.name,
     disabled: selectedFilters?.some((d) => d.name === func.name),
@@ -258,84 +274,90 @@ export const getDestinationConfigField = (
     case SubscriptionType.GChat:
     case SubscriptionType.Generic:
       return (
-        <Form.Item
-          name={[fieldName, 'config', 'endpoint']}
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.endpoint-url'),
-              }),
-            },
-          ]}>
-          <Input
-            data-testid={`endpoint-input-${fieldName}`}
-            placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-          />
-        </Form.Item>
+        <Col span={12}>
+          <Form.Item
+            name={[fieldName, 'config', 'endpoint']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.endpoint-url'),
+                }),
+              },
+            ]}>
+            <Input
+              data-testid={`endpoint-input-${fieldName}`}
+              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+            />
+          </Form.Item>
+        </Col>
       );
     case SubscriptionType.Email:
       return (
-        <Form.Item
-          name={[fieldName, 'config', 'receivers']}
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.email'),
-              }),
-            },
-          ]}>
-          <Select
-            className="w-full"
-            data-testid={`email-input-${fieldName}`}
-            mode="tags"
-            open={false}
-            placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-          />
-        </Form.Item>
+        <Col span={12}>
+          <Form.Item
+            name={[fieldName, 'config', 'receivers']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.email'),
+                }),
+              },
+            ]}>
+            <Select
+              className="w-full"
+              data-testid={`email-input-${fieldName}`}
+              mode="tags"
+              open={false}
+              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+            />
+          </Form.Item>
+        </Col>
       );
     case SubscriptionCategory.Teams:
     case SubscriptionCategory.Users:
       return (
-        <Form.Item
-          name={[fieldName, 'config', 'receivers']}
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.entity-list', {
-                  entity: t('label.entity-name', {
-                    entity:
-                      type === SubscriptionCategory.Teams
-                        ? t('label.team')
-                        : t('label.user'),
+        <Col span={12}>
+          <Form.Item
+            name={[fieldName, 'config', 'receivers']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.entity-name', {
+                      entity:
+                        type === SubscriptionCategory.Teams
+                          ? t('label.team')
+                          : t('label.user'),
+                    }),
                   }),
                 }),
-              }),
-            },
-          ]}>
-          <AsyncSelect
-            api={
-              type === SubscriptionCategory.Teams
-                ? getTeamOptions
-                : getUserOptions
-            }
-            className="w-full"
-            data-testid={`${
-              type === SubscriptionCategory.Teams
-                ? t('label.team')
-                : t('label.user')
-            }-select`}
-            mode="multiple"
-            placeholder={t('label.search-by-type', {
-              type:
+              },
+            ]}>
+            <AsyncSelect
+              api={
                 type === SubscriptionCategory.Teams
-                  ? t('label.team-lowercase')
-                  : t('label.user-lowercase'),
-            })}
-          />
-        </Form.Item>
+                  ? getTeamOptions
+                  : getUserOptions
+              }
+              className="w-full"
+              data-testid={`${
+                type === SubscriptionCategory.Teams
+                  ? t('label.team')
+                  : t('label.user')
+              }-select`}
+              mode="multiple"
+              placeholder={t('label.search-by-type', {
+                type:
+                  type === SubscriptionCategory.Teams
+                    ? t('label.team-lowercase')
+                    : t('label.user-lowercase'),
+              })}
+            />
+          </Form.Item>
+        </Col>
       );
     case SubscriptionCategory.Admins:
     case SubscriptionCategory.Owners:
@@ -371,7 +393,7 @@ export const getFieldByArgumentType = (
   switch (argument) {
     case 'fqnList':
       field = (
-        <Col key="fqn-list-select" span={11}>
+        <Col key="fqn-list-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -388,7 +410,9 @@ export const getFieldByArgumentType = (
               api={getEntityByFQN}
               className="w-full"
               data-testid="fqn-list-select"
-              mode="multiple"
+              maxTagTextLength={45}
+              mode="tags"
+              optionFilterProp="label"
               placeholder={t('label.search-by-type', {
                 type: t('label.fqn-uppercase'),
               })}
@@ -402,7 +426,7 @@ export const getFieldByArgumentType = (
 
     case 'domainList':
       field = (
-        <Col key="domain-select" span={11}>
+        <Col key="domain-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -432,7 +456,7 @@ export const getFieldByArgumentType = (
 
     case 'tableNameList':
       field = (
-        <Col key="domain-select" span={11}>
+        <Col key="table-name-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -451,7 +475,9 @@ export const getFieldByArgumentType = (
               api={getTableSuggestions}
               className="w-full"
               data-testid="table-name-select"
-              mode="multiple"
+              maxTagTextLength={45}
+              mode="tags"
+              optionFilterProp="label"
               placeholder={t('label.search-by-type', {
                 type: t('label.table-lowercase'),
               })}
@@ -464,7 +490,7 @@ export const getFieldByArgumentType = (
 
     case 'ownerNameList':
       field = (
-        <Col key="owner-select" span={11}>
+        <Col key="owner-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -496,7 +522,7 @@ export const getFieldByArgumentType = (
 
     case 'updateByUserList':
       field = (
-        <Col key="owner-select" span={11}>
+        <Col key="user-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -528,7 +554,7 @@ export const getFieldByArgumentType = (
 
     case 'eventTypeList':
       field = (
-        <Col key="event-type-select" span={11}>
+        <Col key="event-type-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -547,7 +573,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="event-type-select"
               mode="multiple"
-              options={eventTypeOptions}
+              options={getSelectOptionsFromEnum(EventType)}
               placeholder={t('label.search-by-type', {
                 type: t('label.event-type-lowercase'),
               })}
@@ -560,7 +586,7 @@ export const getFieldByArgumentType = (
 
     case 'entityIdList':
       field = (
-        <Col key="entity-id-select" span={11}>
+        <Col key="entity-id-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -594,7 +620,7 @@ export const getFieldByArgumentType = (
 
     case 'pipelineStateList':
       field = (
-        <Col key="pipeline-state-select" span={11}>
+        <Col key="pipeline-state-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -611,10 +637,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="pipeline-status-select"
               mode="multiple"
-              options={map(StatusType, (state) => ({
-                label: startCase(state),
-                value: state,
-              }))}
+              options={getSelectOptionsFromEnum(StatusType)}
               placeholder={t('label.select-field', {
                 field: t('label.pipeline-state'),
               })}
@@ -644,10 +667,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="pipeline-status-select"
               mode="multiple"
-              options={map(PipelineState, (state) => ({
-                label: startCase(state),
-                value: state,
-              }))}
+              options={getSelectOptionsFromEnum(PipelineState)}
               placeholder={t('label.select-field', {
                 field: t('label.pipeline-state'),
               })}
@@ -658,9 +678,39 @@ export const getFieldByArgumentType = (
 
       break;
 
+    case 'testStatusList':
+      field = (
+        <Col key="test-status-select" span={12}>
+          <Form.Item
+            name={[fieldName, 'arguments', index, 'input']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.test-suite-status'),
+                  }),
+                }),
+              },
+            ]}>
+            <Select
+              className="w-full"
+              data-testid="test-status-select"
+              mode="multiple"
+              options={getSelectOptionsFromEnum(StatusType)}
+              placeholder={t('label.select-field', {
+                field: t('label.test-suite-status'),
+              })}
+            />
+          </Form.Item>
+        </Col>
+      );
+
+      break;
+
     case 'testResultList':
       field = (
-        <Col key="test-result-select" span={11}>
+        <Col key="test-result-select" span={12}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
@@ -677,10 +727,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="test-result-select"
               mode="multiple"
-              options={map(['success', 'aborted', 'failed'], (state) => ({
-                label: startCase(state),
-                value: state,
-              }))}
+              options={getSelectOptionsFromEnum(TestCaseStatus)}
               placeholder={t('label.select-field', {
                 field: t('label.test-case-result'),
               })}
@@ -691,6 +738,35 @@ export const getFieldByArgumentType = (
 
       break;
 
+    case 'testSuiteList':
+      field = (
+        <Col key="test-suite-select" span={12}>
+          <Form.Item
+            name={[fieldName, 'arguments', index, 'input']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.test-suite'),
+                  }),
+                }),
+              },
+            ]}>
+            <AsyncSelect
+              api={getTestSuiteSuggestions}
+              className="w-full"
+              data-testid="test-suite-select"
+              mode="multiple"
+              placeholder={t('label.search-by-type', {
+                type: t('label.test-suite'),
+              })}
+            />
+          </Form.Item>
+        </Col>
+      );
+
+      break;
     default:
       field = <></>;
   }
@@ -732,4 +808,90 @@ export const getConditionalField = (
       })}
     </>
   );
+};
+
+export const handleAlertSave = async ({
+  data,
+  fqn,
+  createAlertAPI,
+  updateAlertAPI,
+  afterSaveAction,
+}: {
+  data: CreateEventSubscription;
+  createAlertAPI: (
+    alert: CreateEventSubscription
+  ) => Promise<EventSubscription>;
+  updateAlertAPI: (
+    alert: CreateEventSubscription
+  ) => Promise<EventSubscription>;
+  afterSaveAction: () => void;
+  fqn?: string;
+}) => {
+  try {
+    const destinations = data.destinations?.map((d) => ({
+      type: d.type,
+      config: d.config,
+      category: d.category,
+    }));
+
+    if (fqn && !isUndefined(alert)) {
+      const {
+        alertType,
+        description,
+        displayName,
+        enabled,
+        input,
+        name,
+        owner,
+        provider,
+        resources,
+        trigger,
+      } = data;
+
+      const newData = {
+        alertType,
+        description,
+        destinations,
+        displayName,
+        enabled,
+        input,
+        name,
+        owner,
+        provider,
+        resources,
+        trigger,
+      };
+
+      await updateAlertAPI(newData);
+    } else {
+      await createAlertAPI({
+        ...data,
+        destinations,
+      });
+    }
+
+    showSuccessToast(
+      t(`server.${'create'}-entity-success`, {
+        entity: t('label.alert-plural'),
+      })
+    );
+    afterSaveAction();
+  } catch (error) {
+    if ((error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT) {
+      showErrorToast(
+        t('server.entity-already-exist', {
+          entity: t('label.alert'),
+          entityPlural: t('label.alert-lowercase-plural'),
+          name: data.name,
+        })
+      );
+    } else {
+      showErrorToast(
+        error as AxiosError,
+        t(`server.${'entity-creation-error'}`, {
+          entity: t('label.alert-lowercase'),
+        })
+      );
+    }
+  }
 };

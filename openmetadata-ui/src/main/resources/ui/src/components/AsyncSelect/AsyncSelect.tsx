@@ -14,7 +14,7 @@
 import { Select, SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Loader from '../Loader/Loader';
 
 /**
@@ -33,27 +33,36 @@ export const AsyncSelect = ({
 }) => {
   const [optionsInternal, setOptionsInternal] = useState<DefaultOptionType[]>();
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     setOptionsInternal(options);
   }, [options]);
 
-  const fetchOptions = debounce((value: string) => {
-    setLoadingOptions(true);
-    api(value).then((res) => {
-      setOptionsInternal(res);
-      setLoadingOptions(false);
-    });
-  }, 300);
+  const fetchOptions = useCallback(
+    debounce((value: string) => {
+      setLoadingOptions(true);
+      api(value).then((res) => {
+        setOptionsInternal(res);
+        setLoadingOptions(false);
+      });
+    }, 400),
+    [api]
+  );
+
+  useEffect(() => {
+    fetchOptions(searchText);
+  }, [searchText]);
 
   return (
     <Select
       filterOption={false}
       notFoundContent={loadingOptions ? <Loader size="small" /> : null}
       options={optionsInternal}
-      suffixIcon={loadingOptions && <Loader size="small" />}
+      searchValue={searchText}
+      suffixIcon={loadingOptions && <Loader size="small" />} // Controlling the search value to get the initial suggestions when not typed anything
       onSearch={(value: string) => {
-        fetchOptions(value);
+        setSearchText(value);
         setLoadingOptions(true);
       }}
       {...restProps}

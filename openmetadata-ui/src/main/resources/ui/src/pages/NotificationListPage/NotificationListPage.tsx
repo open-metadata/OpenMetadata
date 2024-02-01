@@ -185,18 +185,19 @@ const NotificationListPage = () => {
               <Tooltip placement="bottom" title={t('label.edit')}>
                 <Link to={getNotificationAlertsEditPath(id)}>
                   <Button
-                    className="d-inline-flex items-center justify-center"
+                    className="flex flex-center"
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<EditIcon width={16} />}
+                    icon={<EditIcon height={16} />}
                     type="text"
                   />
                 </Link>
               </Tooltip>
               <Tooltip placement="bottom" title={t('label.delete')}>
                 <Button
+                  className="flex flex-center"
                   data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<DeleteIcon height={16} width={16} />}
+                  icon={<DeleteIcon height={16} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />
@@ -224,7 +225,7 @@ const NotificationListPage = () => {
                 GlobalSettingOptions.ADD_NOTIFICATION
               )}>
               <Button data-testid="create-notification" type="primary">
-                {t('label.create-entity', { entity: t('label.notification') })}
+                {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
             </Link>
           </div>
