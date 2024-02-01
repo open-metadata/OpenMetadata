@@ -23,7 +23,7 @@ export interface ActivityThreadPanelProp
   threadType?: ThreadType;
   open?: boolean;
   postFeedHandler: (value: string, id: string) => void;
-  createThread: (data: CreateThread) => void;
+  createThread: (data: CreateThread) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunc;
   onCancel?: () => void;
   deletePostHandler?: (

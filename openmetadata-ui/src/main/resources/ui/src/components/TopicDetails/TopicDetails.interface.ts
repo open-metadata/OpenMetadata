@@ -23,7 +23,7 @@ export interface TopicDetailsProps {
   topicDetails: Topic;
   topicPermissions: OperationPermission;
   fetchTopic: () => void;
-  createThread: (data: CreateThread) => void;
+  createThread: (data: CreateThread) => Promise<void>;
   followTopicHandler: () => Promise<void>;
   unFollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;

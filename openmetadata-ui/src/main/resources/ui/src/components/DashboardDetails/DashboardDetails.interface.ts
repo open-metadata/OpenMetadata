@@ -32,7 +32,7 @@ export interface DashboardDetailsProps {
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
   fetchDashboard: () => void;
-  createThread: (data: CreateThread) => void;
+  createThread: (data: CreateThread) => Promise<void>;
   followDashboardHandler: () => Promise<void>;
   unFollowDashboardHandler: () => Promise<void>;
   chartDescriptionUpdateHandler: (

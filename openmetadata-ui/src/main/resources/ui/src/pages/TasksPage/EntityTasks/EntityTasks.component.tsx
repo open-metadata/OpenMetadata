@@ -114,7 +114,9 @@ const EntityTasks = ({
         onThreadLinkSelect,
         entityType,
         entityFqn,
-        columnName
+        columnName,
+        entityField,
+        entityTaskType
       )}
     </Space>
   );

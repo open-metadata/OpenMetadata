@@ -73,6 +73,7 @@ const RequestDescription = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const taskMessage = useMemo(
     () =>
@@ -109,6 +110,7 @@ const RequestDescription = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
@@ -141,7 +143,8 @@ const RequestDescription = () => {
             )
           );
         })
-        .catch((err: AxiosError) => showErrorToast(err));
+        .catch((err: AxiosError) => showErrorToast(err))
+        .finally(() => setIsLoading(false));
     } else {
       showErrorToast(t('server.no-task-creation-without-assignee'));
     }
@@ -268,6 +271,7 @@ const RequestDescription = () => {
                     <Button
                       data-testid="submit-test"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>

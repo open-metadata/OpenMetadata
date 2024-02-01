@@ -16,8 +16,10 @@ import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
+import { EntityType } from '../enums/entity.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
-import { getEntityFeedLink } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityUtils';
 
 const iconsProps = {
   height: 14,
@@ -28,11 +30,17 @@ const iconsProps = {
 
 export const getFieldThreadElement = (
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
-  entityType?: string,
-  entityFqn?: string,
-  entityField?: string
+  entityType: EntityType,
+  entityFqn: string,
+  columnName: string,
+  entityField: string,
+  entityTaskType: EntityField.TAGS | EntityField.DESCRIPTION
 ) => {
-  const entityLink = getEntityFeedLink(entityType, entityFqn, entityField);
+  const entityLink = getEntityFeedLink(
+    entityType,
+    entityFqn,
+    `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}${entityTaskType}`
+  );
 
   return (
     <Tooltip
