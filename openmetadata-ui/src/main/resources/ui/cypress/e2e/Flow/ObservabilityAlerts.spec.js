@@ -205,9 +205,9 @@ describe('Observability Alert Flow', () => {
     // Select all trigger
     cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
 
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-
-    cy.get('[data-testid="container-option"]').contains(TRIGGER_NAME_1).click();
+    cy.get('[data-testid="drop-down-menu"] [data-testid="container-option"]')
+      .contains(TRIGGER_NAME_1)
+      .click();
 
     cy.get('[data-testid="trigger-select"]').should('contain', TRIGGER_NAME_1);
 
@@ -333,9 +333,9 @@ describe('Observability Alert Flow', () => {
         // Select trigger
         cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
 
-        cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-
-        cy.get(`[data-testid="${trigger}-option"]`)
+        cy.get(
+          `[data-testid="drop-down-menu"] [data-testid="${trigger}-option"]`
+        )
           .contains(alertDetails.triggerDisplayName)
           .click();
 

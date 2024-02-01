@@ -143,9 +143,9 @@ describe('Notification Alert Flow', () => {
     // Select all trigger
     cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
 
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-
-    cy.get(`[data-testid="${TRIGGER_NAME_1}-option"]`)
+    cy.get(
+      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+    )
       .contains(TRIGGER_DISPLAY_NAME_1)
       .click();
 
@@ -271,9 +271,9 @@ describe('Notification Alert Flow', () => {
     // Select all trigger
     cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
 
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-
-    cy.get(`[data-testid="${TRIGGER_NAME_1}-option"]`)
+    cy.get(
+      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+    )
       .contains(TRIGGER_DISPLAY_NAME_1)
       .click();
 
