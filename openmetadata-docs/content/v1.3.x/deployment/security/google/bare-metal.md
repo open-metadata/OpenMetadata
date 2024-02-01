@@ -7,7 +7,7 @@ slug: /deployment/security/google/bare-metal
 
 ## Update conf/openmetadata.yaml
 
-Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
+Once the `Client Id` is generated, add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
 
 ```yaml
 authenticationConfiguration:

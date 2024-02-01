@@ -33,7 +33,6 @@ class UsageWorkflow(IngestionWorkflow):
     """
 
     def set_steps(self):
-
         # We keep the source registered in the workflow
         self.source = self._get_source()
         processor = self._get_processor()
