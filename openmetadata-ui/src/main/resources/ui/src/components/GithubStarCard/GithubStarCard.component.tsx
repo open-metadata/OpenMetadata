@@ -20,7 +20,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../assets/svg/ic-start-filled-github.svg';
-import { BLACK_COLOR, ROUTES, STAR_OMD_USER } from '../../constants/constants';
+import {
+  BLACK_COLOR,
+  ROUTES,
+  STAR_OMD_USER,
+  TWO_MINUTE_IN_MILLISECOND,
+} from '../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../constants/docs.constants';
 import { getRepositoryData } from '../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../utils/WhatsNewModal.util';
@@ -97,7 +102,7 @@ const GithubStarCard = () => {
       if (isWhatNewAlertVisible) {
         setTimeout(() => {
           githubPopup(show);
-        }, 120000); // timer for 2 minutes
+        }, TWO_MINUTE_IN_MILLISECOND);
       } else {
         githubPopup(show);
       }
