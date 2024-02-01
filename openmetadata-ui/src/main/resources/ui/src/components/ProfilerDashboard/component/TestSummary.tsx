@@ -270,7 +270,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   const referenceArea = () => {
     const params = data.parameterValues ?? [];
 
-    if (params.length < 2) {
+    if (params.length && params.length < 2) {
       return (
         <ReferenceLine
           label={params[0].name}

@@ -213,6 +213,7 @@ export const fetchOptions = ({
         value: hit._id,
         type: hit._source.entityType,
         name: hit._source.name,
+        displayName: hit._source.displayName,
       }));
 
       setOptions(suggestOptions.filter((item) => item.value !== currentUserId));
@@ -226,6 +227,7 @@ export const generateOptions = (assignees: EntityReference[]) => {
     value: assignee.id || '',
     type: assignee.type,
     name: assignee.name,
+    displayName: assignee.displayName,
   }));
 };
 
