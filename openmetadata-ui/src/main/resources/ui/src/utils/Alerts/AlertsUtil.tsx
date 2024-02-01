@@ -42,6 +42,7 @@ import {
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { StatusType } from '../../generated/tests/testSuite';
 import { EventType } from '../../generated/type/changeEvent';
+import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../EntityUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
@@ -186,7 +187,7 @@ const searchEntity = async (
     return uniqBy(
       response.data.hits.hits.map((d) => ({
         label: getEntityName(d._source),
-        value: d._source.fullyQualifiedName,
+        value: d._source.fullyQualifiedName ?? '',
       })),
       'value'
     );
@@ -334,25 +335,19 @@ export const getDestinationConfigField = (
                 }),
               },
             ]}>
-            <AsyncSelect
-              api={
+            <TeamAndUserSelectItem
+              destinationNumber={fieldName}
+              entityType={
+                type === SubscriptionCategory.Teams
+                  ? t('label.team-lowercase')
+                  : t('label.user-lowercase')
+              }
+              fieldName={[fieldName, 'config', 'receivers']}
+              onSearch={
                 type === SubscriptionCategory.Teams
                   ? getTeamOptions
                   : getUserOptions
               }
-              className="w-full"
-              data-testid={`${
-                type === SubscriptionCategory.Teams
-                  ? t('label.team')
-                  : t('label.user')
-              }-select`}
-              mode="multiple"
-              placeholder={t('label.search-by-type', {
-                type:
-                  type === SubscriptionCategory.Teams
-                    ? t('label.team-lowercase')
-                    : t('label.user-lowercase'),
-              })}
             />
           </Form.Item>
         </Col>
