@@ -19,6 +19,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,7 +51,7 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
   const [entityFqn, setEntityFqn] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [refreshEntity, setRefreshEntity] = useState<() => void>();
+  const refreshEntity = useRef<(suggestion: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
   const fetchMetaPilotAppDetails = useCallback(async () => {
@@ -89,10 +90,9 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       try {
         await updateSuggestionStatus(suggestion, status);
         await fetchSuggestions(entityFqn);
-
         setActiveSuggestion(undefined);
         if (status === SuggestionAction.Accept) {
-          refreshEntity?.();
+          refreshEntity.current?.(suggestion);
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -120,9 +120,9 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
   }, []);
 
   const initMetaPilot = useCallback(
-    (entityFqn: string, refreshEntity?: () => void) => {
+    (entityFqn: string, refreshEntityFn?: (suggestion: Suggestion) => void) => {
       setEntityFqn(entityFqn);
-      setRefreshEntity(() => refreshEntity);
+      refreshEntity.current = refreshEntityFn;
     },
     []
   );
@@ -147,7 +147,6 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
       activeSuggestion,
       entityFqn,
       loading,
-      refreshEntity,
       onToggleSuggestionsVisible,
       onUpdateEntityFqn,
       onUpdateActiveSuggestion,
@@ -163,7 +162,6 @@ const MetaPilotProvider = ({ children }: MetaPilotContextProps) => {
     activeSuggestion,
     entityFqn,
     loading,
-    refreshEntity,
     onToggleSuggestionsVisible,
     onUpdateEntityFqn,
     onUpdateActiveSuggestion,
