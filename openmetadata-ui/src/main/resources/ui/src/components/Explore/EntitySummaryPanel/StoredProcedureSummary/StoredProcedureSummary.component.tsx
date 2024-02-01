@@ -80,7 +80,7 @@ const StoredProcedureSummary = ({
             </Col>
             <Col span={24}>
               <SchemaEditor
-                editorClass="custom-code-mirror-theme custom-query-editor"
+                editorClass="custom-code-mirror-theme summary-panel-custom-query-editor"
                 mode={{ name: CSMode.SQL }}
                 options={{
                   styleActiveLine: false,

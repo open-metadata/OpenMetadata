@@ -25,7 +25,10 @@ import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
 import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
+import {
+  APP_UI_SCHEMA,
+  STEPS_FOR_APP_INSTALL,
+} from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
@@ -59,11 +62,6 @@ const AppInstall = () => {
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
-
-  const isExternalApp = useMemo(
-    () => appData?.appType === AppType.External,
-    [appData]
-  );
 
   const stepperList = useMemo(
     () =>
@@ -126,6 +124,16 @@ const AppInstall = () => {
     setActiveServiceStep(3);
   };
 
+  const initialOptions = useMemo(() => {
+    if (appData?.name === 'DataInsightsReportApplication') {
+      return ['Week'];
+    } else if (appData?.appType === AppType.External) {
+      return ['Day'];
+    }
+
+    return undefined;
+  }, [appData?.name, appData?.appType]);
+
   const RenderSelectedTab = useCallback(() => {
     if (!appData || !jsonSchema) {
       return <></>;
@@ -158,6 +166,7 @@ const AppInstall = () => {
               okText={t('label.submit')}
               schema={jsonSchema}
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+              uiSchema={APP_UI_SCHEMA}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
@@ -170,7 +179,7 @@ const AppInstall = () => {
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
               isQuartzCron
-              includePeriodOptions={isExternalApp ? ['Day'] : undefined}
+              includePeriodOptions={initialOptions}
               initialData={getIngestionFrequency(PipelineType.Application)}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
@@ -182,7 +191,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, isExternalApp]);
+  }, [activeServiceStep, appData, jsonSchema, initialOptions]);
 
   useEffect(() => {
     fetchAppDetails();
