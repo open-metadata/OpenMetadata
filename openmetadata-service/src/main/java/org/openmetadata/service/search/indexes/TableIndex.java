@@ -117,7 +117,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     fields.put(COLUMNS_NAME_KEYWORD, 5.0f);
     fields.put("columns.name", 7.0f);
     fields.put("columns.displayName", 7.0f);
-    fields.put("columns.description", 1.0f);
+    fields.put("columns.description", 2.0f);
     fields.put("columns.children.name", 7.0f);
     return fields;
   }

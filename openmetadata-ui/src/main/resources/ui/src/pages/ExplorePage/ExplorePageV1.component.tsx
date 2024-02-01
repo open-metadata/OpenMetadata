@@ -232,7 +232,7 @@ const ExplorePageV1: FunctionComponent = () => {
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (searchHitCounts && isNil(tabInfo)) {
-      const activeKey = findActiveSearchIndex(searchHitCounts);
+      const activeKey = findActiveSearchIndex(searchHitCounts, tabsInfo);
 
       return activeKey ?? SearchIndex.TABLE;
     }
@@ -350,7 +350,7 @@ const ExplorePageV1: FunctionComponent = () => {
     Promise.all([
       searchQuery({
         query: !isEmpty(searchQueryParam)
-          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
+          ? escapeESReservedCharacters(searchQueryParam)
           : '',
         searchIndex,
         queryFilter: combinedQueryFilter,
@@ -366,7 +366,7 @@ const ExplorePageV1: FunctionComponent = () => {
           setUpdatedAggregations(res.aggregations);
         }),
       searchQuery({
-        query: `*${escapeESReservedCharacters(searchQueryParam)}*`,
+        query: escapeESReservedCharacters(searchQueryParam),
         pageNumber: 0,
         pageSize: 0,
         queryFilter: combinedQueryFilter,
@@ -446,7 +446,6 @@ const ExplorePageV1: FunctionComponent = () => {
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
-      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}

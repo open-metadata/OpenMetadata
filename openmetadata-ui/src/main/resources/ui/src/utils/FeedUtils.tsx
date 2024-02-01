@@ -22,11 +22,7 @@ import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
 import { MentionSuggestionsItem } from '../components/FeedEditor/FeedEditor.interface';
-import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
-import {
-  FQN_SEPARATOR_CHAR,
-  WILD_CARD_CHAR,
-} from '../constants/char.constants';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,
   EntityRegEx,
@@ -49,12 +45,7 @@ import {
   updatePost,
   updateThread,
 } from '../rest/feedsAPI';
-import {
-  getSearchedUsers,
-  getSuggestions,
-  getUserSuggestions,
-  searchData,
-} from '../rest/miscAPI';
+import { searchData } from '../rest/miscAPI';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -166,113 +157,73 @@ export async function suggestions(
   if (mentionChar === '@') {
     let atValues = [];
 
-    if (!searchTerm) {
-      const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
-      const hits = data.data.hits.hits;
+    const data = await searchData(
+      searchTerm ?? '',
+      1,
+      5,
+      'isBot:false',
+      'displayName.keyword',
+      'asc',
+      SearchIndex.USER
+    );
+    const hits = data.data.hits.hits;
 
-      atValues = await Promise.all(
-        hits.map(async (hit) => {
-          const entityType = hit._source.entityType;
-          const name = getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.displayName}`,
-            hit._source.deleted
-          );
+    atValues = await Promise.all(
+      hits.map(async (hit) => {
+        const entityType = hit._source.entityType;
+        const name = getEntityPlaceHolder(
+          `@${hit._source.name ?? hit._source.displayName}`,
+          hit._source.deleted
+        );
 
-          return {
-            id: hit._id,
-            value: name,
-            link: buildMentionLink(
-              ENTITY_URL_MAP[entityType as EntityUrlMapType],
-              hit._source.name
-            ),
-            type:
-              hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
-            name: hit._source.name,
-            displayName: hit._source.displayName,
-          };
-        })
-      );
-    } else {
-      const data: any = await getUserSuggestions(searchTerm);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-
-      atValues = await Promise.all(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        hits.map(async (hit: any) => {
-          const entityType = hit._source.entityType;
-          const name = getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.displayName}`,
-            hit._source.deleted
-          );
-
-          return {
-            id: hit._id,
-            value: name,
-            link: buildMentionLink(
-              ENTITY_URL_MAP[entityType as EntityUrlMapType],
-              hit._source.fullyQualifiedName ?? ''
-            ),
-            type:
-              hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
-            name: hit._source.name,
-            displayName: hit._source.displayName,
-          };
-        })
-      );
-    }
+        return {
+          id: hit._id,
+          value: name,
+          link: buildMentionLink(
+            ENTITY_URL_MAP[entityType as EntityUrlMapType],
+            hit._source.name
+          ),
+          type: hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
+          name: hit._source.name,
+          displayName: hit._source.displayName,
+        };
+      })
+    );
 
     return atValues as MentionSuggestionsItem[];
   } else {
     let hashValues = [];
-    if (!searchTerm) {
-      const data = await searchData('*', 1, 5, '', '', '', SearchIndex.TABLE);
-      const hits = data.data.hits.hits;
+    const data = await searchData(
+      searchTerm ?? '',
+      1,
+      5,
+      '',
+      'displayName.keyword',
+      'asc',
+      SearchIndex.DATA_ASSET
+    );
+    const hits = data.data.hits.hits;
 
-      hashValues = hits.map((hit) => {
-        const entityType = hit._source.entityType;
-        const breadcrumbs = getEntityBreadcrumbs(
-          hit._source,
-          entityType as EntityType,
-          false
-        );
+    hashValues = hits.map((hit) => {
+      const entityType = hit._source.entityType;
+      const breadcrumbs = getEntityBreadcrumbs(
+        hit._source,
+        entityType as EntityType,
+        false
+      );
 
-        return {
-          id: hit._id,
-          value: `#${entityType}/${hit._source.name}`,
-          link: buildMentionLink(
-            entityType,
-            hit._source.fullyQualifiedName ?? ''
-          ),
-          type: entityType,
-          name: hit._source.displayName || hit._source.name,
-          breadcrumbs,
-        };
-      });
-    } else {
-      const data = await getSuggestions(searchTerm);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-
-      hashValues = hits.map((hit) => {
-        const entityType = hit._source.entityType;
-        const breadcrumbs = getEntityBreadcrumbs(
-          hit._source as SearchedDataProps['data'][number]['_source'],
-          entityType as EntityType,
-          false
-        );
-
-        return {
-          id: hit._id,
-          value: `#${entityType}/${hit._source.name}`,
-          link: buildMentionLink(
-            entityType,
-            hit._source.fullyQualifiedName ?? ''
-          ),
-          type: entityType,
-          name: hit._source.displayName || hit._source.name,
-          breadcrumbs,
-        };
-      });
-    }
+      return {
+        id: hit._id,
+        value: `#${entityType}/${hit._source.name}`,
+        link: buildMentionLink(
+          entityType,
+          hit._source.fullyQualifiedName ?? ''
+        ),
+        type: entityType,
+        name: hit._source.displayName || hit._source.name,
+        breadcrumbs,
+      };
+    });
 
     return hashValues;
   }

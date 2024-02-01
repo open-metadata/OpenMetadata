@@ -140,7 +140,7 @@ public interface SearchIndex {
     fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 8.0f);
     fields.put(NAME_KEYWORD, 8.0f);
-    fields.put(FIELD_DESCRIPTION, 1.0f);
+    fields.put(FIELD_DESCRIPTION, 2.0f);
     fields.put(FULLY_QUALIFIED_NAME, 5.0f);
     fields.put(FULLY_QUALIFIED_NAME_PARTS, 5.0f);
     return fields;

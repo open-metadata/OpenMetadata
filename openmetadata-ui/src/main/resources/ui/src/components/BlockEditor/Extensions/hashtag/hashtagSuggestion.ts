@@ -16,68 +16,41 @@ import { isEmpty } from 'lodash';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { getSuggestions, searchData } from '../../../../rest/miscAPI';
+import { searchData } from '../../../../rest/miscAPI';
 import { getEntityBreadcrumbs } from '../../../../utils/EntityUtils';
 import { buildMentionLink } from '../../../../utils/FeedUtils';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import { ExtensionRef } from '../../BlockEditor.interface';
 import HashList from './HashList';
 
 export const hashtagSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
-    if (!query) {
-      const data = await searchData('', 1, 5, '', '', '', [
-        SearchIndex.DASHBOARD,
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.STORED_PROCEDURE,
-        SearchIndex.DASHBOARD_DATA_MODEL,
-        SearchIndex.GLOSSARY,
-        SearchIndex.TAG,
-        SearchIndex.SEARCH_INDEX,
-      ]);
-      const hits = data.data.hits.hits;
+    const data = await searchData(
+      query ?? '',
+      1,
+      5,
+      '',
+      '',
+      '',
+      SearchIndex.DATA_ASSET
+    );
+    const hits = data.data.hits.hits;
 
-      return hits.map((hit) => ({
-        id: hit._id,
-        name: hit._source.name,
-        label: hit._source.displayName ?? hit._source.name,
-        fqn: hit._source.fullyQualifiedName,
-        href: buildMentionLink(
-          hit._source.entityType,
-          hit._source.fullyQualifiedName ?? ''
-        ),
-        type: hit._source.entityType,
-        breadcrumbs: getEntityBreadcrumbs(
-          hit._source,
-          hit._source.entityType as EntityType,
-          false
-        ),
-      }));
-    } else {
-      const data = await getSuggestions(query);
-      const hits = data.data.suggest['metadata-suggest'][0]['options'];
-
-      return hits.map((hit) => ({
-        id: hit._id,
-        name: hit._source.name,
-        label: hit._source.displayName ?? hit._source.name,
-        fqn: hit._source.fullyQualifiedName,
-        href: buildMentionLink(
-          hit._source.entityType,
-          hit._source.fullyQualifiedName ?? ''
-        ),
-        type: hit._source.entityType,
-        breadcrumbs: getEntityBreadcrumbs(
-          hit._source as SearchedDataProps['data'][number]['_source'],
-          hit._source.entityType as EntityType,
-          false
-        ),
-      }));
-    }
+    return hits.map((hit) => ({
+      id: hit._id,
+      name: hit._source.name,
+      label: hit._source.displayName ?? hit._source.name,
+      fqn: hit._source.fullyQualifiedName,
+      href: buildMentionLink(
+        hit._source.entityType,
+        hit._source.fullyQualifiedName ?? ''
+      ),
+      type: hit._source.entityType,
+      breadcrumbs: getEntityBreadcrumbs(
+        hit._source,
+        hit._source.entityType as EntityType,
+        false
+      ),
+    }));
   },
 
   render: () => {

@@ -40,7 +40,6 @@ import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import {
-  globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
@@ -65,6 +64,7 @@ import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from '../AppBar/SearchOptions';
@@ -137,7 +137,7 @@ const NavBar = ({
         popupClassName="global-search-select-menu"
         value={searchCriteria}
         onChange={updateSearchCriteria}>
-        {globalSearchOptions.map(({ value, label }) => (
+        {searchClassBase.getGlobalSearchOptions().map(({ value, label }) => (
           <Option
             data-testid={`global-search-select-option-${label}`}
             key={value}
@@ -147,7 +147,7 @@ const NavBar = ({
         ))}
       </Select>
     ),
-    [searchCriteria, globalSearchOptions]
+    [searchCriteria]
   );
 
   const language = useMemo(
