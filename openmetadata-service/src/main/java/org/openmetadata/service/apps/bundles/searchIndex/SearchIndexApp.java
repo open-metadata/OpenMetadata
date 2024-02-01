@@ -250,9 +250,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void sendUpdates() {
     try {
-      WebSocketManager.getInstance()
-          .broadCastMessageToAll(
-              WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+      if (WebSocketManager.getInstance() != null) {
+        WebSocketManager.getInstance()
+            .broadCastMessageToAll(
+                WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+      }
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
