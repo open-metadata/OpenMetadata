@@ -12,6 +12,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPL
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
@@ -140,7 +141,6 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
-import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DataProductIndex;
@@ -305,6 +305,11 @@ public class ElasticSearchClient implements SearchClient {
           case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
           case "table_search_index", "table" -> buildTableSearchBuilder(
+              request.getQuery(), request.getFrom(), request.getSize());
+          case "database_schema_search_index",
+              "databaseSchema",
+              "database_search_index",
+              "database" -> buildGenericDataAssetSearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
           case "user_search_index",
               "user",
@@ -740,12 +745,16 @@ public class ElasticSearchClient implements SearchClient {
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
     highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions =
         new HighlightBuilder.Field("tasks.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
@@ -763,12 +772,16 @@ public class ElasticSearchClient implements SearchClient {
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
     highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions =
         new HighlightBuilder.Field("mlFeatures.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
@@ -778,15 +791,16 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TopicIndex.getFields())
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TopicIndex.getFields());
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightTopicName);
     hb.field(
@@ -812,6 +826,9 @@ public class ElasticSearchClient implements SearchClient {
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("charts.name");
     highlightCharts.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightChartDescriptions =
@@ -819,6 +836,7 @@ public class ElasticSearchClient implements SearchClient {
     highlightChartDescriptions.highlighterType(UNIFIED);
 
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightDashboardName);
     hb.field(highlightCharts);
@@ -838,10 +856,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildSearchAcrossIndexesBuilder(
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(SearchIndex.getAllFields())
-            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-            .fuzziness(Fuzziness.AUTO);
+        buildSearchQueryBuilder(query, SearchIndex.getAllFields());
     FieldValueFactorFunctionBuilder boostScoreBuilder =
         ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
             .missing(0)
@@ -857,14 +872,29 @@ public class ElasticSearchClient implements SearchClient {
     return addAggregation(searchSourceBuilder);
   }
 
+  private static SearchSourceBuilder buildGenericDataAssetSearchBuilder(
+      String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
+
+    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
+    hb.field(highlightDescription);
+    hb.field(highlightName);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
+  }
+
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TableIndex.getFields())
-            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-            .fuzziness(Fuzziness.AUTO)
-            .tieBreaker(0.9f);
-
+        buildSearchQueryBuilder(query, TableIndex.getFields());
     FieldValueFactorFunctionBuilder boostScoreBuilder =
         ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
             .missing(0)
@@ -877,6 +907,9 @@ public class ElasticSearchClient implements SearchClient {
         QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightTableName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTableNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -891,6 +924,7 @@ public class ElasticSearchClient implements SearchClient {
     highlightColumnDescriptions.highlighterType(UNIFIED);
     hb.field(highlightDescription);
     hb.field(highlightTableName);
+    hb.field(highlightTableNameNgrams);
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
@@ -922,7 +956,6 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
-
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightGlossaryDisplayName =
@@ -932,7 +965,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightGlossaryDisplayName);
@@ -956,7 +993,11 @@ public class ElasticSearchClient implements SearchClient {
     highlightTagDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
@@ -971,13 +1012,14 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, ContainerIndex.getFields());
-
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TagIndex.getFields());
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightContainerName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
     highlightColumns.highlighterType(UNIFIED);
@@ -987,6 +1029,7 @@ public class ElasticSearchClient implements SearchClient {
     HighlightBuilder.Field highlightColumnChildren =
         new HighlightBuilder.Field("dataModel.columns.children.name");
     highlightColumnDescriptions.highlighterType(UNIFIED);
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightContainerName);
     hb.field(highlightColumns);
@@ -1006,14 +1049,17 @@ public class ElasticSearchClient implements SearchClient {
 
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, QueryIndex.getFields());
-
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(QUERY);
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.field(highlightQuery);
@@ -1025,7 +1071,6 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, TestCaseIndex.getFields());
-
     HighlightBuilder.Field highlightTestCaseDescription =
         new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightTestCaseDescription.highlighterType(UNIFIED);
@@ -1051,12 +1096,15 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
-
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightName);
 
@@ -1071,12 +1119,15 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
-
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightName);
 
@@ -1095,7 +1146,6 @@ public class ElasticSearchClient implements SearchClient {
 
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DomainIndex.getFields());
-
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
@@ -1119,17 +1169,20 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
-
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDisplayName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightName);
     hb.field(highlightDisplayName);
+    hb.field(highlightDisplayNameNgrams);
 
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
@@ -1145,7 +1198,6 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
-
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightTestCaseDescription =
         new HighlightBuilder.Field("testCaseReference.description");
@@ -1172,7 +1224,6 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildServiceSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightServiceName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightServiceName.highlighterType(UNIFIED);
@@ -1187,7 +1238,6 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, DataProductIndex.getFields());
-
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -1195,7 +1245,10 @@ public class ElasticSearchClient implements SearchClient {
     highlightName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDisplayName.highlighterType(UNIFIED);
-
+    HighlightBuilder.Field highlightDisplayNameNgrams =
+        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
+    highlightDisplayNameNgrams.highlighterType(UNIFIED);
+    hb.field(highlightDisplayNameNgrams);
     hb.field(highlightDescription);
     hb.field(highlightName);
     hb.field(highlightDisplayName);
@@ -1210,7 +1263,12 @@ public class ElasticSearchClient implements SearchClient {
 
   private static QueryStringQueryBuilder buildSearchQueryBuilder(
       String query, Map<String, Float> fields) {
-    return QueryBuilders.queryStringQuery(query).fields(fields).fuzziness(Fuzziness.AUTO);
+    return QueryBuilders.queryStringQuery(query)
+        .fields(fields)
+        .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+        .defaultOperator(Operator.AND)
+        .fuzziness(Fuzziness.AUTO)
+        .tieBreaker(0.9f);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
