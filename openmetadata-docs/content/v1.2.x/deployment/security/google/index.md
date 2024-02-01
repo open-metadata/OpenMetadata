@@ -79,7 +79,7 @@ After selecting the **Application Type**, name your project and give the authori
 - Click on the **pencil icon (Edit OAuth Client)** on the right side of the screen
 {% image src="/images/v1.2/deployment/security/google/find-credentials.png" alt="find-credentials" /%}
 
-- You will find the **Client ID** and **Client Secret** in the top right corner
+- You will find the **Client ID** in the top right corner
 {% image src="/images/v1.2/deployment/security/google/find-clientid-and-secret.png" alt="find-clientid-and-secret" /%}
 
 After the applying these steps, you can update the configuration of your deployment:

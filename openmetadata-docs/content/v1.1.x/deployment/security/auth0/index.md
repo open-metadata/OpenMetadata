@@ -65,7 +65,7 @@ alt="create-app" /%}
 ### Step 3: Where to Find the Credentials
 
 - Navigate to the Settings tab. 
-- You will find your `Client ID`, `Client Secret` and `Domain`.
+- You will find your `Client ID` and `Domain`.
 
 {% image 
 src="/images/v1.1/deployment/security/auth0/credentials.png" 
