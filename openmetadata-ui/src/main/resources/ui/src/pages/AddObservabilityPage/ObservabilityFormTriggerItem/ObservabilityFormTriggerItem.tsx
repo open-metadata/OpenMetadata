@@ -11,27 +11,41 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Dropdown,
+  Form,
+  MenuItemProps,
+  MenuProps,
+  Row,
+  Select,
+  Typography,
+} from 'antd';
 import { startCase } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
+import './trigger-item.less';
 
 function ObservabilityFormTriggerItem({
   filterResources,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
   const { t } = useTranslation();
+  const newRef = useRef(null);
   const form = Form.useFormInstance();
   const { fqn } = useFqn();
   const [selectedResource, setSelectedResource] = useState<string[]>([]);
-
   const [isEditMode, setIsEditMode] = useState(false);
-
-  const handleAddTriggerClick = useCallback(() => {
-    setIsEditMode(true);
-  }, []);
 
   const resourcesOptions = useMemo(
     () =>
@@ -46,7 +60,7 @@ function ObservabilityFormTriggerItem({
             <span>{startCase(resource.name)}</span>
           </div>
         ),
-        value: resource.name,
+        value: resource.name ?? '',
       })),
     [filterResources]
   );
@@ -56,6 +70,34 @@ function ObservabilityFormTriggerItem({
     setSelectedResource([value]);
     form.setFieldValue('resources', [value]);
   };
+
+  const dropdownCardComponent = useCallback((menuNode: ReactNode) => {
+    return (
+      <Card
+        bodyStyle={{ padding: 0 }}
+        className="trigger-dropdown-card"
+        data-testid="drop-down-menu">
+        <Typography.Text className="p-l-md text-grey-muted">
+          {t('label.data-asset-plural')}
+        </Typography.Text>
+        <div className="p-t-xss">{menuNode}</div>
+      </Card>
+    );
+  }, []);
+
+  const dropdownMenuItems: MenuProps['items'] = useMemo(
+    () =>
+      resourcesOptions.map((option) => ({
+        label: option.label,
+        key: option.value,
+      })),
+    [resourcesOptions]
+  );
+
+  const handleMenuItemClick: MenuItemProps['onClick'] = useCallback((info) => {
+    form.setFieldValue(['resources'], [info.key]);
+    setIsEditMode(true);
+  }, []);
 
   return (
     <Card className="alert-form-item-container">
@@ -70,7 +112,7 @@ function ObservabilityFormTriggerItem({
             {t('message.alerts-trigger-description')}
           </Typography.Text>
         </Col>
-        <Col span={24}>
+        <Col className="trigger-input-container" ref={newRef} span={24}>
           <Form.Item
             required
             initialValue={
@@ -102,14 +144,22 @@ function ObservabilityFormTriggerItem({
                 onChange={handleTriggerChange}
               />
             ) : (
-              <Button
-                data-testid="add-trigger-button"
-                type="primary"
-                onClick={handleAddTriggerClick}>
-                {t('label.add-entity', {
-                  entity: t('label.trigger'),
-                })}
-              </Button>
+              <Dropdown
+                destroyPopupOnHide
+                dropdownRender={dropdownCardComponent}
+                getPopupContainer={() => newRef.current ?? document.body}
+                menu={{
+                  items: dropdownMenuItems,
+                  onClick: handleMenuItemClick,
+                }}
+                placement="bottomRight"
+                trigger={['click']}>
+                <Button data-testid="add-trigger-button" type="primary">
+                  {t('label.add-entity', {
+                    entity: t('label.trigger'),
+                  })}
+                </Button>
+              </Dropdown>
             )}
           </Form.Item>
         </Col>

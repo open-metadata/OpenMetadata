@@ -108,7 +108,9 @@ export const updateNotificationAlert = async (
   return response.data;
 };
 
-export const updateAlert = async (alert: EventSubscription) => {
+export const updateNotificationAlertWithPut = async (
+  alert: CreateEventSubscription
+) => {
   const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
 
   return response.data;

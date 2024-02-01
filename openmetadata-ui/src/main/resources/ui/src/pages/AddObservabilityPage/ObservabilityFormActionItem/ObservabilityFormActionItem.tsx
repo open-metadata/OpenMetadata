@@ -87,49 +87,56 @@ function ObservabilityFormActionItem({
                         data-testid={`action-${name}`}
                         key={`observability-${key}`}
                         span={24}>
-                        <Row gutter={[8, 8]}>
-                          <Col span={11}>
-                            <Form.Item
-                              key={`action-${key}`}
-                              name={[name, 'name']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: t('message.field-text-is-required', {
-                                    fieldText: t('label.action'),
-                                  }),
-                                },
-                              ]}>
-                              <Select
-                                data-testid={`action-select-${name}`}
-                                options={actionOptions}
-                                placeholder={t('label.select-field', {
-                                  field: t('label.action'),
-                                })}
-                                onChange={() => {
-                                  form.setFieldValue(
-                                    ['input', 'actions', name, 'arguments'],
-                                    []
-                                  );
-                                }}
-                              />
-                            </Form.Item>
-                          </Col>
-                          {showConditionalFields &&
-                            getConditionalField(
-                              selectedActions[name].name ?? '',
-                              name,
-                              selectedTrigger,
-                              supportedActions
-                            )}
-                          <Col span={2}>
+                        <div className="flex gap-4">
+                          <div className="flex-1 w-min-0">
+                            <Row gutter={[8, 8]}>
+                              <Col span={12}>
+                                <Form.Item
+                                  key={`action-${key}`}
+                                  name={[name, 'name']}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.action'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Select
+                                    data-testid={`action-select-${name}`}
+                                    options={actionOptions}
+                                    placeholder={t('label.select-field', {
+                                      field: t('label.action'),
+                                    })}
+                                    onChange={() => {
+                                      form.setFieldValue(
+                                        ['input', 'actions', name, 'arguments'],
+                                        []
+                                      );
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              {showConditionalFields &&
+                                getConditionalField(
+                                  selectedActions[name].name ?? '',
+                                  name,
+                                  selectedTrigger,
+                                  supportedActions
+                                )}
+                            </Row>
+                          </div>
+                          <div>
                             <Button
                               data-testid={`remove-action-rule-${name}`}
                               icon={<CloseOutlined />}
                               onClick={() => remove(name)}
                             />
-                          </Col>
-                        </Row>
+                          </div>
+                        </div>
                         <Form.Item
                           label={
                             <Typography.Text>

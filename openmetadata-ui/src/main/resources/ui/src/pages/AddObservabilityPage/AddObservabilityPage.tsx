@@ -13,17 +13,14 @@
 
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import Loader from '../../components/Loader/Loader';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
@@ -38,10 +35,11 @@ import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
   getResourceFunctions,
-  updateObservabilityAlert,
+  updateObservabilityAlertWithPut,
 } from '../../rest/observabilityAPI';
+import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './add-observability-page.less';
 import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
@@ -63,8 +61,12 @@ function AddObservabilityPage() {
   const [fetching, setFetching] = useState<number>(0);
   const [saving, setSaving] = useState<boolean>(false);
 
-  const fetchAlerts = async () => {
+  const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+
+  const fetchAlert = async () => {
     try {
+      setFetching((prev) => prev + 1);
+
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
       const modifiedAlertData: ModifiedEventSubscription = {
         ...observabilityAlert,
@@ -109,8 +111,7 @@ function AddObservabilityPage() {
     if (!fqn) {
       return;
     }
-    setFetching((prev) => prev + 1);
-    fetchAlerts();
+    fetchAlert();
   }, [fqn]);
 
   const breadcrumb = useMemo(
@@ -133,76 +134,28 @@ function AddObservabilityPage() {
     [fqn]
   );
 
-  const handleSave = async (data: CreateEventSubscription) => {
-    try {
-      setSaving(true);
+  const handleSave = useCallback(
+    async (data: CreateEventSubscription) => {
+      try {
+        setSaving(true);
 
-      const destinations = data.destinations?.map((d) => ({
-        type: d.type,
-        config: d.config,
-        category: d.category,
-      }));
-
-      if (fqn && !isUndefined(alert)) {
-        const { resources, ...otherData } = data;
-
-        // Remove 'destinationType' field from the `destination` as it is used for internal UI use
-        const initialDestinations = alert.destinations.map((d) => {
-          const { destinationType, ...originalData } = d;
-
-          return originalData;
+        await handleAlertSave({
+          data,
+          fqn,
+          createAlertAPI: createObservabilityAlert,
+          updateAlertAPI: updateObservabilityAlertWithPut,
+          afterSaveAction: () => {
+            history.push(getObservabilityAlertDetailsPath(data.name));
+          },
         });
-
-        const jsonPatch = compare(
-          { ...alert, destinations: initialDestinations },
-          {
-            ...alert,
-            ...otherData,
-            filteringRules: {
-              ...alert.filteringRules,
-              resources,
-            },
-            destinations,
-          }
-        );
-
-        await updateObservabilityAlert(alert.id, jsonPatch);
-      } else {
-        await createObservabilityAlert({
-          ...data,
-          destinations,
-        });
+      } catch {
+        // Error handling done in "handleAlertSave"
+      } finally {
+        setSaving(false);
       }
-
-      showSuccessToast(
-        t(`server.${'create'}-entity-success`, {
-          entity: t('label.alert-plural'),
-        })
-      );
-      history.push(getObservabilityAlertDetailsPath(data.name));
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.alert'),
-            entityPlural: t('label.alert-lowercase-plural'),
-            name: data.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t(`server.${'entity-creation-error'}`, {
-            entity: t('label.alert-lowercase'),
-          })
-        );
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    [fqn, history]
+  );
 
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
@@ -249,7 +202,7 @@ function AddObservabilityPage() {
 
               <Col span={24}>
                 <Typography.Title level={5}>
-                  {t(`label.${fqn ? 'edit' : 'add'}-entity`, {
+                  {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
                     entity: t('label.alert'),
                   })}
                 </Typography.Title>
@@ -279,7 +232,10 @@ function AddObservabilityPage() {
                             message: t('message.entity-name-validation'),
                           },
                         ]}>
-                        <Input placeholder={t('label.name')} />
+                        <Input
+                          disabled={isEditMode}
+                          placeholder={t('label.name')}
+                        />
                       </Form.Item>
                     </Col>
                     <Col span={24}>

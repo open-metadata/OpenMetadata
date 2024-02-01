@@ -18,6 +18,7 @@ import {
   addDomainFilter,
   addEntityFQNFilter,
   addEventTypeFilter,
+  addExternalDestination,
   addGMEFilter,
   addInternalDestination,
   addOwnerFilter,
@@ -29,13 +30,17 @@ import {
   descriptionBox,
   interceptURL,
   toastNotification,
-  uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
 import {
   createSingleLevelEntity,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import {
+  ALERT_DESCRIPTION,
+  ALERT_NAME,
+  ALERT_UPDATED_DESCRIPTION,
+} from '../../constants/Alert.constant';
 import { SidebarItem } from '../../constants/Entity.interface';
 import {
   DASHBOARD_SERVICE,
@@ -43,11 +48,10 @@ import {
   USER_DETAILS,
 } from '../../constants/EntityConstant';
 
-const ALERT_NAME = `0-alert-cy-${uuid()}`;
-const ALERT_DESCRIPTION = 'This is alert description';
-const ALERT_UPDATED_DESCRIPTION = 'New alert description';
-const TRIGGER_NAME_1 = 'All';
-const TRIGGER_NAME_2 = 'Dashboard';
+const TRIGGER_NAME_1 = 'all';
+const TRIGGER_DISPLAY_NAME_1 = 'All';
+const TRIGGER_NAME_2 = 'dashboard';
+const TRIGGER_DISPLAY_NAME_2 = 'Dashboard';
 
 describe('Notification Alert Flow', () => {
   let data = {};
@@ -114,8 +118,7 @@ describe('Notification Alert Flow', () => {
 
   beforeEach(() => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
-    interceptURL('PATCH', '/api/v1/events/subscriptions/*', 'updateAlert');
-    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+    interceptURL('PUT', '/api/v1/events/subscriptions', 'updateAlert');
     interceptURL('GET', '/api/v1/events/subscriptions/name/*', 'alertDetails');
     cy.login();
     cy.sidebarClick(SidebarItem.SETTINGS);
@@ -126,13 +129,13 @@ describe('Notification Alert Flow', () => {
       .click();
   });
 
-  it('Create new alert', () => {
+  it('Create new alert with single filter and destination', () => {
     verifyResponseStatusCode('@alertsPage', 200);
 
     cy.get('[data-testid="create-notification"]').click();
 
     // Enter alert name
-    cy.get('#name').should('be.visible').type(ALERT_NAME);
+    cy.get('#name').type(ALERT_NAME);
 
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
@@ -140,11 +143,16 @@ describe('Notification Alert Flow', () => {
     // Select all trigger
     cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
 
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
+    cy.get(
+      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+    )
+      .contains(TRIGGER_DISPLAY_NAME_1)
+      .click();
 
-    cy.get('[data-testid="all-option"]').contains(TRIGGER_NAME_1).click();
-
-    cy.get('[data-testid="trigger-select"]').should('contain', TRIGGER_NAME_1);
+    cy.get('[data-testid="trigger-select"]').should(
+      'contain',
+      TRIGGER_DISPLAY_NAME_1
+    );
 
     // Select filters
     cy.get('[data-testid="add-filters"]').click();
@@ -170,7 +178,7 @@ describe('Notification Alert Flow', () => {
     cy.get('[data-testid="alert-details-container"]').should('exist');
   });
 
-  it('Alert details page', () => {
+  it('Check created alert details', () => {
     const { id: alertId } = data.alertDetails;
     verifyResponseStatusCode('@alertsPage', 200);
 
@@ -184,7 +192,7 @@ describe('Notification Alert Flow', () => {
     verifyAlertDetails(data.alertDetails);
   });
 
-  it('Edit created alert', () => {
+  it('Edit and check alert by adding multiple filters and internal destinations', () => {
     const { id: alertId } = data.alertDetails;
 
     // Go to edit alert page
@@ -192,20 +200,16 @@ describe('Notification Alert Flow', () => {
 
     cy.get(
       `[data-row-key="${alertId}"] [data-testid="alert-edit-${ALERT_NAME}"]`
-    )
-      .should('be.visible')
-      .click();
+    ).click();
 
     // Update description
-    cy.get(descriptionBox)
-      .should('be.visible')
-      .click()
-      .clear()
-      .type(ALERT_UPDATED_DESCRIPTION);
+    cy.get(descriptionBox).click().clear().type(ALERT_UPDATED_DESCRIPTION);
 
     // Update trigger
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-    cy.get('[data-testid="dashboard-option"]').contains(TRIGGER_NAME_2).click();
+    cy.get(`[data-testid="${TRIGGER_NAME_2}-option"]`)
+      .contains(TRIGGER_DISPLAY_NAME_2)
+      .click();
 
     // Filters should reset after trigger change
     cy.get('[data-testid="filter-select-0"]').should('not.exist');
@@ -249,7 +253,109 @@ describe('Notification Alert Flow', () => {
     });
   });
 
-  it('Delete created alert', () => {
+  it('Delete alert with single filter', () => {
+    deleteAlertSteps(ALERT_NAME);
+  });
+
+  it('Create new alert with multiple filters and destinations', () => {
+    verifyResponseStatusCode('@alertsPage', 200);
+
+    cy.get('[data-testid="create-notification"]').click();
+
+    // Enter alert name
+    cy.get('#name').type(ALERT_NAME);
+
+    // Enter description
+    cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
+
+    // Select all trigger
+    cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+
+    cy.get(
+      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+    )
+      .contains(TRIGGER_DISPLAY_NAME_1)
+      .click();
+
+    cy.get('[data-testid="trigger-select"]').should(
+      'contain',
+      TRIGGER_DISPLAY_NAME_1
+    );
+
+    // Add multiple filters
+    [...Array(6).keys()].forEach(() => {
+      cy.get('[data-testid="add-filters"]').scrollIntoView().click();
+    });
+
+    addOwnerFilter(0, data.user.displayName);
+    addEntityFQNFilter(1, DASHBOARD_SERVICE.entity.displayName, true);
+    addEventTypeFilter(2, 'entityCreated');
+    addUpdaterNameFilter(3, data.user.displayName, true);
+    addDomainFilter(4, data.domain.name);
+    addGMEFilter(5);
+
+    // Add multiple destinations
+    [...Array(6).keys()].forEach(() => {
+      cy.get('[data-testid="add-destination-button"]').scrollIntoView().click();
+    });
+
+    addInternalDestination(0, 'Followers', 'Email');
+    addExternalDestination(1, 'Email', 'test@example.com');
+    addExternalDestination(2, 'G Chat', 'https://gchat.com');
+    addExternalDestination(3, 'Generic', 'https://generic.com');
+    addExternalDestination(4, 'Ms Teams', 'https://msteams.com');
+    addExternalDestination(5, 'Slack', 'https://slack.com');
+
+    // Click save
+    cy.get('[data-testid="save-button"]').scrollIntoView().click();
+    cy.wait('@createAlert').then((interception) => {
+      data.alertDetails = interception.response.body;
+
+      expect(interception.response.statusCode).equal(201);
+    });
+    toastNotification('Alerts created successfully.');
+
+    // Check if the alert details page is visible
+    verifyResponseStatusCode('@alertDetails', 200);
+    cy.get('[data-testid="alert-details-container"]').should('exist');
+  });
+
+  it('Edit and check alert by removing added filters and internal destinations', () => {
+    const { id: alertId } = data.alertDetails;
+
+    // Go to edit alert page
+    cy.get('table').should('contain', ALERT_NAME).click();
+
+    cy.get(
+      `[data-row-key="${alertId}"] [data-testid="alert-edit-${ALERT_NAME}"]`
+    ).click();
+
+    // Remove description
+    cy.get(descriptionBox).click().clear();
+
+    // Remove all filters
+    [...Array(6).keys()].forEach(() => {
+      cy.get('[data-testid="remove-filter-0"]').scrollIntoView().click();
+    });
+
+    // Remove all destinations except one
+    [...Array(5).keys()].forEach(() => {
+      cy.get('[data-testid="remove-destination-0"]').scrollIntoView().click();
+    });
+
+    // Click save
+    cy.get('[data-testid="save-button"]').scrollIntoView().click();
+    cy.wait('@updateAlert').then((interception) => {
+      data.alertDetails = interception.response.body;
+
+      expect(interception.response.statusCode).equal(200);
+
+      // Verify the edited alert changes
+      verifyAlertDetails(interception.response.body);
+    });
+  });
+
+  it('Delete alert with multiple filters', () => {
     deleteAlertSteps(ALERT_NAME);
   });
 });

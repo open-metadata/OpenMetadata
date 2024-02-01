@@ -460,3 +460,8 @@ export const DOMAIN_CREATION_DETAILS = {
   domainType: 'Aggregate',
   experts: [],
 };
+
+export const TEAM_CREATION_DETAILS = {
+  name: `0%team-name-${uuid()}`,
+  teamType: 'Group',
+};

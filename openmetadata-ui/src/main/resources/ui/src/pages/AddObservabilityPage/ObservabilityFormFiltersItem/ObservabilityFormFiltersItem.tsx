@@ -88,49 +88,56 @@ function ObservabilityFormFiltersItem({
                         data-testid={`filter-${name}`}
                         key={`observability-${key}`}
                         span={24}>
-                        <Row gutter={[8, 8]}>
-                          <Col span={11}>
-                            <Form.Item
-                              key={`filter-${key}`}
-                              name={[name, 'name']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: t('message.field-text-is-required', {
-                                    fieldText: t('label.filter'),
-                                  }),
-                                },
-                              ]}>
-                              <Select
-                                data-testid={`filter-select-${name}`}
-                                options={filterOptions}
-                                placeholder={t('label.select-field', {
-                                  field: t('label.filter'),
-                                })}
-                                onChange={() => {
-                                  form.setFieldValue(
-                                    ['input', 'filters', name, 'arguments'],
-                                    []
-                                  );
-                                }}
-                              />
-                            </Form.Item>
-                          </Col>
-                          {showConditionalFields &&
-                            getConditionalField(
-                              selectedFilters[name].name ?? '',
-                              name,
-                              selectedTrigger,
-                              supportedFilters
-                            )}
-                          <Col span={2}>
+                        <div className="flex gap-4">
+                          <div className="flex-1 w-min-0">
+                            <Row gutter={[8, 8]}>
+                              <Col span={12}>
+                                <Form.Item
+                                  key={`filter-${key}`}
+                                  name={[name, 'name']}
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t(
+                                        'message.field-text-is-required',
+                                        {
+                                          fieldText: t('label.filter'),
+                                        }
+                                      ),
+                                    },
+                                  ]}>
+                                  <Select
+                                    data-testid={`filter-select-${name}`}
+                                    options={filterOptions}
+                                    placeholder={t('label.select-field', {
+                                      field: t('label.filter'),
+                                    })}
+                                    onChange={() => {
+                                      form.setFieldValue(
+                                        ['input', 'filters', name, 'arguments'],
+                                        []
+                                      );
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              {showConditionalFields &&
+                                getConditionalField(
+                                  selectedFilters[name].name ?? '',
+                                  name,
+                                  selectedTrigger,
+                                  supportedFilters
+                                )}
+                            </Row>
+                          </div>
+                          <div>
                             <Button
                               data-testid={`remove-filter-${name}`}
                               icon={<CloseOutlined />}
                               onClick={() => remove(name)}
                             />
-                          </Col>
-                        </Row>
+                          </div>
+                        </div>
                         <Form.Item
                           label={
                             <Typography.Text>
