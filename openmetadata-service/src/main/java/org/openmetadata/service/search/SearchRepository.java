@@ -26,6 +26,7 @@ import static org.openmetadata.service.search.models.IndexMapping.indexNameSepar
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,6 +82,9 @@ public class SearchRepository {
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
 
   @Getter private final String clusterAlias;
+
+  private static final String DEFAULT_SEARCH_FACTORY_CLASS =
+      "org.openmetadata.service.search.SearchIndexFactory";
 
   @Getter
   public final List<String> dataInsightReports =

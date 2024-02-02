@@ -80,6 +80,7 @@ const UpdateTag = () => {
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const sanitizeValue = useMemo(
     () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
@@ -136,6 +137,7 @@ const UpdateTag = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
@@ -167,7 +169,8 @@ const UpdateTag = () => {
           )
         );
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -304,6 +307,7 @@ const UpdateTag = () => {
                     <Button
                       data-testid="submit-test"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {t('label.submit')}
                     </Button>
