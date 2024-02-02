@@ -26,7 +26,6 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Ingestion" %}
 - OpenSearch Connector
-- OpenAPI Connector
 - Include Tags for Athena & Datalake connector
 - Support for Tableau & Looker data models
 {% /tile %}
@@ -78,6 +77,10 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Entities" %}
 - Asset Deprecation, owners can mark assets as deprecated along with a notice of whats the new asset to use. Search will exclude deprecated assets
+{% /tile %}
+
+{% tile title="Ingestion" %}
+- OpenAPI Connector
 {% /tile %}
 
 {% tile title="Data Quality" %}
