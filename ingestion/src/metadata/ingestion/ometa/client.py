@@ -266,6 +266,7 @@ class REST:
         """
         return self._request("GET", path, data)
 
+    @calculate_execution_time(context="POST")
     def post(self, path, data=None):
         """
         POST method
@@ -279,6 +280,7 @@ class REST:
         """
         return self._request("POST", path, data)
 
+    @calculate_execution_time(context="PUT")
     def put(self, path, data=None):
         """
         PUT method
@@ -292,6 +294,7 @@ class REST:
         """
         return self._request("PUT", path, data)
 
+    @calculate_execution_time(context="PATCH")
     def patch(self, path, data=None):
         """
         PATCH method
@@ -310,6 +313,7 @@ class REST:
             headers={"Content-type": "application/json-patch+json"},
         )
 
+    @calculate_execution_time(context="DELETE")
     def delete(self, path, data=None):
         """
         DELETE method
