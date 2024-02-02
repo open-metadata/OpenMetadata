@@ -19,6 +19,7 @@ import org.openmetadata.service.formatter.entity.DefaultEntityFormatter;
 import org.openmetadata.service.formatter.entity.EntityFormatter;
 import org.openmetadata.service.formatter.entity.IngestionPipelineFormatter;
 import org.openmetadata.service.formatter.entity.KpiFormatter;
+import org.openmetadata.service.formatter.entity.PipelineFormatter;
 import org.openmetadata.service.formatter.entity.QueryFormatter;
 import org.openmetadata.service.formatter.entity.TestCaseFormatter;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
@@ -36,6 +37,7 @@ public final class ParserFactory {
       case Entity.TEST_CASE -> new TestCaseFormatter();
       case Entity.KPI -> new KpiFormatter();
       case Entity.INGESTION_PIPELINE -> new IngestionPipelineFormatter();
+      case Entity.PIPELINE -> new PipelineFormatter();
       default -> new DefaultEntityFormatter();
     };
   }

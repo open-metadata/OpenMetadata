@@ -74,7 +74,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
 
       // Post to Generic Webhook with Actions
       String eventJson = JsonUtils.pojoToJson(event);
-      List<Invocation.Builder> targets = getTargetsForWebhook(webhook, GENERIC, client, event);
+      List<Invocation.Builder> targets =
+          getTargetsForWebhook(
+              webhook, subscriptionDestination.getCategory(), GENERIC, client, event);
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, eventJson);
       }

@@ -14,12 +14,11 @@
 package org.openmetadata.schema;
 
 import java.util.Collections;
-import java.util.List;
-import org.openmetadata.schema.type.EntityReference;
+import java.util.Set;
 
 public interface SubscriptionAction {
-  default List<EntityReference> getReferences() {
-    return Collections.emptyList();
+  default Set<String> getReceivers() {
+    return Collections.emptySet();
   }
 
   default Boolean getSendToAdmins() {

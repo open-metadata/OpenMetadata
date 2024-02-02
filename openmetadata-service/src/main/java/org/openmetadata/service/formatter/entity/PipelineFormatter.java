@@ -18,12 +18,13 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.transformMes
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.util.JsonUtils;
 
-public class IngestionPipelineFormatter implements EntityFormatter {
+public class PipelineFormatter implements EntityFormatter {
   private static final String PIPELINE_STATUS_FIELD = "pipelineStatus";
 
   @Override
@@ -33,25 +34,25 @@ public class IngestionPipelineFormatter implements EntityFormatter {
       EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType) {
     if (PIPELINE_STATUS_FIELD.equals(fieldChange.getName())) {
-      return transformIngestionPipelineStatus(messageFormatter, fieldChange, entity);
+      return transformPipelineStatus(messageFormatter, fieldChange, entity);
     }
     return transformMessage(messageFormatter, fieldChange, entity, changeType);
   }
 
-  private String transformIngestionPipelineStatus(
+  private String transformPipelineStatus(
       MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
-    String ingestionPipelineName = entity.getName();
-    PipelineStatus status = (PipelineStatus) fieldChange.getNewValue();
+    String pipelineName = entity.getName();
+    PipelineStatus status =
+        JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
     if (status != null) {
       String date =
-          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
+          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getTimestamp()));
       String format =
           String.format(
-              "Ingestion Pipeline %s %s at %s",
-              messageFormatter.getBold(), messageFormatter.getBold(), date);
-      return String.format(format, ingestionPipelineName, status.getPipelineState());
+              "Pipeline %s %s at %s", messageFormatter.getBold(), messageFormatter.getBold(), date);
+      return String.format(format, pipelineName, status.getExecutionStatus());
     }
-    String format = String.format("Ingestion Pipeline %s is updated", messageFormatter.getBold());
-    return String.format(format, ingestionPipelineName);
+    String format = String.format("Pipeline %s is updated", messageFormatter.getBold());
+    return String.format(format, pipelineName);
   }
 }

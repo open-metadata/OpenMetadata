@@ -30,6 +30,7 @@ import {
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
@@ -40,7 +41,6 @@ import {
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../generated/tests/testCase';
-import { StatusType } from '../../generated/tests/testSuite';
 import { EventType } from '../../generated/type/changeEvent';
 import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { searchData } from '../../rest/miscAPI';
@@ -81,6 +81,8 @@ export const getFunctionDisplayName = (func: string): string => {
       return i18next.t('label.updated-by');
     case 'matchAnyFieldChange':
       return i18next.t('label.field-change');
+    case 'matchPipelineState':
+      return i18next.t('label.pipeline-state');
     case 'matchIngestionPipelineState':
       return i18next.t('label.pipeline-state');
     case 'matchAnySource':
@@ -624,6 +626,36 @@ export const getFieldByArgumentType = (
     case 'pipelineStateList':
       field = (
         <Col key="pipeline-state-select" span={12}>
+          <Form.Item
+            name={[fieldName, 'arguments', index, 'input']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.entity-list', {
+                    entity: t('label.pipeline-state'),
+                  }),
+                }),
+              },
+            ]}>
+            <Select
+              className="w-full"
+              data-testid="pipeline-status-select"
+              mode="multiple"
+              options={getSelectOptionsFromEnum(StatusType)}
+              placeholder={t('label.select-field', {
+                field: t('label.pipeline-state'),
+              })}
+            />
+          </Form.Item>
+        </Col>
+      );
+
+      break;
+
+    case 'ingestionPipelineStateList':
+      field = (
+        <Col key="pipeline-state-select" span={11}>
           <Form.Item
             name={[fieldName, 'arguments', index, 'input']}
             rules={[
