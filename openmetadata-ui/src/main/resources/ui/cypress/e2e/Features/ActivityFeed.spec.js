@@ -207,13 +207,13 @@ describe('Activity feed', () => {
     interceptURL('POST', '/api/v1/feed/*/posts', 'postReply');
     interceptURL(
       'GET',
-      '/api/v1/search/suggest?q=*&index=user_search_index%2Cteam_search_index',
+      '/api/v1/search/query?q=*&index=user_search_index*',
       'suggestUser'
     );
     interceptURL(
       'GET',
       // eslint-disable-next-line max-len
-      '/api/v1/search/suggest?q=dim_add&index=*',
+      '/api/v1/search/query?q=*dim_add*&index=*',
       'suggestAsset'
     );
 
