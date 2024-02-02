@@ -220,7 +220,11 @@ describe('Notification Alert Flow', () => {
     });
 
     addOwnerFilter(0, data.user.displayName);
-    addEntityFQNFilter(1, DASHBOARD_SERVICE.entity.displayName, true);
+    addEntityFQNFilter(
+      1,
+      `${DASHBOARD_SERVICE.service.name}.${DASHBOARD_SERVICE.entity.name}`,
+      true
+    );
     addEventTypeFilter(2, 'entityCreated');
     addUpdaterNameFilter(3, data.user.displayName, true);
     addDomainFilter(4, data.domain.name);
@@ -288,7 +292,11 @@ describe('Notification Alert Flow', () => {
     });
 
     addOwnerFilter(0, data.user.displayName);
-    addEntityFQNFilter(1, DASHBOARD_SERVICE.entity.displayName, true);
+    addEntityFQNFilter(
+      1,
+      `${DASHBOARD_SERVICE.service.name}.${DASHBOARD_SERVICE.entity.name}`,
+      true
+    );
     addEventTypeFilter(2, 'entityCreated');
     addUpdaterNameFilter(3, data.user.displayName, true);
     addDomainFilter(4, data.domain.name);
