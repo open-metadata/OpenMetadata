@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Input, Select, Switch, Tooltip, Typography } from 'antd';
+import { Col, Input, Select, Switch, Tooltip } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
@@ -90,24 +90,6 @@ export const getFunctionDisplayName = (func: string): string => {
     default:
       return '';
   }
-};
-
-export const StyledCard = ({
-  heading,
-  subHeading,
-}: {
-  heading: string;
-  subHeading: string;
-}) => {
-  return (
-    <div className="bg-grey p-sm rounded-4 min-h-24">
-      <Typography.Text>{heading}</Typography.Text>
-      <br />
-      <Typography.Text className="text-xs text-grey-muted">
-        {subHeading}
-      </Typography.Text>
-    </div>
-  );
 };
 
 /**

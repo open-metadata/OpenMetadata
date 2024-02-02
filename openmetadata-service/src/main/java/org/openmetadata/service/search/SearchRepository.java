@@ -25,6 +25,7 @@ import static org.openmetadata.service.search.models.IndexMapping.indexNameSepar
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,6 +82,9 @@ public class SearchRepository {
 
   @Getter private final String clusterAlias;
 
+  private static final String DEFAULT_SEARCH_FACTORY_CLASS =
+      "org.openmetadata.service.search.SearchIndexFactory";
+
   @Getter
   public final List<String> dataInsightReports =
       List.of(
@@ -101,18 +105,23 @@ public class SearchRepository {
       searchClient = new ElasticSearchClient(config);
     }
     try {
-      if (config != null) {
-        this.searchIndexFactory =
+      if (config != null && config.getSearchIndexFactoryClassName() != null) {
+        searchIndexFactory =
             Class.forName(config.getSearchIndexFactoryClassName())
                 .asSubclass(SearchIndexFactory.class)
+                .getDeclaredConstructor()
+                .newInstance();
+      } else {
+        searchIndexFactory =
+            Class.forName(DEFAULT_SEARCH_FACTORY_CLASS)
+                .asSubclass(SearchIndexFactory.class)
+                .getDeclaredConstructor()
                 .newInstance();
       }
-    } catch (ClassNotFoundException e) {
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
       LOG.warn("Failed to initialize search index factory", e);
-    } catch (InstantiationException e) {
-      LOG.warn("Failed to initialize search index factory", e);
-    } catch (IllegalAccessException e) {
-      LOG.warn("Failed to initialize search index factory", e);
+    } catch (InvocationTargetException | NoSuchMethodException e) {
+      throw new UnhandledServerException(e.getMessage());
     }
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
