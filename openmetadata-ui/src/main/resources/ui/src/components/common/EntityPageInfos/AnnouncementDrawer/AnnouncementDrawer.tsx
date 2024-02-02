@@ -57,7 +57,7 @@ const AnnouncementDrawer: FC<Props> = ({
       data-testid="title"
       style={{ width: '100%' }}>
       <Typography.Text className="font-medium break-all">
-        {t('label.announcement')}
+        {t('label.announcement-plural')}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
     </Space>
