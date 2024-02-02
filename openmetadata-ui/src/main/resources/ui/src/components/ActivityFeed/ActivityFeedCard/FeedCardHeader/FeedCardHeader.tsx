@@ -114,9 +114,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   );
 
   const getAnnouncementLinkElement = entityCheck && (
-    <span>
-      {t('message.made-announcement-for-entity', { entity: entityType })}{' '}
-    </span>
+    <span>{t('message.made-announcement')} </span>
   );
 
   return (

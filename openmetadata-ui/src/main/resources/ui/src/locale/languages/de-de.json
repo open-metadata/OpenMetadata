@@ -1471,7 +1471,7 @@
     "list-of-strings-regex-patterns-csv": "Geben Sie eine Liste von Zeichenfolgen/Regex-Mustern als durch Kommas getrennte Werte ein.",
     "login-fail-attempt-message": "Allowed attampt on consicutive failed login to application.",
     "logout-confirmation": "Sind Sie sicher, dass Sie sich abmelden möchten?",
-    "made-announcement-for-entity": "hat eine Ankündigung für {{entity}} gemacht.",
+    "made-announcement": "made an announcement",
     "make-an-announcement": "Machen Sie eine Ankündigung!",
     "manage-airflow-api": "OpenMetadata - Verwaltete Airflow-APIs",
     "manage-airflow-api-failed": "Konnte OpenMetadata - Verwaltete Airflow-APIs nicht finden.",
