@@ -20,7 +20,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../assets/svg/ic-start-filled-github.svg';
-import { BLACK_COLOR, ROUTES, STAR_OMD_USER } from '../../constants/constants';
+import {
+  BLACK_COLOR,
+  ROUTES,
+  STAR_OMD_USER,
+  TWO_MINUTE_IN_MILLISECOND,
+} from '../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../constants/docs.constants';
 import { getRepositoryData } from '../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../utils/WhatsNewModal.util';
@@ -71,27 +76,39 @@ const GithubStarCard = () => {
     }
   };
 
-  const updateGithubPopup = useCallback(
-    (show: boolean) => {
-      if (loggedInUserName && show) {
-        fetchOpenMetaData();
-        cookieStorage.setItem(userCookieName, 'true', {
-          expires: getReleaseVersionExpiry(),
-        });
-      }
-      setShowGithubStarPopup(show);
-    },
-    [
-      loggedInUserName,
-      usernameExistsInCookie,
-      userCookieName,
-      getReleaseVersionExpiry,
-    ]
-  );
-
   const handleCancel = useCallback(() => {
     setShowGithubStarPopup(false);
   }, []);
+
+  const handleClosePopup = useCallback(() => {
+    cookieStorage.setItem(userCookieName, 'true', {
+      expires: getReleaseVersionExpiry(),
+    });
+    handleCancel();
+  }, [userCookieName, handleCancel]);
+
+  const githubPopup = useCallback(
+    (show: boolean) => {
+      if (loggedInUserName && show) {
+        fetchOpenMetaData();
+      }
+      setShowGithubStarPopup(show);
+    },
+    [loggedInUserName, userCookieName]
+  );
+
+  const updateGithubPopup = useCallback(
+    (show: boolean) => {
+      if (isWhatNewAlertVisible) {
+        setTimeout(() => {
+          githubPopup(show);
+        }, TWO_MINUTE_IN_MILLISECOND);
+      } else {
+        githubPopup(show);
+      }
+    },
+    [isWhatNewAlertVisible, githubPopup]
+  );
 
   useEffect(() => {
     updateGithubPopup(!usernameExistsInCookie);
@@ -122,7 +139,7 @@ const GithubStarCard = () => {
             data-testid="close-whats-new-alert"
             icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
             type="text"
-            onClick={handleCancel}
+            onClick={handleClosePopup}
           />
         </Space>
 

@@ -26,7 +26,7 @@ export interface DataModelDetailsProps {
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   fetchDataModel: () => void;
-  createThread: (data: CreateThread) => void;
+  createThread: (data: CreateThread) => Promise<void>;
   handleFollowDataModel: () => Promise<void>;
   handleUpdateTags: (selectedTags?: EntityTags[]) => void;
   handleUpdateOwner: (owner?: EntityReference) => Promise<void>;

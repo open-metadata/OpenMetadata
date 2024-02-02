@@ -59,6 +59,11 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private boolean enforcePrincipalDomain;
   private AuthProvider providerType;
+
+  private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
+      Arrays.asList(
+          "http://localhost:8585/api/v1/system/config/jwks",
+          "http://host.docker.internal:8585/api/v1/system/config/jwks");
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/system/config/jwks",
@@ -89,6 +94,13 @@ public class JwtFilter implements ContainerRequestFilter {
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
       publicKeyUrlsBuilder.add(new URL(publicKeyUrlStr));
     }
+    // avoid users misconfiguration and add default publicKeyUrls
+    for (String publicKeyUrl : DEFAULT_PUBLIC_KEY_URLS) {
+      if (!authenticationConfiguration.getPublicKeyUrls().contains(publicKeyUrl)) {
+        publicKeyUrlsBuilder.add(new URL(publicKeyUrl));
+      }
+    }
+
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();

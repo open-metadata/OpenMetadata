@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Suggestion } from '../../../generated/entity/feed/suggestion';
 
-export interface ObservabilityAlertDetailsPageProps {
-  isNotificationAlert: boolean;
+export interface MetaPilotPopoverContentProps {
+  showHeading?: boolean;
+  suggestion: Suggestion;
+  hasEditAccess?: boolean;
 }

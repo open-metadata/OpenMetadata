@@ -33,12 +33,12 @@ public class IngestionPipelineFormatter implements EntityFormatter {
       EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType) {
     if (PIPELINE_STATUS_FIELD.equals(fieldChange.getName())) {
-      return transformPipelineStatus(messageFormatter, fieldChange, entity);
+      return transformIngestionPipelineStatus(messageFormatter, fieldChange, entity);
     }
     return transformMessage(messageFormatter, fieldChange, entity, changeType);
   }
 
-  private String transformPipelineStatus(
+  private String transformIngestionPipelineStatus(
       MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
     String ingestionPipelineName = entity.getName();
     PipelineStatus status = (PipelineStatus) fieldChange.getNewValue();

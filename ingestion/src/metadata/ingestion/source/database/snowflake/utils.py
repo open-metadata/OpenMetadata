@@ -39,7 +39,6 @@ from metadata.utils.sqlalchemy_utils import (
 
 
 def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
-
     if entity_name:
         return fqn.quote_name(entity_name)
 
@@ -121,13 +120,10 @@ def get_view_definition(  # pylint: disable=unused-argument
     schema = schema or self.default_schema_name
     if schema:
         cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
-            f"LIKE '{view_name}' IN {schema}"
+            f"SELECT GET_DDL('VIEW','{schema}.{view_name}') AS \"text\""
         )
     else:
-        cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS " f"LIKE '{view_name}'"
-        )
+        cursor = connection.execute(f"SELECT GET_DDL('VIEW','{view_name}') AS \"text\"")
     n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
     try:
         ret = cursor.fetchone()

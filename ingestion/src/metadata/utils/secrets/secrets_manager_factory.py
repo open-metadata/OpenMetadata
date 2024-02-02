@@ -104,7 +104,6 @@ class SecretsManagerFactory(metaclass=Singleton):
         return self.secrets_manager
 
     def _load_secrets_manager_credentials(self) -> Optional["AWSCredentials"]:
-
         if not self.secrets_manager_loader:
             return None
 
