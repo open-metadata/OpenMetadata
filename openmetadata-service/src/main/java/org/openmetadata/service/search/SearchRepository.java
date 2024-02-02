@@ -26,7 +26,6 @@ import static org.openmetadata.service.search.models.IndexMapping.indexNameSepar
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
