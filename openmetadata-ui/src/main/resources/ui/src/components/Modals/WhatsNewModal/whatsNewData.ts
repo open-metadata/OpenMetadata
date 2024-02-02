@@ -19,9 +19,9 @@ import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 21;
+export const LATEST_VERSION_ID = 22;
 
-export const COOKIE_VERSION = 'VERSION_1_2_4'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_3_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1147,6 +1147,74 @@ export const WHATS_NEW = [
 - Fixed an issue with Search Indexing.
 - Security fixes have been made.
         `,
+    },
+  },
+  {
+    id: 22,
+    version: 'v1.3.0',
+    description: 'Released on 5th Feb 2024.',
+    features: [],
+    changeLogs: {
+      Lineage: ` - Revamped the lineage UI for an intuitive and comprehensive view of data flow and transformations.
+- Organized nodes for better visibility with pagination support.
+- Improved the display of circular dependencies.
+- Nodes display the service icons, highlight dbt models, and show Data Quality results.
+- Lineage can be filtered to search by Ownership, Domain, Service, Service Type, Tier, and Classification Tags.
+- Supports search by Column and traces lineage even when the columns are renamed.
+- Enhanced user control with collapsible sub-graphs.
+- Supports editing the SQL queries for lineage edges from the UI.
+- Performance improvements for faster load of large graphs.`,
+      'Data Observability Alerts': `- Data observability alerts have been distinguished from other general-purpose notifications, making it easy to get to the crucial alerts quickly.
+- Sends alerts for schema changes and test case failures for the data assets that you follow.
+- The overall flow has been simplified to let you easily create alerts for schema changes in your data.
+- You can now get Data Quality alerts for specific Test Suites.
+- Users will be alerted for all the changes to the data assets that they own.`,
+      'Data Quality Incident Manager': `- Introduced Incidents Manager to improve the data quality resolution flow.
+- Incidents Manager summarizes all the test case results with information about the failure severity and resolution flow.
+- Supports assigning a resolution task to the users in OpenMetadata.
+- Tasks are created when a data quality test has been assigned to an Assignee or a Reviewer.
+- Resolved test failure also displays the comments posted on the resolution.
+- The Resolved Tab displays information on the Test case name, Execution date, Reason, Comments, and information on who Resolved the issue.`,
+      [`Knowledge Center ${CollateIconWithLinkMD}`]: `- Supports hierarchical pages to structure the articles.
+- You can easily associate knowledge articles with data assets.
+- The data assets page displays the related articles.
+- The block editor supports callouts to add notes, warnings, tables, and task lists.
+- Quicklinks are no longer separate pages; they redirect to external links.
+- Data assets can be associated with Quicklinks.
+- Added Search support for Knowledge articles to filter by Owner or Tags.
+- Supports preview for articles and Quicklinks.`,
+      'Custom Metrics for Profiler': `- Supports custom metrics for the data profiler with custom SQL to keep track of your business metrics.
+- Custom metrics can be created at Table and Column levels.`,
+      'Profiler and Data Quality': `- The Profiler has been improved to support sample data ingestion without computing other metrics.
+- Admins can configure the profiler to fetch up to 10,000 rows of sample data.
+- Sample data can be stored in S3 buckets.`,
+      Connectors: `- New Google Cloud Storage for storage services. ${CollateIconWithLinkMD}
+- New Alation connector to migrate metadata into Collate. ${CollateIconWithLinkMD}
+- New Iceberg, SAS Viya, and Doris connectors.
+- Introduced the Spark Lineage Agent to extract metadata and end-to-end lineage from Spark jobs.
+- MSSQL and Oracle now support Stored Procedures.
+- We now exclude system indices from the Elasticsearch connector by default.
+- Added support for DB2 IBM I Series.
+- Pipeline services now get owner information.
+- Performance improvements for the Tableau Connector.
+- We now support metadata tag extraction from Databricks.
+- Supports the attribute Table Owner for metadata ingestion from Postgres.
+- We now extract table descriptions when ingesting metadata from Salesforce.`,
+      Glossary: `- Supports soft delete for the default glossaries in OpenMetadata.
+- Supports the creation of tasks to request tags or a description.
+- Only the Owner can edit the Glossary term.
+- Version history displays the Username instead of the User ID.`,
+      Localization: `- Now supports RTL UI for the Hebrew language.`,
+      'Settings UI': `- The Settings page UI has been revamped.`,
+      'Data Insights': `- Cost Analysis expanded to support BigQuery & Redshift. ${CollateIconWithLinkMD}`,
+      'Other Changes': `- Supports bulk changes to data assets at the Database or Schema level to edit or update details like classification tags, tiers, terms, owners, etc.
+- Announcements can be notified over email, Slack, or Teams.
+- Alerts are sent to a user when they are mentioned in a task or activity feed.
+- We have improved the display of search results for column matches. When searching for columns, the matched results will be displayed and highlighted in the Preview pane.
+- Custom properties are displayed on the right of the data asset details page.
+- OpenMetadata can now handle metric history for ML models.
+- When configuring the Email settings, the Username and Password fields can be left blank.
+- We now support a test email button on the Email SMTP page.`,
     },
   },
 ];
