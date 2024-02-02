@@ -19,7 +19,7 @@ python["required_version"]="3.9 3.10 3.11"
 
 declare -A docker
 docker["name"]="Docker"
-docker["version_command"]="docker --version | awk '{print $3}' | sed 's/,//'"
+docker["version_command"]="docker --version | awk '{print \$3}' | sed 's/,//'"
 docker["required_version"]="20 21 22 23 24"
 
 declare -A maven
