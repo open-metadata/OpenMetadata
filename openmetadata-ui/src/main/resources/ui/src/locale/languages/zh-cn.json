@@ -1471,7 +1471,7 @@
     "list-of-strings-regex-patterns-csv": "以逗号分隔的值的形式输入字符串/正则表达式列表",
     "login-fail-attempt-message": "Allowed attampt on consicutive failed login to application.",
     "logout-confirmation": "您确定要注销登录吗?",
-    "made-announcement-for-entity": "为{{entity}}发布了公告",
+    "made-announcement": "made an announcement",
     "make-an-announcement": "发布公告",
     "manage-airflow-api": "OpenMetadata 管理的 Airflow APIs",
     "manage-airflow-api-failed": "未找到 OpenMetadata 管理的 Airflow APIs",

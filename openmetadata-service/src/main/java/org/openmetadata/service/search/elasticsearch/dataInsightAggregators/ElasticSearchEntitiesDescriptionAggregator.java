@@ -4,7 +4,6 @@ import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
 import java.util.List;
-import java.util.Optional;
 import org.openmetadata.service.dataInsight.EntitiesDescriptionAggregator;
 
 public class ElasticSearchEntitiesDescriptionAggregator
@@ -43,7 +42,7 @@ public class ElasticSearchEntitiesDescriptionAggregator
   }
 
   @Override
-  protected Optional<Double> getValue(Sum aggregations) {
-    return Optional.ofNullable(aggregations != null ? aggregations.getValue() : null);
+  protected Double getValue(Sum aggregations) {
+    return aggregations != null ? aggregations.getValue() : null;
   }
 }
