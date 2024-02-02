@@ -205,7 +205,9 @@ export const ActivityFeedTab = ({
 
   const { feedFilter, threadType } = useMemo(() => {
     const currentFilter =
-      currentUser?.isAdmin && currentUser?.fullyQualifiedName === fqn
+      currentUser?.isAdmin &&
+      currentUser?.name === fqn &&
+      activeTab !== ActivityFeedTabs.TASKS
         ? FeedFilter.ALL
         : FeedFilter.OWNER_OR_FOLLOWS;
     const filter = isUserEntity ? currentFilter : undefined;
