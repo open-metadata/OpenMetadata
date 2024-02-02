@@ -2043,22 +2043,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         T actualOriginal = original;
         T actualUpdated = updated;
 
-        // Store Consilidate Change in Version
-        applyAndStoreConsolidation();
+        // Revert and Store Consolidated Changes
+        revert();
+        updateAndStore();
 
         // Process the actual Change Taking Place in this single event
         processActualEvents(actualOriginal, actualUpdated, updated.getVersion());
-
-        postUpdate(original, updated);
       } else {
-        // Now updated from previous/original to updated one
-        changeDescription = new ChangeDescription();
-        updateInternal();
-
-        // Store the updated entity
-        storeUpdate();
-        postUpdate(original, updated);
+        updateAndStore();
       }
+
+      postUpdate(original, updated);
     }
 
     @Transaction
@@ -2689,10 +2684,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               <= sessionTimeoutMillis; // With in session timeout
     }
 
-    private void applyAndStoreConsolidation() {
-      // Revert to previous version to consolidate changes
-      revert();
-      // Now updated from previous/original to updated one
+    private void updateAndStore() {
       changeDescription = new ChangeDescription();
       updateInternal();
       // Store the updated entity
