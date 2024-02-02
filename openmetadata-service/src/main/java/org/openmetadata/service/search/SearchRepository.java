@@ -118,7 +118,8 @@ public class SearchRepository {
         }
       }
     } catch (Exception e) {
-      LOG.warn("Failed to initialize search index factory", e);
+      this.searchIndexFactory = new SearchIndexFactory();
+      LOG.warn("Failed to initialize search index factory using default one", e);
     }
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
