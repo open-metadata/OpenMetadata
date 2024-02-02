@@ -80,6 +80,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "description": True,
     "owner": True,
     "tags": True,
+    "sourceHash": True,
     # Table Entity Fields
     "tableType": True,
     "columns": {"__all__": ALLOWED_COLUMN_FIELDS},
