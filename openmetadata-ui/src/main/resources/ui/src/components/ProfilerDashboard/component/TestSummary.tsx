@@ -152,10 +152,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         failedRows: result.failedRows,
         passedRowsPercentage: isUndefined(result.passedRowsPercentage)
           ? undefined
-          : `${result.passedRowsPercentage}%`,
+          : `${round(result.passedRowsPercentage, 2)}%`,
         failedRowsPercentage: isUndefined(result.failedRowsPercentage)
           ? undefined
-          : `${result.failedRowsPercentage}%`,
+          : `${round(result.failedRowsPercentage, 2)}%`,
       };
 
       chartData.push({
