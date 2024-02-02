@@ -629,6 +629,12 @@ export const getEntityTaskDetails = (
 
       break;
 
+    case EntityType.SEARCH_INDEX:
+      fqnPartTypes = FqnPart.Topic;
+      entityField = EntityField.FIELDS;
+
+      break;
+
     default:
       fqnPartTypes = FqnPart.Table;
       entityField = EntityField.COLUMNS;

@@ -67,7 +67,7 @@ function ObservabilityFormActionItem({
                 fields.length < (supportedActions?.length ?? 1);
 
               return (
-                <Row gutter={[16, 16]} key="actions">
+                <Row data-testid="actions-list" gutter={[16, 16]} key="actions">
                   {fields.map(({ key, name }) => {
                     const effect =
                       form.getFieldValue([
