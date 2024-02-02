@@ -50,6 +50,10 @@ export const AsyncSelect = ({
     [api]
   );
 
+  const handleSelection = useCallback(() => {
+    setSearchText('');
+  }, []);
+
   useEffect(() => {
     fetchOptions(searchText);
   }, [searchText]);
@@ -65,6 +69,7 @@ export const AsyncSelect = ({
         setSearchText(value);
         setLoadingOptions(true);
       }}
+      onSelect={handleSelection}
       {...restProps}
     />
   );
