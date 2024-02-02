@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
-// import { ScheduleTimeline } from '../../../generated/entity/applications/app';
 import {
   RunType,
   ScheduleTimeline,
@@ -27,7 +27,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../utils/StringsUtils', () => ({
-  formatJsonString: jest.fn(),
+  formatJsonString: jest.fn().mockReturnValue('logs'),
 }));
 
 jest.mock('../../CopyToClipboardButton/CopyToClipboardButton', () =>
@@ -65,6 +65,24 @@ const mockProps1 = {
   },
 };
 
+const mockProps2 = {
+  data: {
+    ...mockProps1.data,
+    timestamp: undefined,
+    successContext: undefined,
+    failureContext: {
+      stats: {
+        jobStats: {
+          totalRecords: 274,
+          failedRecords: 0,
+          successRecords: 274,
+        },
+        entityStats: {},
+      },
+    },
+  },
+};
+
 describe('AppLogsViewer component', () => {
   it('should contain all necessary elements', () => {
     render(<AppLogsViewer {...mockProps1} />);
@@ -75,5 +93,16 @@ describe('AppLogsViewer component', () => {
     expect(screen.getAllByText('Badge')).toHaveLength(3);
     expect(screen.getByText('label.last-updated:')).toBeInTheDocument();
     expect(screen.getByText('formatDateTimeWithTimezone')).toBeInTheDocument();
+
+    userEvent.click(screen.getByRole('button', { name: 'label.jump-to-end' }));
+
+    expect(screen.getByText('CopyToClipboardButton')).toBeInTheDocument();
+  });
+
+  it('should render necessary element based on mockProps2', () => {
+    render(<AppLogsViewer {...mockProps2} />);
+
+    expect(screen.getByText('--')).toBeInTheDocument();
+    // Note: not asserting other elements as for failure also same elements will render
   });
 });
