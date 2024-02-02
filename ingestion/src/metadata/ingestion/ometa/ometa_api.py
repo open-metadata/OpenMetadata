@@ -50,6 +50,7 @@ from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMix
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
+from metadata.ingestion.ometa.mixins.suggestions_mixin import OMetaSuggestionsMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
@@ -108,6 +109,7 @@ class OpenMetadata(
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
+    OMetaSuggestionsMixin,
     Generic[T, C],
 ):
     """
@@ -246,11 +248,9 @@ class OpenMetadata(
         )
         return entity_class
 
-    def create_or_update(self, data: C) -> T:
+    def _create(self, data: C, method: str) -> T:
         """
-        We allow CreateEntity for PUT, so we expect a type C.
-
-        We PUT to the endpoint and return the Entity generated result
+        Internal logic to run POST vs. PUT
         """
         entity = data.__class__
         is_create = "create" in data.__class__.__name__.lower()
@@ -262,14 +262,22 @@ class OpenMetadata(
             raise InvalidEntityException(
                 f"PUT operations need a CreateEntity, not {entity}"
             )
-        resp = self.client.put(
-            self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)
-        )
+
+        fn = getattr(self.client, method)
+        resp = fn(self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder))
         if not resp:
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
             )
         return entity_class(**resp)
+
+    def create_or_update(self, data: C) -> T:
+        """Run a PUT requesting via create request C"""
+        return self._create(data=data, method="put")
+
+    def create(self, data: C) -> T:
+        """Run a POST requesting via create request C"""
+        return self._create(data=data, method="post")
 
     def get_by_name(
         self,

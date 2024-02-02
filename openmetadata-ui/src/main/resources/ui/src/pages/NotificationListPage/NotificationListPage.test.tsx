@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import { getAllAlerts } from '../../rest/alertsAPI';
 import NotificationListPage from './NotificationListPage';
 
 const MOCK_DATA = [
@@ -55,6 +56,12 @@ jest.mock('../../rest/alertsAPI', () => ({
       paging: { total: 1 },
     })
   ),
+  getAlertsFromName: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      name: 'ActivityFeedAlert',
+      params: 'all',
+    })
+  ),
 }));
 
 jest.mock('../../utils/GlobalSettingsUtils', () => ({
@@ -77,28 +84,68 @@ jest.mock(
   }
 );
 
-describe('Alerts Page Tests', () => {
+describe('Notification Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
-    const { findByText } = render(<NotificationListPage />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    expect(await findByText('label.notification-plural')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.notification-plural')
+    ).toBeInTheDocument();
   });
 
   it('SubTitle should be rendered', async () => {
-    const { findByText } = render(<NotificationListPage />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    expect(await findByText(/message.alerts-description/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/message.alerts-description/)
+    ).toBeInTheDocument();
   });
 
   it('Add alert button should be rendered', async () => {
-    const { findByText } = render(<NotificationListPage />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    expect(await findByText(/label.create-entity/)).toBeInTheDocument();
+    expect(await screen.findByText(/label.add-entity/)).toBeInTheDocument();
+  });
+
+  it('Table should render alerts data', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const alertNameElement = await screen.findByTestId('alert-name');
+
+    expect(alertNameElement).toBeInTheDocument();
+  });
+
+  it('Table should render no data', async () => {
+    (getAllAlerts as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: 1 },
+      })
+    );
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const alertNameElement = await screen.findByText('label.no-entity');
+
+    expect(alertNameElement).toBeInTheDocument();
   });
 });

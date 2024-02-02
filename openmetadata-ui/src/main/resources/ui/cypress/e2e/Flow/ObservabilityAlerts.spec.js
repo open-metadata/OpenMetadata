@@ -17,6 +17,7 @@
 import {
   addDomainFilter,
   addEntityFQNFilter,
+  addExternalDestination,
   addGetSchemaChangesAction,
   addInternalDestination,
   addOwnerFilter,
@@ -28,23 +29,32 @@ import {
   descriptionBox,
   interceptURL,
   toastNotification,
-  uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
 import {
+  createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import {
+  ALERT_DESCRIPTION,
+  ALERT_NAME,
+  ALERT_UPDATED_DESCRIPTION,
+  OBSERVABILITY_CREATION_DETAILS,
+  TABLE_FQN,
+  TEST_CASE_NAME,
+  TEST_SUITE_FQN,
+} from '../../constants/Alert.constant';
+import { DELETE_TERM } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 import {
+  DATABASE_SERVICE,
   DOMAIN_CREATION_DETAILS,
   PIPELINE_SERVICE,
   USER_DETAILS,
 } from '../../constants/EntityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
-const ALERT_NAME = `0-observability-alert-cy-${uuid()}`;
-const ALERT_DESCRIPTION = 'This is alert description';
-const ALERT_UPDATED_DESCRIPTION = 'New alert description';
 const TRIGGER_NAME_1 = 'Container';
 const TRIGGER_NAME_2 = 'Pipeline';
 
@@ -56,7 +66,48 @@ describe('Observability Alert Flow', () => {
     cy.getAllLocalStorage().then((storageData) => {
       const token = Object.values(storageData)[0].oidcIdToken;
 
-      // Create a dashboard
+      // Create a table
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.entity],
+      });
+
+      // Create a test suite and test case for table
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dataQuality/testSuites/executable`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: {
+          name: TEST_SUITE_FQN,
+          executableEntityReference: TABLE_FQN,
+        },
+      }).then((response) => {
+        data.testSuite = response.body;
+
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/dataQuality/testCases`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            name: TEST_CASE_NAME,
+            displayName: TEST_CASE_NAME,
+            entityLink: `<#E::table::${TABLE_FQN}>`,
+            parameterValues: [
+              {
+                name: 'columnCount',
+                value: 7,
+              },
+            ],
+            testDefinition: 'tableColumnCountToEqual',
+            testSuite: TEST_SUITE_FQN,
+          },
+        }).then((testCaseResponse) => {
+          data.testCase = testCaseResponse.body;
+        });
+      });
+
+      // Create a pipeline
       createSingleLevelEntity({
         token,
         ...PIPELINE_SERVICE,
@@ -89,6 +140,26 @@ describe('Observability Alert Flow', () => {
     cy.getAllLocalStorage().then((storageData) => {
       const token = Object.values(storageData)[0].oidcIdToken;
 
+      // Delete test case
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/dataQuality/testCases/logicalTestCases/${data.testSuite.id}/${data.testCase.id}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Delete test suite
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/dataQuality/testSuites/executable/${data.testSuite.id}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Delete created services
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
       hardDeleteService({
         token,
         serviceFqn: PIPELINE_SERVICE.service.name,
@@ -113,21 +184,20 @@ describe('Observability Alert Flow', () => {
 
   beforeEach(() => {
     interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
-    interceptURL('PATCH', '/api/v1/events/subscriptions/*', 'updateAlert');
-    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+    interceptURL('PUT', '/api/v1/events/subscriptions', 'updateAlert');
     interceptURL('GET', '/api/v1/events/subscriptions/name/*', 'alertDetails');
     interceptURL('GET', '/api/v1/events/subscriptions?*', 'alertsPage');
     cy.login();
     cy.sidebarClick(SidebarItem.OBSERVABILITY_ALERT);
   });
 
-  it('Create new alert', () => {
+  it('Create new alert Pipeline', () => {
     verifyResponseStatusCode('@alertsPage', 200);
 
     cy.get('[data-testid="create-observability"]').click();
 
     // Enter alert name
-    cy.get('#name').should('be.visible').type(ALERT_NAME);
+    cy.get('#name').type(ALERT_NAME);
 
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
@@ -135,9 +205,9 @@ describe('Observability Alert Flow', () => {
     // Select all trigger
     cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
 
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-
-    cy.get('[data-testid="container-option"]').contains(TRIGGER_NAME_1).click();
+    cy.get('[data-testid="drop-down-menu"] [data-testid="container-option"]')
+      .contains(TRIGGER_NAME_1)
+      .click();
 
     cy.get('[data-testid="trigger-select"]').should('contain', TRIGGER_NAME_1);
 
@@ -170,7 +240,7 @@ describe('Observability Alert Flow', () => {
     cy.get('[data-testid="alert-details-container"]').should('exist');
   });
 
-  it('Alert details page', () => {
+  it('Check created pipeline alert details', () => {
     const { id: alertId } = data.alertDetails;
     verifyResponseStatusCode('@alertsPage', 200);
 
@@ -192,16 +262,10 @@ describe('Observability Alert Flow', () => {
 
     cy.get(
       `[data-row-key="${alertId}"] [data-testid="alert-edit-${ALERT_NAME}"]`
-    )
-      .should('be.visible')
-      .click();
+    ).click();
 
     // Update description
-    cy.get(descriptionBox)
-      .should('be.visible')
-      .click()
-      .clear()
-      .type(ALERT_UPDATED_DESCRIPTION);
+    cy.get(descriptionBox).click().clear().type(ALERT_UPDATED_DESCRIPTION);
 
     // Update trigger
     cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
@@ -218,7 +282,7 @@ describe('Observability Alert Flow', () => {
     addOwnerFilter(0, data.user.displayName, false, 'Owner Name');
     addEntityFQNFilter(
       1,
-      PIPELINE_SERVICE.entity.displayName,
+      `${PIPELINE_SERVICE.service.name}.${PIPELINE_SERVICE.entity.name}`,
       true,
       'Pipeline Name'
     );
@@ -252,4 +316,182 @@ describe('Observability Alert Flow', () => {
   it('Delete created alert', () => {
     deleteAlertSteps(ALERT_NAME);
   });
+
+  Object.entries(OBSERVABILITY_CREATION_DETAILS).forEach(
+    ([trigger, alertDetails]) => {
+      it(`Alert creation for ${trigger}`, () => {
+        verifyResponseStatusCode('@alertsPage', 200);
+
+        cy.get('[data-testid="create-observability"]').click();
+
+        // Enter alert name
+        cy.get('#name').type(ALERT_NAME);
+
+        // Enter description
+        cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
+
+        // Select trigger
+        cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+
+        cy.get(
+          `[data-testid="drop-down-menu"] [data-testid="${trigger}-option"]`
+        )
+          .contains(alertDetails.triggerDisplayName)
+          .click();
+
+        cy.get('[data-testid="trigger-select"]').should(
+          'contain',
+          alertDetails.triggerDisplayName
+        );
+
+        // Add filters
+        alertDetails.filters.forEach((filter, filterNumber) => {
+          cy.get('[data-testid="add-filters"]').click();
+
+          // Select filter
+          cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
+            waitForAnimations: true,
+          });
+          cy.get(`[data-testid="${filter.name}-filter-option"]`)
+            .filter(':visible')
+            .click();
+
+          // Search and select filter input value
+          interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+          cy.get(`[data-testid="${filter.inputSelector}"]`)
+            .click()
+            .type(filter.inputValue);
+
+          // Adding manual wait here as as safe since debounced API is not being detected in the cypress
+          cy.wait(500);
+          verifyResponseStatusCode('@getSearchResult', 200);
+          cy.get(`[title="${filter.inputValue}"]`)
+            .filter(':visible')
+            .scrollIntoView()
+            .click();
+
+          // Check if option is selected
+          cy.get(
+            `[title="${filter.inputValue}"] .ant-select-item-option-state`
+          ).should('exist');
+
+          if (filter.exclude) {
+            // Change filter effect
+            cy.get(`[data-testid="filter-switch-${filterNumber}"]`)
+              .scrollIntoView()
+              .click();
+          }
+        });
+
+        // Add actions
+        alertDetails.actions.forEach((action, actionNumber) => {
+          cy.get('[data-testid="add-actions"]').click();
+
+          // Select action
+          cy.get(`[data-testid="action-select-${actionNumber}"]`).click({
+            waitForAnimations: true,
+          });
+          cy.get(`[data-testid="${action.name}-filter-option"]`)
+            .filter(':visible')
+            .click();
+
+          if (action.inputs && action.inputs.length > 0) {
+            action.inputs.forEach((input) => {
+              // Search and select domain
+              interceptURL(
+                'GET',
+                `/api/v1/search/query?q=*`,
+                'getSearchResult'
+              );
+              cy.get(`[data-testid="${input.inputSelector}"]`)
+                .click()
+                .type(input.inputValue);
+              if (input.waitForAPI) {
+                verifyResponseStatusCode('@getSearchResult', 200);
+              }
+              cy.get(`[title="${input.inputValue}"]`)
+                .filter(':visible')
+                .scrollIntoView()
+                .click();
+              cy.get(`[data-testid="${input.inputSelector}"]`).should(
+                'contain',
+                input.inputValue
+              );
+              cy.clickOutside();
+            });
+          }
+
+          if (action.exclude) {
+            // Change filter effect
+            cy.get(`[data-testid="action-switch-${actionNumber}"]`)
+              .scrollIntoView()
+              .click();
+          }
+        });
+
+        // Add Destinations
+        alertDetails.destinations.forEach((destination, destinationNumber) => {
+          cy.get('[data-testid="add-destination-button"]')
+            .scrollIntoView()
+            .click();
+
+          if (destination.mode === 'internal') {
+            addInternalDestination(
+              destinationNumber,
+              destination.category,
+              destination.type,
+              destination.inputSelector,
+              destination.inputValue
+            );
+          } else {
+            addExternalDestination(
+              destinationNumber,
+              destination.category,
+              destination.inputValue
+            );
+          }
+        });
+
+        // Click save
+        cy.get('[data-testid="save-button"]').scrollIntoView().click();
+        cy.wait('@createAlert').then((interception) => {
+          data.alertDetails = interception.response.body;
+
+          expect(interception.response.statusCode).equal(201);
+        });
+        toastNotification('Alerts created successfully.');
+
+        // Check if the alert details page is visible
+        verifyResponseStatusCode('@alertDetails', 200);
+        cy.get('[data-testid="alert-details-container"]').should('exist');
+      });
+
+      it(`Verify created ${trigger} alert details and delete alert`, () => {
+        const { id: alertId } = data.alertDetails;
+        verifyResponseStatusCode('@alertsPage', 200);
+
+        cy.get(`[data-row-key="${alertId}"] [data-testid="alert-name"]`)
+          .should('contain', ALERT_NAME)
+          .click();
+
+        verifyResponseStatusCode('@alertDetails', 200);
+
+        // Verify alert details
+        verifyAlertDetails(data.alertDetails);
+
+        // Delete alert
+        cy.get('[data-testid="delete-button"]').scrollIntoView().click();
+        cy.get('.ant-modal-header').should(
+          'contain',
+          `Delete subscription "${ALERT_NAME}"`
+        );
+        cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
+        interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
+        cy.get('[data-testid="confirm-button"]').click();
+        verifyResponseStatusCode('@deleteAlert', 200);
+
+        toastNotification(`"${ALERT_NAME}" deleted successfully!`);
+      });
+    }
+  );
 });

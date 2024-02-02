@@ -17,7 +17,7 @@ import Qs from 'qs';
 import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
+import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -68,6 +68,7 @@ export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const SMALL_TABLE_LOADER_SIZE = 3;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
+export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -121,22 +122,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
 export const ES_UPDATE_DELAY = 500;
-
-export const globalSearchOptions = [
-  { value: '', label: t('label.all') },
-  { value: SearchIndex.TABLE, label: t('label.table') },
-  { value: SearchIndex.TOPIC, label: t('label.topic') },
-  { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
-  { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
-  { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
-  { value: SearchIndex.CONTAINER, label: t('label.container') },
-  { value: SearchIndex.STORED_PROCEDURE, label: t('label.stored-procedure') },
-  { value: SearchIndex.DASHBOARD_DATA_MODEL, label: t('label.data-model') },
-  { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
-  { value: SearchIndex.TAG, label: t('label.tag') },
-  { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
-  { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
-];
 
 export const DESCRIPTIONLENGTH = 100;
 
@@ -358,8 +343,8 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
 
 export const getTagsDetailsPath = (entityFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
 
   return path;
 };

@@ -57,7 +57,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -252,6 +251,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
                           config.getElasticSearchConfiguration().getSearchIndexMappingLanguage()))
               .withRuntime(new ScheduledExecutionContext().withEnabled(true));
       AppScheduler.getInstance().triggerOnDemandApplication(searchIndexApp);
+      do {
+        Thread.sleep(3000l);
+      } while (!AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().isEmpty());
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
@@ -389,8 +391,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new ConnectionAwareAnnotationSqlLocator(
                 config.getDataSourceFactory().getDriverClass()));
 
-    searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
+    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     // Initialize secrets manager
     secretsManager =

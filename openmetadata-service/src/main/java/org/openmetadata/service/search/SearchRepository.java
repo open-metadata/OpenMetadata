@@ -25,6 +25,7 @@ import static org.openmetadata.service.search.models.IndexMapping.indexNameSepar
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,6 +82,9 @@ public class SearchRepository {
 
   @Getter private final String clusterAlias;
 
+  private static final String DEFAULT_SEARCH_FACTORY_CLASS =
+      "org.openmetadata.service.search.SearchIndexFactory";
+
   @Getter
   public final List<String> dataInsightReports =
       List.of(
@@ -92,8 +96,7 @@ public class SearchRepository {
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
-  public SearchRepository(
-      ElasticSearchConfiguration config, SearchIndexFactory searchIndexFactory) {
+  public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
     if (config != null
         && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
@@ -101,7 +104,25 @@ public class SearchRepository {
     } else {
       searchClient = new ElasticSearchClient(config);
     }
-    this.searchIndexFactory = searchIndexFactory;
+    try {
+      if (config != null && config.getSearchIndexFactoryClassName() != null) {
+        searchIndexFactory =
+            Class.forName(config.getSearchIndexFactoryClassName())
+                .asSubclass(SearchIndexFactory.class)
+                .getDeclaredConstructor()
+                .newInstance();
+      } else {
+        searchIndexFactory =
+            Class.forName(DEFAULT_SEARCH_FACTORY_CLASS)
+                .asSubclass(SearchIndexFactory.class)
+                .getDeclaredConstructor()
+                .newInstance();
+      }
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+      LOG.warn("Failed to initialize search index factory", e);
+    } catch (InvocationTargetException | NoSuchMethodException e) {
+      throw new UnhandledServerException(e.getMessage());
+    }
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()

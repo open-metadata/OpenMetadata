@@ -208,6 +208,11 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String suggestionOperationNotAllowed(String user, String operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
+  }
+
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
   }

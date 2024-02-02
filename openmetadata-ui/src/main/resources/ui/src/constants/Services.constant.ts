@@ -379,13 +379,12 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.SapHana,
+  DatabaseServiceType.SAS,
+  DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
   PipelineServiceType.Spark,
-  DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
-  SearchServiceType.ElasticSearch,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
 ];

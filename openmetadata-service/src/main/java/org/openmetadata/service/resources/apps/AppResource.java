@@ -46,6 +46,8 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -73,7 +75,6 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -97,6 +98,7 @@ import org.quartz.SchedulerException;
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private AppsPrivateConfiguration privateConfiguration;
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
@@ -104,14 +106,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
+    this.privateConfiguration = config.getAppsPrivateConfiguration();
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
 
     // Create an On Demand DAO
     CollectionDAO dao = Entity.getCollectionDAO();
-    searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
+    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     try {
       AppScheduler.initialize(dao, searchRepository);
@@ -139,6 +141,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         // Schedule
         if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+          setAppRuntimeProperties(app);
           ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
@@ -157,6 +160,32 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   public static class AppRunList extends ResultList<AppRunRecord> {
     /* Required for serde */
+  }
+
+  /**
+   * Load the apps' OM configuration and private parameters
+   */
+  private void setAppRuntimeProperties(App app) {
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
+            .build());
+
+    if (privateConfiguration != null
+        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
+      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
+        if (app.getName().equals(appPrivateConfig.getName())) {
+          app.setPrivateConfiguration(appPrivateConfig.getParameters());
+        }
+      }
+    }
+  }
+
+  /**
+   * We don't want to store runtime information into the DB
+   */
+  private void unsetAppRuntimeProperties(App app) {
+    app.setOpenMetadataServerConnection(null);
+    app.setPrivateConfiguration(null);
   }
 
   @GET
@@ -530,15 +559,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
-    app.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
-            .build());
+    setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
       ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
-    app.setOpenMetadataServerConnection(null);
+    unsetAppRuntimeProperties(app);
     return create(uriInfo, securityContext, app);
   }
 
@@ -571,10 +598,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    App updatedApp = (App) response.getEntity();
+    setAppRuntimeProperties(updatedApp);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(
-          (App) response.getEntity(), Entity.getCollectionDAO(), searchRepository);
+          updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
+    // We don't want to store this information
+    unsetAppRuntimeProperties(updatedApp);
     return response;
   }
 
@@ -604,9 +635,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
+    setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
+    // We don't want to store this information
+    unsetAppRuntimeProperties(app);
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
@@ -684,9 +718,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
+      setAppRuntimeProperties(app);
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
         ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
       }
+      // We don't want to store this information
+      unsetAppRuntimeProperties(app);
     }
     return response;
   }
@@ -717,6 +754,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
@@ -752,9 +790,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     // The application will have the updated appConfiguration we can use to run the `configure`
     // logic
-    app.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
-            .build());
+    setAppRuntimeProperties(app);
     try {
       ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App has been configured.").build();
@@ -788,6 +824,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
+    setAppRuntimeProperties(app);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(
           app, Entity.getCollectionDAO(), searchRepository);
@@ -801,9 +838,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
-        ingestionPipeline.setOpenMetadataServerConnection(
-            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
-                .build());
+        ingestionPipeline.setOpenMetadataServerConnection(app.getOpenMetadataServerConnection());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
@@ -838,6 +873,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
+    setAppRuntimeProperties(app);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
@@ -851,9 +887,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
 
-        ingestionPipeline.setOpenMetadataServerConnection(
-            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName())
-                .build());
+        ingestionPipeline.setOpenMetadataServerConnection(app.getOpenMetadataServerConnection());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);

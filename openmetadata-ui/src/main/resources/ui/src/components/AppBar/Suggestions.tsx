@@ -205,7 +205,10 @@ const Suggestions = ({
         '',
         '',
         '',
-        searchCriteria ?? SearchIndex.DATA_ASSET
+        searchCriteria ?? SearchIndex.DATA_ASSET,
+        false,
+        false,
+        false
       );
 
       if (res.data) {
