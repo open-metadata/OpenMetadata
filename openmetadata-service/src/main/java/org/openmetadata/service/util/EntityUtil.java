@@ -630,24 +630,4 @@ public final class EntityUtil {
       flattenEntityField(child, flattenedFields);
     }
   }
-
-  public static ChangeEvent buildChangeEvent(
-      EventType eventType,
-      EntityInterface updated,
-      ChangeDescription change,
-      String entityType,
-      Double prevVersion) {
-    return new ChangeEvent()
-        .withId(UUID.randomUUID())
-        .withEntity(updated)
-        .withChangeDescription(change)
-        .withEventType(eventType)
-        .withEntityType(entityType)
-        .withEntityId(updated.getId())
-        .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(updated.getUpdatedBy())
-        .withTimestamp(System.currentTimeMillis())
-        .withCurrentVersion(updated.getVersion())
-        .withPreviousVersion(prevVersion);
-  }
 }

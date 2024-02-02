@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -25,7 +24,6 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
-import static org.openmetadata.service.util.EntityUtil.buildChangeEvent;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import java.util.ArrayList;
@@ -41,7 +39,6 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -206,15 +203,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           JsonUtils.pojoToJson(pipelineStatus));
     }
 
-    pipeline.withPipelineStatus(pipelineStatus);
-
     ChangeDescription change =
         addPipelineStatusChangeDescription(
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
-    ChangeEvent changeEvent =
-        buildChangeEvent(
-            ENTITY_UPDATED, withHref(uriInfo, pipeline), change, entityType, pipeline.getVersion());
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
+
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK,
+        pipeline
+            .withPipelineStatus(pipelineStatus)
+            .withUpdatedAt(System.currentTimeMillis())
+            .withChangeDescription(change),
+        ENTITY_UPDATED);
   }
 
   private ChangeDescription addPipelineStatusChangeDescription(
