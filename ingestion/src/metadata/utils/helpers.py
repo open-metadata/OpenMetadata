@@ -125,12 +125,27 @@ def calculate_execution_time_generator(func):
     """
 
     def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        yield from func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
+        # NOTE: We are basically implementing by hand a simplified version of 'yield from'
+        # in order to be able to calculate the time difference correctly.
+        # The 'while True' loop allows us to guarantee we are iterating over all thje values
+        # from func(*args, **kwargs).
+        generator = func(*args, **kwargs)
+
+        while True:
+            start = perf_counter()
+
+            try:
+                element = next(generator)
+            except StopIteration:
+                return
+
+            end = perf_counter()
+
+            logger.debug(
+                f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
+            )
+
+            yield element
 
     return calculate_debug_time
 
