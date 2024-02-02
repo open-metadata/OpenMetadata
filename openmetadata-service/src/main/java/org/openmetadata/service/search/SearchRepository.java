@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -25,7 +26,6 @@ import static org.openmetadata.service.search.models.IndexMapping.indexNameSepar
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,7 +72,7 @@ public class SearchRepository {
 
   private final String language;
 
-  @Getter @Setter public SearchIndexFactory searchIndexFactory;
+  @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
@@ -81,9 +81,6 @@ public class SearchRepository {
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
 
   @Getter private final String clusterAlias;
-
-  private static final String DEFAULT_SEARCH_FACTORY_CLASS =
-      "org.openmetadata.service.search.SearchIndexFactory";
 
   @Getter
   public final List<String> dataInsightReports =
@@ -105,23 +102,15 @@ public class SearchRepository {
       searchClient = new ElasticSearchClient(config);
     }
     try {
-      if (config != null && config.getSearchIndexFactoryClassName() != null) {
-        searchIndexFactory =
+      if (config != null && (!nullOrEmpty(config.getSearchIndexFactoryClassName()))) {
+        this.searchIndexFactory =
             Class.forName(config.getSearchIndexFactoryClassName())
                 .asSubclass(SearchIndexFactory.class)
                 .getDeclaredConstructor()
                 .newInstance();
-      } else {
-        searchIndexFactory =
-            Class.forName(DEFAULT_SEARCH_FACTORY_CLASS)
-                .asSubclass(SearchIndexFactory.class)
-                .getDeclaredConstructor()
-                .newInstance();
       }
-    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-      LOG.warn("Failed to initialize search index factory", e);
-    } catch (InvocationTargetException | NoSuchMethodException e) {
-      throw new UnhandledServerException(e.getMessage());
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize search index factory using default one", e);
     }
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
