@@ -255,6 +255,8 @@ services:
       - local_app_net
 
   openmetadata-server:
+    deploy:
+      replicas: 0
     build:
       context: ../../.
       dockerfile: docker/development/Dockerfile
@@ -465,8 +467,8 @@ services:
         condition: service_started
       mysql:
         condition: service_healthy
-      openmetadata-server:
-        condition: service_started
+#      openmetadata-server:
+#        condition: service_started
     expose:
       - 8080
     ports:
@@ -475,7 +477,7 @@ services:
       - local_app_net
     volumes:
       - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
-      - ingestion-volume-dags:/opt/airflow/dags
+#      - ingestion-volume-dags:/opt/airflow/dags
       - ingestion-volume-tmp:/tmp
       - /var/run/docker.sock:/var/run/docker.sock:z  # Need 600 permissions to run DockerOperator
 
