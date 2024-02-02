@@ -2040,15 +2040,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Revert the changes previously made by the user with in a session and consolidate all the
       // changes
       if (consolidateChanges) {
-        revert();
-      }
-      // Now updated from previous/original to updated one
-      changeDescription = new ChangeDescription();
-      updateInternal();
+        T actualOriginal = original;
+        T actualUpdated = updated;
 
-      // Store the updated entity
-      storeUpdate();
-      postUpdate(original, updated);
+        // Store Consilidate Change in Version
+        applyAndStoreConsolidation();
+
+        // Process the actual Change Taking Place in this single event
+        processActualEvents(actualOriginal, actualUpdated, updated.getVersion());
+
+        postUpdate(original, updated);
+      } else {
+        // Now updated from previous/original to updated one
+        changeDescription = new ChangeDescription();
+        updateInternal();
+
+        // Store the updated entity
+        storeUpdate();
+        postUpdate(original, updated);
+      }
     }
 
     @Transaction
@@ -2677,6 +2687,42 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .equals(updated.getUpdatedBy()) // Must be updated by the same user
           && updated.getUpdatedAt() - original.getUpdatedAt()
               <= sessionTimeoutMillis; // With in session timeout
+    }
+
+    private void applyAndStoreConsolidation() {
+      // Revert to previous version to consolidate changes
+      revert();
+      // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
+      updateInternal();
+      // Store the updated entity
+      storeUpdate();
+    }
+
+    private void processActualEvents(
+        T actualOriginal, T actualUpdated, Double consolidatedVersion) {
+      // Build the Actual Change Taking Place , But don't store in Entity Versions
+      entityChanged = false;
+      original = actualOriginal;
+      updated = actualUpdated;
+
+      changeDescription = new ChangeDescription();
+      updateInternal();
+      boolean updateVersion = updateVersion(original.getVersion());
+      if (!updateVersion) {
+        if (entityChanged) {
+          if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+            updated.setChangeDescription(original.getChangeDescription());
+          }
+        } else { // Update did not change the entity version
+          updated.setChangeDescription(original.getChangeDescription());
+          updated.setUpdatedBy(original.getUpdatedBy());
+          updated.setUpdatedAt(original.getUpdatedAt());
+        }
+      }
+
+      // Store the Actual Change Taking Place in Version
+      updated.setVersion(consolidatedVersion);
     }
 
     private T getPreviousVersion(T original) {
