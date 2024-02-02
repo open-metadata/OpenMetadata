@@ -445,17 +445,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
     List<List<String>> rows = new ArrayList<>();
     for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
       List<String> row = new ArrayList<>();
-      JsonObject metricsJson = new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-      Set<String> keys = metricsJson.keySet();
-      columns.addAll(keys);
-      row.add(serverChangeLog.getVersion());
-      row.add(serverChangeLog.getInstalledOn());
-      row.addAll(
-          metricsJson.entrySet().stream()
-              .map(Map.Entry::getValue)
-              .map(JsonElement::toString)
-              .toList());
-      rows.add(row);
+      if (serverChangeLog.getMetrics() != null) {
+        JsonObject metricsJson =
+            new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
+        Set<String> keys = metricsJson.keySet();
+        columns.addAll(keys);
+        row.add(serverChangeLog.getVersion());
+        row.add(serverChangeLog.getInstalledOn());
+        row.addAll(
+            metricsJson.entrySet().stream()
+                .map(Map.Entry::getValue)
+                .map(JsonElement::toString)
+                .toList());
+        rows.add(row);
+      }
     }
     printToAsciiTable(columns.stream().toList(), rows, "No Server Change log found");
   }
