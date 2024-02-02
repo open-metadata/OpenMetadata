@@ -328,43 +328,44 @@ class GenericDataFrameColumnParser:
 class ParquetDataFrameColumnParser:
     """Given a dataframe object generated from a parquet file, parse the columns and return a list of Column objects."""
 
-    import pyarrow as pa
-
-    _data_formats = {
-        **dict.fromkeys(
-            ["int8", "int16", "int32", "int64", "int", pa.DurationType], DataType.INT
-        ),
-        **dict.fromkeys(["uint8", "uint16", "uint32", "uint64", "uint"], DataType.UINT),
-        pa.StructType: DataType.STRUCT,
-        **dict.fromkeys([pa.ListType, pa.LargeListType], DataType.ARRAY),
-        **dict.fromkeys(
-            ["halffloat", "float32", "float64", "double", "float"], DataType.FLOAT
-        ),
-        "bool": DataType.BOOLEAN,
-        **dict.fromkeys(
-            [
-                "datetime64",
-                "timedelta[ns]",
-                "datetime64[ns]",
-                "time32[s]",
-                "time32[ms]",
-                "time64[ns]",
-                "time64[us]",
-                pa.TimestampType,
-                "date64",
-            ],
-            DataType.DATETIME,
-        ),
-        "date32[day]": DataType.DATE,
-        "string": DataType.STRING,
-        **dict.fromkeys(
-            ["binary", "large_binary", pa.FixedSizeBinaryType], DataType.BINARY
-        ),
-        **dict.fromkeys([pa.Decimal128Type, pa.Decimal256Type], DataType.DECIMAL),
-    }
-
     def __init__(self, data_frame: "DataFrame"):
         import pyarrow as pa
+
+        self._data_formats = {
+            **dict.fromkeys(
+                ["int8", "int16", "int32", "int64", "int", pa.DurationType],
+                DataType.INT,
+            ),
+            **dict.fromkeys(
+                ["uint8", "uint16", "uint32", "uint64", "uint"], DataType.UINT
+            ),
+            pa.StructType: DataType.STRUCT,
+            **dict.fromkeys([pa.ListType, pa.LargeListType], DataType.ARRAY),
+            **dict.fromkeys(
+                ["halffloat", "float32", "float64", "double", "float"], DataType.FLOAT
+            ),
+            "bool": DataType.BOOLEAN,
+            **dict.fromkeys(
+                [
+                    "datetime64",
+                    "timedelta[ns]",
+                    "datetime64[ns]",
+                    "time32[s]",
+                    "time32[ms]",
+                    "time64[ns]",
+                    "time64[us]",
+                    pa.TimestampType,
+                    "date64",
+                ],
+                DataType.DATETIME,
+            ),
+            "date32[day]": DataType.DATE,
+            "string": DataType.STRING,
+            **dict.fromkeys(
+                ["binary", "large_binary", pa.FixedSizeBinaryType], DataType.BINARY
+            ),
+            **dict.fromkeys([pa.Decimal128Type, pa.Decimal256Type], DataType.DECIMAL),
+        }
 
         self.data_frame = data_frame
         self._arrow_table = pa.Table.from_pandas(self.data_frame)
