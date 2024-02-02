@@ -72,7 +72,7 @@ public class SearchRepository {
 
   private final String language;
 
-  @Getter @Setter public SearchIndexFactory searchIndexFactory;
+  @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
@@ -81,9 +81,6 @@ public class SearchRepository {
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
 
   @Getter private final String clusterAlias;
-
-  private static final String DEFAULT_SEARCH_FACTORY_CLASS =
-      "org.openmetadata.service.search.SearchIndexFactory";
 
   @Getter
   public final List<String> dataInsightReports =
@@ -105,20 +102,14 @@ public class SearchRepository {
       searchClient = new ElasticSearchClient(config);
     }
     try {
-      if (config != null) {
-        if (nullOrEmpty(config.getSearchIndexFactoryClassName())) {
-          // Default to the base class
-          this.searchIndexFactory = new SearchIndexFactory();
-        } else {
-          this.searchIndexFactory =
-              Class.forName(config.getSearchIndexFactoryClassName())
-                  .asSubclass(SearchIndexFactory.class)
-                  .getDeclaredConstructor()
-                  .newInstance();
-        }
+      if (config != null && (!nullOrEmpty(config.getSearchIndexFactoryClassName()))) {
+        this.searchIndexFactory =
+            Class.forName(config.getSearchIndexFactoryClassName())
+                .asSubclass(SearchIndexFactory.class)
+                .getDeclaredConstructor()
+                .newInstance();
       }
     } catch (Exception e) {
-      this.searchIndexFactory = new SearchIndexFactory();
       LOG.warn("Failed to initialize search index factory using default one", e);
     }
     language =
