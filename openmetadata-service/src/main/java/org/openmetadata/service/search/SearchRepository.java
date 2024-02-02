@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -102,16 +103,18 @@ public class SearchRepository {
     }
     try {
       if (config != null) {
-        this.searchIndexFactory =
-            Class.forName(config.getSearchIndexFactoryClassName())
-                .asSubclass(SearchIndexFactory.class)
-                .newInstance();
+        if (nullOrEmpty(config.getSearchIndexFactoryClassName())) {
+          // Default to the base class
+          this.searchIndexFactory = new SearchIndexFactory();
+        } else {
+          this.searchIndexFactory =
+              Class.forName(config.getSearchIndexFactoryClassName())
+                  .asSubclass(SearchIndexFactory.class)
+                  .getDeclaredConstructor()
+                  .newInstance();
+        }
       }
-    } catch (ClassNotFoundException e) {
-      LOG.warn("Failed to initialize search index factory", e);
-    } catch (InstantiationException e) {
-      LOG.warn("Failed to initialize search index factory", e);
-    } catch (IllegalAccessException e) {
+    } catch (Exception e) {
       LOG.warn("Failed to initialize search index factory", e);
     }
     language =
