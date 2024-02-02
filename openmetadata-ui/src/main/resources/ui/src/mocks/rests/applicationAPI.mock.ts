@@ -1,3 +1,10 @@
+import { AppType } from '../../generated/entity/applications/app';
+import {
+  Permissions,
+  ScheduleType,
+} from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { SearchIndexMappingLanguage } from '../../generated/settings/settings';
+
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,9 +34,9 @@ export const mockGetApplicationByNameResponse = {
   privacyPolicyUrl: 'https://www.getcollate.io',
   supportEmail: 'support@getcollate.io',
   className: 'org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp',
-  appType: 'internal',
-  scheduleType: 'Scheduled',
-  permission: 'All',
+  appType: AppType.Internal,
+  scheduleType: ScheduleType.Scheduled,
+  permission: Permissions.All,
   bot: {
     id: '7afdf172-ba26-44b5-b2bd-4dfd6768f44c',
     type: 'bot',
@@ -76,9 +83,9 @@ export const mockGetApplicationByNameResponse = {
       'storedProcedure',
       'dataProduct',
     ],
-    batchSize: '100',
+    batchSize: 100,
     recreateIndex: true,
-    searchIndexMappingLanguage: 'EN',
+    searchIndexMappingLanguage: SearchIndexMappingLanguage.En,
   },
   pipelines: [],
   appSchedule: {
