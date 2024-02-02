@@ -54,9 +54,7 @@ class AthenaLakeFormationClient:
             )
         return None
 
-    def get_table_and_column_tags(
-        self, schema_name: str, table_name: str
-    ) -> Optional[LFTags]:
+    def get_table_and_column_tags(self, schema_name: str, table_name: str) -> LFTags:
         """
         Method to call the API and get the table and column tags
         """
@@ -79,4 +77,4 @@ class AthenaLakeFormationClient:
             logger.warning(
                 f"Unable to get lf tags for table resource [{table_name}] due to: {exc}"
             )
-        return None
+        return LFTags()

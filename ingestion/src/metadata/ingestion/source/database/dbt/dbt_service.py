@@ -56,11 +56,6 @@ class DbtServiceTopology(ServiceTopology):
 
     root = TopologyNode(
         producer="get_dbt_files",
-        stages=[],
-        children=["process_dbt_files"],
-    )
-    process_dbt_files = TopologyNode(
-        producer="process_dbt_files",
         stages=[
             NodeStage(
                 type_=DbtFiles,
@@ -88,6 +83,7 @@ class DbtServiceTopology(ServiceTopology):
                 type_=DataModelLink,
                 processor="yield_data_models",
                 nullable=True,
+                consumer=["validate_dbt_files"],
             ),
         ],
     )
@@ -97,6 +93,7 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=AddLineageRequest,
                 processor="create_dbt_lineage",
+                consumer=["yield_data_models"],
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -115,6 +112,7 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=CreateTestDefinitionRequest,
                 processor="create_dbt_tests_definition",
+                consumer=["yield_data_models"],
             ),
             NodeStage(
                 type_=CreateTestCaseRequest,
@@ -160,12 +158,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                 if key.lower() not in required_manifest_keys
             }
         )
-
-    def process_dbt_files(self) -> Iterable[DbtFiles]:
-        """
-        Method return the dbt file from topology
-        """
-        yield self.context.dbt_file
 
     def get_dbt_files(self) -> Iterable[DbtFiles]:
         dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
