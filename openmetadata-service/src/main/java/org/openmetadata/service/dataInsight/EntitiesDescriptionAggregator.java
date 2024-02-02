@@ -3,7 +3,6 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType;
 
 public abstract class EntitiesDescriptionAggregator<A, B, M, S>
@@ -27,18 +26,15 @@ public abstract class EntitiesDescriptionAggregator<A, B, M, S>
         S sumCompletedDescriptions =
             getAggregations(entityTypeBucket, COMPLETED_DESCRIPTION_FRACTION);
         S sumEntityCount = getAggregations(entityTypeBucket, ENTITY_COUNT);
-        Optional<Double> entityCount = getValue(sumEntityCount);
-        Optional<Double> completedDescription = getValue(sumCompletedDescriptions);
-        Double completedDescriptionFraction =
-            completedDescription.flatMap(cd -> entityCount.map(ec -> cd / ec)).orElse(null);
 
         data.add(
             new PercentageOfEntitiesWithDescriptionByType()
                 .withTimestamp(timestamp)
                 .withEntityType(entityType)
-                .withEntityCount(entityCount.orElse(null))
-                .withCompletedDescription(completedDescription.orElse(null))
-                .withCompletedDescriptionFraction(completedDescriptionFraction));
+                .withEntityCount(getValue(sumEntityCount))
+                .withCompletedDescription(getValue(sumCompletedDescriptions))
+                .withCompletedDescriptionFraction(
+                    getValue(sumCompletedDescriptions) / getValue(sumEntityCount)));
       }
     }
     return data;
@@ -54,5 +50,5 @@ public abstract class EntitiesDescriptionAggregator<A, B, M, S>
 
   protected abstract S getAggregations(B bucket, String key);
 
-  protected abstract Optional<Double> getValue(S aggregations);
+  protected abstract Double getValue(S aggregations);
 }
