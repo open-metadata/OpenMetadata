@@ -43,7 +43,6 @@ const mockProps = {
   open: true,
   entityType: 'string',
   entityFQN: 'string',
-  entityName: 'string',
   onClose: jest.fn(),
   createPermission: true,
 };

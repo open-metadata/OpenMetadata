@@ -1471,7 +1471,7 @@
     "list-of-strings-regex-patterns-csv": "הזן רשימה של מחרוזות / דפוסי Regex כערך מופרך בפסיקים",
     "login-fail-attempt-message": "ניתן עדיין לנסות במקרה של כמה ניסיונות כושלים רצופים להתחבר ליישום.",
     "logout-confirmation": "האם אתה בטוח שברצונך להתנתק?",
-    "made-announcement-for-entity": "יצר הודעה עבור {{entity}}",
+    "made-announcement": "made an announcement",
     "make-an-announcement": "פרסם הודעה!",
     "manage-airflow-api": "OpenMetadata - ממונה APIs ל-Airflow",
     "manage-airflow-api-failed": "נכשל במציאת OpenMetadata - Managed Airflow APIs",

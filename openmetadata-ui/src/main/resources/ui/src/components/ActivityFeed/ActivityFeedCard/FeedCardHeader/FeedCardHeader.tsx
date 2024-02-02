@@ -87,12 +87,12 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         data-testid="tasklink"
         to={getTaskDetailPath(task)}
         onClick={(e) => e.stopPropagation()}>
-        <span>
+        <span className="m-x-xss">
           {`#${taskDetails?.id} `}
           {taskDetails?.type}
         </span>
       </Link>
-      <span>{t('label.for-lowercase')}</span>
+      <span className="m-r-xss">{t('label.for-lowercase')}</span>
       {isEntityFeed ? (
         <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
@@ -114,17 +114,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   );
 
   const getAnnouncementLinkElement = entityCheck && (
-    <span>
-      {t('message.made-announcement-for-entity', { entity: entityType })}{' '}
-      <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-        <Link
-          className="break-all"
-          data-testid="entitylink"
-          to={prepareFeedLink(entityType, entityFQN)}>
-          {entityDisplayName(entityType, entityFQN)}
-        </Link>
-      </EntityPopOverCard>
-    </span>
+    <span>{t('message.made-announcement')} </span>
   );
 
   return (

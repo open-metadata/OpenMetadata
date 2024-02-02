@@ -1471,7 +1471,7 @@
     "list-of-strings-regex-patterns-csv": "Entrer une liste de chaînes / motifs regex comme une valeur séparée par des virgules",
     "login-fail-attempt-message": "Allowed attampt on consicutive failed login to application.",
     "logout-confirmation": "Are you sure you want to logout?",
-    "made-announcement-for-entity": "a fait une annonce pour {{entity}}",
+    "made-announcement": "made an announcement",
     "make-an-announcement": "Faire une annonce",
     "manage-airflow-api": "OpenMetadata - Managed Airflow APIs",
     "manage-airflow-api-failed": "Echec de la recherche d'OpenMetadata - API gérées par Airflow",

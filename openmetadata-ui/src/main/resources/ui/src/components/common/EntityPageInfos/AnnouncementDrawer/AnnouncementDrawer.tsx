@@ -35,7 +35,6 @@ interface Props {
   open: boolean;
   entityType: string;
   entityFQN: string;
-  entityName: string;
   onClose: () => void;
   createPermission?: boolean;
 }
@@ -45,7 +44,6 @@ const AnnouncementDrawer: FC<Props> = ({
   onClose,
   entityFQN,
   entityType,
-  entityName,
   createPermission,
 }) => {
   const { t } = useTranslation();
@@ -59,7 +57,7 @@ const AnnouncementDrawer: FC<Props> = ({
       data-testid="title"
       style={{ width: '100%' }}>
       <Typography.Text className="font-medium break-all">
-        {t('label.announcement-on-entity', { entity: entityName })}
+        {t('label.announcement-plural')}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
     </Space>
