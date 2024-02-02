@@ -141,9 +141,6 @@
             },
             {
               "$ref": "./emailAlertConfig.json"
-            },
-            {
-              "$ref": "./userAlertConfig.json"
             }
           ]
         }

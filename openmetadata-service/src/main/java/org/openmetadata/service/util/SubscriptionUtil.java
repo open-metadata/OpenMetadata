@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
@@ -83,7 +84,7 @@ public class SubscriptionUtil {
     return data;
   }
 
-  private static Set<String> getEmailOrWebhookEndpointForUsers(
+  public static Set<String> getEmailOrWebhookEndpointForUsers(
       List<User> users, SubscriptionDestination.SubscriptionType type) {
     if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
       return users.stream().map(User::getEmail).collect(Collectors.toSet());
@@ -96,7 +97,7 @@ public class SubscriptionUtil {
     }
   }
 
-  private static Set<String> getEmailOrWebhookEndpointForTeams(
+  public static Set<String> getEmailOrWebhookEndpointForTeams(
       List<Team> users, SubscriptionDestination.SubscriptionType type) {
     if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
       return users.stream().map(Team::getEmail).collect(Collectors.toSet());
@@ -200,26 +201,35 @@ public class SubscriptionUtil {
 
   public static Set<String> buildReceiversListFromActions(
       SubscriptionAction action,
+      SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       CollectionDAO daoCollection,
       UUID entityId,
       String entityType) {
     Set<String> receiverList = new HashSet<>();
 
-    // Send to Receivers
-    if (action.getReferences() != null) {
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.USERS)) {
+      if (nullOrEmpty(action.getReceivers())) {
+        throw new IllegalArgumentException(
+            "Email Alert Invoked with Illegal Type and Settings. Emtpy or Null Users Recipients List");
+      }
       List<User> users =
-          action.getReferences().stream()
-              .filter(e -> USER.equals(e.getType()))
-              .map(user -> (User) Entity.getEntity(USER, user.getId(), "", Include.NON_DELETED))
+          action.getReceivers().stream()
+              .map(user -> (User) Entity.getEntityByName(USER, user, "", Include.NON_DELETED))
               .toList();
       receiverList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
+    } else if (category.equals(SubscriptionDestination.SubscriptionCategory.TEAMS)) {
+      if (nullOrEmpty(action.getReceivers())) {
+        throw new IllegalArgumentException(
+            "Email Alert Invoked with Illegal Type and Settings. Emtpy or Null Teams Recipients List");
+      }
       List<Team> teams =
-          action.getReferences().stream()
-              .filter(e -> TEAM.equals(e.getType()))
-              .map(team -> (Team) Entity.getEntity(TEAM, team.getId(), "", Include.NON_DELETED))
+          action.getReceivers().stream()
+              .map(team -> (Team) Entity.getEntityByName(TEAM, team, "", Include.NON_DELETED))
               .toList();
       receiverList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
+    } else {
+      receiverList = action.getReceivers() == null ? receiverList : action.getReceivers();
     }
 
     // Send to Admins
@@ -244,6 +254,7 @@ public class SubscriptionUtil {
 
   public static List<Invocation.Builder> getTargetsForWebhook(
       SubscriptionAction action,
+      SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       Client client,
       ChangeEvent event) {
@@ -261,6 +272,7 @@ public class SubscriptionUtil {
       Set<String> receiversUrls =
           buildReceiversListFromActions(
               action,
+              category,
               type,
               Entity.getCollectionDAO(),
               entityInterface.getId(),
