@@ -13,9 +13,9 @@
 ExecutionTimeTracker implementation to help track the execution time of different parts
 of the code.
 """
-from typing import List, Dict, Optional
 from functools import wraps
 from time import perf_counter
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -27,14 +27,15 @@ logger = utils_logger()
 
 
 class ExecutionTimeTrackerContext(BaseModel):
-    """ Small Model to hold the ExecutionTimeTracker context. """
+    """Small Model to hold the ExecutionTimeTracker context."""
+
     name: str
     start: float
     stored: bool
 
 
 class ExecutionTimeTracker(metaclass=Singleton):
-    """ ExecutionTimeTracker is implemented as a Singleton in order to hold state globally.
+    """ExecutionTimeTracker is implemented as a Singleton in order to hold state globally.
 
     It works as a Context Manager in order to track and log execution times.
 
@@ -47,8 +48,9 @@ class ExecutionTimeTracker(metaclass=Singleton):
                 other_opeartion()
 
     """
+
     def __init__(self, enabled: bool = False):
-        """ When instantiated we can pass if we want it enabled or disabled in order to
+        """When instantiated we can pass if we want it enabled or disabled in order to
         avoid overhead when not needed.
 
         Attrs
@@ -60,10 +62,12 @@ class ExecutionTimeTracker(metaclass=Singleton):
         self.enabled: bool = enabled
         self.context: List[ExecutionTimeTrackerContext] = []
         self.state: Dict[str, float] = {}
+        self.new_context = None
+        self.store = True
 
     @property
     def last_stored_context_level(self) -> Optional[str]:
-        """ Returns the last stored context level.
+        """Returns the last stored context level.
 
         In order to provide better logs and keep track where in the code the time is being
         measured we keep track of nested contexts.
@@ -79,7 +83,7 @@ class ExecutionTimeTracker(metaclass=Singleton):
         return None
 
     def __call__(self, context: str, store: bool = True):
-        """ At every point we open a new Context Manager we can pass the current 'context' and
+        """At every point we open a new Context Manager we can pass the current 'context' and
         if we want to 'store' it.
 
         Sets the temporary attributes used within the context:
@@ -87,26 +91,26 @@ class ExecutionTimeTracker(metaclass=Singleton):
             new_context: Full Context name, appending the given context to the last stored context level.
             store: If True, it will take part of the global state. Otherwise it will only log to debug.
         """
-        self.new_context = ".".join([part for part in [self.last_stored_context_level, context] if part])
+        self.new_context = ".".join(
+            [part for part in [self.last_stored_context_level, context] if part]
+        )
         self.store = store
 
         return self
 
     def __enter__(self):
-        """ If enabled, when entering the context, we append a new
+        """If enabled, when entering the context, we append a new
         ExecutionTimeTrackerContext to the list.
         """
         if self.enabled:
             self.context.append(
                 ExecutionTimeTrackerContext(
-                    name=self.new_context,
-                    start=perf_counter(),
-                    stored=self.store
+                    name=self.new_context, start=perf_counter(), stored=self.store
                 )
             )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """ If enabled, when exiting the context, we calculate the elapsed time and log to debug.
+        """If enabled, when exiting the context, we calculate the elapsed time and log to debug.
         If the context.stored is True, we also save it to the global state."""
         if self.enabled:
             stop = perf_counter()
@@ -118,25 +122,23 @@ class ExecutionTimeTracker(metaclass=Singleton):
             elapsed = stop - context.start
 
             logger.debug(
-                "%s executed in %s",
-                context.name,
-                pretty_print_time_duration(elapsed)
+                "%s executed in %s", context.name, pretty_print_time_duration(elapsed)
             )
 
             if context.stored:
                 self._save(context, elapsed)
 
     def _save(self, context: ExecutionTimeTrackerContext, elapsed: float):
-        """ Small utility to save the new measure to the global accumulator. """
+        """Small utility to save the new measure to the global accumulator."""
         self.state[context.name] = self.state.get(context.name, 0) + elapsed
 
     def print_summary(self):
-        """ Returns a formatted string for pretty printing the state. """
+        """Returns a formatted string for pretty printing the state."""
         current_level = -1
 
         summary: str = "Time Consumed\n"
         for key in sorted(self.state.keys()):
-            key_level = key.count('.')
+            key_level = key.count(".")
             if key_level < current_level or key_level == current_level == 0:
                 summary += "\n"
             elif key_level > current_level:
@@ -149,7 +151,7 @@ class ExecutionTimeTracker(metaclass=Singleton):
 
 
 def calculate_execution_time(context: Optional[str] = None, store: bool = True):
-    """ Utility decorator to be able to use the ExecutionTimeTracker on a function.
+    """Utility decorator to be able to use the ExecutionTimeTracker on a function.
 
     It receives the context and if it should store it.
 
@@ -159,8 +161,8 @@ def calculate_execution_time(context: Optional[str] = None, store: bool = True):
         def my_function():
             ...
     """
-    def decorator(func):
 
+    def decorator(func):
         @wraps(func)
         def inner(*args, **kwargs):
             execution_time = ExecutionTimeTracker()
@@ -175,8 +177,10 @@ def calculate_execution_time(context: Optional[str] = None, store: bool = True):
     return decorator
 
 
-def calculate_execution_time_generator(context: Optional[str] = None, store: bool = True):
-    """ Utility decorator to be able to use the ExecutionTimeTracker on a generator function.
+def calculate_execution_time_generator(
+    context: Optional[str] = None, store: bool = True
+):
+    """Utility decorator to be able to use the ExecutionTimeTracker on a generator function.
 
     It receives the context and if it should store it.
 
@@ -186,8 +190,8 @@ def calculate_execution_time_generator(context: Optional[str] = None, store: boo
         def my_generator():
             ...
     """
-    def decorator(func):
 
+    def decorator(func):
         @wraps(func)
         def inner(*args, **kwargs):
             # NOTE: We are basically implementing by hand a simplified version of 'yield from'

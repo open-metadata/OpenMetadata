@@ -17,7 +17,10 @@ from typing import Any, Iterable, Optional
 from metadata.ingestion.api.models import Entity
 from metadata.ingestion.api.step import BulkStep, IterStep, ReturnStep, StageStep
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.execution_time_tracker import calculate_execution_time, calculate_execution_time_generator
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

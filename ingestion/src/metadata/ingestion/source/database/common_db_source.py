@@ -62,8 +62,8 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
-from metadata.utils.filters import filter_by_table
 from metadata.utils.execution_time_tracker import calculate_execution_time_generator
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
