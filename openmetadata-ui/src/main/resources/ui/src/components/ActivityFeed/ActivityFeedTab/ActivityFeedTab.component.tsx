@@ -44,6 +44,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { useAuth } from '../../../hooks/authHooks';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
@@ -88,6 +89,7 @@ export const ActivityFeedTab = ({
   const history = useHistory();
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
+  const { isAdminUser } = useAuth();
   const initialRender = useRef(true);
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
@@ -205,7 +207,9 @@ export const ActivityFeedTab = ({
 
   const { feedFilter, threadType } = useMemo(() => {
     const currentFilter =
-      currentUser?.isAdmin && currentUser?.fullyQualifiedName === fqn
+      isAdminUser &&
+      currentUser?.name === fqn &&
+      activeTab !== ActivityFeedTabs.TASKS
         ? FeedFilter.ALL
         : FeedFilter.OWNER_OR_FOLLOWS;
     const filter = isUserEntity ? currentFilter : undefined;
