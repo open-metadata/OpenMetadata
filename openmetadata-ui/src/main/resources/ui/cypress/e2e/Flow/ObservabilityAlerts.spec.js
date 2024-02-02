@@ -282,7 +282,7 @@ describe('Observability Alert Flow', () => {
     addOwnerFilter(0, data.user.displayName, false, 'Owner Name');
     addEntityFQNFilter(
       1,
-      PIPELINE_SERVICE.entity.displayName,
+      `${PIPELINE_SERVICE.service.name}.${PIPELINE_SERVICE.entity.name}`,
       true,
       'Pipeline Name'
     );

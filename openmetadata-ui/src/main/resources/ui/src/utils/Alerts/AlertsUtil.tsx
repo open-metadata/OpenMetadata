@@ -42,6 +42,7 @@ import {
 } from '../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
+import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../EntityUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
@@ -151,14 +152,20 @@ export const getDisplayNameForEntities = (entity: string) => {
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;
 
-const searchEntity = async (
-  search: string,
-  searchIndex: SearchIndex | SearchIndex[],
-  filters?: string
-) => {
+const searchEntity = async ({
+  searchText,
+  searchIndex,
+  filters,
+  showDisplayNameAsLabel = true,
+}: {
+  searchText: string;
+  searchIndex: SearchIndex | SearchIndex[];
+  filters?: string;
+  showDisplayNameAsLabel?: boolean;
+}) => {
   try {
     const response = await searchData(
-      search,
+      searchText,
       1,
       PAGE_SIZE_LARGE,
       filters ?? '',
@@ -168,11 +175,21 @@ const searchEntity = async (
     );
 
     return uniqBy(
-      response.data.hits.hits.map((d) => ({
-        label: getEntityName(d._source),
-        value: d._source.fullyQualifiedName,
-      })),
-      'value'
+      response.data.hits.hits.map((d) => {
+        // Providing an option to hide display names, for inputs like 'fqnList',
+        // where users can input text alongside selection options.
+        // This helps avoid displaying the same option twice
+        // when using regular expressions as inputs in the same field.
+        const displayName = showDisplayNameAsLabel
+          ? getEntityName(d._source)
+          : d._source.fullyQualifiedName ?? '';
+
+        return {
+          label: displayName,
+          value: d._source.fullyQualifiedName ?? '',
+        };
+      }),
+      'label'
     );
   } catch (error) {
     return [];
@@ -180,31 +197,39 @@ const searchEntity = async (
 };
 
 const getTableSuggestions = async (searchText: string) => {
-  return searchEntity(searchText, SearchIndex.TABLE);
+  return searchEntity({
+    searchText,
+    searchIndex: SearchIndex.TABLE,
+    showDisplayNameAsLabel: false,
+  });
 };
 
 const getTestSuiteSuggestions = async (searchText: string) => {
-  return searchEntity(searchText, SearchIndex.TEST_SUITE);
+  return searchEntity({ searchText, searchIndex: SearchIndex.TEST_SUITE });
 };
 
 const getDomainOptions = async (searchText: string) => {
-  return searchEntity(searchText, SearchIndex.DOMAIN);
+  return searchEntity({ searchText, searchIndex: SearchIndex.DOMAIN });
 };
 
 const getOwnerOptions = async (searchText: string) => {
-  return searchEntity(
+  return searchEntity({
     searchText,
-    [SearchIndex.TEAM, SearchIndex.USER],
-    'isBot:false'
-  );
+    searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+    filters: 'isBot:false',
+  });
 };
 
 const getUserOptions = async (searchText: string) => {
-  return searchEntity(searchText, SearchIndex.USER, 'isBot:false');
+  return searchEntity({
+    searchText,
+    searchIndex: SearchIndex.USER,
+    filters: 'isBot:false',
+  });
 };
 
 const getTeamOptions = async (searchText: string) => {
-  return searchEntity(searchText, SearchIndex.TEAM);
+  return searchEntity({ searchText, searchIndex: SearchIndex.TEAM });
 };
 
 const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
@@ -318,25 +343,19 @@ export const getDestinationConfigField = (
                 }),
               },
             ]}>
-            <AsyncSelect
-              api={
+            <TeamAndUserSelectItem
+              destinationNumber={fieldName}
+              entityType={
+                type === SubscriptionCategory.Teams
+                  ? t('label.team-lowercase')
+                  : t('label.user-lowercase')
+              }
+              fieldName={[fieldName, 'config', 'receivers']}
+              onSearch={
                 type === SubscriptionCategory.Teams
                   ? getTeamOptions
                   : getUserOptions
               }
-              className="w-full"
-              data-testid={`${
-                type === SubscriptionCategory.Teams
-                  ? t('label.team')
-                  : t('label.user')
-              }-select`}
-              mode="multiple"
-              placeholder={t('label.search-by-type', {
-                type:
-                  type === SubscriptionCategory.Teams
-                    ? t('label.team-lowercase')
-                    : t('label.user-lowercase'),
-              })}
             />
           </Form.Item>
         </Col>
@@ -369,7 +388,11 @@ export const getFieldByArgumentType = (
     const searchIndexMapping =
       searchClassBase.getEntityTypeSearchIndexMapping();
 
-    return searchEntity(searchText, searchIndexMapping[selectedTrigger]);
+    return searchEntity({
+      searchText,
+      searchIndex: searchIndexMapping[selectedTrigger],
+      showDisplayNameAsLabel: false,
+    });
   };
 
   switch (argument) {
