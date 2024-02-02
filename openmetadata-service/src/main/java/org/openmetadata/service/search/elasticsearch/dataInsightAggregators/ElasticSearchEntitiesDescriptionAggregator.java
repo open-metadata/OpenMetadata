@@ -43,6 +43,6 @@ public class ElasticSearchEntitiesDescriptionAggregator
 
   @Override
   protected Double getValue(Sum aggregations) {
-    return aggregations != null ? aggregations.getValue() : 0.0;
+    return aggregations != null ? aggregations.getValue() : null;
   }
 }
