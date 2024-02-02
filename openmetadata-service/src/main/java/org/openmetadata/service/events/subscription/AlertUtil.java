@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -97,7 +98,7 @@ public final class AlertUtil {
     return builder.toString();
   }
 
-  public static boolean shouldTriggerAlert(String entityType, FilteringRules config) {
+  public static boolean shouldTriggerAlert(ChangeEvent event, FilteringRules config) {
     if (config == null) {
       return true;
     }
@@ -107,21 +108,22 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (entityType.equals(THREAD)
+    if (event.getEntityType().equals(THREAD)
         && (config.getResources().get(0).equals("announcement")
             || config.getResources().get(0).equals("task")
             || config.getResources().get(0).equals("conversation"))) {
-      return true;
+      Thread thread = AlertsRuleEvaluator.getThread(event);
+      return config.getResources().get(0).equalsIgnoreCase(thread.getType().value());
     }
 
-    return config.getResources().contains(entityType); // Use Trigger Specific Settings
+    return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
     // Check Trigger Conditions
     FilteringRules filteringRules =
         ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
-    return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
+    return AlertUtil.shouldTriggerAlert(event, filteringRules)
         && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
   }
 
@@ -154,8 +156,7 @@ public final class AlertUtil {
 
   private static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
-    boolean triggerChangeEvent =
-        AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
+    boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
     if (triggerChangeEvent) {
       // Evaluate Rules

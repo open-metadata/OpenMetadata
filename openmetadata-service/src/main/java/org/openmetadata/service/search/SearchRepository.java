@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -71,7 +72,7 @@ public class SearchRepository {
 
   private final String language;
 
-  @Getter @Setter public SearchIndexFactory searchIndexFactory;
+  @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
@@ -101,18 +102,15 @@ public class SearchRepository {
       searchClient = new ElasticSearchClient(config);
     }
     try {
-      if (config != null) {
+      if (config != null && (!nullOrEmpty(config.getSearchIndexFactoryClassName()))) {
         this.searchIndexFactory =
             Class.forName(config.getSearchIndexFactoryClassName())
                 .asSubclass(SearchIndexFactory.class)
+                .getDeclaredConstructor()
                 .newInstance();
       }
-    } catch (ClassNotFoundException e) {
-      LOG.warn("Failed to initialize search index factory", e);
-    } catch (InstantiationException e) {
-      LOG.warn("Failed to initialize search index factory", e);
-    } catch (IllegalAccessException e) {
-      LOG.warn("Failed to initialize search index factory", e);
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize search index factory using default one", e);
     }
     language =
         config != null && config.getSearchIndexMappingLanguage() != null

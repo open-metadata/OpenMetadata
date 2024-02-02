@@ -85,7 +85,7 @@ export const addEntityFQNFilter = (
   cy.get('[data-testid="fqn-list-select"]').click().type(entityFQN);
   verifyResponseStatusCode('@getSearchResult', 200);
   cy.get(`[title="${entityFQN}"]`).filter(':visible').scrollIntoView().click();
-  cy.get('[data-testid="fqn-list-select"]').should('contain', entityFQN);
+  cy.get(`[title="${entityFQN}"] [aria-label="check"]`).should('exist');
 
   if (exclude) {
     // Change filter effect
@@ -215,13 +215,33 @@ export const addInternalDestination = (
 
   // Select the receivers
   if (typeId) {
-    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
-    cy.get(`[data-testid="${typeId}"]`).click().type(searchText);
-    verifyResponseStatusCode('@getSearchResult', 200);
-    cy.get(`[title="${searchText}"]`)
-      .filter(':visible')
-      .scrollIntoView()
-      .click();
+    if (category === 'Teams' || category === 'Users') {
+      cy.get(
+        `[data-testid="destination-${destinationNumber}"] [data-testid="dropdown-trigger-button"]`
+      )
+        .scrollIntoView()
+        .click();
+      interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+      cy.get(
+        `[data-testid="team-user-select-dropdown-${destinationNumber}"] [data-testid="search-input"]`
+      )
+        .click()
+        .type(searchText);
+      // Added wait for debounce functionality
+      cy.wait(600);
+      verifyResponseStatusCode('@getSearchResult', 200);
+      cy.get(`[data-testid="${searchText}-option-label"]`)
+        .filter(':visible')
+        .scrollIntoView()
+        .click();
+    } else {
+      cy.get(`[data-testid="${typeId}"]`).click().type(searchText);
+      verifyResponseStatusCode('@getSearchResult', 200);
+      cy.get(`[title="${searchText}"]`)
+        .filter(':visible')
+        .scrollIntoView()
+        .click();
+    }
     cy.clickOutside();
   }
 
