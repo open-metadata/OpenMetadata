@@ -286,6 +286,6 @@ export const getTourSteps = ({
       </p>
     ),
     stepInteraction: false,
-    selector: '#lineageDetails',
+    selector: `[data-testid="lineage-details"]`,
   },
 ];

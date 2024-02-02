@@ -108,7 +108,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
 
   const { fqn: decodedFqn } = useFqn();
-  const { isTourOpen } = useTourProvider();
+  const { isTourOpen, isTourPage } = useTourProvider();
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -169,7 +169,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     config?: LineageConfig
   ) => {
     if (isTourOpen) {
-      setEntityLineage(mockDatasetData.entityLineage);
+      return;
     } else {
       setLoading(true);
       setInit(false);
@@ -1064,6 +1064,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onLineageEditClick,
     onAddPipelineClick,
   ]);
+
+  useEffect(() => {
+    if (isTourOpen || isTourPage) {
+      setInit(true);
+      setLoading(false);
+      setEntityLineage(
+        mockDatasetData.entityLineage as unknown as EntityLineageReponse
+      );
+    }
+  }, [isTourOpen, isTourPage]);
 
   return (
     <LineageContext.Provider value={activityFeedContextValues}>
