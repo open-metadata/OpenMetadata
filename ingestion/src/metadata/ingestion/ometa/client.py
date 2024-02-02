@@ -21,6 +21,7 @@ from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -251,6 +252,7 @@ class REST:
 
         return None
 
+    @calculate_execution_time(context="GET")
     def get(self, path, data=None):
         """
         GET method
