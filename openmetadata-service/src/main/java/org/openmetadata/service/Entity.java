@@ -250,8 +250,6 @@ public final class Entity {
       tokenRepository = new TokenRepository();
       policyRepository = new PolicyRepository();
       roleRepository = new RoleRepository();
-      ENTITY_REPOSITORY_MAP.put(POLICY, policyRepository);
-      ENTITY_REPOSITORY_MAP.put(ROLE, roleRepository);
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
