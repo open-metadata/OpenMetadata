@@ -11,33 +11,45 @@
  *  limitations under the License.
  */
 
-.trigger-dropdown-card {
-  padding: 8px 0px;
+.team-user-select-dropdown {
+  padding: 8px;
+
+  .ant-card-body {
+    max-width: 30vw;
+  }
   .ant-dropdown-menu {
     box-shadow: none;
     padding: 0px;
     overflow-y: scroll;
-    max-height: 300px;
+    max-height: 200px;
 
     .ant-dropdown-menu-item {
-      padding: 5px 16px 5px 32px;
-      min-width: 200px;
+      padding: 4px 0px;
+      min-width: 100px;
+    }
+
+    .ant-dropdown-menu-title-content {
+      max-width: 100%;
     }
   }
 
   .dropdown-option-label {
-    max-width: 65vw;
+    max-width: 100%;
   }
 }
-.trigger-input-container {
-  // Below styling is for ant dropdown popup container
-  // to display inside the trigger item container
-  // !important styling given to override inline styling by antd
-  & > :nth-child(2) {
-    position: static !important;
-    width: 50% !important;
-  }
-  .ant-dropdown {
-    position: static !important;
-  }
+
+.select-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+}
+
+.selected-options-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
 }
