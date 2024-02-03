@@ -182,11 +182,13 @@ describe('Tests for fetchOptions', () => {
     expect(mockSetOptions).toHaveBeenCalledWith([
       {
         label: 'Ashish Gupta',
+        displayName: 'Ashish Gupta',
         name: 'ashish',
         type: 'user',
         value: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
       },
       {
+        displayName: 'Ashley King',
         label: 'Ashley King',
         name: 'ashley_king5',
         type: 'user',
@@ -212,6 +214,7 @@ describe('Tests for fetchOptions', () => {
 
     expect(mockSetOptions).toHaveBeenCalledWith([
       {
+        displayName: 'Ashley King',
         label: 'Ashley King',
         name: 'ashley_king5',
         type: 'user',

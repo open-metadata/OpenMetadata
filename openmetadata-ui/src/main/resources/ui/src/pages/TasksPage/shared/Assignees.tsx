@@ -56,6 +56,7 @@ const Assignees: FC<Props> = ({
           value: option.value,
           type: option.type,
           name: option.name,
+          displayName: option.displayName,
         }));
 
     onChange(newValues as Option[]);

@@ -28,7 +28,14 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, startCase, unionBy } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  last,
+  startCase,
+  unionBy,
+} from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -136,9 +143,25 @@ export const TaskTab = ({
   } = useActivityFeedProvider();
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
-  const [taskAction, setTaskAction] = useState<TaskAction>(
-    isTaskTestCaseResult ? INCIDENT_TASK_ACTION_LIST[0] : TASK_ACTION_LIST[0]
-  );
+
+  const latestAction = useMemo(() => {
+    const resolutionStatus = last(testCaseResolutionStatus);
+
+    if (isTaskTestCaseResult) {
+      switch (resolutionStatus?.testCaseResolutionStatusType) {
+        case TestCaseResolutionStatusTypes.Assigned:
+          return INCIDENT_TASK_ACTION_LIST[1];
+
+        default:
+          return INCIDENT_TASK_ACTION_LIST[0];
+      }
+    } else {
+      return TASK_ACTION_LIST[0];
+    }
+  }, [testCaseResolutionStatus, isTaskTestCaseResult]);
+
+  const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
@@ -353,6 +376,7 @@ export const TaskTab = ({
   };
 
   const onTestCaseIncidentAssigneeUpdate = async () => {
+    setIsActionLoading(true);
     const testCaseIncident: CreateTestCaseResolutionStatus = {
       testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
       testCaseReference: entityFQN,
@@ -360,6 +384,7 @@ export const TaskTab = ({
         assignee: {
           id: updatedAssignees[0].value,
           name: updatedAssignees[0].name,
+          displayName: updatedAssignees[0].displayName,
           type: updatedAssignees[0].type,
         },
       },
@@ -372,6 +397,8 @@ export const TaskTab = ({
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -382,6 +409,7 @@ export const TaskTab = ({
     testCaseFailureReason: TestCaseFailureReasonType;
     testCaseFailureComment: string;
   }) => {
+    setIsActionLoading(true);
     const testCaseIncident: CreateTestCaseResolutionStatus = {
       testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
       testCaseReference: entityFQN,
@@ -402,6 +430,8 @@ export const TaskTab = ({
       setShowEditTaskModel(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -484,6 +514,7 @@ export const TaskTab = ({
         className="m-t-sm"
         data-testid="task-cta-buttons"
         icon={<DownOutlined />}
+        loading={isActionLoading}
         menu={{
           items: INCIDENT_TASK_ACTION_LIST,
           selectable: true,
@@ -617,6 +648,10 @@ export const TaskTab = ({
     assigneesForm.setFieldValue('assignees', initialAssignees);
     setOptions(assigneeOptions);
   }, [initialAssignees, assigneeOptions]);
+
+  useEffect(() => {
+    setTaskAction(latestAction);
+  }, [latestAction]);
 
   const taskHeader = isTaskTestCaseResult ? (
     <TaskTabIncidentManagerHeader thread={taskThread} />
@@ -763,6 +798,9 @@ export const TaskTab = ({
           maskClosable
           closable={false}
           closeIcon={null}
+          okButtonProps={{
+            loading: isActionLoading,
+          }}
           okText={t('label.submit')}
           open={showEditTaskModel}
           title={`${t('label.resolve')} ${t('label.task')} #${taskDetails?.id}`}
@@ -885,6 +923,9 @@ export const TaskTab = ({
           maskClosable
           closable={false}
           closeIcon={null}
+          okButtonProps={{
+            loading: isActionLoading,
+          }}
           okText={t('label.submit')}
           open={isEditAssignee}
           title={`${t('label.re-assign')} ${t('label.task')} #${

@@ -60,6 +60,7 @@ const SeverityModal = ({
         onFinish={handleFormSubmit}>
         <Form.Item label={t('label.severity')} name="severity">
           <Select
+            allowClear
             data-testid="severity-select"
             placeholder={t('label.please-select-entity', {
               entity: t('label.severity'),

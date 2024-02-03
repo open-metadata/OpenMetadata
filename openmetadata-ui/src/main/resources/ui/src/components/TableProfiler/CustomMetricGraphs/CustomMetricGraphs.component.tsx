@@ -171,15 +171,18 @@ const CustomMetricGraphs = ({
 
   return (
     <Row data-testid="custom-metric-graph-container" gutter={[16, 16]}>
-      {!isEmpty(customMetricsGraphData) && (
+      {!isEmpty(customMetrics) && (
         <Col span={24}>
           <PageHeader data={PAGE_HEADERS.CUSTOM_METRICS} />
         </Col>
       )}
       {toPairs(customMetricsGraphData).map(([key, metric], i) => {
+        const metricDetails = customMetrics?.find(
+          (metric) => metric.name === key
+        );
         const color = TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor();
 
-        return (
+        return isUndefined(metricDetails) ? null : (
           <Col key={key} span={24}>
             <Card
               className="shadow-none global-border-radius custom-metric-card"

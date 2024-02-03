@@ -134,7 +134,7 @@ const TestCaseResultTab = ({
             <Typography.Text className="right-panel-label">
               {t('label.parameter-plural')}
             </Typography.Text>
-            {hasEditPermission && (
+            {hasEditPermission && Boolean(withoutSqlParams.length) && (
               <Icon
                 component={EditIcon}
                 data-testid="edit-parameter-icon"

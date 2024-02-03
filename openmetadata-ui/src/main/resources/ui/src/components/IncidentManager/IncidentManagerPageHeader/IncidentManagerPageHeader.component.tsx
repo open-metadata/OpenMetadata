@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Skeleton, Space, Typography } from 'antd';
+import { Divider, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';
@@ -274,9 +274,13 @@ const IncidentManagerPageHeader = ({
       <Divider className="self-center m-x-sm" type="vertical" />
       <Typography.Text className="self-center text-xs whitespace-nowrap">
         <span className="text-grey-muted">{`${t('label.test-type')}: `}</span>
-        <span className="font-medium" data-testid="test-definition-name">
-          {getEntityName(testCaseData?.testDefinition)}
-        </span>
+        <Tooltip
+          placement="bottom"
+          title={testCaseData?.testDefinition.description}>
+          <span className="font-medium" data-testid="test-definition-name">
+            {getEntityName(testCaseData?.testDefinition)}
+          </span>
+        </Tooltip>
       </Typography.Text>
     </Space>
   );
