@@ -65,7 +65,7 @@ public class ChangeEventHandler implements EventHandler {
         ChangeEvent changeEvent = optionalChangeEvent.get();
         // Always set the Change Event Username as context Principal, the one creating the CE
         changeEvent.setUserName(loggedInUserName);
-        LOG.info(
+        LOG.debug(
             "Recording change event {}:{}:{}:{}",
             changeEvent.getTimestamp(),
             changeEvent.getEntityId(),
