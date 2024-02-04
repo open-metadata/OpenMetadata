@@ -528,7 +528,12 @@ public class FeedRepository {
         User user = Entity.getEntity(USER, userId, TEAMS_FIELD, NON_DELETED);
         List<String> teamIds = getTeamIds(user);
         List<String> teamNames = getTeamNames(user);
-        result = dao.feedDAO().listCountByOwner(userId, teamIds);
+        String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
+        List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+        result =
+            dao.feedDAO()
+                .listCountByOwner(
+                    userId, teamIds, user.getName(), userTeamJsonMysql, userTeamJsonPostgres);
         mentions =
             dao.feedDAO()
                 .listCountThreadsByMentions(
