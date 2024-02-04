@@ -12,13 +12,14 @@
  */
 import { Col, Row, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation as PatchOperation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -27,6 +28,7 @@ import IncidentManagerPageHeader from '../../../components/IncidentManager/Incid
 import TestCaseIncidentTab from '../../../components/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import Loader from '../../../components/Loader/Loader';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
@@ -73,13 +75,26 @@ const IncidentManagerDetailPage = () => {
   );
 
   const { permissions } = usePermissionProvider();
-  const hasViewPermission = useMemo(() => {
-    return checkPermission(
-      Operation.ViewAll,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
+  const { hasViewPermission, editDisplayNamePermission, hasDeletePermission } =
+    useMemo(() => {
+      return {
+        hasViewPermission: checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          permissions
+        ),
+        editDisplayNamePermission: checkPermission(
+          Operation.EditDisplayName,
+          ResourceEntity.TEST_CASE,
+          permissions
+        ),
+        hasDeletePermission: checkPermission(
+          Operation.Delete,
+          ResourceEntity.TEST_CASE,
+          permissions
+        ),
+      };
+    }, [permissions]);
 
   const onTestCaseUpdate = (data: TestCase) => {
     setTestCaseData((prev) => ({ ...prev, data }));
@@ -168,7 +183,14 @@ const IncidentManagerDetailPage = () => {
       );
     }
   };
-
+  const updateTestCase = async (id: string, patch: PatchOperation[]) => {
+    try {
+      const res = await updateTestCaseById(id, patch);
+      onTestCaseUpdate(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
   const handleOwnerChange = async (owner?: EntityReference) => {
     const data = testCaseData.data;
     if (data) {
@@ -178,13 +200,23 @@ const IncidentManagerDetailPage = () => {
       };
       const jsonPatch = compare(data, updatedTestCase);
 
-      if (jsonPatch.length) {
-        try {
-          const res = await updateTestCaseById(data.id ?? '', jsonPatch);
-          onTestCaseUpdate(res);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
+      if (jsonPatch.length && data.id) {
+        updateTestCase(data.id, jsonPatch);
+      }
+    }
+  };
+
+  const handleDisplayNameChange = async (entityName?: EntityName) => {
+    const data = testCaseData.data;
+    if (data) {
+      const updatedTestCase = {
+        ...data,
+        ...entityName,
+      };
+      const jsonPatch = compare(data, updatedTestCase);
+
+      if (jsonPatch.length && data.id) {
+        updateTestCase(data.id, jsonPatch);
       }
     }
   };
@@ -228,13 +260,34 @@ const IncidentManagerDetailPage = () => {
             <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
           </Col>
           <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
-            <EntityHeaderTitle
-              className="w-max-full-45"
-              displayName={testCaseData.data?.displayName}
-              icon={<TestCaseIcon className="h-9" />}
-              name={testCaseData.data?.name ?? ''}
-              serviceName="testCase"
-            />
+            <Row gutter={16}>
+              <Col span={23}>
+                <EntityHeaderTitle
+                  className="w-max-full-45"
+                  displayName={testCaseData.data?.displayName}
+                  icon={<TestCaseIcon className="h-9" />}
+                  name={testCaseData.data?.name ?? ''}
+                  serviceName="testCase"
+                />
+              </Col>
+              <Col className="d-flex justify-end" span={1}>
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={() =>
+                    history.push(ROUTES.INCIDENT_MANAGER)
+                  }
+                  allowSoftDelete={false}
+                  canDelete={hasDeletePermission}
+                  displayName={testCaseData.data.displayName}
+                  editDisplayNamePermission={editDisplayNamePermission}
+                  entityFQN={testCaseData.data.fullyQualifiedName}
+                  entityId={testCaseData.data.id}
+                  entityName={testCaseData.data.name}
+                  entityType={EntityType.TEST_CASE}
+                  onEditDisplayName={handleDisplayNameChange}
+                />
+              </Col>
+            </Row>
           </Col>
           <Col className="p-x-lg">
             <IncidentManagerPageHeader

@@ -45,6 +45,7 @@ export interface Option {
   value: string;
   type: string;
   name?: string;
+  displayName?: string;
   children?: string;
   'data-label'?: string;
   'data-testid'?: string;
