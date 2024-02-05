@@ -114,11 +114,22 @@ After the migration is finished, you can revert this changes.
 
 ### New Alerts and Observability
 
-We have fully reworked how we manage alerts to make the experience easier for end users. Now, alerts have been
-split between Alerts and Observability, both working with a full new backend implementation.
+{% note noteType="Warning" %}
 
-This means that there is no automatic way for us to migrate alerts from the old system to the new feature.
-**You will need to recreate your alerts manually.**
+Upgrading to OpenMetadata 1.3.0 will REMOVE your existing Alerts. **You will need to recreate your alerts manually.**
+
+{% /note %}
+
+We have fully reworked how we manage alerts to make the experience easier for end users, with a more comprehensive
+list of sources, filters and actions.
+
+This process required a full backend rewrite, which means that there is no automatic way to migrate alerts from the old system.
+
+{% image
+  src="/images/v1.3/deployment/upgrade/alerts.png"
+  alt="alerts"
+  caption="New Alerts UI"
+/%}
 
 ### Secrets Manager
 
