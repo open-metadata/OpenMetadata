@@ -21,7 +21,7 @@ import { SearchIndexMappingLanguage } from '../../generated/settings/settings';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const mockGetApplicationByNameResponse = {
+export const mockApplicationData = {
   id: 'bfa9dee3-6737-4e82-b73b-2aef15420ba0',
   runId: 'pipeline-run-id',
   status: Status.Success,

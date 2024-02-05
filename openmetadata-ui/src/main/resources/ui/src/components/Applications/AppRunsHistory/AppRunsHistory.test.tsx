@@ -21,14 +21,14 @@ import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { AppType } from '../../../generated/entity/applications/app';
-import { mockGetApplicationByNameResponse } from '../../../mocks/rests/applicationAPI.mock';
+import { mockApplicationData } from '../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
 const mockGetApplicationRuns = jest.fn().mockReturnValue({
-  data: [mockGetApplicationByNameResponse],
+  data: [mockApplicationData],
   paging: {
     offset: 0,
     total: 3,
@@ -122,7 +122,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockProps1 = {
-  appData: mockGetApplicationByNameResponse,
+  appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
 };

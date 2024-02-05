@@ -19,7 +19,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { mockGetApplicationByNameResponse } from '../../../mocks/rests/applicationAPI.mock';
+import { mockApplicationData } from '../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';
 
 jest.mock('../../../components/Loader/Loader', () =>
@@ -46,12 +46,8 @@ const mockUninstallApp = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
 const mockPush = jest.fn();
-const mockPatchApplication = jest
-  .fn()
-  .mockReturnValue(mockGetApplicationByNameResponse);
-const mockGetApplicationByName = jest
-  .fn()
-  .mockReturnValue(mockGetApplicationByNameResponse);
+const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
+const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 
 jest.mock('../../../rest/applicationAPI', () => ({
   configureApp: mockConfigureApp,
@@ -197,7 +193,7 @@ describe('AppDetails component', () => {
 
   it('check for restore button', async () => {
     mockGetApplicationByName.mockReturnValueOnce({
-      ...mockGetApplicationByNameResponse,
+      ...mockApplicationData,
       deleted: true,
     });
 

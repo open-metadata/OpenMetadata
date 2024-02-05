@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { mockGetApplicationByNameResponse } from '../../../mocks/rests/applicationAPI.mock';
+import { mockApplicationData } from '../../../mocks/rests/applicationAPI.mock';
 import { mockUserData } from '../../Users/mocks/User.mocks';
 import AppInstallVerifyCard from './AppInstallVerifyCard.component';
 
@@ -47,7 +47,7 @@ const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
 const mockProps = {
-  appData: mockGetApplicationByNameResponse,
+  appData: mockApplicationData,
   nextButtonLabel: 'Next Button',
   onCancel: mockOnCancel,
   onSave: mockOnSave,
