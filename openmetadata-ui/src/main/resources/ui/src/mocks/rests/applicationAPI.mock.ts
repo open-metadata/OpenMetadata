@@ -1,4 +1,8 @@
-import { AppType } from '../../generated/entity/applications/app';
+import { AppType, ProviderType } from '../../generated/entity/applications/app';
+import {
+  ScheduleTimeline,
+  Status,
+} from '../../generated/entity/applications/appRunRecord';
 import {
   Permissions,
   ScheduleType,
@@ -19,6 +23,9 @@ import { SearchIndexMappingLanguage } from '../../generated/settings/settings';
  */
 export const mockGetApplicationByNameResponse = {
   id: 'bfa9dee3-6737-4e82-b73b-2aef15420ba0',
+  runId: 'pipeline-run-id',
+  status: Status.Success,
+  successContext: null,
   name: 'SearchIndexingApplication',
   displayName: 'Search Indexing',
   features: 'Sync OpenMetadata and Elastic Search and Recreate Indexes.',
@@ -28,7 +35,7 @@ export const mockGetApplicationByNameResponse = {
   updatedBy: 'admin',
   href: 'http://localhost:8585/api/v1/apps/bfa9dee3-6737-4e82-b73b-2aef15420ba0',
   deleted: false,
-  provider: 'user',
+  provider: ProviderType.User,
   developer: 'Collate Inc.',
   developerUrl: 'https://www.getcollate.io',
   privacyPolicyUrl: 'https://www.getcollate.io',
@@ -47,6 +54,7 @@ export const mockGetApplicationByNameResponse = {
   runtime: {
     enabled: true,
   },
+  runType: 'runType',
   allowConfiguration: true,
   appConfiguration: {
     entities: [
@@ -89,7 +97,7 @@ export const mockGetApplicationByNameResponse = {
   },
   pipelines: [],
   appSchedule: {
-    scheduleType: 'Custom',
+    scheduleType: ScheduleTimeline.Custom,
     cronExpression: '0 0 0 1/1 * ? *',
   },
   appScreenshots: ['SearchIndexPic1.png'],
