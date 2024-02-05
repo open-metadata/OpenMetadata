@@ -98,7 +98,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -2079,19 +2078,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Revert the changes previously made by the user with in a session and consolidate all the
       // changes
       if (consolidateChanges) {
-        T actualOriginal = original;
-        T actualUpdated = updated;
-
-        // Revert and Store Consolidated Changes
         revert();
-        updateAndStore();
-
-        // Process the actual Change Taking Place in this single event
-        processActualEvents(actualOriginal, actualUpdated, updated.getVersion());
-      } else {
-        updateAndStore();
       }
+      // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
+      updateInternal();
 
+      // Store the updated entity
+      storeUpdate();
       postUpdate(original, updated);
     }
 
@@ -2381,7 +2375,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Don't use the inherited entity references in update
       return listOrEmpty(references).stream()
           .filter(r -> !Boolean.TRUE.equals(r.getInherited()))
-          .collect(Collectors.toList());
+          .toList();
     }
 
     private void updateStyle() {
@@ -2723,40 +2717,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               <= sessionTimeoutMillis; // With in session timeout
     }
 
-    private void updateAndStore() {
-      changeDescription = new ChangeDescription();
-      updateInternal();
-      // Store the updated entity
-      storeUpdate();
-    }
-
-    private void processActualEvents(
-        T actualOriginal, T actualUpdated, Double consolidatedVersion) {
-      // Build the Actual Change Taking Place , But don't store in Entity Versions
-      entityChanged = false;
-      original = actualOriginal;
-      updated = actualUpdated;
-
-      changeDescription = new ChangeDescription();
-      updateInternal();
-      boolean updateVersion = updateVersion(original.getVersion());
-      if (!updateVersion) {
-        if (entityChanged) {
-          if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-            updated.setChangeDescription(original.getChangeDescription());
-          }
-        } else { // Update did not change the entity version
-          updated.setChangeDescription(original.getChangeDescription());
-          updated.setUpdatedBy(original.getUpdatedBy());
-          updated.setUpdatedAt(original.getUpdatedAt());
-        }
-      }
-
-      // Store the Actual Change Taking Place in Version
-      updated.setVersion(consolidatedVersion);
-    }
-
-    @SneakyThrows
     private void processIncrementalEvents() {
       // Build the Actual Change Taking Place , But don't store in Entity Versions
       entityChanged = false;
@@ -2778,7 +2738,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Store the Actual Change Taking Place in Version
       if (entityChanged) {
         storeChangeEvent(updated, ENTITY_UPDATED);
-        Thread.sleep(10000l);
       }
     }
 
