@@ -406,10 +406,10 @@
         "displayName": "Get Test Case Status Updates belonging to a Test Suite",
         "description" : "Get Status Updates Test Cases belonging to a Test Suite",
         "effect" : "include",
-        "condition": "getTestCaseStatusIfInTestSuite(${testSuiteList}, ${testStatusList})",
+        "condition": "getTestCaseStatusIfInTestSuite({testStatusList}, ${testSuiteList$})",
         "arguments": [
-          "testSuiteList",
-          "testStatusList"
+          "testStatusList",
+          "testSuiteList$"
         ],
         "inputType": "runtime"
       }
