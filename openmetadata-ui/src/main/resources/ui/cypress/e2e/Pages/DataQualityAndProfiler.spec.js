@@ -714,7 +714,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Data Quality')
       .click();
 
-    cy.get(`[data-testid="${testCaseName}"]`).click();
+    cy.get(`[data-testid="${testCaseName}"]`).contains(testCaseName).click();
     verifyResponseStatusCode('@getTestCaseDetails', 200);
     cy.wait('@getTestResult').then(() => {
       cy.get(`[id="${testCaseName}_graph"]`)

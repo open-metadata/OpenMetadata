@@ -204,8 +204,8 @@ const deleteCustomMetric = ({
   interceptURL(
     'DELETE',
     isColumnMetric
-      ? `/api/v1/tables/*/customMetric/${metric.column}/${metric.name}`
-      : `/api/v1/tables/*/customMetric/${metric.name}`,
+      ? `/api/v1/tables/*/customMetric/${metric.column}/${metric.name}*`
+      : `/api/v1/tables/*/customMetric/${metric.name}*`,
     'deleteCustomMetric'
   );
   visitEntityDetailsPage({
