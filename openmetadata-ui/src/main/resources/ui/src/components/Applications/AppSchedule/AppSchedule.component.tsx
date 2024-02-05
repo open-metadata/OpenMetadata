@@ -24,9 +24,11 @@ import {
   AppScheduleClass,
   AppType,
 } from '../../../generated/entity/applications/app';
-import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
-import { getIngestionFrequency } from '../../../utils/CommonUtils';
+import {
+  getCronExpression,
+  getCronInitialValue,
+} from '../../../utils/CronUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
 import Loader from '../../Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
@@ -44,6 +46,11 @@ const AppSchedule = ({
   const appRunsHistoryRef = useRef<AppRunsHistoryRef>(null);
   const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const initialValue = useMemo(
+    () => getCronInitialValue(appData.appType, appData.name),
+    [appData.name, appData.appType]
+  );
 
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
@@ -89,7 +96,7 @@ const AppSchedule = ({
   };
 
   const onDialogSave = (cron: string) => {
-    onSave(cron);
+    onSave(getCronExpression(cron, initialValue));
     setShowModal(false);
   };
 
@@ -231,7 +238,7 @@ const AppSchedule = ({
             okText: t('label.save'),
           }}
           includePeriodOptions={initialOptions}
-          initialData={getIngestionFrequency(PipelineType.Application)}
+          initialData={initialValue}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}
         />
