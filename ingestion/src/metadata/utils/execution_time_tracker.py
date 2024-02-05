@@ -132,23 +132,6 @@ class ExecutionTimeTracker(metaclass=Singleton):
         """Small utility to save the new measure to the global accumulator."""
         self.state[context.name] = self.state.get(context.name, 0) + elapsed
 
-    def print_summary(self):
-        """Returns a formatted string for pretty printing the state."""
-        current_level = -1
-
-        summary: str = "Time Consumed\n"
-        for key in sorted(self.state.keys()):
-            key_level = key.count(".")
-            if key_level < current_level or key_level == current_level == 0:
-                summary += "\n"
-            elif key_level > current_level:
-                summary += f"{'-'*40}\n"
-            summary += f"{key}: {pretty_print_time_duration(self.state[key])}\n"
-
-            current_level = key_level
-
-        return summary
-
 
 def calculate_execution_time(context: Optional[str] = None, store: bool = True):
     """Utility decorator to be able to use the ExecutionTimeTracker on a function.

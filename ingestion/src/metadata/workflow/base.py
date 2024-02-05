@@ -93,7 +93,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self._timer: Optional[RepeatedTimer] = None
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
         self._start_ts = datetime_to_ts(datetime.now())
-        self._execution_time_tracker = ExecutionTimeTracker(log_level.value == "DEBUG")
+        self._execution_time_tracker = ExecutionTimeTracker(
+            log_level == LogLevels.DEBUG
+        )
 
         set_loggers_level(log_level.value)
 
@@ -191,7 +193,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Force resource closing. Required for killing the threading
         finally:
-            logger.debug("%s", self._execution_time_tracker.print_summary())
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
             self.stop()
