@@ -163,15 +163,21 @@ export const BlockMenu = (props: BlockMenuProps) => {
   }, [handleClickDragHandle, handleKeyDown]);
 
   return (
-    <div className="block-menu" ref={menuRef}>
-      <button className="action" onClick={handleDelete}>
+    <div className="block-menu" data-testid="menu-container" ref={menuRef}>
+      <button
+        className="action"
+        data-testid="delete-btn"
+        onClick={handleDelete}>
         <div className="action-icon-container">
           <DeleteIcon width={16} />
         </div>
         <div className="action-name">{t('label.delete')}</div>
       </button>
 
-      <button className="action" onClick={handleDuplicate}>
+      <button
+        className="action"
+        data-testid="duplicate-btn"
+        onClick={handleDuplicate}>
         <div className="action-icon-container">
           <DuplicateIcon width={16} />
         </div>
