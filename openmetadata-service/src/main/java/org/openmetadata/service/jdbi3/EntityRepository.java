@@ -2057,22 +2057,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // set changeDescription to null
       T updatedOld = updated;
       previous = getPreviousVersion(original);
-      LOG.debug(
-          "In session change consolidation. Reverting to previous version {}",
-          previous.getVersion());
-      updated = previous;
-      updateInternal();
-      LOG.info(
-          "In session change consolidation. Reverting to previous version {} completed",
-          previous.getVersion());
+      if (previous != null) {
+        LOG.debug(
+            "In session change consolidation. Reverting to previous version {}",
+            previous.getVersion());
+        updated = previous;
+        updateInternal();
+        LOG.info(
+            "In session change consolidation. Reverting to previous version {} completed",
+            previous.getVersion());
 
-      // Now go from original to updated
-      updated = updatedOld;
-      updateInternal();
+        // Now go from original to updated
+        updated = updatedOld;
+        updateInternal();
 
-      // Finally, go from previous to the latest updated entity to consolidate changes
-      original = previous;
-      entityChanged = false;
+        // Finally, go from previous to the latest updated entity to consolidate changes
+        original = previous;
+        entityChanged = false;
+      }
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */

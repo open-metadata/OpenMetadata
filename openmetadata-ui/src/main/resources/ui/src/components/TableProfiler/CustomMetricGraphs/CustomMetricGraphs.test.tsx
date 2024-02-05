@@ -161,4 +161,20 @@ describe('CustomMetricGraphs', () => {
 
     expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
   });
+
+  it("CustomMetric should be visible based on 'customMetrics' prop", async () => {
+    render(
+      <CustomMetricGraphs
+        {...mockProps}
+        customMetrics={[mockProps.customMetrics[0]]}
+      />
+    );
+    const name = mockProps.customMetrics[0].name;
+    const name2 = mockProps.customMetrics[1].name;
+    const metric = await screen.findByTestId(`${name}-custom-metrics`);
+    const metric2 = screen.queryByTestId(`${name2}-custom-metrics`);
+
+    expect(metric).toBeInTheDocument();
+    expect(metric2).not.toBeInTheDocument();
+  });
 });

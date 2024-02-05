@@ -1471,7 +1471,7 @@
     "list-of-strings-regex-patterns-csv": "Enter a list of strings/regex patterns as a comma separated value",
     "login-fail-attempt-message": "Allowed attempt on consecutive failed login to application.",
     "logout-confirmation": "Are you sure you want to logout?",
-    "made-announcement-for-entity": "made an announcement for {{entity}}",
+    "made-announcement": "made an announcement",
     "make-an-announcement": "Make an announcement!",
     "manage-airflow-api": "OpenMetadata - Managed Airflow APIs",
     "manage-airflow-api-failed": "Failed to find OpenMetadata - Managed Airflow APIs",
