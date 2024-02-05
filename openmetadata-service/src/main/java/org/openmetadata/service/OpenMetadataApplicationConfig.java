@@ -22,6 +22,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
@@ -92,6 +93,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @NotNull
   @JsonProperty("web")
   private OMWebConfiguration webConfiguration = new OMWebConfiguration();
+
+  @JsonProperty("applications")
+  private AppsPrivateConfiguration appsPrivateConfiguration;
 
   @Override
   public String toString() {

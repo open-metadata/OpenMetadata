@@ -79,17 +79,15 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   }
 
   private Set<String> buildReceiversList(ChangeEvent changeEvent) {
-    Set<String> receiverList =
-        emailAlertConfig.getReceivers() == null ? new HashSet<>() : emailAlertConfig.getReceivers();
     EntityInterface entityInterface = getEntity(changeEvent);
-    receiverList.addAll(
+    return new HashSet<>(
         buildReceiversListFromActions(
             emailAlertConfig,
+            subscriptionDestination.getCategory(),
             EMAIL,
             daoCollection,
             entityInterface.getId(),
             changeEvent.getEntityType()));
-    return receiverList;
   }
 
   public void close() {

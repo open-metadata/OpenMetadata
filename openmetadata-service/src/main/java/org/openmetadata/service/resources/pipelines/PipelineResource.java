@@ -383,7 +383,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                     schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Pipeline addPipelineStatus(
+  public Response addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -395,8 +395,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    Pipeline pipeline = repository.addPipelineStatus(fqn, pipelineStatus);
-    return addHref(uriInfo, pipeline);
+    return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
 
   @GET

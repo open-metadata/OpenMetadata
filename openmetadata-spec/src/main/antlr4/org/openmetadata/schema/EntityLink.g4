@@ -113,6 +113,13 @@ ENTITY_FIELD
     | 'votes'
     | 'profile'
     | 'roles'
+    | 'deleted'
+    | 'lifeCycle'
+    | 'api_client_id'
+    | 'sourceHash'
+    | 'testCaseResult'
+    | 'tests'
+    | 'pipelineStatus'
     ;
 
     

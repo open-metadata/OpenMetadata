@@ -35,10 +35,7 @@ import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import ActivityFeedListV1 from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import {
-  ActivityFeedTabs,
-  TaskFilter,
-} from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { TaskFilter } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
 import './test-case-incident-tab.style.less';
@@ -170,7 +167,6 @@ const TestCaseIncidentTab = ({ owner }: { owner?: EntityReference }) => {
           isForFeedTab={false}
           isLoading={false}
           showThread={false}
-          tab={ActivityFeedTabs.TASKS}
           onFeedClick={handleFeedClick}
         />
         {loader}

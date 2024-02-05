@@ -55,7 +55,7 @@ services:
   execute-migrate-all:
     container_name: execute_migrate_all
     image: docker.getcollate.io/openmetadata/server:1.3.0-SNAPSHOT
-    command: "./bootstrap/bootstrap_storage.sh migrate-all"
+    command: "./bootstrap/openmetadata-ops.sh migrate"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -140,7 +140,7 @@ services:
       # Database configuration for MySQL
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
       DB_SCHEME: ${DB_SCHEME:-mysql}
-      DB_PARAMS: ${DB_PARAMS:-"allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"}
+      DB_PARAMS: ${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
       DB_HOST: ${DB_HOST:-mysql}
@@ -325,7 +325,7 @@ services:
       # Database configuration for MySQL
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
       DB_SCHEME: ${DB_SCHEME:-mysql}
-      DB_PARAMS: ${DB_PARAMS:-"allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"}
+      DB_PARAMS: ${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
       DB_HOST: ${DB_HOST:-mysql}

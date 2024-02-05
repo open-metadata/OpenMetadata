@@ -66,12 +66,26 @@ public class ListFilter {
     condition = addCondition(condition, getEntityFQNHashCondition());
     condition = addCondition(condition, getTestCaseResolutionStatusType());
     condition = addCondition(condition, getAssignee());
+    condition = addCondition(condition, getEventSubscriptionAlertType());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+  }
+
+  private String getEventSubscriptionAlertType() {
+    String alertType = queryParams.get("alertType");
+    if (alertType == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
+      } else {
+        return String.format("json->>'alertType' = '%s'", alertType);
+      }
+    }
   }
 
   private String getTestCaseResolutionStatusType() {

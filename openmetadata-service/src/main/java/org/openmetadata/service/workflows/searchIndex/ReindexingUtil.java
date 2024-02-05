@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -61,6 +64,33 @@ public class ReindexingUtil {
       }
     }
     return success;
+  }
+
+  public static List<EntityError> getErrorsFromBulkResponse(BulkResponse response) {
+    List<EntityError> entityErrors = new ArrayList<>();
+    for (BulkItemResponse bulkItemResponse : response) {
+      if (bulkItemResponse.isFailed()) {
+        entityErrors.add(
+            new EntityError()
+                .withMessage(bulkItemResponse.getFailureMessage())
+                .withEntity(bulkItemResponse.getItemId()));
+      }
+    }
+    return entityErrors;
+  }
+
+  public static List<EntityError> getErrorsFromBulkResponse(
+      es.org.elasticsearch.action.bulk.BulkResponse response) {
+    List<EntityError> entityErrors = new ArrayList<>();
+    for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
+      if (bulkItemResponse.isFailed()) {
+        entityErrors.add(
+            new EntityError()
+                .withMessage(bulkItemResponse.getFailureMessage())
+                .withEntity(bulkItemResponse.getItemId()));
+      }
+    }
+    return entityErrors;
   }
 
   public static int getSuccessFromBulkResponseEs(

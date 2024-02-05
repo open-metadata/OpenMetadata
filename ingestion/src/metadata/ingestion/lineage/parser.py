@@ -389,7 +389,6 @@ class LineageParser:
     def _evaluate_best_parser(
         query: str, dialect: Dialect, timeout_seconds: int
     ) -> Optional[LineageRunner]:
-
         if query is None:
             return None
 

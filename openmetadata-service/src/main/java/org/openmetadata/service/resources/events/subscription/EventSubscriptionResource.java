@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.ACTIVITY_FEED;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
@@ -119,10 +120,10 @@ public class EventSubscriptionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
+      repository.initSeedDataFromResources();
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -183,6 +184,9 @@ public class EventSubscriptionResource
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
+      @Parameter(description = "alertType filter. Notification / Observability")
+          @QueryParam("alertType")
+          String alertType,
       @Parameter(
               description = "Returns list of event subscriptions before this cursor",
               schema = @Schema(type = "string"))
@@ -194,6 +198,9 @@ public class EventSubscriptionResource
           @QueryParam("after")
           String after) {
     ListFilter filter = new ListFilter(null);
+    if (!nullOrEmpty(alertType)) {
+      filter.addQueryParam("alertType", alertType);
+    }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -592,7 +599,9 @@ public class EventSubscriptionResource
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withFilteringRules(validateAndBuildFilteringConditions(create))
+        .withFilteringRules(
+            validateAndBuildFilteringConditions(
+                create.getResources(), create.getAlertType(), create.getInput()))
         .withDestinations(getSubscriptions(create.getDestinations()))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())

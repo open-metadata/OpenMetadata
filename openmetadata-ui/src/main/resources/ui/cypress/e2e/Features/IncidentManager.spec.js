@@ -48,6 +48,29 @@ const goToProfilerTab = () => {
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
+const verifySuccessStatus = (time = 20000) => {
+  const newTime = time / 2;
+  interceptURL('GET', '/api/v1/tables/name/*?fields=testSuite*', 'testSuite');
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
+    'pipelineStatus'
+  );
+  cy.wait(time);
+  cy.reload();
+  verifyResponseStatusCode('@testSuite', 200);
+  cy.get('[id*="tab-pipeline"]').click();
+  verifyResponseStatusCode('@pipelineStatus', 200);
+  cy.get('[data-testid="pipeline-status"]').then(($el) => {
+    const text = $el.text();
+    if (text !== 'Success' && text !== 'Failed' && newTime > 0) {
+      verifySuccessStatus(newTime);
+    } else {
+      cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
+    }
+  });
+};
+
 const acknowledgeTask = (testCase) => {
   goToProfilerTab();
 
@@ -104,6 +127,7 @@ const triggerTestCasePipeline = () => {
   verifyResponseStatusCode('@getPipelineStatus', 200);
   cy.get('[data-testid="run"]').click();
   cy.wait('@triggerPipeline');
+  verifySuccessStatus();
 };
 
 const assignIncident = (testCaseName) => {
@@ -245,7 +269,10 @@ describe('Incident Manager', () => {
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
       verifyResponseStatusCode('@getTaskFeed', 200);
-      cy.get('[data-testid="reject-task"]').scrollIntoView().click();
+      cy.get('[data-testid="task-cta-buttons"] [role="img"]')
+        .scrollIntoView()
+        .click();
+      cy.get('[role="menu"').find('[data-menu-id*="re-assign"]').click();
       interceptURL(
         'GET',
         '/api/v1/search/suggest?q=admin&index=*user_search_index*',
@@ -262,12 +289,12 @@ describe('Incident Manager', () => {
       cy.get('.ant-modal-footer').contains('Submit').click();
       verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
       // Todo: skipping this for now as its not working from backend
-      // cy.clickOnLogo();
-      // cy.get('[id*="tab-tasks"]').click();
-      // cy.get('[data-testid="task-feed-card"]')
-      //   .contains(NEW_TABLE_TEST_CASE.name)
-      //   .scrollIntoView()
-      //   .should('be.visible');
+      cy.clickOnLogo();
+      cy.get('[id*="tab-tasks"]').click();
+      cy.get('[data-testid="task-feed-card"]')
+        .contains(testCaseName)
+        .scrollIntoView()
+        .should('be.visible');
     });
 
     it('Resolve incident', () => {
@@ -282,7 +309,10 @@ describe('Incident Manager', () => {
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
       verifyResponseStatusCode('@getTaskFeed', 200);
-      cy.get('[data-testid="approve-task"]').scrollIntoView().click();
+      cy.get('[data-testid="task-cta-buttons"]')
+        .contains('Resolve')
+        .scrollIntoView()
+        .click();
       cy.get('#testCaseFailureReason').click();
       cy.get('[title="Missing Data"]').click();
       cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')

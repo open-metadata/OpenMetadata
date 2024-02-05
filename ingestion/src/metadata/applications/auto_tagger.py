@@ -21,6 +21,9 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableData
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.metadataIngestion.application import (
+    OpenMetadataApplicationConfig,
+)
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -60,16 +63,22 @@ class AutoTaggerApp(AppRunner):
           jwtToken: "..."
     """
 
-    def __init__(self, config: AutoTaggerAppConfig, metadata: OpenMetadata):
+    def __init__(self, config: OpenMetadataApplicationConfig, metadata: OpenMetadata):
         super().__init__(config, metadata)
 
-        if not isinstance(config, AutoTaggerAppConfig):
+        if not isinstance(self.app_config, AutoTaggerAppConfig):
             raise InvalidAppConfiguration(
                 f"AutoTagger Runner expects an AutoTaggerAppConfig, we got [{config}]"
             )
 
         self._ner_scanner = None
-        self.confidence_threshold = config.confidenceLevel or DEFAULT_CONFIDENCE
+        self.confidence_threshold = (
+            self.app_config.confidenceLevel or DEFAULT_CONFIDENCE
+        )
+
+    @property
+    def name(self) -> str:
+        return "Auto Tagger"
 
     @staticmethod
     def build_column_tag(tag_fqn: str, column_fqn: str) -> ColumnTag:

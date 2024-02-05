@@ -702,6 +702,11 @@ describe('Data Quality and Profiler should work properly', () => {
 
     interceptURL(
       'GET',
+      '/api/v1/dataQuality/testCases/name/*?fields=*',
+      'getTestCaseDetails'
+    );
+    interceptURL(
+      'GET',
       '/api/v1/dataQuality/testCases/*/testCaseResult?*',
       'getTestResult'
     );
@@ -709,7 +714,8 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Data Quality')
       .click();
 
-    cy.get(`[data-testid="${testCaseName}"]`).click();
+    cy.get(`[data-testid="${testCaseName}"]`).contains(testCaseName).click();
+    verifyResponseStatusCode('@getTestCaseDetails', 200);
     cy.wait('@getTestResult').then(() => {
       cy.get(`[id="${testCaseName}_graph"]`)
         .scrollIntoView()
@@ -961,10 +967,9 @@ describe('Data Quality and Profiler should work properly', () => {
       });
     });
 
-    cy.reload();
+    cy.get('[data-testid="table_queries"]').click();
+    cy.get('[data-testid="profiler"]').click();
     // verify profiler setting details
-    verifyResponseStatusCode('@tableProfiler', 200);
-    verifyResponseStatusCode('@systemProfiler', 200);
     cy.get('[data-testid="profiler-setting-btn"]').click();
     verifyResponseStatusCode('@tableProfilerConfig', 200);
 

@@ -28,7 +28,14 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  last,
+  startCase,
+  unionBy,
+} from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -38,7 +45,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -50,6 +57,7 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
+import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -76,13 +84,13 @@ import { updateTask, updateThread } from '../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   fetchOptions,
+  generateOptions,
   getTaskDetailPath,
+  INCIDENT_TASK_ACTION_LIST,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
@@ -102,7 +110,6 @@ export const TaskTab = ({
   taskThread,
   owner,
   entityType,
-  isForFeedTab,
   ...rest
 }: TaskTabProps) => {
   const history = useHistory();
@@ -110,12 +117,19 @@ export const TaskTab = ({
   const { currentUser } = useAuthContext();
   const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
-
   const { permissions } = usePermissionProvider();
-
   const { task: taskDetails } = taskThread;
-  const entityFQN = getEntityFQN(taskThread.about) ?? '';
-  const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
+
+  const entityFQN = useMemo(
+    () => getEntityFQN(taskThread.about) ?? '',
+    [taskThread.about]
+  );
+
+  const isEntityDetailsAvailable = useMemo(
+    () => !isUndefined(entityFQN) && !isUndefined(entityType),
+    [entityFQN, entityType]
+  );
+
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { isAdminUser } = useAuth();
@@ -125,36 +139,58 @@ export const TaskTab = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
+    initialAssignees: usersList,
   } = useActivityFeedProvider();
-  const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
+  const isTaskTestCaseResult =
+    taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
 
+  const latestAction = useMemo(() => {
+    const resolutionStatus = last(testCaseResolutionStatus);
+
+    if (isTaskTestCaseResult) {
+      switch (resolutionStatus?.testCaseResolutionStatusType) {
+        case TestCaseResolutionStatusTypes.Assigned:
+          return INCIDENT_TASK_ACTION_LIST[1];
+
+        default:
+          return INCIDENT_TASK_ACTION_LIST[0];
+      }
+    } else {
+      return TASK_ACTION_LIST[0];
+    }
+  }, [testCaseResolutionStatus, isTaskTestCaseResult]);
+
+  const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
 
-  const initialAssignees = useMemo(
-    () =>
-      taskDetails?.assignees.map((assignee) => ({
-        label: getEntityName(assignee),
-        value: assignee.id || '',
-        type: assignee.type,
-        name: assignee.name,
-      })) ?? [],
-    [taskDetails]
-  );
+  const { initialAssignees, assigneeOptions } = useMemo(() => {
+    const initialAssignees = generateOptions(taskDetails?.assignees ?? []);
+    const assigneeOptions = unionBy(
+      [...initialAssignees, ...generateOptions(usersList)],
+      'value'
+    );
 
-  const taskField = useMemo(() => {
-    const entityField = EntityLink.getEntityField(taskThread.about) ?? '';
+    return { initialAssignees, assigneeOptions };
+  }, [taskDetails, usersList]);
+
+  const taskColumnName = useMemo(() => {
     const columnName = EntityLink.getTableColumnName(taskThread.about) ?? '';
 
     if (columnName) {
-      return `${entityField}/${columnName}`;
+      return (
+        <Typography.Text className="p-r-xss">
+          {columnName} {t('label.in-lowercase')}
+        </Typography.Text>
+      );
     }
 
-    return entityField;
-  }, [taskThread]);
+    return null;
+  }, [taskThread.about]);
 
   const isOwner = isEqual(owner?.id, currentUser?.id);
   const isCreator = isEqual(taskThread.createdBy, currentUser?.name);
@@ -177,8 +213,6 @@ export const TaskTab = ({
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
-  const isTaskTestCaseResult =
-    taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
 
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
 
@@ -188,39 +222,38 @@ export const TaskTab = ({
     });
   };
 
-  const getTaskLinkElement = entityCheck && (
-    <Typography.Text className="font-medium text-md" data-testid="task-title">
-      <Button
-        className="p-r-xss text-md font-medium"
-        type="link"
-        onClick={handleTaskLinkClick}>
-        {`#${taskDetails?.id} `}
-      </Button>
+  const taskLinkTitleElement = useMemo(
+    () =>
+      isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
+        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+          <Button
+            className="p-0 task-feed-message font-medium text-md"
+            data-testid="task-title"
+            type="link"
+            onClick={handleTaskLinkClick}>
+            <Typography.Text className="p-0 text-primary">{`#${taskDetails.id} `}</Typography.Text>
 
-      <Typography.Text>{taskDetails?.type}</Typography.Text>
-      <span className="m-x-xss">{t('label.for-lowercase')}</span>
+            <Typography.Text className="p-xss">
+              {TASK_TYPES[taskDetails.type]}
+            </Typography.Text>
 
-      {!isForFeedTab && (
-        <>
-          <span className="p-r-xss">{entityType}</span>
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Link
-              className="break-all p-r-xss"
-              data-testid="entitylink"
-              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
-              onClick={(e) => e.stopPropagation()}>
-              <Typography.Text className="text-md font-medium text-color-inherit">
-                {' '}
-                {getNameFromFQN(entityFQN)}
-              </Typography.Text>
-            </Link>
-          </EntityPopOverCard>
-        </>
-      )}
-      {!isEmpty(taskField) ? (
-        <span className="break-all">{taskField}</span>
-      ) : null}
-    </Typography.Text>
+            {taskColumnName}
+
+            <Typography.Text className="break-all" data-testid="entity-link">
+              {getNameFromFQN(entityFQN)}
+            </Typography.Text>
+
+            <Typography.Text className="p-l-xss">{`(${entityType})`}</Typography.Text>
+          </Button>
+        </EntityPopOverCard>
+      ) : null,
+    [
+      isEntityDetailsAvailable,
+      entityFQN,
+      entityType,
+      taskDetails,
+      handleTaskLinkClick,
+    ]
   );
 
   const updateTaskData = (data: TaskDetails | ResolveTask) => {
@@ -231,10 +264,7 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
         rest.onAfterClose?.();
-
-        if (isTaskGlossaryApproval) {
-          rest.onUpdateEntityDetails?.();
-        }
+        rest.onUpdateEntityDetails?.();
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -340,15 +370,13 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-closed-successfully'));
         rest.onAfterClose?.();
-
-        if (isTaskGlossaryApproval) {
-          rest.onUpdateEntityDetails?.();
-        }
+        rest.onUpdateEntityDetails?.();
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
   const onTestCaseIncidentAssigneeUpdate = async () => {
+    setIsActionLoading(true);
     const testCaseIncident: CreateTestCaseResolutionStatus = {
       testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
       testCaseReference: entityFQN,
@@ -356,6 +384,7 @@ export const TaskTab = ({
         assignee: {
           id: updatedAssignees[0].value,
           name: updatedAssignees[0].name,
+          displayName: updatedAssignees[0].displayName,
           type: updatedAssignees[0].type,
         },
       },
@@ -368,6 +397,8 @@ export const TaskTab = ({
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -378,6 +409,7 @@ export const TaskTab = ({
     testCaseFailureReason: TestCaseFailureReasonType;
     testCaseFailureComment: string;
   }) => {
+    setIsActionLoading(true);
     const testCaseIncident: CreateTestCaseResolutionStatus = {
       testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
       testCaseReference: entityFQN,
@@ -398,6 +430,33 @@ export const TaskTab = ({
       setShowEditTaskModel(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleTaskMenuClick = (info: MenuInfo) => {
+    setTaskAction(
+      INCIDENT_TASK_ACTION_LIST.find((action) => action.key === info.key) ??
+        INCIDENT_TASK_ACTION_LIST[0]
+    );
+    switch (info.key) {
+      case TaskActionMode.RE_ASSIGN:
+        setIsEditAssignee(true);
+
+        break;
+      case TaskActionMode.RESOLVE:
+        setShowEditTaskModel(true);
+
+        break;
+    }
+  };
+
+  const onTaskDropdownClick = () => {
+    if (taskAction.key === TaskActionMode.RESOLVE) {
+      setShowEditTaskModel(true);
+    } else {
+      handleTaskMenuClick({ key: taskAction.key } as MenuInfo);
     }
   };
 
@@ -451,33 +510,24 @@ export const TaskTab = ({
     const hasApprovalAccess = isAssignee || isCreator || editPermission;
 
     return (
-      <Space
-        className="m-t-sm items-end w-full"
+      <Dropdown.Button
+        className="m-t-sm"
         data-testid="task-cta-buttons"
-        size="small">
-        <Tooltip
-          title={!hasApprovalAccess && t('message.no-access-placeholder')}>
-          <Button
-            data-testid="reject-task"
-            disabled={!hasApprovalAccess}
-            onClick={() => setIsEditAssignee(true)}>
-            {t('label.re-assign')}
-          </Button>
-        </Tooltip>
-
-        <Tooltip
-          title={!hasApprovalAccess && t('message.no-access-placeholder')}>
-          <Button
-            data-testid="approve-task"
-            disabled={!hasApprovalAccess}
-            type="primary"
-            onClick={() => setShowEditTaskModel(true)}>
-            {t('label.resolve')}
-          </Button>
-        </Tooltip>
-      </Space>
+        icon={<DownOutlined />}
+        loading={isActionLoading}
+        menu={{
+          items: INCIDENT_TASK_ACTION_LIST,
+          selectable: true,
+          selectedKeys: [taskAction.key],
+          onClick: handleTaskMenuClick,
+          disabled: !hasApprovalAccess,
+        }}
+        type="primary"
+        onClick={onTaskDropdownClick}>
+        {taskAction.label}
+      </Dropdown.Button>
     );
-  }, [taskDetails, isAssignee, isPartOfAssigneeTeam]);
+  }, [taskDetails, isAssignee, isPartOfAssigneeTeam, taskAction]);
 
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {
@@ -596,8 +646,12 @@ export const TaskTab = ({
 
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
-    setOptions(initialAssignees);
-  }, [initialAssignees]);
+    setOptions(assigneeOptions);
+  }, [initialAssignees, assigneeOptions]);
+
+  useEffect(() => {
+    setTaskAction(latestAction);
+  }, [latestAction]);
 
   const taskHeader = isTaskTestCaseResult ? (
     <TaskTabIncidentManagerHeader thread={taskThread} />
@@ -644,6 +698,7 @@ export const TaskTab = ({
                       query,
                       setOptions,
                       currentUserId: currentUser?.id,
+                      initialOptions: assigneeOptions,
                     })
                   }
                 />
@@ -696,7 +751,7 @@ export const TaskTab = ({
           style={{ fontSize: '18px' }}
         />
 
-        {getTaskLinkElement}
+        {taskLinkTitleElement}
       </Col>
       <Col span={24}>{taskHeader}</Col>
       <Col span={24}>
@@ -743,6 +798,9 @@ export const TaskTab = ({
           maskClosable
           closable={false}
           closeIcon={null}
+          okButtonProps={{
+            loading: isActionLoading,
+          }}
           okText={t('label.submit')}
           open={showEditTaskModel}
           title={`${t('label.resolve')} ${t('label.task')} #${taskDetails?.id}`}
@@ -865,6 +923,9 @@ export const TaskTab = ({
           maskClosable
           closable={false}
           closeIcon={null}
+          okButtonProps={{
+            loading: isActionLoading,
+          }}
           okText={t('label.submit')}
           open={isEditAssignee}
           title={`${t('label.re-assign')} ${t('label.task')} #${
@@ -896,7 +957,13 @@ export const TaskTab = ({
                 onChange={(values) =>
                   assigneesForm.setFieldValue('assignees', values)
                 }
-                onSearch={(query) => fetchOptions({ query, setOptions })}
+                onSearch={(query) =>
+                  fetchOptions({
+                    query,
+                    setOptions,
+                    initialOptions: assigneeOptions,
+                  })
+                }
               />
             </Form.Item>
           </Form>

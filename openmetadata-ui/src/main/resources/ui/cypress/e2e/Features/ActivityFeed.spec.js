@@ -207,13 +207,13 @@ describe('Activity feed', () => {
     interceptURL('POST', '/api/v1/feed/*/posts', 'postReply');
     interceptURL(
       'GET',
-      '/api/v1/search/suggest?q=*&index=user_search_index%2Cteam_search_index',
+      '/api/v1/search/query?q=*&index=user_search_index*',
       'suggestUser'
     );
     interceptURL(
       'GET',
       // eslint-disable-next-line max-len
-      '/api/v1/search/suggest?q=dim_add&index=*',
+      '/api/v1/search/query?q=*dim_add*&index=*',
       'suggestAsset'
     );
 
@@ -300,23 +300,22 @@ describe('Activity feed', () => {
 
     cy.get('[data-testid="closeDrawer"]').click();
 
-    let feedText1 = '';
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child [data-testid="viewer-container"]'
     )
       .invoke('text')
-      .then((text) => (feedText1 = text));
-
-    cy.get('[data-testid="activity-feed-widget"]')
-      .contains('@Mentions')
-      .click();
-    verifyResponseStatusCode('@mentionsFeed', 200);
-    // Verify mentioned thread should be there int he mentioned tab
-    cy.get(
-      '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'
-    )
-      .invoke('text')
-      .then((text) => expect(text).to.contain(feedText1));
+      .then((feedText) => {
+        cy.get('[data-testid="activity-feed-widget"]')
+          .contains('@Mentions')
+          .click();
+        verifyResponseStatusCode('@mentionsFeed', 200);
+        // Verify mentioned thread should be there int he mentioned tab
+        cy.get(
+          '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'
+        )
+          .invoke('text')
+          .then((text) => expect(text).to.contain(feedText));
+      });
   });
 
   it('Assigned task should appear to task tab', () => {
@@ -357,7 +356,9 @@ describe('Activity feed', () => {
     cy.get('[data-testid="message-container"]')
       .invoke('text')
       .then((textContent) => {
-        const matches = textContent.match(/#(\d+) UpdateDescriptionfortable/);
+        const matches = textContent.match(
+          /#(\d+) Request to update description for/
+        );
 
         expect(matches).to.not.be.null;
       });

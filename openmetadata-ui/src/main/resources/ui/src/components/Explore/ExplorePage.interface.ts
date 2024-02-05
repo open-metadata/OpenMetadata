@@ -35,6 +35,7 @@ import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { SearchService } from '../../generated/entity/services/searchService';
 import { StorageService } from '../../generated/entity/services/storageService';
+import { TestCase } from '../../generated/tests/testCase';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -66,9 +67,6 @@ export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 export interface ExploreProps {
   aggregations?: Aggregations;
   activeTabKey: SearchIndex;
-
-  tabCounts?: SearchHitCounts;
-
   tabItems: ItemType[];
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
@@ -131,6 +129,7 @@ export type EntityUnion =
   | Database
   | Glossary
   | Tag
+  | TestCase
   | DashboardDataModel
   | StoredProcedure
   | SearchIndexEntity

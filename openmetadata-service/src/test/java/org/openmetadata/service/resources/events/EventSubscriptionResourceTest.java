@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -281,7 +282,10 @@ public class EventSubscriptionResourceTest
         change,
         "filteringRules",
         createdAlert.getFilteringRules(),
-        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
+        AlertUtil.validateAndBuildFilteringConditions(
+            genericWebhookActionRequest.getResources(),
+            genericWebhookActionRequest.getAlertType(),
+            genericWebhookActionRequest.getInput()));
 
     createdAlert =
         updateAndCheckEntity(
@@ -299,7 +303,10 @@ public class EventSubscriptionResourceTest
         change,
         "filteringRules",
         createdAlert.getFilteringRules(),
-        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
+        AlertUtil.validateAndBuildFilteringConditions(
+            genericWebhookActionRequest.getResources(),
+            genericWebhookActionRequest.getAlertType(),
+            genericWebhookActionRequest.getInput()));
 
     createdAlert =
         updateAndCheckEntity(
@@ -317,7 +324,10 @@ public class EventSubscriptionResourceTest
         change,
         "filteringRules",
         createdAlert.getFilteringRules(),
-        AlertUtil.validateAndBuildFilteringConditions(genericWebhookActionRequest));
+        AlertUtil.validateAndBuildFilteringConditions(
+            genericWebhookActionRequest.getResources(),
+            genericWebhookActionRequest.getAlertType(),
+            genericWebhookActionRequest.getInput()));
 
     createdAlert =
         updateAndCheckEntity(
@@ -662,9 +672,13 @@ public class EventSubscriptionResourceTest
     if (expected == actual) {
       return;
     }
-    if (fieldName.equals("destinations")
-        || fieldName.equals("filteringRules")
-        || fieldName.equals("input")) {
+    if (fieldName.equals("destinations")) {
+      List<SubscriptionDestination> actualDestination =
+          JsonUtils.readObjects((String) actual, SubscriptionDestination.class);
+      actualDestination.forEach(
+          d -> d.setConfig(JsonUtils.convertValue(d.getConfig(), Webhook.class)));
+      assertEquals(expected, actualDestination);
+    } else if (fieldName.equals("filteringRules") || fieldName.equals("input")) {
       assertEquals(JsonUtils.pojoToJson(expected), actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
@@ -677,7 +691,11 @@ public class EventSubscriptionResourceTest
             .withId(DESTINATION_ID)
             .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
             .withType(SubscriptionDestination.SubscriptionType.GENERIC)
-            .withConfig(new Webhook().withEndpoint(URI.create(uri)).withSecretKey("webhookTest")));
+            .withConfig(
+                new Webhook()
+                    .withEndpoint(URI.create(uri))
+                    .withReceivers(new HashSet<>())
+                    .withSecretKey("webhookTest")));
   }
 
   public WebhookCallbackResource.EventDetails waitForFirstEvent(

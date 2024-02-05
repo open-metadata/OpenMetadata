@@ -381,10 +381,32 @@ const IncidentManagerDetailPage = withSuspenseFallback(
   )
 );
 
+const ObservabilityAlertsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage')
+  )
+);
+
+const AlertDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
+);
+
+const NotificationsAlertDetailsPage = () => (
+  <AlertDetailsPage isNotificationAlert />
+);
+
+const AddObservabilityPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
+  )
+);
+
 // Settings Page Routes
 
-const AddAlertPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AddAlertPage/AddAlertPage'))
+const AddNotificationPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/AddNotificationPage/AddNotificationPage')
+  )
 );
 
 const ImportTeamsPage = withSuspenseFallback(
@@ -393,18 +415,16 @@ const ImportTeamsPage = withSuspenseFallback(
   )
 );
 
-const AlertDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
-);
-
 const AlertsActivityFeedPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
   )
 );
 
-const AlertsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AlertsPage/AlertsPage'))
+const NotificationListPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/NotificationListPage/NotificationListPage')
+  )
 );
 
 const TeamsPage = withSuspenseFallback(
@@ -1039,6 +1059,30 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <AdminProtectedRoute
         exact
+        component={ObservabilityAlertsPage}
+        path={ROUTES.OBSERVABILITY_ALERTS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertDetailsPage}
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddObservabilityPage}
+        path={ROUTES.ADD_OBSERVABILITY_ALERTS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddObservabilityPage}
+        path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
+      />
+
+      <AdminProtectedRoute
+        exact
         component={TestCaseDetailsPage}
         hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.TEST_CASE,
@@ -1070,39 +1114,34 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       {/*  Setting routes without any category will be places here */}
       <AdminProtectedRoute
         exact
-        component={AlertsPage}
+        component={NotificationListPage}
         hasPermission={false}
         path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
       />
 
       <AdminProtectedRoute
         exact
-        component={AddAlertPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.EDIT_ALERTS,
-          true
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddAlertPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_ALERTS
-        )}
+        component={NotificationsAlertDetailsPage}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
       />
 
       <AdminProtectedRoute
         exact
-        component={AlertDetailsPage}
+        component={AddNotificationPage}
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERT,
+          GlobalSettingOptions.EDIT_NOTIFICATION,
           true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddNotificationPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ADD_NOTIFICATION
         )}
       />
       <AdminProtectedRoute
@@ -1302,6 +1341,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
       />
       {routeElements}
+      <Route
+        exact
+        path={[
+          ROUTES.SIGNIN,
+          ROUTES.REGISTER,
+          ROUTES.SIGNIN,
+          ROUTES.FORGOT_PASSWORD,
+        ]}>
+        <Redirect to={ROUTES.MY_DATA} />
+      </Route>
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

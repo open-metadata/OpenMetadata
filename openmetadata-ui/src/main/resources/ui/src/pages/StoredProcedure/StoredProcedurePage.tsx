@@ -45,6 +45,7 @@ import {
   getStoredProcedureDetailPath,
   getVersionPath,
 } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -60,6 +61,7 @@ import {
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
@@ -99,7 +101,9 @@ const StoredProcedurePage = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isEdit, setIsEdit] = useState(false);
 
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [threadLink, setThreadLink] = useState<string>('');
 
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -156,11 +160,15 @@ const StoredProcedurePage = () => {
     }
   }, [getEntityPermissionByFqn]);
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.STORED_PROCEDURE,
       decodedStoredProcedureFQN,
-      setFeedCount
+      handleFeedCount
     );
   };
 
@@ -240,8 +248,6 @@ const StoredProcedurePage = () => {
           [key]: res[key],
         };
       });
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -259,7 +265,6 @@ const StoredProcedurePage = () => {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -289,7 +294,6 @@ const StoredProcedurePage = () => {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -450,7 +454,6 @@ const StoredProcedurePage = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -588,7 +591,7 @@ const StoredProcedurePage = () => {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -597,10 +600,13 @@ const StoredProcedurePage = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.STORED_PROCEDURE}
             fqn={entityFQN}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchStoredProcedureDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -642,7 +648,7 @@ const StoredProcedurePage = () => {
       tags,
       isEdit,
       deleted,
-      feedCount,
+      feedCount.totalCount,
       activeTab,
       entityFQN,
       entityName,
@@ -654,6 +660,7 @@ const StoredProcedurePage = () => {
       editDescriptionPermission,
       editCustomAttributePermission,
       viewAllPermission,
+      handleFeedCount,
     ]
   );
 
@@ -711,6 +718,7 @@ const StoredProcedurePage = () => {
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={storedProcedure}
             entityType={EntityType.STORED_PROCEDURE}
+            openTaskCount={feedCount.openTaskCount}
             permissions={storedProcedurePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollow}

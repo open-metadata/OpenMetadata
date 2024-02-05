@@ -67,7 +67,9 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
       SlackMessage slackMessage = slackMessageFormatter.buildOutgoingMessage(event);
-      List<Invocation.Builder> targets = getTargetsForWebhook(webhook, SLACK, client, event);
+      List<Invocation.Builder> targets =
+          getTargetsForWebhook(
+              webhook, subscriptionDestination.getCategory(), SLACK, client, event);
       if (target != null) {
         targets.add(target);
       }

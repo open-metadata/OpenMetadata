@@ -5,8 +5,8 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Table Name",
-        "description" : "Filter A Change Event By Table Name",
+        "displayName": "Table Name",
+        "description" : "Event Filtering By Table Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
         "arguments": [
@@ -17,8 +17,8 @@
       {
         "name": "filterByDomain",
         "fullyQualifiedName": "eventSubscription.filterByDomain",
-        "displayName": "Filter By Domain",
-        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
         "effect" : "include",
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
@@ -29,8 +29,8 @@
       {
         "name": "filterByOwner",
         "fullyQualifiedName": "eventSubscription.filterByOwner",
-        "displayName": "Filter By Owner Name",
-        "description" : "Filter A Change Event By Owner Name of Asset",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
         "effect" : "include",
         "condition": "matchAnyOwnerName(${ownerNameList})",
         "arguments": [
@@ -66,8 +66,8 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Table Name",
-        "description" : "Filter A Change Event By Topic Name",
+        "displayName": "Topic Name",
+        "description" : "Event Filtering By Topic Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
         "arguments": [
@@ -78,8 +78,8 @@
       {
         "name": "filterByDomain",
         "fullyQualifiedName": "eventSubscription.filterByDomain",
-        "displayName": "Filter By Domain",
-        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
         "effect" : "include",
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
@@ -90,8 +90,8 @@
       {
         "name": "filterByOwner",
         "fullyQualifiedName": "eventSubscription.filterByOwner",
-        "displayName": "Filter By Owner Name",
-        "description" : "Filter A Change Event By Owner Name of Asset",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
         "effect" : "include",
         "condition": "matchAnyOwnerName(${ownerNameList})",
         "arguments": [
@@ -108,9 +108,6 @@
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
         "condition": "matchAnyFieldChange({'messageSchema'})",
-        "arguments": [
-          "fieldList"
-        ],
         "inputType": "none"
       }
     ]
@@ -121,8 +118,8 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Table Name",
-        "description" : "Filter A Change Event By Container Name",
+        "displayName": "Container Name",
+        "description" : "Event Filtering By Container Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
         "arguments": [
@@ -133,8 +130,8 @@
       {
         "name": "filterByDomain",
         "fullyQualifiedName": "eventSubscription.filterByDomain",
-        "displayName": "Filter By Domain",
-        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
         "effect" : "include",
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
@@ -145,8 +142,8 @@
       {
         "name": "filterByOwner",
         "fullyQualifiedName": "eventSubscription.filterByOwner",
-        "displayName": "Filter By Owner Name",
-        "description" : "Filter A Change Event By Owner Name of Asset",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
         "effect" : "include",
         "condition": "matchAnyOwnerName(${ownerNameList})",
         "arguments": [
@@ -163,9 +160,6 @@
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
         "condition": "matchAnyFieldChange({'parent','children'})",
-        "arguments": [
-          "fieldList"
-        ],
         "inputType": "none"
       }
     ]
@@ -176,8 +170,8 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Table Name",
-        "description" : "Filter A Change Event By Pipeline Name",
+        "displayName": "Pipeline Name",
+        "description" : "Event Filtering By Pipeline Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
         "arguments": [
@@ -188,8 +182,8 @@
       {
         "name": "filterByDomain",
         "fullyQualifiedName": "eventSubscription.filterByDomain",
-        "displayName": "Filter By Domain",
-        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
         "effect" : "include",
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
@@ -200,8 +194,8 @@
       {
         "name": "filterByOwner",
         "fullyQualifiedName": "eventSubscription.filterByOwner",
-        "displayName": "Filter By Owner Name",
-        "description" : "Filter A Change Event By Owner Name of Asset",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
         "effect" : "include",
         "condition": "matchAnyOwnerName(${ownerNameList})",
         "arguments": [
@@ -212,39 +206,27 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetPipelineSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
-        "displayName": "Get Schema Changes",
-        "description" : "Get Updates for Schema Changes",
-        "effect" : "include",
-        "condition": "matchAnyFieldChange({'sourceUrl','pipelineLocation'})",
-        "arguments": [
-          "fieldList"
-        ],
-        "inputType": "none"
-      },
-      {
         "name": "GetPipelineStatusUpdates",
         "fullyQualifiedName": "eventSubscription.GetPipelineStatusUpdates",
         "displayName": "Get Pipeline Status Updates",
         "description" : "Get Updates for Pipeline Status Changes",
         "effect" : "include",
-        "condition": "matchIngestionPipelineState(${pipelineStateList})",
+        "condition": "matchPipelineState(${pipelineStateList})",
         "arguments": [
           "pipelineStateList"
         ],
-        "inputType": "none"
+        "inputType": "runtime"
       }
     ]
   },
   {
-    "name" : "testCase",
+    "name" : "ingestionPipeline",
     "supportedFilters" : [
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Test Case Name",
-        "description" : "Filter A Change Event By Test Case Name",
+        "displayName": "Ingestion Pipeline Name",
+        "description" : "Event Filtering By Ingestion Pipeline Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
         "arguments": [
@@ -255,8 +237,8 @@
       {
         "name": "filterByDomain",
         "fullyQualifiedName": "eventSubscription.filterByDomain",
-        "displayName": "Filter By Domain",
-        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
         "effect" : "include",
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
@@ -267,8 +249,63 @@
       {
         "name": "filterByOwner",
         "fullyQualifiedName": "eventSubscription.filterByOwner",
-        "displayName": "Filter By Owner Name",
-        "description" : "Filter A Change Event By Owner Name of Asset",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetIngestionPipelineStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetIngestionPipelineStatusUpdates",
+        "displayName": "Get Ingestion Pipeline Status Updates",
+        "description" : "Get Updates for Ingestion Pipeline Status Changes",
+        "effect" : "include",
+        "condition": "matchIngestionPipelineState(${ingestionPipelineStateList})",
+        "arguments": [
+          "ingestionPipelineStateList"
+        ],
+        "inputType": "runtime"
+      }
+    ]
+  },
+  {
+    "name" : "testCase",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Test Case Name",
+        "description" : "Event By Test Case Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
         "effect" : "include",
         "condition": "matchAnyOwnerName(${ownerNameList})",
         "arguments": [
@@ -279,8 +316,8 @@
       {
         "name": "filterByTableNameTestCaseBelongsTo",
         "fullyQualifiedName": "eventSubscription.filterByTableNameTestCaseBelongsTo",
-        "displayName": "Filter By Table Name",
-        "description" : "Filter A Change Event By Pipeline Name",
+        "displayName": "Table Name A Test Case Belongs To",
+        "description" : "Event Filtering By Table Name A Test Case Belongs To",
         "effect" : "include",
         "condition": "filterByTableNameTestCaseBelongsTo(${tableNameList})",
         "arguments": [
@@ -296,10 +333,7 @@
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange({'testDefinition','parameterValues'})",
-        "arguments": [
-          "fieldList"
-        ],
+        "condition": "matchAnyFieldChange({'testDefinition','parameterValues','description'})",
         "inputType": "none"
       },
       {
@@ -322,8 +356,8 @@
       {
         "name": "filterByFqn",
         "fullyQualifiedName": "eventSubscription.filterByFqn",
-        "displayName": "Filter By Test Suite Name",
-        "description" : "Filter By Test Suite Name",
+        "displayName": "Test Suite Name",
+        "description" : "Event Filtering By Test Suite Name",
         "effect" : "include",
         "condition": "matchAnyEntityFqn(${fqnList})",
         "arguments": [
@@ -334,8 +368,8 @@
       {
         "name": "filterByOwner",
         "fullyQualifiedName": "eventSubscription.filterByOwner",
-        "displayName": "Filter By Owner Name",
-        "description" : "Filter A Change Event By Owner Name of Asset",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
         "effect" : "include",
         "condition": "matchAnyOwnerName(${ownerNameList})",
         "arguments": [
@@ -344,22 +378,10 @@
         "inputType": "runtime"
       },
       {
-        "name": "filterByTableNameTestCaseBelongsTo",
-        "fullyQualifiedName": "eventSubscription.filterByTableNameTestCaseBelongsTo",
-        "displayName": "Filter By Table Name For A Test Suite",
-        "description" : "Filter A Change Event By Pipeline Name",
-        "effect" : "include",
-        "condition": "matchByTableNameTestCaseBelongsTo(${tableNameList})",
-        "arguments": [
-          "tableNameList"
-        ],
-        "inputType": "runtime"
-      },
-      {
         "name": "filterByDomain",
         "fullyQualifiedName": "eventSubscription.filterByDomain",
-        "displayName": "Filter By Domain",
-        "description" : "Filter An Change Event By Domain a Entity Belongs To",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
         "effect" : "include",
         "condition": "matchAnyDomain(${domainList})",
         "arguments": [
@@ -375,10 +397,7 @@
         "displayName": "Get Schema Changes",
         "description" : "Get Updates for Schema Changes",
         "effect" : "include",
-        "condition": "matchAnyFieldChange({'connection','pipelines'})",
-        "arguments": [
-          "fieldList"
-        ],
+        "condition": "matchAnyFieldChange({'connection','pipelines','description'})",
         "inputType": "none"
       },
       {
@@ -391,19 +410,6 @@
         "arguments": [
           "testSuiteList",
           "testStatusList"
-        ],
-        "inputType": "runtime"
-      },
-      {
-        "name": "GetTestCaseAdditionOrDeletionToSuite",
-        "fullyQualifiedName": "eventSubscription.GetTestCaseAdditionOrDeletionToSuite",
-        "displayName": "Get Test Case Addition Or Deletion To Suite Updates",
-        "description" : "Get Status Updates when a Test Case is added or deleted to a Test Suite",
-        "effect" : "include",
-        "condition": "getTestCaseAdditionOrDeletionToSuite(${testSuiteList}, ${opList})",
-        "arguments": [
-          "testSuiteList",
-          "opList"
         ],
         "inputType": "runtime"
       }

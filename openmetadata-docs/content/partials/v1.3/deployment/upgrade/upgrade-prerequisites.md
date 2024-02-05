@@ -112,6 +112,25 @@ After the migration is finished, you can revert this changes.
 
 ## 1.3.0
 
+### New Alerts and Observability
+
+{% note noteType="Warning" %}
+
+Upgrading to OpenMetadata 1.3.0 will REMOVE your existing Alerts. **You will need to recreate your alerts manually.**
+
+{% /note %}
+
+We have fully reworked how we manage alerts to make the experience easier for end users, with a more comprehensive
+list of sources, filters and actions.
+
+This process required a full backend rewrite, which means that there is no automatic way to migrate alerts from the old system.
+
+{% image
+  src="/images/v1.3/deployment/upgrade/alerts.png"
+  alt="alerts"
+  caption="New Alerts UI"
+/%}
+
 ### Secrets Manager
 
 The Secrets Manager `noop` option has been renamed to `db`. You can find this in the config below:
@@ -132,6 +151,10 @@ the option to tag the created resources.
 
 In 1.2.0 we introduced the Elasticsearch reindex job as part of the OpenMetadata server. In this release, we 
 removed triggering ES job from Python workflows. Everything happens in the server now. The image will not ship the `metadata_to_es` DAG anymore.
+
+### Ingestion & Ingestion Base Python Version
+
+The `openmetadata/ingestion` and `openmetadata/ingestion-base` images now use Python 3.10.
 
 ### Python SDK Auth Mechanisms
 
@@ -169,6 +192,13 @@ Due to this, we need to update one import and one of its properties' names.
 - To `from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError`
 
 And we renamed its property `stack_trace` to `stackTrace` to follow the naming conventions in JSON Schemas.
+
+### SQL Lineage
+
+With 1.3.0 we have renamed the `sqllineage` package to `collate_sqllineage`, this change has been made to avoid any conflict with open source version of `sqllineage`. In case you are using this package in your python scripts please make sure to rename your imports: 
+
+- From `from sqllineage.xxx import xxx`
+- To `from collate_sqllineage.xxx import xxx`
 
 ### Other Changes
 

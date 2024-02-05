@@ -159,7 +159,10 @@ Cypress.Commands.add('sidebarHoverOutside', function () {
 
 Cypress.Commands.add('logout', () => {
   interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-  cy.get('[data-testid="app-bar-item-logout"]').scrollIntoView().click();
+  cy.sidebarHover();
+  cy.get(`[data-testid="app-bar-item-${SidebarItem.LOGOUT}"]`)
+    .scrollIntoView()
+    .click();
 
   cy.get('[data-testid="confirm-logout"]').click();
 
@@ -204,7 +207,7 @@ Cypress.Commands.add('settingClick', (dataTestId, isCustomProperty) => {
 
   cy.sidebarClick(SidebarItem.SETTINGS);
 
-  paths.forEach((path) => {
+  (paths ?? []).forEach((path) => {
     cy.get(`[data-testid="${path}"]`).scrollIntoView().click();
   });
 });

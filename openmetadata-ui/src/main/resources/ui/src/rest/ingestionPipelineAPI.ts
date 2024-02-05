@@ -126,14 +126,10 @@ export const updateIngestionPipeline = async (
 };
 
 export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<IngestionPipeline>
-  >(`/services/ingestionPipelines/${id}`, data, configOptions);
+  >(`/services/ingestionPipelines/${id}`, data);
 
   return response.data;
 };

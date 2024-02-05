@@ -17,7 +17,7 @@ import Qs from 'qs';
 import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
+import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -41,6 +41,7 @@ export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
+export const WHITE_COLOR = '#ffffff';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -67,6 +68,7 @@ export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const SMALL_TABLE_LOADER_SIZE = 3;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
+export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -120,22 +122,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
 export const ES_UPDATE_DELAY = 500;
-
-export const globalSearchOptions = [
-  { value: '', label: t('label.all') },
-  { value: SearchIndex.TABLE, label: t('label.table') },
-  { value: SearchIndex.TOPIC, label: t('label.topic') },
-  { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
-  { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
-  { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
-  { value: SearchIndex.CONTAINER, label: t('label.container') },
-  { value: SearchIndex.STORED_PROCEDURE, label: t('label.stored-procedure') },
-  { value: SearchIndex.DASHBOARD_DATA_MODEL, label: t('label.data-model') },
-  { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
-  { value: SearchIndex.TAG, label: t('label.tag') },
-  { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
-  { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
-];
 
 export const DESCRIPTIONLENGTH = 100;
 
@@ -324,7 +310,17 @@ export const ROUTES = {
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
+  // Observability
   OBSERVABILITY: '/observability',
+  OBSERVABILITY_ALERTS: '/observability/alerts',
+  OBSERVABILITY_ALERT_DETAILS: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
+  EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Notification Alerts
+  NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
+  NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -347,8 +343,8 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
 
 export const getTagsDetailsPath = (entityFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
 
   return path;
 };
@@ -770,10 +766,6 @@ export const getKpiPath = (kpiName: string) => {
   return path;
 };
 
-export const configOptions = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
 
@@ -832,4 +824,8 @@ export const ICON_DIMENSION = {
 
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
+};
+
+export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
+  headers: { 'Content-type': 'application/json' },
 };

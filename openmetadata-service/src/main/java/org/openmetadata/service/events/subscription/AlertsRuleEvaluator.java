@@ -5,7 +5,9 @@ import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELAS
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.schema.type.ThreadType.Conversation;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
+import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.THREAD;
@@ -14,6 +16,8 @@ import static org.openmetadata.service.Entity.USER;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
@@ -29,6 +33,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -87,6 +93,12 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     EntityReference ownerReference = entity.getOwner();
+    if (ownerReference == null) {
+      entity =
+          Entity.getEntity(
+              changeEvent.getEntityType(), entity.getId(), "owner", Include.NON_DELETED);
+      ownerReference = entity.getOwner();
+    }
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
         User user = Entity.getEntity(Entity.USER, ownerReference.getId(), "", Include.NON_DELETED);
@@ -126,13 +138,9 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
-      if (changeEvent.getEntityType().equals(TEST_CASE)
-          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink())
-              .getEntityFQN()
-              .equals(name))) {
-        return true;
-      }
-      if (entity.getFullyQualifiedName().equals(name)) {
+      Pattern pattern = Pattern.compile(name);
+      Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
+      if (matcher.find()) {
         return true;
       }
     }
@@ -215,7 +223,7 @@ public class AlertsRuleEvaluator {
             JsonUtils.readOrConvertValue(fieldChange.getNewValue(), TestCaseResult.class);
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
         for (String givenStatus : testResults) {
-          if (givenStatus.equals(status.value())) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
             return true;
           }
         }
@@ -247,7 +255,9 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : tableNameList) {
-      if (entity.getFullyQualifiedName().contains(name)) {
+      Pattern pattern = Pattern.compile(name);
+      Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
+      if (matcher.find()) {
         return true;
       }
     }
@@ -316,7 +326,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchIngestionPipelineState",
-      input = "List of comma separated pipeline states",
+      input = "List of comma separated ingestion pipeline states",
       description =
           "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {
@@ -343,7 +353,45 @@ public class AlertsRuleEvaluator {
             JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
         PipelineStatusType status = pipelineStatus.getPipelineState();
         for (String givenStatus : pipelineState) {
-          if (givenStatus.equals(status.value())) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchPipelineState",
+      input = "List of comma separated pipeline states",
+      description =
+          "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"matchPipelineState({'Successful', 'Failed', 'Pending', 'Skipped'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchPipelineState(List<String> pipelineState) {
+    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
+      return false;
+    }
+    if (!changeEvent.getEntityType().equals(PIPELINE)) {
+      // in case the entity is not ingestion pipeline return since the filter doesn't apply
+      return true;
+    }
+
+    // Filter does not apply to Thread Change Events
+    if (changeEvent.getEntityType().equals(THREAD)) {
+      return true;
+    }
+
+    for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
+      if (fieldChange.getName().equals("pipelineStatus") && fieldChange.getNewValue() != null) {
+        org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(),
+                org.openmetadata.schema.entity.data.PipelineStatus.class);
+        StatusType status = pipelineStatus.getExecutionStatus();
+        for (String givenStatus : pipelineState) {
+          if (givenStatus.equalsIgnoreCase(status.value())) {
             return true;
           }
         }
@@ -422,6 +470,57 @@ public class AlertsRuleEvaluator {
         String.format(
             "Change Event Data Asset is not an entity %s",
             JsonUtils.pojoToJson(event.getEntity())));
+  }
+
+  @Function(
+      name = "matchConversationUser",
+      input = "List of comma separated user names to matchConversationUser",
+      description = "Returns true if the conversation mentions the user names in the list",
+      examples = {"matchConversationUser({'user1', 'user2'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchConversationUser(List<String> usersOrTeamName) {
+    if (changeEvent == null || changeEvent.getEntityType() == null) {
+      return false;
+    }
+
+    // Filter does not apply to Thread Change Events
+    if (!changeEvent.getEntityType().equals(THREAD)) {
+      return false;
+    }
+
+    if (usersOrTeamName.size() == 1 && usersOrTeamName.get(0).equals("all")) {
+      return true;
+    }
+
+    Thread thread = getThread(changeEvent);
+
+    if (!thread.getType().equals(Conversation)) {
+      // Only applies to Conversation
+      return false;
+    }
+
+    List<MessageParser.EntityLink> mentions;
+    if (thread.getPostsCount() == 0) {
+      mentions = MessageParser.getEntityLinks(thread.getMessage());
+    } else {
+      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
+      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
+    }
+    for (MessageParser.EntityLink entityLink : mentions) {
+      String fqn = entityLink.getEntityFQN();
+      if (USER.equals(entityLink.getEntityType())) {
+        User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
+        if (usersOrTeamName.contains(user.getName())) {
+          return true;
+        }
+      } else if (TEAM.equals(entityLink.getEntityType())) {
+        Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
+        if (usersOrTeamName.contains(team.getName())) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   public static Thread getThread(ChangeEvent event) {

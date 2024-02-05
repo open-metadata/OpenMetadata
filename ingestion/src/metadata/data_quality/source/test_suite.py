@@ -60,6 +60,10 @@ class TestSuiteSource(Source):
 
         self.test_connection()
 
+    @property
+    def name(self) -> str:
+        return "OpenMetadata"
+
     def _get_table_entity(self) -> Optional[Table]:
         """given an entity fqn return the table entity
 
@@ -145,7 +149,6 @@ class TestSuiteSource(Source):
             )
 
         else:
-
             test_suite_cases = self._get_test_cases_from_test_suite(table.testSuite)
 
             yield Either(

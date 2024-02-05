@@ -33,6 +33,7 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import Lineage from '../../components/Lineage/Lineage.component';
 import LineageProvider from '../../components/LineageProvider/LineageProvider';
 import Loader from '../../components/Loader/Loader';
+import { useMetaPilotContext } from '../../components/MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -50,6 +51,7 @@ import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableTabPath, getVersionPath } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
@@ -61,9 +63,11 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
+import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -82,6 +86,7 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import EntityLink from '../../utils/EntityLink';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -103,13 +108,16 @@ const TableDetailsPageV1 = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = currentUser?.id ?? '';
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
   const [queryCount, setQueryCount] = useState(0);
+  const { resetMetaPilot, initMetaPilot } = useMetaPilotContext();
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -131,7 +139,7 @@ const TableDetailsPageV1 = () => {
     [datasetFQN]
   );
 
-  const fetchTableDetails = async () => {
+  const fetchTableDetails = useCallback(async () => {
     setLoading(true);
     try {
       let fields = defaultFields;
@@ -155,7 +163,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tableFqn]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -270,17 +278,69 @@ const TableDetailsPageV1 = () => {
         setLoading(false);
       }
     },
-    [tableFqn, getEntityPermissionByFqn, setTablePermissions]
+    [getEntityPermissionByFqn, setTablePermissions]
+  );
+
+  const updateDescriptionFromMetaPilot = useCallback(
+    (suggestion: Suggestion) => {
+      setTableDetails((prev) => {
+        if (!prev) {
+          return;
+        }
+
+        const activeCol = prev?.columns.find((column) => {
+          return (
+            EntityLink.getTableEntityLink(
+              prev.fullyQualifiedName ?? '',
+              column.name ?? ''
+            ) === suggestion.entityLink
+          );
+        });
+
+        if (!activeCol) {
+          return {
+            ...prev,
+            description: suggestion.description,
+          };
+        } else {
+          const updatedColumns = prev.columns.map((column) => {
+            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
+              return {
+                ...column,
+                description: suggestion.description,
+              };
+            } else {
+              return column;
+            }
+          });
+
+          return {
+            ...prev,
+            columns: updatedColumns,
+          };
+        }
+      });
+    },
+    []
   );
 
   useEffect(() => {
-    if (tableFqn) {
+    if (tableFqn && updateDescriptionFromMetaPilot) {
       fetchResourcePermission(tableFqn);
+      initMetaPilot(tableFqn, updateDescriptionFromMetaPilot);
     }
-  }, [tableFqn]);
+
+    return () => {
+      resetMetaPilot();
+    };
+  }, [tableFqn, updateDescriptionFromMetaPilot]);
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, datasetFQN, setFeedCount);
+    getFeedCounts(EntityType.TABLE, tableFqn, handleFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -332,7 +392,6 @@ const TableDetailsPageV1 = () => {
 
         return updatedObj;
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -585,7 +644,7 @@ const TableDetailsPageV1 = () => {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -594,12 +653,15 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
             columns={tableDetails?.columns}
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
             owner={tableDetails?.owner}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTableDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -745,10 +807,11 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     deleted,
     tableDetails,
-    feedCount,
+    feedCount.totalCount,
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    handleFeedCount,
     tableDetails?.dataModel,
     viewAllPermission,
     editCustomAttributePermission,
@@ -821,7 +884,6 @@ const TableDetailsPageV1 = () => {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -830,7 +892,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, setTableDetails, getEntityFeedCount]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const unFollowTable = useCallback(async () => {
     try {
@@ -848,7 +910,6 @@ const TableDetailsPageV1 = () => {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -857,7 +918,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, getEntityFeedCount, setTableDetails]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -911,7 +972,6 @@ const TableDetailsPageV1 = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -962,6 +1022,7 @@ const TableDetailsPageV1 = () => {
             afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
+            openTaskCount={feedCount.openTaskCount}
             permissions={tablePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}

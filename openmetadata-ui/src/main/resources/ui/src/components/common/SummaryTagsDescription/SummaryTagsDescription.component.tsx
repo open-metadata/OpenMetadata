@@ -67,7 +67,7 @@ const SummaryTagsDescription = ({
             {entityDetail.description?.trim() ? (
               <RichTextEditorPreviewer
                 markdown={entityDetail.description}
-                maxLength={80}
+                maxLength={200}
               />
             ) : (
               <Typography className="text-grey-body">

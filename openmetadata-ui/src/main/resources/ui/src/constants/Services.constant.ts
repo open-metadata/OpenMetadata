@@ -32,7 +32,6 @@ import deltalake from '../assets/img/service-icon-delta-lake.png';
 import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
-import duckdb from '../assets/img/service-icon-duckdb.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import gcs from '../assets/img/service-icon-gcs.png';
@@ -40,6 +39,7 @@ import glue from '../assets/img/service-icon-glue.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
+import iceberge from '../assets/img/service-icon-iceberg.png';
 import impala from '../assets/img/service-icon-impala.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import kinesis from '../assets/img/service-icon-kinesis.png';
@@ -194,9 +194,9 @@ export const COUCHBASE = couchbase;
 export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
-export const DUCKDB = duckdb;
 export const PLUS = plus;
 export const NOSERVICE = noService;
+export const ICEBERGE = iceberge;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -379,14 +379,14 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.SapHana,
+  DatabaseServiceType.SAS,
+  DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
   PipelineServiceType.Spark,
-  DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
-  SearchServiceType.ElasticSearch,
   DatabaseServiceType.Greenplum,
+  DatabaseServiceType.Iceberg,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

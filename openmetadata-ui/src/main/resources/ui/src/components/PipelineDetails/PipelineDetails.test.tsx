@@ -158,10 +158,6 @@ jest.mock('../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../utils/FeedUtils', () => ({
-  getEntityFieldThreadCounts: jest.fn().mockReturnValue([]),
-}));
-
 jest.mock('../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn().mockReturnValue([]),
   searchTagInData: jest.fn().mockReturnValue([]),

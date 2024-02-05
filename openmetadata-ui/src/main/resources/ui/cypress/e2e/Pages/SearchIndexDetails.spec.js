@@ -161,7 +161,7 @@ describe('SearchIndexDetails page should work properly for data consumer role', 
   beforeEach(() => {
     // Login with the created user
     login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
-    cy.goToHomePage(true);
+
     cy.url().should('eq', `${BASE_URL}/my-data`);
   });
 
@@ -206,9 +206,7 @@ describe('Prerequisite for data steward role tests', () => {
 
     interceptURL('GET', `/api/v1/users/name/${USER_NAME}*`, 'getUserDetails');
 
-    cy.get(
-      `[data-row-key="${USER_CREDENTIALS.id}"] [data-testid="${USER_NAME}"]`
-    ).click();
+    cy.get(`[data-testid="${USER_NAME}"]`).click();
 
     verifyResponseStatusCode('@getUserDetails', 200);
 
@@ -236,7 +234,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
   beforeEach(() => {
     // Login with the created user
     login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
-    cy.goToHomePage(true);
+
     cy.url().should('eq', `${BASE_URL}/my-data`);
   });
 

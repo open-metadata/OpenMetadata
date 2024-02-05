@@ -216,6 +216,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.connection_obj = self.client
         self.test_connection()
 
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
+
     @abstractmethod
     def yield_dashboard(
         self, dashboard_details: Any
@@ -527,7 +531,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def check_database_schema_name(self, database_schema_name: str):
-
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
 

@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
@@ -57,7 +56,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
-import org.openmetadata.schema.api.feed.EntityLinkThreadCount;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -490,7 +488,7 @@ public class FeedRepository {
   @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     deleteThreadInternal(thread.getId());
-    LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
+    LOG.debug("{} deleted thread with id {}", deletedByUser, thread.getId());
     return new DeleteResponse<>(thread, ENTITY_DELETED);
   }
 
@@ -518,57 +516,91 @@ public class FeedRepository {
     }
   }
 
-  public ThreadCount getThreadsCount(FeedFilter filter, String link) {
+  public List<ThreadCount> getThreadsCount(String link) {
     List<List<String>> result;
-    if (link == null) {
-      // Get thread count of all entities
-      result =
-          // TODO fix this
-          dao.feedDAO()
-              .listCountByEntityLink(
-                  null,
-                  Entity.THREAD,
-                  null,
-                  IS_ABOUT.ordinal(),
-                  filter.getThreadType(),
-                  filter.getTaskStatus(),
-                  filter.getResolved());
-    } else {
-      EntityLink entityLink = EntityLink.parse(link);
-      EntityReference reference = EntityUtil.validateEntityLink(entityLink);
-      if (reference.getType().equals(USER) || reference.getType().equals(Entity.TEAM)) {
-        if (reference.getType().equals(USER)) {
-          UUID userId = reference.getId();
-          List<String> teamIds = getTeamIds(userId);
-          result = dao.feedDAO().listCountByOwner(userId, teamIds, filter.getCondition());
-        } else {
-          // team is not supported
-          result = new ArrayList<>();
-        }
-      } else {
+    EntityLink entityLink = EntityLink.parse(link);
+    List<ThreadCount> threadCounts = new ArrayList<>();
+    EntityReference reference = EntityUtil.validateEntityLink(entityLink);
+    int mentions;
+    if (reference.getType().equals(USER) || reference.getType().equals(Entity.TEAM)) {
+      if (reference.getType().equals(USER)) {
+        UUID userId = reference.getId();
+        User user = Entity.getEntity(USER, userId, TEAMS_FIELD, NON_DELETED);
+        List<String> teamIds = getTeamIds(user);
+        List<String> teamNames = getTeamNames(user);
+        String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
+        List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
         result =
             dao.feedDAO()
-                .listCountByEntityLink(
-                    entityLink.getFullyQualifiedFieldValue(),
-                    Entity.THREAD,
-                    entityLink.getFullyQualifiedFieldType(),
-                    IS_ABOUT.ordinal(),
-                    filter.getThreadType(),
-                    filter.getTaskStatus(),
-                    filter.getResolved());
+                .listCountByOwner(
+                    userId, teamIds, user.getName(), userTeamJsonMysql, userTeamJsonPostgres);
+        mentions =
+            dao.feedDAO()
+                .listCountThreadsByMentions(
+                    FullyQualifiedName.buildHash(user.getFullyQualifiedName()),
+                    teamNames,
+                    Relationship.MENTIONED_IN.ordinal(),
+                    " where true ");
+      } else {
+        mentions = 0;
+        // team is not supported
+        result = new ArrayList<>();
       }
+      ThreadCount threadCount = new ThreadCount().withMentionCount(mentions);
+      threadCount.setEntityLink(link);
+      result.forEach(
+          l -> {
+            String type = l.get(0);
+            String taskStatus = l.get(1);
+            int count = Integer.parseInt(l.get(2));
+            if (type.equalsIgnoreCase("Conversation")) {
+              threadCount.setConversationCount(count);
+            } else if (type.equalsIgnoreCase("Task")) {
+              if (taskStatus.equals("Open")) {
+                threadCount.setOpenTaskCount(count);
+              } else if (taskStatus.equals("Closed")) {
+                threadCount.setClosedTaskCount(count);
+              }
+            }
+          });
+      computeTotalTaskCount(threadCount);
+      threadCounts.add(threadCount);
+    } else {
+      mentions = 0;
+      result =
+          dao.feedDAO()
+              .listCountByEntityLink(
+                  reference.getId(),
+                  reference.getFullyQualifiedName(),
+                  entityLink.getFullyQualifiedFieldType());
+      result.forEach(
+          l -> {
+            ThreadCount threadCount = new ThreadCount().withMentionCount(mentions);
+            String eLink = l.get(0);
+            String type = l.get(1);
+            String taskStatus = l.get(2);
+            threadCount.setEntityLink(eLink);
+            int count = Integer.parseInt(l.get(3));
+            if (type.equalsIgnoreCase("Conversation")) {
+              threadCount.setConversationCount(count);
+            } else if (type.equalsIgnoreCase("Task")) {
+              if (taskStatus.equals("Open")) {
+                threadCount.setOpenTaskCount(count);
+              } else if (taskStatus.equals("Closed")) {
+                threadCount.setClosedTaskCount(count);
+              }
+            }
+            computeTotalTaskCount(threadCount);
+            threadCounts.add(threadCount);
+          });
     }
+    return threadCounts;
+  }
 
-    AtomicInteger totalCount = new AtomicInteger(0);
-    List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
-    result.forEach(
-        l -> {
-          int count = Integer.parseInt(l.get(1));
-          entityLinkThreadCounts.add(
-              new EntityLinkThreadCount().withEntityLink(l.get(0)).withCount(count));
-          totalCount.addAndGet(count);
-        });
-    return new ThreadCount().withTotalCount(totalCount.get()).withCounts(entityLinkThreadCounts);
+  private void computeTotalTaskCount(ThreadCount threadCount) {
+    threadCount.setTotalTaskCount(
+        (threadCount.getOpenTaskCount() != null ? threadCount.getOpenTaskCount() : 0)
+            + (threadCount.getClosedTaskCount() != null ? threadCount.getClosedTaskCount() : 0));
   }
 
   public List<Post> listPosts(UUID threadId) {
@@ -1084,8 +1116,14 @@ public class FeedRepository {
     List<String> teamIds = null;
     if (userId != null) {
       User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, NON_DELETED);
-      teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).toList();
+      teamIds = getTeamIds(user);
     }
+    return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
+  }
+
+  private List<String> getTeamIds(User user) {
+    List<String> teamIds =
+        listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).toList();
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
   }
 

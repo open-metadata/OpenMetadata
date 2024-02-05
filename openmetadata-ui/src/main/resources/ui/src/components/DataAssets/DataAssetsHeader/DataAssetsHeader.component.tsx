@@ -38,14 +38,10 @@ import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
-import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
-import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
+import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
@@ -125,6 +121,7 @@ export const DataAssetsHeader = ({
   onVersionClick,
   onFollowClick,
   entityType,
+  openTaskCount,
   isRecursiveDelete,
   onRestoreDataAsset,
   onDisplayNameUpdate,
@@ -137,7 +134,6 @@ export const DataAssetsHeader = ({
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
-  const [taskCount, setTaskCount] = useState(0);
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const history = useHistory();
@@ -211,25 +207,6 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchTaskCount = () => {
-    // To get open tasks count
-    getFeedCount(
-      getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? ''),
-      ThreadType.Task,
-      ThreadTaskStatus.Open
-    )
-      .then((res) => {
-        if (res) {
-          setTaskCount(res.totalCount);
-        } else {
-          throw t('server.entity-feed-fetch-error');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.entity-feed-fetch-error'));
-      });
-  };
-
   const fetchContainerParent = async (
     parentName: string,
     parents = [] as Container[]
@@ -261,15 +238,12 @@ export const DataAssetsHeader = ({
   useEffect(() => {
     if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
-      if (!excludeEntityService) {
-        fetchTaskCount();
-      }
     }
     if (entityType === EntityType.CONTAINER) {
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, excludeEntityService, isTourPage]);
+  }, [dataAsset.fullyQualifiedName, isTourPage]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -443,7 +417,7 @@ export const DataAssetsHeader = ({
                     className="w-16 p-0"
                     icon={<Icon component={TaskOpenIcon} />}
                     onClick={handleOpenTaskClick}>
-                    <Typography.Text>{taskCount}</Typography.Text>
+                    <Typography.Text>{openTaskCount}</Typography.Text>
                   </Button>
                 )}
 
@@ -521,7 +495,6 @@ export const DataAssetsHeader = ({
         <AnnouncementDrawer
           createPermission={permissions?.EditAll}
           entityFQN={dataAsset.fullyQualifiedName ?? ''}
-          entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}

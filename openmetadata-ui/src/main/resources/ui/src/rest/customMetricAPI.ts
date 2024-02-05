@@ -30,7 +30,7 @@ export const deleteCustomMetric = async ({
     : customMetricName;
 
   return await APIClient.delete<Table>(
-    `${BASE_URL}/${tableId}/customMetric/${url}`
+    `${BASE_URL}/${tableId}/customMetric/${url}?recursive=true&hardDelete=true`
   );
 };
 

@@ -48,7 +48,7 @@ const CreateErrorPlaceHolder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
+          <Typography.Paragraph>
             {placeholderText ??
               t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                 entity: heading,

@@ -15,6 +15,8 @@ import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
+from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -24,6 +26,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.utils.helpers import (
     clean_up_starting_ending_double_quotes_in_string,
     deep_size_of_dict,
+    find_suggestion,
     format_large_string_numbers,
     get_entity_tier_from_tags,
     is_safe_sql_query,
@@ -154,3 +157,50 @@ class TestHelpers(TestCase):
         assert format_large_string_numbers(1000000) == "1.000M"
         assert format_large_string_numbers(1000000000) == "1.000B"
         assert format_large_string_numbers(1000000000000) == "1.000T"
+
+    def test_find_suggestion(self):
+        """we can get one possible suggestion"""
+        suggestions = [
+            Suggestion(
+                id=uuid.uuid4(),
+                type=SuggestionType.SuggestDescription,
+                entityLink=EntityLink(__root__="<#E::table::tableFQN>"),
+                description="something",
+            ),
+            Suggestion(
+                id=uuid.uuid4(),
+                type=SuggestionType.SuggestDescription,
+                entityLink=EntityLink(__root__="<#E::table::tableFQN::columns::col>"),
+                description="something",
+            ),
+        ]
+
+        self.assertIsNone(
+            find_suggestion(
+                suggestions=suggestions,
+                suggestion_type=SuggestionType.SuggestTagLabel,
+                entity_link=...,
+            )
+        )
+
+        self.assertIsNone(
+            find_suggestion(
+                suggestions=suggestions,
+                suggestion_type=SuggestionType.SuggestDescription,
+                entity_link=...,
+            )
+        )
+
+        suggestion_table = find_suggestion(
+            suggestions=suggestions,
+            suggestion_type=SuggestionType.SuggestDescription,
+            entity_link=EntityLink(__root__="<#E::table::tableFQN>"),
+        )
+        self.assertEqual(suggestion_table, suggestions[0])
+
+        suggestion_col = find_suggestion(
+            suggestions=suggestions,
+            suggestion_type=SuggestionType.SuggestDescription,
+            entity_link=EntityLink(__root__="<#E::table::tableFQN::columns::col>"),
+        )
+        self.assertEqual(suggestion_col, suggestions[1])
