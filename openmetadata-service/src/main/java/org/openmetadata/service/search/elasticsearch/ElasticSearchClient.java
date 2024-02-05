@@ -653,7 +653,7 @@ public class ElasticSearchClient implements SearchClient {
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
+        QueryBuilders.boolQuery().should(QueryBuilders.matchQuery("sourceUrl", sourceUrl)));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
