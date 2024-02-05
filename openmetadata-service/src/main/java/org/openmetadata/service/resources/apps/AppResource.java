@@ -69,6 +69,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -130,9 +131,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                     null,
                     createApp.getName(),
                     new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-        App app =
-            repository.getByName(
-                null, createApp.getName(), repository.getFields("bot,pipelines"), ALL, false);
+        App app = getAppForInit(createApp.getName());
         if (app == null) {
           app =
               getApplication(definition, createApp, "admin")
@@ -148,6 +147,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
     } catch (SchedulerException | IOException ex) {
       LOG.error("Failed in Create App Requests", ex);
+    }
+  }
+
+  private App getAppForInit(String appName) {
+    try {
+      return repository.getByName(null, appName, repository.getFields("bot,pipelines"), ALL, false);
+    } catch (EntityNotFoundException ex) {
+      return null;
     }
   }
 
