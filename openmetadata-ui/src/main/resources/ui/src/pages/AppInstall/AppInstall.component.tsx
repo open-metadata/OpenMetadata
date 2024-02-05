@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
+import applicationSchemaClassBase from '../../components/Applications/AppDetails/ApplicationSchemaClassBase';
 import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
@@ -79,7 +80,8 @@ const AppInstall = () => {
       });
       setAppData(data);
 
-      const schema = await import(`../../utils/ApplicationSchemas/${fqn}.json`);
+      const schema = await applicationSchemaClassBase.importSchema(fqn);
+
       setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);

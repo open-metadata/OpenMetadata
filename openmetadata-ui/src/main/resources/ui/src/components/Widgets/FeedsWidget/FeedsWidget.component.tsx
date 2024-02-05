@@ -12,6 +12,7 @@
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Space, Tabs, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +22,7 @@ import { useActivityFeedProvider } from '../../../components/ActivityFeed/Activi
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import { ROUTES } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { mockFeedData } from '../../../constants/mockTourData.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -28,13 +30,15 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getFeedsWithFilter } from '../../../rest/feedsAPI';
+import { getFeedCount } from '../../../rest/feedsAPI';
 import {
   getCountBadge,
   getEntityDetailLink,
   Transi18next,
 } from '../../../utils/CommonUtils';
+import { getEntityUserLink } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
@@ -54,7 +58,7 @@ const FeedsWidget = ({
   );
   const { loading, entityThread, entityPaging, getFeedData } =
     useActivityFeedProvider();
-  const [taskCount, setTaskCount] = useState(0);
+  const [count, setCount] = useState<FeedCounts>(FEED_COUNT_INITIAL_DATA);
 
   const [defaultFilter, setDefaultFilter] = useState<FeedFilter>(
     currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
@@ -66,13 +70,36 @@ const FeedsWidget = ({
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task);
+      getFeedData(
+        FeedFilter.OWNER,
+        undefined,
+        ThreadType.Task,
+        undefined,
+        undefined,
+        ThreadTaskStatus.Open
+      );
     }
   }, [activeTab, defaultFilter]);
 
-  const countBadge = useMemo(() => {
-    return getCountBadge(taskCount, '', activeTab === 'tasks');
-  }, [taskCount, activeTab]);
+  const mentionCountBadge = useMemo(
+    () =>
+      getCountBadge(
+        count.mentionCount,
+        '',
+        activeTab === ActivityFeedTabs.MENTIONS
+      ),
+    [count.mentionCount, activeTab]
+  );
+
+  const taskCountBadge = useMemo(
+    () =>
+      getCountBadge(
+        count.openTaskCount,
+        '',
+        activeTab === ActivityFeedTabs.TASKS
+      ),
+    [count.openTaskCount, activeTab]
+  );
 
   const onTabChange = (key: string) => setActiveTab(key as ActivityFeedTabs);
 
@@ -106,23 +133,27 @@ const FeedsWidget = ({
     setDefaultFilter(filter);
   };
 
+  const fetchFeedsCount = async () => {
+    try {
+      const res = await getFeedCount(
+        getEntityUserLink(currentUser?.name ?? '')
+      );
+      setCount((prev) => ({
+        ...prev,
+        openTaskCount: res?.[0]?.openTaskCount ?? 0,
+
+        mentionCount: res?.[0]?.mentionCount ?? 0,
+      }));
+    } catch (err) {
+      showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+    }
+  };
+
   useEffect(() => {
     setDefaultFilter(
       currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
     );
-    getFeedsWithFilter(
-      currentUser?.id,
-      FeedFilter.OWNER,
-      undefined,
-      ThreadType.Task,
-      ThreadTaskStatus.Open
-    )
-      .then((res) => {
-        setTaskCount(res.data.length);
-      })
-      .catch((err) => {
-        showErrorToast(err);
-      });
+    fetchFeedsCount();
   }, [currentUser]);
 
   const threads = useMemo(() => {
@@ -177,7 +208,12 @@ const FeedsWidget = ({
             ),
           },
           {
-            label: `@${t('label.mention-plural')}`,
+            label: (
+              <>
+                {`@${t('label.mention-plural')}`}
+                {mentionCountBadge}
+              </>
+            ),
             key: ActivityFeedTabs.MENTIONS,
             children: (
               <>
@@ -196,7 +232,7 @@ const FeedsWidget = ({
             label: (
               <>
                 {`${t('label.task-plural')} `}
-                {countBadge}
+                {taskCountBadge}
               </>
             ),
             key: ActivityFeedTabs.TASKS,

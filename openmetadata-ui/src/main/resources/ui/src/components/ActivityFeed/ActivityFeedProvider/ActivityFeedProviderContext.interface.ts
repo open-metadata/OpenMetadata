@@ -18,6 +18,7 @@ import {
   Post,
   ReactionType,
   Thread,
+  ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
@@ -53,7 +54,8 @@ export interface ActivityFeedProviderContextType {
     after?: string,
     type?: ThreadType,
     entityType?: EntityType,
-    fqn?: string
+    fqn?: string,
+    taskStatus?: ThreadTaskStatus
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;
