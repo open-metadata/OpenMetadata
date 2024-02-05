@@ -68,7 +68,10 @@ jest.mock('antd', () => ({
 }));
 
 const mockProps1 = {
-  appData: mockApplicationData,
+  appData: {
+    ...mockApplicationData,
+    name: 'DataInsightsReportApplication',
+  },
   onSave: mockOnSave,
   onCancel: jest.fn(),
   onDemandTrigger: mockOnDemandTrigger,
