@@ -58,6 +58,22 @@ BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
 )
 
+BIGQUERY_TABLE_CONSTRAINTS = textwrap.dedent(
+    """
+    SELECT * 
+    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE 
+    WHERE table_name = '{table_name}' AND constraint_name LIKE '%pk$';
+    """
+)
+
+BIGQUERY_FOREIGN_CONSTRAINTS = textwrap.dedent(
+    """
+    SELECT * 
+    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE 
+    WHERE table_name = '{table_name}' AND constraint_name LIKE '%fk$';
+    """
+)
+
 BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent(
     """
 SELECT 
