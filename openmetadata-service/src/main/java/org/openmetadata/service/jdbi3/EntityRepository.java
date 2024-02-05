@@ -21,6 +21,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
 import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -97,6 +98,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -797,6 +799,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
+    storeChangeEvent(entity, ENTITY_CREATED);
     if (supportsSearch) {
       searchRepository.createEntity(entity);
     }
@@ -807,6 +810,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsSearch) {
       searchRepository.updateEntity(updated);
     }
+  }
+
+  @Transaction
+  protected void storeChangeEvent(T entity, EventType eventType) {
+    ChangeEvent changeEvent = getChangeEvent(entity, eventType);
+    daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private ChangeEvent getChangeEvent(T entity, EventType eventType) {
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEventType(eventType)
+        .withEntityId(entity.getId())
+        .withEntityType(entityType)
+        .withUserName(entity.getUpdatedBy())
+        .withTimestamp(entity.getUpdatedAt())
+        .withChangeDescription(entity.getChangeDescription())
+        .withCurrentVersion(entity.getVersion())
+        .withPreviousVersion(
+            entity.getChangeDescription() != null
+                ? entity.getChangeDescription().getPreviousVersion()
+                : entity.getVersion())
+        .withEntity(entity)
+        .withEntityFullyQualifiedName(entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -869,6 +896,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     fieldAdded(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
 
+    setFieldsInternal(entity, new Fields(allowedFields, FIELD_FOLLOWERS));
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -883,6 +911,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
+    storeChangeEvent(entity, ENTITY_UPDATED);
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
@@ -916,7 +945,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           false);
     }
 
-    setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
+    setFieldsInternal(originalEntity, new Fields(allowedFields, FIELD_VOTES));
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -930,7 +959,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(originalEntity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
+    originalEntity.setChangeDescription(change);
     postUpdate(originalEntity, originalEntity);
+    storeChangeEvent(originalEntity, ENTITY_UPDATED);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
@@ -938,6 +969,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> delete(
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
+    storeChangeEvent(response.entity(), response.changeType());
     postDelete(response.entity());
     return response;
   }
@@ -947,6 +979,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+    storeChangeEvent(response.entity(), response.changeType());
     postDelete(response.entity());
     return response;
   }
@@ -1105,6 +1138,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     fieldDeleted(change, FIELD_FOLLOWERS, List.of(user));
 
+    setFieldsInternal(entity, new Fields(allowedFields, FIELD_FOLLOWERS));
+
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -1119,6 +1154,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
+    entity.setChangeDescription(change);
+    storeChangeEvent(entity, ENTITY_UPDATED);
+    postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 
@@ -2036,6 +2074,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
     public final void update() {
+      processIncrementalEvents();
       boolean consolidateChanges = consolidateChanges(original, updated, operation);
       // Revert the changes previously made by the user with in a session and consolidate all the
       // changes
@@ -2715,6 +2754,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Store the Actual Change Taking Place in Version
       updated.setVersion(consolidatedVersion);
+    }
+
+    @SneakyThrows
+    private void processIncrementalEvents() {
+      // Build the Actual Change Taking Place , But don't store in Entity Versions
+      entityChanged = false;
+      changeDescription = new ChangeDescription();
+      updateInternal();
+      boolean updateVersion = updateVersion(original.getVersion());
+      if (!updateVersion) {
+        if (entityChanged) {
+          if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+            updated.setChangeDescription(original.getChangeDescription());
+          }
+        } else { // Update did not change the entity version
+          updated.setChangeDescription(original.getChangeDescription());
+          updated.setUpdatedBy(original.getUpdatedBy());
+          updated.setUpdatedAt(original.getUpdatedAt());
+        }
+      }
+
+      // Store the Actual Change Taking Place in Version
+      if (entityChanged) {
+        storeChangeEvent(updated, ENTITY_UPDATED);
+        Thread.sleep(10000l);
+      }
     }
 
     private T getPreviousVersion(T original) {

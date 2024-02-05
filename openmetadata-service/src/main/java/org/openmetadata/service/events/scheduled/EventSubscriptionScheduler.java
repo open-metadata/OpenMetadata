@@ -23,7 +23,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -76,10 +75,6 @@ public class EventSubscriptionScheduler {
   @Transaction
   public void addSubscriptionPublisher(EventSubscription eventSubscription)
       throws SchedulerException {
-    if (eventSubscription.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
-      throw new IllegalArgumentException("Activity Feed is not a valid Alert Type");
-    }
-
     AlertPublisher alertPublisher = new AlertPublisher();
     if (Boolean.FALSE.equals(
         eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
@@ -121,7 +116,8 @@ public class EventSubscriptionScheduler {
       AlertPublisher publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
-    dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
+    // Using the incremental as -1 since change Events are inplace created before this is called
+    dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId(), -1));
     JobBuilder jobBuilder =
         JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
@@ -147,10 +143,7 @@ public class EventSubscriptionScheduler {
     // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
     // TODO: fix this make AlertActivityFeedPublisher
-    if (Boolean.TRUE.equals(eventSubscription.getEnabled())
-        && (!eventSubscription
-            .getAlertType()
-            .equals(CreateEventSubscription.AlertType.ACTIVITY_FEED))) {
+    if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
       addSubscriptionPublisher(eventSubscription);
     }
   }
