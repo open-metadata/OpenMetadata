@@ -18,7 +18,13 @@ OpenMetadata being a full stack project, we use the following for development:
 - [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)
 - [Rpm (Optional, only to run RPM profile with maven)](https://macappstore.org/rpm/)
 
-- Here is a snapshot of a working environment on a Macbook.
+To validate the installation of the above tools, you can run: 
+
+```shell
+make prerequisites
+```
+
+### Example Snapshot on a Macbook
 
 ```shell
 > docker --version

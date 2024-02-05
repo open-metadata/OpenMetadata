@@ -6,6 +6,10 @@ include ingestion/Makefile
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":"}; {printf "\033[35m%-35s\033[0m %s\n", $$2, $$3}'
 
+.PHONY: prerequisites
+prerequisites:
+	./scripts/check_prerequisites.sh
+
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
