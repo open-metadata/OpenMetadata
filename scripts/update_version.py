@@ -42,7 +42,7 @@ def update_python_files(file_path, release_version):
             content = file.read()
 
         pattern = r'version\s*=\s*"([^"]+)"'
-        updated_content = re.sub(pattern, f'version="{release_version}"', content)
+        updated_content = re.sub(pattern, f'version = "{release_version}"', content)
 
         with open(file_path, 'w') as file:
             file.write(updated_content)
