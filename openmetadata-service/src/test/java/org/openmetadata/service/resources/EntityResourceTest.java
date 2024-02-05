@@ -439,8 +439,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // if (true) {
     webhookCallbackResource.clearEvents();
     EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-    // alertResourceTest.startWebhookSubscription();
-    // alertResourceTest.startWebhookEntitySubscriptions(entityType);
+    alertResourceTest.startWebhookSubscription();
+    alertResourceTest.startWebhookEntitySubscriptions(entityType);
     // }
   }
 
@@ -448,8 +448,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public void afterAllTests() throws Exception {
     // if (true) {
     EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-    //  alertResourceTest.validateWebhookEvents();
-    //  alertResourceTest.validateWebhookEntityEvents(entityType);
+    alertResourceTest.validateWebhookEvents();
+    alertResourceTest.validateWebhookEntityEvents(entityType);
     // }
     delete_recursiveTest();
   }
