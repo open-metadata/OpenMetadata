@@ -12,7 +12,15 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Select, Switch } from 'antd';
+import {
+  Button,
+  Form,
+  FormItemProps,
+  Input,
+  InputNumber,
+  Select,
+  Switch,
+} from 'antd';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -32,6 +40,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
 
   const prepareForm = (data: TestCaseParameterDefinition) => {
+    let internalFormItemProps: FormItemProps = {};
     let Field = (
       <Input
         placeholder={`${t('message.enter-a-field', {
@@ -122,6 +131,10 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           break;
         case TestDataType.Boolean:
           Field = <Switch />;
+          internalFormItemProps = {
+            ...internalFormItemProps,
+            valuePropName: 'checked',
+          };
 
           break;
         case TestDataType.Array:
@@ -204,7 +217,8 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             })}`,
           },
         ]}
-        tooltip={data.description}>
+        tooltip={data.description}
+        {...internalFormItemProps}>
         {Field}
       </Form.Item>
     );
