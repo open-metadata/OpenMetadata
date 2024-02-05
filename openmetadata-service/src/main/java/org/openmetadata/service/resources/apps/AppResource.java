@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,17 +105,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.openMetadataApplicationConfig = config;
-    this.privateConfiguration = config.getAppsPrivateConfiguration();
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-
-    // Create an On Demand DAO
-    CollectionDAO dao = Entity.getCollectionDAO();
-    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
-
     try {
+      this.openMetadataApplicationConfig = config;
+      this.privateConfiguration = config.getAppsPrivateConfiguration();
+      this.pipelineServiceClient =
+          PipelineServiceClientFactory.createPipelineServiceClient(
+              config.getPipelineServiceClientConfiguration());
+
+      // Create an On Demand DAO
+      CollectionDAO dao = Entity.getCollectionDAO();
+      searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
       AppScheduler.initialize(dao, searchRepository);
 
       // Get Create App Requests
@@ -145,7 +143,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
-    } catch (SchedulerException | IOException ex) {
+    } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
     }
   }
