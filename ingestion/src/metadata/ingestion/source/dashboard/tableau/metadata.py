@@ -199,7 +199,7 @@ class TableauSource(DashboardServiceSource):
         try:
             dashboard_url = (
                 f"{clean_uri(str(self.config.serviceConnection.__root__.config.hostPort))}"
-                f"/#{urlparse(dashboard_details.webpageUrl).fragment}"
+                f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
             )
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
