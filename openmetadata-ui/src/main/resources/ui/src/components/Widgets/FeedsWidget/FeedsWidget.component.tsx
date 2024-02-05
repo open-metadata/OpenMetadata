@@ -140,9 +140,9 @@ const FeedsWidget = ({
       );
       setCount((prev) => ({
         ...prev,
-        openTaskCount: res[0].openTaskCount ?? 0,
+        openTaskCount: res[0]?.openTaskCount ?? 0,
 
-        mentionCount: res[0].mentionCount ?? 0,
+        mentionCount: res[0]?.mentionCount ?? 0,
       }));
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
