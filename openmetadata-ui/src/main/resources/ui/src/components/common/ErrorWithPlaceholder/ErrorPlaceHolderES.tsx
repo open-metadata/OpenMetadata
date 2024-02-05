@@ -19,6 +19,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
+  DATA_DISCOVERY_DOCS,
   GLOSSARIES_DOCS,
   INGESTION_DOCS,
   LOCAL_DEPLOYMENT,
@@ -114,7 +115,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
                 i18nKey="message.refer-to-our-doc"
                 renderElement={
                   <a
-                    href={CONNECTORS_DOCS}
+                    href={DATA_DISCOVERY_DOCS}
                     rel="noreferrer"
                     style={{ color: '#1890ff' }}
                     target="_blank"
