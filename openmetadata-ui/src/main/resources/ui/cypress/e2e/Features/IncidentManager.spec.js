@@ -269,10 +269,10 @@ describe('Incident Manager', () => {
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
       verifyResponseStatusCode('@getTaskFeed', 200);
-      cy.get('[data-testid="task-cta-buttons"]')
-        .contains('Reassign')
+      cy.get('[data-testid="task-cta-buttons"] [role="img"]')
         .scrollIntoView()
         .click();
+      cy.get('[role="menu"').find('[data-menu-id*="re-assign"]').click();
       interceptURL(
         'GET',
         '/api/v1/search/suggest?q=admin&index=*user_search_index*',
@@ -309,10 +309,10 @@ describe('Incident Manager', () => {
       verifyResponseStatusCode('@getTestCase', 200);
       cy.get('[data-testid="incident"]').click();
       verifyResponseStatusCode('@getTaskFeed', 200);
-      cy.get('[data-testid="task-cta-buttons"] [role="img"]')
+      cy.get('[data-testid="task-cta-buttons"]')
+        .contains('Resolve')
         .scrollIntoView()
         .click();
-      cy.get('[role="menu"').find('[data-menu-id*="resolve"]').click();
       cy.get('#testCaseFailureReason').click();
       cy.get('[title="Missing Data"]').click();
       cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')

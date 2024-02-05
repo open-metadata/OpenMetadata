@@ -1471,7 +1471,7 @@
     "list-of-strings-regex-patterns-csv": "Voer een lijst met strings/regex-patronen in als een door komma's gescheiden waarde",
     "login-fail-attempt-message": "Toegestane poging bij opeenvolgende mislukte aanmelding bij de toepassing.",
     "logout-confirmation": "Weet je zeker dat je wilt uitloggen?",
-    "made-announcement-for-entity": "heeft een aankondiging gedaan voor {{entity}}",
+    "made-announcement": "made an announcement",
     "make-an-announcement": "Doe een aankondiging!",
     "manage-airflow-api": "OpenMetadata - Beheerde Airflow API's",
     "manage-airflow-api-failed": "Kan OpenMetadata - Beheerde Airflow API's niet vinden",

@@ -18,7 +18,13 @@ OpenMetadata being a full stack project, we use the following for development:
 - [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)
 - [Rpm (Optional, only to run RPM profile with maven)](https://macappstore.org/rpm/)
 
-- Here is a snapshot of a working environment on a Macbook.
+To validate the installation of the above tools, you can run: 
+
+```shell
+make prerequisites
+```
+
+### Example Snapshot on a Macbook
 
 ```shell
 > docker --version
@@ -92,7 +98,8 @@ Please install the following to format the code during the git commit process
 git clone https://github.com/open-metadata/OpenMetadata
 cd openmetadata
 python3 -m venv env
-source env/bin/activate  
+source env/bin/activate
+pip install pre-commit
 make install_dev
 make install_test precommit_install
 ```

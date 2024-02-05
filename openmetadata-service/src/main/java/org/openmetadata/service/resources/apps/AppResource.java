@@ -130,8 +130,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
                     null,
                     createApp.getName(),
                     new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-
-        App app = repository.findByNameOrNull(createApp.getName(), ALL);
+        App app =
+            repository.getByName(
+                null, createApp.getName(), repository.getFields("bot,pipelines"), ALL, false);
         if (app == null) {
           app =
               getApplication(definition, createApp, "admin")

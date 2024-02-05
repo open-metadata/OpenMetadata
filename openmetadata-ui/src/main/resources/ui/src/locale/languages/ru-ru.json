@@ -1471,7 +1471,7 @@
     "list-of-strings-regex-patterns-csv": "Введите список строк/шаблонов регулярных выражений в виде значения, разделенного запятыми.",
     "login-fail-attempt-message": "Allowed attampt on consicutive failed login to application.",
     "logout-confirmation": "Вы уверены, что хотите выйти из системы?",
-    "made-announcement-for-entity": "сделано объявление для {{entity}}",
+    "made-announcement": "made an announcement",
     "make-an-announcement": "Сделайте объявление!",
     "manage-airflow-api": "OpenMetadata - Managed Airflow APIs",
     "manage-airflow-api-failed": "Не удалось найти OpenMetadata - Managed Airflow APIs",

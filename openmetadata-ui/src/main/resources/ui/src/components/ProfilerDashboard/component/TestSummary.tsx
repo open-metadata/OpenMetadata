@@ -152,10 +152,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         failedRows: result.failedRows,
         passedRowsPercentage: isUndefined(result.passedRowsPercentage)
           ? undefined
-          : `${result.passedRowsPercentage}%`,
+          : `${round(result.passedRowsPercentage, 2)}%`,
         failedRowsPercentage: isUndefined(result.failedRowsPercentage)
           ? undefined
-          : `${result.failedRowsPercentage}%`,
+          : `${round(result.failedRowsPercentage, 2)}%`,
       };
 
       chartData.push({
@@ -270,7 +270,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   const referenceArea = () => {
     const params = data.parameterValues ?? [];
 
-    if (params.length < 2) {
+    if (params.length && params.length < 2) {
       return (
         <ReferenceLine
           label={params[0].name}

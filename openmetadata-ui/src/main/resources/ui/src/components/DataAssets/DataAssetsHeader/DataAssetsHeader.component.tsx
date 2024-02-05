@@ -495,7 +495,6 @@ export const DataAssetsHeader = ({
         <AnnouncementDrawer
           createPermission={permissions?.EditAll}
           entityFQN={dataAsset.fullyQualifiedName ?? ''}
-          entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
