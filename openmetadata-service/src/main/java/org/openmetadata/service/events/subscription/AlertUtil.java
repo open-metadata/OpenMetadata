@@ -15,6 +15,7 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -114,6 +115,12 @@ public final class AlertUtil {
             || config.getResources().get(0).equals("conversation"))) {
       Thread thread = AlertsRuleEvaluator.getThread(event);
       return config.getResources().get(0).equalsIgnoreCase(thread.getType().value());
+    }
+
+    // Test Suite
+    if (config.getResources().get(0).equals(TEST_SUITE)) {
+      return event.getEntityType().equals(TEST_SUITE)
+          || event.getEntityType().equals(Entity.TEST_CASE);
     }
 
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings

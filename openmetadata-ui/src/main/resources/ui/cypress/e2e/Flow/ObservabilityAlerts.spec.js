@@ -291,7 +291,7 @@ describe('Observability Alert Flow', () => {
     // Add actions
     cy.get('[data-testid="add-actions"]').click();
 
-    addPipelineStatusUpdatesAction(0, 'Success', true);
+    addPipelineStatusUpdatesAction(0, 'Successful', true);
 
     // Add multiple destinations
     [...Array(2).keys()].forEach(() => {

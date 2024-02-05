@@ -702,7 +702,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="test-status-select"
               mode="multiple"
-              options={getSelectOptionsFromEnum(StatusType)}
+              options={getSelectOptionsFromEnum(TestCaseStatus)}
               placeholder={t('label.select-field', {
                 field: t('label.test-suite-status'),
               })}
