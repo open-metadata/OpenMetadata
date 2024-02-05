@@ -1207,8 +1207,7 @@ export const WHATS_NEW = [
       Localization: `- Now supports RTL UI for the Hebrew language.`,
       'Settings UI': `- The Settings page UI has been revamped.`,
       'Data Insights': `- Cost Analysis expanded to support BigQuery & Redshift. ${CollateIconWithLinkMD}`,
-      'Other Changes': `- Supports bulk changes to data assets at the Database or Schema level to edit or update details like classification tags, tiers, terms, owners, etc.
-- Announcements can be notified over email, Slack, or Teams.
+      'Other Changes': `- Announcements can be notified over email, Slack, or Teams.
 - Alerts are sent to a user when they are mentioned in a task or activity feed.
 - We have improved the display of search results for column matches. When searching for columns, the matched results will be displayed and highlighted in the Preview pane.
 - Custom properties are displayed on the right of the data asset details page.
