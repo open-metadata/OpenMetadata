@@ -1153,7 +1153,57 @@ export const WHATS_NEW = [
     id: 22,
     version: 'v1.3.0',
     description: 'Released on 5th Feb 2024.',
-    features: [],
+    features: [
+      {
+        title: 'Settings UI',
+        description:
+          'OpenMetadata Settings page UI has been revamped to provide an intuitive and user-friendly interface.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/qE07HNFXyu8',
+      },
+      {
+        title: 'RTL Support',
+        description:
+          'OpenMetadata now boasts support for ten languages, having expanded beyond English, French, Chinese, German, Japanese, Portuguese, Russian, and Spanish to include Hebrew and Dutch. To accommodate the Hebrew language, we have implemented substantial UI changes to ensure seamless RTL (right-to-left) support.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/MCjK6fZg3pw',
+      },
+      {
+        title: 'Intuitive Lineage UI',
+        description:
+          'The lineage UI has been revamped to provide an intuitive and comprehensive view of data lineage to facilitate a deeper understanding of the flow and transformations within your data assets.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/grwhvTWylbw',
+      },
+      {
+        title: 'Custom Metrics for Profiler',
+        description:
+          'OpenMetadata has enhanced profiling capabilities, so you can generate your own metrics using custom SQL. You can create custom metrics for the profiler at the Table and Column levels.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/VmDohqt9J-o',
+      },
+      {
+        title: 'Incidents Manager',
+        description:
+          'The Incidents Manager serves as a centralized hub, streamlining the resolution process and reinforcing the integrity of your data. It provides a comprehensive summary of unresolved failed test cases, offering details on failure severity and the resolution flow.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/G-Ww5TkQPy0',
+      },
+      {
+        title: 'Observability',
+        description:
+          'In the 1.3 release, data observability alerts have been distinguished from the other general-purpose notifications, making it easy to get to the crucial alerts quickly.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/W491sM8sNQk',
+      },
+      {
+        title: 'Knowledge Center (Exclusively for Collate)',
+        description:
+          'In the 1.3 release, OpenMetadata supports hierarchical pages to structure the articles for a cohesive view and access. Now, it is easier to associate the knowledge articles with data assets with just a few clicks.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/OVTEPvnzBbQ',
+      },
+    ],
     changeLogs: {
       Lineage: ` - Revamped the lineage UI for an intuitive and comprehensive view of data flow and transformations.
 - Organized nodes for better visibility with pagination support.
