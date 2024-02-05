@@ -1169,7 +1169,7 @@ export const WHATS_NEW = [
 - The overall flow has been simplified to let you easily create alerts for schema changes in your data.
 - You can now get Data Quality alerts for specific Test Suites.
 - Users will be alerted for all the changes to the data assets that they own.`,
-      'Data Quality Incident Manager': `- Introduced Incidents Manager to improve the data quality resolution flow.
+      'Incident Manager': `- Introduced Incidents Manager to improve the data quality resolution flow.
 - Incidents Manager summarizes all the test case results with information about the failure severity and resolution flow.
 - Supports assigning a resolution task to the users in OpenMetadata.
 - Tasks are created when a data quality test has been assigned to an Assignee or a Reviewer.
@@ -1187,7 +1187,8 @@ export const WHATS_NEW = [
 - Custom metrics can be created at Table and Column levels.`,
       'Profiler and Data Quality': `- The Profiler has been improved to support sample data ingestion without computing other metrics.
 - Admins can configure the profiler to fetch up to 10,000 rows of sample data.
-- Sample data can be stored in S3 buckets.`,
+- Sample data can be stored in S3 buckets.
+- Refined the default time range on the test case results page, adjusting it from the Last 3 days to the Last 30 days for a more encompassing view.`,
       Connectors: `- New Google Cloud Storage for storage services. ${CollateIconWithLinkMD}
 - New Alation connector to migrate metadata into Collate. ${CollateIconWithLinkMD}
 - New Iceberg, SAS Viya, and Doris connectors.
@@ -1204,13 +1205,20 @@ export const WHATS_NEW = [
 - Supports the creation of tasks to request tags or a description.
 - Only the Owner can edit the Glossary term.
 - Version history displays the Username instead of the User ID.`,
-      Localization: `- Now supports RTL UI for the Hebrew language.`,
+      Localization: `- Now supports RTL UI for the Hebrew language.
+- New Dutch language translation.`,
       'Settings UI': `- The Settings page UI has been revamped.`,
-      'Data Insights': `- Cost Analysis expanded to support BigQuery & Redshift. ${CollateIconWithLinkMD}`,
+      'Data Insights': `- Cost Analysis expanded to support BigQuery & Redshift. ${CollateIconWithLinkMD}
+- Improved the Data Insights Report sent via email.`,
       'Other Changes': `- Announcements can be notified over email, Slack, or Teams.
 - Alerts are sent to a user when they are mentioned in a task or activity feed.
 - We have improved the display of search results for column matches. When searching for columns, the matched results will be displayed and highlighted in the Preview pane.
+- Table Type filter has been added in the Advanced Search, so that users can exclude the temporary or staging tables from search.
+- Now it is easy to filter the Data assets without a Owner.
+- Database and Schema were added to the Explore menu to enhance data discovery.
 - Custom properties are displayed on the right of the data asset details page.
+- We now display the Domain on the Users page.
+- Supports the sorting of data assets by popularity based on the number of followers and thumbs up as signals.
 - OpenMetadata can now handle metric history for ML models.
 - When configuring the Email settings, the Username and Password fields can be left blank.
 - We now support a test email button on the Email SMTP page.`,
