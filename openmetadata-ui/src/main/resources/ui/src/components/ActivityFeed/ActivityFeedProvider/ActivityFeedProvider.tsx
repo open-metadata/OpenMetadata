@@ -35,6 +35,7 @@ import {
   Post,
   TaskType,
   Thread,
+  ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
@@ -164,7 +165,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       after?: string,
       type?: ThreadType,
       entityType?: EntityType,
-      fqn?: string
+      fqn?: string,
+      taskStatus?: ThreadTaskStatus
     ) => {
       try {
         setLoading(true);
@@ -183,7 +185,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           after,
           type,
           feedFilterType,
-          undefined,
+          taskStatus,
           userId
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));

@@ -343,11 +343,12 @@ export const ActivityFeedTab = ({
                 </Space>
 
                 <span>
-                  {getCountBadge(
-                    count.conversationCount,
-                    '',
-                    activeTab === ActivityFeedTabs.ALL
-                  )}
+                  {!isUserEntity &&
+                    getCountBadge(
+                      count.conversationCount,
+                      '',
+                      activeTab === ActivityFeedTabs.ALL
+                    )}
                 </span>
               </div>
             ),
@@ -390,7 +391,7 @@ export const ActivityFeedTab = ({
                   <span>{t('label.task-plural')}</span>
                 </Space>
                 <span>
-                  {getCountBadge(count.totalTasksCount, '', isTaskActiveTab)}
+                  {getCountBadge(count.openTaskCount, '', isTaskActiveTab)}
                 </span>
               </div>
             ),
