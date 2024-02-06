@@ -156,6 +156,9 @@ removed triggering ES job from Python workflows. Everything happens in the serve
 
 The `openmetadata/ingestion` and `openmetadata/ingestion-base` images now use Python 3.10.
 
+Note that starting release 1.3.0, the `openmetadata-ingestion` package started supporting Python 3.11. We'll
+migrate the images to 3.11 in the next release.
+
 ### Python SDK Auth Mechanisms
 
 We cleaned all the Python SDK code related to any auth system that is not JWT token. Bots deprecated that behavior 2 releases ago
@@ -182,7 +185,7 @@ This is what has been removed:
 
 ### Custom Connectors
 
-In 1.3.0 we started registered more information from Ingestion Pipelines status' in the platform. This required
+In 1.3.0 we started registering more information from Ingestion Pipelines status' in the platform. This required
 us to create new JSON Schemas for the added properties, that before were only used in the Ingestion Framework.
 
 Due to this, we need to update one import and one of its properties' names.
@@ -195,11 +198,10 @@ And we renamed its property `stack_trace` to `stackTrace` to follow the naming c
 
 ### SQL Lineage
 
-With 1.3.0 we have renamed the `sqllineage` package to `collate_sqllineage`, this change has been made to avoid any conflict with open source version of `sqllineage`. In case you are using this package in your python scripts please make sure to rename your imports: 
+In the `collate-sqllineage` dependency, we have renamed the `sqllineage` import to `collate_sqllineage`. 
+
+This change has been made to avoid any conflict with the open source version of `sqllineage`. 
+In case you are using this package directly in your python scripts please make sure to rename your imports: 
 
 - From `from sqllineage.xxx import xxx`
 - To `from collate_sqllineage.xxx import xxx`
-
-### Other Changes
-
-- ...

@@ -3,10 +3,6 @@ title: Upgrade on Kubernetes
 slug: /deployment/upgrade/kubernetes
 ---
 
-{% note noteType="Warning" %}
-**Please note that the release 1.3 is still in BETA. Only upgrade your dev and test instances.**
-{% /note %}
-
 # Upgrade on Kubernetes
 
 This guide will help you upgrade your OpenMetadata Kubernetes Application with automated helm hooks.
