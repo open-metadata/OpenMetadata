@@ -111,6 +111,8 @@ export const UserProfileIcon = () => {
   useEffect(() => {
     if (profilePicture) {
       setIsImgUrlValid(true);
+    } else {
+      setIsImgUrlValid(false);
     }
   }, [profilePicture]);
 
@@ -133,7 +135,9 @@ export const UserProfileIcon = () => {
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
-      <span onClick={() => handleSelectedPersonaChange(item)}>
+      <span
+        data-testid="persona-label"
+        onClick={() => handleSelectedPersonaChange(item)}>
         {getEntityName(item)}{' '}
         {selectedPersona?.id === item.id && (
           <CheckOutlined className="m-l-xs" style={{ color: '#4CAF50' }} />
@@ -318,6 +322,7 @@ export const UserProfileIcon = () => {
             <img
               alt="user"
               className="app-bar-user-avatar"
+              data-testid="app-bar-user-avatar"
               referrerPolicy="no-referrer"
               src={profilePicture ?? ''}
               onError={handleOnImageError}
@@ -333,6 +338,7 @@ export const UserProfileIcon = () => {
             </Tooltip>
             <Typography.Text
               className="text-grey-muted text-xs w-28"
+              data-testid="default-persona"
               ellipsis={{ tooltip: true }}>
               {isEmpty(selectedPersona)
                 ? t('label.default')
