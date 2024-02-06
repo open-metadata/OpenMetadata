@@ -37,7 +37,7 @@ import {
 } from './mocks/DashboardDetailsPage.mock';
 
 const mockAddFollower = jest.fn().mockResolvedValue({});
-const mockGetDashboardByFqn = jest.fn().mockResolvedValue({});
+const mockGetDashboardByFqn = jest.fn().mockResolvedValue({ version: 1 });
 const mockPatchDashboardDetails = jest.fn().mockResolvedValue({});
 const mockRemoveFollower = jest.fn().mockResolvedValue({});
 const mockUpdateDashboardVotes = jest.fn().mockResolvedValue({});
@@ -158,21 +158,42 @@ describe('Test DashboardDetails page', () => {
     expect(screen.getByText('DashboardDetailsComponent')).toBeInTheDocument();
   });
 
-  it('actions check', async () => {
+  it('follow and unfollow dashboard action check', async () => {
     render(<DashboardDetailsPage />, {
       wrapper: MemoryRouter,
     });
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
-    // create thread
-    userEvent.click(
-      screen.getByRole('button', {
-        name: CREATE_THREAD,
-      })
-    );
+    // follow dashboard
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: FOLLOW_DASHBOARD,
+        })
+      );
+    });
 
-    expect(mockPostThread).toHaveBeenCalled();
+    expect(mockAddFollower).toHaveBeenCalled();
+
+    // unfollow dashboard
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: UNFOLLOW_DASHBOARD,
+        })
+      );
+    });
+
+    expect(mockRemoveFollower).toHaveBeenCalled();
+  });
+
+  it('update chart actions check', async () => {
+    render(<DashboardDetailsPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
     act(() => {
       // update chart description
@@ -191,6 +212,59 @@ describe('Test DashboardDetails page', () => {
     });
 
     expect(mockUpdateChart).toHaveBeenCalledTimes(2);
+  });
+
+  it('create thread and version handler action check', async () => {
+    render(<DashboardDetailsPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    // create thread
+    userEvent.click(
+      screen.getByRole('button', {
+        name: CREATE_THREAD,
+      })
+    );
+
+    expect(mockPostThread).toHaveBeenCalled();
+
+    // version handler
+    userEvent.click(
+      screen.getByRole('button', {
+        name: VERSION_HANDLER,
+      })
+    );
+
+    expect(mockPush).toHaveBeenCalled();
+  });
+
+  it('check toggle delete action', async () => {
+    render(<DashboardDetailsPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    // toggle delete
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: TOGGLE_DELETE,
+        })
+      );
+    });
+
+    expect(screen.getByText(DASHBOARD_DELETED)).toBeInTheDocument();
+  });
+
+  it('fetch and update dashboard action check', async () => {
+    render(<DashboardDetailsPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
     // fetchDashboardDetails
     act(() => {
@@ -204,48 +278,6 @@ describe('Test DashboardDetails page', () => {
 
     expect(mockGetDashboardByFqn).toHaveBeenCalledTimes(2);
     expect(mockFetchCharts).toHaveBeenCalledTimes(2);
-
-    // follow dashboard
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: FOLLOW_DASHBOARD,
-        })
-      );
-    });
-
-    expect(mockAddFollower).toHaveBeenCalled();
-
-    // toggle delete
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: TOGGLE_DELETE,
-        })
-      );
-    });
-
-    expect(screen.getByText(DASHBOARD_DELETED)).toBeInTheDocument();
-
-    // unfollow dashboard
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: UNFOLLOW_DASHBOARD,
-        })
-      );
-    });
-
-    expect(mockRemoveFollower).toHaveBeenCalled();
-
-    // version handler
-    userEvent.click(
-      screen.getByRole('button', {
-        name: VERSION_HANDLER,
-      })
-    );
-
-    expect(mockPush).toHaveBeenCalled();
   });
 
   it('error checks', async () => {
