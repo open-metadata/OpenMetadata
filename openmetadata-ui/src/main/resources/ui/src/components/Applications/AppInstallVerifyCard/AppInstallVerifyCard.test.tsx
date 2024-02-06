@@ -13,7 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { mockApplicationData } from '../../../mocks/rests/applicationAPI.mock';
+
+import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
 import { mockUserData } from '../../Users/mocks/User.mocks';
 import AppInstallVerifyCard from './AppInstallVerifyCard.component';
 

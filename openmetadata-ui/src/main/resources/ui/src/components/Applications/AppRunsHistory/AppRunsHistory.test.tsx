@@ -21,7 +21,7 @@ import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { AppType } from '../../../generated/entity/applications/app';
-import { mockApplicationData } from '../../../mocks/rests/applicationAPI.mock';
+import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
