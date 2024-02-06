@@ -30,6 +30,7 @@ import {
   FETCH_DASHBOARD,
   FOLLOW_DASHBOARD,
   TOGGLE_DELETE,
+  UNFOLLOW_DASHBOARD,
   UPDATE_CHART_DESCRIPTION,
   UPDATE_CHART_TAGS,
 } from './mocks/DashboardDetailsPage.mock';
@@ -69,7 +70,7 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
       fetchDashboard,
       followDashboardHandler,
       handleToggleDelete,
-      // unFollowDashboardHandler,
+      unFollowDashboardHandler,
       // updateDashboardDetailsState,
       // versionHandler,
       // onDashboardUpdate,
@@ -86,8 +87,8 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
         <button onClick={fetchDashboard}>{FETCH_DASHBOARD}</button>
         <button onClick={followDashboardHandler}>{FOLLOW_DASHBOARD}</button>
         <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
+        <button onClick={unFollowDashboardHandler}>{UNFOLLOW_DASHBOARD}</button>
         {/* <button onClick={createThread}>Create Thread</button>
-        <button onClick={createThread}>Create Thread</button>
         <button onClick={createThread}>Create Thread</button> */}
       </div>
     )
@@ -226,6 +227,17 @@ describe('Test DashboardDetails page', () => {
     });
 
     expect(screen.getByText(DASHBOARD_DELETED)).toBeInTheDocument();
+
+    // unfollow dashboard
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: UNFOLLOW_DASHBOARD,
+        })
+      );
+    });
+
+    expect(mockRemoveFollower).toHaveBeenCalled();
   });
 
   it('error checks', async () => {
@@ -233,6 +245,7 @@ describe('Test DashboardDetails page', () => {
     mockPostThread.mockRejectedValueOnce(ERROR);
     mockFetchCharts.mockRejectedValueOnce(ERROR);
     mockAddFollower.mockRejectedValueOnce(ERROR);
+    mockRemoveFollower.mockRejectedValueOnce(ERROR);
 
     render(<DashboardDetailsPage />, {
       wrapper: MemoryRouter,
@@ -275,9 +288,16 @@ describe('Test DashboardDetails page', () => {
           name: FOLLOW_DASHBOARD,
         })
       );
+
+      // unfollow dashboard
+      userEvent.click(
+        screen.getByRole('button', {
+          name: UNFOLLOW_DASHBOARD,
+        })
+      );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(5);
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(6);
 
     mockUpdateChart.mockResolvedValue({});
   });
