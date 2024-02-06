@@ -34,7 +34,7 @@ To install the package, we need to update the `requirements.txt` file from the M
 openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.2.2, then the ingestion package needs to also be 1.2.2.
+Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.3.0, then the ingestion package needs to also be 1.3.0.
 
 The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.3.0`.
 

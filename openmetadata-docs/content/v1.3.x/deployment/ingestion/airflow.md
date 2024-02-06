@@ -101,7 +101,7 @@ the whole process.
 The drawback here? You need to install some requirements, which is not always possible. Here you have two alternatives,
 either you use the `PythonVirtualenvOperator`, or read below on how to run the ingestion with the `DockerOperator`.
 
-{% partial file="/v1.2/deployment/run-connectors-class.md" /%}
+{% partial file="/v1.3/deployment/run-connectors-class.md" /%}
 
 ## Docker Operator
 
@@ -250,7 +250,7 @@ with DAG(
     ingest_task = PythonVirtualenvOperator(
         task_id="ingest_using_recipe",
         requirements=[
-            'openmetadata-ingestion[mysql]>=1.2.5',  # Specify any additional Python package dependencies
+            'openmetadata-ingestion[mysql]>=1.3.0',  # Specify any additional Python package dependencies
         ],
         system_site_packages=False,  # Set to True if you want to include system site-packages in the virtual environment
         python_version="3.9",  # Remove if necessary
