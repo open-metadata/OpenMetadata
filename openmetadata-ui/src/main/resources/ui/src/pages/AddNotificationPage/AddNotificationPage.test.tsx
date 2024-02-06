@@ -13,10 +13,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { mockPush } from '../../test/unit/mocks/utils/common.mock';
+import { mockGoBack, mockPush } from '../../test/unit/mocks/utils/common.mock';
 import AddNotificationPage from './AddNotificationPage';
-
-const mockGoBack = jest.fn();
 
 jest.mock('../../rest/alertsAPI', () => ({
   getAlertsFromName: jest.fn().mockImplementation(() =>

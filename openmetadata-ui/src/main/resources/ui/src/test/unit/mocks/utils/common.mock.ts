@@ -11,3 +11,4 @@
  *  limitations under the License.
  */
 export const mockPush = jest.fn();
+export const mockGoBack = jest.fn();

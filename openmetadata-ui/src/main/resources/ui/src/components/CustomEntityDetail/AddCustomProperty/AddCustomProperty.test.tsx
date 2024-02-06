@@ -14,9 +14,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { mockGoBack } from '../../../test/unit/mocks/utils/common.mock';
 import AddCustomProperty from './AddCustomProperty';
-
-const mockGoBack = jest.fn();
 
 const mockPropertyTypes = [
   {

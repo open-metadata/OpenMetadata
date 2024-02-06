@@ -19,10 +19,8 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
-import { mockPush } from '../../test/unit/mocks/utils/common.mock';
+import { mockGoBack, mockPush } from '../../test/unit/mocks/utils/common.mock';
 import EditCustomLogoConfig from './EditCustomLogoConfig';
-
-const mockGoBack = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

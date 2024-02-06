@@ -7,7 +7,6 @@ import {
   SearchIndexMappingLanguage,
 } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
-// import {  } from '../../../../generated/entity/applications/appRunRecord';
 
 /*
  *  Copyright 2024 Collate.
