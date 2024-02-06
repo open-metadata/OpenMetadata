@@ -17,3 +17,5 @@ export const UPDATE_CHART_DESCRIPTION = 'Update Chart Description';
 export const UPDATE_CHART_TAGS = 'Update Chart Tags';
 export const FETCH_DASHBOARD = 'Fetch Dashboard';
 export const FOLLOW_DASHBOARD = 'Follow Dashboard';
+export const TOGGLE_DELETE = 'Toggle Delete';
+export const DASHBOARD_DELETED = 'dashboard is deleted';

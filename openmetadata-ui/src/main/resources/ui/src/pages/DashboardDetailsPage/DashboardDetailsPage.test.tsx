@@ -24,10 +24,12 @@ import { mockUserData } from '../../components/Users/mocks/User.mocks';
 import DashboardDetailsPage from './DashboardDetailsPage.component';
 import {
   CREATE_THREAD,
+  DASHBOARD_DELETED,
   ENTITY_MISSING_ERROR,
   ERROR,
   FETCH_DASHBOARD,
   FOLLOW_DASHBOARD,
+  TOGGLE_DELETE,
   UPDATE_CHART_DESCRIPTION,
   UPDATE_CHART_TAGS,
 } from './mocks/DashboardDetailsPage.mock';
@@ -60,12 +62,13 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
   jest.fn().mockImplementation(
     ({
+      dashboardDetails,
       createThread,
       chartDescriptionUpdateHandler,
       chartTagUpdateHandler,
       fetchDashboard,
       followDashboardHandler,
-      // handleToggleDelete,
+      handleToggleDelete,
       // unFollowDashboardHandler,
       // updateDashboardDetailsState,
       // versionHandler,
@@ -74,6 +77,7 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
     }) => (
       <div>
         DashboardDetailsComponent
+        <span>{dashboardDetails.deleted ? DASHBOARD_DELETED : ''}</span>
         <button onClick={createThread}>{CREATE_THREAD}</button>
         <button onClick={chartDescriptionUpdateHandler}>
           {UPDATE_CHART_DESCRIPTION}
@@ -81,8 +85,8 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
         <button onClick={chartTagUpdateHandler}>{UPDATE_CHART_TAGS}</button>
         <button onClick={fetchDashboard}>{FETCH_DASHBOARD}</button>
         <button onClick={followDashboardHandler}>{FOLLOW_DASHBOARD}</button>
+        <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
         {/* <button onClick={createThread}>Create Thread</button>
-        <button onClick={createThread}>Create Thread</button>
         <button onClick={createThread}>Create Thread</button>
         <button onClick={createThread}>Create Thread</button> */}
       </div>
@@ -211,6 +215,17 @@ describe('Test DashboardDetails page', () => {
     });
 
     expect(mockAddFollower).toHaveBeenCalled();
+
+    // toggle delete
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: TOGGLE_DELETE,
+        })
+      );
+    });
+
+    expect(screen.getByText(DASHBOARD_DELETED)).toBeInTheDocument();
   });
 
   it('error checks', async () => {
