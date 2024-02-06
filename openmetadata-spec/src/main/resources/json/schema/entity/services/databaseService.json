@@ -16,6 +16,7 @@
       "type": "string",
       "enum": [
         "BigQuery",
+        "BigTable",
         "Mysql",
         "Redshift",
         "Snowflake",
@@ -58,6 +59,9 @@
       "javaEnums": [
         {
           "name": "BigQuery"
+        },
+        {
+          "name": "BigTable"
         },
         {
           "name": "Mysql"
@@ -187,6 +191,9 @@
           "oneOf": [
             {
               "$ref": "./connections/database/bigQueryConnection.json"
+            },
+            {
+              "$ref": "./connections/database/bigTableConnection.json"
             },
             {
               "$ref": "./connections/database/athenaConnection.json"

@@ -28,7 +28,11 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import (
+    Table,
+    TableType,
+    TableConstraint,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -203,6 +207,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         need to be overridden by sources
         """
 
+    def get_table_constraints(
+        self, db_name: str, schema_name: str, table_name: str
+    ) -> Optional[List[TableConstraint]]:
+        return None
+
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -215,6 +224,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema
         try:
+            table_constraints = self.get_table_constraints(
+                schema_name=schema_name,
+                table_name=table_name,
+                db_name=self.context.database,
+            )
             data = self.get_table_columns_dict(schema_name, table_name)
             df = pd.DataFrame.from_records(list(data))
             column_parser = DataFrameColumnParser.create(df)
@@ -223,7 +237,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 name=table_name,
                 tableType=table_type,
                 columns=columns,
-                tableConstraints=None,
+                tableConstraints=table_constraints,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
