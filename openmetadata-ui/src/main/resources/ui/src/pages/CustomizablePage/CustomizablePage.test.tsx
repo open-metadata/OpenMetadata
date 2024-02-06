@@ -22,11 +22,13 @@ import {
   mockDocumentData,
   mockPersonaDetails,
   mockPersonaName,
-  mockShowErrorToast,
-  mockShowSuccessToast,
 } from '../../mocks/CustomizablePage.mock';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
+import {
+  mockShowErrorToast,
+  mockShowSuccessToast,
+} from '../../test/unit/mocks/utils/ToastUtils.mock';
 import { CustomizablePage } from './CustomizablePage';
 import { WidgetConfig } from './CustomizablePage.interface';
 

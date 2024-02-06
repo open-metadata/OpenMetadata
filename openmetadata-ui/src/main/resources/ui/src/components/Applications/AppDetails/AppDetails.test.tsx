@@ -21,6 +21,10 @@ import React from 'react';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 
 import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
+import {
+  mockShowErrorToast,
+  mockShowSuccessToast,
+} from '../../../test/unit/mocks/utils/ToastUtils.mock';
 import AppDetails from './AppDetails.component';
 
 jest.mock('../../../components/Loader/Loader', () =>
@@ -44,8 +48,7 @@ const mockDeployApp = jest.fn();
 const mockRestoreApp = jest.fn();
 const mockTriggerOnDemandApp = jest.fn();
 const mockUninstallApp = jest.fn();
-const mockShowErrorToast = jest.fn();
-const mockShowSuccessToast = jest.fn();
+
 const mockPush = jest.fn();
 const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
 const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);

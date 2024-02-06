@@ -21,10 +21,11 @@ import React from 'react';
 import { ROUTES } from '../../../constants/constants';
 
 import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
+import { mockShowErrorToast } from '../../../test/unit/mocks/utils/ToastUtils.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
 
 const mockPush = jest.fn();
-const mockShowErrorToast = jest.fn();
+
 const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 const mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
   description: 'marketplace description',

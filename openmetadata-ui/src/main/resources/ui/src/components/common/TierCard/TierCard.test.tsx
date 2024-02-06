@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { mockShowErrorToast } from '../../../test/unit/mocks/utils/ToastUtils.mock';
 import TierCard from './TierCard';
 
 const mockTierData = [
@@ -42,7 +43,7 @@ const mockGetTags = jest
   .fn()
   .mockImplementation(() => Promise.resolve({ data: mockTierData }));
 const mockOnUpdate = jest.fn();
-const mockShowErrorToast = jest.fn();
+
 const mockProps = {
   currentTier: 'currentTier',
   updateTier: mockOnUpdate,

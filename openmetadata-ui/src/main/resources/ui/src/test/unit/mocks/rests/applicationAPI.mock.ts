@@ -1,13 +1,13 @@
-import { AppType, ProviderType } from '../../generated/entity/applications/app';
 import {
-  ScheduleTimeline,
-  Status,
-} from '../../generated/entity/applications/appRunRecord';
-import {
+  AppType,
   Permissions,
+  ProviderType,
+  ScheduleTimeline,
   ScheduleType,
-} from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { SearchIndexMappingLanguage } from '../../generated/settings/settings';
+  SearchIndexMappingLanguage,
+} from '../../../../generated/entity/applications/app';
+import { Status } from '../../../../generated/entity/applications/appRunRecord';
+// import {  } from '../../../../generated/entity/applications/appRunRecord';
 
 /*
  *  Copyright 2024 Collate.

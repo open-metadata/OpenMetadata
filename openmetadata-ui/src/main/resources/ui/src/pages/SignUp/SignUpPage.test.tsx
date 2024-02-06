@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { createUser } from '../../rest/userAPI';
+import { mockShowErrorToast } from '../../test/unit/mocks/utils/ToastUtils.mock';
 import { getImages } from '../../utils/CommonUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
@@ -22,8 +23,6 @@ let letExpectedUserName = {
   name: 'sample123',
   email: 'sample123@sample.com',
 };
-
-const mockShowErrorToast = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({

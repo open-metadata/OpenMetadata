@@ -150,6 +150,3 @@ export const mockDocumentData: Document = {
 export const mockCustomizePageClassBase = {
   defaultLayout: mockDefaultLayout,
 };
-
-export const mockShowErrorToast = jest.fn();
-export const mockShowSuccessToast = jest.fn();

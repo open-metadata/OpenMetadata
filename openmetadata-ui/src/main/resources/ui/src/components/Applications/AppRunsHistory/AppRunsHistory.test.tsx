@@ -22,6 +22,7 @@ import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { AppType } from '../../../generated/entity/applications/app';
 import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
+import { mockShowErrorToast } from '../../../test/unit/mocks/utils/ToastUtils.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
@@ -34,7 +35,7 @@ const mockGetApplicationRuns = jest.fn().mockReturnValue({
     total: 3,
   },
 });
-const mockShowErrorToast = jest.fn();
+
 const mockPush = jest.fn();
 
 jest.mock('../../../hooks/paging/usePaging', () => ({

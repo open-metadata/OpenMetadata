@@ -15,6 +15,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_CURRENT_TEAM, MOCK_TABLE_DATA } from '../../../mocks/Teams.mock';
+import { mockShowErrorToast } from '../../../test/unit/mocks/utils/ToastUtils.mock';
 import { TeamHierarchyProps } from './team.interface';
 import TeamHierarchy from './TeamHierarchy';
 
@@ -24,8 +25,6 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
   onTeamExpand: jest.fn(),
   isFetchingAllTeamAdvancedDetails: false,
 };
-
-const mockShowErrorToast = jest.fn();
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
