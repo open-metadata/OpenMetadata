@@ -15,7 +15,7 @@ Configure and schedule SAS metadata workflow from the OpenMetadata UI:
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.13 or later" href="/deployment"%}
+{%inlineCallout icon="description" bold="OpenMetadata 1.3 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
