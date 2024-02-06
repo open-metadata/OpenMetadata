@@ -115,11 +115,19 @@ def get_foreign_keys(
         )
         col_name = []
         for table_constraint in table_constraints:
-            col_name.append(table_constraint.column_name)
-        return {"constrained_columns": tuple(col_name)}
+            col_name.append(
+                {
+                    "name": table_constraint.name,
+                    "referred_schema": table_constraint.referred_schema,
+                    "referred_table": table_constraint.referred_table,
+                    "constrained_columns": [table_constraint.constrained_columns],
+                    "referred_columns": [table_constraint.referred_columns],
+                }
+            )
+        return col_name
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
             f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}"
         )
-        return {"constrained_columns": []}
+        return []
