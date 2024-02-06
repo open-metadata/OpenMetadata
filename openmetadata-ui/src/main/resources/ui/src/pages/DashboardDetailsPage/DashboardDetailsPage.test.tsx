@@ -108,30 +108,30 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../rest/chartAPI', () => ({
-  updateChart: jest.fn(mockUpdateChart),
+  updateChart: jest.fn(() => mockUpdateChart()),
 }));
 
 jest.mock('../../rest/dashboardAPI', () => ({
-  addFollower: jest.fn(mockAddFollower),
-  patchDashboardDetails: jest.fn(mockPatchDashboardDetails),
-  removeFollower: jest.fn(mockRemoveFollower),
-  updateDashboardVotes: jest.fn(mockUpdateDashboardVotes),
-  getDashboardByFqn: jest.fn(mockGetDashboardByFqn),
+  addFollower: jest.fn(() => mockAddFollower()),
+  patchDashboardDetails: jest.fn(() => mockPatchDashboardDetails()),
+  removeFollower: jest.fn(() => mockRemoveFollower()),
+  updateDashboardVotes: jest.fn(() => mockUpdateDashboardVotes()),
+  getDashboardByFqn: jest.fn(() => mockGetDashboardByFqn()),
 }));
 
 jest.mock('../../rest/feedsAPI', () => ({
-  postThread: jest.fn(mockPostThread),
+  postThread: jest.fn(() => mockPostThread()),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
-  getEntityMissingError: jest.fn().mockReturnValue(ENTITY_MISSING_ERROR),
+  getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
   sortTagsCaseInsensitive: jest.fn((tags) => tags),
 }));
 
 jest.mock('../../utils/DashboardDetailsUtils', () => ({
   defaultFields: 'defaultFields',
-  fetchCharts: jest.fn(mockFetchCharts),
+  fetchCharts: jest.fn(() => mockFetchCharts()),
   sortTagsForCharts: jest.fn((charts) => charts),
 }));
 
@@ -140,7 +140,7 @@ jest.mock('../../utils/EntityUtils', () => ({
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(mockShowErrorToast),
+  showErrorToast: jest.fn(() => mockShowErrorToast()),
 }));
 
 describe('Test DashboardDetails page', () => {
