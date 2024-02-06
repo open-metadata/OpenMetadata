@@ -102,3 +102,16 @@ export const mockApplicationData = {
   },
   appScreenshots: ['SearchIndexPic1.png'],
 };
+
+export const mockGetApplicationByName = jest
+  .fn()
+  .mockReturnValue(mockApplicationData);
+
+export const mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
+  description: 'marketplace description',
+  fullyQualifiedName: 'marketplace fqn',
+  supportEmail: 'support@email.com',
+  developerUrl: 'https://xyz.com',
+  privacyPolicyUrl: 'https://xyz.com',
+  appScreenshots: ['screenshot1', 'screenshot2'],
+});

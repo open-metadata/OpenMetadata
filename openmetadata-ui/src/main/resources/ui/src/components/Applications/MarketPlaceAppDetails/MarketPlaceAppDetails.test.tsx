@@ -20,21 +20,14 @@ import React from 'react';
 // import { ROUTES } from '../../../constants/constants';
 import { ROUTES } from '../../../constants/constants';
 
-import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
+import {
+  mockGetApplicationByName,
+  mockGetMarketPlaceApplicationByFqn,
+} from '../../../test/unit/mocks/rests/applicationAPI.mock';
 import { mockShowErrorToast } from '../../../test/unit/mocks/utils/ToastUtils.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
 
 const mockPush = jest.fn();
-
-const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
-const mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
-  description: 'marketplace description',
-  fullyQualifiedName: 'marketplace fqn',
-  supportEmail: 'support@email.com',
-  developerUrl: 'https://xyz.com',
-  privacyPolicyUrl: 'https://xyz.com',
-  appScreenshots: ['screenshot1', 'screenshot2'],
-});
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

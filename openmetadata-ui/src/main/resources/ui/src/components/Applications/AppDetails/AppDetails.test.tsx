@@ -20,7 +20,10 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 
-import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
+import {
+  mockApplicationData,
+  mockGetApplicationByName,
+} from '../../../test/unit/mocks/rests/applicationAPI.mock';
 import {
   mockShowErrorToast,
   mockShowSuccessToast,
@@ -51,7 +54,6 @@ const mockUninstallApp = jest.fn();
 
 const mockPush = jest.fn();
 const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
-const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 
 jest.mock('../../../rest/applicationAPI', () => ({
   configureApp: mockConfigureApp,
