@@ -19,9 +19,9 @@ import EditKPIPage from './EditKPIPage';
 import { DESCRIPTION_CHART, KPI_DATA } from './KPIMock.mock';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
+  useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
-  }),
+  })),
   useParams: jest.fn().mockReturnValue({ useParams: 'description-kpi' }),
 }));
 

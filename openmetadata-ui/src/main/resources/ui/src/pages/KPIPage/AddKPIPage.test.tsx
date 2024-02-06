@@ -27,9 +27,9 @@ import AddKPIPage from './AddKPIPage';
 import { KPI_CHARTS, KPI_DATA, KPI_LIST } from './KPIMock.mock';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
+  useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
-  }),
+  })),
 }));
 
 jest.mock('../../rest/DataInsightAPI', () => ({
