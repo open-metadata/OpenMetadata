@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { TeamType } from '../../../../generated/entity/teams/team';
@@ -63,10 +63,13 @@ const teamProps = {
 };
 
 describe('TeamsHeadingLabel', () => {
-  it('should render Teams Heading Label', () => {
-    const { container } = render(<TeamsHeadingLabel {...teamProps} />);
+  it('should render Teams Heading Label', async () => {
+    await act(async () => {
+      render(<TeamsHeadingLabel {...teamProps} />);
+    });
+    const teamHeading = screen.getByTestId('team-heading');
 
-    expect(container).toBeTruthy();
+    expect(teamHeading).toHaveTextContent('Test Team');
   });
 
   it('should handle edit team name', () => {

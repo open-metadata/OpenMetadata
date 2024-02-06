@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import FeedsWidget from './FeedsWidget.component';
 
@@ -74,9 +74,11 @@ const tabs = ['All', 'Mentions', 'Tasks'];
 
 jest.mock(
   '../../../components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
-  () => {
-    return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
-  }
+  () => jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
+);
+
+jest.mock('../../common/FeedsFilterPopover/FeedsFilterPopover.component', () =>
+  jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
 jest.mock('../../../rest/feedsAPI', () => ({
@@ -86,6 +88,7 @@ jest.mock('../../../rest/feedsAPI', () => ({
 jest.mock('../../../utils/CommonUtils', () => ({
   getCountBadge: jest.fn(),
   getEntityDetailLink: jest.fn(),
+  Transi18next: jest.fn(),
 }));
 
 jest.mock('quilljs-markdown', () => {
@@ -111,10 +114,13 @@ jest.mock(
 );
 
 describe('FeedsWidget', () => {
-  it('should render FeedsWidget', () => {
-    const { container } = render(<FeedsWidget {...widgetProps} />);
+  it('should render FeedsWidget', async () => {
+    await act(async () => {
+      render(<FeedsWidget {...widgetProps} />);
+    });
+    const activityFeedWidget = screen.getByTestId('activity-feed-widget');
 
-    expect(container).toBeTruthy();
+    expect(activityFeedWidget).toBeInTheDocument();
   });
 
   it('should render All tab by default', () => {

@@ -88,11 +88,13 @@ const teamProps = {
 };
 
 describe('TeamsInfo', () => {
-  it('renders without crashing', () => {
-    const { container } = render(<TeamsInfo {...teamProps} />);
-    screen.debug(container);
+  it('should render TeamsInfo', async () => {
+    await act(async () => {
+      render(<TeamsInfo {...teamProps} />);
+    });
+    const domainLabel = screen.getByText('DomainLabel');
 
-    expect(container).toBeTruthy();
+    expect(domainLabel).toBeInTheDocument();
   });
 
   it('should handle edit team email', () => {

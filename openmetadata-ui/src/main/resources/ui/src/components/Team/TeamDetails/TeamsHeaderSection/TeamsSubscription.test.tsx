@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import TeamsSubscription from './TeamsSubscription.component';
 
@@ -22,10 +22,13 @@ describe('TeamsSubscription', () => {
     updateTeamSubscription: mockUpdateTeamSubscription,
   };
 
-  it('renders Teams Subscription', () => {
-    const { container } = render(<TeamsSubscription {...teamProps} />);
+  it('renders Teams Subscription', async () => {
+    await act(async () => {
+      render(<TeamsSubscription {...teamProps} />);
+    });
+    const subscription = screen.getByTestId('teams-subscription');
 
-    expect(container).toBeTruthy();
+    expect(subscription).toBeInTheDocument();
   });
 
   it('should handle edit team subscription', () => {
