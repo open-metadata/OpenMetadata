@@ -198,11 +198,13 @@ describe('Test DashboardDetails page', () => {
     expect(mockUpdateChart).toHaveBeenCalledTimes(2);
 
     // fetchDashboardDetails
-    userEvent.click(
-      screen.getByRole('button', {
-        name: FETCH_DASHBOARD,
-      })
-    );
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: FETCH_DASHBOARD,
+        })
+      );
+    });
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
     expect(mockGetDashboardByFqn).toHaveBeenCalledTimes(2);
@@ -210,11 +212,13 @@ describe('Test DashboardDetails page', () => {
     expect(mockFetchCharts).toHaveBeenCalledTimes(2);
 
     // follow dashboard
-    userEvent.click(
-      screen.getByRole('button', {
-        name: FOLLOW_DASHBOARD,
-      })
-    );
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: FOLLOW_DASHBOARD,
+        })
+      );
+    });
 
     expect(mockAddFollower).toHaveBeenCalled();
   });
@@ -223,6 +227,7 @@ describe('Test DashboardDetails page', () => {
     mockUpdateChart.mockRejectedValue(ERROR);
     mockPostThread.mockRejectedValueOnce(ERROR);
     mockFetchCharts.mockRejectedValueOnce(ERROR);
+    mockAddFollower.mockRejectedValueOnce(ERROR);
 
     render(<DashboardDetailsPage />, {
       wrapper: MemoryRouter,
@@ -258,9 +263,16 @@ describe('Test DashboardDetails page', () => {
           name: FETCH_DASHBOARD,
         })
       );
+
+      // follow dashboard
+      userEvent.click(
+        screen.getByRole('button', {
+          name: FOLLOW_DASHBOARD,
+        })
+      );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(4);
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(5);
 
     mockUpdateChart.mockResolvedValue({});
   });
