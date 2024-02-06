@@ -685,8 +685,21 @@ const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
   });
 };
 
-describe('Prerequisites', () => {
-  it('Create a user with data consumer role', () => {
+const deleteUser = () => {
+  const token = localStorage.getItem('oidcIdToken');
+
+  cy.request({
+    method: 'DELETE',
+    url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    expect(response.status).to.eq(200);
+  });
+};
+
+describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
+  before(() => {
+    // Prerequisites - Create a user with data consumer role
     signupAndLogin(
       CREDENTIALS.email,
       CREDENTIALS.password,
@@ -696,9 +709,12 @@ describe('Prerequisites', () => {
       createdUserId = id;
     });
   });
-});
 
-describe('Glossary page should work properly', () => {
+  after(() => {
+    cy.login();
+    deleteUser();
+  });
+
   beforeEach(() => {
     interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
     cy.login();
@@ -1206,28 +1222,8 @@ describe('Glossary page should work properly', () => {
       termFQN: terms[0].fullyQualifiedName,
     });
   });
-});
-
-describe('Cleanup', () => {
-  beforeEach(() => {
-    Cypress.session.clearAllSavedSessions();
-    cy.login();
-  });
-
-  it('delete user', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
-  });
 
   it('Delete glossary term should work properly', () => {
-    goToGlossaryPage();
     const terms = Object.values(NEW_GLOSSARY_TERMS);
     selectActiveGlossary(NEW_GLOSSARY.name);
     terms.forEach(deleteGlossaryTerm);
@@ -1238,7 +1234,6 @@ describe('Cleanup', () => {
   });
 
   it('Delete glossary should work properly', () => {
-    goToGlossaryPage();
     verifyResponseStatusCode('@fetchGlossaries', 200);
     [
       NEW_GLOSSARY.name,
