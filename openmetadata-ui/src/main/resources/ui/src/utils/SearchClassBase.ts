@@ -96,6 +96,7 @@ class SearchClassBase {
       [EntityType.TEST_CASE]: SearchIndex.TEST_CASE,
       [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
       [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
+      [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
     };
   }
 

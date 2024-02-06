@@ -32,6 +32,7 @@ import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
@@ -122,6 +123,10 @@ export interface TestCaseSearchSource
 } // extends EntityInterface
 export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
 
+export interface IngestionPipelineSearchSource
+  extends SearchSourceBase,
+    IngestionPipeline {}
+
 export interface DatabaseServiceSearchSource
   extends SearchSourceBase,
     DatabaseService {}
@@ -203,6 +208,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
+  [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
 };
 
 export type SearchRequest<
