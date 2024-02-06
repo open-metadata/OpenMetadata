@@ -46,6 +46,13 @@ Network Policies and Ingresses are optional manifests and disabled by default. T
   {% inlineCallout
     color="violet-70"
     icon="cloud"
+    bold="Deploy in Azure AKS"
+    href="/deployment/kubernetes/aks" %}
+    Deploy OpenMetadata in Azure Kubernetes
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="cloud"
     bold="Deploy in OnPremises Kubernetes"
     href="/deployment/kubernetes/on-prem" %}
     Deploy OpenMetadata in On Premises Kubernetes
