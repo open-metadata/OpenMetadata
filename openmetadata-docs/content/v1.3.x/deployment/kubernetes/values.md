@@ -27,6 +27,15 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.authentication.ldapConfiguration.dnAdminPassword.secretRef | string | `ldap-secret` | AUTHENTICATION_LOOKUP_ADMIN_PWD |
 | openmetadata.config.authentication.ldapConfiguration.dnAdminPassword.secretKey | string | `openmetadata-ldap-secret` | AUTHENTICATION_LOOKUP_ADMIN_PWD |
 | openmetadata.config.authentication.ldapConfiguration.userBaseDN | string | `ou=people,dc=example,dc=com` | AUTHENTICATION_USER_LOOKUP_BASEDN |
+| openmetadata.config.authentication.ldapConfiguration.groupBaseDN | string | `Empty String` | AUTHENTICATION_GROUP_LOOKUP_BASEDN |
+| openmetadata.config.authentication.ldapConfiguration.roleAdminName | string | `Empty String` | AUTHENTICATION_USER_ROLE_ADMIN_NAME |
+| openmetadata.config.authentication.ldapConfiguration.allAttributeName | string | `Empty String` | AUTHENTICATION_USER_ALL_ATTR |
+| openmetadata.config.authentication.ldapConfiguration.usernameAttributeName | string | `Empty String` | AUTHENTICATION_USER_NAME_ATTR |
+| openmetadata.config.authentication.ldapConfiguration.groupAttributeName | string | `Empty String` | AUTHENTICATION_USER_GROUP_ATTR |
+| openmetadata.config.authentication.ldapConfiguration.groupAttributeValue | string | `Empty String` | AUTHENTICATION_USER_GROUP_ATTR_VALUE |
+| openmetadata.config.authentication.ldapConfiguration.groupMemberAttributeName | string | `Empty String` | AUTHENTICATION_USER_GROUP_MEMBER_ATTR |
+| openmetadata.config.authentication.ldapConfiguration.authRolesMapping | string | `Empty String` | AUTH_ROLES_MAPPING |
+| openmetadata.config.authentication.ldapConfiguration.authReassignRoles | string | `Empty String` | AUTH_REASSIGN_ROLES |
 | openmetadata.config.authentication.ldapConfiguration.mailAttributeName | string | `email` | AUTHENTICATION_USER_MAIL_ATTR |
 | openmetadata.config.authentication.ldapConfiguration.maxPoolSize | int | 3 | AUTHENTICATION_LDAP_POOL_SIZE |
 | openmetadata.config.authentication.ldapConfiguration.sslEnabled | bool | `true` | AUTHENTICATION_LDAP_SSL_ENABLED |
@@ -45,7 +54,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.authentication.saml.idp.entityId | string | `Empty` | SAML_IDP_ENTITY_ID |
 | openmetadata.config.authentication.saml.idp.ssoLoginUrl |  string | `Empty` | SAML_IDP_SSO_LOGIN_URL |
 | openmetadata.config.authentication.saml.idp.idpX509Certificate.secretRef | string | `Empty` | SAML_IDP_CERTIFICATE |
-| openmetadata.config.authentication.saml.idp.idpX509Certificate.secretKey |  string | `Empty` | SAML_IDP_CERTIFICATE | 
+| openmetadata.config.authentication.saml.idp.idpX509Certificate.secretKey |  string | `Empty` | SAML_IDP_CERTIFICATE |
 | openmetadata.config.authentication.saml.idp.authorityUrl | string | `http://openmetadata:8585/api/v1/saml/login` | SAML_AUTHORITY_URL |
 | openmetadata.config.authentication.saml.idp.nameId | string | `urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress` | SAML_IDP_NAME_ID |
 | openmetadata.config.authentication.saml.sp.entityId | string | `http://openmetadata:8585/api/v1/saml/metadata` | SAML_SP_ENTITY_ID |
@@ -104,6 +113,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.elasticsearch.port | int | 9200 | ELASTICSEARCH_PORT |
 | openmetadata.config.elasticsearch.searchType | string | `opensearch` | SEARCH_TYPE |
 | openmetadata.config.elasticsearch.scheme | string | `http` | ELASTICSEARCH_SCHEME |
+| openmetadata.config.elasticsearch.clusterAlias | string | `Empty String` | ELASTICSEARCH_CLUSTER_ALIAS |
 | openmetadata.config.elasticsearch.searchIndexMappingLanguage | string | `EN`| ELASTICSEARCH_INDEX_MAPPING_LANG |
 | openmetadata.config.elasticsearch.trustStore.enabled | bool | `false` | |
 | openmetadata.config.elasticsearch.trustStore.path | string | `Empty String` | ELASTICSEARCH_TRUST_STORE_PATH |
@@ -129,6 +139,9 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.pipelineServiceClientConfig.auth.password.secretRef | string | `airflow-secrets` | AIRFLOW_PASSWORD |
 | openmetadata.config.pipelineServiceClientConfig.auth.password.secretKey | string | `openmetadata-airflow-password` | AIRFLOW_PASSWORD |
 | openmetadata.config.pipelineServiceClientConfig.auth.username | string | `admin` | AIRFLOW_USERNAME |
+| openmetadata.config.pipelineServiceClientConfig.auth.trustStorePath | string | `` | AIRFLOW_TRUST_STORE_PATH |
+| openmetadata.config.pipelineServiceClientConfig.auth.trustStorePassword.secretRef | string | `` | AIRFLOW_TRUST_STORE_PASSWORD |
+| openmetadata.config.pipelineServiceClientConfig.auth.trustStorePassword.secretKey | string | `` | AIRFLOW_TRUST_STORE_PASSWORD |
 | openmetadata.config.pipelineServiceClientConfig.apiEndpoint | string | `http://openmetadata-dependencies-web:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
 | openmetadata.config.pipelineServiceClientConfig.className | string | `org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient` | PIPELINE_SERVICE_CLIENT_CLASS_NAME |
 | openmetadata.config.pipelineServiceClientConfig.enabled | bool | `true` | PIPELINE_SERVICE_CLIENT_ENABLED |
@@ -136,10 +149,12 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.pipelineServiceClientConfig.ingestionIpInfoEnabled | bool | `false` | PIPELINE_SERVICE_IP_INFO_ENABLED |
 | openmetadata.config.pipelineServiceClientConfig.metadataApiEndpoint | string | `http://openmetadata:8585/api` | SERVER_HOST_API_URL |
 | openmetadata.config.pipelineServiceClientConfig.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
-| openmetadata.config.pipelineServiceClientConfig.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL | 
+| openmetadata.config.pipelineServiceClientConfig.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
 | openmetadata.config.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
 | openmetadata.config.secretsManager.enabled | bool | `true` | |
-| openmetadata.config.secretsManager.provider | string | `noop` | SECRET_MANAGER |
+| openmetadata.config.secretsManager.provider | string | `db` | SECRET_MANAGER |
+| openmetadata.config.secretsManager.prefix | string | `Empty String` | SECRET_MANAGER_PREFIX |
+| openmetadata.config.secretsManager.tags | list | `[]` | SECRET_MANAGER_TAGS |
 | openmetadata.config.secretsManager.additionalParameters.enabled | bool | `false` | |
 | openmetadata.config.secretsManager.additionalParameters.accessKeyId.secretRef | string | `aws-access-key-secret` | OM_SM_ACCESS_KEY_ID |
 | openmetadata.config.secretsManager.additionalParameters.accessKeyId.secretKey | string | `aws-key-secret` | OM_SM_ACCESS_KEY_ID |
@@ -196,7 +211,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | fullnameOverride | string | `"openmetadata"` |
 | image.pullPolicy | string | `"Always"` |
 | image.repository | string | `"docker.getcollate.io/openmetadata/server"` |
-| image.tag | string | `1.2.1` |
+| image.tag | string | `1.3.0` |
 | imagePullSecrets | list | `[]` |
 | ingress.annotations | object | `{}` |
 | ingress.className | string | `""` |
@@ -229,9 +244,11 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | serviceAccount.annotations | object | `{}` |
 | serviceAccount.create | bool | `true` |
 | serviceAccount.name | string | `nil` |
+| automountServiceAccountToken| bool | `true` |
 | serviceMonitor.annotations | object | `{}` |
 | serviceMonitor.enabled | bool | `false` |
 | serviceMonitor.interval | string | `30s` |
+| serviceMonitor.labels | object | `{}` |
 | sidecars | list | `[]` |
 | startupProbe.periodSeconds | int | `60` |
 | startupProbe.failureThreshold | int | `5` |
