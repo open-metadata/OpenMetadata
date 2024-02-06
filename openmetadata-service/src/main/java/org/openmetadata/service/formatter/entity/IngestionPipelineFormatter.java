@@ -45,8 +45,12 @@ public class IngestionPipelineFormatter implements EntityFormatter {
     PipelineStatus status =
         JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
     if (status != null) {
+      // In case of running
       String date =
-          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
+          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getStartDate()));
+      if (status.getEndDate() != null) {
+        date = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
+      }
       String format =
           String.format(
               "Ingestion Pipeline %s %s at %s",
