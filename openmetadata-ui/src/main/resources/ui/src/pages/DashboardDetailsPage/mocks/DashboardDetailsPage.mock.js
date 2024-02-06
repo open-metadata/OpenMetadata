@@ -16,6 +16,7 @@ export const CREATE_THREAD = 'Create Thread';
 export const UPDATE_CHART_DESCRIPTION = 'Update Chart Description';
 export const UPDATE_CHART_TAGS = 'Update Chart Tags';
 export const FETCH_DASHBOARD = 'Fetch Dashboard';
+export const UPDATE_DASHBOARD = 'Update Dashboard';
 export const FOLLOW_DASHBOARD = 'Follow Dashboard';
 export const UNFOLLOW_DASHBOARD = 'Unfollow Dashboard';
 export const TOGGLE_DELETE = 'Toggle Delete';

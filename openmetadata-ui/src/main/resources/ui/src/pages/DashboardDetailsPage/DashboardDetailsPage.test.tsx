@@ -33,6 +33,7 @@ import {
   UNFOLLOW_DASHBOARD,
   UPDATE_CHART_DESCRIPTION,
   UPDATE_CHART_TAGS,
+  UPDATE_DASHBOARD,
   VERSION_HANDLER,
 } from './mocks/DashboardDetailsPage.mock';
 
@@ -73,7 +74,7 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
       handleToggleDelete,
       unFollowDashboardHandler,
       versionHandler,
-      // onDashboardUpdate,
+      onDashboardUpdate,
       // onUpdateVote,
     }) => (
       <div>
@@ -89,6 +90,7 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
         <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
         <button onClick={unFollowDashboardHandler}>{UNFOLLOW_DASHBOARD}</button>
         <button onClick={versionHandler}>{VERSION_HANDLER}</button>
+        <button onClick={onDashboardUpdate}>{UPDATE_DASHBOARD}</button>
       </div>
     )
   )
@@ -145,6 +147,11 @@ jest.mock('../../utils/EntityUtils', () => ({
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(() => mockShowErrorToast()),
+}));
+
+jest.mock('fast-json-patch', () => ({
+  ...jest.requireActual('fast-json-patch'),
+  compare: jest.fn(),
 }));
 
 describe('Test DashboardDetails page', () => {
@@ -278,6 +285,17 @@ describe('Test DashboardDetails page', () => {
 
     expect(mockGetDashboardByFqn).toHaveBeenCalledTimes(2);
     expect(mockFetchCharts).toHaveBeenCalledTimes(2);
+
+    // update dashboard
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: UPDATE_DASHBOARD,
+        })
+      );
+    });
+
+    expect(mockPatchDashboardDetails).toHaveBeenCalled();
   });
 
   it('error checks', async () => {
@@ -286,6 +304,7 @@ describe('Test DashboardDetails page', () => {
     mockFetchCharts.mockRejectedValueOnce(ERROR);
     mockAddFollower.mockRejectedValueOnce(ERROR);
     mockRemoveFollower.mockRejectedValueOnce(ERROR);
+    mockPatchDashboardDetails.mockRejectedValueOnce(ERROR);
 
     render(<DashboardDetailsPage />, {
       wrapper: MemoryRouter,
@@ -335,9 +354,16 @@ describe('Test DashboardDetails page', () => {
           name: UNFOLLOW_DASHBOARD,
         })
       );
+
+      // update dashboard
+      userEvent.click(
+        screen.getByRole('button', {
+          name: UPDATE_DASHBOARD,
+        })
+      );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(6);
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(7);
 
     mockUpdateChart.mockResolvedValue({});
   });
