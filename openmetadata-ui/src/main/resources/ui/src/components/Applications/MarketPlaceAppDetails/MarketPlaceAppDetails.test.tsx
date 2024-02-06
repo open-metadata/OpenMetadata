@@ -19,7 +19,8 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 // import { ROUTES } from '../../../constants/constants';
 import { ROUTES } from '../../../constants/constants';
-import { mockApplicationData } from '../../../mocks/rests/applicationAPI.mock';
+
+import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
 
 const mockPush = jest.fn();

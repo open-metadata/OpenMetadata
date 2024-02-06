@@ -19,7 +19,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { AppType } from '../../../generated/entity/applications/app';
 import { EntityReference } from '../../../generated/tests/testSuite';
-import { mockApplicationData } from '../../../mocks/rests/applicationAPI.mock';
+import { mockApplicationData } from '../../../test/unit/mocks/rests/applicationAPI.mock';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
