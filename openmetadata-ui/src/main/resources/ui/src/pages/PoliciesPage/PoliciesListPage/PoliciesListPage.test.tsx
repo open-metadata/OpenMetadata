@@ -14,10 +14,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { ROUTES } from '../../../constants/constants';
+import { mockPush } from '../../../test/unit/mocks/utils/common.mock';
 import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesListPage from './PoliciesListPage';
-
-const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

@@ -24,6 +24,7 @@ import {
   mockedGlossaries,
   mockedGlossaryTerms,
 } from '../../mocks/Glossary.mock';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import GlossaryV1 from './GlossaryV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 
@@ -31,8 +32,6 @@ let params = {
   glossaryName: 'GlossaryName',
   action: '',
 };
-
-const mockPush = jest.fn();
 
 jest.mock('../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({

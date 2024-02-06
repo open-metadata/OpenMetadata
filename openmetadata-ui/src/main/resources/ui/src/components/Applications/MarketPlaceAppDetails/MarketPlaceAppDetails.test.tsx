@@ -24,10 +24,9 @@ import {
   mockGetApplicationByName,
   mockGetMarketPlaceApplicationByFqn,
 } from '../../../test/unit/mocks/rests/applicationAPI.mock';
+import { mockPush } from '../../../test/unit/mocks/utils/common.mock';
 import { mockShowErrorToast } from '../../../test/unit/mocks/utils/ToastUtils.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
-
-const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

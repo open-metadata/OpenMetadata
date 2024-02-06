@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import Tour from './Tour';
 
 jest.mock('@deuex-solutions/react-tour', () => ({
@@ -45,7 +46,7 @@ jest.mock('../Modals/TourEndModal/TourEndModal', () =>
 
 const mockUpdateIsTourOpen = jest.fn();
 const mockUpdateTourPage = jest.fn();
-const mockPush = jest.fn();
+
 const mockProps = {
   steps: [] as TourSteps[],
 };

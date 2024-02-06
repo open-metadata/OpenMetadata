@@ -19,9 +19,8 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ROUTES } from '../../constants/constants';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import CustomLogoConfigSettingsPage from './CustomLogoConfigSettingsPage';
-
-const mockPush = jest.fn();
 
 jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn().mockImplementation(() =>

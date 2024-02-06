@@ -20,6 +20,7 @@ import {
   Destination,
   Effect,
 } from '../../../generated/events/eventSubscription';
+import { mockPush } from '../../../test/unit/mocks/utils/common.mock';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { HeaderProps } from '../../PageHeader/PageHeader.interface';
 import { AlertDetailsComponent } from './AlertDetails.component';
@@ -41,7 +42,6 @@ jest.mock('../../PageHeader/PageHeader.component', () =>
 );
 
 const mockDelete = jest.fn();
-const mockPush = jest.fn();
 
 const mockProps1 = {
   alerts: {

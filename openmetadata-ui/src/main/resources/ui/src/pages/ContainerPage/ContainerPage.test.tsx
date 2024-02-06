@@ -24,6 +24,7 @@ import {
   addContainerFollower,
   getContainerByName,
 } from '../../rest/storageAPI';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import ContainerPage from './ContainerPage';
 import { CONTAINER_DATA, CONTAINER_DATA_1 } from './ContainerPage.mock';
 
@@ -222,8 +223,6 @@ const mockUseParams = jest.fn().mockReturnValue({
   fqn: CONTAINER_DATA.fullyQualifiedName,
   tab: 'schema',
 });
-
-const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

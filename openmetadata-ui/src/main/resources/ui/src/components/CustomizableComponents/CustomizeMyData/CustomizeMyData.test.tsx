@@ -24,10 +24,9 @@ import {
   mockUserData,
 } from '../../../mocks/MyDataPage.mock';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { mockPush } from '../../../test/unit/mocks/utils/common.mock';
 import CustomizeMyData from './CustomizeMyData';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
-const mockPush = jest.fn();
 
 const mockProps: CustomizeMyDataProps = {
   initialPageData: mockDocumentData,

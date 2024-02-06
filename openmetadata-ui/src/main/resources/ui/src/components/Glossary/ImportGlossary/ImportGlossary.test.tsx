@@ -13,9 +13,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { mockPush } from '../../../test/unit/mocks/utils/common.mock';
 import ImportGlossary from './ImportGlossary';
 
-const mockPush = jest.fn();
 const glossaryName = 'Glossary1';
 const mockCsvImportResult = {
   dryRun: true,

@@ -16,10 +16,10 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import { mockUserData } from '../../components/Users/mocks/User.mocks';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
-const mockPush = jest.fn();
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     currentUser: { ...mockUserData, isAdmin: true },

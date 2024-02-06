@@ -16,9 +16,8 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import { topicVersionMockProps } from '../../mocks/TopicVersion.mock';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import TopicVersion from './TopicVersion.component';
-
-const mockPush = jest.fn();
 
 jest.mock(
   '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',

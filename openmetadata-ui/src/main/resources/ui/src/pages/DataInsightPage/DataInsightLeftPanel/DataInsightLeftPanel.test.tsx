@@ -13,9 +13,8 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { mockPush } from '../../../test/unit/mocks/utils/common.mock';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
-
-const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

@@ -22,10 +22,9 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import AddKPIPage from './AddKPIPage';
 import { KPI_CHARTS, KPI_DATA, KPI_LIST } from './KPIMock.mock';
-
-const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({

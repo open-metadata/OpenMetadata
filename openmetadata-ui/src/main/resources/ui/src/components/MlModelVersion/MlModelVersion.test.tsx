@@ -18,9 +18,8 @@ import {
   mlModelVersionMockProps,
   mockMlModelDetails,
 } from '../../mocks/MlModelVersion.mock';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import MlModelVersion from './MlModelVersion.component';
-
-const mockPush = jest.fn();
 
 jest.mock(
   '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',

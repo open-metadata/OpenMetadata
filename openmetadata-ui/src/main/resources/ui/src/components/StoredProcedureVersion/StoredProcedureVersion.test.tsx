@@ -15,9 +15,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { storedProcedureVersionMockProps } from '../../mocks/StoredProcedureVersion.mock';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import StoredProcedureVersion from './StoredProcedureVersion.component';
-
-const mockPush = jest.fn();
 
 jest.mock(
   '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',

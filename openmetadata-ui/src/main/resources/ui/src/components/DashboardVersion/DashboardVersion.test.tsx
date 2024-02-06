@@ -21,10 +21,9 @@ import {
   mockTagChangeVersion,
 } from '../../mocks/dashboardVersion.mock';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
-
-const mockPush = jest.fn();
 
 jest.mock(
   '../../components/common/RichTextEditor/RichTextEditorPreviewer',

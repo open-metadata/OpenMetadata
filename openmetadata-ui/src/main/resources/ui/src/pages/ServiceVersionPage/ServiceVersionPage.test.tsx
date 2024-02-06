@@ -20,6 +20,7 @@ import {
   MOCK_DATABASE_SERVICE,
   MOCK_VERSIONS_LIST,
 } from '../../mocks/Service.mock';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import ServiceVersionPage from './ServiceVersionPage';
 
 const mockParams = {
@@ -27,7 +28,7 @@ const mockParams = {
   version: '1.2',
   fqn: 'sample_data',
 };
-const mockPush = jest.fn();
+
 const mockOtherData = { data: [], paging: {} };
 
 jest.mock('react-router-dom', () => ({

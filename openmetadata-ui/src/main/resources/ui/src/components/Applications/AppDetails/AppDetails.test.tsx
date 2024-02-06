@@ -24,6 +24,7 @@ import {
   mockApplicationData,
   mockGetApplicationByName,
 } from '../../../test/unit/mocks/rests/applicationAPI.mock';
+import { mockPush } from '../../../test/unit/mocks/utils/common.mock';
 import {
   mockShowErrorToast,
   mockShowSuccessToast,
@@ -52,7 +53,6 @@ const mockRestoreApp = jest.fn();
 const mockTriggerOnDemandApp = jest.fn();
 const mockUninstallApp = jest.fn();
 
-const mockPush = jest.fn();
 const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
 
 jest.mock('../../../rest/applicationAPI', () => ({

@@ -19,9 +19,8 @@ import {
   mockColumnDiffPipelineVersionMockProps,
   pipelineVersionMockProps,
 } from '../../mocks/PipelineVersion.mock';
+import { mockPush } from '../../test/unit/mocks/utils/common.mock';
 import PipelineVersion from './PipelineVersion.component';
-
-const mockPush = jest.fn();
 
 jest.mock(
   '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
