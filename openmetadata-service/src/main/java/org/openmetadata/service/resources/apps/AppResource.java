@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +68,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -105,17 +105,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.openMetadataApplicationConfig = config;
-    this.privateConfiguration = config.getAppsPrivateConfiguration();
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-
-    // Create an On Demand DAO
-    CollectionDAO dao = Entity.getCollectionDAO();
-    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
-
     try {
+      this.openMetadataApplicationConfig = config;
+      this.privateConfiguration = config.getAppsPrivateConfiguration();
+      this.pipelineServiceClient =
+          PipelineServiceClientFactory.createPipelineServiceClient(
+              config.getPipelineServiceClientConfiguration());
+
+      // Create an On Demand DAO
+      CollectionDAO dao = Entity.getCollectionDAO();
+      searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
       AppScheduler.initialize(dao, searchRepository);
 
       // Get Create App Requests
@@ -130,9 +129,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                     null,
                     createApp.getName(),
                     new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-        App app =
-            repository.getByName(
-                null, createApp.getName(), repository.getFields("bot,pipelines"), ALL, false);
+        App app = getAppForInit(createApp.getName());
         if (app == null) {
           app =
               getApplication(definition, createApp, "admin")
@@ -146,8 +143,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
-    } catch (SchedulerException | IOException ex) {
+    } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
+    }
+  }
+
+  private App getAppForInit(String appName) {
+    try {
+      return repository.getByName(null, appName, repository.getFields("bot,pipelines"), ALL, false);
+    } catch (EntityNotFoundException ex) {
+      return null;
     }
   }
 
