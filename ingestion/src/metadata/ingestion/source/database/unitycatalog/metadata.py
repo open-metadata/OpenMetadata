@@ -13,11 +13,10 @@ Databricks Unity Catalog Source source methods.
 """
 import json
 import traceback
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
-from databricks.sdk.service.catalog import TableConstraintList
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -73,19 +72,6 @@ from metadata.utils.filters import filter_by_database, filter_by_schema, filter_
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-# pylint: disable=not-callable
-@classmethod
-def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
-    return cls(
-        table_constraints=[
-            DBTableConstraint.from_dict(constraint) for constraint in dct
-        ]
-    )
-
-
-TableConstraintList.from_dict = from_dict
 
 
 class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
@@ -351,7 +337,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             )
 
     def get_table_constraints(
-        self, constraints: TableConstraintList
+        self, constraints: List[DBTableConstraint]
     ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:
         """
         Function to handle table constraint for the current table and add it to context
@@ -359,23 +345,22 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
 
         primary_constraints = []
         foreign_constraints = []
-        if constraints and constraints.table_constraints:
-            for constraint in constraints.table_constraints:
-                if constraint.primary_key_constraint:
-                    primary_constraints.append(
-                        TableConstraint(
-                            constraintType=ConstraintType.PRIMARY_KEY,
-                            columns=constraint.primary_key_constraint.child_columns,
-                        )
+        for constraint in constraints:
+            if constraint.primary_key_constraint:
+                primary_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.PRIMARY_KEY,
+                        columns=constraint.primary_key_constraint.child_columns,
                     )
-                if constraint.foreign_key_constraint:
-                    foreign_constraints.append(
-                        ForeignConstrains(
-                            child_columns=constraint.foreign_key_constraint.child_columns,
-                            parent_columns=constraint.foreign_key_constraint.parent_columns,
-                            parent_table=constraint.foreign_key_constraint.parent_table,
-                        )
+                )
+            if constraint.foreign_key_constraint:
+                foreign_constraints.append(
+                    ForeignConstrains(
+                        child_columns=constraint.foreign_key_constraint.child_columns,
+                        parent_columns=constraint.foreign_key_constraint.parent_columns,
+                        parent_table=constraint.foreign_key_constraint.parent_table,
                     )
+                )
         return primary_constraints, foreign_constraints
 
     def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:

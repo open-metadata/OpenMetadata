@@ -6,6 +6,10 @@ include ingestion/Makefile
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":"}; {printf "\033[35m%-35s\033[0m %s\n", $$2, $$3}'
 
+.PHONY: prerequisites
+prerequisites:
+	./scripts/check_prerequisites.sh
+
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
@@ -163,8 +167,8 @@ update_all:  ## To update all the release related files run make update_all RELE
 
 .PHONY: update_maven
 update_maven:  ## To update the common and pom.xml maven version
-	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."; \
-	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
+	@echo "Updating Maven projects to version $(MVN_RELEASE_VERSION)..."; \
+	mvn versions:set -DnewVersion=$(MVN_RELEASE_VERSION)
 #remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
 #make update_maven RELEASE_VERSION=2.2.2
 
@@ -175,6 +179,7 @@ update_github_action_paths:  ## To update the github action ci docker files
 	file_paths="docker/docker-compose-quickstart/Dockerfile \
 	            .github/workflows/docker-openmetadata-db.yml \
 	            .github/workflows/docker-openmetadata-ingestion-base.yml \
+				.github/workflows/docker-openmetadata-ingestion-base-slim.yml \
 	            .github/workflows/docker-openmetadata-ingestion.yml \
 	            .github/workflows/docker-openmetadata-postgres.yml \
 	            .github/workflows/docker-openmetadata-server.yml"; \
@@ -191,8 +196,8 @@ update_github_action_paths:  ## To update the github action ci docker files
 
 .PHONY: update_python_release_paths
 update_python_release_paths:  ## To update the setup.py files
-	file_paths="ingestion/setup.py \
-				openmetadata-airflow-apis/setup.py"; \
+	file_paths="ingestion/pyproject.toml \
+				openmetadata-airflow-apis/pyproject.toml"; \
 	echo "Updating Python setup file versions to $(PY_RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
 	    python3 scripts/update_version.py 2 $$file_path -s $(PY_RELEASE_VERSION) ; \
