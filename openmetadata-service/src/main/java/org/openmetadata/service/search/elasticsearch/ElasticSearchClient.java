@@ -709,9 +709,8 @@ public class ElasticSearchClient implements SearchClient {
         "double score = _score;"
             + "if (doc.containsKey('totalVotes') && doc['totalVotes'].value != null) { score = score + doc['totalVotes'].value; }"
             + "if (doc.containsKey('usageSummary') && doc['usageSummary.weeklyStats.count'].value != null) { score = score + doc['usageSummary.weeklyStats.count'].value; }"
-            + "if (doc.containsKey('tier') && doc.containsKey('tier.name') && doc['tier.name'].value != null) { "
-            + "if (doc['tier.name'].value == 'Tier1') { score = score * 100; }"
-            + " else if (doc['tier.name'].value == 'Tier2') {score = score + 5; }}"
+            + "if (doc.containsKey('tier.tagFQN') && !doc['tier.tagFQN'].empty) { if (doc['tier.tagFQN'].value == 'Tier.Tier2') { score = score + 10; }"
+            + " else if (doc['tier.tagFQN'].value == 'Tier.Tier1') { score = score + 20; }}"
             + "return score;");
   }
 
@@ -854,6 +853,7 @@ public class ElasticSearchClient implements SearchClient {
     FunctionScoreQueryBuilder queryBuilder =
         QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
     queryBuilder.boostMode(CombineFunction.SUM);
+
     HighlightBuilder hb =
         buildHighlights(List.of("columns.name", "columns.description", "columns.children.name"));
     SearchSourceBuilder searchSourceBuilder =
