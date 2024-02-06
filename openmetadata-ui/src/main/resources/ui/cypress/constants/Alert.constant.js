@@ -28,6 +28,8 @@ export const TEST_CASE_NAME = `0%test-case-${uuid()}`;
 export const TABLE_FQN = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
 export const TEST_SUITE_FQN = `${TABLE_FQN}.testSuite`;
 
+export const INGESTION_PIPELINE_NAME = `0-cy-ingestion-pipeline-${uuid()}`;
+
 export const OBSERVABILITY_CREATION_DETAILS = {
   table: {
     triggerDisplayName: 'Table',
@@ -58,6 +60,53 @@ export const OBSERVABILITY_CREATION_DETAILS = {
       },
       {
         name: 'Get Table Metrics Updates',
+        exclude: false,
+      },
+    ],
+    destinations: [
+      {
+        mode: 'internal',
+        category: 'Owners',
+        type: 'Email',
+      },
+      {
+        mode: 'external',
+        category: 'Email',
+        inputValue: 'test@example.com',
+      },
+    ],
+  },
+  ingestionPipeline: {
+    triggerDisplayName: 'Ingestion Pipeline',
+    filters: [
+      {
+        name: 'Ingestion Pipeline Name',
+        inputSelector: 'fqn-list-select',
+        inputValue: INGESTION_PIPELINE_NAME,
+        exclude: false,
+      },
+      {
+        name: 'Domain',
+        inputSelector: 'domain-select',
+        inputValue: DOMAIN_CREATION_DETAILS.name,
+        exclude: false,
+      },
+      {
+        name: 'Owner Name',
+        inputSelector: 'owner-name-select',
+        inputValue: `${USER_DETAILS.firstName}${USER_DETAILS.lastName}`,
+        exclude: true,
+      },
+    ],
+    actions: [
+      {
+        name: 'Get Ingestion Pipeline Status Updates',
+        inputs: [
+          {
+            inputSelector: 'pipeline-status-select',
+            inputValue: 'Queued',
+          },
+        ],
         exclude: false,
       },
     ],
