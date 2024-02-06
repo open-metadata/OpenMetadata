@@ -33,6 +33,7 @@ import {
   UNFOLLOW_DASHBOARD,
   UPDATE_CHART_DESCRIPTION,
   UPDATE_CHART_TAGS,
+  VERSION_HANDLER,
 } from './mocks/DashboardDetailsPage.mock';
 
 const mockAddFollower = jest.fn().mockResolvedValue({});
@@ -71,8 +72,7 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
       followDashboardHandler,
       handleToggleDelete,
       unFollowDashboardHandler,
-      // updateDashboardDetailsState,
-      // versionHandler,
+      versionHandler,
       // onDashboardUpdate,
       // onUpdateVote,
     }) => (
@@ -88,8 +88,7 @@ jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
         <button onClick={followDashboardHandler}>{FOLLOW_DASHBOARD}</button>
         <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
         <button onClick={unFollowDashboardHandler}>{UNFOLLOW_DASHBOARD}</button>
-        {/* <button onClick={createThread}>Create Thread</button>
-        <button onClick={createThread}>Create Thread</button> */}
+        <button onClick={versionHandler}>{VERSION_HANDLER}</button>
       </div>
     )
   )
@@ -238,6 +237,15 @@ describe('Test DashboardDetails page', () => {
     });
 
     expect(mockRemoveFollower).toHaveBeenCalled();
+
+    // version handler
+    userEvent.click(
+      screen.getByRole('button', {
+        name: VERSION_HANDLER,
+      })
+    );
+
+    expect(mockPush).toHaveBeenCalled();
   });
 
   it('error checks', async () => {
