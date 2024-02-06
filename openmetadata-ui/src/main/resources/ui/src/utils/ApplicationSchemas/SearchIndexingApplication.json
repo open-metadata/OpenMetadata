@@ -21,6 +21,7 @@
           "dashboard",
           "topic",
           "pipeline",
+          "ingestionPipeline",
           "searchIndex",
           "user",
           "team",

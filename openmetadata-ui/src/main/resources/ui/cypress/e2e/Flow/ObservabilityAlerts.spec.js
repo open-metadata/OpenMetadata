@@ -31,15 +31,12 @@ import {
   toastNotification,
   verifyResponseStatusCode,
 } from '../../common/common';
-import {
-  createEntityTable,
-  createSingleLevelEntity,
-  hardDeleteService,
-} from '../../common/EntityUtils';
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
   ALERT_DESCRIPTION,
   ALERT_NAME,
   ALERT_UPDATED_DESCRIPTION,
+  INGESTION_PIPELINE_NAME,
   OBSERVABILITY_CREATION_DETAILS,
   TABLE_FQN,
   TEST_CASE_NAME,
@@ -108,9 +105,42 @@ describe('Observability Alert Flow', () => {
       });
 
       // Create a pipeline
-      createSingleLevelEntity({
-        token,
-        ...PIPELINE_SERVICE,
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/services/${PIPELINE_SERVICE.serviceType}`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: PIPELINE_SERVICE.service,
+      }).then((pipelineServiceResponse) => {
+        data.pipelineService = pipelineServiceResponse.body;
+
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/${PIPELINE_SERVICE.entityType}`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: PIPELINE_SERVICE.entity,
+        });
+
+        // Create a ingestion pipeline
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/services/ingestionPipelines`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: INGESTION_PIPELINE_NAME,
+            pipelineType: 'metadata',
+            service: {
+              id: data.pipelineService.id,
+              type: 'pipelineService',
+            },
+            sourceConfig: {
+              config: {},
+            },
+          },
+        }).then((ingestionPipelineResponse) => {
+          data.ingestionPipeline = ingestionPipelineResponse.body;
+        });
       });
 
       // Create a new user
@@ -151,6 +181,13 @@ describe('Observability Alert Flow', () => {
       cy.request({
         method: 'DELETE',
         url: `/api/v1/dataQuality/testSuites/executable/${data.testSuite.id}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Delete ingestion pipeline
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/services/ingestionPipelines/${data.ingestionPipeline.id}?hardDelete=true`,
         headers: { Authorization: `Bearer ${token}` },
       });
 

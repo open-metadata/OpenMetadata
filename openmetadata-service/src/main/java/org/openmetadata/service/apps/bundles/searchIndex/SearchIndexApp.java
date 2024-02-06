@@ -57,6 +57,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "dashboard",
           "topic",
           "pipeline",
+          "ingestionPipeline",
           "searchIndex",
           "user",
           "team",

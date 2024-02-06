@@ -220,5 +220,11 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_resolution_status_index_mapping.json",
     "alias": "testCaseResolutionStatus",
     "parentAliases": []
+  },
+  "ingestionPipeline": {
+    "indexName": "ingestion_pipeline_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ingestion_pipeline_index_mapping.json",
+    "alias": "ingestionPipeline",
+    "parentAliases": ["all", "dataAsset"]
   }
 }

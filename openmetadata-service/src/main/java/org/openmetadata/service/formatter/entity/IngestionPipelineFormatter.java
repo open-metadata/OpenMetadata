@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.util.JsonUtils;
 
 public class IngestionPipelineFormatter implements EntityFormatter {
   private static final String PIPELINE_STATUS_FIELD = "pipelineStatus";
@@ -41,10 +42,12 @@ public class IngestionPipelineFormatter implements EntityFormatter {
   private String transformIngestionPipelineStatus(
       MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
     String ingestionPipelineName = entity.getName();
-    PipelineStatus status = (PipelineStatus) fieldChange.getNewValue();
+    PipelineStatus status =
+        JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
     if (status != null) {
+      // In case of running
       String date =
-          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
+          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getTimestamp()));
       String format =
           String.format(
               "Ingestion Pipeline %s %s at %s",
