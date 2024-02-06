@@ -274,7 +274,7 @@ public class AlertsRuleEvaluator {
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean getTestCaseStatusIfInTestSuite(
-      List<String> testSuiteList, List<String> testResults) {
+      List<String> testResults, List<String> testSuiteList) {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
