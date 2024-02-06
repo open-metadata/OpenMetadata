@@ -22,3 +22,4 @@ export const UNFOLLOW_DASHBOARD = 'Unfollow Dashboard';
 export const TOGGLE_DELETE = 'Toggle Delete';
 export const DASHBOARD_DELETED = 'dashboard is deleted';
 export const VERSION_HANDLER = 'Version Handler';
+export const UPDATE_VOTE = 'Update Vote';

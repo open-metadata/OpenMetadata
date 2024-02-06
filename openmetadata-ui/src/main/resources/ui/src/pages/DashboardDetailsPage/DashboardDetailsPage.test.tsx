@@ -34,6 +34,7 @@ import {
   UPDATE_CHART_DESCRIPTION,
   UPDATE_CHART_TAGS,
   UPDATE_DASHBOARD,
+  UPDATE_VOTE,
   VERSION_HANDLER,
 } from './mocks/DashboardDetailsPage.mock';
 
@@ -63,37 +64,42 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 );
 
 jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
-  jest.fn().mockImplementation(
-    ({
-      dashboardDetails,
-      createThread,
-      chartDescriptionUpdateHandler,
-      chartTagUpdateHandler,
-      fetchDashboard,
-      followDashboardHandler,
-      handleToggleDelete,
-      unFollowDashboardHandler,
-      versionHandler,
-      onDashboardUpdate,
-      // onUpdateVote,
-    }) => (
-      <div>
-        DashboardDetailsComponent
-        <span>{dashboardDetails.deleted ? DASHBOARD_DELETED : ''}</span>
-        <button onClick={createThread}>{CREATE_THREAD}</button>
-        <button onClick={chartDescriptionUpdateHandler}>
-          {UPDATE_CHART_DESCRIPTION}
-        </button>
-        <button onClick={chartTagUpdateHandler}>{UPDATE_CHART_TAGS}</button>
-        <button onClick={fetchDashboard}>{FETCH_DASHBOARD}</button>
-        <button onClick={followDashboardHandler}>{FOLLOW_DASHBOARD}</button>
-        <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
-        <button onClick={unFollowDashboardHandler}>{UNFOLLOW_DASHBOARD}</button>
-        <button onClick={versionHandler}>{VERSION_HANDLER}</button>
-        <button onClick={onDashboardUpdate}>{UPDATE_DASHBOARD}</button>
-      </div>
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        dashboardDetails,
+        createThread,
+        chartDescriptionUpdateHandler,
+        chartTagUpdateHandler,
+        fetchDashboard,
+        followDashboardHandler,
+        handleToggleDelete,
+        unFollowDashboardHandler,
+        versionHandler,
+        onDashboardUpdate,
+        onUpdateVote,
+      }) => (
+        <div>
+          DashboardDetailsComponent
+          <span>{dashboardDetails.deleted ? DASHBOARD_DELETED : ''}</span>
+          <button onClick={createThread}>{CREATE_THREAD}</button>
+          <button onClick={chartDescriptionUpdateHandler}>
+            {UPDATE_CHART_DESCRIPTION}
+          </button>
+          <button onClick={chartTagUpdateHandler}>{UPDATE_CHART_TAGS}</button>
+          <button onClick={fetchDashboard}>{FETCH_DASHBOARD}</button>
+          <button onClick={followDashboardHandler}>{FOLLOW_DASHBOARD}</button>
+          <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
+          <button onClick={unFollowDashboardHandler}>
+            {UNFOLLOW_DASHBOARD}
+          </button>
+          <button onClick={versionHandler}>{VERSION_HANDLER}</button>
+          <button onClick={onDashboardUpdate}>{UPDATE_DASHBOARD}</button>
+          <button onClick={onUpdateVote}>{UPDATE_VOTE}</button>
+        </div>
+      )
     )
-  )
 );
 
 jest.mock('../../components/Loader/Loader', () =>
@@ -247,7 +253,7 @@ describe('Test DashboardDetails page', () => {
     expect(mockPush).toHaveBeenCalled();
   });
 
-  it('check toggle delete action', async () => {
+  it('update vote and check toggle delete action', async () => {
     render(<DashboardDetailsPage />, {
       wrapper: MemoryRouter,
     });
@@ -264,6 +270,17 @@ describe('Test DashboardDetails page', () => {
     });
 
     expect(screen.getByText(DASHBOARD_DELETED)).toBeInTheDocument();
+
+    // update vote
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: UPDATE_VOTE,
+        })
+      );
+    });
+
+    expect(mockUpdateDashboardVotes).toHaveBeenCalled();
   });
 
   it('fetch and update dashboard action check', async () => {
@@ -305,6 +322,7 @@ describe('Test DashboardDetails page', () => {
     mockAddFollower.mockRejectedValueOnce(ERROR);
     mockRemoveFollower.mockRejectedValueOnce(ERROR);
     mockPatchDashboardDetails.mockRejectedValueOnce(ERROR);
+    mockUpdateDashboardVotes.mockRejectedValueOnce(ERROR);
 
     render(<DashboardDetailsPage />, {
       wrapper: MemoryRouter,
@@ -361,9 +379,16 @@ describe('Test DashboardDetails page', () => {
           name: UPDATE_DASHBOARD,
         })
       );
+
+      // update vote
+      userEvent.click(
+        screen.getByRole('button', {
+          name: UPDATE_VOTE,
+        })
+      );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(7);
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(8);
 
     mockUpdateChart.mockResolvedValue({});
   });
