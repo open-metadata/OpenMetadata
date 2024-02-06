@@ -1187,7 +1187,7 @@ export const WHATS_NEW = [
         description:
           'The Incidents Manager serves as a centralized hub, streamlining the resolution process and reinforcing the integrity of your data. It provides a comprehensive summary of unresolved failed test cases, offering details on failure severity and the resolution flow.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/G-Ww5TkQPy0',
+        path: 'https://www.youtube.com/embed/wz5vc1Al-b8',
       },
       {
         title: 'Data Observability',
