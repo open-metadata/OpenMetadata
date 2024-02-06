@@ -318,6 +318,7 @@ describe('Test DashboardDetails page', () => {
   it('error checks', async () => {
     mockUpdateChart.mockRejectedValue(ERROR);
     mockPostThread.mockRejectedValueOnce(ERROR);
+    mockGetDashboardByFqn.mockRejectedValueOnce(ERROR);
     mockFetchCharts.mockRejectedValueOnce(ERROR);
     mockAddFollower.mockRejectedValueOnce(ERROR);
     mockRemoveFollower.mockRejectedValueOnce(ERROR);
@@ -388,7 +389,7 @@ describe('Test DashboardDetails page', () => {
       );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(8);
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(9);
 
     mockUpdateChart.mockResolvedValue({});
   });
