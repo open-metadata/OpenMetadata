@@ -1201,7 +1201,7 @@ export const WHATS_NEW = [
         description:
           'In the 1.3 release, OpenMetadata supports hierarchical pages to structure the articles for a cohesive view and access. Now, it is easier to associate the knowledge articles with data assets with just a few clicks.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/OVTEPvnzBbQ',
+        path: 'https://www.youtube.com/embed/atwTGm1hixg',
       },
     ],
     changeLogs: {
