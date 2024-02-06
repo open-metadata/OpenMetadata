@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { getQuartzCronExpression } from './CronUtils';
+import { AppType } from '../generated/entity/applications/app';
+import {
+  getCronExpression,
+  getCronInitialValue,
+  getQuartzCronExpression,
+} from './CronUtils';
 
 describe('getQuartzCronExpression function', () => {
   it('should generate cron expression for every minute', () => {
@@ -92,5 +97,57 @@ describe('getQuartzCronExpression function', () => {
     const result = getQuartzCronExpression(state);
 
     expect(result).toEqual('0 30 10 ? * 4');
+  });
+});
+
+describe('getCronExpression function', () => {
+  const cronExpression1 = '0 0 * * *';
+  const cronExpression2 = '0 0 0 * * ?';
+
+  it('should generate different cron expression if repeatFrequency and initialValue is same', () => {
+    const result = getCronExpression(cronExpression1, cronExpression1);
+
+    expect(result).toEqual(cronExpression2);
+  });
+
+  it('should not generate same cron expression if repeatFrequency and initialValue is same', () => {
+    const result = getCronExpression(cronExpression1, cronExpression1);
+
+    expect(result).not.toEqual(cronExpression1);
+  });
+
+  it('should get same repeatFrequency cron if repeatFrequency is different', () => {
+    const result = getCronExpression(cronExpression2, cronExpression1);
+
+    expect(result).toEqual(cronExpression2);
+  });
+});
+
+describe('getCronInitialValue function', () => {
+  it('should generate hour cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
+    const result = getCronInitialValue(
+      AppType.Internal,
+      'SearchIndexingApplication'
+    );
+
+    expect(result).toEqual('0 * * * *');
+  });
+
+  it('should generate week cron expression if appName is DataInsightsReportApplication', () => {
+    const result = getCronInitialValue(
+      AppType.Internal,
+      'DataInsightsReportApplication'
+    );
+
+    expect(result).toEqual('0 0 * * 0');
+  });
+
+  it('should generate day cron expression if appType is external', () => {
+    const result = getCronInitialValue(
+      AppType.External,
+      'DataInsightsApplication'
+    );
+
+    expect(result).toEqual('0 0 * * *');
   });
 });
