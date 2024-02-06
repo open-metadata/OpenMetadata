@@ -37,13 +37,16 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
         <Col className="mt-4" span={24}>
           <SVGIcons
             alt={t('label.open-metadata-logo')}
+            data-testid="omd-logo"
             height="70"
             icon={Icons.LOGO_SMALL}
             width="70"
           />
         </Col>
         <Col span={24}>
-          <Typography className="text-base mt-5">
+          <Typography
+            className="text-base mt-5"
+            data-testid="tour-complete-message">
             {t('message.successfully-completed-the-tour')}
             <br />
             {t('message.get-started-with-open-metadata')}
