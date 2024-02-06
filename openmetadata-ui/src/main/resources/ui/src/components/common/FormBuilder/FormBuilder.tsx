@@ -30,7 +30,7 @@ import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
 import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
 import Loader from '../../Loader/Loader';
 
-interface Props extends FormProps {
+export interface Props extends FormProps {
   okText: string;
   cancelText: string;
   serviceCategory: ServiceCategory;
