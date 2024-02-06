@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
@@ -22,8 +23,10 @@ import { toast } from 'react-toastify';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
 import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
+import { ReactComponent as IconTour } from '../../assets/svg/icon-tour.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
+import { ReactComponent as IconWhatsNew } from '../../assets/svg/whatsNew.svg';
 import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import {
@@ -45,7 +48,6 @@ import {
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import NavBar from '../NavBar/NavBar';
@@ -99,11 +101,10 @@ const Appbar: React.FC = (): JSX.Element => {
           className="cursor-pointer w-full"
           size={4}
           onClick={() => history.push(ROUTES.TOUR)}>
-          <SVGIcons
-            alt="tour-con"
+          <Icon
             className="align-middle m-r-xss"
-            icon={Icons.TOUR}
-            width="12"
+            component={IconTour}
+            style={{ fontSize: '12px' }}
           />
           <span className="text-base-color">{t('label.tour')}</span>
         </Space>
@@ -184,11 +185,10 @@ const Appbar: React.FC = (): JSX.Element => {
           className="cursor-pointer w-full"
           size={4}
           onClick={() => handleFeatureModal(true)}>
-          <SVGIcons
-            alt="Doc icon"
+          <Icon
             className="align-middle m-r-xss"
-            icon={Icons.WHATS_NEW}
-            width="14"
+            component={IconWhatsNew}
+            style={{ fontSize: '14px' }}
           />
           <span className="text-base-color">{t('label.whats-new')}</span>
         </Space>
