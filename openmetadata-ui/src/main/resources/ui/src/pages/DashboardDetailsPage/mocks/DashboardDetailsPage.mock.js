@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 export const ERROR = 'error';
+export const ENTITY_MISSING_ERROR = 'entity missing error';
 export const CREATE_THREAD = 'Create Thread';
 export const UPDATE_CHART_DESCRIPTION = 'Update Chart Description';
 export const UPDATE_CHART_TAGS = 'Update Chart Tags';

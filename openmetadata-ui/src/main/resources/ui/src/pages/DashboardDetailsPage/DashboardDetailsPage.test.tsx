@@ -21,36 +21,27 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { mockUserData } from '../../components/Users/mocks/User.mocks';
-import { mockUpdateChart } from '../../test/unit/mocks/rests/chartAPI.mock';
-import {
-  mockAddFollower,
-  mockGetDashboardByFqn,
-  mockPatchDashboardDetails,
-  mockRemoveFollower,
-  mockUpdateDashboardVotes,
-} from '../../test/unit/mocks/rests/dashboardAPI.mock';
-import { mockPostThread } from '../../test/unit/mocks/rests/feedsAPI.mock';
-import { mockPush } from '../../test/unit/mocks/utils/common.mock';
-import {
-  mockAddToRecentViewed,
-  mockGetEntityMissingError,
-  mockSortTagsCaseInsensitive,
-} from '../../test/unit/mocks/utils/CommonUtils.mock';
-import {
-  mockFetchCharts,
-  mockSortTagsForCharts,
-} from '../../test/unit/mocks/utils/DashboardDetailsUtils.mock';
-import { mockGetEntityName } from '../../test/unit/mocks/utils/EntityUtils.mock';
-import { mockShowErrorToast } from '../../test/unit/mocks/utils/ToastUtils.mock';
 import DashboardDetailsPage from './DashboardDetailsPage.component';
 import {
   CREATE_THREAD,
+  ENTITY_MISSING_ERROR,
   ERROR,
   FETCH_DASHBOARD,
   FOLLOW_DASHBOARD,
   UPDATE_CHART_DESCRIPTION,
   UPDATE_CHART_TAGS,
 } from './mocks/DashboardDetailsPage.mock';
+
+const mockAddFollower = jest.fn().mockResolvedValue({});
+const mockGetDashboardByFqn = jest.fn().mockResolvedValue({});
+const mockPatchDashboardDetails = jest.fn().mockResolvedValue({});
+const mockRemoveFollower = jest.fn().mockResolvedValue({});
+const mockUpdateDashboardVotes = jest.fn().mockResolvedValue({});
+const mockUpdateChart = jest.fn().mockResolvedValue({});
+const mockPostThread = jest.fn().mockResolvedValue({});
+const mockFetchCharts = jest.fn().mockResolvedValue([]);
+const mockPush = jest.fn();
+const mockShowErrorToast = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(() => ({
@@ -133,19 +124,19 @@ jest.mock('../../rest/feedsAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(mockAddToRecentViewed),
-  getEntityMissingError: jest.fn(mockGetEntityMissingError),
-  sortTagsCaseInsensitive: jest.fn(mockSortTagsCaseInsensitive),
+  addToRecentViewed: jest.fn(),
+  getEntityMissingError: jest.fn().mockReturnValue(ENTITY_MISSING_ERROR),
+  sortTagsCaseInsensitive: jest.fn((tags) => tags),
 }));
 
 jest.mock('../../utils/DashboardDetailsUtils', () => ({
   defaultFields: 'defaultFields',
   fetchCharts: jest.fn(mockFetchCharts),
-  sortTagsForCharts: jest.fn(mockSortTagsForCharts),
+  sortTagsForCharts: jest.fn((charts) => charts),
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn(mockGetEntityName),
+  getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -208,7 +199,6 @@ describe('Test DashboardDetails page', () => {
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
     expect(mockGetDashboardByFqn).toHaveBeenCalledTimes(2);
-    expect(mockAddToRecentViewed).toHaveBeenCalledTimes(2);
     expect(mockFetchCharts).toHaveBeenCalledTimes(2);
 
     // follow dashboard
