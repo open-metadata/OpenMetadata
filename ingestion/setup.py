@@ -47,7 +47,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
-    "databricks-sdk": "databricks-sdk~=0.1",
+    "databricks-sdk": "databricks-sdk==0.16.0",
     "google": "google>=3.0.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy==3.5.0",
@@ -311,7 +311,7 @@ e2e_test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="1.2.5.1",
+    version="1.2.5.2",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
