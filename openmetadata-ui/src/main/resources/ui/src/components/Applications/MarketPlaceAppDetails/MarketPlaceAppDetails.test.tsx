@@ -123,15 +123,15 @@ describe('MarketPlaceAppDetails component', () => {
     );
 
     expect(mockPush).toHaveBeenCalledWith(ROUTES.MARKETPLACE);
-
-    // userEvent.click(screen.getByRole('button', { name: 'label.install' }));
-
-    // expect(mockPush).toHaveBeenCalledWith('app install path');
   });
 
   it('should show toast error, if failed to fetch app details', async () => {
+    const MARKETPLACE_APP_DETAILS_ERROR = 'marketplace app data fetch failed.';
     const APP_DETAILS_ERROR = 'app data fetch failed.';
-    mockGetMarketPlaceApplicationByFqn.mockRejectedValueOnce(APP_DETAILS_ERROR);
+    mockGetMarketPlaceApplicationByFqn.mockRejectedValueOnce(
+      MARKETPLACE_APP_DETAILS_ERROR
+    );
+    mockGetApplicationByName.mockRejectedValueOnce(APP_DETAILS_ERROR);
 
     render(<MarketPlaceAppDetails />);
 
@@ -140,6 +140,14 @@ describe('MarketPlaceAppDetails component', () => {
     expect(mockGetMarketPlaceApplicationByFqn).toHaveBeenCalledWith('mockFQN', {
       fields: expect.anything(),
     });
-    expect(mockShowErrorToast).toHaveBeenCalledWith(APP_DETAILS_ERROR);
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      MARKETPLACE_APP_DETAILS_ERROR
+    );
+
+    // app install action check
+    // making install button enable by rejecting promise in getApplicationByName
+    userEvent.click(screen.getByRole('button', { name: 'label.install' }));
+
+    expect(mockPush).toHaveBeenCalledWith('app install path');
   });
 });
