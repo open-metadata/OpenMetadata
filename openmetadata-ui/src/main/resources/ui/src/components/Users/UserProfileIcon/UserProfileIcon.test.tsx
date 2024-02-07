@@ -90,7 +90,7 @@ describe('UserProfileIcon', () => {
     );
     const { queryByTestId, getByText } = render(<UserProfileIcon />);
 
-    expect(queryByTestId('app-bar-user-avatar')).not.toBeInTheDocument();
+    expect(queryByTestId('app-bar-user-profile-pic')).not.toBeInTheDocument();
     expect(getByText('Avatar')).toBeInTheDocument();
   });
 
