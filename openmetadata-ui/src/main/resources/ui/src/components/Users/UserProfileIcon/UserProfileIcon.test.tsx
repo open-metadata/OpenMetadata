@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { getImageWithResolutionAndFallback } from '../../../utils/ProfilerUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { mockUserData } from '../mocks/User.mocks';
 import { UserProfileIcon } from './UserProfileIcon.component';
 
@@ -103,5 +104,17 @@ describe('UserProfileIcon', () => {
     const { getByTestId } = render(<UserProfileIcon />);
 
     expect(getByTestId('default-persona')).toHaveTextContent('Test User');
+  });
+
+  it('should show empty placeholder when no teams data', async () => {
+    (useAuthContext as jest.Mock).mockImplementation(() => ({
+      currentUser: { ...mockUserData, teams: [] },
+      onLogoutHandler: mockLogout,
+    }));
+    const teamLabels = screen.queryAllByText('label.team-plural');
+
+    teamLabels.forEach((label) => {
+      expect(label).toHaveTextContent('--');
+    });
   });
 });
