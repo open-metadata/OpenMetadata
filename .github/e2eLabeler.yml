@@ -1,3 +1,4 @@
 # E2E Labels when source files are changes
 e2eLineage:
-  - "/openmetadata-ui\/.*lineage.*/"
+  - 'openmetadata-ui/**/*lineage*'
+  - 'openmetadata-ui/**/*Lineage*'
