@@ -144,7 +144,7 @@ def get_columns(bq_schema):
         col_obj = {
             "name": field.name,
             "type": col_type,
-            "nullable": field.is_nullable,
+            "nullable": field.mode in ("NULLABLE", "REPEATED"),
             "comment": field.description,
             "default": None,
             "precision": field.precision,
