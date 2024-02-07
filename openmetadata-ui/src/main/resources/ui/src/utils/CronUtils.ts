@@ -174,17 +174,6 @@ export const getStateValue = (valueStr: string) => {
   return stateVal;
 };
 
-export const getCronExpression = (
-  repeatFrequency: string,
-  initialValue: string
-) => {
-  if (repeatFrequency === initialValue) {
-    return getQuartzCronExpression(getStateValue(repeatFrequency)) ?? '';
-  }
-
-  return repeatFrequency;
-};
-
 export const getCronInitialValue = (appType: AppType, appName: string) => {
   const value = {
     min: 0,

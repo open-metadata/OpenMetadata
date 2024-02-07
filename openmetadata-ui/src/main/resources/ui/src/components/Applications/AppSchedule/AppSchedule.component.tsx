@@ -25,10 +25,6 @@ import {
   AppType,
 } from '../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
-import {
-  getCronExpression,
-  getCronInitialValue,
-} from '../../../utils/CronUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
 import Loader from '../../Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
@@ -46,11 +42,6 @@ const AppSchedule = ({
   const appRunsHistoryRef = useRef<AppRunsHistoryRef>(null);
   const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  const initialValue = useMemo(
-    () => getCronInitialValue(appData.appType, appData.name),
-    [appData.name, appData.appType]
-  );
 
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
@@ -81,10 +72,6 @@ const AppSchedule = ({
 
       return cronstrue.toString(cronExp, {
         throwExceptionOnParseError: false,
-        // Quartz cron format accepts 1-7 or SUN-SAT so need to increment index by 1
-        // Ref: https://www.quartz-scheduler.org/api/2.1.7/org/quartz/CronExpression.html
-        dayOfWeekStartIndexZero: false,
-        monthStartIndexZero: false,
       });
     }
 
@@ -96,7 +83,7 @@ const AppSchedule = ({
   };
 
   const onDialogSave = (cron: string) => {
-    onSave(getCronExpression(cron, initialValue));
+    onSave(cron);
     setShowModal(false);
   };
 
@@ -232,13 +219,14 @@ const AppSchedule = ({
         open={showModal}
         title={t('label.update-entity', { entity: t('label.schedule') })}>
         <TestSuiteScheduler
-          isQuartzCron
           buttonProps={{
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
           includePeriodOptions={initialOptions}
-          initialData={initialValue}
+          initialData={
+            (appData.appSchedule as AppScheduleClass).cronExpression ?? ''
+          }
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}
         />

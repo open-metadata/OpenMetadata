@@ -42,7 +42,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getCronExpression, getCronInitialValue } from '../../utils/CronUtils';
+import { getCronInitialValue } from '../../utils/CronUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -119,7 +119,7 @@ const AppInstall = () => {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
           scheduleType: ScheduleTimeline.Custom,
-          cronExpression: getCronExpression(repeatFrequency, initialValue),
+          cronExpression: repeatFrequency,
         },
         name: fqn,
         description: appData?.description,
@@ -185,7 +185,6 @@ const AppInstall = () => {
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
-              isQuartzCron
               includePeriodOptions={initialOptions}
               initialData={initialValue}
               onCancel={() =>
