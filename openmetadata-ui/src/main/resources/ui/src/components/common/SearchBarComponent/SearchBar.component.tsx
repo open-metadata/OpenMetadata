@@ -88,7 +88,8 @@ const Searchbar = ({
           prefix={
             <Icon
               className={classNames('align-middle', {
-                'text-primary': isSearchBlur,
+                'text-grey-3': isSearchBlur,
+                'text-primary': !isSearchBlur,
               })}
               component={IconSearchV1}
               style={{ fontSize: '16px' }}

@@ -397,6 +397,7 @@ const NavBar = ({
                       <Icon
                         alt="icon-search"
                         className={classNames('align-middle', {
+                          'text-grey-3': isSearchBlur,
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconSearch}
@@ -442,9 +443,9 @@ const NavBar = ({
               <Col className="flex-center">
                 <DomainIcon
                   className="d-flex text-base-color"
-                  height={18}
+                  height={20}
                   name="folder"
-                  width={18}
+                  width={20}
                 />
               </Col>
               <Col>{activeDomain}</Col>
