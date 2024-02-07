@@ -3,10 +3,6 @@ title: Upgrade on Bare Metal
 slug: /deployment/upgrade/bare-metal
 ---
 
-{% note noteType="Warning" %}
-**Please note that the release 1.3 is still in BETA. Only upgrade your dev and test instances.**
-{% /note %}
-
 # Upgrade on Bare Metal
 
 This guide will help you upgrade an OpenMetadata deployment using release binaries.

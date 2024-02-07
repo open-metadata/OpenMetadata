@@ -92,6 +92,7 @@ const PopoverContent: FC<PopoverContentProps> = ({
       accept="image/jpeg, image/png, image/webp"
       className="om-node-image-upload"
       customRequest={handleRequestUpload}
+      data-testid="image-upload-form"
       multiple={false}
       showUploadList={false}
       onChange={handleFileUploadChange}>
@@ -116,11 +117,18 @@ const PopoverContent: FC<PopoverContentProps> = ({
   );
 
   const embedLinkElement = (
-    <Form initialValues={{ Url: src }} onFinish={handleEmbedImage}>
+    <Form
+      data-testid="embed-link-form"
+      initialValues={{ Url: src }}
+      onFinish={handleEmbedImage}>
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Form.Item name="Url" rules={[{ required: true, type: 'url' }]}>
-            <Input autoFocus placeholder="Paste the image link..." />
+            <Input
+              autoFocus
+              data-testid="embed-input"
+              placeholder="Paste the image link..."
+            />
           </Form.Item>
         </Col>
         <Col className="om-image-node-embed-link-btn-col" span={24}>
@@ -188,10 +196,17 @@ const ImageComponent: FC<NodeViewProps> = ({
           onOpenChange={setIsPopupVisible}>
           {isValidSource ? (
             <div className="om-image-node-uploaded">
-              <img alt={alt ?? ''} src={src} />
+              <img
+                alt={alt ?? ''}
+                data-testid="uploaded-image-node"
+                src={src}
+              />
             </div>
           ) : (
-            <div className="image-placeholder" contentEditable={false}>
+            <div
+              className="image-placeholder"
+              contentEditable={false}
+              data-testid="image-placeholder">
               {isUploading ? (
                 <Loader />
               ) : (
