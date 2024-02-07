@@ -84,7 +84,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "webAnalyticEntityViewReportData",
           "webAnalyticUserActivityReportData",
           "domain",
-          "storedProcedure");
+          "storedProcedure",
+          "storageService");
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
   private Processor entityProcessor;
