@@ -21,7 +21,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { getEntityName } from '../../utils/EntityUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './welcome-screen.style.less';
 
 const { Paragraph, Text } = Typography;
@@ -32,7 +33,7 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const userName = useMemo(() => {
     return split(getEntityName(currentUser), ' ')[0];

@@ -17,7 +17,7 @@ import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -37,6 +37,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateQuery } from '../../generated/api/data/createQuery';
 import { Table } from '../../generated/entity/data/table';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import { postQuery } from '../../rest/queryAPI';
@@ -48,7 +49,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { fqn: datasetFQN } = useFqn();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();

@@ -79,7 +79,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest
+  useApplicationStore: jest
     .fn()
     .mockImplementation(() => ({ currentUser: mockUserData })),
 }));

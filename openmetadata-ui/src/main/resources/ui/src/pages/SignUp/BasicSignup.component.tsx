@@ -17,12 +17,13 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import LoginCarousel from '../LoginPage/LoginCarousel';
 import './../LoginPage/login.style.less';
 
@@ -36,7 +37,7 @@ interface SignUpFormData {
 
 const BasicSignUp = () => {
   const { t } = useTranslation();
-  const { authConfig } = useAuthContext();
+  const { authConfig } = useApplicationStore();
   const { handleRegister } = useBasicAuth();
   const history = useHistory();
 

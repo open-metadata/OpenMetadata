@@ -29,7 +29,8 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { IngestionWorkflowData } from '../../interface/service.interface';
 import { getIngestionFrequency } from '../../utils/CommonUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -63,7 +64,7 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(

@@ -39,7 +39,8 @@ import {
   ImageQuality,
 } from '../../../utils/ProfilerUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Avatar from '../../common/AvatarComponent/Avatar';
 import './user-profile-icon.less';
 
@@ -84,7 +85,7 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const { currentUser, onLogoutHandler } = useAuthContext();
+  const { currentUser, onLogoutHandler } = useApplicationStore();
   const { selectedPersona, updateSelectedPersona } =
     useApplicationConfigContext();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);

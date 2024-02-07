@@ -59,7 +59,7 @@ jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
 }));
 jest.mock('../../Auth/AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       isAuthDisabled: mockAuthData.isAuthDisabled,
     })),
   };

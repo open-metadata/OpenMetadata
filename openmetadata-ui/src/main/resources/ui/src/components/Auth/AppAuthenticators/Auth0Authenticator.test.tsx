@@ -18,7 +18,7 @@ import Auth0Authenticator from './Auth0Authenticator';
 
 jest.mock('../AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       authConfig: {},
       setIsAuthenticated: jest.fn(),
       onLogoutHandler: jest.fn(),

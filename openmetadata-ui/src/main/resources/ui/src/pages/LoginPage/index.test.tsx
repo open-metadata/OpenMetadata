@@ -19,17 +19,18 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SigninPage from './index';
 
-const mockUseAuthContext = useAuthContext as jest.Mock;
+const mockuseApplicationStore = useApplicationStore as unknown as jest.Mock;
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(),
+  useApplicationStore: jest.fn(),
 }));
 jest.mock(
   '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
@@ -58,7 +59,7 @@ describe('Test SigninPage Component', () => {
   });
 
   it('Component should render', async () => {
-    mockUseAuthContext.mockReturnValue({
+    mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
       authConfig: { provider: 'google' },
       onLoginHandler: jest.fn(),
@@ -85,7 +86,7 @@ describe('Test SigninPage Component', () => {
     ['aws-cognito', 'Sign in with aws cognito'],
     ['unknown-provider', 'SSO Provider unknown-provider is not supported'],
   ])('Sign in button should render correctly for %s', async (provider) => {
-    mockUseAuthContext.mockReturnValue({
+    mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
       authConfig: { provider },
       onLoginHandler: jest.fn(),
@@ -107,7 +108,7 @@ describe('Test SigninPage Component', () => {
   });
 
   it('Sign in button should render correctly with custom provider name', async () => {
-    mockUseAuthContext.mockReturnValue({
+    mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
       authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
       onLoginHandler: jest.fn(),
@@ -122,7 +123,7 @@ describe('Test SigninPage Component', () => {
   });
 
   it('Page should render the correct logo image', async () => {
-    mockUseAuthContext.mockReturnValue({
+    mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
       authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
       onLoginHandler: jest.fn(),

@@ -107,7 +107,7 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
 
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       isAuthDisabled: true,
     })),
   };

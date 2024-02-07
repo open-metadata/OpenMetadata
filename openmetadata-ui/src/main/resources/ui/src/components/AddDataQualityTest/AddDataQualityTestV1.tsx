@@ -46,7 +46,8 @@ import { useFqn } from '../../hooks/useFqn';
 import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -71,7 +72,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [

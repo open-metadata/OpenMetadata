@@ -28,7 +28,8 @@ import { AxiosError } from 'axios';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { deleteQuery } from '../../../rest/queryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import './query-card-extra-option.style.less';
 
 const QueryCardExtraOption = ({
@@ -39,7 +40,7 @@ const QueryCardExtraOption = ({
   afterDeleteAction,
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 

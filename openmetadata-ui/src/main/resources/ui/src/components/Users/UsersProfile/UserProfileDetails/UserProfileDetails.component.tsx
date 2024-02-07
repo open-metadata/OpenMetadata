@@ -35,7 +35,8 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { changePassword } from '../../../../rest/auth-API';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Chip from '../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { PersonaSelectableList } from '../../../Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -49,7 +50,7 @@ const UserProfileDetails = ({
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
-  const { authConfig, currentUser } = useAuthContext();
+  const { authConfig, currentUser } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);

@@ -20,7 +20,8 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { refreshTokenKey } from '../../../constants/constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
-import AuthProvider, { useAuthContext } from './AuthProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import AuthProvider from './AuthProvider';
 
 const localStorageMock = {
   getItem: jest.fn(),
@@ -55,7 +56,7 @@ jest.mock('../../../rest/userAPI', () => ({
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
     const ConsumerComponent = () => {
-      const { onLogoutHandler } = useAuthContext();
+      const { onLogoutHandler } = useApplicationStore();
 
       return (
         <button data-testid="logout-button" onClick={onLogoutHandler}>
@@ -79,7 +80,7 @@ describe('Test auth provider', () => {
 
   it('Logout handler should remove the refresh token', async () => {
     const ConsumerComponent = () => {
-      const { onLogoutHandler } = useAuthContext();
+      const { onLogoutHandler } = useApplicationStore();
 
       return (
         <button data-testid="logout-button" onClick={onLogoutHandler}>

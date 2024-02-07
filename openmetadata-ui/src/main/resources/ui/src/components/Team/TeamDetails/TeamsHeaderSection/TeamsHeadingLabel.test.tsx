@@ -23,7 +23,7 @@ jest.mock('../../../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({
+  useApplicationStore: jest.fn().mockReturnValue({
     currentUser: { userId: 'test-user' },
   }),
 }));

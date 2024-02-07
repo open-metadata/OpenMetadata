@@ -22,7 +22,8 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { Team } from '../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../hooks/authHooks';
 import { hasEditAccess } from '../../../../utils/CommonUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
 const TeamsHeadingLabel = ({
@@ -36,7 +37,7 @@ const TeamsHeadingLabel = ({
     currentTeam ? currentTeam.displayName : ''
   );
   const { isAdminUser } = useAuth();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { owner } = useMemo(() => currentTeam, [currentTeam]);
 
   const isCurrentTeamOwner = useMemo(

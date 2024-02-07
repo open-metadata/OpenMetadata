@@ -31,7 +31,8 @@ import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import Chip from '../common/Chip/Chip.component';
 import DescriptionV1 from '../common/EntityDescription/DescriptionV1';
 import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -58,7 +59,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();

@@ -96,7 +96,8 @@ import {
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
@@ -114,7 +115,7 @@ export const TaskTab = ({
 }: TaskTabProps) => {
   const history = useHistory();
   const [assigneesForm] = useForm();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();

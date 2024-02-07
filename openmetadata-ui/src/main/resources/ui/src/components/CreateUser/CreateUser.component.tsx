@@ -41,7 +41,8 @@ import { handleSearchFilterOption } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import RichTextEditor from '../common/RichTextEditor/RichTextEditor';
 import CopyToClipboardButton from '../CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../Loader/Loader';
@@ -59,7 +60,7 @@ const CreateUser = ({
 }: CreateUserProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const { authConfig } = useAuthContext();
+  const { authConfig } = useApplicationStore();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBot, setIsBot] = useState(forceBot);
   const [selectedTeams, setSelectedTeams] = useState<

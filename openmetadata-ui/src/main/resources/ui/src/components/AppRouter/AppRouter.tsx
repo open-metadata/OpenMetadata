@@ -22,7 +22,8 @@ import { AuthProvider } from '../../generated/settings/settings';
 import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import Loader from '../Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -59,7 +60,7 @@ const AppRouter = () => {
     loading,
     isSigningIn,
     getCallBackComponent,
-  } = useAuthContext();
+  } = useApplicationStore();
 
   const callbackComponent = getCallBackComponent();
   const oidcProviders = [

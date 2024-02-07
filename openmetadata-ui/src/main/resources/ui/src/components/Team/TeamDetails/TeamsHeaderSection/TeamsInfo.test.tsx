@@ -69,7 +69,7 @@ jest.mock('../../../common/TeamTypeSelect/TeamTypeSelect.component', () => ({
 }));
 
 jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({
+  useApplicationStore: jest.fn().mockReturnValue({
     currentUser: { id: 'test-user' },
   }),
 }));

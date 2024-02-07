@@ -65,7 +65,7 @@ jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
 });
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest
+    useApplicationStore: jest
       .fn()
       .mockImplementation(() => ({ isAuthDisabled: true })),
   };

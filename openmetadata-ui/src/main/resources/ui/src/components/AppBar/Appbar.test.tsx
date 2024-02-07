@@ -37,7 +37,7 @@ jest.mock('react-router-dom', () => ({
 }));
 jest.mock('../Auth/AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       isAuthenticated: true,
       isProtectedRoute: jest.fn().mockReturnValue(true),
       isTourRoute: jest.fn().mockReturnValue(false),

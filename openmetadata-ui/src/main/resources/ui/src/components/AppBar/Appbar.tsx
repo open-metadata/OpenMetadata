@@ -47,7 +47,8 @@ import { addToRecentSearched } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';
 
@@ -59,7 +60,8 @@ const Appbar: React.FC = (): JSX.Element => {
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthenticated, onLogoutHandler } = useAuthContext();
+  const { isAuthenticated, onLogoutHandler, getOidcToken } =
+    useApplicationStore();
 
   const { searchCriteria } = useGlobalSearchProvider();
 
@@ -304,7 +306,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ) {
         return;
       }
-      const { isExpired, exp } = extractDetailsFromToken();
+      const { isExpired, exp } = extractDetailsFromToken(getOidcToken());
       if (!document.hidden && isExpired) {
         exp && toast.info(t('message.session-expired'));
         onLogoutHandler();

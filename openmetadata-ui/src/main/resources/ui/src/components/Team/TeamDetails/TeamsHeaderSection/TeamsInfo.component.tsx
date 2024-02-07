@@ -24,7 +24,8 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useAuth } from '../../../../hooks/authHooks';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../common/TeamTypeSelect/TeamTypeSelect.component';
@@ -47,7 +48,7 @@ const TeamsInfo = ({
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
 
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { email, owner, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,

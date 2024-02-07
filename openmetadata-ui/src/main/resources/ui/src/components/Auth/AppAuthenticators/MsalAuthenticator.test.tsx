@@ -18,7 +18,7 @@ import MsalAuthenticator from './MsalAuthenticator';
 
 jest.mock('../AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       authConfig: {},
       setIsAuthenticated: jest.fn(),
       onLogoutHandler: jest.fn(),

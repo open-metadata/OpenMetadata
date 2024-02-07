@@ -23,7 +23,8 @@ import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../generated/settings/settings';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   mockAccessData,
   mockTeamsData,
@@ -125,7 +126,7 @@ jest.mock(
   })
 );
 jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+  useApplicationStore: jest.fn(() => ({
     authConfig: {
       provider: AuthProvider.Basic,
     },
@@ -285,11 +286,13 @@ describe('Test User Component', () => {
   });
 
   it('Access Token tab should show user access component', async () => {
-    (useAuthContext as jest.Mock).mockImplementationOnce(() => ({
-      currentUser: {
-        name: 'test',
-      },
-    }));
+    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
+      () => ({
+        currentUser: {
+          name: 'test',
+        },
+      })
+    );
     mockParams.tab = UserPageTabs.ACCESS_TOKEN;
     render(
       <Users

@@ -36,7 +36,8 @@ import { Table } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
@@ -75,7 +76,7 @@ const EntitySummaryDetails = ({
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const displayVal = data.placeholderText || data.value;
 
   const ownerDropdown = allowTeamOwner ? (

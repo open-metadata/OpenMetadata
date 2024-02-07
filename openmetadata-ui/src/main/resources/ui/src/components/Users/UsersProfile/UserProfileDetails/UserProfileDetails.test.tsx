@@ -16,7 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../../generated/settings/settings';
 import { useAuth } from '../../../../hooks/authHooks';
 import { USER_DATA } from '../../../../mocks/User.mock';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import UserProfileDetails from './UserProfileDetails.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
@@ -35,7 +36,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+  useApplicationStore: jest.fn(() => ({
     authConfig: {
       provider: AuthProvider.Basic,
     },
@@ -137,11 +138,13 @@ describe('Test User Profile Details Component', () => {
   });
 
   it('should not render change password button and component in case of SSO', async () => {
-    (useAuthContext as jest.Mock).mockImplementationOnce(() => ({
-      authConfig: jest.fn().mockImplementationOnce(() => ({
-        provider: AuthProvider.Google,
-      })),
-    }));
+    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
+      () => ({
+        authConfig: jest.fn().mockImplementationOnce(() => ({
+          provider: AuthProvider.Google,
+        })),
+      })
+    );
 
     render(<UserProfileDetails {...mockPropsData} />, {
       wrapper: MemoryRouter,
@@ -159,12 +162,14 @@ describe('Test User Profile Details Component', () => {
       isAdminUser: false,
     }));
 
-    (useAuthContext as jest.Mock).mockImplementationOnce(() => ({
-      currentUser: {
-        name: 'admin',
-        id: '1234',
-      },
-    }));
+    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
+      () => ({
+        currentUser: {
+          name: 'admin',
+          id: '1234',
+        },
+      })
+    );
 
     render(<UserProfileDetails {...mockPropsData} />, {
       wrapper: MemoryRouter,

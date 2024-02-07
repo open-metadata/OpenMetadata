@@ -56,7 +56,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({ currentUser: mockUserData })),
+  useApplicationStore: jest.fn(() => ({ currentUser: mockUserData })),
 }));
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>

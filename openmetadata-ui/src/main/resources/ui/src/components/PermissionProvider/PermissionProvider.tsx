@@ -36,7 +36,8 @@ import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -63,7 +64,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
   const [loading, setLoading] = useState(false);

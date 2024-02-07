@@ -91,7 +91,7 @@ jest.mock(
 );
 
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest
+  useApplicationStore: jest
     .fn()
     .mockImplementation(() => ({ currentUser: mockUserData })),
 }));

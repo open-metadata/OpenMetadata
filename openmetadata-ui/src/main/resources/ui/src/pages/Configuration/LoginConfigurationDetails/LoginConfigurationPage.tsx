@@ -17,7 +17,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Loader from '../../../components/Loader/Loader';
@@ -32,13 +32,14 @@ import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.co
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { AuthProvider } from '../../../generated/settings/settings';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
-  const { authConfig } = useAuthContext();
+  const { authConfig } = useApplicationStore();
   const history = useHistory();
   const [loading, setLoading] = useState<boolean>(false);
   const [loginConfig, setLoginConfig] = useState<LoginConfiguration>();

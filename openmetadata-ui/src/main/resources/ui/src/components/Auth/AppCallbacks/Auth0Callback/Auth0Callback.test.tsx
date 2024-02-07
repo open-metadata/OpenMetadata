@@ -52,7 +52,7 @@ jest.mock('@auth0/auth0-react', () => ({
 
 jest.mock('../../../Auth/AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       authConfig: {},
       setIsAuthenticated: mockSetIsAuthenticated,
       handleSuccessfulLogin: mockHandleSuccessfulLogin,

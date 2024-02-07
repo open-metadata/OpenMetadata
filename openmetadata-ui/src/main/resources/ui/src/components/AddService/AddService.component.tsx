@@ -40,7 +40,8 @@ import {
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import ServiceDocPanel from '../common/ServiceDocPanel/ServiceDocPanel';
 import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -66,7 +67,7 @@ const AddService = ({
   handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { fetchAirflowStatus } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(

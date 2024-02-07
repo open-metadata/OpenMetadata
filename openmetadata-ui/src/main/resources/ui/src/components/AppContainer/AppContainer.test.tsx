@@ -18,7 +18,7 @@ import AppContainer from './AppContainer';
 
 jest.mock('../Auth/AuthProviders/AuthProvider', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       isAuthDisabled: false,
       isAuthenticated: true,
       signingIn: false,

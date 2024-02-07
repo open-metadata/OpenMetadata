@@ -18,14 +18,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/Loader/Loader';
 import LoginButton from '../../components/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/settings/settings';
-import localState from '../../utils/LocalStorageUtils';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
@@ -35,8 +36,13 @@ const SigninPage = () => {
   const [form] = Form.useForm();
 
   const history = useHistory();
-  const { authConfig, onLoginHandler, onLogoutHandler, isAuthenticated } =
-    useAuthContext();
+  const {
+    authConfig,
+    onLoginHandler,
+    onLogoutHandler,
+    isAuthenticated,
+    getOidcToken,
+  } = useApplicationStore();
 
   const { t } = useTranslation();
 
@@ -57,7 +63,7 @@ const SigninPage = () => {
   const { handleLogin, loginError } = useBasicAuth();
 
   const isTokenExpired = () => {
-    const token = localState.getOidcToken();
+    const token = getOidcToken();
     if (token) {
       try {
         const { exp } = jwtDecode<JwtPayload>(token);
