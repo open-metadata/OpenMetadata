@@ -35,6 +35,6 @@ jobs:
             - name: Assign e2e labels
               uses: actions/labeler@v4
               with:
-                repo-token: ${{ secrets.GITHUB_TOKEN }}
-                configuration-path: .github/e2eLabeler.yml
-                sync-labels: true
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+                  configuration-path: .github/e2eLabeler.yml
+                  sync-labels: true
