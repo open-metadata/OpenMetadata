@@ -1180,28 +1180,28 @@ export const WHATS_NEW = [
         description:
           'OpenMetadata has enhanced profiling capabilities, so you can generate your own metrics using custom SQL. You can create custom metrics for the profiler at the Table and Column levels.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/VmDohqt9J-o',
+        path: 'https://www.youtube.com/embed/1sx5aQKMSBI',
       },
       {
         title: 'Incidents Manager',
         description:
           'The Incidents Manager serves as a centralized hub, streamlining the resolution process and reinforcing the integrity of your data. It provides a comprehensive summary of unresolved failed test cases, offering details on failure severity and the resolution flow.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/G-Ww5TkQPy0',
+        path: 'https://www.youtube.com/embed/wz5vc1Al-b8',
       },
       {
-        title: 'Observability',
+        title: 'Data Observability',
         description:
           'In the 1.3 release, data observability alerts have been distinguished from the other general-purpose notifications, making it easy to get to the crucial alerts quickly.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/W491sM8sNQk',
+        path: 'https://www.youtube.com/embed/qc-3sZ_eU5Y',
       },
       {
         title: 'Knowledge Center (Exclusively for Collate)',
         description:
           'In the 1.3 release, OpenMetadata supports hierarchical pages to structure the articles for a cohesive view and access. Now, it is easier to associate the knowledge articles with data assets with just a few clicks.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/OVTEPvnzBbQ',
+        path: 'https://www.youtube.com/embed/atwTGm1hixg',
       },
     ],
     changeLogs: {
