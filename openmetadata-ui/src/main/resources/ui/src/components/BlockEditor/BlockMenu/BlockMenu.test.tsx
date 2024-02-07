@@ -106,11 +106,15 @@ const mockEditor = {
 
 describe('BlockMenu', () => {
   it('should render without crashing', () => {
+    const spyAddEventListener = jest.spyOn(document, 'addEventListener');
+
     render(<BlockMenu editor={mockEditor} />);
 
     expect(screen.getByTestId('menu-container')).toBeInTheDocument();
     expect(screen.getByTestId('delete-btn')).toBeInTheDocument();
     expect(screen.getByTestId('duplicate-btn')).toBeInTheDocument();
+
+    expect(spyAddEventListener).toHaveBeenCalled();
   });
 
   it('delete action should work', async () => {

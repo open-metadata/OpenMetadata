@@ -158,7 +158,7 @@ export const BlockMenu = (props: BlockMenuProps) => {
 
     return () => {
       document.removeEventListener('click', handleClickDragHandle);
-      document.addEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleClickDragHandle, handleKeyDown]);
 

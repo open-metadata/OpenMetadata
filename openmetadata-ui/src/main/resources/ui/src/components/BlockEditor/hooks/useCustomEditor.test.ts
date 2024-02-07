@@ -35,6 +35,15 @@ class MockEditor {
 }
 
 const mockOnUpdate = jest.fn();
+const mockOnBeforeCreate = jest.fn();
+const mockOnBlur = jest.fn();
+const mockOnCreate = jest.fn();
+const mockOnDestroy = jest.fn();
+const mockOnFocus = jest.fn();
+const mockOnSelectionUpdate = jest.fn();
+const mockOnTransaction = jest.fn();
+
+const spyRequestAnimationFrame = jest.spyOn(window, 'requestAnimationFrame');
 
 jest.mock('@tiptap/react', () => {
   return {
@@ -48,6 +57,7 @@ describe('useCustomEditor hook', () => {
     const { result } = renderHook(() => useCustomEditor({}));
 
     expect(result.current).toBeInstanceOf(MockEditor);
+    expect(spyRequestAnimationFrame).toHaveBeenCalled();
   });
 
   it('Should return the correct value with options', () => {
@@ -68,10 +78,24 @@ describe('useCustomEditor hook', () => {
     renderHook(() =>
       useCustomEditor({
         onUpdate: mockOnUpdate,
+        onBeforeCreate: mockOnBeforeCreate,
+        onBlur: mockOnBlur,
+        onCreate: mockOnCreate,
+        onDestroy: mockOnDestroy,
+        onFocus: mockOnFocus,
+        onSelectionUpdate: mockOnSelectionUpdate,
+        onTransaction: mockOnTransaction,
       })
     );
 
     expect(mockOnUpdate).toHaveBeenCalled();
+    expect(mockOnBeforeCreate).toHaveBeenCalled();
+    expect(mockOnBlur).toHaveBeenCalled();
+    expect(mockOnCreate).toHaveBeenCalled();
+    expect(mockOnDestroy).toHaveBeenCalled();
+    expect(mockOnFocus).toHaveBeenCalled();
+    expect(mockOnSelectionUpdate).toHaveBeenCalled();
+    expect(mockOnTransaction).toHaveBeenCalled();
   });
 
   it('Should update the editor event handlers on rerender', () => {
@@ -105,5 +129,12 @@ describe('useCustomEditor hook', () => {
     renderHook(() => useCustomEditor({}));
 
     expect(mockOnUpdate).not.toHaveBeenCalled();
+    expect(mockOnBeforeCreate).not.toHaveBeenCalled();
+    expect(mockOnBlur).not.toHaveBeenCalled();
+    expect(mockOnCreate).not.toHaveBeenCalled();
+    expect(mockOnDestroy).not.toHaveBeenCalled();
+    expect(mockOnFocus).not.toHaveBeenCalled();
+    expect(mockOnSelectionUpdate).not.toHaveBeenCalled();
+    expect(mockOnTransaction).not.toHaveBeenCalled();
   });
 });
