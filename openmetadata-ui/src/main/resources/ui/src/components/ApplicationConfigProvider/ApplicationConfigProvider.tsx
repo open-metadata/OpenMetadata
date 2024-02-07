@@ -33,7 +33,6 @@ import { EntityUnion } from '../Explore/ExplorePage.interface';
 export interface ApplicationContextConfig
   extends LogoConfiguration,
     LoginConfiguration {
-  routeElements?: ReactNode;
   userProfilePics: Record<string, User>;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
   cachedEntityData: Record<string, EntityUnion>;
@@ -67,12 +66,10 @@ export const useApplicationConfigContext = () =>
 
 interface ApplicationConfigProviderProps {
   children: ReactNode;
-  routeElements?: ReactNode;
 }
 
 const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
-  routeElements,
 }) => {
   const location = useLocation();
   const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
@@ -153,7 +150,6 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   const contextValue = useMemo(
     () => ({
       ...applicationConfig,
-      routeElements,
       selectedPersona,
       updateSelectedPersona,
       userProfilePics,
@@ -164,7 +160,6 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }),
     [
       applicationConfig,
-      routeElements,
       selectedPersona,
       updateSelectedPersona,
       userProfilePics,
