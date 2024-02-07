@@ -307,10 +307,9 @@ const checkActionOrFilterDetails = (filters) => {
       if (!isEmpty(filter.arguments)) {
         filter.arguments.forEach((argument) => {
           // Check filter arguments
-          // TODO: uncomment this when backend API gives the name of the argument
-          //   cy.get(`[data-testid="argument-container-${argument.name}"]`).should(
-          //     'exist'
-          //   );
+          cy.get(`[data-testid="argument-container-${argument.name}"]`).should(
+            'exist'
+          );
           argument.input.forEach((val) => {
             cy.get('[data-testid="argument-value"]').should('contain', val);
           });
