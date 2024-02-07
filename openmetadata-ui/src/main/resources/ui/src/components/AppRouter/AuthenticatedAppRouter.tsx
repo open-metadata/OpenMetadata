@@ -29,13 +29,13 @@ import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSet
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -507,7 +507,7 @@ const ApplicationPageV1 = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const { routeElements } = useApplicationConfigContext();
+  const RouteElements = applicationRoutesClass.getRouteElements();
 
   const glossaryPermission = useMemo(
     () =>
@@ -1340,7 +1340,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
       />
-      {routeElements}
+      {RouteElements && <RouteElements />}
       <Route
         exact
         path={[
