@@ -31,3 +31,4 @@ export const DATABASE_VERSION_DATA = {
   id: 'data version id',
 };
 export const CURRENT_TABLE_PAGE = 5;
+export const CUSTOM_PROPERTY_TAB_NAME = 'label.custom-property-plural';

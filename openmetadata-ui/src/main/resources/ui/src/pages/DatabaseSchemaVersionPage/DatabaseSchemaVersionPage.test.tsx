@@ -17,6 +17,7 @@ import DatabaseSchemaVersionPage from './DatabaseSchemaVersionPage';
 import {
   CURRENT_TABLE_PAGE,
   CUSTOM_PROPERTY_TABLE,
+  CUSTOM_PROPERTY_TAB_NAME,
   DATABASE_SCHEMA_ID,
   DATA_ASSET_VERSION_HEADER,
   DATA_PRODUCT_CONTAINER,
@@ -75,11 +76,13 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+const mockGetEntityPermissionByFqn = jest.fn().mockReturnValue({
+  ViewAll: true,
+});
+
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      ViewAll: true,
-    }),
+    getEntityPermissionByFqn: jest.fn(() => mockGetEntityPermissionByFqn()),
   }),
 }));
 
@@ -182,5 +185,44 @@ describe('DatabaseSchemaVersionPage', () => {
     expect(
       screen.getByText(`currentTablesPage is ${CURRENT_TABLE_PAGE}`)
     ).toBeInTheDocument();
+  });
+
+  it('tab change, version handler, back handler should work', async () => {
+    await act(async () => {
+      render(<DatabaseSchemaVersionPage />);
+    });
+
+    // for tab change
+    userEvent.click(
+      screen.getByRole('tab', {
+        name: CUSTOM_PROPERTY_TAB_NAME,
+      })
+    );
+
+    // for back handler
+    userEvent.click(
+      screen.getByRole('button', {
+        name: DATA_ASSET_VERSION_HEADER,
+      })
+    );
+
+    // for version handler
+    userEvent.click(
+      screen.getByRole('button', {
+        name: ENTITY_VERSION_TIMELINE,
+      })
+    );
+
+    expect(mockPush).toHaveBeenCalledTimes(3);
+  });
+
+  it('should show ErrorPlaceHolder if not have view permission', async () => {
+    mockGetEntityPermissionByFqn.mockResolvedValueOnce({});
+
+    await act(async () => {
+      render(<DatabaseSchemaVersionPage />);
+    });
+
+    expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
   });
 });
