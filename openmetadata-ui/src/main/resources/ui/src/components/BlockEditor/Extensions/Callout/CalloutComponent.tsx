@@ -26,6 +26,7 @@ const PopoverContent = ({
       {Object.entries(CALLOUT_CONTENT).map(([key, CalloutIcon]) => {
         return (
           <Button
+            data-testid={`callout-${key}`}
             icon={
               <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
             }
@@ -54,6 +55,7 @@ const CalloutComponent: FC<NodeViewProps> = ({
     <NodeViewWrapper as="div" className="om-react-node">
       <div
         className={`om-callout-node om-callout-node-${calloutType}`}
+        data-testid="callout-node"
         data-type={extension.name}>
         <Popover
           align={{ targetOffset: [0, 16] }}
@@ -72,11 +74,17 @@ const CalloutComponent: FC<NodeViewProps> = ({
           showArrow={false}
           trigger="click"
           onOpenChange={setIsPopupVisible}>
-          <Button className="callout-type-btn" type="text">
+          <Button
+            className="callout-type-btn"
+            data-testid={`callout-${calloutType}-btn`}
+            type="text">
             <CallOutIcon width={28} />
           </Button>
         </Popover>
-        <NodeViewContent className="om-callout-node-content" />
+        <NodeViewContent
+          className="om-callout-node-content"
+          data-testid="callout-content"
+        />
       </div>
     </NodeViewWrapper>
   );
