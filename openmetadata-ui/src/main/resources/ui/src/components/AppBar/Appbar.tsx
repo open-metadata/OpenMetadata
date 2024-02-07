@@ -26,7 +26,7 @@ import { ReactComponent as IconExternalLink } from '../../assets/svg/external-li
 import { ReactComponent as IconTour } from '../../assets/svg/icon-tour.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
-import { ReactComponent as IconWhatsNew } from '../../assets/svg/whatsNew.svg';
+import { ReactComponent as IconWhatsNew } from '../../assets/svg/whats-new.svg';
 import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import {
