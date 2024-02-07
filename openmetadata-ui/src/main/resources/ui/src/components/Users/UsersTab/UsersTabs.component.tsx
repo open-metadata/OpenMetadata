@@ -134,20 +134,22 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         rowKey="fullyQualifiedName"
         size="small"
       />
-      <Modal
-        cancelText={t('label.cancel')}
-        data-testid="remove-confirmation-modal"
-        okText={t('label.confirm')}
-        open={Boolean(removeUserDetails?.state)}
-        title={t('label.removing-user')}
-        onCancel={handleRemoveCancel}
-        onOk={handleRemoveConfirm}>
-        {t('message.are-you-sure-want-to-text', {
-          text: t('label.remove-entity-lowercase', {
-            entity: removeUserDetails?.user.name,
-          }),
-        })}
-      </Modal>
+      {Boolean(removeUserDetails?.state) && (
+        <Modal
+          cancelText={t('label.cancel')}
+          data-testid="remove-confirmation-modal"
+          okText={t('label.confirm')}
+          open={Boolean(removeUserDetails?.state)}
+          title={t('label.removing-user')}
+          onCancel={handleRemoveCancel}
+          onOk={handleRemoveConfirm}>
+          {t('message.are-you-sure-want-to-text', {
+            text: t('label.remove-entity-lowercase', {
+              entity: removeUserDetails?.user.name,
+            }),
+          })}
+        </Modal>
+      )}
     </>
   );
 };
