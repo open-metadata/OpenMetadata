@@ -66,6 +66,7 @@ function EditConnectionFormPage() {
     const configData = {
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
+      displayName: serviceDetails?.displayName,
       description: serviceDetails?.description,
       owner: serviceDetails?.owner,
       connection: {
