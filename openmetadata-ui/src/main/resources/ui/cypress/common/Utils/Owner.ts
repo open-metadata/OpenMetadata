@@ -72,7 +72,7 @@ export const addOwner = (ownerName: string, dataTestId?: string) => {
 
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*${encodeURI(ownerName)}*&index=user_search_index`,
+    `api/v1/search/query?q=*&index=user_search_index*`,
     'searchOwner'
   );
 
@@ -122,13 +122,17 @@ export const updateOwner = (ownerName: string, dataTestId?: string) => {
 };
 
 export const removeOwner = (ownerName: string, dataTestId?: string) => {
-  cy.get('[data-testid="edit-owner"]').click();
+  cy.get('[data-testid="edit-owner"]').scrollIntoView().click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
-  cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
+  cy.get('[data-testid="select-owner-tabs"]').should('be.visible');
+
+  cy.get(
+    '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
+  ).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
