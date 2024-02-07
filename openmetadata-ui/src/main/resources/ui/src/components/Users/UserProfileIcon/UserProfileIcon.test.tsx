@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { getImageWithResolutionAndFallback } from '../../../utils/ProfilerUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import { mockUserData } from '../mocks/User.mocks';
+import { mockPersonaData, mockUserData } from '../mocks/User.mocks';
 import { UserProfileIcon } from './UserProfileIcon.component';
 
 const mockLogout = jest.fn();
@@ -77,13 +78,13 @@ describe('UserProfileIcon', () => {
     expect(getByText('label.default')).toBeInTheDocument();
   });
 
-  it('should display image if image url is valid', () => {
+  it('should display image if profile pic is valid', () => {
     const { getByTestId } = render(<UserProfileIcon />);
 
-    expect(getByTestId('app-bar-user-avatar')).toBeInTheDocument();
+    expect(getByTestId('app-bar-user-profile-pic')).toBeInTheDocument();
   });
 
-  it('should not display avatar if image url is valid', () => {
+  it('should not display profile pic if image url is invalid', () => {
     (getImageWithResolutionAndFallback as jest.Mock).mockImplementation(
       () => undefined
     );
@@ -116,5 +117,57 @@ describe('UserProfileIcon', () => {
     teamLabels.forEach((label) => {
       expect(label).toHaveTextContent('--');
     });
+  });
+
+  it('should show checked if selected persona is true', async () => {
+    (useAuthContext as jest.Mock).mockImplementation(() => ({
+      currentUser: {
+        ...mockUserData,
+        personas: mockPersonaData,
+      },
+      onLogoutHandler: mockLogout,
+    }));
+    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
+      selectedPersona: {
+        id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+        type: 'persona',
+      },
+      updateSelectedPersona: jest.fn(),
+    }));
+    const { getByTestId } = render(<UserProfileIcon />);
+    await act(async () => {
+      userEvent.click(getByTestId('dropdown-profile'));
+    });
+    await act(async () => {
+      fireEvent.click(getByTestId('persona-label'));
+    });
+
+    expect(getByTestId('check-outlined')).toBeInTheDocument();
+  });
+
+  it('should not show checked if selected persona is true', async () => {
+    (useAuthContext as jest.Mock).mockImplementation(() => ({
+      currentUser: {
+        ...mockUserData,
+        personas: mockPersonaData,
+      },
+      onLogoutHandler: mockLogout,
+    }));
+    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
+      selectedPersona: {
+        id: 'test',
+        type: 'persona',
+      },
+      updateSelectedPersona: jest.fn(),
+    }));
+    const { getByTestId, queryByTestId } = render(<UserProfileIcon />);
+    await act(async () => {
+      userEvent.click(getByTestId('dropdown-profile'));
+    });
+    await act(async () => {
+      fireEvent.click(getByTestId('persona-label'));
+    });
+
+    expect(queryByTestId('check-outlined')).not.toBeInTheDocument();
   });
 });

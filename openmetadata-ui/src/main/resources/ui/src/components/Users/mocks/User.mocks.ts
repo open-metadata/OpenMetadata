@@ -1104,3 +1104,14 @@ export const mockAccessData = {
   tokenType: TokenType.PersonalAccessToken,
   userId: '445291f4d62c1bae',
 };
+export const mockPersonaData = [
+  {
+    description: 'Person-04',
+    displayName: 'Person-04',
+    fullyQualifiedName: 'Person-04',
+    href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
+    id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+    name: 'Person-04',
+    type: 'persona',
+  },
+];
