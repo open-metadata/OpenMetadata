@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LIGHT_GREEN_COLOR } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { WidgetWidths } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
@@ -88,7 +89,7 @@ function AddWidgetModal({
                 <CheckOutlined
                   className="m-l-xs"
                   data-testid={`${widget.name}-check-icon`}
-                  style={{ color: '#4CAF50' }}
+                  style={{ color: LIGHT_GREEN_COLOR }}
                 />
               )}
             </Space>

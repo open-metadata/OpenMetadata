@@ -208,6 +208,71 @@ export const mockTeamsData = {
   ],
   paging: { total: 7 },
 };
+export const mockUsersTabData = {
+  id: 'f281e7fd-5fd3-4279-8a2d-ade80febd743',
+  name: 'aaron_johnson0',
+  fullyQualifiedName: 'aaron_johnson0',
+  displayName: 'Aaron Johnson',
+  version: 1.5,
+  updatedAt: 1707198736848,
+  updatedBy: 'admin',
+  email: 'aaron_johnson0@gmail.com',
+  href: 'http://localhost:8585/api/v1/users/f281e7fd-5fd3-4279-8a2d-ade80febd743',
+  isAdmin: false,
+  teams: [
+    {
+      id: '35c03c5c-5160-41af-b08d-ef2b2b9e6adf',
+      type: 'team',
+      name: 'Sales',
+      fullyQualifiedName: 'Sales',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/teams/35c03c5c-5160-41af-b08d-ef2b2b9e6adf',
+    },
+  ],
+  changeDescription: {
+    fieldsAdded: [
+      {
+        name: 'teams',
+        newValue:
+          '[{"id":"35c03c5c-5160-41af-b08d-ef2b2b9e6adf","type":"team","name":"Sales","fullyQualifiedName":"Sales","deleted":false}]',
+      },
+    ],
+    fieldsUpdated: [],
+    fieldsDeleted: [
+      {
+        name: 'teams',
+        oldValue: '[{"id":"f39f326a-81a1-42ca-976]',
+      },
+    ],
+    previousVersion: 1.4,
+  },
+  deleted: false,
+  roles: [
+    {
+      id: 'e4b20aef-c6c4-4416-aaae-f60185c7cac0',
+      type: 'role',
+      name: 'DataSteward',
+      fullyQualifiedName: 'DataSteward',
+      description: 'Users with Data Steward',
+      displayName: 'Data Steward',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/roles/e4b20aef-c6c4-4416-aaae-f60185c7cac0',
+    },
+  ],
+  inheritedRoles: [
+    {
+      id: '5f1445a7-c299-4dde-8c5b-704c6cd68ee6',
+      type: 'role',
+      name: 'DataConsumer',
+      fullyQualifiedName: 'DataConsumer',
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      displayName: 'Data Consumer',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/roles/5f1445a7-c299-4dde-8c5b-704c6cd68ee6',
+    },
+  ],
+};
 
 export const mockUserRole = {
   data: [
@@ -1039,3 +1104,14 @@ export const mockAccessData = {
   tokenType: TokenType.PersonalAccessToken,
   userId: '445291f4d62c1bae',
 };
+export const mockPersonaData = [
+  {
+    description: 'Person-04',
+    displayName: 'Person-04',
+    fullyQualifiedName: 'Person-04',
+    href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
+    id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+    name: 'Person-04',
+    type: 'persona',
+  },
+];
