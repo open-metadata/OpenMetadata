@@ -614,7 +614,7 @@ public class EventSubscriptionResource
     List<SubscriptionDestination> result = new ArrayList<>();
     subscriptions.forEach(
         subscription -> {
-          if (subscription.getId() == null) {
+          if (nullOrEmpty(subscription.getId())) {
             subscription.withId(UUID.randomUUID());
           }
           result.add(subscription);
