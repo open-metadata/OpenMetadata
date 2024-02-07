@@ -507,7 +507,7 @@ const ApplicationPageV1 = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const routeElements = applicationRoutesClass.getRouteElements();
+  const RouteElements = applicationRoutesClass.getRouteElements();
 
   const glossaryPermission = useMemo(
     () =>
@@ -1340,7 +1340,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
       />
-      {routeElements}
+      {RouteElements && <RouteElements />}
       <Route
         exact
         path={[

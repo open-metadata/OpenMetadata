@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
+
+import { FC } from 'react';
 
 class ApplicationRoutesClassBase {
-  public getRouteElements(): ReactNode {
+  public getRouteElements(): FC | null {
     return null;
   }
 }
