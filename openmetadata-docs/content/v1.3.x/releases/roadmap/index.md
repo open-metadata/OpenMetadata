@@ -26,6 +26,7 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Ingestion" %}
 - OpenSearch Connector
+- SAS Connector
 - Include Tags for Athena & Datalake connector
 - Support for Tableau & Looker data models
 {% /tile %}
