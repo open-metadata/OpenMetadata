@@ -443,12 +443,12 @@ const NavBar = ({
               <Col className="flex-center">
                 <DomainIcon
                   className="d-flex text-base-color"
-                  height={20}
-                  name="folder"
-                  width={20}
+                  height={24}
+                  name="domain"
+                  width={24}
                 />
               </Col>
-              <Col>{activeDomain}</Col>
+              <Col className="flex-center">{activeDomain}</Col>
               <Col className="flex-center">
                 <DropDownIcon height={14} width={14} />
               </Col>
@@ -499,7 +499,7 @@ const NavBar = ({
               <Icon
                 className="align-middle"
                 component={IconBell}
-                style={{ fontSize: '20px' }}
+                style={{ fontSize: '24px' }}
               />
             </Badge>
           </Dropdown>
@@ -512,7 +512,7 @@ const NavBar = ({
             <Icon
               className="align-middle"
               component={Help}
-              style={{ fontSize: '20px' }}
+              style={{ fontSize: '24px' }}
             />
           </Dropdown>
 
