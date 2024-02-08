@@ -20,6 +20,7 @@ import {
   AsyncFetchListValues,
   RenderSettings,
 } from 'react-awesome-query-builder';
+import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -46,7 +47,6 @@ import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
 import { getEntityName } from './EntityUtils';
 import searchClassBase from './SearchClassBase';
-import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
   return searchClassBase.getDropDownItems(index);
@@ -139,14 +139,13 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     );
   } else if (type === 'delGroup') {
     return (
-      <SVGIcons
+      <Icon
         alt={i18next.t('label.delete-entity', {
           entity: i18next.t('label.group'),
         })}
-        className="action action--DELETE cursor-pointer "
-        height={16}
-        icon={Icons.DELETE_COLORED}
-        width={16}
+        className="action action--DELETE cursor-pointer align-middle"
+        component={IconDeleteColored}
+        style={{ fontSize: '16px' }}
         onClick={props?.onClick as () => void}
       />
     );

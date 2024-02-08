@@ -32,7 +32,10 @@ action:
   module_name: metadata.great_expectations.action
   class_name: OpenMetadataValidationAction
   config_file_path: path/to/ometa/config/file/
-  ometa_service_name: my_service_name
+  database_service_name: <serviceName in OM>
+  database_name: <databaseName in OM> 
+  schema_name: <schemaName in OM>
+  table_name: <tableName in OM> 
 [...]
 ```
 
@@ -43,7 +46,10 @@ In your checkpoint yaml file, you will need to add the above code block in `acti
 - `module_name`: this is OpenMetadata  submodule name
 - `class_name`: this is the name of the class that will be used to execute the custom action
 - `config_file_path`: this is the path to your `config.yaml` file that holds the configuration of your OpenMetadata server
-- `ometa_service_name`: [Optional] this is an optional parameter. If not specified and 2 tables have the same name in 2 different OpenMetadata services, the custom action will fail
+- `database_service_name`: [Optional] this is an optional parameter. If not specified and 2 tables have the same name in 2 different OpenMetadata services, the custom action will fail
+- `database_name`: [Optional] only required for `RuntimeDataBatchSpec` execution (e.g. run GX against a dataframe). 
+- `schema_name`: [Optional] only required for `RuntimeDataBatchSpec` execution (e.g. run GX against a dataframe). 
+- `table_name`: [Optional] only required for `RuntimeDataBatchSpec` execution (e.g. run GX against a dataframe). 
 
 {% image
 src={"/images/v1.3/features/integrations/ge-checkpoint-file.gif"}
@@ -66,7 +72,7 @@ data_context.run_checkpoint(
           "module_name": "metadata.great_expectations.action",
           "class_name": "OpenMetadataValidationAction",
           "config_file_path": "path/to/ometa/config/file/",
-          "ometa_service_name": "my_service_name",
+          "database_service_name": "my_service_name",
         },
     ,}
 )
