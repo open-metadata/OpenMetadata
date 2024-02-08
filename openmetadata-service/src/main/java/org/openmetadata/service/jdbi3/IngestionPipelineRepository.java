@@ -232,7 +232,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public ResultList<PipelineStatus> listPipelineStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
-    IngestionPipeline ingestionPipeline = getByName(null, ingestionPipelineFQN, getFields("service"));
+    IngestionPipeline ingestionPipeline =
+        getByName(null, ingestionPipelineFQN, getFields("service"));
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
             getResultsFromAndToTimestamps(
