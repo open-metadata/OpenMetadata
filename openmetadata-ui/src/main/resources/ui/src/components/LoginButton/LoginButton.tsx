@@ -28,17 +28,26 @@ const LoginButton = ({
   ssoBrandLogo,
   onClick,
 }: LoginButtonProps) => {
+  const getImageElement = () => (
+    <img
+      alt={`${ssoBrandName} Logo`}
+      height="30px"
+      src={ssoBrandLogo}
+      width="30px"
+    />
+  );
+
   const svgIcon = ssoBrandLogo ? (
     <Icon
       alt={`${ssoBrandName} Logo`}
       className="align-middle"
-      component={() => <img height="30px" src={ssoBrandLogo} width="30px" />}
+      component={getImageElement}
     />
   ) : null;
 
   return (
     <Button className="signin-button m-x-auto" icon={svgIcon} onClick={onClick}>
-      <span className="font-medium text-grey-muted text-xl">
+      <span className="font-medium text-grey-muted text-xl m-l-0">
         {t('label.sign-in-with-sso', { sso: ssoBrandName })}
       </span>
     </Button>
