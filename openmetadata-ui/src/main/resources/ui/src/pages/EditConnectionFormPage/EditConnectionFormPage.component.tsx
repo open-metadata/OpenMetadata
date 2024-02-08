@@ -63,6 +63,7 @@ function EditConnectionFormPage() {
   const handleConfigUpdate = async (updatedData: ConfigData) => {
     const configData = {
       name: serviceDetails?.name,
+      displayName: serviceDetails?.displayName,
       serviceType: serviceDetails?.serviceType,
       description: serviceDetails?.description,
       owner: serviceDetails?.owner,
