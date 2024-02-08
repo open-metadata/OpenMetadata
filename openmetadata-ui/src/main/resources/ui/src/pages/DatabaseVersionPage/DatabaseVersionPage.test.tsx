@@ -13,27 +13,26 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { EntityTabs } from '../../enums/entity.enum';
 import DatabaseVersionPage from './DatabaseVersionPage';
-import {
-  CUSTOM_PROPERTY_TABLE,
-  CUSTOM_PROPERTY_TAB_NAME,
-  DATABASE_ID,
-  DATABASE_SCHEMA_TABLE,
-  DATA_ASSET_VERSION_HEADER,
-  DATA_PRODUCT_CONTAINER,
-  DESCRIPTION_V1,
-  ENTITY_VERSION_TIMELINE,
-  ERROR_PLACEHOLDER,
-  LOADER,
-  MOCK_FQN,
-  MOCK_PARAMS,
-  TAGS_CONTAINER_V2,
-} from './mocks/DatabaseVersionPage.mock';
+
+const ERROR_PLACEHOLDER = 'ErrorPlaceHolder';
+const DATA_ASSET_VERSION_HEADER = 'DataAssetVersionHeader';
+const CUSTOM_PROPERTY_TABLE = 'CustomPropertyTable';
+const DATA_PRODUCT_CONTAINER = 'DataProductsContainer';
+const ENTITY_VERSION_TIMELINE = 'EntityVersionTimeLine';
+const DESCRIPTION_V1 = 'DescriptionV1';
+const DATABASE_SCHEMA_TABLE = 'DatabaseSchemaTable';
+const TAGS_CONTAINER_V2 = 'TagsContainerV2';
+const CUSTOM_PROPERTY_TAB_NAME = 'label.custom-property-plural';
 
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn(() => MOCK_PARAMS),
+  useParams: jest.fn(() => ({
+    version: '1.2',
+    tab: EntityTabs.SCHEMA,
+  })),
   useHistory: jest.fn(() => ({
     push: mockPush,
   })),
@@ -91,7 +90,7 @@ jest.mock(
 );
 
 jest.mock('../../components/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>{LOADER}</div>)
+  jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
@@ -117,12 +116,12 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
 );
 
 jest.mock('../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockImplementation(() => ({ fqn: MOCK_FQN })),
+  useFqn: jest.fn().mockImplementation(() => ({ fqn: 'mockFQN' })),
 }));
 
 const mockGetDatabaseDetailsByFQN = jest
   .fn()
-  .mockResolvedValue({ id: DATABASE_ID });
+  .mockResolvedValue({ id: 'database id' });
 const mockGetDatabaseVersionData = jest.fn().mockResolvedValue({});
 const mockGetDatabaseVersions = jest.fn().mockResolvedValue({});
 
