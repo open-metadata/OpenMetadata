@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { waitFakeTimer } from '../../test/unit/utils/testUtils';
+import { waitFakeTimer } from '../../test/unit/utils/jestTestUtils';
 import ResetPassword from './ResetPassword.component';
 
 jest.mock('react-router-dom', () => {
