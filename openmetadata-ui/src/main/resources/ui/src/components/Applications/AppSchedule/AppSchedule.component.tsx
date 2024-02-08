@@ -225,7 +225,7 @@ const AppSchedule = ({
           }}
           includePeriodOptions={initialOptions}
           initialData={
-            (appData.appSchedule as AppScheduleClass).cronExpression ?? ''
+            (appData.appSchedule as AppScheduleClass)?.cronExpression ?? ''
           }
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}
