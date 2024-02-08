@@ -81,7 +81,7 @@ jest.mock(
 jest.mock('../../components/AddDataQualityTest/TestSuiteIngestion', () =>
   jest.fn().mockImplementation(({ onCancel }) => (
     <div>
-      TestSuiteIngestion.component
+      <p>TestSuiteIngestion.component</p>
       <button data-testid="back-btn" onClick={onCancel}>
         Back
       </button>
@@ -109,7 +109,7 @@ describe('TestSuiteIngestionPage', () => {
 
   it('should render error placeholder', async () => {
     (getTestSuiteByName as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
+      Promise.reject(new Error('Error'))
     );
 
     await act(async () => {
