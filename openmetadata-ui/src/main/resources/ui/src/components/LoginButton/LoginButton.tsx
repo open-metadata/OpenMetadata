@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
-import SVGIcons from '../../utils/SvgUtils';
 import './login-button.style.less';
 
 interface LoginButtonProps {
@@ -28,18 +28,26 @@ const LoginButton = ({
   ssoBrandLogo,
   onClick,
 }: LoginButtonProps) => {
-  const svgIcon = ssoBrandLogo ? (
-    <SVGIcons
+  const getImageElement = () => (
+    <img
       alt={`${ssoBrandName} Logo`}
-      height="30"
-      icon={ssoBrandLogo}
-      width="30"
+      height="30px"
+      src={ssoBrandLogo}
+      width="30px"
+    />
+  );
+
+  const svgIcon = ssoBrandLogo ? (
+    <Icon
+      alt={`${ssoBrandName} Logo`}
+      className="align-middle"
+      component={getImageElement}
     />
   ) : null;
 
   return (
     <Button className="signin-button m-x-auto" icon={svgIcon} onClick={onClick}>
-      <span className="font-medium text-grey-muted text-xl">
+      <span className="font-medium text-grey-muted text-xl m-l-0">
         {t('label.sign-in-with-sso', { sso: ssoBrandName })}
       </span>
     </Button>

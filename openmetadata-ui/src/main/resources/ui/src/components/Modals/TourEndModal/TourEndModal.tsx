@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { ReactComponent as LogoMonogram } from '../../../assets/svg/logo-monogram.svg';
 import { TourEndModalProps } from './TourEndModal.interface';
 
 const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
@@ -35,12 +36,12 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
       open={visible}>
       <Row className="text-center" gutter={[16, 16]}>
         <Col className="mt-4" span={24}>
-          <SVGIcons
+          <Icon
             alt={t('label.open-metadata-logo')}
+            className="align-middle"
+            component={LogoMonogram}
             data-testid="omd-logo"
-            height="70"
-            icon={Icons.LOGO_SMALL}
-            width="70"
+            style={{ fontSize: '70px' }}
           />
         </Col>
         <Col span={24}>

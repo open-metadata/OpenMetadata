@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import IconAuth0 from '../../assets/img/icon-auth0.png';
+import IconCognito from '../../assets/img/icon-aws-cognito.png';
+import IconAzure from '../../assets/img/icon-azure.png';
+import IconGoogle from '../../assets/img/icon-google.png';
+import IconOkta from '../../assets/img/icon-okta.png';
 import loginBG from '../../assets/img/login-bg.png';
+import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -26,7 +33,6 @@ import LoginButton from '../../components/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import localState from '../../utils/LocalStorageUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
@@ -84,7 +90,7 @@ const SigninPage = () => {
     let ssoBrandName;
     switch (authConfig?.provider) {
       case AuthProvider.Google: {
-        ssoBrandLogo = Icons.GOOGLE_ICON;
+        ssoBrandLogo = IconGoogle;
         ssoBrandName = 'Google';
 
         break;
@@ -104,25 +110,25 @@ const SigninPage = () => {
         break;
       }
       case AuthProvider.Okta: {
-        ssoBrandLogo = Icons.OKTA_ICON;
+        ssoBrandLogo = IconOkta;
         ssoBrandName = 'Okta';
 
         break;
       }
       case AuthProvider.AwsCognito: {
-        ssoBrandLogo = Icons.COGNITO_ICON;
+        ssoBrandLogo = IconCognito;
         ssoBrandName = 'AWS Cognito';
 
         break;
       }
       case AuthProvider.Azure: {
-        ssoBrandLogo = Icons.AZURE_ICON;
+        ssoBrandLogo = IconAzure;
         ssoBrandName = 'Azure';
 
         break;
       }
       case AuthProvider.Auth0: {
-        ssoBrandLogo = Icons.AUTH0_ICON;
+        ssoBrandLogo = IconAuth0;
         ssoBrandName = 'Auth0';
 
         break;
@@ -251,11 +257,9 @@ const SigninPage = () => {
                     data-testid="login-error-container">
                     <div className="flex global-border rounded-4 p-sm error-alert ">
                       <div className="m-r-xs">
-                        <SVGIcons
-                          alt="failed"
-                          className="w-5"
-                          data-testid="failed-icon"
-                          icon={Icons.FAIL_BADGE}
+                        <Icon
+                          component={IconFailBadge}
+                          style={{ fontSize: '20px' }}
                         />
                       </div>
                       <p data-testid="success-line">
