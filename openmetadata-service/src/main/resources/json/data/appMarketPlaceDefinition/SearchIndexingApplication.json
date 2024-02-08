@@ -49,6 +49,7 @@
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
+      "storageService",
       "dataProduct"
     ],
     "recreateIndex": true,

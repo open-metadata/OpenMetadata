@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
@@ -18,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -43,7 +45,6 @@ import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 const KPIList = () => {
   const history = useHistory();
@@ -182,7 +183,7 @@ const KPIList = () => {
                   data-testid={`delete-action-${getEntityName(record)}`}
                   disabled={!isAdminUser}
                   icon={
-                    <SVGIcons alt="delete" icon={Icons.DELETE} width="16px" />
+                    <Icon component={IconDelete} style={{ fontSize: '16px' }} />
                   }
                   type="text"
                   onClick={() => setSelectedKpi(record)}
