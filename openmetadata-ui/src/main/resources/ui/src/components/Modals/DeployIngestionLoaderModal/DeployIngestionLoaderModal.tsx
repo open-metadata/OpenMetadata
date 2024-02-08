@@ -64,7 +64,7 @@ const DeployIngestionLoaderModal = ({
                   <Icon
                     className="align-middle"
                     component={IconCreateIngestion}
-                    style={{ fontSize: '16px' }}
+                    style={{ fontSize: '26px' }}
                   />
                 </Typography.Text>
               </Typography.Text>
@@ -79,7 +79,7 @@ const DeployIngestionLoaderModal = ({
                   <Icon
                     className="align-middle"
                     component={IconDeployIngestion}
-                    style={{ fontSize: '16px' }}
+                    style={{ fontSize: '26px' }}
                   />
                 </Typography.Text>
               </Typography.Text>
