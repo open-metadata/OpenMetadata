@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { waitFakeTimer } from '../../test/unit/utils/jestTestUtils';
 import ResetPassword from './ResetPassword.component';
 
 jest.mock('react-router-dom', () => {
@@ -82,8 +81,8 @@ describe('ResetPassword', () => {
       fireEvent.change(password, { target: { value: 'Password@123' } });
       fireEvent.change(confirmPwd, { target: { value: 'Password@1234' } });
       fireEvent.click(submitButton);
-      await waitFakeTimer(2000, 2000);
     });
+    jest.advanceTimersByTime(20);
 
     expect(
       await screen.findByText('label.password-not-match')
@@ -98,8 +97,8 @@ describe('ResetPassword', () => {
 
     await act(async () => {
       fireEvent.click(submitButton);
-      await waitFakeTimer();
     });
+    jest.advanceTimersByTime(20);
 
     expect(
       await screen.findAllByText('message.field-text-is-required')
