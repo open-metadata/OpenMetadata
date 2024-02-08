@@ -108,7 +108,6 @@ export const AuthProvider = ({
     setHelperFunctionsRef,
     setCurrentUser,
     updateNewUser: setNewUserProfile,
-    oidcIdToken: oidcUserToken,
     setIsAuthenticated: setIsUserAuthenticated,
     setLoadingIndicator: setLoading,
     authConfig,
@@ -205,6 +204,7 @@ export const AuthProvider = ({
       .then((res) => {
         if (res) {
           setCurrentUser(res);
+          setIsUserAuthenticated(true);
         } else {
           resetUserDetails();
         }
@@ -512,7 +512,7 @@ export const AuthProvider = ({
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
           updateAuthInstance(configJson);
-          if (!oidcUserToken) {
+          if (!getOidcToken()) {
             if (isProtectedRoute(location.pathname)) {
               storeRedirectPath(location.pathname);
             }

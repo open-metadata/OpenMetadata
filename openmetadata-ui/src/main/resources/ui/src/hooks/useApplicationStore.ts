@@ -26,6 +26,7 @@ import { LogoConfiguration } from '../generated/configuration/logoConfiguration'
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 
+export const OM_SESSION_KEY = 'om-session';
 interface HelperFunctions {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
@@ -72,7 +73,10 @@ export const useApplicationStore = create<ApplicationStore>()(
     (set, get) => ({
       currentUser: undefined,
       newUser: undefined,
-      isAuthenticated: Boolean(get()?.oidcIdToken),
+      isAuthenticated: Boolean(
+        JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}')?.state
+          ?.oidcIdToken
+      ),
       authConfig: undefined,
       authorizerConfig: undefined,
       isSigningIn: false,
@@ -171,7 +175,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
     }),
     {
-      name: 'om-session', // name of item in the storage (must be unique)
+      name: OM_SESSION_KEY, // name of item in the storage (must be unique)
       partialize: (state) => ({
         oidcIdToken: state.oidcIdToken,
         refreshTokenKey: state.refreshTokenKey,
