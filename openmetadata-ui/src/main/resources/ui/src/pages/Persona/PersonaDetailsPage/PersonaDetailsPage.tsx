@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Row, Tabs } from 'antd';
-import Col from 'antd/es/grid/col';
+import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import Loader from '../../../components/Loader/Loader';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -31,6 +32,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { useFqn } from '../../../hooks/useFqn';
@@ -111,23 +113,6 @@ export const PersonaDetailsPage = () => {
     }
   };
 
-  const handleRestorePersona = async () => {
-    if (!personaDetails) {
-      return;
-    }
-    const updatedData = { ...personaDetails };
-    const diff = compare(personaDetails, updatedData);
-
-    try {
-      const response = await updatePersona(personaDetails?.id, diff);
-      setPersonaDetails(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
-    }
-  };
-
   const handlePersonaUpdate = useCallback(
     async (data: Partial<Persona>) => {
       if (!personaDetails) {
@@ -167,8 +152,12 @@ export const PersonaDetailsPage = () => {
     );
   };
 
-  if (isLoading || !personaDetails) {
+  if (isLoading) {
     return <Loader />;
+  }
+
+  if (isUndefined(personaDetails)) {
+    return <NoDataPlaceholder size={SIZE.LARGE} />;
   }
 
   return (
@@ -196,7 +185,6 @@ export const PersonaDetailsPage = () => {
               entityName={personaDetails.name}
               entityType={EntityType.PERSONA}
               onEditDisplayName={handleDisplayNameUpdate}
-              onRestoreEntity={handleRestorePersona}
             />
           </div>
         </Col>
