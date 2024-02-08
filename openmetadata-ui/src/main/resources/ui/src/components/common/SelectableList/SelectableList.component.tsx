@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Checkbox, List, Space, Tooltip } from 'antd';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import Loader from '../../../components/Loader/Loader';
 import {
   ADD_USER_CONTAINER_HEIGHT,
@@ -23,7 +25,6 @@ import {
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -46,9 +47,11 @@ const RemoveIcon = ({
           entity: t('label.owner-lowercase'),
         })
       }>
-      <SVGIcons
+      <Icon
+        className="align-middle"
+        component={IconRemoveColored}
         data-testid="remove-owner"
-        icon={Icons.ICON_REMOVE_COLORED}
+        style={{ fontSize: '16px' }}
         onClick={(e) => {
           e.stopPropagation();
           removeOwner && removeOwner();
