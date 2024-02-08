@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space, Typography } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import './applied-filter-text.less';
 
 interface AppliedFilterTextProps {
@@ -38,10 +39,11 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
         align="center"
         className="w-full advanced-filter-text justify-between">
         <Space className="w-full">
-          <SVGIcons
+          <Icon
             alt="success-badge"
-            icon={Icons.SUCCESS_BADGE}
-            width="16px"
+            className="align-middle m-l-xs"
+            component={IconSuccessBadge}
+            style={{ fontSize: '16px' }}
           />
           <Typography>{filterText}</Typography>
         </Space>

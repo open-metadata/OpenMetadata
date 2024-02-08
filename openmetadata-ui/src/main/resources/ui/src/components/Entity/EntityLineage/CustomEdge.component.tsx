@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
+import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
 import { INFO_COLOR } from '../../../constants/constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -278,10 +279,11 @@ export const CustomEdge = ({
             className="cursor-pointer d-flex"
             data-testid={dataTestId}
             icon={
-              <SVGIcons
+              <Icon
                 alt="times-circle"
-                icon="icon-times-circle"
-                width="16px"
+                className="align-middle"
+                component={IconTimesCircle}
+                style={{ fontSize: '16px' }}
               />
             }
             style={{

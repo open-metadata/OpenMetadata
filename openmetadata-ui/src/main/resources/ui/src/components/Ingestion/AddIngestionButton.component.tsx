@@ -15,7 +15,7 @@ import { Button, Dropdown, Space } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {

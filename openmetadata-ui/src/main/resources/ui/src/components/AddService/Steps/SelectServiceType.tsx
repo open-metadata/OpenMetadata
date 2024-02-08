@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconCheckboxPrimary } from '../../../assets/svg/checkbox-primary.svg';
 import { PRIMERY_COLOR } from '../../../constants/constants';
 import {
   BETA_SERVICES,
@@ -29,7 +31,6 @@ import { MlModelServiceType } from '../../../generated/entity/services/mlmodelSe
 import { PipelineServiceType } from '../../../generated/entity/services/pipelineService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import ServiceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
@@ -132,10 +133,10 @@ const SelectServiceType = ({
               </div>
               <div className="absolute" style={{ right: '4px', top: '0px' }}>
                 {type === selectServiceType && (
-                  <SVGIcons
-                    alt="checkbox"
-                    height="14px"
-                    icon={Icons.CHECKBOX_PRIMARY}
+                  <Icon
+                    className="align-middle"
+                    component={IconCheckboxPrimary}
+                    style={{ fontSize: '14px' }}
                   />
                 )}
               </div>

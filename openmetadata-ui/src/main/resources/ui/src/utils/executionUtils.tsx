@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
@@ -23,7 +24,6 @@ import {
 } from '../generated/entity/data/pipeline';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
-import SVGIcons from './SvgUtils';
 
 interface StatusIndicatorInterface {
   status: StatusType;
@@ -40,7 +40,12 @@ export interface ViewDataInterface {
 
 export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
   <Space>
-    <SVGIcons alt="result" className="w-4" icon={getStatusBadgeIcon(status)} />
+    <Icon
+      alt="result"
+      className="align-middle"
+      component={getStatusBadgeIcon(status)}
+      style={{ fontSize: '16px' }}
+    />
     <p>
       {status === StatusType.Successful
         ? MenuOptions[StatusType.Successful]
@@ -201,10 +206,11 @@ export const getTreeData = (
                     <div>{status.executionStatus}</div>
                   </Space>
                 }>
-                <SVGIcons
+                <Icon
                   alt="result"
-                  className="w-6"
-                  icon={getStatusBadgeIcon(status.executionStatus)}
+                  className="align-middle"
+                  component={getStatusBadgeIcon(status.executionStatus)}
+                  style={{ fontSize: '24px' }}
                 />
               </Tooltip>
             ))}

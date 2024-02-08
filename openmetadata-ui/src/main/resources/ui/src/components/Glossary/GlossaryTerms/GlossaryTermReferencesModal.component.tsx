@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Form, Input, Modal, Row } from 'antd';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];
@@ -122,10 +123,10 @@ const GlossaryTermReferencesModal = ({
                   <Col span={1}>
                     <Button
                       icon={
-                        <SVGIcons
-                          alt="delete"
-                          icon={Icons.DELETE}
-                          width="16px"
+                        <Icon
+                          className="align-middle"
+                          component={IconDelete}
+                          style={{ fontSize: '16px' }}
                         />
                       }
                       size="small"

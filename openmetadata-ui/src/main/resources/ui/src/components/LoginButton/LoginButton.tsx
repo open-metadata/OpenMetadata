@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
-import SVGIcons from '../../utils/SvgUtils';
 import './login-button.style.less';
 
 interface LoginButtonProps {
   ssoBrandName: string;
-  ssoBrandLogo?: string;
+  ssoBrandLogo?: SvgComponent;
   onClick?: () => void;
 }
 
@@ -29,11 +29,11 @@ const LoginButton = ({
   onClick,
 }: LoginButtonProps) => {
   const svgIcon = ssoBrandLogo ? (
-    <SVGIcons
+    <Icon
       alt={`${ssoBrandName} Logo`}
-      height="30"
-      icon={ssoBrandLogo}
-      width="30"
+      className="align-middle"
+      component={ssoBrandLogo}
+      style={{ fontSize: '30px' }}
     />
   ) : null;
 

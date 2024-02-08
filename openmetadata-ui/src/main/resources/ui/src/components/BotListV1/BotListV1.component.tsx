@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -18,6 +19,7 @@ import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../components/common/Table/Table';
 import { getBotsPath } from '../../constants/constants';
@@ -34,7 +36,6 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getBots } from '../../rest/botsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -159,7 +160,13 @@ const BotListV1 = ({
               <Button
                 data-testid={`bot-delete-${getEntityName(record)}`}
                 disabled={isDisabled}
-                icon={<SVGIcons alt={t('label.delete')} icon={Icons.DELETE} />}
+                icon={
+                  <Icon
+                    className="align-middle"
+                    component={IconDelete}
+                    style={{ fontSize: '16px' }}
+                  />
+                }
                 type="text"
                 onClick={() => setSelectedUser(record)}
               />

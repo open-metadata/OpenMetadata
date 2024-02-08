@@ -12,6 +12,7 @@
  */
 
 import { EllipsisOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Card,
@@ -31,6 +32,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import Description from '../../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -59,7 +61,6 @@ import {
   getEditPolicyRulePath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-detail.less';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
@@ -265,11 +266,12 @@ const PoliciesDetailPage = () => {
                         handleRuleDelete(rule);
                       }}>
                       <Space align="center">
-                        <SVGIcons
-                          alt={t('label.delete')}
-                          icon={Icons.DELETE}
-                          width="16px"
+                        <Icon
+                          className="align-middle"
+                          component={IconDelete}
+                          style={{ fontSize: '16px' }}
                         />
+
                         {t('label.delete')}
                       </Space>
                     </Button>

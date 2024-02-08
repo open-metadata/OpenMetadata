@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -23,7 +25,6 @@ import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 const PoliciesDetailsList = ({
   list,
@@ -93,10 +94,10 @@ const PoliciesDetailsList = ({
                 disabled={!hasAccess}
                 type="text"
                 onClick={() => onDelete(record)}>
-                <SVGIcons
-                  alt="remove"
-                  icon={Icons.ICON_REMOVE}
-                  title={t('label.remove')}
+                <Icon
+                  className="align-middle"
+                  component={IconRemove}
+                  style={{ fontSize: '16px' }}
                 />
               </Button>
             </Tooltip>

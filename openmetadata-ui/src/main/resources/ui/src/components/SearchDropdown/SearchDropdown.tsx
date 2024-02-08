@@ -36,7 +36,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
 import {
   generateSearchDropdownLabel,
   getSearchDropdownLabels,

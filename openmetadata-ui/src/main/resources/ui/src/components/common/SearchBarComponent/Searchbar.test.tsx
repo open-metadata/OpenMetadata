@@ -23,18 +23,6 @@ import Searchbar from './SearchBar.component';
 
 jest.useRealTimers();
 
-jest.mock('../../../utils/SvgUtils', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockReturnValue(<p data-testid="svg-icon">SVGIcons</p>),
-    Icons: {
-      TABLE: 'table',
-      TOPIC: 'topic',
-      DASHBOARD: 'dashboard',
-    },
-  };
-});
-
 jest.mock('../../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });

@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Divider, Input, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { FC, useMemo } from 'react';
+import { ReactComponent as IconError } from '../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
 import { AuthenticationMechanism } from '../../generated/entity/teams/user';
 import { getTokenExpiry } from '../../utils/BotsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import CopyToClipboardButton from '../CopyToClipboardButton/CopyToClipboardButton';
 import './auth-mechanism.less';
 
@@ -108,7 +109,12 @@ const AuthMechanism: FC<Props> = ({
               )
             ) : (
               <>
-                <SVGIcons alt="warning" icon="error" />
+                <Icon
+                  alt="warning"
+                  className="align-middle"
+                  component={IconError}
+                  style={{ fontSize: '16px' }}
+                />
                 <span className="align-middle">
                   {t('message.token-has-no-expiry')}
                 </span>
