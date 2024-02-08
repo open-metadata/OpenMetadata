@@ -19,7 +19,7 @@ import './login-button.style.less';
 
 interface LoginButtonProps {
   ssoBrandName: string;
-  ssoBrandLogo?: SvgComponent;
+  ssoBrandLogo?: string;
   onClick?: () => void;
 }
 
@@ -32,8 +32,7 @@ const LoginButton = ({
     <Icon
       alt={`${ssoBrandName} Logo`}
       className="align-middle"
-      component={ssoBrandLogo}
-      style={{ fontSize: '30px' }}
+      component={() => <img height="30px" src={ssoBrandLogo} width="30px" />}
     />
   ) : null;
 
