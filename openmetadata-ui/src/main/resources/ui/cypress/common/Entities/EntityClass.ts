@@ -82,8 +82,8 @@ const domainDetails2 = {
 };
 
 const glossaryDetails1 = {
-  name: 'CypressGeneral',
-  displayName: 'Cypress General',
+  name: `Cypress%General ${uuid()}`,
+  displayName: `Cypress % General ${uuid()}`,
   description:
     'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
   reviewers: [],
@@ -92,8 +92,8 @@ const glossaryDetails1 = {
 };
 
 const glossaryDetails2 = {
-  name: 'CypressPerson',
-  displayName: 'Cypress Person',
+  name: `Cypress%Person ${uuid()}`,
+  displayName: `Cypress % Person ${uuid()}`,
   description:
     // eslint-disable-next-line max-len
     'Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with Person.PhoneNumber tag. The associated PII and PersonalData tags are automatically applied.',
@@ -112,7 +112,7 @@ const glossaryTermDetails1 = {
   mutuallyExclusive: false,
   tags: [],
   style: {},
-  glossary: 'CypressGeneral',
+  glossary: glossaryDetails1.name,
 };
 
 const glossaryTermDetails2 = {
@@ -125,7 +125,7 @@ const glossaryTermDetails2 = {
   mutuallyExclusive: false,
   tags: [],
   style: {},
-  glossary: 'CypressPerson',
+  glossary: glossaryDetails2.name,
 };
 
 class EntityClass {
@@ -320,24 +320,28 @@ class EntityClass {
       });
       // Glossary 1 to test
       deleteEntityViaREST({
-        entityName: `${glossaryDetails1.name}.${glossaryTermDetails1.name}`,
+        entityName: `${encodeURIComponent(glossaryDetails1.name)}.${
+          glossaryTermDetails1.name
+        }`,
         endPoint: EntityType.GlossaryTerm,
         token,
       });
       // Glossary 2 to test
       deleteEntityViaREST({
-        entityName: `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
+        entityName: `${encodeURIComponent(glossaryDetails2.name)}.${
+          glossaryTermDetails2.name
+        }`,
         endPoint: EntityType.GlossaryTerm,
         token,
       });
       // Glossary 2 to test
       deleteEntityViaREST({
-        entityName: glossaryDetails1.name,
+        entityName: encodeURIComponent(glossaryDetails1.name),
         endPoint: EntityType.Glossary,
         token,
       });
       deleteEntityViaREST({
-        entityName: glossaryDetails2.name,
+        entityName: encodeURIComponent(glossaryDetails2.name),
         endPoint: EntityType.Glossary,
         token,
       });
