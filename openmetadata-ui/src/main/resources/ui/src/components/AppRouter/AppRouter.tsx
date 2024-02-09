@@ -35,7 +35,7 @@ const PageNotFound = withSuspenseFallback(
 
 const ForgotPassword = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/ForgotPassword/forgot-password.component')
+    () => import('../../pages/ForgotPassword/ForgotPassword.component')
   )
 );
 

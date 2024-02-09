@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -46,7 +46,9 @@ const ForgotPassword = () => {
   );
 
   return (
-    <div className="h-full py-24 forgot-password-container ">
+    <div
+      className="h-full py-24 forgot-password-container "
+      data-testid="forgot-password-container">
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"
@@ -118,6 +120,7 @@ const ForgotPassword = () => {
             <Button
               ghost
               className="w-full"
+              data-testid="go-back-button"
               type="primary"
               onClick={() => history.push(ROUTES.SIGNIN)}>
               {t('message.go-back-to-login-page')}
