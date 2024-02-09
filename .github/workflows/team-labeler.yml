@@ -1,6 +1,5 @@
 on:
   pull_request_target:
-    types: [ created ]
 
 permissions:
   contents: read
