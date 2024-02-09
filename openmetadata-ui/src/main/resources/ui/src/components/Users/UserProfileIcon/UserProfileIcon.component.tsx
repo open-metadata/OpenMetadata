@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tooltip, Typography } from 'antd';
+import { Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import React, {
@@ -23,10 +23,11 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../assets/svg/DropDown.svg';
+import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
+  LIGHT_GREEN_COLOR,
   NO_DATA_PLACEHOLDER,
   TERM_ADMIN,
   TERM_USER,
@@ -115,6 +116,8 @@ export const UserProfileIcon = () => {
   useEffect(() => {
     if (profilePicture) {
       setIsImgUrlValid(true);
+    } else {
+      setIsImgUrlValid(false);
     }
   }, [profilePicture]);
 
@@ -137,12 +140,19 @@ export const UserProfileIcon = () => {
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
-      <span onClick={() => handleSelectedPersonaChange(item)}>
+      <Space
+        className="w-full"
+        data-testid="persona-label"
+        onClick={() => handleSelectedPersonaChange(item)}>
         {getEntityName(item)}{' '}
         {selectedPersona?.id === item.id && (
-          <CheckOutlined className="m-l-xs" style={{ color: '#4CAF50' }} />
+          <CheckOutlined
+            className="m-l-xs"
+            data-testid="check-outlined"
+            style={{ color: LIGHT_GREEN_COLOR }}
+          />
         )}
-      </span>
+      </Space>
     ),
     [handleSelectedPersonaChange, selectedPersona]
   );
@@ -321,7 +331,8 @@ export const UserProfileIcon = () => {
           {isImgUrlValid ? (
             <img
               alt="user"
-              className="app-bar-user-avatar"
+              className="app-bar-user-profile-pic"
+              data-testid="app-bar-user-profile-pic"
               referrerPolicy="no-referrer"
               src={profilePicture ?? ''}
               onError={handleOnImageError}
@@ -337,6 +348,7 @@ export const UserProfileIcon = () => {
             </Tooltip>
             <Typography.Text
               className="text-grey-muted text-xs w-28"
+              data-testid="default-persona"
               ellipsis={{ tooltip: true }}>
               {isEmpty(selectedPersona)
                 ? t('label.default')

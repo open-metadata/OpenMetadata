@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Form,
@@ -25,6 +26,7 @@ import { AxiosError } from 'axios';
 import { compact, isEmpty, map, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconSync } from '../../assets/svg/ic-sync.svg';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX, passwordRegex } from '../../constants/regex.constants';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
@@ -39,7 +41,6 @@ import { checkEmailInUse, generateRandomPwd } from '../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -317,10 +318,10 @@ const CreateUser = ({
                             {isPasswordGenerating ? (
                               <Loader size="small" type="default" />
                             ) : (
-                              <SVGIcons
-                                alt={t('label.generate')}
-                                icon={Icons.SYNC}
-                                width="16"
+                              <Icon
+                                className="align-middle"
+                                component={IconSync}
+                                style={{ fontSize: '16px' }}
                               />
                             )}
                           </div>

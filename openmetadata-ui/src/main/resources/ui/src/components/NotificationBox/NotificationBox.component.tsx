@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
+import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getUserPath,
@@ -28,7 +31,6 @@ import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -147,11 +149,11 @@ const NotificationBox = ({
             : hasMentionNotification
         }
         offset={[5, 0]}>
-        <SVGIcons
+        <Icon
           alt="notification-icon"
-          className="m-r-xs"
-          icon={key === NotificationTabsKey.TASK ? Icons.TASK : Icons.MENTIONS}
-          width="14px"
+          className="align-middle m-r-xs"
+          component={key === NotificationTabsKey.TASK ? IconTask : IconMentions}
+          style={{ fontSize: '16px' }}
         />
         {name}
       </Badge>

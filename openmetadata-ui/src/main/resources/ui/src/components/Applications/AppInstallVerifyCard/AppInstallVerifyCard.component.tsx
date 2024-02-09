@@ -26,6 +26,7 @@ import {
 } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { LIGHT_GREEN_COLOR } from '../../../constants/constants';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -51,7 +52,7 @@ const AppInstallVerifyCard = ({
       <Space className="p-t-lg">
         <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         <Divider dashed className="w-44 app-card-divider">
-          <CheckCircleTwoTone twoToneColor="#4CAF50" />
+          <CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />
         </Divider>
         <Avatar
           className="app-marketplace-avatar flex-center bg-white border"

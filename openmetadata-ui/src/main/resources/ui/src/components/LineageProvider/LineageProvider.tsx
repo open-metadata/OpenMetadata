@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
@@ -34,6 +36,7 @@ import {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
 import {
   ELEMENT_DELETE_STATE,
   ZOOM_TRANSITION_DURATION,
@@ -46,11 +49,15 @@ import {
   EntityType,
 } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
+import { PipelineStatus } from '../../generated/entity/data/pipeline';
 import {
   EntityReference,
   LineageDetails,
 } from '../../generated/type/entityLineage';
+import { useFqn } from '../../hooks/useFqn';
 import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
+import { getPipelineStatus } from '../../rest/pipelineAPI';
+import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import {
   addLineageHandler,
   createEdges,
@@ -71,13 +78,6 @@ import {
   onLoad,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
-
-import classNames from 'classnames';
-import { PipelineStatus } from '../../generated/entity/data/pipeline';
-import { useFqn } from '../../hooks/useFqn';
-import { getPipelineStatus } from '../../rest/pipelineAPI';
-import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../Entity/EntityInfoDrawer/EntityInfoDrawer.component';
@@ -458,10 +458,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
                 className="lineage-node-remove-btn bg-body-hover"
                 data-testid="lineage-node-remove-btn"
                 icon={
-                  <SVGIcons
+                  <Icon
                     alt="times-circle"
-                    icon="icon-times-circle"
-                    width="16px"
+                    className="align-middle"
+                    component={IconTimesCircle}
+                    style={{ fontSize: '30px' }}
                   />
                 }
                 type="link"

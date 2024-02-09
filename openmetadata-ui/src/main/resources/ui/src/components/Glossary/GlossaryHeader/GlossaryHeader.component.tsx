@@ -32,6 +32,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -72,7 +73,6 @@ import {
 } from '../../../utils/RouterUtils';
 
 import { useFqn } from '../../../hooks/useFqn';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -369,7 +369,13 @@ const GlossaryHeader = ({
                       : t('label.glossary-term'),
                   }
                 )}
-                icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
+                icon={
+                  <Icon
+                    className="align-middle"
+                    component={IconDelete}
+                    style={{ fontSize: '16px' }}
+                  />
+                }
                 id="delete-button"
                 name={t('label.delete')}
               />
