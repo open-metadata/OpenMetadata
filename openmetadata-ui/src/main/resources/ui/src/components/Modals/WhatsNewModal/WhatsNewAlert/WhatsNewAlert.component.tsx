@@ -82,7 +82,9 @@ const WhatsNewAlert = () => {
         <Affix className="whats-new-alert-container">
           <Card className="cursor-pointer" data-testid="whats-new-alert-card">
             <Space align="start" className="d-flex justify-between">
-              <Typography.Text className="whats-new-alert-header">
+              <Typography.Text
+                className="whats-new-alert-header"
+                data-testid="whats-new-alert-header">
                 {t('label.open-metadata-updated')}
               </Typography.Text>
               <Button
