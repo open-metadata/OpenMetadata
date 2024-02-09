@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
-import React from 'react';
-import SVGIcons from './SvgUtils';
+import { FC } from 'react';
 
-describe('Test SVGIcons component', () => {
-  it('Component should render', async () => {
-    const { container } = render(<SVGIcons alt="test" icon="icon-edit" />);
+class ApplicationRoutesClassBase {
+  public getRouteElements(): FC | null {
+    return null;
+  }
+}
 
-    const image = await findByTestId(container, 'image');
+const applicationRoutesClass = new ApplicationRoutesClassBase();
 
-    expect(image).toBeInTheDocument();
-  });
-});
+export default applicationRoutesClass;
+
+export { ApplicationRoutesClassBase };

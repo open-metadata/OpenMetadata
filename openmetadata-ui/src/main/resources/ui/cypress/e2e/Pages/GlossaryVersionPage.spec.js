@@ -21,6 +21,7 @@ import {
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
+import { USER_DETAILS } from '../../constants/EntityConstant';
 import { GLOSSARY_OWNER_LINK_TEST_ID } from '../../constants/glossary.constant';
 import {
   GLOSSARY_FOR_VERSION_TEST,
@@ -30,19 +31,26 @@ import {
   GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
   GLOSSARY_TERM_NAME_FOR_VERSION_TEST2,
   GLOSSARY_TERM_PATCH_PAYLOAD2,
-  OWNER,
   REVIEWER,
 } from '../../constants/Version.constants';
 
 describe('Glossary and glossary term version pages should work properly', () => {
-  let glossaryId;
-  let glossaryTerm1Id;
-  let glossaryTerm2Id;
+  let data = {};
 
   before(() => {
     cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
+      // Create a new user
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: USER_DETAILS,
+      }).then((response) => {
+        data.user = response.body;
+      });
+
       // Create Glossary
       cy.request({
         method: 'PUT',
@@ -50,11 +58,11 @@ describe('Glossary and glossary term version pages should work properly', () => 
         headers: { Authorization: `Bearer ${token}` },
         body: GLOSSARY_FOR_VERSION_TEST,
       }).then((response) => {
-        glossaryId = response.body.id;
+        data.glossary = response.body;
 
         cy.request({
           method: 'PATCH',
-          url: `/api/v1/glossaries/${glossaryId}`,
+          url: `/api/v1/glossaries/${data.glossary.id}`,
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json-patch+json',
@@ -70,7 +78,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
         headers: { Authorization: `Bearer ${token}` },
         body: GLOSSARY_TERM_FOR_VERSION_TEST1,
       }).then((response) => {
-        glossaryTerm1Id = response.body.id;
+        data.glossaryTerm1 = response.body;
       });
 
       // Create Second Glossary Term
@@ -80,13 +88,13 @@ describe('Glossary and glossary term version pages should work properly', () => 
         headers: { Authorization: `Bearer ${token}` },
         body: GLOSSARY_TERM_FOR_VERSION_TEST2,
       }).then((response) => {
-        glossaryTerm2Id = response.body.id;
+        data.glossaryTerm2 = response.body;
 
         const relatedTermsPatchValue = {
           op: 'add',
           path: '/relatedTerms/0',
           value: {
-            id: glossaryTerm1Id,
+            id: data.glossaryTerm1.id,
             type: 'glossaryTerm',
             displayName: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
             name: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
@@ -95,7 +103,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
         cy.request({
           method: 'PATCH',
-          url: `/api/v1/glossaryTerms/${glossaryTerm2Id}`,
+          url: `/api/v1/glossaryTerms/${data.glossaryTerm2.id}`,
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json-patch+json',
@@ -111,6 +119,20 @@ describe('Glossary and glossary term version pages should work properly', () => 
     interceptURL('GET', `/api/v1/glossaries?fields=*`, 'getGlossaryDetails');
     interceptURL('GET', '/api/v1/glossaryTerms?glossary=*', 'getGlossaryTerms');
     visitGlossaryPage();
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
+
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
   });
 
   it('Glossary version page should display the version changes properly', () => {
@@ -140,7 +162,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
+    addOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
     interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
     interceptURL(
@@ -165,7 +187,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getGlossaryDetails', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-    removeOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
+    removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
     addReviewer(REVIEWER, 'glossaries');
 
@@ -269,7 +291,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2');
 
-    addOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
+    addOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
     interceptURL('GET', `/api/v1/glossaryTerms/*/versions`, 'getVersionsList');
     interceptURL(
@@ -294,7 +316,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
-    removeOwner(OWNER, GLOSSARY_OWNER_LINK_TEST_ID);
+    removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
     addReviewer(REVIEWER, 'glossaryTerms');
 

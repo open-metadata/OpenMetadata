@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import './roles-element.styles.less';
 import { RolesElementProps } from './RolesElement.interface';
 
@@ -28,13 +29,14 @@ const RolesElement = ({ userData }: RolesElementProps) => {
     <Fragment>
       {userData.isAdmin && (
         <div className="mb-2 d-flex items-center gap-2">
-          <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+          <Icon component={IconUser} style={{ fontSize: '16px' }} />
+
           <span>{TERM_ADMIN}</span>
         </div>
       )}
       {userData?.roles?.map((role, i) => (
         <div className="mb-2 d-flex items-center gap-2" key={i}>
-          <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+          <Icon component={IconUser} style={{ fontSize: '16px' }} />
           <Typography.Text
             className="ant-typography-ellipsis-custom w-48"
             ellipsis={{ tooltip: true }}>

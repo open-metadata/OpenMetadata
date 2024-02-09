@@ -136,7 +136,7 @@ describe('FeedsWidget', () => {
       const { getAllByRole } = render(<FeedsWidget {...widgetProps} />);
       const tabs = getAllByRole('tab');
       const selectedTab = tabs[index];
-      selectedTab.click();
+      fireEvent.click(selectedTab);
 
       expect(selectedTab.getAttribute('aria-selected')).toBe('true');
     });

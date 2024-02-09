@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,18 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import url('../../styles/variables.less');
-
-.test-case-details-page-container {
-  height: 100vh;
-  background-color: @white;
-
-  .test-case-details-page-right-panel {
-    background-color: @white;
-    border-left: @global-border;
-    padding: 0px;
-    overflow-y: auto;
-    width: 360px;
-  }
-}
+export const ERROR = 'error';
+export const ERROR_PLACEHOLDER = 'ErrorPlaceHolder';
+export const FETCH_ENTITY_PERMISSION_ERROR =
+  'server.fetch-entity-permissions-error';
+export const ENTITY_MISSING_ERROR = 'entity missing error';
+export const CREATE_THREAD = 'Create Thread';
+export const UPDATE_DATA_MODEL = 'Update Data Model';
+export const FOLLOW_DATA_MODEL = 'Follow Data Model';
+export const TOGGLE_DELETE = 'Toggle Delete';
+export const DATA_MODEL_DELETED = 'Data Model is deleted';
+export const UPDATE_VOTE = 'Update Vote';
