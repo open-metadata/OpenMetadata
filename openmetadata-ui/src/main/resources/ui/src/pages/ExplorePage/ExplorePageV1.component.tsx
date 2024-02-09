@@ -36,6 +36,7 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
@@ -393,7 +394,10 @@ const ExplorePageV1: FunctionComponent = () => {
       }),
     ])
       .catch((error) => {
-        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
+        if (
+          error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
+          error.response?.data.message === ES_EXCEPTION_SHARDS_FAILED
+        ) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error);
