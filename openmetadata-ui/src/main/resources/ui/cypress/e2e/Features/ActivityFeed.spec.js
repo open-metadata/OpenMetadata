@@ -318,6 +318,56 @@ describe('Activity feed', () => {
       });
   });
 
+  it('Mention should work for the feed reply in case of users having dot in their name', () => {
+    interceptURL('GET', '/api/v1/feed/*', 'fetchFeed');
+    interceptURL(
+      'GET',
+      '/api/v1/feed?filterType=MENTIONS&userId=*',
+      'mentionsFeed'
+    );
+    cy.get(
+      '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
+    ).within(() => {
+      cy.get('[data-testid="feed-actions"]').invoke('show');
+      cy.get('[data-testid="feed-actions"]').within(() => {
+        cy.get('[data-testid="add-reply"]').click();
+      });
+    });
+    verifyResponseStatusCode('@fetchFeed', 200);
+
+    interceptURL('POST', '/api/v1/feed/*/posts', 'postReply');
+    interceptURL(
+      'GET',
+      '/api/v1/search/suggest?q=aa&index=user_search_index%2Cteam_search_index',
+      'suggestUser'
+    );
+
+    cy.get('[data-testid="editor-wrapper"]')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get(
+      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+    ).as('editor');
+    cy.get('@editor').click();
+    cy.get('@editor').type('Yes I can solve @aaron.warren5');
+    cy.get('[data-value="@aaron.warren5"]').click();
+
+    cy.get('[data-testid="send-button"]')
+      .should('be.visible')
+      .and('not.be.disabled');
+    cy.get('[data-testid="send-button"]').click();
+
+    verifyResponseStatusCode('@postReply', 201);
+
+    cy.get(
+      // eslint-disable-next-line max-len
+      ':nth-child(4) > :nth-child(2) > .ant-col > .feed-card-body > .feed-message > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p > a'
+    )
+      .invoke('removeAttr', 'target')
+      .click();
+    cy.get('[data-testid="user-name"]').contains('Aaron Warren');
+  });
+
   it('Assigned task should appear to task tab', () => {
     cy.get('[data-testid="activity-feed-widget"]').contains('Tasks').click();
 
