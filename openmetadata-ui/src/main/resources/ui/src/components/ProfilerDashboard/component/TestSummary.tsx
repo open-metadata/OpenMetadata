@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import {
@@ -25,7 +25,6 @@ import {
   uniqueId,
 } from 'lodash';
 import { DateRangeObject } from 'Models';
-import Qs from 'qs';
 import React, {
   ReactElement,
   useCallback,
@@ -33,7 +32,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
 import {
   CartesianGrid,
   Legend,
@@ -48,8 +46,6 @@ import {
   YAxis,
 } from 'recharts';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
-import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
 import {
   GREEN_3,
@@ -81,7 +77,6 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
-import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -101,9 +96,8 @@ type ChartDataType = {
 const TestSummary: React.FC<TestSummaryProps> = ({
   data,
   showOnlyGraph = false,
-  showExpandIcon = true,
 }) => {
-  const { entityThread } = useActivityFeedProvider();
+  const { entityThread = [] } = useActivityFeedProvider();
 
   const defaultRange = useMemo(
     () => ({
@@ -118,7 +112,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }),
     []
   );
-  const history = useHistory();
   const [results, setResults] = useState<TestCaseResult[]>([]);
   const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
     defaultRange.initialRange
@@ -254,7 +247,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     setIsGraphLoading(true);
     try {
       const { data: chartData } = await getListTestCaseResults(
-        data.fullyQualifiedName || '',
+        data.fullyQualifiedName ?? '',
         pick(dateRangeObj, ['startTs', 'endTs'])
       );
 
@@ -436,29 +429,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   };
 
-  const handleExpandClick = () => {
-    if (data.fullyQualifiedName) {
-      if (showExpandIcon) {
-        history.push({
-          search: Qs.stringify({ testCaseData: data }),
-          pathname: getTestCaseDetailsPath(data.fullyQualifiedName),
-        });
-      } else {
-        history.goBack();
-      }
-    }
-  };
-
   const showParameters = useMemo(
     () =>
       !isUndefined(parameterValuesWithoutSqlExpression) &&
-      !isEmpty(parameterValuesWithoutSqlExpression) &&
-      showExpandIcon,
-    [
-      parameterValuesWithSqlExpression,
-      parameterValuesWithoutSqlExpression,
-      showExpandIcon,
-    ]
+      !isEmpty(parameterValuesWithoutSqlExpression),
+    [parameterValuesWithSqlExpression, parameterValuesWithoutSqlExpression]
   );
 
   const handleSelectedTimeRange = useCallback((range: string) => {
@@ -472,31 +447,13 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           <Loader />
         ) : (
           <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <Row gutter={16} justify="end">
-                <Col>
-                  <DatePickerMenu
-                    showSelectedCustomRange
-                    defaultDateRange={pick(defaultRange, ['key', 'title'])}
-                    handleDateRangeChange={handleDateRangeChange}
-                    handleSelectedTimeRange={handleSelectedTimeRange}
-                  />
-                </Col>
-                <Col>
-                  <Button
-                    className="flex justify-center items-center bg-white"
-                    data-testid="test-case-expand-button"
-                    icon={
-                      showExpandIcon ? (
-                        <FullScreen height={16} width={16} />
-                      ) : (
-                        <ExitFullScreen height={16} width={16} />
-                      )
-                    }
-                    onClick={handleExpandClick}
-                  />
-                </Col>
-              </Row>
+            <Col className="d-flex justify-end" span={24}>
+              <DatePickerMenu
+                showSelectedCustomRange
+                defaultDateRange={pick(defaultRange, ['key', 'title'])}
+                handleDateRangeChange={handleDateRangeChange}
+                handleSelectedTimeRange={handleSelectedTimeRange}
+              />
             </Col>
             <Col data-testid="graph-container" span={24}>
               {getGraph}
