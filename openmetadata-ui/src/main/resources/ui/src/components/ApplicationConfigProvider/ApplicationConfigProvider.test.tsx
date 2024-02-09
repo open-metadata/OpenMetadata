@@ -12,10 +12,9 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
-import ApplicationConfigProvider, {
-  useApplicationConfigContext,
-} from './ApplicationConfigProvider';
+import ApplicationConfigProvider from './ApplicationConfigProvider';
 
 const mockApplicationConfig = {
   customLogoUrlPath: 'https://customlink.source',
@@ -51,7 +50,8 @@ describe('ApplicationConfigProvider', () => {
 
   it('fetch the application config on mount and set in the context', async () => {
     function TestComponent() {
-      const { customLogoUrlPath } = useApplicationConfigContext();
+      const { applicationConfig } = useApplicationStore();
+      const { customLogoUrlPath = '' } = applicationConfig ?? {};
 
       return <div>{customLogoUrlPath}</div>;
     }

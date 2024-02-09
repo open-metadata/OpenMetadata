@@ -71,7 +71,6 @@ import {
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import Loader from '../../Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
@@ -119,6 +118,7 @@ export const AuthProvider = ({
     removeOidcToken,
     getOidcToken,
     getRefreshToken,
+    urlPathName,
   } = useApplicationStore();
 
   const location = useLocation();
@@ -126,7 +126,6 @@ export const AuthProvider = ({
   const { t } = useTranslation();
   const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
-  const { urlPathName } = useApplicationConfigContext();
 
   let silentSignInRetries = 0;
 

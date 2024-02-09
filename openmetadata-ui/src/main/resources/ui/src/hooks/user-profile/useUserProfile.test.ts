@@ -14,21 +14,18 @@ import { renderHook } from '@testing-library/react-hooks';
 import { getUserByName } from '../../rest/userAPI';
 import { useUserProfile } from './useUserProfile';
 
-jest.mock(
-  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-      userProfilePics: {
-        chirag: {
-          profile: {
-            iamge512: 'profile512',
-          },
+jest.mock('../useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    userProfilePics: {
+      chirag: {
+        profile: {
+          iamge512: 'profile512',
         },
       },
-      updateUserProfilePics: jest.fn(),
-    })),
-  })
-);
+    },
+    updateUserProfilePics: jest.fn(),
+  })),
+}));
 
 jest.mock('../../rest/userAPI', () => ({
   getUserByName: jest.fn(),

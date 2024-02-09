@@ -23,7 +23,6 @@ import React, {
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 
 import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -49,7 +48,7 @@ const ReactGridLayout = WidthProvider(RGL);
 const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { selectedPersona } = useApplicationConfigContext();
+  const { selectedPersona } = useApplicationStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);

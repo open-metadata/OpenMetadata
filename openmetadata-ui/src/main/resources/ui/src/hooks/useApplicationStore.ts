@@ -46,6 +46,10 @@ export interface ApplicationStore
   oidcIdToken: string;
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
+  applicationConfig?: LogoConfiguration;
+  setSelectedPersona: (persona: EntityReference) => void;
+  setApplicationConfig: (config: LogoConfiguration) => void;
+  setUrlPathName: (urlPathName: string) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
@@ -58,7 +62,6 @@ export interface ApplicationStore
     id: string;
     entityDetails: EntityUnion;
   }) => void;
-  updateSelectedPersona: (personaFqn: EntityReference) => void;
 
   getRefreshToken: () => string;
   setRefreshToken: (refreshToken: string) => void;
@@ -71,6 +74,7 @@ export interface ApplicationStore
 export const useApplicationStore = create<ApplicationStore>()(
   persist(
     (set, get) => ({
+      applicationConfig: {} as LogoConfiguration,
       currentUser: undefined,
       newUser: undefined,
       isAuthenticated: Boolean(
@@ -91,6 +95,18 @@ export const useApplicationStore = create<ApplicationStore>()(
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });
+      },
+
+      setSelectedPersona: (persona: EntityReference) => {
+        set({ selectedPersona: persona });
+      },
+
+      setApplicationConfig: (config: LogoConfiguration) => {
+        set({ applicationConfig: config });
+      },
+
+      setUrlPathName: (urlPathName: string) => {
+        set({ urlPathName });
       },
 
       setCurrentUser: (user) => {
@@ -136,21 +152,24 @@ export const useApplicationStore = create<ApplicationStore>()(
       updateCurrentUser: (user) => {
         set({ currentUser: user });
       },
-      updateUserProfilePics: (data) => {
+      updateUserProfilePics: ({ id, user }: { id: string; user: User }) => {
         set({
-          userProfilePics: { ...get()?.userProfilePics, [data.id]: data.user },
+          userProfilePics: { ...get()?.userProfilePics, [id]: user },
         });
       },
-      updateCachedEntityData: (data) => {
+      updateCachedEntityData: ({
+        id,
+        entityDetails,
+      }: {
+        id: string;
+        entityDetails: EntityUnion;
+      }) => {
         set({
           cachedEntityData: {
             ...get()?.cachedEntityData,
-            [data.id]: data.entityDetails,
+            [id]: entityDetails,
           },
         });
-      },
-      updateSelectedPersona: (personaFqn) => {
-        set({ selectedPersona: personaFqn });
       },
       updateNewUser: (user) => {
         set({ newUser: user });

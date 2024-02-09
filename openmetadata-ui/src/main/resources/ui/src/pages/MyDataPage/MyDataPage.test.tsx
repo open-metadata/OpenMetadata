@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,
@@ -244,7 +244,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
-    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       selectedPersona: {},
     }));
 

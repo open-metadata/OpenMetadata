@@ -10,22 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isEmpty } from 'lodash';
-import React, {
-  createContext,
-  FC,
-  ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { isEmpty } from 'lodash';
+import React, { createContext, FC, ReactNode, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { LoginConfiguration } from '../../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/entity/type';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { EntityUnion } from '../Explore/ExplorePage.interface';
@@ -57,12 +49,7 @@ export interface UserProfileMap {
   status: UserProfileLoadingStatus;
 }
 
-export const ApplicationConfigContext = createContext<ApplicationContextConfig>(
-  {} as ApplicationContextConfig
-);
-
-export const useApplicationConfigContext = () =>
-  useContext(ApplicationConfigContext);
+export const ApplicationConfigContext = createContext({});
 
 interface ApplicationConfigProviderProps {
   children: ReactNode;
@@ -72,20 +59,8 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
 }) => {
   const location = useLocation();
-  const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
-    {} as LogoConfiguration
-  );
-  const [selectedPersona, setSelectedPersona] = useState<EntityReference>(
-    {} as EntityReference
-  );
-  const [userProfilePics, setUserProfilePics] = useState<Record<string, User>>(
-    {}
-  );
-  const [cachedEntityData, setCachedEntityData] = useState<
-    Record<string, EntityUnion>
-  >({});
-
-  const [urlPathName, setUrlPathName] = useState<string>('');
+  const { applicationConfig, setApplicationConfig, setUrlPathName } =
+    useApplicationStore();
 
   useEffect(() => {
     if (isProtectedRoute(location.pathname)) {
@@ -106,40 +81,14 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }
   };
 
-  const updateSelectedPersona = useCallback(
-    (persona: EntityReference) => {
-      setSelectedPersona(persona);
-    },
-    [setSelectedPersona]
-  );
-
-  const updateUserProfilePics = useCallback(
-    ({ id, user }: { id: string; user: User }) => {
-      setUserProfilePics((prev) => {
-        const updatedMap = cloneDeep(prev);
-        updatedMap[id] = { ...(prev[id] ?? {}), ...user };
-
-        return updatedMap;
-      });
-    },
-    []
-  );
-
-  const updateCachedEntityData = useCallback(
-    ({ id, entityDetails }: { id: string; entityDetails: EntityUnion }) => {
-      setCachedEntityData((prev) => ({ ...prev, [id]: entityDetails }));
-    },
-    []
-  );
-
   useEffect(() => {
     fetchApplicationConfig();
   }, []);
 
   useEffect(() => {
-    const faviconHref = isEmpty(applicationConfig.customFaviconUrlPath)
+    const faviconHref = isEmpty(applicationConfig?.customFaviconUrlPath)
       ? '/favicon.png'
-      : applicationConfig.customFaviconUrlPath ?? '/favicon.png';
+      : applicationConfig?.customFaviconUrlPath ?? '/favicon.png';
     const link = document.querySelector('link[rel~="icon"]');
 
     if (link) {
@@ -147,30 +96,8 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }
   }, [applicationConfig]);
 
-  const contextValue = useMemo(
-    () => ({
-      ...applicationConfig,
-      selectedPersona,
-      updateSelectedPersona,
-      userProfilePics,
-      updateUserProfilePics,
-      cachedEntityData,
-      updateCachedEntityData,
-      urlPathName,
-    }),
-    [
-      applicationConfig,
-      selectedPersona,
-      updateSelectedPersona,
-      userProfilePics,
-      updateUserProfilePics,
-      cachedEntityData,
-      updateCachedEntityData,
-    ]
-  );
-
   return (
-    <ApplicationConfigContext.Provider value={contextValue}>
+    <ApplicationConfigContext.Provider value={{}}>
       {children}
     </ApplicationConfigContext.Provider>
   );

@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -47,7 +48,6 @@ import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../Loader/Loader';
@@ -68,8 +68,7 @@ export const PopoverContent: React.FC<{
   const decodedFqn = getDecodedFqn(entityFQN);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const { cachedEntityData, updateCachedEntityData } =
-    useApplicationConfigContext();
+  const { cachedEntityData, updateCachedEntityData } = useApplicationStore();
 
   const entityData: SearchedDataProps['data'][number]['_source'] | undefined =
     useMemo(() => {

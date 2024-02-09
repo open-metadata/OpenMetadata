@@ -38,7 +38,6 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../utils/ProfilerUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Avatar from '../../common/AvatarComponent/Avatar';
@@ -85,9 +84,13 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const { currentUser, onLogoutHandler } = useApplicationStore();
-  const { selectedPersona, updateSelectedPersona } =
-    useApplicationConfigContext();
+  const {
+    currentUser,
+    onLogoutHandler,
+    selectedPersona,
+    setSelectedPersona: updateSelectedPersona,
+  } = useApplicationStore();
+
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
   const profilePicture = getImageWithResolutionAndFallback(

@@ -35,6 +35,7 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../constants/Feeds.constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getUserByName } from '../../rest/userAPI';
 import {
   HTMLToMarkdown,
@@ -44,7 +45,6 @@ import {
 import { LinkBlot } from '../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
-import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { editorRef } from '../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
@@ -75,8 +75,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
-    const { userProfilePics, updateUserProfilePics } =
-      useApplicationConfigContext();
+    const { userProfilePics, updateUserProfilePics } = useApplicationStore();
 
     const userSuggestionRenderer = async (
       searchTerm: string,
