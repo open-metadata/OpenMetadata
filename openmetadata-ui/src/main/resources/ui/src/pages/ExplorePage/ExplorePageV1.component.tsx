@@ -396,7 +396,7 @@ const ExplorePageV1: FunctionComponent = () => {
       .catch((error) => {
         if (
           error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
-          error.response?.data.message === ES_EXCEPTION_SHARDS_FAILED
+          error.response?.data.message.includes(ES_EXCEPTION_SHARDS_FAILED)
         ) {
           setShowIndexNotFoundAlert(true);
         } else {

@@ -91,7 +91,6 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
 
 export const FAILED_TO_FIND_INDEX_ERROR = 'Failed to to find index';
 
-export const ES_EXCEPTION_SHARDS_FAILED =
-  'Search failed due to Elasticsearch exception [type=search_phase_execution_exception, reason=all shards failed]';
+export const ES_EXCEPTION_SHARDS_FAILED = 'reason=all shards failed';
 
 export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
