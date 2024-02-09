@@ -308,7 +308,7 @@ class MssqlUnitTest(TestCase):
             mock_mssql_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.mssql.context.__dict__[
+        self.mssql.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
         self.mssql.inspector = types.SimpleNamespace()
@@ -325,10 +325,10 @@ class MssqlUnitTest(TestCase):
             for either in self.mssql.yield_database(MOCK_DATABASE.name.__root__)
         ]
 
-        self.mssql.context.__dict__[
+        self.mssql.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.mssql.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.__root__
 
     @mssql_dialet.db_plus_owner
     def mock_function(
@@ -354,7 +354,7 @@ class MssqlUnitTest(TestCase):
             )
         ]
 
-        self.mssql.context.__dict__[
+        self.mssql.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
 

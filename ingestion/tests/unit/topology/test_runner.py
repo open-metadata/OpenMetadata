@@ -23,7 +23,7 @@ from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -73,7 +73,7 @@ class MockTopology(ServiceTopology):
 
 class MockSource(TopologyRunnerMixin):
     topology = MockTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
 
     @staticmethod
     def get_schemas():
