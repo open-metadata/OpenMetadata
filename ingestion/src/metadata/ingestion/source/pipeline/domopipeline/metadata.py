@@ -94,7 +94,7 @@ class DomopipelineSource(PipelineServiceSource):
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
                 tasks=[task],
-                service=self.context.pipeline_service,
+                service=self.context.get().pipeline_service,
                 startDate=pipeline_details.get("created"),
                 sourceUrl=source_url,
             )
@@ -164,8 +164,8 @@ class DomopipelineSource(PipelineServiceSource):
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Pipeline,
-                    service_name=self.context.pipeline_service,
-                    pipeline_name=self.context.pipeline,
+                    service_name=self.context.get().pipeline_service,
+                    pipeline_name=self.context.get().pipeline,
                 )
                 yield Either(
                     right=OMetaPipelineStatus(

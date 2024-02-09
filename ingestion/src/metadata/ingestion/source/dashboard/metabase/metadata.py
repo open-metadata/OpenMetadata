@@ -144,17 +144,17 @@ class MetabaseSource(DashboardServiceSource):
                 sourceUrl=dashboard_url,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
-                project=self.context.project_name,
+                project=self.context.get().project_name,
                 charts=[
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -200,7 +200,7 @@ class MetabaseSource(DashboardServiceSource):
                         description=chart_details.description,
                         chartType=get_standard_chart_type(chart_details.display).value,
                         sourceUrl=chart_url,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except

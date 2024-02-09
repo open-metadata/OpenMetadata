@@ -62,7 +62,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -152,6 +152,7 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["table", "stored_procedure"],
         post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
+        # threads=True,
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -176,6 +177,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        threads=True,
     )
     stored_procedure = TopologyNode(
         producer="get_stored_procedures",
@@ -212,7 +214,7 @@ class DatabaseServiceSource(
     inspector: Inspector
 
     topology = DatabaseServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
 
     @property
     def name(self) -> str:
@@ -380,7 +382,7 @@ class DatabaseServiceSource(
         """
 
         tag_labels = []
-        for tag_and_category in self.context.tags or []:
+        for tag_and_category in self.context.get().tags or []:
             if tag_and_category.fqn and tag_and_category.fqn.__root__ == entity_fqn:
                 tag_label = get_tag_label(
                     metadata=self.metadata,
@@ -400,7 +402,7 @@ class DatabaseServiceSource(
         database_fqn = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.context.database_service,
+            service_name=self.context.get().database_service,
             database_name=database_name,
         )
         return self.get_tag_by_fqn(entity_fqn=database_fqn)
@@ -414,8 +416,8 @@ class DatabaseServiceSource(
         schema_fqn = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
             schema_name=schema_name,
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
@@ -428,9 +430,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             table_name=table_name,
             skip_es_search=True,
         )
@@ -446,9 +448,9 @@ class DatabaseServiceSource(
         col_fqn = fqn.build(
             self.metadata,
             entity_type=Column,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             table_name=table_name,
             column_name=column["name"],
         )
@@ -461,9 +463,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             table_name=table_request.name.__root__,
             skip_es_search=True,
         )
@@ -479,9 +481,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=StoredProcedure,
-            service_name=self.context.database_service,
-            database_name=self.context.database,
-            schema_name=self.context.database_schema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
             procedure_name=stored_proc_request.name.__root__,
         )
 
@@ -494,8 +496,8 @@ class DatabaseServiceSource(
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
                 schema_name=schema_name,
             )
             if filter_by_schema(
@@ -516,7 +518,7 @@ class DatabaseServiceSource(
                 owner_name = self.inspector.get_table_owner(
                     connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
-                    schema=self.context.database_schema,
+                    schema=self.context.get().database_schema,
                 )
                 owner_ref = self.metadata.get_reference_by_name(name=owner_name)
                 return owner_ref
@@ -529,14 +531,14 @@ class DatabaseServiceSource(
         """
         Use the current inspector to mark tables as deleted
         """
-        if not self.context.__dict__.get("database"):
+        if not self.context.get().__dict__.get("database"):
             raise ValueError(
                 "No Database found in the context. We cannot run the table deletion."
             )
 
         if self.source_config.markDeletedTables:
             logger.info(
-                f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
             )
             schema_fqn_list = self._get_filtered_schema_names(
                 return_fqn=True, add_to_status=False
@@ -557,7 +559,7 @@ class DatabaseServiceSource(
         """
         if self.source_config.markDeletedStoredProcedures:
             logger.info(
-                f"Mark Deleted Stored Procedures Processing database [{self.context.database}]"
+                f"Mark Deleted Stored Procedures Processing database [{self.context.get().database}]"
             )
 
             schema_fqn_list = self._get_filtered_schema_names(

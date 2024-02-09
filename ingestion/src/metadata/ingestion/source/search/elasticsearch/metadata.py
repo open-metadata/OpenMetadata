@@ -96,7 +96,7 @@ class ElasticsearchSource(SearchServiceSource):
                 searchIndexSettings=search_index_details.get(index_name, {}).get(
                     "settings", {}
                 ),
-                service=self.context.search_service,
+                service=self.context.get().search_service,
                 fields=parse_es_index_mapping(
                     search_index_details.get(index_name, {}).get("mappings")
                 ),
@@ -110,9 +110,9 @@ class ElasticsearchSource(SearchServiceSource):
         """
         Method to Get Sample Data of Search Index Entity
         """
-        if self.source_config.includeSampleData and self.context.search_index:
+        if self.source_config.includeSampleData and self.context.get().search_index:
             sample_data = self.client.search(
-                index=self.context.search_index,
+                index=self.context.get().search_index,
                 q=WILDCARD_SEARCH,
                 size=self.source_config.sampleSize,
                 request_timeout=self.service_connection.connectionTimeoutSecs,
@@ -121,8 +121,8 @@ class ElasticsearchSource(SearchServiceSource):
             search_index_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=SearchIndex,
-                service_name=self.context.search_service,
-                search_index_name=self.context.search_index,
+                service_name=self.context.get().search_service,
+                search_index_name=self.context.get().search_index,
             )
             search_index_entity = self.metadata.get_by_name(
                 entity=SearchIndex, fqn=search_index_fqn

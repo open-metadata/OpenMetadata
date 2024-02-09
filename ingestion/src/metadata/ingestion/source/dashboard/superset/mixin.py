@@ -202,7 +202,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:

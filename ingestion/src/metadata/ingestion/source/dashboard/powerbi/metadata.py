@@ -210,7 +210,7 @@ class PowerbiSource(DashboardServiceSource):
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for workspace in self.workspace_data:
-            self.context.workspace = workspace
+            self.context.get().workspace = workspace
             for dashboard in self.get_dashboards_list():
                 try:
                     dashboard_details = self.get_dashboard_details(dashboard)
@@ -239,7 +239,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.context.workspace.reports + self.context.workspace.dashboards
+        return self.context.get().workspace.reports + self.context.get().workspace.dashboards
 
     def get_dashboard_name(
         self, dashboard: Union[PowerBIDashboard, PowerBIReport]
@@ -320,7 +320,7 @@ class PowerbiSource(DashboardServiceSource):
                 name=dataset.id,
                 displayName=dataset.name,
                 description=dataset.description,
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
                 columns=self._get_column_info(dataset),
@@ -395,7 +395,7 @@ class PowerbiSource(DashboardServiceSource):
                 dashboard_request = CreateDashboardRequest(
                     name=dashboard_details.id,
                     sourceUrl=self._get_dashboard_url(
-                        workspace_id=self.context.workspace.id,
+                        workspace_id=self.context.get().workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
@@ -405,12 +405,12 @@ class PowerbiSource(DashboardServiceSource):
                         fqn.build(
                             self.metadata,
                             entity_type=Chart,
-                            service_name=self.context.dashboard_service,
+                            service_name=self.context.get().dashboard_service,
                             chart_name=chart,
                         )
-                        for chart in self.context.charts or []
+                        for chart in self.context.get().charts or []
                     ],
-                    service=self.context.dashboard_service,
+                    service=self.context.get().dashboard_service,
                     owner=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             else:
@@ -418,12 +418,12 @@ class PowerbiSource(DashboardServiceSource):
                     name=dashboard_details.id,
                     dashboardType=DashboardType.Report,
                     sourceUrl=self._get_report_url(
-                        workspace_id=self.context.workspace.id,
+                        workspace_id=self.context.get().workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
-                    service=self.context.dashboard_service,
+                    service=self.context.get().dashboard_service,
                     owner=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             yield Either(right=dashboard_request)
@@ -630,10 +630,10 @@ class PowerbiSource(DashboardServiceSource):
                             chartType=ChartType.Other.value,
                             sourceUrl=self._get_chart_url(
                                 report_id=chart.reportId,
-                                workspace_id=self.context.workspace.id,
+                                workspace_id=self.context.get().workspace.id,
                                 dashboard_id=dashboard_details.id,
                             ),
-                            service=self.context.dashboard_service,
+                            service=self.context.get().dashboard_service,
                         )
                     )
                 except Exception as exc:
@@ -705,7 +705,7 @@ class PowerbiSource(DashboardServiceSource):
         Get the project / workspace / folder / collection name of the dashboard
         """
         try:
-            return str(self.context.workspace.name)
+            return str(self.context.get().workspace.name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(

@@ -74,10 +74,10 @@ class CouchbaseSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
-            database_name = self.context.database
+            database_name = self.context.get().database
             bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
-            self.context.scope_dict = {
+            self.context.get().scope_dict = {
                 scope.name: scope for scope in collection_manager.get_all_scopes()
             }
             return [scopes.name for scopes in collection_manager.get_all_scopes()]
@@ -93,7 +93,7 @@ class CouchbaseSource(CommonNoSQLSource):
         Method to get list of table names available within schema db
         """
         try:
-            scope_object = self.context.scope_dict.get(schema_name)
+            scope_object = self.context.get().scope_dict.get(schema_name)
             return [collection.name for collection in scope_object.collections]
         except Exception as exp:
             logger.debug(
@@ -108,7 +108,7 @@ class CouchbaseSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
-            database_name = self.context.database
+            database_name = self.context.get().database
             query = COUCHBASE_SQL_STATEMENT.format(table_name=table_name)
             result = self.couchbase.query(query)
             for row in result.rows():

@@ -97,7 +97,7 @@ class GlueSource(DatabaseServiceSource):
             yield DatabasePage(**page)
 
     def _get_glue_tables(self):
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         paginator = self.glue.get_paginator("get_tables")
         paginator_response = paginator.paginate(DatabaseName=schema_name)
         for page in paginator_response:
@@ -124,7 +124,7 @@ class GlueSource(DatabaseServiceSource):
                         database_fqn = fqn.build(
                             self.metadata,
                             entity_type=Database,
-                            service_name=self.context.database_service,
+                            service_name=self.context.get().database_service,
                             database_name=schema.CatalogId,
                         )
                         if filter_by_database(
@@ -162,7 +162,7 @@ class GlueSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -176,8 +176,8 @@ class GlueSource(DatabaseServiceSource):
                     schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
                         schema_name=schema.Name,
                     )
                     if filter_by_schema(
@@ -211,11 +211,11 @@ class GlueSource(DatabaseServiceSource):
                 database=fqn.build(
                     metadata=self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                 ),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 ),
             )
@@ -230,7 +230,7 @@ class GlueSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
 
         for page in self._get_glue_tables():
             for table in page.TableList:
@@ -240,9 +240,9 @@ class GlueSource(DatabaseServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         table_name=table_name,
                     )
                     if filter_by_table(
@@ -269,7 +269,7 @@ class GlueSource(DatabaseServiceSource):
                     elif table.TableType == "VIRTUAL_VIEW":
                         table_type = TableType.View
 
-                    self.context.table_data = table
+                    self.context.get().table_data = table
                     yield table_name, table_type
                 except Exception as exc:
                     self.status.failed(
@@ -288,7 +288,7 @@ class GlueSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        table = self.context.table_data
+        table = self.context.get().table_data
         table_constraints = None
         try:
             columns = self.get_columns(table.StorageDescriptor)
@@ -302,14 +302,14 @@ class GlueSource(DatabaseServiceSource):
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
-                    schema_name=self.context.database_schema,
-                    database_name=self.context.database,
+                    schema_name=self.context.get().database_schema,
+                    database_name=self.context.get().database,
                 ),
             )
             yield Either(right=table_request)
@@ -350,7 +350,7 @@ class GlueSource(DatabaseServiceSource):
             yield self._get_column_object(column)
 
         # process table regular columns info
-        for column in self.context.table_data.PartitionKeys:
+        for column in self.context.get().table_data.PartitionKeys:
             yield self._get_column_object(column)
 
     def standardize_table_name(self, _: str, table: str) -> str:

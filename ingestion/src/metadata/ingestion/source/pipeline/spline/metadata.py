@@ -98,7 +98,7 @@ class SplineSource(PipelineServiceSource):
             displayName=pipeline_details.applicationName,
             sourceUrl=connection_url,
             tasks=self.get_connections_jobs(pipeline_details, connection_url),
-            service=self.context.pipeline_service,
+            service=self.context.get().pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
@@ -222,8 +222,8 @@ class SplineSource(PipelineServiceSource):
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Pipeline,
-                        service_name=self.context.pipeline_service,
-                        pipeline_name=self.context.pipeline,
+                        service_name=self.context.get().pipeline_service,
+                        pipeline_name=self.context.get().pipeline,
                     )
                     pipeline_entity = self.metadata.get_by_name(
                         entity=Pipeline, fqn=pipeline_fqn

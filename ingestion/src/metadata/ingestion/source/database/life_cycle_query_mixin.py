@@ -31,7 +31,7 @@ from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
-from metadata.ingestion.models.topology import TopologyContext
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -57,7 +57,7 @@ class LifeCycleQueryMixin:
     Module stores the methods to query the sources and get life cycle information
     """
 
-    context: TopologyContext
+    context: TopologyContextManager
     status: Status
     source_config: DatabaseServiceMetadataPipeline
     engine: Engine
@@ -129,10 +129,10 @@ class LifeCycleQueryMixin:
             table_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=self.context.database_schema,
-                table_name=self.context.table,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=self.context.get().database_schema,
+                table_name=self.context.get().table,
                 skip_es_search=True,
             )
             table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)

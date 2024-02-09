@@ -167,7 +167,7 @@ class TableauSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
                         columns=self.get_column_info(data_model),
@@ -210,19 +210,19 @@ class TableauSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
                 dataModels=[
                     fqn.build(
                         self.metadata,
                         entity_type=DashboardDataModel,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         data_model_name=data_model,
                     )
-                    for data_model in self.context.dataModels or []
+                    for data_model in self.context.get().dataModels or []
                 ],
                 tags=get_tag_labels(
                     metadata=self.metadata,
@@ -231,7 +231,7 @@ class TableauSource(DashboardServiceSource):
                     include_tags=self.source_config.includeTags,
                 ),
                 sourceUrl=dashboard_url,
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -322,7 +322,7 @@ class TableauSource(DashboardServiceSource):
                         classification_name=TABLEAU_TAG_CATEGORY,
                         include_tags=self.source_config.includeTags,
                     ),
-                    service=self.context.dashboard_service,
+                    service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart)
             except Exception as exc:
@@ -390,7 +390,7 @@ class TableauSource(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:

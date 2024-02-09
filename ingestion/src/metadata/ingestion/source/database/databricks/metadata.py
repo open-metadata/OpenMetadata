@@ -324,7 +324,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_catalog,
                 )
                 if filter_by_database(
@@ -349,7 +349,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                database=self.context.database,
+                database=self.context.get().database,
                 is_old_version=self.is_older_version,
             ):
                 yield schema_name
@@ -369,7 +369,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                     tag_fqn=fqn.build(
                         self.metadata,
                         Database,
-                        service_name=self.context.database_service,
+                        service_name=self.context.get().database_service,
                         database_name=database_name,
                     ),
                     tags=[tag.tag_value],
@@ -396,7 +396,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         try:
             tags = self.connection.execute(
                 DATABRICKS_GET_SCHEMA_TAGS.format(
-                    database_name=self.context.database, schema_name=schema_name
+                    database_name=self.context.get().database, schema_name=schema_name
                 )
             )
             for tag in tags:
@@ -404,8 +404,8 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                     tag_fqn=fqn.build(
                         self.metadata,
                         DatabaseSchema,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
                         schema_name=schema_name,
                     ),
                     tags=[tag.tag_value],
@@ -430,8 +430,8 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         try:
             table_tags = self.connection.execute(
                 DATABRICKS_GET_TABLE_TAGS.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table_name,
                 )
             )
@@ -440,9 +440,9 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                     tag_fqn=fqn.build(
                         self.metadata,
                         Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         table_name=table_name,
                     ),
                     tags=[tag.tag_value],
@@ -453,8 +453,8 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
 
             column_tags = self.connection.execute(
                 DATABRICKS_GET_COLUMN_TAGS.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table_name,
                 )
             )
@@ -463,9 +463,9 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                     tag_fqn=fqn.build(
                         self.metadata,
                         Column,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         table_name=table_name,
                         column_name=tag.column_name,
                     ),

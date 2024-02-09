@@ -294,7 +294,7 @@ class BigquerySource(
                         include_tags=self.source_config.includeTags,
                     )
             # Fetching policy tags on the column level
-            list_project_ids = [self.context.database]
+            list_project_ids = [self.context.get().database]
             if not self.service_connection.taxonomyProjectID:
                 self.service_connection.taxonomyProjectID = []
             list_project_ids.extend(self.service_connection.taxonomyProjectID)
@@ -356,12 +356,12 @@ class BigquerySource(
             database=fqn.build(
                 metadata=self.metadata,
                 entity_type=Database,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
             ),
             description=self.get_schema_description(schema_name),
             sourceUrl=self.get_source_url(
-                database_name=self.context.database,
+                database_name=self.context.get().database,
                 schema_name=schema_name,
             ),
         )
@@ -380,8 +380,8 @@ class BigquerySource(
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
-        schema_name = self.context.database_schema
-        database = self.context.database
+        schema_name = self.context.get().database_schema
+        database = self.context.get().database
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         return self.client.get_table(bq_table_fqn)
 
@@ -452,7 +452,7 @@ class BigquerySource(
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
-                service_name=self.context.database_service,
+                service_name=self.context.get().database_service,
                 database_name=project_id,
             )
             if filter_by_database(
@@ -476,7 +476,7 @@ class BigquerySource(
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    fqn._build(self.context.database, schema_name, table_name)
+                    fqn._build(self.context.get().database, schema_name, table_name)
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -493,7 +493,7 @@ class BigquerySource(
         """
         check if the table is partitioned table and return the partition details
         """
-        database = self.context.database
+        database = self.context.get().database
         table = self.client.get_table(fqn._build(database, schema_name, table_name))
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
@@ -602,8 +602,8 @@ class BigquerySource(
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 BIGQUERY_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
@@ -627,14 +627,14 @@ class BigquerySource(
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
                     __root__=self.get_stored_procedure_url(
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         # Follow the same building strategy as tables
                         table_name=stored_procedure.name,
                     )

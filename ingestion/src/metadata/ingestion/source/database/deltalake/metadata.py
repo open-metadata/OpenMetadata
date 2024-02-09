@@ -148,7 +148,7 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -161,8 +161,8 @@ class DeltalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
                 schema_name=schema.name,
             )
             if filter_by_schema(
@@ -188,8 +188,8 @@ class DeltalakeSource(DatabaseServiceSource):
                 database=fqn.build(
                     metadata=self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                 ),
             )
         )
@@ -203,16 +203,16 @@ class DeltalakeSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         for table in self.spark.catalog.listTables(dbName=schema_name):
             try:
                 table_name = table.name
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table.name,
                 )
                 if filter_by_table(
@@ -234,7 +234,7 @@ class DeltalakeSource(DatabaseServiceSource):
                         logger.debug(f"Skipping temporary table {table.name}")
                         continue
 
-                    self.context.table_description = table.description
+                    self.context.get().table_description = table.description
                     yield table_name, TABLE_TYPE_MAP.get(
                         table.tableType, TableType.Regular
                     )
@@ -244,7 +244,7 @@ class DeltalakeSource(DatabaseServiceSource):
                     and table.tableType
                     and table.tableType == SparkTableType.VIEW.value
                 ):
-                    self.context.table_description = table.description
+                    self.context.get().table_description = table.description
                     yield table_name, TableType.View
 
             except Exception as exc:
@@ -260,7 +260,7 @@ class DeltalakeSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         try:
             columns = self.get_columns(schema_name, table_name)
             view_definition = (
@@ -272,14 +272,14 @@ class DeltalakeSource(DatabaseServiceSource):
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
-                description=self.context.table_description,
+                description=self.context.get().table_description,
                 columns=columns,
                 tableConstraints=None,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 ),
                 viewDefinition=view_definition,

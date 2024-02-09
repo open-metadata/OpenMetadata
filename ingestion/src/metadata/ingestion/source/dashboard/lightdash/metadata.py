@@ -111,12 +111,12 @@ class LightdashSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield dashboard_request
@@ -152,7 +152,7 @@ class LightdashSource(DashboardServiceSource):
                     displayName=chart.name,
                     description=chart.description,
                     sourceUrl=chart_url,
-                    service=self.context.dashboard_service,
+                    service=self.context.get().dashboard_service,
                 )
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except

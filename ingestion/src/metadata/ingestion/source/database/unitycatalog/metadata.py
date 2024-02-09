@@ -101,7 +101,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.context.table_views = []
+        self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
             self.config.serviceConnection.__root__.config
@@ -147,7 +147,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service,
+                        service_name=self.context.get().database_service,
                         database_name=catalog_name,
                     )
                     if filter_by_database(
@@ -181,7 +181,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -189,14 +189,14 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         """
         return schema names
         """
-        catalog_name = self.context.database
+        catalog_name = self.context.get().database
         for schema in self.client.schemas.list(catalog_name=catalog_name):
             try:
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema.name,
                 )
                 if filter_by_schema(
@@ -230,8 +230,8 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 database=fqn.build(
                     metadata=self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                 ),
             )
         )
@@ -245,8 +245,8 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema
-        catalog_name = self.context.database
+        schema_name = self.context.get().database_schema
+        catalog_name = self.context.get().database
         for table in self.client.tables.list(
             catalog_name=catalog_name,
             schema_name=schema_name,
@@ -256,9 +256,9 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
@@ -277,7 +277,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                     table_type: TableType = TableType.View
                 if table.table_type.value.lower() == TableType.External.value.lower():
                     table_type: TableType = TableType.External
-                self.context.table_data = table
+                self.context.get().table_data = table
                 yield table_name, table_type
             except Exception as exc:
                 self.status.failed(
@@ -296,9 +296,9 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        table = self.client.tables.get(self.context.table_data.full_name)
-        schema_name = self.context.database_schema
-        db_name = self.context.database
+        table = self.client.tables.get(self.context.get().table_data.full_name)
+        schema_name = self.context.get().database_schema
+        db_name = self.context.get().database
         table_constraints = None
         try:
             columns = self.get_columns(table.columns)
@@ -320,15 +320,15 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 ),
             )
             yield Either(right=table_request)
 
             if table_type == TableType.View or table.view_definition:
-                self.context.table_views.append(
+                self.context.get_global().table_views.append(
                     TableView(
                         table_name=table_name,
                         schema_name=schema_name,
@@ -395,7 +395,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 table_name=table_fqn_list[2],
                 schema_name=table_fqn_list[1],
                 database_name=table_fqn_list[0],
-                service_name=self.context.database_service,
+                service_name=self.context.get().database_service,
             )
             if referred_table:
                 for parent_column in column.parent_columns:
@@ -500,12 +500,12 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
-            v for v in self.context.table_views if v.view_definition is not None
+            v for v in self.context.get().table_views if v.view_definition is not None
         ]:
             yield from get_view_lineage(
                 view=view,
                 metadata=self.metadata,
-                service_name=self.context.database_service,
+                service_name=self.contex.get().database_service,
                 connection_type=self.service_connection.type.value,
             )
 

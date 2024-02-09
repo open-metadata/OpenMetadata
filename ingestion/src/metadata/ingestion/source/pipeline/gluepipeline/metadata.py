@@ -103,7 +103,7 @@ class GluepipelineSource(PipelineServiceSource):
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
             tasks=self.get_tasks(pipeline_details),
-            service=self.context.pipeline_service,
+            service=self.context.get().pipeline_service,
             sourceUrl=source_url,
         )
         yield Either(right=pipeline_request)
@@ -172,8 +172,8 @@ class GluepipelineSource(PipelineServiceSource):
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Pipeline,
-                        service_name=self.context.pipeline_service,
-                        pipeline_name=self.context.pipeline,
+                        service_name=self.context.get().pipeline_service,
+                        pipeline_name=self.context.get().pipeline,
                     )
                     yield Either(
                         right=OMetaPipelineStatus(

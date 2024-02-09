@@ -116,7 +116,7 @@ class AirbyteSource(PipelineServiceSource):
             tasks=self.get_connections_jobs(
                 pipeline_details.connection, connection_url
             ),
-            service=self.context.pipeline_service,
+            service=self.context.get().pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
@@ -171,8 +171,8 @@ class AirbyteSource(PipelineServiceSource):
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Pipeline,
-                    service_name=self.context.pipeline_service,
-                    pipeline_name=self.context.pipeline,
+                    service_name=self.context.get().pipeline_service,
+                    pipeline_name=self.context.get().pipeline,
                 )
                 yield Either(
                     right=OMetaPipelineStatus(
@@ -235,8 +235,8 @@ class AirbyteSource(PipelineServiceSource):
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
-                service_name=self.context.pipeline_service,
-                pipeline_name=self.context.pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
             )
             pipeline_entity = self.metadata.get_by_name(
                 entity=Pipeline, fqn=pipeline_fqn

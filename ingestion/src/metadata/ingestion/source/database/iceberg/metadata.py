@@ -110,7 +110,7 @@ class IcebergSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -125,8 +125,8 @@ class IcebergSource(DatabaseServiceSource):
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=namespace_name,
                 )
                 if filter_by_schema(
@@ -160,8 +160,8 @@ class IcebergSource(DatabaseServiceSource):
                 database=fqn.build(
                     metadata=self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                 ),
             )
         )
@@ -171,7 +171,7 @@ class IcebergSource(DatabaseServiceSource):
         Prepares the table name to be sent to stage.
         Filtering happens here.
         """
-        namespace = self.context.database_schema
+        namespace = self.context.get().database_schema
 
         for table_identifier in self.iceberg.list_tables(namespace):
             try:
@@ -180,9 +180,9 @@ class IcebergSource(DatabaseServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
@@ -197,7 +197,7 @@ class IcebergSource(DatabaseServiceSource):
                     )
                     continue
 
-                self.context.iceberg_table = table
+                self.context.get().iceberg_table = table
                 yield table_name, TableType.Regular
             except pyiceberg.exceptions.NoSuchPropertyException:
                 logger.warning(
@@ -224,7 +224,7 @@ class IcebergSource(DatabaseServiceSource):
 
     def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
         owner = get_owner_from_table(
-            self.context.iceberg_table, self.service_connection.ownershipProperty
+            self.context.get().iceberg_table, self.service_connection.ownershipProperty
         )
         try:
             if owner:
@@ -245,7 +245,7 @@ class IcebergSource(DatabaseServiceSource):
         Also, update the self.inspector value to the current db.
         """
         table_name, table_type = table_name_and_type
-        iceberg_table = self.context.iceberg_table
+        iceberg_table = self.context.get().iceberg_table
         try:
             owner = self.get_owner_ref(table_name)
             table = IcebergTable.from_pyiceberg(
@@ -261,9 +261,9 @@ class IcebergSource(DatabaseServiceSource):
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
             )
             yield Either(right=table_request)

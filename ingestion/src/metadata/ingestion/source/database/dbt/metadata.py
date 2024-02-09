@@ -309,11 +309,11 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases for later processing
         """
-        self.context.dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.dbt_tests[key][
+        self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
+        self.context.get().dbt_tests[key][
             DbtCommonEnum.UPSTREAM.value
         ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        self.context.dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
+        self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
             (
                 item
                 for item in dbt_objects.dbt_run_results.results
@@ -340,14 +340,14 @@ class DbtSource(DbtServiceSource):
                     **dbt_objects.dbt_catalog.sources,
                     **dbt_objects.dbt_catalog.nodes,
                 }
-            self.context.data_model_links = []
-            self.context.dbt_tests = {}
-            self.context.run_results_generate_time = None
+            self.context.get().data_model_links = []
+            self.context.get().dbt_tests = {}
+            self.context.get().run_results_generate_time = None
             if (
                 dbt_objects.dbt_run_results
                 and dbt_objects.dbt_run_results.metadata.generated_at
             ):
-                self.context.run_results_generate_time = (
+                self.context.get().run_results_generate_time = (
                     dbt_objects.dbt_run_results.metadata.generated_at
                 )
             for key, manifest_node in manifest_entities.items():
@@ -457,7 +457,7 @@ class DbtSource(DbtServiceSource):
                             ),
                         )
                         yield Either(right=data_model_link)
-                        self.context.data_model_links.append(data_model_link)
+                        self.context.get().data_model_links.append(data_model_link)
                     else:
                         logger.warning(
                             f"Unable to find the table '{table_fqn}' in OpenMetadata"
@@ -859,8 +859,8 @@ class DbtSource(DbtServiceSource):
                 dbt_timestamp = None
                 if dbt_test_completed_at:
                     dbt_timestamp = dbt_test_completed_at
-                elif self.context.run_results_generate_time:
-                    dbt_timestamp = self.context.run_results_generate_time
+                elif self.context.get().run_results_generate_time:
+                    dbt_timestamp = self.context.get().run_results_generate_time
 
                 # check if the timestamp is a str type and convert accordingly
                 if isinstance(dbt_timestamp, str):

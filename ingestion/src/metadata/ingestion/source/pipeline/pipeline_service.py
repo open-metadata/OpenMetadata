@@ -37,7 +37,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -116,7 +116,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: PipelineConnection.__fields__["config"].type_
 
     topology = PipelineServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     pipeline_source_state: Set = set()
 
     def __init__(
@@ -228,7 +228,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Pipeline,
                 entity_source_state=self.pipeline_source_state,
                 mark_deleted_entity=self.source_config.markDeletedPipelines,
-                params={"service": self.context.pipeline_service},
+                params={"service": self.context.get().pipeline_service},
             )
 
     def prepare(self):
