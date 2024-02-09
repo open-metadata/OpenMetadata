@@ -36,7 +36,7 @@ import localState from '../../utils/LocalStorageUtils';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
-const SigninPage = () => {
+const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -170,7 +170,7 @@ const SigninPage = () => {
   }, [isAuthenticated]);
 
   if (isAuthenticated) {
-    return <Loader />;
+    return <Loader fullScreen />;
   }
 
   const handleSubmit = async ({
@@ -320,4 +320,4 @@ const SigninPage = () => {
   );
 };
 
-export default SigninPage;
+export default SignInPage;

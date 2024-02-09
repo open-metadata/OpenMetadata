@@ -16,11 +16,16 @@ import React from 'react';
 import Loader from './Loader';
 
 describe('Test Loader Component', () => {
-  it('Component should render', () => {
+  it('should render component', () => {
     const { getByTestId } = render(<Loader />);
 
-    const loader = getByTestId('loader');
+    expect(getByTestId('loader')).toBeInTheDocument();
+  });
 
-    expect(loader).toBeInTheDocument();
+  it('should render full screen loader component', () => {
+    const { getByTestId } = render(<Loader fullScreen />);
+
+    expect(getByTestId('full-screen-loader')).toBeInTheDocument();
+    expect(getByTestId('loader')).toBeInTheDocument();
   });
 });

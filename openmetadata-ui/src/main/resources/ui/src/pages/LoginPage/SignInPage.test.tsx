@@ -20,7 +20,7 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
-import SigninPage from './index';
+import SignInPage from './SignInPage';
 
 const mockUseAuthContext = useAuthContext as jest.Mock;
 
@@ -48,7 +48,7 @@ jest.mock('./LoginCarousel', () =>
   jest.fn().mockReturnValue(<p>LoginCarousel</p>)
 );
 
-describe('Test SigninPage Component', () => {
+describe('Test SignInPage Component', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -64,7 +64,7 @@ describe('Test SigninPage Component', () => {
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
     });
-    const { container } = render(<SigninPage />, {
+    const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
     });
     const signInPage = await findByTestId(container, 'signin-page');
@@ -91,7 +91,7 @@ describe('Test SigninPage Component', () => {
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
     });
-    const { container } = render(<SigninPage />, {
+    const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
     });
     const isUnknow = provider === 'unknown-provider';
@@ -113,7 +113,7 @@ describe('Test SigninPage Component', () => {
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
     });
-    const { container } = render(<SigninPage />, {
+    const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
     });
     const signinButton = await findByText(container, /label.sign-in-with-sso/i);
@@ -128,7 +128,7 @@ describe('Test SigninPage Component', () => {
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
     });
-    render(<SigninPage />, {
+    render(<SignInPage />, {
       wrapper: MemoryRouter,
     });
 

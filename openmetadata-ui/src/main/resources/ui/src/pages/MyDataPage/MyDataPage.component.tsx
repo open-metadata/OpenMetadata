@@ -208,7 +208,9 @@ const MyDataPage = () => {
         mainContainerClassName="p-t-0"
         pageTitle={t('label.my-data')}>
         {isLoading ? (
-          <Loader />
+          <div className="ant-layout-content flex-center">
+            <Loader />
+          </div>
         ) : (
           <ReactGridLayout
             className="bg-white"
