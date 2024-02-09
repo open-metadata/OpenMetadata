@@ -124,6 +124,7 @@ def calculate_execution_time_generator(func):
     Generator method to calculate workflow execution time
     """
 
+    @wraps(func)
     def calculate_debug_time(*args, **kwargs):
         # NOTE: We are basically implementing by hand a simplified version of 'yield from'
         # in order to be able to calculate the time difference correctly.
