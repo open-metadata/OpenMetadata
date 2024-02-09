@@ -196,6 +196,7 @@ const RequestTag = () => {
                 })}
               </Typography.Paragraph>
               <Form
+                data-testid="form-container"
                 form={form}
                 initialValues={{
                   suggestTags: [],
@@ -249,7 +250,7 @@ const RequestTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
