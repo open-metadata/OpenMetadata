@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES } from '../../constants/constants';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
@@ -45,7 +46,9 @@ const ForgotPassword = () => {
   );
 
   return (
-    <div className="h-full py-24 forgot-password-container ">
+    <div
+      className="h-full py-24 forgot-password-container "
+      data-testid="forgot-password-container">
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"
@@ -94,11 +97,11 @@ const ForgotPassword = () => {
                 data-testid="success-screen-container">
                 <div className="flex global-border rounded-4 p-sm success-alert">
                   <div className="m-r-xs">
-                    <SVGIcons
-                      alt={t('label.success')}
-                      className="w-5"
+                    <Icon
+                      className="align-middle"
+                      component={IconSuccessBadge}
                       data-testid="success-icon"
-                      icon={Icons.SUCCESS_BADGE}
+                      style={{ fontSize: '20px' }}
                     />
                   </div>
                   <p data-testid="success-line">
@@ -117,6 +120,7 @@ const ForgotPassword = () => {
             <Button
               ghost
               className="w-full"
+              data-testid="go-back-button"
               type="primary"
               onClick={() => history.push(ROUTES.SIGNIN)}>
               {t('message.go-back-to-login-page')}
