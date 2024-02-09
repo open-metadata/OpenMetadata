@@ -566,7 +566,7 @@ class BigqueryUnitTest(TestCase):
             )
         )
         self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
-        self.bq_source.context.__dict__[
+        self.bq_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
         self.bq_source.inspector = types.SimpleNamespace()
@@ -623,8 +623,8 @@ class BigqueryUnitTest(TestCase):
 
         get_tag_labels.return_value = []
         get_table_partition_details.return_value = False, None
-        self.bq_source.context.__dict__["database"] = MOCK_DB_NAME
-        self.bq_source.context.__dict__[
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
 
