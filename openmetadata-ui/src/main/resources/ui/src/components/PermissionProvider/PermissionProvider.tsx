@@ -198,7 +198,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
 
   return (
     <PermissionContext.Provider value={contextValues}>
-      {loading ? <Loader /> : children}
+      {loading ? <Loader fullScreen /> : children}
     </PermissionContext.Provider>
   );
 };
