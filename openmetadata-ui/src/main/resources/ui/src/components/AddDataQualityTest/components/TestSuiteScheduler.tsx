@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Form, Row, Space } from 'antd';
 import { t } from 'i18next';
 import React, { useEffect, useState } from 'react';
 import CronEditor from '../../common/CronEditor/CronEditor';
@@ -22,7 +22,6 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
   buttonProps,
   onCancel,
   onSubmit,
-  isQuartzCron = false,
   includePeriodOptions,
 }) => {
   const [repeatFrequency, setRepeatFrequency] = useState<string | undefined>(
@@ -38,12 +37,13 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
   return (
     <Row gutter={[16, 32]}>
       <Col span={24}>
-        <CronEditor
-          includePeriodOptions={includePeriodOptions}
-          isQuartzCron={isQuartzCron}
-          value={repeatFrequency}
-          onChange={(value: string) => setRepeatFrequency(value)}
-        />
+        <Form data-testid="schedule-container">
+          <CronEditor
+            includePeriodOptions={includePeriodOptions}
+            value={repeatFrequency}
+            onChange={(value: string) => setRepeatFrequency(value)}
+          />
+        </Form>
       </Col>
       <Col span={24}>
         <Space className="w-full justify-end" size={16}>
