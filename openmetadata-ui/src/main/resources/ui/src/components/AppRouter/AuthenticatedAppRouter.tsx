@@ -307,13 +307,6 @@ const EditRulePage = withSuspenseFallback(
   )
 );
 
-const TestCaseDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
-  )
-);
-
 const LogsViewer = withSuspenseFallback(
   React.lazy(() => import('../../pages/LogsViewer/LogsViewer.component'))
 );
@@ -1081,15 +1074,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={TestCaseDetailsPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_CASE,
-          permissions
-        )}
-        path={ROUTES.TEST_CASE_DETAILS}
-      />
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route
         exact

@@ -265,7 +265,6 @@ export const ROUTES = {
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
-  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_FQN}`,
   ADD_QUERY: `/query/${PLACEHOLDER_ROUTE_FQN}/add-query`,
 
   // Tasks Routes

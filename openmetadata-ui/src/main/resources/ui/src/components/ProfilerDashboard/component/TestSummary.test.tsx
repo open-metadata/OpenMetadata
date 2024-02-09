@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {
   MOCK_SQL_TEST_CASE,
@@ -94,9 +93,6 @@ describe('TestSummary component', () => {
     expect(
       await screen.findByTestId('test-summary-container')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('test-case-expand-button')
-    ).toBeInTheDocument();
     expect(await screen.findByTestId('params-container')).toBeInTheDocument();
     expect(graphContainer).toBeInTheDocument();
     expect(graph).toBeInTheDocument();
@@ -125,9 +121,6 @@ describe('TestSummary component', () => {
     expect(
       await screen.findByText('ErrorPlaceHolder.component')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('test-case-expand-button')
-    ).toBeInTheDocument();
     expect(await screen.findByTestId('params-container')).toBeInTheDocument();
 
     expect(await screen.findAllByTestId('parameter-value')).toHaveLength(
@@ -141,30 +134,6 @@ describe('TestSummary component', () => {
     expect(
       await screen.findByText('SchemaEditor.component')
     ).toBeInTheDocument();
-  });
-
-  it('full screen button click should work', async () => {
-    render(<TestSummary data={MOCK_SQL_TEST_CASE} />);
-
-    const fullScreenBtn = await screen.findByTestId('test-case-expand-button');
-
-    expect(fullScreenBtn).toBeInTheDocument();
-
-    userEvent.click(fullScreenBtn);
-
-    expect(mockHistory.push).toHaveBeenCalled();
-  });
-
-  it('minimize screen button click should work', async () => {
-    render(<TestSummary data={MOCK_SQL_TEST_CASE} showExpandIcon={false} />);
-
-    const fullScreenBtn = await screen.findByTestId('test-case-expand-button');
-
-    expect(fullScreenBtn).toBeInTheDocument();
-
-    userEvent.click(fullScreenBtn);
-
-    expect(mockHistory.goBack).toHaveBeenCalled();
   });
 
   it('default time range should be 30 days', async () => {
