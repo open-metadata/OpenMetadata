@@ -11,7 +11,7 @@
 """
 Profiler Processor Step
 """
-
+import json
 import traceback
 from datetime import datetime
 from functools import singledispatch
@@ -48,7 +48,11 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
         sample_storage_config = profiler_interface.storage_config
         if not sample_storage_config:
             return
-        df = pd.DataFrame(data=data.rows, columns=[i.__root__ for i in data.columns])
+        deserialized_data = json.loads(data.json())
+        df = pd.DataFrame(
+            data=deserialized_data.get("rows", []),
+            columns=[i.__root__ for i in data.columns],
+        )
         pq_buffer = BytesIO()
         df.to_parquet(pq_buffer)
         object_key = _get_object_key(
