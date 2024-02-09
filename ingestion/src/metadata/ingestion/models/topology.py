@@ -332,7 +332,8 @@ class Queue:
                 break
 
     def add(self, item: QueueItem):
-        """Adds a new item to the Queue while tracking the Thread awaiting for it to be processed through the 'task_map'."""
+        """Adds a new item to the Queue while tracking the Thread awaiting for it to be processed
+        through the 'task_map'."""
         self.task_map[item.thread_id] = True
         self.queue.put(item)
 

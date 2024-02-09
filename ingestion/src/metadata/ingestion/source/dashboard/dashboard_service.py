@@ -480,10 +480,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
             try:
                 dashboard_details = self.get_dashboard_details(dashboard)
-                self.context.get().project_name = (  # pylint: disable=assignment-from-none
-                    self.get_project_name(
-                        dashboard_details=dashboard_details
-                    )
+                self.context.get().project_name = (  # pylint: disable=E1128
+                    self.get_project_name(dashboard_details=dashboard_details)
                 )
                 if filter_by_project(
                     self.source_config.projectFilterPattern,
