@@ -20,7 +20,7 @@ public class UnhandledServerException extends WebServiceException {
   private static final String MESSAGE =
       "An exception with message [%s] was thrown while processing request.";
 
-  public static final String UNHANDLED_ERROR = "REFLECTION_ERROR";
+  public static final String UNHANDLED_ERROR = "UNHANDLED_SERVER_EXCEPTION";
 
   public UnhandledServerException(String exceptionMessage) {
     super(
