@@ -49,13 +49,18 @@ services:
     ports:
       - "9200:9200"
       - "9300:9300"
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 10
     volumes:
       - es-data:/usr/share/elasticsearch/data
 
   execute-migrate-all:
     container_name: execute_migrate_all
     image: docker.getcollate.io/openmetadata/server:1.3.0-SNAPSHOT
-    command: "./bootstrap/bootstrap_storage.sh migrate-all"
+    command: "./bootstrap/openmetadata-ops.sh migrate"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -234,7 +239,7 @@ services:
       WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
     depends_on:
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
       mysql:
         condition: service_healthy
     networks:
@@ -420,7 +425,7 @@ services:
       - "8586:8586"
     depends_on:
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
       mysql:
         condition: service_healthy
       execute-migrate-all:

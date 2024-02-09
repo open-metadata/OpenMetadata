@@ -56,7 +56,11 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
+from metadata.ingestion.source.database.bigquery.helper import (
+    get_foreign_keys,
+    get_inspector_details,
+    get_pk_constraint,
+)
 from metadata.ingestion.source.database.bigquery.models import (
     STORED_PROC_LANGUAGE_MAP,
     BigQueryStoredProcedure,
@@ -194,6 +198,8 @@ def _build_formatted_table_id(table):
 BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-access
     _build_formatted_table_id
 )
+BigQueryDialect.get_pk_constraint = get_pk_constraint
+BigQueryDialect.get_foreign_keys = get_foreign_keys
 
 
 class BigquerySource(

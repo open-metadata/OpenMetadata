@@ -114,11 +114,22 @@ After the migration is finished, you can revert this changes.
 
 ### New Alerts and Observability
 
-We have fully reworked how we manage alerts to make the experience easier for end users. Now, alerts have been
-split between Alerts and Observability, both working with a full new backend implementation.
+{% note noteType="Warning" %}
 
-This means that there is no automatic way for us to migrate alerts from the old system to the new feature.
-**You will need to recreate your alerts manually.**
+Upgrading to OpenMetadata 1.3.0 will REMOVE your existing Alerts. **You will need to recreate your alerts manually.**
+
+{% /note %}
+
+We have fully reworked how we manage alerts to make the experience easier for end users, with a more comprehensive
+list of sources, filters and actions.
+
+This process required a full backend rewrite, which means that there is no automatic way to migrate alerts from the old system.
+
+{% image
+  src="/images/v1.3/deployment/upgrade/alerts.png"
+  alt="alerts"
+  caption="New Alerts UI"
+/%}
 
 ### Secrets Manager
 
@@ -136,6 +147,30 @@ Either update your YAMLs or the env var you are using under `SECRET_MANAGER`.
 Note how we also added the possibility to add `prefix` when defining the secret key ID in the external secrets managers and
 the option to tag the created resources.
 
+### Docker user
+
+In this release we updated the server [Dockerfile](https://github.com/open-metadata/OpenMetadata/blob/1.3.0/docker/development/Dockerfile#L34)
+to work with `openmetadata` as a user instead of root.
+
+If you're mapping volumes, specially when [configuring JWK](https://docs.open-metadata.org/v1.3.x/deployment/docker#add-docker-volumes-for-openmetadata-server-compose-service),
+you will need to update the owner of the directory to get it working with the new `openmetadata` user.
+
+You will need to run:
+
+```bash
+chown 1000 private_key.der
+```
+
+Otherwise, you'll see a similar error in your server logs:
+
+```
+ERROR [2024-02-08 15:29:36,792] [main] o.o.s.s.j.JWTTokenGenerator - Failed to initialize JWTTokenGenerator
+java.nio.file.AccessDeniedException: /etc/openmetadata/jwtkeys/private_key.der
+at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:90)
+at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:106)
+...
+```
+
 ### Elasticsearch reindex from Python
 
 In 1.2.0 we introduced the Elasticsearch reindex job as part of the OpenMetadata server. In this release, we 
@@ -144,6 +179,9 @@ removed triggering ES job from Python workflows. Everything happens in the serve
 ### Ingestion & Ingestion Base Python Version
 
 The `openmetadata/ingestion` and `openmetadata/ingestion-base` images now use Python 3.10.
+
+Note that starting release 1.3.0, the `openmetadata-ingestion` package started supporting Python 3.11. We'll
+migrate the images to 3.11 in the next release.
 
 ### Python SDK Auth Mechanisms
 
@@ -171,7 +209,7 @@ This is what has been removed:
 
 ### Custom Connectors
 
-In 1.3.0 we started registered more information from Ingestion Pipelines status' in the platform. This required
+In 1.3.0 we started registering more information from Ingestion Pipelines status' in the platform. This required
 us to create new JSON Schemas for the added properties, that before were only used in the Ingestion Framework.
 
 Due to this, we need to update one import and one of its properties' names.
@@ -184,11 +222,10 @@ And we renamed its property `stack_trace` to `stackTrace` to follow the naming c
 
 ### SQL Lineage
 
-With 1.3.0 we have renamed the `sqllineage` package to `collate_sqllineage`, this change has been made to avoid any conflict with open source version of `sqllineage`. In case you are using this package in your python scripts please make sure to rename your imports: 
+In the `collate-sqllineage` dependency, we have renamed the `sqllineage` import to `collate_sqllineage`. 
+
+This change has been made to avoid any conflict with the open source version of `sqllineage`. 
+In case you are using this package directly in your python scripts please make sure to rename your imports: 
 
 - From `from sqllineage.xxx import xxx`
 - To `from collate_sqllineage.xxx import xxx`
-
-### Other Changes
-
-- ...

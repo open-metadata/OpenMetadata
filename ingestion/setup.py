@@ -41,7 +41,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
-    "databricks-sdk": "databricks-sdk~=0.1",
+    "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
     "google": "google>=3.0.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy==3.5.0",
@@ -118,7 +118,7 @@ base_requirements = {
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage>=1.0.4",
+    "collate-sqllineage~=1.3.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "wheel~=0.38.4",

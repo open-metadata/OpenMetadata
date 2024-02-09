@@ -30,7 +30,7 @@ import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../assets/svg/DropDown.svg';
+import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';

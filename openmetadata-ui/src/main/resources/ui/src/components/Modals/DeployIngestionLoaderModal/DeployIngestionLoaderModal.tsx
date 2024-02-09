@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
+import { ReactComponent as IconCreateIngestion } from '../../../assets/svg/creating-ingestion.svg';
+import { ReactComponent as IconDeployIngestion } from '../../../assets/svg/deploy-ingestion.svg';
 import { LITE_GRAY_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { DeployIngestionLoaderModalProps } from './DeployIngestionLoaderModal.interface';
 
 const DeployIngestionLoaderModal = ({
@@ -59,7 +61,11 @@ const DeployIngestionLoaderModal = ({
                   background: isActive(isIngestionCreated),
                 }}>
                 <Typography.Text className="flex-center h-full">
-                  <SVGIcons alt="" icon={Icons.CREATE_INGESTION} />
+                  <Icon
+                    className="align-middle"
+                    component={IconCreateIngestion}
+                    style={{ fontSize: '26px' }}
+                  />
                 </Typography.Text>
               </Typography.Text>
             </div>
@@ -70,7 +76,11 @@ const DeployIngestionLoaderModal = ({
                   background: isActive(isDeployed),
                 }}>
                 <Typography.Text className="flex-center h-full">
-                  <SVGIcons alt="" icon={Icons.DEPLOY_INGESTION} />
+                  <Icon
+                    className="align-middle"
+                    component={IconDeployIngestion}
+                    style={{ fontSize: '26px' }}
+                  />
                 </Typography.Text>
               </Typography.Text>
             </div>

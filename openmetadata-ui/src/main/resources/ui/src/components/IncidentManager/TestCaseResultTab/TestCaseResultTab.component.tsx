@@ -134,7 +134,7 @@ const TestCaseResultTab = ({
             <Typography.Text className="right-panel-label">
               {t('label.parameter-plural')}
             </Typography.Text>
-            {hasEditPermission && (
+            {hasEditPermission && Boolean(withoutSqlParams.length) && (
               <Icon
                 component={EditIcon}
                 data-testid="edit-parameter-icon"
@@ -198,7 +198,7 @@ const TestCaseResultTab = ({
 
       {testCaseData && (
         <Col className="test-case-result-tab-graph" span={24}>
-          <TestSummary showExpandIcon showOnlyGraph data={testCaseData} />
+          <TestSummary showOnlyGraph data={testCaseData} />
         </Col>
       )}
 

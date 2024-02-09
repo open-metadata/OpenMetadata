@@ -29,13 +29,13 @@ import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSet
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -307,13 +307,6 @@ const EditRulePage = withSuspenseFallback(
   )
 );
 
-const TestCaseDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
-  )
-);
-
 const LogsViewer = withSuspenseFallback(
   React.lazy(() => import('../../pages/LogsViewer/LogsViewer.component'))
 );
@@ -507,7 +500,7 @@ const ApplicationPageV1 = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const { routeElements } = useApplicationConfigContext();
+  const RouteElements = applicationRoutesClass.getRouteElements();
 
   const glossaryPermission = useMemo(
     () =>
@@ -1081,15 +1074,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={TestCaseDetailsPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_CASE,
-          permissions
-        )}
-        path={ROUTES.TEST_CASE_DETAILS}
-      />
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route
         exact
@@ -1340,7 +1324,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
       />
-      {routeElements}
+      {RouteElements && <RouteElements />}
       <Route
         exact
         path={[

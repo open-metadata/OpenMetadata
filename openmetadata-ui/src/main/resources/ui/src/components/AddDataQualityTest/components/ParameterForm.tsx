@@ -12,18 +12,27 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Select, Switch } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import {
+  Button,
+  Form,
+  FormItemProps,
+  Input,
+  InputNumber,
+  Select,
+  Switch,
+} from 'antd';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
   TestCaseParameterDefinition,
   TestDataType,
 } from '../../../generated/tests/testDefinition';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import '../../TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
@@ -32,6 +41,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
 
   const prepareForm = (data: TestCaseParameterDefinition) => {
+    let internalFormItemProps: FormItemProps = {};
     let Field = (
       <Input
         placeholder={`${t('message.enter-a-field', {
@@ -122,6 +132,10 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           break;
         case TestDataType.Boolean:
           Field = <Switch />;
+          internalFormItemProps = {
+            ...internalFormItemProps,
+            valuePropName: 'checked',
+          };
 
           break;
         case TestDataType.Array:
@@ -177,7 +191,13 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                         />
                       </Form.Item>
                       <Button
-                        icon={<SVGIcons alt="delete" icon={Icons.DELETE} />}
+                        icon={
+                          <Icon
+                            className="align-middle"
+                            component={IconDelete}
+                            style={{ fontSize: '16px' }}
+                          />
+                        }
                         type="text"
                         onClick={() => remove(name)}
                       />
@@ -204,7 +224,8 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             })}`,
           },
         ]}
-        tooltip={data.description}>
+        tooltip={data.description}
+        {...internalFormItemProps}>
         {Field}
       </Form.Item>
     );
