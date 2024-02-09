@@ -93,6 +93,12 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to paralellize Table ingestion.",
+      "type": "integer",
+      "default": 4,
+      "title": "Number of Threads"
     }
   },
   "additionalProperties": false

@@ -11,8 +11,11 @@
 """
 Defines the topology for ingesting sources
 """
+import threading
+import queue
+
 from functools import singledispatchmethod
-from typing import Any, Generic, List, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, Extra, Field, create_model
 
@@ -115,6 +118,7 @@ class TopologyNode(BaseModel):
     post_process: Optional[List[str]] = Field(
         None, description="Method to be run after the node has been fully processed"
     )
+    threads: bool = Field(False, description="Flag that defines if a node is open to MultiThreading processing.")
 
 
 class ServiceTopology(BaseModel):
@@ -243,6 +247,88 @@ class TopologyContext(BaseModel):
             schema_name=self.__dict__["database_schema"],
             procedure_name=right.name.__root__,
         )
+
+
+class TopologyContextManager():
+    """ Manages the Context held for different threads. """
+    def __init__(self, topology: ServiceTopology):
+        # Due to our code strucutre, the first time the ContextManager is called will be within the MainThread.
+        # We can leverage this to guarantee we keep track of the MainThread ID.
+        self.main_thread = self.get_current_thread_id()
+        self.contexts: Dict[str, TopologyContext] = {
+            self.main_thread: TopologyContext.create(topology)
+        }
+
+        # Starts with the Multithreading disabled
+        self.threads = 0
+
+    def set_threads(self, threads: Optional[int]):
+        self.threads = threads or 0
+
+    def get_current_thread_id(self):
+        return str(threading.get_ident())
+
+    def get_global(self) -> TopologyContext:
+        return self.contexts[self.main_thread]
+
+    def get(self, thread_id: Optional[str] = None) -> TopologyContext:
+        """ Returns the TopologyContext of a given thread. """
+        if thread_id:
+            return self.contexts[thread_id]
+
+        thread_id = self.get_current_thread_id()
+
+        return self.contexts[thread_id]
+
+    def pop(self, thread_id: str):
+        """ Cleans the TopologyContext of a given thread in order to lower the Memory Profile. """
+        self.contexts.pop(thread_id)
+
+    def copy_from(self, parent_thread_id: str):
+        """ Copies the TopologyContext from a given Thread to the new thread TopologyContext. """
+        thread_id = self.get_current_thread_id()
+
+        # If it does not exist yet, copies the Parent Context in order to have all context gathered until this point.
+        self.contexts.setdefault(thread_id, self.contexts[parent_thread_id].copy(deep=True))
+
+
+class QueueItem(BaseModel):
+    """ Small DataClass to model a QueueItem. """
+    thread_id: str
+    item: Any
+
+
+class Queue:
+    """ Small Queue implementation on top of queue.Queue to be able to keep a flag for the threads with
+    task on the queue. """
+    def __init__(self):
+        self.queue = queue.Queue()
+        self.task_map: Dict[str, bool] = {}
+
+    def has_tasks(self, thread_id: Optional[str] = None) -> bool:
+        """ If it received a thread_id checks if the Thread is waiting for a task through the 'task_map'
+        If not, checks that the Queue is not empty. """
+        if thread_id:
+            return self.task_map.get(thread_id, False)
+
+        return not self.queue.empty()
+
+    def process(self) -> Any:
+        """ Yields all the items currently on the Queue. """
+        while True:
+            try:
+                item = self.queue.get_nowait()
+                yield item.item
+                self.task_map[item.thread_id] = False
+                self.queue.task_done()
+            except queue.Empty:
+                break
+
+    def add(self, item: QueueItem):
+        """ Adds a new item to the Queue while tracking the Thread awaiting for it to be processed through the 'task_map'. """
+        self.task_map[item.thread_id] = True
+        self.queue.put(item)
+
 
 
 def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:

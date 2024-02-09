@@ -12,8 +12,10 @@
 Mixin to be used by service sources to dynamically
 generate the _run based on their topology.
 """
+import time
 import traceback
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from functools import singledispatchmethod
 from typing import Any, Generic, Iterable, List, Type, TypeVar
 
@@ -29,8 +31,10 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
+    Queue,
+    QueueItem,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
     get_topology_node,
     get_topology_root,
@@ -39,6 +43,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.source_hash import generate_source_hash
+
 
 logger = ingestion_logger()
 
@@ -59,11 +64,78 @@ class TopologyRunnerMixin(Generic[C]):
     """
 
     topology: ServiceTopology
-    context: TopologyContext
+    context: TopologyContextManager
     metadata: OpenMetadata
 
     # The cache will have the shape {`child_stage.type_`: {`name`: `hash`}}
     cache = defaultdict(dict)
+    queue = Queue()
+
+    def _multithread_process_node(self, node: TopologyNode, threads: int) -> Iterable[Entity]:
+        """ Multithread Processing of a Node"""
+        node_producer = getattr(self, node.producer)
+        child_nodes = self._get_child_nodes(node)
+
+        node_entities = node_producer()
+
+        has_input = True
+
+        threads = threads
+        pending_results = []
+        # TODO: What if we used threadName + ID instead of the id? :think:
+        thread_pool = ThreadPoolExecutor(threads)
+
+        while True:
+            # While we have free threads and input, we spawn new threads
+            while has_input and len(pending_results) < threads:
+                try:
+                    node_entity = next(node_entities)
+                    pending_results.append(thread_pool.submit(
+                        self._multithread_process_entity,
+                        node,
+                        node_entity,
+                        child_nodes,
+                        self.context.get_current_thread_id()
+                    ))
+                except StopIteration:
+                    has_input = False
+
+            # If all the threads are already finished and we don't have any input we break the loop.
+            if not (pending_results or has_input):
+                break
+
+            # If we have tasks ready, get the result and pop them from the tracking list.
+            for i, task in enumerate(pending_results):
+                if task.done():
+                    task.result()
+                    pending_results.pop(i)
+
+            # Whenever there are items ready to continue the Processing flow in the Queue
+            # we are yielding them all
+            if self.queue.has_tasks():
+                yield from self.queue.process()
+
+            time.sleep(.01)
+
+    def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
+        """ Processing of a Node in a single thread. """
+        node_producer = getattr(self, node.producer)
+        child_nodes = self._get_child_nodes(node)
+
+        for node_entity in node_producer() or []:
+            for stage in node.stages:
+                yield from self._process_stage(
+                    stage=stage, node_entity=node_entity, child_nodes=child_nodes
+                )
+
+            # Once we are done processing all the stages,
+            for stage in node.stages:
+                if stage.clear_context:
+                    self.context.get().clear_stage(stage=stage)
+
+            # process all children from the node being run
+            yield from self.process_nodes(child_nodes)
+
 
     def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:
         """
@@ -91,28 +163,69 @@ class TopologyRunnerMixin(Generic[C]):
         """
         for node in nodes:
             logger.debug(f"Processing node {node}")
-            node_producer = getattr(self, node.producer)
-            child_nodes = self._get_child_nodes(node)
 
             # Each node producer will give us a list of entities that we need
             # to process. Each of the internal stages will sink result to OM API.
             # E.g., in the DB topology, at the Table TopologyNode, the node_entity
             # will be each `table`
-            for node_entity in node_producer() or []:
-                for stage in node.stages:
-                    yield from self._process_stage(
-                        stage=stage, node_entity=node_entity, child_nodes=child_nodes
-                    )
-
-                # Once we are done processing all the stages,
-                for stage in node.stages:
-                    if stage.clear_context:
-                        self.context.clear_stage(stage=stage)
-
-                # process all children from the node being run
-                yield from self.process_nodes(child_nodes)
+            # if node.producer == "get_tables_name_and_type" or node.producer == "get_database_schema_names":
+            if node.threads and self.context.threads > 1:
+                yield from self._multithread_process_node(node, self.context.threads)
+            else:
+                yield from self._process_node(node)
 
             yield from self._run_node_post_process(node=node)
+
+    def _multithread_process_entity(
+        self,
+        node: TopologyNode,
+        node_entity: Any,
+        child_nodes: List[TopologyNode],
+        parent_thread_id: str
+    ) -> str:
+        """ Multithread processing of a Node Entity"""
+
+        # Generates a new context based on the parent thread.
+        self.context.copy_from(parent_thread_id)
+        thread_id = self.context.get_current_thread_id()
+
+        # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
+        for stage in node.stages:
+            stage_results = self._process_stage(stage=stage, node_entity=node_entity, child_nodes=child_nodes)
+            while True:
+                # If the result wasn't processed yet we wait to guarantee the stages are being processed sequencially.
+                if self.queue.has_tasks(thread_id):
+                    time.sleep(.01)
+
+                else:
+                    try:
+                        self.queue.add(QueueItem(thread_id=thread_id, item=next(stage_results)))
+                    except StopIteration:
+                        break
+
+        # After all the stages are done, we clear the context if needed.
+        for stage in node.stages:
+            if stage.clear_context:
+                self.context.get().clear_stage(stage=stage)
+
+
+        # If the Entity has child nodes that need processing we proceed to processing them with the same logic as above.
+        if child_nodes:
+            children_result = self.process_nodes(child_nodes)
+
+            while True:
+                if self.queue.has_tasks(thread_id):
+                    time.sleep(.01)
+
+                else:
+                    try:
+                        self.queue.add(QueueItem(thread_id=thread_id, item=next(children_result)))
+                    except StopIteration:
+                        break
+
+        # Finally we pop the context and finish the thread
+        self.context.pop(thread_id)
+        return thread_id
 
     def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:
         """Compute children nodes if any"""
@@ -177,9 +290,9 @@ class TopologyRunnerMixin(Generic[C]):
         for child_node in child_nodes or []:
             for child_stage in child_node.stages or []:
                 if child_stage.use_cache:
-                    entity_fqn = self.context.fqn_from_stage(
+                    entity_fqn = self.context.get().fqn_from_stage(
                         stage=stage,
-                        entity_name=self.context.__dict__[stage.context],
+                        entity_name=self.context.get().__dict__[stage.context],
                     )
 
                     self.get_fqn_source_hash_dict(
@@ -251,7 +364,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
         entity = None
         entity_name = model_str(right.name)
-        entity_fqn = self.context.fqn_from_stage(stage=stage, entity_name=entity_name)
+        entity_fqn = self.context.get().fqn_from_stage(stage=stage, entity_name=entity_name)
 
         # If we don't want to write data in OM, we'll return what we fetch from the API.
         # This will be applicable for service entities since we do not want to overwrite the data
@@ -321,7 +434,7 @@ class TopologyRunnerMixin(Generic[C]):
                     "for the service connection."
                 )
 
-        self.context.update_context_name(stage=stage, right=right)
+        self.context.get().update_context_name(stage=stage, right=right)
 
     @yield_and_update_context.register
     def _(
@@ -337,7 +450,7 @@ class TopologyRunnerMixin(Generic[C]):
         lineage has been properly drawn. We'll skip the process for now.
         """
         yield entity_request
-        self.context.update_context_name(stage=stage, right=right.edge.fromEntity)
+        self.context.get().update_context_name(stage=stage, right=right.edge.fromEntity)
 
     @yield_and_update_context.register
     def _(
@@ -355,7 +468,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
         yield entity_request
 
-        self.context.update_context_value(stage=stage, value=right)
+        self.context.get().update_context_value(stage=stage, value=right)
 
     @yield_and_update_context.register
     def _(
@@ -367,7 +480,7 @@ class TopologyRunnerMixin(Generic[C]):
         """Custom Property implementation for the context information"""
         yield entity_request
 
-        self.context.update_context_value(stage=stage, value=right)
+        self.context.get().update_context_value(stage=stage, value=right)
 
     def sink_request(
         self, stage: NodeStage, entity_request: Either[C]
