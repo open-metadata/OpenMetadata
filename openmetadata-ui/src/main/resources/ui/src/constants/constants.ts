@@ -124,7 +124,7 @@ export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
 export const ES_UPDATE_DELAY = 500;
 
-export const DESCRIPTIONLENGTH = 100;
+export const DESCRIPTION_LENGTH = 100;
 
 export const CHART_WIDGET_DAYS_DURATION = 14;
 
