@@ -129,7 +129,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'description',
         render: (description: string) =>
           isEmpty(description) ? (
-            <Typography.Paragraph>{NO_DATA_PLACEHOLDER}</Typography.Paragraph>
+            <Typography.Paragraph className="m-b-0">
+              {NO_DATA_PLACEHOLDER}
+            </Typography.Paragraph>
           ) : (
             <RichTextEditorPreviewer
               markdown={description}
