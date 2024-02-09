@@ -125,10 +125,10 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         render: (description: string) => (
           <Typography.Paragraph
             className="m-b-0"
-            style={{whiteSpace:"pre-wrap"}}
             ellipsis={{
               rows: 2,
             }}
+            style={{ whiteSpace: 'pre-wrap' }}
             title={description}>
             {isEmpty(description) ? '--' : description}
           </Typography.Paragraph>

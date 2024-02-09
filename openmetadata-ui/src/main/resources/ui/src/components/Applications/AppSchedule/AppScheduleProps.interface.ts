@@ -14,7 +14,6 @@ import { App } from '../../../generated/entity/applications/app';
 
 export interface AppScheduleProps {
   appData: App;
-  onCancel: () => void;
   onSave: (cron: string) => void;
   onDemandTrigger: () => void;
   onDeployTrigger: () => void;

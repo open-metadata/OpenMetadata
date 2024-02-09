@@ -35,10 +35,6 @@ jest.mock('../../../rest/ingestionPipelineAPI', () => ({
     .mockImplementation((...args) => mockGetIngestionPipelineByFqn(...args)),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  getIngestionFrequency: jest.fn(),
-}));
-
 jest.mock('../../AddDataQualityTest/components/TestSuiteScheduler', () =>
   jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
     <div>
@@ -73,7 +69,6 @@ const mockProps1 = {
     name: 'DataInsightsReportApplication',
   },
   onSave: mockOnSave,
-  onCancel: jest.fn(),
   onDemandTrigger: mockOnDemandTrigger,
   onDeployTrigger: mockOnDeployTrigger,
 };

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { getQuartzCronExpression } from './CronUtils';
+import { AppType } from '../generated/entity/applications/app';
+import { getCronInitialValue, getQuartzCronExpression } from './CronUtils';
 
 describe('getQuartzCronExpression function', () => {
   it('should generate cron expression for every minute', () => {
@@ -92,5 +93,34 @@ describe('getQuartzCronExpression function', () => {
     const result = getQuartzCronExpression(state);
 
     expect(result).toEqual('0 30 10 ? * 4');
+  });
+});
+
+describe('getCronInitialValue function', () => {
+  it('should generate hour cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
+    const result = getCronInitialValue(
+      AppType.Internal,
+      'SearchIndexingApplication'
+    );
+
+    expect(result).toEqual('0 * * * *');
+  });
+
+  it('should generate week cron expression if appName is DataInsightsReportApplication', () => {
+    const result = getCronInitialValue(
+      AppType.Internal,
+      'DataInsightsReportApplication'
+    );
+
+    expect(result).toEqual('0 0 * * 0');
+  });
+
+  it('should generate day cron expression if appType is external', () => {
+    const result = getCronInitialValue(
+      AppType.External,
+      'DataInsightsApplication'
+    );
+
+    expect(result).toEqual('0 0 * * *');
   });
 });

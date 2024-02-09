@@ -124,17 +124,14 @@ jest.mock('../AppRunsHistory/AppRunsHistory.component', () =>
 jest.mock('../AppSchedule/AppSchedule.component', () =>
   jest
     .fn()
-    .mockImplementation(
-      ({ onCancel, onSave, onDemandTrigger, onDeployTrigger }) => (
-        <>
-          AppSchedule
-          <button onClick={onCancel}>Cancel AppSchedule</button>
-          <button onClick={onSave}>Save AppSchedule</button>
-          <button onClick={onDemandTrigger}>DemandTrigger AppSchedule</button>
-          <button onClick={onDeployTrigger}>DeployTrigger AppSchedule</button>
-        </>
-      )
-    )
+    .mockImplementation(({ onSave, onDemandTrigger, onDeployTrigger }) => (
+      <>
+        AppSchedule
+        <button onClick={onSave}>Save AppSchedule</button>
+        <button onClick={onDemandTrigger}>DemandTrigger AppSchedule</button>
+        <button onClick={onDeployTrigger}>DeployTrigger AppSchedule</button>
+      </>
+    ))
 );
 
 jest.mock('./ApplicationSchemaClassBase', () => ({
@@ -233,9 +230,5 @@ describe('AppDetails component', () => {
 
     expect(mockDeployApp).toHaveBeenCalled();
     expect(mockGetApplicationByName).toHaveBeenCalled();
-
-    userEvent.click(screen.getByRole('button', { name: 'Cancel AppSchedule' }));
-
-    expect(mockPush).toHaveBeenCalled();
   });
 });

@@ -38,14 +38,11 @@ import {
   ScheduleTimeline,
 } from '../../generated/entity/applications/createAppRequest';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
-import {
-  getEntityMissingError,
-  getIngestionFrequency,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getCronInitialValue } from '../../utils/CronUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -71,6 +68,24 @@ const AppInstall = () => {
         : STEPS_FOR_APP_INSTALL,
     [appData]
   );
+
+  const { initialOptions, initialValue } = useMemo(() => {
+    let initialOptions;
+
+    if (appData?.name === 'DataInsightsReportApplication') {
+      initialOptions = ['Week'];
+    } else if (appData?.appType === AppType.External) {
+      initialOptions = ['Day'];
+    }
+
+    return {
+      initialOptions,
+      initialValue: getCronInitialValue(
+        appData?.appType ?? AppType.Internal,
+        appData?.name ?? ''
+      ),
+    };
+  }, [appData?.name, appData?.appType]);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -126,16 +141,6 @@ const AppInstall = () => {
     setActiveServiceStep(3);
   };
 
-  const initialOptions = useMemo(() => {
-    if (appData?.name === 'DataInsightsReportApplication') {
-      return ['Week'];
-    } else if (appData?.appType === AppType.External) {
-      return ['Day'];
-    }
-
-    return undefined;
-  }, [appData?.name, appData?.appType]);
-
   const RenderSelectedTab = useCallback(() => {
     if (!appData || !jsonSchema) {
       return <></>;
@@ -180,9 +185,8 @@ const AppInstall = () => {
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
-              isQuartzCron
               includePeriodOptions={initialOptions}
-              initialData={getIngestionFrequency(PipelineType.Application)}
+              initialData={initialValue}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
