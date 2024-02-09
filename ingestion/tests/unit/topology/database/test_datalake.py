@@ -419,7 +419,9 @@ class DatalakeUnitTest(TestCase):
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.get().__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.datalake_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
         self.datalake_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
@@ -549,7 +551,9 @@ class DatalakeGCSUnitTest(TestCase):
             mock_datalake_gcs_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.get().__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.datalake_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
         self.datalake_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__

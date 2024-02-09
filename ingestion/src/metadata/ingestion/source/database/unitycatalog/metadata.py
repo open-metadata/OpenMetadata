@@ -505,7 +505,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             yield from get_view_lineage(
                 view=view,
                 metadata=self.metadata,
-                service_name=self.contex.get().database_service,
+                service_name=self.context.get().database_service,
                 connection_type=self.service_connection.type.value,
             )
 

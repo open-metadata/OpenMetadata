@@ -280,7 +280,8 @@ class AthenaSource(CommonDbSourceService):
                 table_name, _ = table_name_and_type
                 table_tags = (
                     self.athena_lake_formation_client.get_table_and_column_tags(
-                        schema_name=self.context.get().database_schema, table_name=table_name
+                        schema_name=self.context.get().database_schema,
+                        table_name=table_name,
                     )
                 )
 

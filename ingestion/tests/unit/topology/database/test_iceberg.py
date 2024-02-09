@@ -699,7 +699,9 @@ class IcebergUnitTest(TestCase):
             "catalog": self.iceberg.connection_obj,
         }
 
-        self.iceberg.context.get().iceberg_table = PyIcebergTable(**iceberg_table_with_owner)
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(
+            **iceberg_table_with_owner
+        )
 
         with patch.object(OpenMetadata, "get_reference_by_email", return_value=ref):
             self.assertEqual(

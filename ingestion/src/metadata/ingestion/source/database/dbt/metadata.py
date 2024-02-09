@@ -309,7 +309,9 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases for later processing
         """
-        self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
+        self.context.get().dbt_tests[key] = {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node
+        }
         self.context.get().dbt_tests[key][
             DbtCommonEnum.UPSTREAM.value
         ] = self.parse_upstream_nodes(manifest_entities, manifest_node)

@@ -239,7 +239,10 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.context.get().workspace.reports + self.context.get().workspace.dashboards
+        return (
+            self.context.get().workspace.reports
+            + self.context.get().workspace.dashboards
+        )
 
     def get_dashboard_name(
         self, dashboard: Union[PowerBIDashboard, PowerBIReport]

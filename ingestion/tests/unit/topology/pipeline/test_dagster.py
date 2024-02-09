@@ -279,7 +279,9 @@ class DagsterUnitTest(TestCase):
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.dagster.context.get().__dict__["repository_name"] = "hacker_new_repository"
-        self.dagster.context.get().__dict__["repository_location"] = "project_fully_featured"
+        self.dagster.context.get().__dict__[
+            "repository_location"
+        ] = "project_fully_featured"
 
     def test_pipeline_name(self):
         assert (

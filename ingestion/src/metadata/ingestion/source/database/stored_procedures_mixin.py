@@ -193,7 +193,9 @@ class StoredProcedureMixin(ABC):
                     id=procedure.id,
                     type="storedProcedure",
                 ),
-                processedLineage=bool(self.context.get().stored_procedure_query_lineage),
+                processedLineage=bool(
+                    self.context.get().stored_procedure_query_lineage
+                ),
                 service=self.context.get().database_service,
             )
         )

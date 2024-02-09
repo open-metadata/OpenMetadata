@@ -174,7 +174,9 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             if self.context.get().dbt_file.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(self.context.get().dbt_file.dbt_manifest),
-            dbt_run_results=parse_run_results(self.context.get().dbt_file.dbt_run_results)
+            dbt_run_results=parse_run_results(
+                self.context.get().dbt_file.dbt_run_results
+            )
             if self.context.get().dbt_file.dbt_run_results
             else None,
         )
