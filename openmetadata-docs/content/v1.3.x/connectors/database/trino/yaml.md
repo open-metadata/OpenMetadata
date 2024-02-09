@@ -56,12 +56,7 @@ pip3 install "openmetadata-ingestion[trino]"
 
 {% tilesContainer %}
 
-To ingest metadata from the Trino source, the user must have select privileges for the following tables.
-- `information_schema.schemata`
-- `information_schema.columns`
-- `information_schema.tables`
-- `information_schema.views`
-- `system.metadata.table_comments`
+To extract metadata, the user needs to be able to have `SELECT` privilege on all the tables that you would like to ingest in OpenMetadata as well as `SELECT` privilege `system.metadata.table_comments` table.
 
 {% /tilesContainer %}
 
