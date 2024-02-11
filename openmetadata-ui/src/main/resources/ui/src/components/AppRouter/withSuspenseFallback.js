@@ -17,7 +17,12 @@ import Loader from '../Loader/Loader';
 export default function withSuspenseFallback(Component) {
   return function DefaultFallback(props) {
     return (
-      <Suspense fallback={<Loader />}>
+      <Suspense
+        fallback={
+          <div className="ant-layout-content flex-center">
+            <Loader />
+          </div>
+        }>
         <Component {...props} />
       </Suspense>
     );
