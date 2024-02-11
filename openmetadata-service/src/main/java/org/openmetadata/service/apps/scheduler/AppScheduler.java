@@ -75,21 +75,28 @@ public class AppScheduler {
 
   public void addApplicationSchedule(App application) {
     try {
-      AppRuntime context = getAppRuntime(application);
-      if (Boolean.TRUE.equals(context.getEnabled())) {
-        JobDetail jobDetail =
-            jobBuilder(application, String.format("%s", application.getId().toString()));
-        Trigger trigger = trigger(application);
-        scheduler.scheduleJob(jobDetail, trigger);
-        appJobsKeyMap.put(application.getId(), jobDetail);
-      } else {
-        LOG.info("[Applications] App cannot be scheduled since it is disabled");
-      }
+        AppRuntime context = getAppRuntime(application);
+        if (Boolean.TRUE.equals(context.getEnabled())) {
+            int minThreshold = application.getMinThreshold(); 
+            int maxThreshold = application.getMaxThreshold(); 
+            if (rowCount >= minThreshold && rowCount <= maxThreshold) {
+                JobDetail jobDetail =
+                        jobBuilder(application, String.format("%s", application.getId().toString()));
+                Trigger trigger = trigger(application);
+                scheduler.scheduleJob(jobDetail, trigger);
+                appJobsKeyMap.put(application.getId(), jobDetail);
+            } else {
+                LOG.warn("[Applications] App cannot be scheduled due to row count not meeting threshold requirements");
+            }
+        } else {
+            LOG.info("[Applications] App cannot be scheduled since it is disabled");
+        }
     } catch (Exception ex) {
-      LOG.error("Failed in setting up job Scheduler for Data Reporting", ex);
-      throw new UnhandledServerException("Failed in scheduling Job for the Application", ex);
+        LOG.error("Failed in setting up job Scheduler for Data Reporting", ex);
+        throw new UnhandledServerException("Failed in scheduling Job for the Application", ex);
     }
-  }
+}
+
 
   public void deleteScheduledApplication(App app) throws SchedulerException {
     JobDetail jobDetail = getJobKey(app.getId());
