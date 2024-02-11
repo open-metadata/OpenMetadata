@@ -229,3 +229,67 @@ In case you are using this package directly in your python scripts please make s
 
 - From `from sqllineage.xxx import xxx`
 - To `from collate_sqllineage.xxx import xxx`
+
+## Service Connection Changes
+
+
+### MongoDB Connection
+
+We have removed the connection string authentication from MongoDB service and now we only support 
+passing the authentication credentials by value.
+
+{% note %}
+Before the upgrade make sure you review the mongodb connection 
+if you have provided the proper connection details/credentials to ensure the smooth migration.
+{% /note %}
+
+If you were using connection string based authentication then structure of connection details would change:
+
+#### From
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    connectionDetails:
+      connectionURI: mongodb+srv://user:pass@localhost:27017
+```
+
+#### To
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    scheme: mongodb+srv
+    username: username
+    password: password
+    hostPort:  localhost:27017
+```
+
+If you were using connection value based authentication then structure of connection details would change:
+
+#### From
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    connectionDetails:
+      scheme: mongodb+srv
+      username: username
+      password: password
+      hostPort:  localhost:27017
+```
+
+#### To
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    scheme: mongodb+srv
+    username: username
+    password: password
+    hostPort:  localhost:27017
+```
