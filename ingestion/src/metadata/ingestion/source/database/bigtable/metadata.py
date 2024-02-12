@@ -42,8 +42,10 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# BigTable group's its columns in column families. We make an assumption that if the table has a big number of
+# columns, we at least get a sample of the first 100 column families.
 MAX_COLUMN_FAMILIES = 100
-TABLE_SAMPLE_SIZE = 100
+SAMPLES_PER_COLUMN_FAMILY = 100
 
 ProjectId = str
 InstanceId = str
@@ -154,9 +156,11 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             column_families = table.list_column_families()
             # all BigTable tables have a "row_key" column. Even if there are no records in the table.
             records = [{"row_key": b"row_key"}]
+            # In order to get a "good" sample of data, we try to distribute the sampling
+            # across multiple column families.
             for cf in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
                 records.extend(
-                    self._get_records_for_column_family(table, cf, TABLE_SAMPLE_SIZE)
+                    self._get_records_for_column_family(table, cf, SAMPLES_PER_COLUMN_FAMILY)
                 )
                 if len(records) >= GLOBAL_SAMPLE_SIZE:
                     break
