@@ -1569,8 +1569,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   public void testInferSeverity(TestInfo test) {
-    IncidentSeverityClassifierInterface severityClassifier = IncidentSeverityClassifierInterface.getInstance();
-    // TEST_TABLE1 has no tier information, hence severity should be null as the classifier won't be able to infer
+    IncidentSeverityClassifierInterface severityClassifier =
+        IncidentSeverityClassifierInterface.getInstance();
+    // TEST_TABLE1 has no tier information, hence severity should be null as the classifier won't be
+    // able to infer
     Severity severity = severityClassifier.classifyIncidentSeverity(TEST_TABLE1);
     assertNull(severity);
 
@@ -1581,7 +1583,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // With tier set to Tier1, the severity should be inferred
     severity = severityClassifier.classifyIncidentSeverity(TEST_TABLE1);
     assertNotNull(severity);
-
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)

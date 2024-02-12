@@ -311,11 +311,22 @@ public class TestCaseResolutionStatusRepository
       // If the severity is already set, we don't need to infer it
       return;
     }
-    IncidentSeverityClassifierInterface incidentSeverityClassifier = IncidentSeverityClassifierInterface.getInstance();
+    IncidentSeverityClassifierInterface incidentSeverityClassifier =
+        IncidentSeverityClassifierInterface.getInstance();
     EntityReference testCaseReference = incident.getTestCaseReference();
-    TestCase testCase = Entity.getEntityByName(testCaseReference.getType(), testCaseReference.getFullyQualifiedName(), "", Include.ALL);
+    TestCase testCase =
+        Entity.getEntityByName(
+            testCaseReference.getType(),
+            testCaseReference.getFullyQualifiedName(),
+            "",
+            Include.ALL);
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-    EntityInterface entity = Entity.getEntityByName(entityLink.getEntityType(), entityLink.getEntityFQN(), "followers,owner,tags,votes", Include.ALL);
+    EntityInterface entity =
+        Entity.getEntityByName(
+            entityLink.getEntityType(),
+            entityLink.getEntityFQN(),
+            "followers,owner,tags,votes",
+            Include.ALL);
     Severity severity = incidentSeverityClassifier.classifyIncidentSeverity(entity);
     incident.setSeverity(severity);
   }
