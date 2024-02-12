@@ -18,10 +18,10 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
-from ingestion.src.metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.data_insight.producer.producer_interface import ProducerInterface
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.ingestion.api.models import Entity
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import data_insight_logger
