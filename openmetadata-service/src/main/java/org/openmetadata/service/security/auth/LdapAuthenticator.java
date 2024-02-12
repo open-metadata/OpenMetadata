@@ -11,7 +11,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
@@ -54,6 +54,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -218,7 +219,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   public User lookUserInProvider(String email) {
     try {
       Filter emailFilter =
-          Filter.create(String.format("%s=%s", ldapConfiguration.getMailAttributeName(), email));
+          Filter.createEqualityFilter(ldapConfiguration.getMailAttributeName(), email);
       SearchRequest searchRequest =
           new SearchRequest(
               ldapConfiguration.getUserBaseDN(),
@@ -300,79 +301,85 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private void getRoleForLdap(User user, String userDn, Boolean reAssign)
       throws LDAPException, JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
-    String searchFilter =
-        String.format(
-            "(&(%s=%s)(%s=%s))",
-            ldapConfiguration.getGroupAttributeName(),
-            ldapConfiguration.getGroupAttributeValue(),
-            ldapConfiguration.getGroupMemberAttributeName(),
-            userDn);
-    SearchRequest searchRequest =
-        new SearchRequest(
-            ldapConfiguration.getGroupBaseDN(),
-            SearchScope.SUB,
-            searchFilter,
-            ldapConfiguration.getAllAttributeName());
-    SearchResult searchResult = ldapLookupConnectionPool.search(searchRequest);
+    try {
+      Filter groupFilter =
+          Filter.createEqualityFilter(
+              ldapConfiguration.getGroupAttributeName(),
+              ldapConfiguration.getGroupAttributeValue());
+      Filter groupMemberAttr =
+          Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
+      Filter groupAndMemberFilter = Filter.createANDFilter(groupFilter, groupMemberAttr);
+      SearchRequest searchRequest =
+          new SearchRequest(
+              ldapConfiguration.getGroupBaseDN(),
+              SearchScope.SUB,
+              groupAndMemberFilter,
+              ldapConfiguration.getAllAttributeName());
+      SearchResult searchResult = ldapLookupConnectionPool.search(searchRequest);
 
-    // if user don't belong to any group, assign empty role list to it
-    if (CollectionUtils.isEmpty(searchResult.getSearchEntries())) {
-      if (Boolean.TRUE.equals(reAssign)) {
-        user.setRoles(this.getReassignRoles(user, new ArrayList<>(0), Boolean.FALSE));
-        UserUtil.addOrUpdateUser(user);
+      // if user don't belong to any group, assign empty role list to it
+      if (CollectionUtils.isEmpty(searchResult.getSearchEntries())) {
+        if (Boolean.TRUE.equals(reAssign)) {
+          user.setRoles(this.getReassignRoles(user, new ArrayList<>(0), Boolean.FALSE));
+          UserUtil.addOrUpdateUser(user);
+        }
+        return;
       }
-      return;
-    }
 
-    // get the role mapping from LDAP configuration
-    ObjectMapper objectMapper = new ObjectMapper();
-    Map<String, List<String>> roleMapping =
-        objectMapper.readValue(ldapConfiguration.getAuthRolesMapping(), Map.class);
+      // get the role mapping from LDAP configuration
+      Map<String, List<String>> roleMapping =
+          JsonUtils.readValue(ldapConfiguration.getAuthRolesMapping(), new TypeReference<>() {});
+      List<EntityReference> roleReferenceList = new ArrayList<>();
 
-    List<EntityReference> roleReferenceList = new ArrayList<>();
+      boolean adminFlag = Boolean.FALSE;
 
-    boolean adminFlag = Boolean.FALSE;
-
-    // match the user's ldap groups with the role mapping according to groupDN
-    for (SearchResultEntry searchResultEntry : searchResult.getSearchEntries()) {
-      String groupDN = searchResultEntry.getDN();
-      if (roleMapping.containsKey(groupDN) && !CollectionUtils.isEmpty(roleMapping.get(groupDN))) {
-        List<String> roles = roleMapping.get(groupDN);
-        for (String roleName : roles) {
-          if (ldapConfiguration.getRoleAdminName().equals(roleName)) {
-            adminFlag = Boolean.TRUE;
-          } else {
-            // Check if the role exists in OM Database
-            try {
-              Role roleOm =
-                  roleRepository.getByName(null, roleName, roleRepository.getFields("id,name"));
-              EntityReference entityReference = new EntityReference();
-              BeanUtils.copyProperties(roleOm, entityReference);
-              entityReference.setType(Entity.ROLE);
-              roleReferenceList.add(entityReference);
-            } catch (EntityNotFoundException ex) {
-              // Role does not exist
-              LOG.error("Role {} does not exist in OM Database", roleName);
+      // match the user's ldap groups with the role mapping according to groupDN
+      for (SearchResultEntry searchResultEntry : searchResult.getSearchEntries()) {
+        String groupDN = searchResultEntry.getDN();
+        if (roleMapping.containsKey(groupDN)
+            && !CollectionUtils.isEmpty(roleMapping.get(groupDN))) {
+          List<String> roles = roleMapping.get(groupDN);
+          for (String roleName : roles) {
+            if (ldapConfiguration.getRoleAdminName().equals(roleName)) {
+              adminFlag = Boolean.TRUE;
+            } else {
+              // Check if the role exists in OM Database
+              try {
+                Role roleOm =
+                    roleRepository.getByName(null, roleName, roleRepository.getFields("id,name"));
+                EntityReference entityReference = new EntityReference();
+                BeanUtils.copyProperties(roleOm, entityReference);
+                entityReference.setType(Entity.ROLE);
+                roleReferenceList.add(entityReference);
+              } catch (EntityNotFoundException ex) {
+                // Role does not exist
+                LOG.error("Role {} does not exist in OM Database", roleName);
+              }
             }
           }
         }
       }
-    }
-    // Remove duplicate roles by role name
-    roleReferenceList =
-        new ArrayList<>(
-            roleReferenceList.stream()
-                .collect(
-                    Collectors.toMap(
-                        EntityReference::getName,
-                        Function.identity(),
-                        (entityReference1, entityReference2) -> entityReference1,
-                        LinkedHashMap::new))
-                .values());
-    user.setRoles(this.getReassignRoles(user, roleReferenceList, adminFlag));
+      // Remove duplicate roles by role name
+      roleReferenceList =
+          new ArrayList<>(
+              roleReferenceList.stream()
+                  .collect(
+                      Collectors.toMap(
+                          EntityReference::getName,
+                          Function.identity(),
+                          (entityReference1, entityReference2) -> entityReference1,
+                          LinkedHashMap::new))
+                  .values());
+      user.setRoles(this.getReassignRoles(user, roleReferenceList, adminFlag));
 
-    if (Boolean.TRUE.equals(reAssign)) {
-      UserUtil.addOrUpdateUser(user);
+      if (Boolean.TRUE.equals(reAssign)) {
+        UserUtil.addOrUpdateUser(user);
+      }
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to get user's groups from LDAP server using the DN of the user {} due to {}",
+          userDn,
+          ex.getMessage());
     }
   }
 
