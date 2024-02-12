@@ -13,12 +13,14 @@ import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
+import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
@@ -35,6 +37,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 
 public class TestCaseResolutionStatusRepository
     extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
@@ -168,6 +171,8 @@ public class TestCaseResolutionStatusRepository
               : recordEntity.getSeverity());
     }
 
+    inferIncidentSeverity(recordEntity);
+
     switch (recordEntity.getTestCaseResolutionStatusType()) {
       case New -> {
         // If there is already an existing New incident we'll return it
@@ -299,5 +304,19 @@ public class TestCaseResolutionStatusRepository
 
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.patchThread(null, originalTask.getId(), user, patch);
+  }
+
+  public void inferIncidentSeverity(TestCaseResolutionStatus incident) {
+    if (incident.getSeverity() != null) {
+      // If the severity is already set, we don't need to infer it
+      return;
+    }
+    IncidentSeverityClassifierInterface incidentSeverityClassifier = IncidentSeverityClassifierInterface.getInstance();
+    EntityReference testCaseReference = incident.getTestCaseReference();
+    TestCase testCase = Entity.getEntityByName(testCaseReference.getType(), testCaseReference.getFullyQualifiedName(), "", Include.ALL);
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    EntityInterface entity = Entity.getEntityByName(entityLink.getEntityType(), entityLink.getEntityFQN(), "followers,owner,tags,votes", Include.ALL);
+    Severity severity = incidentSeverityClassifier.classifyIncidentSeverity(entity);
+    incident.setSeverity(severity);
   }
 }
