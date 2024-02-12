@@ -372,48 +372,50 @@ site_menu:
     url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.3.0 Release
+    url: /releases/all-releases/#1.3.0-release
   - category: Releases / All Releases / 1.2.0 Release
-    url: /releases/all-releases/#120-release
+    url: /releases/all-releases/#1.2.0-release
   - category: Releases / All Releases / 1.1.2 Release
-    url: /releases/all-releases/#112-release
+    url: /releases/all-releases/#1.1.2-release
   - category: Releases / All Releases / 1.1.1 Release
-    url: /releases/all-releases/#111-release
+    url: /releases/all-releases/#1.1.1-release
   - category: Releases / All Releases / 1.1.0 Release
-    url: /releases/all-releases/#110-release
+    url: /releases/all-releases/#1.1.0-release
   - category: Releases / All Releases / 1.0.0 Release
-    url: /releases/all-releases/#100-release
+    url: /releases/all-releases/#1.0.0-release
   - category: Releases / All Releases / 0.13.3 Release
-    url: /releases/all-releases/#0133-release
+    url: /releases/all-releases/#0.13.3-release
   - category: Releases / All Releases / 0.13.2 Release
-    url: /releases/all-releases/#0132-release
+    url: /releases/all-releases/#0.13.2-release
   - category: Releases / All Releases / 0.13.1 Release
-    url: /releases/all-releases/#0131-release
+    url: /releases/all-releases/#0.13.1-release
   - category: Releases / All Releases / 0.13.0 Release
-    url: /releases/all-releases/#0130-release
+    url: /releases/all-releases/#0.13.0-release
   - category: Releases / All Releases / 0.12.3 Release
-    url: /releases/all-releases/#0123-release
+    url: /releases/all-releases/#0.12.3-release
   - category: Releases / All Releases / 0.12.2 Release
-    url: /releases/all-releases/#0122-release
+    url: /releases/all-releases/#0.12.2-release
   - category: Releases / All Releases / 0.12.1 Release
-    url: /releases/all-releases/#0121-release
+    url: /releases/all-releases/#0.12.1-release
   - category: Releases / All Releases / 0.12.0 Release
-    url: /releases/all-releases/#0120-release
+    url: /releases/all-releases/#0.12.0-release
   - category: Releases / All Releases / 0.10.1 Release
-    url: /releases/all-releases/#0101-release
+    url: /releases/all-releases/#0.10.1-release
   - category: Releases / All Releases / 0.10.0 Release
-    url: /releases/all-releases/#0100-release
+    url: /releases/all-releases/#0.10.0-release
   - category: Releases / All Releases / 0.9.0 Release
-    url: /releases/all-releases/#090-release
+    url: /releases/all-releases/#0.9.0-release
   - category: Releases / All Releases / 0.8.0 Release
-    url: /releases/all-releases/#080-release
+    url: /releases/all-releases/#0.8.0-release
   - category: Releases / All Releases / 0.7.0 Release
-    url: /releases/all-releases/#070-release
+    url: /releases/all-releases/#0.7.0-release
   - category: Releases / All Releases / 0.6.0 Release
-    url: /releases/all-releases/#060-release
+    url: /releases/all-releases/#0.6.0-release
   - category: Releases / All Releases / 0.5.0 Release
-    url: /releases/all-releases/#050-release
+    url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
-    url: /releases/all-releases/#040-release
+    url: /releases/all-releases/#0.4.0-release
 
   - category: Connectors
     url: /connectors
