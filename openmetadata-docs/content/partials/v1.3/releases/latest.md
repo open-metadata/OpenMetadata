@@ -1,4 +1,4 @@
-# 1.2.0 Release 🎉
+# 1.3.0 Release 🎉
 
 {% inlineCalloutContainer %}
 {% inlineCallout
@@ -6,78 +6,99 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.2.0!
+Learn how to upgrade your OpenMetadata instance to 1.3.0!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.2.0-release).
-
-## Domains and Data Products
-- Added support for Domains and Data Products.
-- Assets can be added to a Domain, and users can scope their discovery experience to one Domain.
-- Assets can also be added as Data Products in a Domain.
-
-## Search Index
-- Elasticsearch or Opensearch connectors can now bring in the search index metadata into OpenMetadata.
-- The connector will populate the index’s mapping, settings, and sample data.
-
-## Stored Procedures
-- Added support for Stored Procedures.
-- Snowflake, Redshift, and BigQuery connectors are updated to bring stored procedure metadata into OpenMetadata.
-- The metadata workflow will bring the Stored Procedures and parse their executions to extract lineage information.
-
-## Glossary Approval Workflow & Glossary Styling
-- Introduced a glossary approval workflow. An approval workflow is created if Reviewers are added to a glossary.
-- A task is added for reviewers to approve or reject the glossary term. The terms will show up in Draft status.
-- Only the reviewers can approve or reject the term.
-- Conversations are supported to discuss further about the terms.
-- If no reviewer is added, then the glossary terms are approved by default.
-- Introduced styling for glossary terms. Now you can add icons and color code the glossary terms for easy identification.
-- Color coding helps to visually differentiate and identify the data assets, when glossary terms are added to them.
-
-## OpenMetadata Browser Extension
-- Updated the Chrome browser extension for OpenMetadata with the new UI.
-- Added support for Databases, Database Schemas, Tables, Dashboards, Charts,  Pipelines, and Topics.
-
-## Build Automation Applications
-
-{%  youtube videoId="pUS9-RevqsU" start="0:00" end="0:57" width="560px" height="315px" /%}
-
-- Added Applications into OpenMetadata, giving users a unique view of processes that can be scheduled and run in the platform.
-- Search Indexing and Data Insights Report have been converted into Applications.
-- UI displays all the available applications, which Admins can add or schedule.
-- We will continue to add new Applications in upcoming releases.
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.0-release).
 
 ## Lineage
-- Performance improvements made for lineage based on the new release of SQLfluff.
-- Added support for `UPDATE … FROM Snowflake` queries
-- Added column-level lineage support for `SELECT *` queries
+- Revamped the lineage UI for an intuitive and comprehensive view of data flow and transformations.
+- Organized nodes for better visibility with pagination support.
+- Improved the display of circular dependencies.
+- Nodes display the service icons, highlight dbt models, and show Data Quality results.
+- Lineage can be filtered to search by Ownership, Domain, Service, Service Type, Tier, and Classification Tags.
+- Supports search by Column and traces lineage even when the columns are renamed.
+- Enhanced user control with collapsible sub-graphs.
+- Supports editing the SQL queries for lineage edges from the UI.
+- Performance improvements for faster load of large graphs.
 
-## Connectors
-- Greenplum connector is now supported.
-- Couchbase connector is now supported.
-- Azure Data Lake Storage is now supported. (Collate)
+## Data Observability Alerts
+- Data observability alerts have been distinguished from other general-purpose notifications, making it easy to get to the crucial alerts quickly.
+- Sends alerts for schema changes and test case failures for the data assets that you follow.
+- The overall flow has been simplified to let you easily create alerts for schema changes in your data.
+- You can now get Data Quality alerts for specific Test Suites.
+- Users will be alerted for all the changes to the data assets that they own.
 
-## Customizable Landing Page
-
-{%  youtube videoId="Y-5cPQgzNdo" start="0:00" end="2:08" width="560px" height="315px" /%}
-
-- Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
-- Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
-- We will add support for more widgets in upcoming releases.
+## Incident Manager
+- Introduced Incidents Manager to improve the data quality resolution flow.
+- Incidents Manager summarizes all the test case results with information about the failure severity and resolution flow.
+- Supports assigning a resolution task to the users in OpenMetadata.
+- Tasks are created when a data quality test has been assigned to an Assignee or a Reviewer.
+- Resolved test failure also displays the comments posted on the resolution.
+- The Resolved Tab displays information on the Test case name, Execution date, Reason, Comments, and information on who Resolved the issue.
 
 ## Knowledge Center (Collate)
+- Supports hierarchical pages to structure the articles.
+- You can easily associate knowledge articles with data assets.
+- The data assets page displays the related articles.
+- The block editor supports callouts to add notes, warnings, tables, and task lists.
+- Quicklinks are no longer separate pages; they redirect to external links.
+- Data assets can be associated with Quicklinks.
+- Added Search support for Knowledge articles to filter by Owner or Tags.
+- Supports preview for articles and Quicklinks.
 
-{%  youtube videoId="DfOgeZ9f7no" start="0:00" end="3:04" width="560px" height="315px" /%}
+## Custom Metrics for Profiler
+- Supports custom metrics for the data profiler with custom SQL to keep track of your business metrics.
+- Custom metrics can be created at Table and Column levels.
 
-- Backend APIs support creating, editing, and listing knowledge articles (with external links).
-- Knowledge articles and links can be associated with a Domain, Team, or an Entity.
-- UI support to build a Knowledge Center and expand the documentation of your company.
+## Profiler and Data Quality
+- The Profiler has been improved to support sample data ingestion without computing other metrics.
+- Admins can configure the profiler to fetch up to 10,000 rows of sample data.
+- Sample data can be stored in S3 buckets.
+- Refined the default time range on the test case results page, adjusting it from the Last 3 days to the Last 30 days for a more encompassing view.
 
-## Cost Analysis Report (Collate)
+## Connectors
+- New Google Cloud Storage for storage services. (Collate)
+- New Alation connector to migrate metadata into Collate. (Collate)
+- New Iceberg, SAS Viya, and Doris connectors.
+- Introduced the Spark Lineage Agent to extract metadata and end-to-end lineage from Spark jobs.
+- MSSQL and Oracle now support Stored Procedures.
+- We now exclude system indices from the Elasticsearch connector by default.
+- Added support for DB2 IBM I Series.
+- Pipeline services now get owner information.
+- Performance improvements for the Tableau Connector.
+- We now support metadata tag extraction from Databricks.
+- Supports the attribute Table Owner for metadata ingestion from Postgres.
+- We now extract table descriptions when ingesting metadata from Salesforce.
 
-{%  youtube videoId="KI58oBHxTOU" start="0:00" end="0:33" width="560px" height="315px" /%}
+## Glossary
+- Supports soft delete for the default glossaries in OpenMetadata.
+- Supports the creation of tasks to request tags or a description.
+- Only the Owner can edit the Glossary term.
+- Version history displays the Username instead of the User ID.
 
-- The Usage Workflow will now also track how tables are Accessed and Updated.
-- This information will be used in the Data Insights workflow to show the evolution of your used and unused assets and compare them by size.
-- Support has been added for Snowflake, and we will continue to add more sources in upcoming releases.
+## Localization
+- Now supports RTL UI for the Hebrew language.
+- New Dutch language translation.
+
+## Settings UI
+- The Settings page UI has been revamped.
+
+## Data Insights
+- Cost Analysis expanded to support BigQuery & Redshift. (Collate)
+- Improved the Data Insights Report sent via email.
+
+## Other Changes
+- Announcements can be notified over email, Slack, or Teams.
+- Alerts are sent to a user when they are mentioned in a task or activity feed.
+- We have improved the display of search results for column matches. When searching for columns, the matched results will be displayed and highlighted in the Preview pane.
+- Table Type filter has been added in the Advanced Search, so that users can exclude the temporary or staging tables from search.
+- Now it is easy to filter the Data assets without a Owner.
+- Database and Schema were added to the Explore menu to enhance data discovery.
+- Custom properties are displayed on the right of the data asset details page.
+- We now display the Domain on the Users page.
+- Supports the sorting of data assets by popularity based on the number of followers and thumbs up as signals.
+- OpenMetadata can now handle metric history for ML models.
+- When configuring the Email settings, the Username and Password fields can be left blank.
+- We now support a test email button on the Email SMTP page.
