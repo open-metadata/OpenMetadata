@@ -33,7 +33,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 def get_connection_url(connection: PinotDBConnection) -> str:
     url = get_connection_url_common(connection)
-    url += f"/query/sql?controller=http://{connection.pinotControllerHost}/"
+    url += f"/query/sql?controller={connection.pinotControllerHost}/"
     return url
 
 
