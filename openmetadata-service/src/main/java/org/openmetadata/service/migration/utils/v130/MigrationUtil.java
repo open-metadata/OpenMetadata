@@ -5,10 +5,12 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.service.util.JsonUtils;
 
+@Slf4j
 public class MigrationUtil {
 
   private static final String GET_MONGO_DB_SERVICES =
@@ -59,24 +61,30 @@ public class MigrationUtil {
         .mapToMap()
         .forEach(
             row -> {
-              DatabaseService mongoService =
-                  JsonUtils.readValue(row.get("json").toString(), DatabaseService.class);
-              String id = row.get("id").toString();
-              Map mongoDBConnection = (LinkedHashMap) mongoService.getConnection().getConfig();
-              Map connDetails = (LinkedHashMap) mongoDBConnection.get("connectionDetails");
+              try {
+                DatabaseService mongoService =
+                    JsonUtils.readValue(row.get("json").toString(), DatabaseService.class);
+                String id = row.get("id").toString();
+                Map mongoDBConnection = (LinkedHashMap) mongoService.getConnection().getConfig();
+                Map connDetails = (LinkedHashMap) mongoDBConnection.get("connectionDetails");
 
-              Map finalConnectionDetails;
-              if (connDetails.get("connectionURI") != null) {
-                String connectionURI = connDetails.get("connectionURI").toString();
-                finalConnectionDetails = extractConnectionURIDetails(connectionURI);
-              } else {
-                finalConnectionDetails = connDetails;
+                Map finalConnectionDetails;
+                if (connDetails != null) {
+                  if (connDetails.get("connectionURI") != null) {
+                    String connectionURI = connDetails.get("connectionURI").toString();
+                    finalConnectionDetails = extractConnectionURIDetails(connectionURI);
+                  } else {
+                    finalConnectionDetails = connDetails;
+                  }
+                  mongoDBConnection.putAll(finalConnectionDetails);
+                  mongoDBConnection.remove("connectionDetails");
+                  String json = JsonUtils.pojoToJson(mongoService);
+
+                  handle.createUpdate(updateSqlQuery).bind("json", json).bind("id", id).execute();
+                }
+              } catch (Exception ex) {
+                LOG.warn("Error during the MongoDB migration due to ", ex);
               }
-              mongoDBConnection.putAll(finalConnectionDetails);
-              mongoDBConnection.remove("connectionDetails");
-              String json = JsonUtils.pojoToJson(mongoService);
-
-              handle.createUpdate(updateSqlQuery).bind("json", json).bind("id", id).execute();
             });
   }
 }
