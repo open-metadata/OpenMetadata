@@ -52,7 +52,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
-  private static final String MODEL_PATCH_FIELDS = "dashboard,sourceHash";
+  private static final String MODEL_PATCH_FIELDS = "dashboard";
 
   public MlModelRepository() {
     super(
@@ -89,7 +89,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(
         fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
-    mlModel.setSourceHash(fields.contains("sourceHash") ? mlModel.getSourceHash() : null);
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
           fields.contains("usageSummary")
