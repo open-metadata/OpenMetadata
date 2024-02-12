@@ -18,7 +18,7 @@ from __future__ import annotations
 import traceback
 from collections import defaultdict
 from copy import deepcopy
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -28,7 +28,6 @@ from metadata.generated.schema.analytics.reportDataType.aggregatedCostAnalysisRe
 from metadata.generated.schema.analytics.reportDataType.rawCostAnalysisReportData import (
     RawCostAnalysisReportData,
 )
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -100,37 +99,29 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
                 data=value,
             )  # type: ignore
 
-    def refine(self, entity: Table) -> None:
+    def refine(self, entity: Dict) -> None:
         """Aggregate data
         Returns:
             list:
         """
 
-        try:
-            cost_analysis_data = RawCostAnalysisReportData(
-                entity=EntityReference(
-                    id=entity.id,
-                    type=ENTITY_REFERENCE_TYPE_MAP[entity.__name__],
+        for entity_fqn, cost_analysis_report_data in entity.items():
+            try:
+                cost_analysis_data = RawCostAnalysisReportData(
+                    entity=EntityReference(
+                        id=cost_analysis_report_data.entity.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[
+                            type(cost_analysis_report_data.entity).__name__
+                        ],
+                    ),
+                    lifeCycle=cost_analysis_report_data.life_cycle,
+                    sizeInByte=cost_analysis_report_data.size,
                 )
-            )
-            if entity.lifeCycle:
-                cost_analysis_data.lifeCycle = entity.lifeCycle
-
-            table_profile = self.metadata.get_latest_table_profile(
-                fqn=entity.fullyQualifiedName
-            )
-            if table_profile.profile:
-                cost_analysis_data.sizeInByte = table_profile.profile.sizeInByte
-
-            if cost_analysis_data.lifeCycle or cost_analysis_data.sizeInByte:
-                self._refined_data[
-                    entity.fullyQualifiedName.__root__
-                ] = cost_analysis_data
-
-            self.processor_status.scanned(entity.name.__root__)
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error trying fetch cost analysis data -- {err}")
+                self._refined_data[entity_fqn] = cost_analysis_data
+                self.processor_status.scanned(entity_fqn)
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Error trying fetch cost analysis data -- {err}")
 
     def get_status(self):
         return self.processor_status
@@ -155,27 +146,17 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
                 data=data,
             )  # type: ignore
 
-    def refine(self, entity: Table) -> None:
+    def refine(self, entity: Dict) -> None:
         """Aggregate data
         Returns:
             list:
         """
         try:
-            life_cycle = None
-            if entity.lifeCycle:
-                life_cycle = entity.lifeCycle
 
-            size = None
-            table_profile = self.metadata.get_latest_table_profile(
-                fqn=entity.fullyQualifiedName
-            )
-            if table_profile.profile:
-                size = table_profile.profile.sizeInByte
-
-            if life_cycle or size:
-                entity_type = str(entity.__class__.__name__)
-                service_type = str(entity.serviceType.name)
-                service_name = str(entity.service.name)
+            for entity_fqn, cost_analysis_report_data in entity.items():
+                entity_type = str(cost_analysis_report_data.entity.__class__.__name__)
+                service_type = str(cost_analysis_report_data.entity.serviceType.name)
+                service_name = str(cost_analysis_report_data.entity.service.name)
                 if not self._refined_data[str(entity_type)][service_type].get(
                     service_name
                 ):
@@ -188,18 +169,18 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
                 else:
                     self._refined_data[entity_type][service_type][service_name][
                         TOTAL_SIZE
-                    ] += (size or 0)
+                    ] += (cost_analysis_report_data.size or 0)
                     self._refined_data[entity_type][service_type][service_name][
                         TOTAL_COUNT
                     ] += 1
 
                 self._get_data_assets_dict(
-                    life_cycle=life_cycle,
-                    size=size,
+                    life_cycle=cost_analysis_report_data.life_cycle,
+                    size=cost_analysis_report_data.size,
                     data=self._refined_data[entity_type][service_type][service_name],
                 )
 
-            self.processor_status.scanned(entity.name.__root__)
+                self.processor_status.scanned(entity_fqn)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error trying fetch cost analysis data -- {err}")

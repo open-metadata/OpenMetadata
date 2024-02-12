@@ -13,6 +13,7 @@ OpenMetadata source for the data insight workflow
 """
 
 import traceback
+from collections import defaultdict
 from datetime import datetime
 from types import MappingProxyType
 from typing import Dict, Iterable, Optional, Union, cast
@@ -74,6 +75,7 @@ class DataInsightSource(Source):
         super().__init__()
         self.metadata = metadata
         self.date = datetime.utcnow().strftime("%Y-%m-%d")
+        self.entities_cache = defaultdict()
 
         _processors = self._instantiate_processors()
         self._processors: Dict[
@@ -131,7 +133,10 @@ class DataInsightSource(Source):
                 processor.pre_hook() if processor.pre_hook else None  # pylint: disable=expression-not-assigned
 
                 for data in (
-                    producer.fetch_data(fields=["owner", "tags", "lifeCycle"]) or []
+                    producer.fetch_data(
+                        fields=["owner", "tags"], entities_cache=self.entities_cache
+                    )
+                    or []
                 ):
                     processor.refine(data)
 
