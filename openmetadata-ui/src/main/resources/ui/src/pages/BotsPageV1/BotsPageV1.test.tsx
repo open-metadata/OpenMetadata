@@ -42,14 +42,24 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
 );
 
 describe('BotsPageV1 component', () => {
-  it('actions check', () => {
+  it('Add bot should call mockPush', () => {
     render(<BotsPageV1 />);
-
-    expect(screen.queryByText('Bot Deleted')).not.toBeInTheDocument();
 
     userEvent.click(screen.getByRole('button', { name: 'Add Bot' }));
 
     expect(mockPush).toHaveBeenCalled();
+  });
+
+  it('Bot deleted should not present by default', () => {
+    render(<BotsPageV1 />);
+
+    expect(screen.queryByText('Bot Deleted')).not.toBeInTheDocument();
+  });
+
+  it('Delete Bot button should delete bot', () => {
+    render(<BotsPageV1 />);
+
+    expect(screen.queryByText('Bot Deleted')).not.toBeInTheDocument();
 
     userEvent.click(screen.getByRole('button', { name: 'Delete Bot' }));
 
