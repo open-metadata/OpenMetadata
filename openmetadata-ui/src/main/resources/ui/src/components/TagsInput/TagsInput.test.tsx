@@ -34,10 +34,6 @@ const tags = [
     state: State.Suggested,
   },
 ];
-jest.mock('../../utils/TagsUtils', () => ({
-  ...jest.requireActual('../../utils/TagsUtils'),
-  createTagObject: mockOnTagsUpdate,
-}));
 
 describe('TagsInput', () => {
   it('should render TagsInput along with tagsViewer in version view', async () => {
