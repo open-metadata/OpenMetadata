@@ -176,11 +176,6 @@ EXPECTED_TABLE_NAMES = [
     ("random_table", TableType.Regular),
 ]
 
-MOCK_TABLE_NAMES = [
-    "random_table",
-    "random1_table",
-]
-
 
 def custom_column_compare(self, other):
     return (
@@ -195,7 +190,9 @@ def mock_bigtable_row():
     mock = Mock()
     cell = Mock()
     cell.value = b"cell_value"
+    cell.timestamp = 1234567890
     mock.cells = {"cf1": {b"col1": [cell]}, "cf2": {b"col2": [cell]}}
+    mock.row_key = b"row_key"
     yield mock
 
 

@@ -9,6 +9,17 @@ NoProject = object()
 
 
 class MultiProjectClient:
+    """Google Cloud Client does not support ad-hoc project switching. This class wraps the client and allows
+    switching between projects. If no project is specified, the client will not have a project set and will try
+    to resolve it from ADC.
+    Example usage:
+    ```
+    from google.cloud.bigtable import Client
+    client = MultiProjectClient(Client, project_ids=["project1", "project2"])
+    instances_project1 = client.list_instances("project1")
+    instances_project2 = client.list_instances("project2")
+    """
+
     def __init__(
         self,
         client_class: Type[Client],
@@ -29,10 +40,12 @@ class MultiProjectClient:
             return [project_id]
         return list(self.clients.keys())
 
-    def __getattr__(self, item):
-        return partial(self._call, item)
+    def __getattr__(self, client_method):
+        """Return the underlying client method as a partial function so we can inject the project_id."""
+        return partial(self._call, client_method)
 
     def _call(self, method, project_id, *args, **kwargs):
+        """Call the method on the client for the given project_id. The args and kwargs are passed through."""
         client = self.clients.get(project_id, self.clients.get(NoProject))
         if not client:
             raise ValueError(f"Project {project_id} not found")

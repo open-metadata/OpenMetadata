@@ -67,6 +67,8 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         self.client: MultiProjectClient = self.connection_obj
+
+        # ths instances and tables are cached to avoid making redundant requests to the API.
         self.instances: Dict[str, Tuple[Instance]] = {}
         self.tables: Dict[str, Dict[str, Tuple[Table]]] = {}
 
@@ -186,7 +188,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
     ) -> List[Dict]:
         filter_ = row_filters.ColumnRangeFilter(column_family_id=column_family)
         rows = table.read_rows(limit=limit, filter_=filter_)
-        return [Row(row).to_record() for row in rows]
+        return [Row.from_partial_row(row).to_record() for row in rows]
 
     def _find_table(
         self, project_id: str, schema_name: str, table_name: str
