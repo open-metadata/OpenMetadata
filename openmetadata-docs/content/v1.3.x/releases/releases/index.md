@@ -14,7 +14,79 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.3/releases/latest.md" /%}
 
-# 1.1.2 Release 🎉
+# 1.2.0 Release
+
+## Domains and Data Products
+- Added support for Domains and Data Products.
+- Assets can be added to a Domain, and users can scope their discovery experience to one Domain.
+- Assets can also be added as Data Products in a Domain.
+
+## Search Index
+- Elasticsearch or Opensearch connectors can now bring in the search index metadata into OpenMetadata.
+- The connector will populate the index’s mapping, settings, and sample data.
+
+## Stored Procedures
+- Added support for Stored Procedures.
+- Snowflake, Redshift, and BigQuery connectors are updated to bring stored procedure metadata into OpenMetadata.
+- The metadata workflow will bring the Stored Procedures and parse their executions to extract lineage information.
+
+## Glossary Approval Workflow & Glossary Styling
+- Introduced a glossary approval workflow. An approval workflow is created if Reviewers are added to a glossary.
+- A task is added for reviewers to approve or reject the glossary term. The terms will show up in Draft status.
+- Only the reviewers can approve or reject the term.
+- Conversations are supported to discuss further about the terms.
+- If no reviewer is added, then the glossary terms are approved by default.
+- Introduced styling for glossary terms. Now you can add icons and color code the glossary terms for easy identification.
+- Color coding helps to visually differentiate and identify the data assets, when glossary terms are added to them.
+
+## OpenMetadata Browser Extension
+- Updated the Chrome browser extension for OpenMetadata with the new UI.
+- Added support for Databases, Database Schemas, Tables, Dashboards, Charts,  Pipelines, and Topics.
+
+## Build Automation Applications
+
+{%  youtube videoId="pUS9-RevqsU" start="0:00" end="0:57" width="560px" height="315px" /%}
+
+- Added Applications into OpenMetadata, giving users a unique view of processes that can be scheduled and run in the platform.
+- Search Indexing and Data Insights Report have been converted into Applications.
+- UI displays all the available applications, which Admins can add or schedule.
+- We will continue to add new Applications in upcoming releases.
+
+## Lineage
+- Performance improvements made for lineage based on the new release of SQLfluff.
+- Added support for `UPDATE … FROM Snowflake` queries
+- Added column-level lineage support for `SELECT *` queries
+
+## Connectors
+- Greenplum connector is now supported.
+- Couchbase connector is now supported.
+- Azure Data Lake Storage is now supported. (Collate)
+
+## Customizable Landing Page
+
+{%  youtube videoId="Y-5cPQgzNdo" start="0:00" end="2:08" width="560px" height="315px" /%}
+
+- Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
+- Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
+- We will add support for more widgets in upcoming releases.
+
+## Knowledge Center (Collate)
+
+{%  youtube videoId="DfOgeZ9f7no" start="0:00" end="3:04" width="560px" height="315px" /%}
+
+- Backend APIs support creating, editing, and listing knowledge articles (with external links).
+- Knowledge articles and links can be associated with a Domain, Team, or an Entity.
+- UI support to build a Knowledge Center and expand the documentation of your company.
+
+## Cost Analysis Report (Collate)
+
+{%  youtube videoId="KI58oBHxTOU" start="0:00" end="0:33" width="560px" height="315px" /%}
+
+- The Usage Workflow will now also track how tables are Accessed and Updated.
+- This information will be used in the Data Insights workflow to show the evolution of your used and unused assets and compare them by size.
+- Support has been added for Snowflake, and we will continue to add more sources in upcoming releases.
+
+# 1.1.2 Release
 
 ## Data Quality
 - Added support for Postgres version 11.19.
@@ -43,7 +115,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 - Deprecated Flyway and using native migrations.
 - Improved Test Suite UI performance.
 
-# 1.1.1 Release 🎉
+# 1.1.1 Release
 
 ## UI Improvements
 
@@ -76,7 +148,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 - Test Suite Improvements
 
 
-# 1.1 Release 🎉
+# 1.1.0 Release
 
 {% inlineCalloutContainer %}
 {% inlineCallout
@@ -132,7 +204,7 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 - Added AWS OpenSearch client-specific support. This allows us to update the Elasticsearch version support up to 7.16.
 
 
-# 1.0 Release 🎉
+# 1.0.0 Release
 
 ## APIs & Schema
 - **Stabilized** and improved the Schemas and APIs.
@@ -196,7 +268,7 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 - **Entity names** support apostrophes.
 - The **Summary panel** has been improved to be consistent across the UI.
 
-# [0.13.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.3-release) - March 30th 2023 🎉
+# 0.13.3 Release
 
 ## Ingestion Framework
 - Datalake Avro & Json, JsonZip support
@@ -235,7 +307,7 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 ## Data Quality
 - Fix column values between test
 
-# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Latest - Jan 30th 2023 🎉
+# 0.13.2 Release
 
 ## Improved SQL Lineage
 - We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities
@@ -269,7 +341,7 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 - Added support for Postgres Foreign Tables
 - Added support for Datalake profiler row-based sampling
 
-# [0.13.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) - Dec 20th 2022** 🎉
+# 0.13.1 Release
 ## Profiler and Data Quality
 - Freshness Metric has been introduced. Data freshness shows DML operations performed against a table and the number of rows affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.
 - Support has been added for data quality tests on Data Lake.
@@ -293,7 +365,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 - Improvements have been made to Advanced Search. Now, when a filter is applied, the details of the filter selected are displayed for clarity.
 - On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.
 
-# [0.13.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.0-release) - Dec 8th 2022 🎉
+# 0.13.0 Release
 {%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" width="560px" height="315px" /%}
 
 ## Data Insights and KPI
@@ -324,19 +396,19 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 - Soft deleted entities can be restored. Currently, only the ML Models are not supported.
 - Soft deleted teams can be restored. When restoring a soft deleted parent team, the child teams will not be restored by default.
 
-# [0.12.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) - Nov 18th 2022 🎉
+# 0.12.3 Release
 ## Bug Fixes
 - User suggestion index mapping
 - Tag and Glossary terms caching
 
-# [0.12.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.2-release) - Oct 20th 2022 🎉
+# 0.12.2 Release
 ## Ingestion
 - Databricks lineage
 - Added support for Airflow version 2.2.2 as a workflow scheduler
 ## Bug Fixes
 - Support same table across different databases for the profiler
 
-# [0.12.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.1-release) - Oct 3rd 2022 🎉
+# 0.12.1 Release
 ## Basic Authentication
 
 - User/Password signup and login
@@ -363,14 +435,12 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 
 - Around 136 Features/Improvements/Tests made it into 0.12.1 release 
 
-# [0.12.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.0-release) - Sept 7th 2022 🎉
+# 0.12.0 Release
 
 You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 or watch an awesome video showing the new features!
 
 {%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" width="560px" height="315px" /%}
-
-
 
 ## Team Hierarchy
 Prior releases supported a flat hierarchy of just Teams and Users. In 0.12, support has been added for the entire organizational hierarchy with Business Unit, Division, Department, and Groups. An organization from small to very large can now be modeled in OpenMetadata with this feature.
@@ -442,7 +512,7 @@ When creating a new user or when a user is registering for the first time, the d
 UI improvements have been made on the Schema, Service, and Database details pages.
 Manage Tab has been replaced with the manage button on the UI.
 
-## 0.10.1 Release - May 17th, 2022
+# 0.10.1 Release
 
 - Support for Postgres as OpenMetadata Store [#4601](https://github.com/open-metadata/OpenMetadata/issues/4601)
 - UI Improvements in 0.10.1 Release [#4600](https://github.com/open-metadata/OpenMetadata/issues/4600)
@@ -450,26 +520,26 @@ Manage Tab has been replaced with the manage button on the UI.
 - UI Ingestion Improvements - Support for Dashboards & Messaging Services [#4843](https://github.com/open-metadata/OpenMetadata/issues/4843)
 - Security: Fix Azure SSO and support refresh tokens in [#4989](https://github.com/open-metadata/OpenMetadata/issues/4989)
 
-## 0.10.0 Release - Apr 27th, 2022
+# 0.10.0 Release
 
-### Support for Database Schema
+## Support for Database Schema
 
 OpenMetadata supports databases, service name databases, and tables. We’ve added Database Schema as part of the FQN. 
 For each external data source, we ingest the database, as well as the tables that are contained underneath the schemas.
 
-### Support for Hard Delete
+## Support for Hard Delete
 
 OpenMetadata supported soft deletions. Now, we also support the hard deletion of entities through the UI, APIs,
 and ingestion. Hard deleting an entity removes the entity and all of its relationships. This will also generate a change event.
 
-### Deploy Ingestion from UI
+## Deploy Ingestion from UI
 
 OpenMetadata has refactored the service connections to simplify the ingestion jobs from both the ingestion framework 
 and the UI. We now use the pydantic models automatically generated from the JSON schemas for the connection
 definition. The ‘Add Service’ form is automatically generated in the UI based on the JSON schema specifications for the
 various connectors that are supported in OpenMetadata.
 
-### Download dbt Manifest Files from Amazon S3 or Google Cloud Storage
+## Download dbt Manifest Files from Amazon S3 or Google Cloud Storage
 
 Previously, when ingesting the models and lineage from dbt, we passed the path of the dbt manifest and catalog files 
 directly into the workflow. We’ve worked on improving the quality of life of dbt. Now, we can dynamically download 
@@ -477,20 +547,20 @@ these files from Amazon S3 or Google Cloud Storage. This way we can have any oth
 extract the catalog, and put it into any cloud service. We just need the path name and workflow job details from the 
 metadata extraction to be able to ingest metadata.
 
-### JSON Schema based Connection Definition
+## JSON Schema based Connection Definition
 
 Each service (database, dashboard, messaging, or pipeline service) has its own configuration specifications, with some 
 unique requirements for some services. Instead of the ad hoc definitions of the source module in Python for each 
 connector, we’ve worked on the full refactoring of the ingestion framework. We now use the pydantic models automatically
 generated from the JSON schemas for the connection definition.
 
-### Airflow Rest APIs
+## Airflow Rest APIs
 
 The Airflow REST APIs have been refactored. With our API centric model, we are creating a custom airflow rest API 
 directly on top of Airflow using plugins. This passes the connection information to automatically generate all the dags
 and prepares handy methods to help us test the connection to the source before creating the service.
 
-### UI Changes
+## UI Changes
 
 - The UI improvements are directed toward providing a consistent user experience.
 - Hard Deletion of Entities: With the support for the hard deletion of entities, we can permanently delete tables, 
@@ -506,7 +576,7 @@ and prepares handy methods to help us test the connection to the source before c
 - Activity Feeds: The Activity Feeds UI supports infinite scrolling.
 - Add User: A user can be added from the Users page.
 
-### Security Changes
+## Security Changes
 - **Support Refresh Tokens for Auth0 and Okta SSO**: The JWT tokens generated by the SSO providers expire by default 
   in about an hour, making the user re-login often. In this release, we’ve added support for refresh tokens for Auth0 
   and Okta SSO. The tokens are refreshed silently behind the scenes to provide an uninterrupted user experience.
@@ -515,9 +585,9 @@ and prepares handy methods to help us test the connection to the source before c
   This is supported both on the front end for user authentication and on the ingestion side.
 - **Azure SSO**: Support has been added for Azure SSO on Airflow.
 
-## 0.9.0 - March 10th, 2022
+# 0.9.0 Release
 
-### Collaboration
+## Collaboration
 
 - Conversations in the main feed.
 - Users can ask each other questions, add suggestions and replies.
@@ -525,12 +595,12 @@ and prepares handy methods to help us test the connection to the source before c
 - Glossary.
 - Table details - Click through on usage to see who or what services are using it, what queries are pulling from it.
 
-### Data Quality
+## Data Quality
 - Ability to create and monitor the test cases.
 - Data Quality Tests support with Json Schemas and APIs.
 - UI Integration to enable user to write tests and run them on Airflow.
 
-### Glossary
+## Glossary
 
 - Glossaries are a Controlled Vocabulary in an organization used to define the concepts and terminologies specific to a
   particular domain.
@@ -538,7 +608,7 @@ and prepares handy methods to help us test the connection to the source before c
 - UI support to add Glossary and Glossary Terms. 
 - Support for using Glossary terms to annotate Entities and Search using Glossary Terms.
 
-### Connectors
+## Connectors
 - Apache Iceberg
 - Azure SQL
 - Clickhouse
@@ -554,52 +624,52 @@ and prepares handy methods to help us test the connection to the source before c
 - Apache Atlas ,Import Metadata from Apache Atlas into OpenMetadata
 - Amundsen, Import Metadata from Amundsen into OpenMetadata
 
-### Lineage
+## Lineage
 - DataSource SQL Parsing support to extract Lineage
 - View Lineage support
 
-### Pipeline
+## Pipeline
 - Capture pipeline status as it happens
 
-### Security
+## Security
 
 - Security policies through the UI.
 - Configuration personas and authorization based on policies.
 - AWS SSO support.
 
-## 0.8 Release - Jan 22nd, 2022
+# 0.8.0 Release
 
-### Access Control Policies
+## Access Control Policies
 - Design of Access Control Policies.
 - Provide Role based access control with community feedback.
 
-### Eventing Webhook
+## Eventing Webhook
 
 - Register webhooks to get metadata event notifications.
 - Metadata Change Event integration into Slack and framework for integration into other services such as 
   Kafka or other Notification frameworks
 
-### Connectors
+## Connectors
 - Delta Lake
 - Iceberg
 - PowerBI
 - Azure SQL
 
-## 0.7 Release - Dec 15th, 2021
+# 0.7.0 Release
 
-### UI - Activity Feed, Improved UX for Search
+## UI - Activity Feed, Improved UX for Search
 - Users will have access to Activity Feed of all the changes to the Metadata.
 - New and Improved UX for Search and Landing page.
 
-### Support for Table Location
+## Support for Table Location
 - Extract Location information from Glue, Redshift.
 - Show Location details on the Table Page.
 
-### ElasticSearch Improvements
+## ElasticSearch Improvements
 - Support SSL (including self-signed certs) enabled ElasticSearch.
 - New entities will be indexed into ElasticSearch directly
 
-### Connectors
+## Connectors
 - Metabase
 - Apache Druid
 - Glue Improvements
@@ -607,72 +677,72 @@ and prepares handy methods to help us test the connection to the source before c
 - Apache Atlas Import connector
 - Amundsen Import connector
 
-### Other features
+## Other features
 - Metadata Change Event integration into Slack and framework for integration into other services such as Kafka or
   other Notification frameworks
 - Delta Lake support, Databricks, Iceberg
 
-## 0.6 Release - Nov 17th, 2021
+# 0.6.0 Release
 
-### Metadata Versioning and Eventing Framework
+## Metadata Versioning and Eventing Framework
 - Capture changes to Entity Metadata from source and user interactions as versions.
 - Versioned changes will be published as events for clients to consume to take actions on.
 
-### Data Reliability
+## Data Reliability
 - Improvements to Data Reliability library.
 - Capture custom measurements through user provided SQL.
 
-### Airflow APIs
+## Airflow APIs
 - Airflow APIs to deploy DAGS and manage them.
 - UI integration to deploy ingestion workflows.
 
-### Connectors
+## Connectors
 - AWS Glue
 - dbt
 - MariaDB
 
-## 0.5 Release - Oct 19th, 2021
+# 0.5.0 Release
 
-### Support for Lineage
+## Support for Lineage
 - Lineage related schemas and APIs.
 - Lineage metadata integration from AirFlow for tables.
 - UI changes to show lineage information to the users.
 
-### Data Reliability
+## Data Reliability
 - Improvements to Data Profiler.
 - UI integration with Data Profiler to show how the table profile looks over the period of time.
 
-### Complex Types
+## Complex Types
 - Support complex types such as Struct, Array with nested fields.
 - UI support to add expand complex types and tag, add description for nested fields.
 
-### Connectors
+## Connectors
 - Trino
 - Redash
 
-### Other features
+## Other features
 - Pipeline Entities are supported.
 - Integration with Airflow to extract Pipeline details.
 
-## 0.4 Release - Sep 20th, 2021
+# 0.4.0 Release
 
-### Support for Kafka (and Pulsar WIP)
+## Support for Kafka (and Pulsar WIP)
 - Support for Message Service and Topic entities in schemas, APIs, and UI.
 - Kafka connector and ingestion support for Confluent Schema Registry.
 
-### Support for Dashboards
+## Support for Dashboards
 - Support for Dashboard services, Dashboards, and Charts entities in schemas, APIs, and UI.
 - Looker, Superset, Tableau connector, and ingestion support.
 
-### User Interface
+## User Interface
 - Sort search results based on Usage, Relevance, and Last updated time.
 - Search string highlighted in search results.
 - Support for Kafka and Dashboards from Looker, Superset, and Tableau.
 
-### Other features
+## Other features
 - Pluggable SSO integration - Auth0 support.
 - Support for Presto.
 
-### Work in progress
+## Work in progress
 - Salesforce CRM connector.
 - Data profiler to profile tables in ingestion framework and show it table details page.
