@@ -30,17 +30,6 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock(
-  '../../components/MetaPilot/MetaPilotProvider/MetaPilotProvider',
-  () => ({
-    useMetaPilotContext: jest.fn().mockReturnValue({
-      suggestions: [],
-      initMetaPilot: jest.fn(),
-      resetMetaPilot: jest.fn(),
-    }),
-  })
-);
-
 jest.mock('../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({

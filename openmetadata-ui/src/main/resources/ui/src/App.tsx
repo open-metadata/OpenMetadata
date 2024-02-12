@@ -25,7 +25,6 @@ import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
-import MetaPilotProvider from './components/MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import PermissionProvider from './components/PermissionProvider/PermissionProvider';
 import TourProvider from './components/TourProvider/TourProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
@@ -51,11 +50,9 @@ const App: FC = () => {
                             <WebSocketProvider>
                               <GlobalSearchProvider>
                                 <DomainProvider>
-                                  <MetaPilotProvider>
-                                    <EntityExportModalProvider>
-                                      <AppRouter />
-                                    </EntityExportModalProvider>
-                                  </MetaPilotProvider>
+                                  <EntityExportModalProvider>
+                                    <AppRouter />
+                                  </EntityExportModalProvider>
                                 </DomainProvider>
                               </GlobalSearchProvider>
                             </WebSocketProvider>
