@@ -15,7 +15,6 @@ Superset source module
 import traceback
 from typing import Iterable, Optional
 
-from sqlalchemy import sql
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 
