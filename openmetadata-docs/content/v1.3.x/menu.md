@@ -259,6 +259,8 @@ site_menu:
     url: /how-to-guides/guide-for-data-users/versions
   - category: How-to Guides / Guide for Data Users / How to Delete a Data Asset
     url: /how-to-guides/guide-for-data-users/delete
+  - category: How-to Guides / Guide for Data Users / OpenMetadata Google Chrome Extension
+    url: /how-to-guides/guide-for-data-users/chrome-ext
 
   - category: How-to Guides / Data Discovery
     url: /how-to-guides/data-discovery
@@ -370,6 +372,48 @@ site_menu:
     url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.2.0 Release
+    url: /releases/all-releases/#120-release
+  - category: Releases / All Releases / 1.1.2 Release
+    url: /releases/all-releases/#112-release
+  - category: Releases / All Releases / 1.1.1 Release
+    url: /releases/all-releases/#111-release
+  - category: Releases / All Releases / 1.1.0 Release
+    url: /releases/all-releases/#110-release
+  - category: Releases / All Releases / 1.0.0 Release
+    url: /releases/all-releases/#100-release
+  - category: Releases / All Releases / 0.13.3 Release
+    url: /releases/all-releases/#0133-release
+  - category: Releases / All Releases / 0.13.2 Release
+    url: /releases/all-releases/#0132-release
+  - category: Releases / All Releases / 0.13.1 Release
+    url: /releases/all-releases/#0131-release
+  - category: Releases / All Releases / 0.13.0 Release
+    url: /releases/all-releases/#0130-release
+  - category: Releases / All Releases / 0.12.3 Release
+    url: /releases/all-releases/#0123-release
+  - category: Releases / All Releases / 0.12.2 Release
+    url: /releases/all-releases/#0122-release
+  - category: Releases / All Releases / 0.12.1 Release
+    url: /releases/all-releases/#0121-release
+  - category: Releases / All Releases / 0.12.0 Release
+    url: /releases/all-releases/#0120-release
+  - category: Releases / All Releases / 0.10.1 Release
+    url: /releases/all-releases/#0101-release
+  - category: Releases / All Releases / 0.10.0 Release
+    url: /releases/all-releases/#0100-release
+  - category: Releases / All Releases / 0.9.0 Release
+    url: /releases/all-releases/#090-release
+  - category: Releases / All Releases / 0.8.0 Release
+    url: /releases/all-releases/#080-release
+  - category: Releases / All Releases / 0.7.0 Release
+    url: /releases/all-releases/#070-release
+  - category: Releases / All Releases / 0.6.0 Release
+    url: /releases/all-releases/#060-release
+  - category: Releases / All Releases / 0.5.0 Release
+    url: /releases/all-releases/#050-release
+  - category: Releases / All Releases / 0.4.0 Release
+    url: /releases/all-releases/#040-release
 
   - category: Connectors
     url: /connectors
