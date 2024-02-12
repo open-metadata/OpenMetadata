@@ -38,6 +38,13 @@ if  [ ${debug} ] ; then
   echo $LIBS_DIR
 fi
 if [ -d "${LIBS_DIR}" ]; then
+  # First, add collate-service jar to the classpath.
+  # This is required for cases where we override classes from dependencies.
+  for file in "${LIBS_DIR}"collate-service-*.jar;
+  do
+      CLASSPATH="$CLASSPATH":"$file"
+  done
+  # Then, add the rest of the libraries
   for file in "${LIBS_DIR}"*.jar;
   do
       CLASSPATH="$CLASSPATH":"$file"
