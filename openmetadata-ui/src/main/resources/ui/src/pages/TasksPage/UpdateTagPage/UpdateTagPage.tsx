@@ -240,7 +240,11 @@ const UpdateTag = () => {
                   entity: t('label.task'),
                 })}
               </Typography.Paragraph>
-              <Form form={form} layout="vertical" onFinish={onCreateTask}>
+              <Form
+                data-testid="form-container"
+                form={form}
+                layout="vertical"
+                onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.title')}:`}
@@ -301,11 +305,11 @@ const UpdateTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
-                      data-testid="submit-test"
+                      data-testid="submit-tag-request"
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
