@@ -120,8 +120,16 @@ class TopologyRunnerTest(TestCase):
 
     def test_node_and_stage(self):
         """The step behaves properly"""
-        processed = list(self.source._iter())
+        self.source.context = TopologyContextManager(self.source.topology)
+        self.source.context.set_threads(0)
 
+        with patch(
+            "metadata.ingestion.models.topology.TopologyContextManager.pop",
+            return_value=None,
+        ):
+            processed = list(self.source._iter())
+
+        print(self.source.context.contexts.keys())
         self.assertEqual(len(self.source.context.contexts.keys()), 1)
 
         self.assertEqual(
@@ -163,6 +171,7 @@ class TopologyRunnerTest(TestCase):
 
     def test_multithread_node_and_stage(self):
         """The step behaves properly"""
+        self.source.context = TopologyContextManager(self.source.topology)
         self.source.context.set_threads(2)
         # Avoid removing the ThreadIds from the TopologyContextManager dict.
         with patch(
