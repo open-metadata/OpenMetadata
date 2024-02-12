@@ -110,8 +110,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
                 f"Failed to list BigTable instances in project {project_id}: {err}"
             )
             raise
-        else:
-            return list(self.instances[project_id].keys())
+        return list(self.instances[project_id].keys())
 
     def get_table_name_list(self, schema_name: str) -> List[str]:
         project_id = self.context.database
@@ -161,7 +160,9 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             # across multiple column families.
             for cf in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
                 records.extend(
-                    self._get_records_for_column_family(table, cf, SAMPLES_PER_COLUMN_FAMILY)
+                    self._get_records_for_column_family(
+                        table, cf, SAMPLES_PER_COLUMN_FAMILY
+                    )
                 )
                 if len(records) >= GLOBAL_SAMPLE_SIZE:
                     break
