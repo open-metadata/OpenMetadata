@@ -110,7 +110,8 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
                 f"Failed to list BigTable instances in project {project_id}: {err}"
             )
             raise
-        return list(self.instances[project_id].keys())
+        else:
+            return list(self.instances[project_id].keys())
 
     def get_table_name_list(self, schema_name: str) -> List[str]:
         project_id = self.context.database
