@@ -13,11 +13,10 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.util.List;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.List;
 
 /** Converter class to get an `BigTableConnection` object. */
 public class BigTableConnectionClassConverter extends ClassConverter {
@@ -28,8 +27,7 @@ public class BigTableConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    BigTableConnection connection =
-        (BigTableConnection) JsonUtils.convertValue(object, this.clazz);
+    BigTableConnection connection = (BigTableConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(connection.getCredentials(), List.of(GCPCredentials.class))
         .ifPresent(obj -> connection.setCredentials((GCPCredentials) obj));

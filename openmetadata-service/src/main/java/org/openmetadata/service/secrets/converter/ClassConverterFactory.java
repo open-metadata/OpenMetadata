@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.secrets.converter;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.Getter;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
