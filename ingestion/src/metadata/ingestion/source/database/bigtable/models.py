@@ -1,4 +1,4 @@
-#  Copyright 2023 Collate
+#  Copyright 2024 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -8,9 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-DynamoDB Models
-"""
 from typing import Dict, List
 
 from google.cloud.bigtable.row import PartialRowData
@@ -38,9 +35,7 @@ class Row(BaseModel):
                 cells[cf] = {}
             for column, cell in cf_cells.items():
                 cells[cf][column] = Cell(
-                    values=[
-                        Value(timestamp=c.timestamp, value=c.value) for c in cell
-                    ]
+                    values=[Value(timestamp=c.timestamp, value=c.value) for c in cell]
                 )
         return cls(cells=cells, row_key=row.row_key)
 

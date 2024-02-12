@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate
+#  Copyright 2024 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -8,10 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Dynamo source methods.
-"""
-
 import traceback
 from typing import Dict, List, Optional, Union, Iterable, Tuple
 
@@ -42,13 +38,6 @@ from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-# TODO
-# 1. try to cast to float, int, string, bytes. ✗
-# 2. test multiple projects with clashing schema and table names ✓
-# 3. wrapper for NoSQL ✗
-
 
 MAX_COLUMN_FAMILIES = 100
 TABLE_SAMPLE_SIZE = 100
@@ -95,7 +84,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         project_id = self.context.database
         try:
             # the first element is a list of instances
-            # the second element is another collection (seems empty) adn I do not know what is its purpose
+            # the second element is another collection (seems empty) and I do not know what is its purpose
             instances, _ = self.client.list_instances(project_id=project_id)
             self.instances[project_id] = tuple(instances)
         except Exception as err:
@@ -166,7 +155,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
-        Method to get the source url for dynamodb
+        Method to get the source url for a BigTable table
         """
         try:
             if schema_name and table_name:
