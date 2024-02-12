@@ -70,6 +70,7 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import { getDecodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -562,7 +563,9 @@ export const createNodes = (
   edgesData: EdgeDetails[],
   entityFqn: string
 ) => {
-  const uniqueNodesData = removeDuplicateNodes(nodesData);
+  const uniqueNodesData = removeDuplicateNodes(nodesData).sort((a, b) =>
+    getEntityName(a).localeCompare(getEntityName(b))
+  );
 
   // Create a new dagre graph
   const graph = new dagre.graphlib.Graph();

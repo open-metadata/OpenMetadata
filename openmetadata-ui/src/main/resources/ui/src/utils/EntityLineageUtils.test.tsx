@@ -41,6 +41,7 @@ jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));
 
+// test
 describe('Test EntityLineageUtils utility', () => {
   it('getAllTracedNodes & isTracedEdge function should work properly', () => {
     const { nodes, edges } = MOCK_NODES_AND_EDGES;

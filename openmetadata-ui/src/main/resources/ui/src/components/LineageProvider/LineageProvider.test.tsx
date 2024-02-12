@@ -24,8 +24,12 @@ const mockLocation = {
 };
 
 const DummyChildrenComponent = () => {
-  const { loadChildNodesHandler, onEdgeClick, updateEntityType } =
-    useLineageProvider();
+  const {
+    loadChildNodesHandler,
+    onEdgeClick,
+    updateEntityType,
+    onLineageEditClick,
+  } = useLineageProvider();
 
   const nodeData = {
     name: 'table1',
@@ -74,6 +78,9 @@ const DummyChildrenComponent = () => {
       <button data-testid="openConfirmationModal">
         Close Confirmation Modal
       </button>
+      <button data-testid="editLineage" onClick={onLineageEditClick}>
+        Edit Lineage
+      </button>
     </div>
   );
 };
@@ -89,6 +96,12 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../Entity/EntityInfoDrawer/EdgeInfoDrawer.component', () => {
   return jest.fn().mockImplementation(() => {
     return <p>Edge Info Drawer</p>;
+  });
+});
+
+jest.mock('../Entity/EntityLineage/EntityLineageSidebar.component', () => {
+  return jest.fn().mockImplementation(() => {
+    return <p>Entity Lineage Sidebar</p>;
   });
 });
 
@@ -126,6 +139,23 @@ describe('LineageProvider', () => {
     fireEvent.click(loadButton);
 
     expect(getLineageDataByFQN).toHaveBeenCalled();
+  });
+
+  it('should show sidebar when edit is clicked', async () => {
+    await act(async () => {
+      render(
+        <LineageProvider>
+          <DummyChildrenComponent />
+        </LineageProvider>
+      );
+    });
+
+    const loadButton = await screen.getByTestId('editLineage');
+    fireEvent.click(loadButton);
+
+    const edgeDrawer = screen.getByText('Entity Lineage Sidebar');
+
+    expect(edgeDrawer).toBeInTheDocument();
   });
 
   it('should show delete modal', async () => {

@@ -26,8 +26,13 @@ export default defineConfig({
     experimentalStudio: true,
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
+
     setupNodeEvents(on, config) {
-      return plugins(on, config);
+      plugins(on, config);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      require('@cypress/grep/src/plugin')(config);
+
+      return config;
     },
     specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
   },
