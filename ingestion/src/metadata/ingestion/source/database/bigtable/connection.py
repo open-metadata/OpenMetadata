@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional, List
+from typing import List, Optional
 
 from google.cloud.bigtable import Client
 
@@ -20,12 +20,12 @@ from metadata.generated.schema.entity.services.connections.database.bigTableConn
     BigTableConnection,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
-    SingleProjectId,
     GcpCredentialsValues,
+    SingleProjectId,
 )
 from metadata.ingestion.connections.test_connections import (
-    test_connection_steps,
     SourceConnectionException,
+    test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigtable.client import MultiProjectClient

@@ -9,11 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from functools import partial
-from typing import Optional, List, Type
+from typing import List, Optional, Type
 
 from google import auth
 from google.cloud.bigtable import Client
-
 
 NoProject = object()
 

@@ -9,16 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import traceback
-from typing import Dict, List, Optional, Union, Iterable, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from google.cloud.bigtable import row_filters
 from google.cloud.bigtable.instance import Instance
 from google.cloud.bigtable.table import Table
 
 from metadata.generated.schema.entity.data.table import (
-    TableType,
-    TableConstraint,
     ConstraintType,
+    TableConstraint,
+    TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.bigTableConnection import (
     BigTableConnection,
@@ -31,9 +31,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigtable.client import MultiProjectClient
 from metadata.ingestion.source.database.bigtable.models import Row
 from metadata.ingestion.source.database.common_nosql_source import (
-    CommonNoSQLSource,
     SAMPLE_SIZE as GLOBAL_SAMPLE_SIZE,
 )
+from metadata.ingestion.source.database.common_nosql_source import CommonNoSQLSource
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils.logger import ingestion_logger
 

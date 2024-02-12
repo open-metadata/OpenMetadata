@@ -16,20 +16,19 @@ Test MongoDB using the topology
 import json
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
-from metadata.generated.schema.type.basic import SourceUrl
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
-    DataType,
-    TableType,
-    TableConstraint,
     ConstraintType,
+    DataType,
+    TableConstraint,
+    TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -39,6 +38,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigtable.metadata import BigtableSource
@@ -230,7 +230,6 @@ def mock_test_connection():
 
 
 class BigTableUnitTest(TestCase):
-
     @pytest.fixture(autouse=True)
     def setup(
         self,
@@ -245,13 +244,13 @@ class BigTableUnitTest(TestCase):
             mock_bigtable_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.bigtable_source.context.__dict__["database_service"] = (
-            MOCK_DATABASE_SERVICE.name.__root__
-        )
+        self.bigtable_source.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.__root__
         self.bigtable_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.bigtable_source.context.__dict__["database_schema"] = (
-            MOCK_DATABASE_SCHEMA.name.__root__
-        )
+        self.bigtable_source.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
         self.bigtable_source.instances = {"my-gcp-project": [mock_bigtable_instance]}
         self.bigtable_source.tables = {
             "my-gcp-project": {"my_instance": [mock_bigtable_table]}

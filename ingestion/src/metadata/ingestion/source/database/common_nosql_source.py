@@ -30,8 +30,8 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Table,
-    TableType,
     TableConstraint,
+    TableType,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
