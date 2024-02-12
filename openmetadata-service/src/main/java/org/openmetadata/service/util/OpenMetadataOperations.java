@@ -181,6 +181,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       flyway.migrate();
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      LOG.info("create indexes.");
+      searchRepository.createIndexes();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
@@ -202,6 +204,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       flyway.migrate();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Update Search Indexes.");
+      searchRepository.updateIndexes();
       printChangeLog();
       return 0;
     } catch (Exception e) {
