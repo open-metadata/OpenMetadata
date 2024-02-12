@@ -8,8 +8,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Bigtable source methods.
+"""
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 from google.cloud.bigtable import row_filters
 from google.cloud.bigtable.instance import Instance
@@ -42,6 +45,10 @@ logger = ingestion_logger()
 MAX_COLUMN_FAMILIES = 100
 TABLE_SAMPLE_SIZE = 100
 
+ProjectId = str
+InstanceId = str
+TableId = str
+
 
 class BigtableSource(CommonNoSQLSource, MultiDBSource):
     """
@@ -58,8 +65,8 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         self.client: MultiProjectClient = self.connection_obj
 
         # ths instances and tables are cached to avoid making redundant requests to the API.
-        self.instances: Dict[str, Tuple[Instance]] = {}
-        self.tables: Dict[str, Dict[str, Tuple[Table]]] = {}
+        self.instances: Dict[ProjectId, Dict[InstanceId, Instance]] = {}
+        self.tables: Dict[ProjectId, Dict[InstanceId, Dict[TableId, Table]]] = {}
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -72,6 +79,12 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         return cls(config, metadata)
 
     def get_configured_database(self) -> Optional[str]:
+        """
+        This connector uses "virtual databases" in the form of GCP projects.
+        The concept of a default project for the GCP client is not useful here because the project ID
+        is always an explicit part of the connection. Therefore, this method returns None and the databases
+        are resolved using `self.get_database_names`.
+        """
         return None
 
     def get_database_names(self) -> Iterable[str]:
@@ -86,24 +99,31 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             # the first element is a list of instances
             # the second element is another collection (seems empty) and I do not know what is its purpose
             instances, _ = self.client.list_instances(project_id=project_id)
-            self.instances[project_id] = tuple(instances)
+            self.instances[project_id] = {
+                instance.instance_id: instance for instance in instances
+            }
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Failed to list BigTable instances in project {project_id}: {err}"
             )
             raise
-        return [instance.instance_id for instance in self.instances[project_id]]
+        return list(self.instances[project_id].keys())
 
     def get_table_name_list(self, schema_name: str) -> List[str]:
         project_id = self.context.database
         try:
-            instance = [
-                i for i in self.instances[project_id] if i.instance_id == schema_name
-            ][0]
+            instance = self._get_instance(project_id, schema_name)
+            if instance is None:
+                raise RuntimeError(f"Instance {project_id}/{schema_name} not found.")
             tables = instance.list_tables()
-            self._set_nested(self.tables, [project_id, instance.instance_id], tables)
-            return [t.table_id for t in self.tables[project_id][instance.instance_id]]
+            for table in tables:
+                self._set_nested(
+                    self.tables,
+                    [project_id, instance.instance_id, table.table_id],
+                    table,
+                )
+            return list(self.tables[project_id][schema_name].keys())
         except Exception as err:
             logger.debug(traceback.format_exc())
             # add context to the error message
@@ -126,12 +146,13 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
     ) -> Union[List[Dict], Dict]:
         project_id = self.context.database
         try:
-            table = self._find_table(project_id, schema_name, table_name)
+            table = self._get_table(project_id, schema_name, table_name)
             if table is None:
                 raise RuntimeError(
                     f"Table {project_id}/{schema_name}/{table_name} not found."
                 )
             column_families = table.list_column_families()
+            # all BigTable tables have a "row_key" column. Even if there are no records in the table.
             records = [{"row_key": b"row_key"}]
             for cf in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
                 records.extend(
@@ -143,7 +164,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to read BigTable rows for [{schema_name}.{table_name}]: {err}"
+                f"Failed to read BigTable rows for [{project_id}.{schema_name}.{table_name}]: {err}"
             )
         return []
 
@@ -159,7 +180,10 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         """
         try:
             if schema_name and table_name:
-                return f"https://console.cloud.google.com/bigtable/instances/{schema_name}/tables/{table_name}/overview?project={database_name}"
+                return (
+                    "https://console.cloud.google.com/bigtable/instances/"
+                    f"{schema_name}/tables/{table_name}/overview?project={database_name}"
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
@@ -179,14 +203,16 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         rows = table.read_rows(limit=limit, filter_=filter_)
         return [Row.from_partial_row(row).to_record() for row in rows]
 
-    def _find_table(
+    def _get_table(
         self, project_id: str, schema_name: str, table_name: str
     ) -> Optional[Table]:
         try:
-            return [
-                t
-                for t in self.tables[project_id][schema_name]
-                if t.table_id == table_name
-            ][0]
-        except IndexError:
+            return self.tables[project_id][schema_name][table_name]
+        except KeyError:
+            return None
+
+    def _get_instance(self, project_id: str, schema_name: str) -> Optional[Instance]:
+        try:
+            return self.instances[project_id][schema_name]
+        except KeyError:
             return None

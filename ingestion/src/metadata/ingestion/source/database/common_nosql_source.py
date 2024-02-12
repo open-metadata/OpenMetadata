@@ -208,8 +208,12 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
 
     def get_table_constraints(
-        self, db_name: str, schema_name: str, table_name: str
+        self,
+        db_name: str,
+        schema_name: str,
+        table_name: str,
     ) -> Optional[List[TableConstraint]]:
+        # pylint: disable=unused-argument
         return None
 
     def yield_table(
@@ -224,11 +228,6 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema
         try:
-            table_constraints = self.get_table_constraints(
-                schema_name=schema_name,
-                table_name=table_name,
-                db_name=self.context.database,
-            )
             data = self.get_table_columns_dict(schema_name, table_name)
             df = pd.DataFrame.from_records(list(data))
             column_parser = DataFrameColumnParser.create(df)
@@ -237,7 +236,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 name=table_name,
                 tableType=table_type,
                 columns=columns,
-                tableConstraints=table_constraints,
+                tableConstraints=self.get_table_constraints(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    db_name=self.context.database,
+                ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,

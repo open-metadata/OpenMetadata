@@ -251,9 +251,17 @@ class BigTableUnitTest(TestCase):
         self.bigtable_source.context.__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
-        self.bigtable_source.instances = {"my-gcp-project": [mock_bigtable_instance]}
+        self.bigtable_source.instances = {
+            "my-gcp-project": {
+                mock_bigtable_instance.instance_id: mock_bigtable_instance
+            }
+        }
         self.bigtable_source.tables = {
-            "my-gcp-project": {"my_instance": [mock_bigtable_table]}
+            "my-gcp-project": {
+                mock_bigtable_instance.instance_id: {
+                    mock_bigtable_table.table_id: mock_bigtable_table
+                }
+            }
         }
 
     def test_database_names(self):
