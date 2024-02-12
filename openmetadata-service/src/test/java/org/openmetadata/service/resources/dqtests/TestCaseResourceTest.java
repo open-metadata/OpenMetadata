@@ -69,6 +69,7 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -77,6 +78,7 @@ import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -1563,6 +1565,23 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     TestCaseResolutionStatusTypes.Ack)),
         BAD_REQUEST,
         "Incident with status [Assigned] cannot be moved to [Ack]");
+  }
+
+  @Test
+  public void testInferSeverity(TestInfo test) {
+    IncidentSeverityClassifierInterface severityClassifier = IncidentSeverityClassifierInterface.getInstance();
+    // TEST_TABLE1 has no tier information, hence severity should be null as the classifier won't be able to infer
+    Severity severity = severityClassifier.classifyIncidentSeverity(TEST_TABLE1);
+    assertNull(severity);
+
+    List<TagLabel> tags = new ArrayList<>();
+    tags.add(new TagLabel().withTagFQN("Tier.Tier1").withName("Tier1"));
+    TEST_TABLE1.setTags(tags);
+
+    // With tier set to Tier1, the severity should be inferred
+    severity = severityClassifier.classifyIncidentSeverity(TEST_TABLE1);
+    assertNotNull(severity);
+
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
