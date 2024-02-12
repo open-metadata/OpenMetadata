@@ -123,7 +123,7 @@ The access token created using the steps mentioned [here](https://developer.alat
 
 #### Sink Configuration
 
-{% codeInfo srNumber=19 %}
+{% codeInfo srNumber=20 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -170,12 +170,33 @@ source:
 ```yaml {% srNumber=18 %}
       alationTagClassificationName: alationTags
 ```
-```yaml
+```yaml {% srNumber=19 %}
   sourceConfig:
     config:
       type: DatabaseMetadata
+      # databaseFilterPattern:
+      #   includes:
+      #     - database_id_1
+      #     - database_id_2
+      #   excludes:
+      #     - database_id_3
+      #     - database_id_4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema_id_1
+      #     - schema_id_2
+      #   excludes:
+      #     - schema_id_3
+      #     - schema_id_4
+      # tableFilterPattern:
+      #   includes:
+      #     - table_id_1
+      #     - table_id_2
+      #   excludes:
+      #     - table_id_3
+      #     - table_id_4
 ```
-```yaml {% srNumber=19 %}
+```yaml {% srNumber=20 %}
 sink:
   type: metadata-rest
   config: {}

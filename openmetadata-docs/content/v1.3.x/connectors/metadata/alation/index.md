@@ -50,5 +50,6 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 - Since Alation does not have a concept of Service entity, the Data Sources (OCF and Native) will be mapped to Database Service and Database in OpenMetadata. Hence for each Data Source in Alation there will one Database Service and Database present in OpenMetadata.
 - Custom fields will have a 1:1 mapping for all the entities except for Columns since OpenMetadata does not support custom properties for columns.
 - Alation has two fields for descriptions i.e. `descriptions` and `comments`. These fields will be combined under one field `description` in OpenMetadata for all the entities.
+- Utilize the databaseFilterPattern (datasource in Alation), schemaFilterPattern, and tableFilterPattern to apply filters to Alation entities. Provide the `ids` of the datasource, schemas, and tables for the Alation entities in the respective fields.
 
 
