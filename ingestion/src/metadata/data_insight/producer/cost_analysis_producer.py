@@ -13,8 +13,7 @@ Producer class for data insight entity reports
 """
 
 import traceback
-from collections import defaultdict
-from typing import Dict, Optional
+from typing import Dict, Iterable, Optional
 
 from pydantic import BaseModel
 
@@ -74,7 +73,7 @@ class CostAnalysisProducer(ProducerInterface):
 
     def life_cycle_data_dict(
         self, entities_cache: Optional[Dict], database_service_fqn: str
-    ) -> Dict:
+    ) -> Iterable[Dict]:
         """
         Cache the required lifecycle data to be used by the processors and return the dict
         """
@@ -87,13 +86,17 @@ class CostAnalysisProducer(ProducerInterface):
                 skip_on_failure=True,
                 params={"database": database_service_fqn},
             )
-            entities_cache[database_service_fqn] = defaultdict()
+            entities_cache[database_service_fqn] = {}
 
             for table in tables:
                 try:
-                    entities_cache[database_service_fqn][
-                        model_str(table.fullyQualifiedName)
-                    ] = self._check_life_cycle_and_size_data(table=table)
+                    cost_analysis_data = self._check_life_cycle_and_size_data(
+                        table=table
+                    )
+                    if cost_analysis_data:
+                        entities_cache[database_service_fqn][
+                            model_str(table.fullyQualifiedName)
+                        ] = cost_analysis_data
                 except Exception as err:
                     logger.error(
                         f"Error trying to fetch cost analysis data for [{model_str(table.fullyQualifiedName)}] -- {err}"
@@ -105,7 +108,7 @@ class CostAnalysisProducer(ProducerInterface):
     # pylint: disable=dangerous-default-value
     def fetch_data(
         self, limit=100, fields=["*"], entities_cache=None
-    ) -> Optional[Dict]:
+    ) -> Optional[Iterable[Dict]]:
         database_services = self.metadata.list_all_entities(
             DatabaseService, limit=limit, fields=fields, skip_on_failure=True
         )

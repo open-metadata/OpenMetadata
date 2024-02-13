@@ -140,6 +140,7 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
         super().__init__(metadata)
         self._refined_data = defaultdict(lambda: defaultdict(dict))
         self.post_hook = self._post_hook_fn
+        self.clean_up_cache = True
 
     def yield_refined_data(self) -> Iterable[ReportData]:
         """Yield refined data"""
