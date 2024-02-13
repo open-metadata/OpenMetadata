@@ -23,7 +23,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Row wrap gutter={[16, 16]}>
+    <Row wrap data-testid="summary-panel" gutter={[16, 16]}>
       <Col span={6}>
         <SummaryCard
           className="h-full"
