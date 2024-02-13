@@ -27,7 +27,7 @@ password to connect to the PinotDB.
 $$
 
 $$section
-### Host Port $(id="hostPort")
+### Pinot Broker Host Port $(id="hostPort")
 
 This parameter specifies the host and port of the PinotDB instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:8099`.
 
@@ -37,7 +37,7 @@ $$
 $$section
 ### Pinot Controller Host $(id="pinotControllerHost")
 
-Pinot Broker Host and Port of the data source.
+Pinot Controller Host and Port of the data source.
 $$
 
 $$section
