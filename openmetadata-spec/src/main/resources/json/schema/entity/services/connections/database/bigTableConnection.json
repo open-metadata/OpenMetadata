@@ -1,0 +1,51 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/bigTableConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BigTableConnection",
+  "description": "Google BigTable Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.BigTableConnection",
+  "definitions": {
+    "bigtableType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "BigTable"
+      ],
+      "default": "BigTable"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/bigtableType",
+      "default": "BigTable"
+    },
+    "credentials": {
+      "title": "GCP Credentials",
+      "description": "GCP Credentials",
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "credentials"
+  ]
+}

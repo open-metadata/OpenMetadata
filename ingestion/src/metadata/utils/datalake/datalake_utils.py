@@ -169,6 +169,7 @@ class GenericDataFrameColumnParser:
             ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME
         ),
         "str": DataType.STRING,
+        "bytes": DataType.BYTES,
     }
 
     def __init__(self, data_frame: "DataFrame"):
@@ -247,8 +248,13 @@ class GenericDataFrameColumnParser:
                     data_type = "string"
 
             data_type = cls._data_formats.get(
-                data_type or data_frame[column_name].dtypes.name, DataType.STRING
+                data_type or data_frame[column_name].dtypes.name,
             )
+            if not data_type:
+                logger.debug(
+                    f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string."
+                )
+            data_type = data_type or DataType.STRING
         except Exception as err:
             logger.warning(
                 f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
