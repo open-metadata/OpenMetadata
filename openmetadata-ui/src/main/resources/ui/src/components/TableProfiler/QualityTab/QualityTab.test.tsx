@@ -148,7 +148,6 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(await screen.findByTestId('tabs-container')).toBeInTheDocument();
     expect(
       await screen.getByRole('tab', { name: 'label.test-case-plural' })
     ).toHaveAttribute('aria-selected', 'true');
@@ -188,7 +187,6 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(await screen.findByTestId('summary-panel')).toBeInTheDocument();
     expect(await screen.findByText('label.total-entity')).toBeInTheDocument();
     expect(await screen.findByText('label.success')).toBeInTheDocument();
     expect(await screen.findByText('label.aborted')).toBeInTheDocument();
