@@ -123,6 +123,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
             <>
               <div
                 className="d-flex items-center"
+                data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
                 key={entity.fullyQualifiedName}
                 onClick={() => {
                   onSelectHandler?.(entity as EntityReference);
