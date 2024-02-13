@@ -309,33 +309,33 @@ class Queue:
     task on the queue."""
 
     def __init__(self):
-        self.queue = queue.Queue()
-        self.task_map: Dict[str, bool] = {}
+        self._queue = queue.Queue()
+        self._task_map: Dict[str, bool] = {}
 
     def has_tasks(self, thread_id: Optional[str] = None) -> bool:
         """If it received a thread_id checks if the Thread is waiting for a task through the 'task_map'
         If not, checks that the Queue is not empty."""
         if thread_id:
-            return self.task_map.get(thread_id, False)
+            return self._task_map.get(thread_id, False)
 
-        return not self.queue.empty()
+        return not self._queue.empty()
 
     def process(self) -> Any:
         """Yields all the items currently on the Queue."""
         while True:
             try:
-                item = self.queue.get_nowait()
+                item = self._queue.get_nowait()
                 yield item.item
-                self.task_map[item.thread_id] = False
-                self.queue.task_done()
+                self._task_map[item.thread_id] = False
+                self._queue.task_done()
             except queue.Empty:
                 break
 
     def add(self, item: QueueItem):
         """Adds a new item to the Queue while tracking the Thread awaiting for it to be processed
         through the 'task_map'."""
-        self.task_map[item.thread_id] = True
-        self.queue.put(item)
+        self._task_map[item.thread_id] = True
+        self._queue.put(item)
 
 
 def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:

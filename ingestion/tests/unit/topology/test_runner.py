@@ -182,7 +182,7 @@ class TopologyRunnerTest(TestCase):
 
         # Since the threads can be reused or some other ID generated we are unsure the amount of contexts we
         # will get.
-        self.assertTrue(len(self.source.context.contexts.keys()) > 1)
+        self.assertGreater(len(self.source.context.contexts.keys()), 1)
 
         self.assertEqual(
             # check the post process being at the end
