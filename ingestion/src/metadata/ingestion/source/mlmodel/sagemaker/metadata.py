@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.data.mlmodel import (
 from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
     SageMakerConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -128,14 +131,23 @@ class SagemakerSource(MlModelServiceSource):
         """
         Prepare the Request model
         """
-        mlmodel_request = CreateMlModelRequest(
-            name=model.name,
-            algorithm=self._get_algorithm(),  # Setting this to a constant
-            mlStore=self._get_ml_store(model.name),
-            service=self.context.get().mlmodel_service,
-        )
-        yield mlmodel_request
-        self.register_record(mlmodel_request=mlmodel_request)
+        try:
+            mlmodel_request = CreateMlModelRequest(
+                name=model.name,
+                algorithm=self._get_algorithm(),  # Setting this to a constant
+                mlStore=self._get_ml_store(model.name),
+                service=self.context.get().mlmodel_service,
+            )
+            yield Either(right=mlmodel_request)
+            self.register_record(mlmodel_request=mlmodel_request)
+        except Exception as exc:  # pylint: disable=broad-except
+            yield Either(
+                left=StackTraceError(
+                    name=model.name,
+                    error=f"Error creating mlmodel: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _get_ml_store(  # pylint: disable=arguments-differ
         self,

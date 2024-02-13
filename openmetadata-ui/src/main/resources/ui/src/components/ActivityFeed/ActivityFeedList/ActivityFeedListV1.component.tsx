@@ -51,7 +51,7 @@ const ActivityFeedListV1 = ({
   }, [feedList]);
 
   useEffect(() => {
-    if (onFeedClick && entityThread[0]) {
+    if (onFeedClick) {
       onFeedClick(entityThread[0]);
     }
   }, [entityThread, onFeedClick]);

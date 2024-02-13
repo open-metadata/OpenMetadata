@@ -375,12 +375,16 @@ class TopologyRunnerMixin(Generic[C]):
 
         # If we don't want to write data in OM, we'll return what we fetch from the API.
         # This will be applicable for service entities since we do not want to overwrite the data
+        same_fingerprint = False
         if not stage.overwrite and not self._is_force_overwrite_enabled():
             entity = self.metadata.get_by_name(
                 entity=stage.type_,
                 fqn=entity_fqn,
                 fields=["*"],
             )
+            if entity:
+                same_fingerprint = True
+
         create_entity_request_hash = generate_source_hash(
             create_request=entity_request.right,
         )
@@ -388,7 +392,6 @@ class TopologyRunnerMixin(Generic[C]):
         if hasattr(entity_request.right, "sourceHash"):
             entity_request.right.sourceHash = create_entity_request_hash
 
-        same_fingerprint = False
         if entity is None and stage.use_cache:
             # check if we find the entity in the entities list
             entity_source_hash = self.cache[stage.type_].get(entity_fqn)

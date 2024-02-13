@@ -93,7 +93,10 @@ public class ClassificationResourceTest
 
   @Override
   public CreateClassification createRequest(String name) {
-    return new CreateClassification().withName(name).withDescription("description");
+    return new CreateClassification()
+        .withName(name)
+        .withDescription("description")
+        .withProvider(ProviderType.USER);
   }
 
   @Override

@@ -255,6 +255,8 @@ site_menu:
     url: /how-to-guides/guide-for-data-users/versions
   - category: How-to Guides / Guide for Data Users / How to Delete a Data Asset
     url: /how-to-guides/guide-for-data-users/delete
+  - category: How-to Guides / Guide for Data Users / OpenMetadata Google Chrome Extension
+    url: /how-to-guides/guide-for-data-users/chrome-ext
 
   - category: How-to Guides / Data Discovery
     url: /how-to-guides/data-discovery
