@@ -25,7 +25,7 @@ const visitSearchApplicationPage = () => {
   verifyResponseStatusCode('@getSearchIndexingApplication', 200);
 };
 
-describe('Search Index Application', () => {
+describe('Search Index Application', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 

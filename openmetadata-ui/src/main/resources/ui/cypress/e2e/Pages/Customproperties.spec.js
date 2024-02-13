@@ -268,7 +268,7 @@ const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
   }
 };
 
-describe('Custom Properties should work properly', () => {
+describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
   });

@@ -96,7 +96,7 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
     .click();
 };
 
-describe('Policy page should work properly', () => {
+describe('Policy page should work properly', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
