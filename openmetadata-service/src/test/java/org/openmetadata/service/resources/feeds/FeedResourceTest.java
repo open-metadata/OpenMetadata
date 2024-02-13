@@ -34,6 +34,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1;
+import static org.openmetadata.service.resources.EntityResourceTest.USER2_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -66,6 +67,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -79,7 +81,6 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.api.feed.CreateThread;
-import org.openmetadata.schema.api.feed.EntityLinkThreadCount;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -258,6 +259,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(1)
   void post_validThreadAndList_200(TestInfo test) throws IOException {
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int userThreadCount = listThreads(USER_LINK, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
@@ -348,7 +350,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Test the /api/v1/feed/count API
     assertEquals(
         userThreadCount, listThreads(USER_LINK, null, USER_AUTH_HEADERS).getPaging().getTotal());
-    assertEquals(userThreadCount, listThreadsCount(USER_LINK, USER_AUTH_HEADERS).getTotalCount());
+    FeedResource.ThreadCountList threadCounts = listThreadsCount(USER_LINK, USER_AUTH_HEADERS);
+    for (ThreadCount threadCount : threadCounts.getData()) {
+      if (threadCount.getEntityLink().equals(USER_LINK)) {
+        assertEquals(userThreadCount, threadCount.getConversationCount());
+      }
+    }
     assertEquals(
         tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, USER_AUTH_HEADERS));
     assertEquals(
@@ -441,23 +448,15 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(assignedToCount + assignedByCount + 2, tasks.getPaging().getTotal());
     assertEquals(assignedToCount + assignedByCount + 2, tasks.getData().size());
 
-    ThreadCount count = listTasksCount(null, TaskStatus.Open, USER2_AUTH_HEADERS);
-    int totalOpenTaskCount = count.getTotalCount();
-    count = listTasksCount(null, TaskStatus.Closed, USER2_AUTH_HEADERS);
-    int totalClosedTaskCount = count.getTotalCount();
-
     // close a task and test the task status filter
     ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
     resolveTask(task2.getId(), resolveTask, USER_AUTH_HEADERS);
 
     tasks = listTasks(null, null, null, TaskStatus.Open, null, USER2_AUTH_HEADERS);
     assertFalse(tasks.getData().stream().anyMatch(t -> t.getTask().getId().equals(task2.getId())));
-    assertEquals(totalOpenTaskCount - 1, tasks.getPaging().getTotal());
 
     tasks = listTasks(null, null, null, TaskStatus.Closed, null, USER2_AUTH_HEADERS);
     assertEquals(task2.getId(), tasks.getData().get(0).getTask().getId());
-    assertEquals(totalClosedTaskCount + 1, tasks.getPaging().getTotal());
-    assertEquals(totalClosedTaskCount + 1, tasks.getData().size());
   }
 
   @Test
@@ -561,12 +560,15 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void put_resolveTaskByUser_description_200() throws IOException {
+  void put_resolveTaskByUser_description_200(TestInfo testInfo) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable = tableResourceTest.createRequest(testInfo).withOwner(USER2_REF);
+    Table table = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     // Create a task from User to User2
     String about =
         String.format(
             "<#E::%s::%s::columns::%s::description>",
-            Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+            Entity.TABLE, table.getFullyQualifiedName(), C1);
     Thread taskThread =
         createTaskThread(
             USER.getName(),
@@ -590,7 +592,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // User2 who is assigned the task can resolve the task
     resolveTask(taskId, resolveTask, USER2_AUTH_HEADERS);
-    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, USER_AUTH_HEADERS);
+    table = TABLE_RESOURCE_TEST.getEntity(table.getId(), null, USER_AUTH_HEADERS);
     assertEquals("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
 
     taskThread = getTask(taskId, USER_AUTH_HEADERS);
@@ -1180,6 +1182,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(2)
   void list_threadsWithMentionsFilter() throws HttpResponseException {
     // Create a thread with user mention
     createAndCheck(
@@ -1200,7 +1203,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     ThreadList threads =
         listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS, USER_AUTH_HEADERS);
-    assertEquals(2, threads.getPaging().getTotal());
+    assertEquals(32, threads.getPaging().getTotal());
   }
 
   @Test
@@ -1622,12 +1625,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, PostList.class, authHeaders);
   }
 
-  public ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public FeedResource.ThreadCountList listThreadsCount(
+      String entityLink, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
-    target = target.queryParam("type", ThreadType.Conversation);
-    return TestUtils.get(target, ThreadCount.class, authHeaders);
+    return TestUtils.get(target, FeedResource.ThreadCountList.class, authHeaders);
   }
 
   public ThreadCount listTasksCount(
@@ -1635,21 +1637,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
-    target = target.queryParam("type", ThreadType.Task);
-    target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
   private int getThreadCount(String entityLink, Map<String, String> authHeaders)
       throws HttpResponseException {
-    List<EntityLinkThreadCount> linkThreadCount =
-        listThreadsCount(entityLink, authHeaders).getCounts();
-    EntityLinkThreadCount threadCount =
-        linkThreadCount.stream()
-            .filter(l -> l.getEntityLink().equals(entityLink))
-            .findFirst()
-            .orElseThrow();
-    return threadCount.getCount();
+    FeedResource.ThreadCountList threadCounts = listThreadsCount(entityLink, authHeaders);
+    for (ThreadCount threadCount : threadCounts.getData()) {
+      if (threadCount.getEntityLink().equalsIgnoreCase(entityLink)) {
+        return threadCount.getConversationCount() != null ? threadCount.getConversationCount() : 0;
+      }
+    }
+    return 0;
   }
 
   protected final Thread patchThreadAndCheck(

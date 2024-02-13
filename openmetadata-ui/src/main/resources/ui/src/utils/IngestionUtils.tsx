@@ -35,7 +35,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { Connection } from '../generated/entity/services/databaseService';
+import { HiveMetastoreConnection as Connection } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
@@ -136,15 +136,16 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
   let pipelineType = [];
   const config = serviceDetails?.connection?.config as Connection;
   if (config) {
-    config.supportsMetadataExtraction &&
+    config?.supportsMetadataExtraction &&
       pipelineType.push(PipelineType.Metadata);
-    config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-    config.supportsLineageExtraction && pipelineType.push(PipelineType.Lineage);
-    config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
-    config.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
-    (config as MetadataConnection).supportsDataInsightExtraction &&
+    config?.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
+    config?.supportsLineageExtraction &&
+      pipelineType.push(PipelineType.Lineage);
+    config?.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+    config?.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
+    (config as MetadataConnection)?.supportsDataInsightExtraction &&
       pipelineType.push(PipelineType.DataInsight);
-    (config as MetadataConnection).supportsElasticSearchReindexingExtraction &&
+    (config as MetadataConnection)?.supportsElasticSearchReindexingExtraction &&
       pipelineType.push(PipelineType.ElasticSearchReindex);
   } else {
     pipelineType = [

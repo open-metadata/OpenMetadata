@@ -26,6 +26,7 @@ import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-p
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   Option,
   SearchSuggestions,
@@ -48,10 +49,14 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
+  tagSortingFields,
+  TAGS_INITIAL_SORT_FIELD,
+  TAGS_INITIAL_SORT_ORDER,
 } from '../constants/explore.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   getEntityBreadcrumbs,
   getEntityLinkFromType,
@@ -86,10 +91,40 @@ class SearchClassBase {
       [EntityType.DATA_PRODUCT]: SearchIndex.DATA_PRODUCT,
       [EntityType.DATABASE]: SearchIndex.DATABASE,
       [EntityType.DATABASE_SCHEMA]: SearchIndex.DATABASE_SCHEMA,
+      [EntityType.USER]: SearchIndex.USER,
+      [EntityType.TEAM]: SearchIndex.TEAM,
+      [EntityType.TEST_CASE]: SearchIndex.TEST_CASE,
+      [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
+      [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
+      [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
     };
   }
 
-  public getTabsInfo() {
+  public getGlobalSearchOptions() {
+    return [
+      { value: '', label: i18n.t('label.all') },
+      { value: SearchIndex.TABLE, label: i18n.t('label.table') },
+      { value: SearchIndex.TOPIC, label: i18n.t('label.topic') },
+      { value: SearchIndex.DASHBOARD, label: i18n.t('label.dashboard') },
+      { value: SearchIndex.PIPELINE, label: i18n.t('label.pipeline') },
+      { value: SearchIndex.MLMODEL, label: i18n.t('label.ml-model') },
+      { value: SearchIndex.CONTAINER, label: i18n.t('label.container') },
+      {
+        value: SearchIndex.STORED_PROCEDURE,
+        label: i18n.t('label.stored-procedure'),
+      },
+      {
+        value: SearchIndex.DASHBOARD_DATA_MODEL,
+        label: i18n.t('label.data-model'),
+      },
+      { value: SearchIndex.GLOSSARY, label: i18n.t('label.glossary') },
+      { value: SearchIndex.TAG, label: i18n.t('label.tag') },
+      { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
+      { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
+    ];
+  }
+
+  public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {
       [SearchIndex.TABLE]: {
         label: i18n.t('label.table-plural'),
@@ -177,15 +212,17 @@ class SearchClassBase {
       },
       [SearchIndex.TAG]: {
         label: i18n.t('label.tag-plural'),
-        sortingFields: entitySortingFields,
-        sortField: INITIAL_SORT_FIELD,
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: 'tags',
         icon: ClassificationIcon,
       },
       [SearchIndex.DATA_PRODUCT]: {
         label: i18n.t('label.data-product-plural'),
-        sortingFields: tableSortingFields,
-        sortField: INITIAL_SORT_FIELD,
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: 'dataProducts',
         icon: DataProductIcon,
       },
@@ -236,7 +273,12 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutTier() {
-    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
+    return [
+      EntityType.GLOSSARY_TERM,
+      EntityType.TAG,
+      EntityType.DATA_PRODUCT,
+      EntityType.TEST_CASE,
+    ];
   }
 
   public getServiceIcon(source: SearchSourceAlias) {
@@ -244,7 +286,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [];
+    return [EntityType.TEST_CASE];
   }
 
   public getEntityBreadcrumbs(

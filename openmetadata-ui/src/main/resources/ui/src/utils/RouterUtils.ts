@@ -534,14 +534,6 @@ export const getGlossaryTermsVersionsPath = (
   return path;
 };
 
-export const getTestCaseDetailsPath = (testCaseFqn: string) => {
-  let path = ROUTES.TEST_CASE_DETAILS;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(testCaseFqn));
-
-  return path;
-};
-
 export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
   let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
 
@@ -632,6 +624,38 @@ export const getPersonaDetailsPath = (fqn: string) => {
     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+
+export const getObservabilityAlertsEditPath = (fqn: string) => {
+  let path = ROUTES.EDIT_OBSERVABILITY_ALERTS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+
+export const getNotificationAlertsEditPath = (fqn: string) => {
+  let path = ROUTES.EDIT_NOTIFICATION_ALERTS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+
+export const getObservabilityAlertDetailsPath = (fqn: string) => {
+  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+
+export const getNotificationAlertDetailsPath = (fqn: string) => {
+  let path = ROUTES.NOTIFICATION_ALERT_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };

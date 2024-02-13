@@ -18,8 +18,10 @@ import {
   Post,
   ReactionType,
   Thread,
+  ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 
@@ -52,7 +54,8 @@ export interface ActivityFeedProviderContextType {
     after?: string,
     type?: ThreadType,
     entityType?: EntityType,
-    fqn?: string
+    fqn?: string,
+    taskStatus?: ThreadTaskStatus
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;
@@ -66,4 +69,5 @@ export interface ActivityFeedProviderContextType {
   ) => void;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
+  initialAssignees: EntityReference[];
 }

@@ -207,13 +207,13 @@ describe('Activity feed', () => {
     interceptURL('POST', '/api/v1/feed/*/posts', 'postReply');
     interceptURL(
       'GET',
-      '/api/v1/search/suggest?q=*&index=user_search_index%2Cteam_search_index',
+      '/api/v1/search/query?q=*&index=user_search_index*',
       'suggestUser'
     );
     interceptURL(
       'GET',
       // eslint-disable-next-line max-len
-      '/api/v1/search/suggest?q=dim_add&index=*',
+      '/api/v1/search/query?q=*dim_add*&index=*',
       'suggestAsset'
     );
 
@@ -300,23 +300,72 @@ describe('Activity feed', () => {
 
     cy.get('[data-testid="closeDrawer"]').click();
 
-    let feedText1 = '';
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child [data-testid="viewer-container"]'
     )
       .invoke('text')
-      .then((text) => (feedText1 = text));
+      .then((feedText) => {
+        cy.get('[data-testid="activity-feed-widget"]')
+          .contains('@Mentions')
+          .click();
+        verifyResponseStatusCode('@mentionsFeed', 200);
+        // Verify mentioned thread should be there int he mentioned tab
+        cy.get(
+          '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'
+        )
+          .invoke('text')
+          .then((text) => expect(text).to.contain(feedText));
+      });
+  });
 
-    cy.get('[data-testid="activity-feed-widget"]')
-      .contains('@Mentions')
-      .click();
-    verifyResponseStatusCode('@mentionsFeed', 200);
-    // Verify mentioned thread should be there int he mentioned tab
+  it('Mention should work for the feed reply in case of users having dot in their name', () => {
+    interceptURL('GET', '/api/v1/feed/*', 'fetchFeed');
+    interceptURL(
+      'GET',
+      '/api/v1/feed?filterType=MENTIONS&userId=*',
+      'mentionsFeed'
+    );
     cy.get(
-      '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'
+      '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
+    ).within(() => {
+      cy.get('[data-testid="feed-actions"]').invoke('show');
+      cy.get('[data-testid="feed-actions"]').within(() => {
+        cy.get('[data-testid="add-reply"]').click();
+      });
+    });
+    verifyResponseStatusCode('@fetchFeed', 200);
+
+    interceptURL('POST', '/api/v1/feed/*/posts', 'postReply');
+    interceptURL(
+      'GET',
+      '/api/v1/search/suggest?q=aa&index=user_search_index%2Cteam_search_index',
+      'suggestUser'
+    );
+
+    cy.get('[data-testid="editor-wrapper"]')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get(
+      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+    ).as('editor');
+    cy.get('@editor').click();
+    cy.get('@editor').type('Yes I can solve @aaron.warren5');
+    cy.get('[data-value="@aaron.warren5"]').click();
+
+    cy.get('[data-testid="send-button"]')
+      .should('be.visible')
+      .and('not.be.disabled');
+    cy.get('[data-testid="send-button"]').click();
+
+    verifyResponseStatusCode('@postReply', 201);
+
+    cy.get(
+      // eslint-disable-next-line max-len
+      ':nth-child(4) > :nth-child(2) > .ant-col > .feed-card-body > .feed-message > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p > a'
     )
-      .invoke('text')
-      .then((text) => expect(text).to.contain(feedText1));
+      .invoke('removeAttr', 'target')
+      .click();
+    cy.get('[data-testid="user-name"]').contains('Aaron Warren');
   });
 
   it('Assigned task should appear to task tab', () => {
@@ -357,7 +406,9 @@ describe('Activity feed', () => {
     cy.get('[data-testid="message-container"]')
       .invoke('text')
       .then((textContent) => {
-        const matches = textContent.match(/#(\d+) UpdateDescriptionfortable/);
+        const matches = textContent.match(
+          /#(\d+) Request to update description for/
+        );
 
         expect(matches).to.not.be.null;
       });

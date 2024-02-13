@@ -15,7 +15,6 @@ import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import UpdateLoaderGif from '../../../../assets/gif/whats-new-loader.gif';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';
 import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-button.svg';
@@ -83,7 +82,9 @@ const WhatsNewAlert = () => {
         <Affix className="whats-new-alert-container">
           <Card className="cursor-pointer" data-testid="whats-new-alert-card">
             <Space align="start" className="d-flex justify-between">
-              <Typography.Text className="whats-new-alert-header">
+              <Typography.Text
+                className="whats-new-alert-header"
+                data-testid="whats-new-alert-header">
                 {t('label.open-metadata-updated')}
               </Typography.Text>
               <Button
@@ -112,10 +113,6 @@ const WhatsNewAlert = () => {
                 </Space>
               </Col>
             </Row>
-
-            <div className="update-icon-container">
-              <img className="update-icon" src={UpdateLoaderGif} />
-            </div>
           </Card>
         </Affix>
       )}

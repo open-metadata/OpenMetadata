@@ -334,6 +334,9 @@ public class EmailUtil {
       templatePopulator.put("descriptionObj", descriptionObj);
       templatePopulator.put("ownershipObj", ownerShipObj);
       templatePopulator.put("tierObj", tierObj);
+      templatePopulator.put(
+          "viewReportUrl",
+          String.format("%s/data-insights/data-assets", getSmtpSettings().getOpenMetadataUrl()));
       sendMailToMultiple(
           subject, templatePopulator, emails, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     } else {

@@ -97,10 +97,12 @@ class OpenMetadataValidationAction(ValidationAction):
         database_service_name: Optional[str] = None,
         schema_name: Optional[str] = "default",
         database_name: Optional[str] = None,
+        table_name: Optional[str] = None,
     ):
         super().__init__(data_context)
         self.database_service_name = database_service_name
         self.database_name = database_name
+        self.table_name = table_name
         self.schema_name = schema_name  # for database without schema concept
         self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
@@ -128,6 +130,7 @@ class OpenMetadataValidationAction(ValidationAction):
         """
 
         check_point_spec = self._get_checkpoint_batch_spec(data_asset)
+        table_entity = None
         if isinstance(check_point_spec, SqlAlchemyDatasourceBatchSpec):
             execution_engine_url = self._get_execution_engine_url(data_asset)
             table_entity = self._get_table_entity(
@@ -139,30 +142,16 @@ class OpenMetadataValidationAction(ValidationAction):
             )
 
         elif isinstance(check_point_spec, RuntimeDataBatchSpec):
-            table_name = self._get_metadata_from_validation_suite(
-                validation_result_suite
-            )
             table_entity = self._get_table_entity(
                 self.database_name,
                 self.schema_name,
-                table_name,
+                self.table_name,
             )
 
         if table_entity:
             test_suite = self._check_or_create_test_suite(table_entity)
             for result in validation_result_suite.results:
                 self._handle_test_case(result, table_entity, test_suite)
-
-    def _get_metadata_from_validation_suite(self, validation_result_suite: dict) -> str:
-        # table_name_1, split on last "_" in the case there are multiple suites for one schema
-        try:
-            name = validation_result_suite["meta"]["expectation_suite_name"]
-            splitted_name = name.rpartition("_")
-            table_name = splitted_name[0]
-            return table_name
-
-        except KeyError:
-            raise KeyError("No suite name present in validation_result_suite")
 
     @staticmethod
     def _get_checkpoint_batch_spec(
@@ -420,8 +409,9 @@ class OpenMetadataValidationAction(ValidationAction):
             test_case = self.ometa_conn.get_or_create_test_case(
                 test_case_fqn,
                 entity_link=get_entity_link(
-                    table_entity.fullyQualifiedName.__root__,
-                    fqn.split_test_case_fqn(test_case_fqn).column,
+                    Table,
+                    fqn=table_entity.fullyQualifiedName.__root__,
+                    column_name=fqn.split_test_case_fqn(test_case_fqn).column,
                 ),
                 test_suite_fqn=test_suite.fullyQualifiedName.__root__,
                 test_definition_fqn=test_definition.fullyQualifiedName.__root__,

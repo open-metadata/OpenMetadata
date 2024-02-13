@@ -15,8 +15,6 @@ MSSQL E2E tests
 
 from typing import List
 
-from metadata.generated.schema.entity.data.table import Histogram
-
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
@@ -149,10 +147,10 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
                         "firstQuartile": 2.5,
-                        "histogram": Histogram(
-                            boundaries=["1.00 to 3.77", "3.77 and up"],
-                            frequencies=[1, 2],
-                        ),
+                        "histogram": {
+                            "boundaries": ["1.000 to 3.773", "3.773 and up"],
+                            "frequencies": [1, 2],
+                        },
                         "interQuartileRange": 2.0,
                         "max": 5.0,
                         "maxLength": None,

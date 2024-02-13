@@ -2,6 +2,8 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
@@ -87,8 +89,10 @@ public abstract class AbstractOmAppJobListener implements JobListener {
         context = runRecord.getFailureContext();
       }
       if (jobException != null) {
-        context.withAdditionalProperty("message", jobException.getMessage());
-        context.withAdditionalProperty("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
+        Map<String, Object> failure = new HashMap<>();
+        failure.put("message", jobException.getMessage());
+        failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
+        context.withAdditionalProperty("failure", failure);
       }
       runRecord.setFailureContext(context);
     }

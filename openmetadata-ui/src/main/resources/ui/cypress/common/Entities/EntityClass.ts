@@ -63,6 +63,71 @@ const description =
   // eslint-disable-next-line max-len
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
+const domainDetails1 = {
+  name: `cypress-domain-${uuid()}`,
+  displayName: `Cypress%Domain.${uuid()}`,
+  description: 'Cypress domain description',
+  domainType: 'Aggregate',
+  experts: [],
+  style: {},
+};
+
+const domainDetails2 = {
+  name: `cypress-domain-${uuid()}`,
+  displayName: `Cypress%Domain.${uuid()}`,
+  description: 'Cypress domain description',
+  domainType: 'Aggregate',
+  experts: [],
+  style: {},
+};
+
+const glossaryDetails1 = {
+  name: `Cypress%General ${uuid()}`,
+  displayName: `Cypress % General ${uuid()}`,
+  description:
+    'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
+  reviewers: [],
+  tags: [],
+  mutuallyExclusive: false,
+};
+
+const glossaryDetails2 = {
+  name: `Cypress%Person ${uuid()}`,
+  displayName: `Cypress % Person ${uuid()}`,
+  description:
+    // eslint-disable-next-line max-len
+    'Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with Person.PhoneNumber tag. The associated PII and PersonalData tags are automatically applied.',
+  reviewers: [],
+  tags: [],
+  mutuallyExclusive: false,
+};
+
+const glossaryTermDetails1 = {
+  name: 'CypressBankNumber',
+  displayName: 'Cypress BankNumber',
+  description: 'A bank account number.',
+  reviewers: [],
+  relatedTerms: [],
+  synonyms: [],
+  mutuallyExclusive: false,
+  tags: [],
+  style: {},
+  glossary: glossaryDetails1.name,
+};
+
+const glossaryTermDetails2 = {
+  name: 'CypressAddress',
+  displayName: 'Cypress Address',
+  description: 'Address of a Person.',
+  reviewers: [],
+  relatedTerms: [],
+  synonyms: [],
+  mutuallyExclusive: false,
+  tags: [],
+  style: {},
+  glossary: glossaryDetails2.name,
+};
+
 class EntityClass {
   entityName: string;
   token: Cypress.Storable;
@@ -78,71 +143,6 @@ class EntityClass {
     CustomPropertyType,
     { value: string; newValue: string; property: CustomProperty }
   >;
-
-  domainDetails1 = {
-    name: `cypress-domain-${uuid()}`,
-    displayName: 'Cypress Domain',
-    description: 'Cypress domain description',
-    domainType: 'Aggregate',
-    experts: [],
-    style: {},
-  };
-
-  domainDetails2 = {
-    name: `cypress-domain-${uuid()}`,
-    displayName: 'Cypress Domain 2',
-    description: 'Cypress domain description',
-    domainType: 'Aggregate',
-    experts: [],
-    style: {},
-  };
-
-  glossaryDetails1 = {
-    name: 'CypressGeneral',
-    displayName: 'Cypress General',
-    description:
-      'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
-    reviewers: [],
-    tags: [],
-    mutuallyExclusive: false,
-  };
-
-  glossaryDetails2 = {
-    name: 'CypressPerson',
-    displayName: 'Cypress Person',
-    description:
-      // eslint-disable-next-line max-len
-      'Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with Person.PhoneNumber tag. The associated PII and PersonalData tags are automatically applied.',
-    reviewers: [],
-    tags: [],
-    mutuallyExclusive: false,
-  };
-
-  glossaryTermDetails1 = {
-    name: 'CypressBankNumber',
-    displayName: 'Cypress BankNumber',
-    description: 'A bank account number.',
-    reviewers: [],
-    relatedTerms: [],
-    synonyms: [],
-    mutuallyExclusive: false,
-    tags: [],
-    style: {},
-    glossary: 'CypressGeneral',
-  };
-
-  glossaryTermDetails2 = {
-    name: 'CypressAddress',
-    displayName: 'Cypress Address',
-    description: 'Address of a Person.',
-    reviewers: [],
-    relatedTerms: [],
-    synonyms: [],
-    mutuallyExclusive: false,
-    tags: [],
-    style: {},
-    glossary: 'CypressPerson',
-  };
 
   constructor(
     entityName: string,
@@ -201,19 +201,47 @@ class EntityClass {
   prepareForTests() {
     this.createEntity();
 
+    // Create custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
+      createCustomPropertyForEntity({
+        property: this.intergerPropertyDetails,
+        type: this.endPoint,
+      });
+
+      createCustomPropertyForEntity({
+        property: this.stringPropertyDetails,
+        type: this.endPoint,
+      });
+
+      createCustomPropertyForEntity({
+        property: this.markdownPropertyDetails,
+        type: this.endPoint,
+      });
+    }
+  }
+
+  static preRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
       const token = Object.values(data)[0].oidcIdToken;
+
+      // assign DevOps team to user
+
+      //   cy.get('[data-testid="dropdown-profile"]').click();
+      //   cy.get('[data-testid="user-name"]').click();
+      //   // edit teams
+      //   cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
+      //   editTeams('DevOps');
 
       // Create domain
 
       createEntityViaREST({
-        body: this.domainDetails1,
+        body: domainDetails1,
         endPoint: EntityType.Domain,
         token,
       });
 
       createEntityViaREST({
-        body: this.domainDetails2,
+        body: domainDetails2,
         endPoint: EntityType.Domain,
         token,
       });
@@ -221,13 +249,13 @@ class EntityClass {
       // Create glossary
 
       createEntityViaREST({
-        body: this.glossaryDetails1,
+        body: glossaryDetails1,
         endPoint: EntityType.Glossary,
         token,
       });
 
       createEntityViaREST({
-        body: this.glossaryDetails2,
+        body: glossaryDetails2,
         endPoint: EntityType.Glossary,
         token,
       });
@@ -235,90 +263,88 @@ class EntityClass {
       // Create glossary term
 
       createEntityViaREST({
-        body: this.glossaryTermDetails1,
+        body: glossaryTermDetails1,
         endPoint: EntityType.GlossaryTerm,
         token,
       });
 
       createEntityViaREST({
-        body: this.glossaryTermDetails2,
+        body: glossaryTermDetails2,
         endPoint: EntityType.GlossaryTerm,
         token,
       });
-
-      // Create custom property only for supported entities
-      if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-        createCustomPropertyForEntity({
-          property: this.intergerPropertyDetails,
-          type: this.endPoint,
-        });
-
-        createCustomPropertyForEntity({
-          property: this.stringPropertyDetails,
-          type: this.endPoint,
-        });
-
-        createCustomPropertyForEntity({
-          property: this.markdownPropertyDetails,
-          type: this.endPoint,
-        });
-      }
     });
   }
 
   cleanup() {
+    // Delete custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
+      deleteCustomPropertyForEntity({
+        property: this.intergerPropertyDetails,
+        type: this.endPoint,
+      });
+      deleteCustomPropertyForEntity({
+        property: this.stringPropertyDetails,
+        type: this.endPoint,
+      });
+      deleteCustomPropertyForEntity({
+        property: this.markdownPropertyDetails,
+        type: this.endPoint,
+      });
+    }
+  }
+
+  static postRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
       const token = Object.values(data)[0].oidcIdToken;
+
+      // Remove devops as team
+      //   cy.get('[data-testid="dropdown-profile"]').click();
+      //   cy.get('[data-testid="user-name"]').click();
+      //   // edit teams
+      //   cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
+      //   cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
+      //   editTeams('');
+
       // Domain 1 to test
       deleteEntityViaREST({
-        entityName: this.domainDetails1.name,
+        entityName: domainDetails1.name,
         endPoint: EntityType.Domain,
         token,
       });
       // Domain 2 to test
       deleteEntityViaREST({
-        entityName: this.domainDetails2.name,
+        entityName: domainDetails2.name,
         endPoint: EntityType.Domain,
         token,
       });
       // Glossary 1 to test
       deleteEntityViaREST({
-        entityName: `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
+        entityName: `${encodeURIComponent(glossaryDetails1.name)}.${
+          glossaryTermDetails1.name
+        }`,
         endPoint: EntityType.GlossaryTerm,
         token,
       });
       // Glossary 2 to test
       deleteEntityViaREST({
-        entityName: `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
+        entityName: `${encodeURIComponent(glossaryDetails2.name)}.${
+          glossaryTermDetails2.name
+        }`,
         endPoint: EntityType.GlossaryTerm,
         token,
       });
       // Glossary 2 to test
       deleteEntityViaREST({
-        entityName: this.glossaryDetails1.name,
+        entityName: encodeURIComponent(glossaryDetails1.name),
         endPoint: EntityType.Glossary,
         token,
       });
       deleteEntityViaREST({
-        entityName: this.glossaryDetails2.name,
+        entityName: encodeURIComponent(glossaryDetails2.name),
         endPoint: EntityType.Glossary,
         token,
       });
-      // Delete custom property only for supported entities
-      if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-        deleteCustomPropertyForEntity({
-          property: this.intergerPropertyDetails,
-          type: this.endPoint,
-        });
-        deleteCustomPropertyForEntity({
-          property: this.stringPropertyDetails,
-          type: this.endPoint,
-        });
-        deleteCustomPropertyForEntity({
-          property: this.markdownPropertyDetails,
-          type: this.endPoint,
-        });
-      }
     });
   }
 
@@ -339,15 +365,15 @@ class EntityClass {
   // Domain
 
   assignDomain() {
-    addDomainToEntity(this.domainDetails1.displayName);
+    addDomainToEntity(domainDetails1.displayName);
   }
 
   updateDomain() {
-    addDomainToEntity(this.domainDetails2.displayName);
+    addDomainToEntity(domainDetails2.displayName);
   }
 
   removeDomain() {
-    removeDomainFromEntity(this.domainDetails2.displayName);
+    removeDomainFromEntity(domainDetails2.displayName);
   }
 
   // Owner
@@ -362,8 +388,11 @@ class EntityClass {
   // Team as Owner
   teamOwnerFlow(teamName: string, newTeamName: string) {
     addTeamAsOwner(teamName);
+    // validateOwnedEntityToWidget(this.entityName, true);
     updateTeamAsOwner(newTeamName);
+    // validateOwnedEntityToWidget(this.entityName, false);
     removeTeamAsOwner(newTeamName);
+    // validateOwnedEntityToWidget(this.entityName, false);
   }
 
   // Tier
@@ -396,21 +425,21 @@ class EntityClass {
 
   assignGlossary() {
     assignGlossaryTerm(
-      `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
+      `${glossaryDetails1.name}.${glossaryTermDetails1.name}`,
       this.endPoint
     );
   }
   updateGlossary() {
     udpateGlossaryTerm(
-      `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
+      `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
       this.endPoint
     );
   }
   removeGlossary() {
     removeGlossaryTerm(
       [
-        `${this.glossaryDetails1.name}.${this.glossaryTermDetails1.name}`,
-        `${this.glossaryDetails2.name}.${this.glossaryTermDetails2.name}`,
+        `${glossaryDetails1.name}.${glossaryTermDetails1.name}`,
+        `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
       ],
       this.endPoint
     );

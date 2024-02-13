@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Popover, Space, Tabs, Typography } from 'antd';
 import { isEmpty, noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
@@ -33,7 +35,6 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-team-selectable-list.less';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
@@ -41,7 +42,7 @@ import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
-      <SVGIcons icon={Icons.TEAMS_GREY} />
+      <Icon component={IconTeamsGrey} style={{ fontSize: '16px' }} />
       <Typography.Text>{getEntityName(props)}</Typography.Text>
     </Space>
   );

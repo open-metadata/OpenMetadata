@@ -10,12 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { interceptURL, verifyResponseStatusCode } from '../common';
+import { interceptURL, uuid, verifyResponseStatusCode } from '../common';
 
 const userURL =
   '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
 const teamURL =
   '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index&sort_field=displayName.keyword&sort_order=asc';
+
+export const generateRandomUser = () => {
+  return {
+    firstName: `firstName-${uuid()}`,
+    lastName: `lastName-${uuid()}`,
+    email: `user${uuid()}@example.com`,
+    password: 'User@OMD123',
+  };
+};
 
 export const validateOwnerAndTeamCounts = () => {
   cy.getAllLocalStorage().then((data) => {
@@ -63,7 +72,7 @@ export const addOwner = (ownerName: string, dataTestId?: string) => {
 
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*${encodeURI(ownerName)}*&index=user_search_index`,
+    `api/v1/search/query?q=*&index=user_search_index*`,
     'searchOwner'
   );
 
@@ -113,13 +122,17 @@ export const updateOwner = (ownerName: string, dataTestId?: string) => {
 };
 
 export const removeOwner = (ownerName: string, dataTestId?: string) => {
-  cy.get('[data-testid="edit-owner"]').click();
+  cy.get('[data-testid="edit-owner"]').scrollIntoView().click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
-  cy.get('[data-testid="remove-owner"]').click();
+  cy.get('[data-testid="select-owner-tabs"]').should('be.visible');
+
+  cy.get(
+    '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
+  ).click();
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
@@ -197,7 +210,7 @@ export const removeTeamAsOwner = (teamName: string, dataTestId?: string) => {
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
-  cy.get('[data-testid="remove-owner"]').click();
+  cy.get('[data-testid="remove-owner"]').scrollIntoView().click();
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get('[data-testid="owner-link"]').should('not.contain', teamName);

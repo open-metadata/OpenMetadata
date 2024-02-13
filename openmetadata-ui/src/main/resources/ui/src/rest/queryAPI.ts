@@ -62,14 +62,9 @@ export const postQuery = async (query: CreateQuery) => {
   return response.data;
 };
 export const patchQueries = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Query>>(
     `${BASE_URL}/${id}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;

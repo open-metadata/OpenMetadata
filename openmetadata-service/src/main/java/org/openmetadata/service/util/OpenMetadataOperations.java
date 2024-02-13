@@ -57,7 +57,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -182,6 +181,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       flyway.migrate();
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      LOG.info("create indexes.");
+      searchRepository.createIndexes();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
@@ -203,6 +204,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       flyway.migrate();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Update Search Indexes.");
+      searchRepository.updateIndexes();
       printChangeLog();
       return 0;
     } catch (Exception e) {
@@ -252,6 +255,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
                           config.getElasticSearchConfiguration().getSearchIndexMappingLanguage()))
               .withRuntime(new ScheduledExecutionContext().withEnabled(true));
       AppScheduler.getInstance().triggerOnDemandApplication(searchIndexApp);
+      do {
+        Thread.sleep(3000l);
+      } while (!AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().isEmpty());
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
@@ -389,8 +395,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new ConnectionAwareAnnotationSqlLocator(
                 config.getDataSourceFactory().getDriverClass()));
 
-    searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
+    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     // Initialize secrets manager
     secretsManager =
@@ -442,19 +447,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
         migrationDAO.listMetricsFromDBMigrations();
     Set<String> columns = new LinkedHashSet<>(Set.of("version", "installedOn"));
     List<List<String>> rows = new ArrayList<>();
-    for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
-      List<String> row = new ArrayList<>();
-      JsonObject metricsJson = new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-      Set<String> keys = metricsJson.keySet();
-      columns.addAll(keys);
-      row.add(serverChangeLog.getVersion());
-      row.add(serverChangeLog.getInstalledOn());
-      row.addAll(
-          metricsJson.entrySet().stream()
-              .map(Map.Entry::getValue)
-              .map(JsonElement::toString)
-              .toList());
-      rows.add(row);
+    try {
+      for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
+        List<String> row = new ArrayList<>();
+        if (serverChangeLog.getMetrics() != null) {
+          JsonObject metricsJson =
+              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
+          Set<String> keys = metricsJson.keySet();
+          columns.addAll(keys);
+          row.add(serverChangeLog.getVersion());
+          row.add(serverChangeLog.getInstalledOn());
+          row.addAll(
+              metricsJson.entrySet().stream()
+                  .map(Map.Entry::getValue)
+                  .map(JsonElement::toString)
+                  .toList());
+          rows.add(row);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to generate migration metrics due to", e);
     }
     printToAsciiTable(columns.stream().toList(), rows, "No Server Change log found");
   }

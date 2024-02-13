@@ -34,6 +34,7 @@ import TableDescription from '../../components/TableDescription/TableDescription
 import TableTags from '../../components/TableTags/TableTags.component';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getDashboardDetailsPath } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -41,10 +42,10 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { restoreDashboard } from '../../rest/dashboardAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getAllTags,
@@ -102,7 +103,9 @@ const DashboardDetails = ({
     chart: ChartType;
     index: number;
   }>();
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [threadLink, setThreadLink] = useState<string>('');
 
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -177,8 +180,12 @@ const DashboardDetails = ({
     }
   }, []);
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.DASHBOARD, decodedDashboardFQN, setFeedCount);
+    getFeedCounts(EntityType.DASHBOARD, decodedDashboardFQN, handleFeedCount);
 
   useEffect(() => {
     getEntityFeedCount();
@@ -541,7 +548,6 @@ const DashboardDetails = ({
       hasEditTagAccess,
       handleUpdateChart,
       handleChartTagSelection,
-      getEntityFieldThreadCounts,
     ]
   );
 
@@ -640,7 +646,7 @@ const DashboardDetails = ({
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -649,10 +655,13 @@ const DashboardDetails = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DASHBOARD}
             fqn={dashboardDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDashboard}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -692,7 +701,7 @@ const DashboardDetails = ({
       },
     ],
     [
-      feedCount,
+      feedCount.totalCount,
       activeTab,
       isEdit,
       tableColumn,
@@ -701,8 +710,8 @@ const DashboardDetails = ({
       deleted,
       entityName,
       dashboardTags,
-      getEntityFieldThreadCounts,
       onCancel,
+      handleFeedCount,
       onDescriptionEdit,
       onDescriptionUpdate,
       onThreadLinkSelect,
@@ -731,6 +740,7 @@ const DashboardDetails = ({
             afterDomainUpdateAction={updateDashboardDetailsState}
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
+            openTaskCount={feedCount.openTaskCount}
             permissions={dashboardPermissions}
             onDisplayNameUpdate={onUpdateDisplayName}
             onFollowClick={followDashboard}

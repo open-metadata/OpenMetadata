@@ -479,6 +479,10 @@ export const AuthProvider = ({
         }
       }
 
+      if (config.method === 'patch' && config.headers) {
+        config.headers['Content-type'] = 'application/json-patch+json';
+      }
+
       return withDomainFilter(config);
     });
 
@@ -624,7 +628,7 @@ export const AuthProvider = ({
             {children}
           </OidcAuthenticator>
         ) : (
-          <Loader />
+          <Loader fullScreen />
         );
       }
       case AuthProviderEnum.Azure: {
@@ -639,7 +643,7 @@ export const AuthProvider = ({
             </MsalAuthenticator>
           </MsalProvider>
         ) : (
-          <Loader />
+          <Loader fullScreen />
         );
       }
       default: {
@@ -683,7 +687,7 @@ export const AuthProvider = ({
 
   return (
     <AuthContext.Provider value={authContext}>
-      {isLoading ? <Loader /> : getProtectedApp()}
+      {isLoading ? <Loader fullScreen /> : getProtectedApp()}
     </AuthContext.Provider>
   );
 };

@@ -12,6 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Input,
@@ -39,6 +40,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
@@ -60,7 +62,6 @@ import {
   putTableProfileConfig,
 } from '../../../rest/tableAPI';
 import { reducerWithoutAction } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';
@@ -401,7 +402,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const handleEnablePartition = handleChange('enablePartition');
 
   useEffect(() => {
-    fetchProfileConfig();
+    if (tableId) {
+      fetchProfileConfig();
+    }
   }, []);
 
   return (
@@ -603,10 +606,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           </Form.Item>
                           <Button
                             icon={
-                              <SVGIcons
-                                alt={t('label.delete')}
-                                className="w-4"
-                                icon={Icons.DELETE}
+                              <Icon
+                                className="align-middle"
+                                component={IconDelete}
+                                style={{ fontSize: '16px' }}
                               />
                             }
                             type="text"
@@ -870,10 +873,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               </Form.Item>
                               <Button
                                 icon={
-                                  <SVGIcons
-                                    alt={t('label.delete')}
-                                    className="w-4"
-                                    icon={Icons.DELETE}
+                                  <Icon
+                                    className="align-middle"
+                                    component={IconDelete}
+                                    style={{ fontSize: '16px' }}
                                   />
                                 }
                                 type="text"

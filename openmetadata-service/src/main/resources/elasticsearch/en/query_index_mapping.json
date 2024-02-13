@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -159,90 +167,6 @@
           }
         }
       },
-      "votes": {
-        "properties": {
-          "upVotes": {
-            "type": "long"
-          },
-          "downVotes": {
-            "type": "long"
-          },
-          "upVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
-          },
-          "downVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
-          }
-        }
-      },
       "query": {
         "type": "text",
         "analyzer": "om_analyzer"
@@ -377,6 +301,12 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

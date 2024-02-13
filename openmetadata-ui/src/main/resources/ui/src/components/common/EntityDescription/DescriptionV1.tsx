@@ -73,7 +73,6 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
-
   const handleRequestDescription = useCallback(() => {
     history.push(
       getRequestDescriptionPath(entityType as string, entityFqn as string)
@@ -86,10 +85,9 @@ const DescriptionV1 = ({
     );
   }, [entityType, entityFqn]);
 
-  const entityLink = useMemo(
-    () => getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION),
-    [entityType, entityFqn]
-  );
+  const entityLink = useMemo(() => {
+    return getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION);
+  }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
     const hasDescription = Boolean(description.trim());

@@ -22,44 +22,22 @@ import {
   updateTableFieldDescription,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { visitEntityDetailsPage } from '../../common/Utils/Entity';
-import { BASE_URL, uuid } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
 import {
+  createSingleLevelEntity,
+  hardDeleteService,
+} from '../../common/EntityUtils';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { BASE_URL } from '../../constants/constants';
+import {
+  POLICY_DETAILS,
+  ROLE_DETAILS,
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
   SEARCH_INDEX_DISPLAY_NAME,
+  SEARCH_SERVICE_DETAILS,
   TAG_1,
   UPDATE_FIELD_DESCRIPTION,
   USER_CREDENTIALS,
-  USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
-import { GlobalSettingOptions } from '../../constants/settings.constant';
-
-const policy = {
-  name: `cy-data-steward-policy-${uuid()}`,
-  rules: [
-    {
-      name: 'DataStewardPolicy-EditRule',
-      resources: ['All'],
-      operations: [
-        'EditDescription',
-        'EditDisplayName',
-        'EditOwner',
-        'EditLineage',
-        'EditTags',
-        'ViewAll',
-      ],
-      effect: 'allow',
-    },
-  ],
-};
-let policyId = '';
-
-const role = {
-  name: `cy-data-steward-role-${uuid()}`,
-  policies: [policy.name],
-};
-let roleId = '';
 
 const performCommonOperations = () => {
   // User should be able to edit search index field tags
@@ -98,70 +76,60 @@ const performCommonOperations = () => {
   ).contains('No Description');
 };
 
-describe('Prerequisite for search index details page test', () => {
+describe('SearchIndexDetails page should work properly for data consumer role', () => {
+  let data = {};
+
   before(() => {
     cy.login();
-  });
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
 
-  it('Prerequisites', () => {
-    const token = localStorage.getItem('oidcIdToken');
+      // Create search index entity
+      createSingleLevelEntity({
+        token,
+        ...SEARCH_SERVICE_DETAILS,
+      });
 
-    // Create search index entity
-    cy.request({
-      method: 'PUT',
-      url: `/api/v1/searchIndexes`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.id = response.body.id;
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.fullyQualifiedName =
-        response.body.fullyQualifiedName;
-    });
-
-    // Create Data Steward Policy
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/policies`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: policy,
-    }).then((response) => {
-      policyId = response.body.id;
-
-      expect(response.status).to.eq(201);
-
+      // Create a new user
       cy.request({
         method: 'POST',
-        url: `/api/v1/roles`,
+        url: `/api/v1/users/signup`,
         headers: { Authorization: `Bearer ${token}` },
-        body: role,
+        body: USER_CREDENTIALS,
       }).then((response) => {
-        roleId = response.body.id;
-
-        expect(response.status).to.eq(201);
+        data.user = response.body;
       });
-    });
 
-    // Create a new user
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/users/signup`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: USER_CREDENTIALS,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-
-      USER_CREDENTIALS.id = response.body.id;
+      cy.logout();
     });
   });
-});
 
-describe('SearchIndexDetails page should work properly for data consumer role', () => {
+  after(() => {
+    cy.login();
+
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
+
+      // Delete search index
+      hardDeleteService({
+        token,
+        serviceFqn: SEARCH_SERVICE_DETAILS.service.name,
+        serviceType: SEARCH_SERVICE_DETAILS.serviceType,
+      });
+
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
+  });
+
   beforeEach(() => {
     // Login with the created user
-    login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
-    cy.goToHomePage(true);
+    cy.login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
+
     cy.url().should('eq', `${BASE_URL}/my-data`);
   });
 
@@ -183,58 +151,120 @@ describe('SearchIndexDetails page should work properly for data consumer role', 
     ).should('not.exist');
 
     performCommonOperations();
-  });
-});
 
-describe('Prerequisite for data steward role tests', () => {
-  it('Add data steward role to the user', () => {
-    cy.login();
-
-    // Assign data steward role to the created user
-
-    cy.sidebarClick(SidebarItem.SETTINGS);
-
-    interceptURL('GET', `/api/v1/users?*`, 'getUsersList');
-
-    cy.settingClick(GlobalSettingOptions.USERS);
-
-    verifyResponseStatusCode('@getUsersList', 200);
-
-    cy.get('[data-testid="searchbar"]').type(
-      `${USER_CREDENTIALS.firstName}${USER_CREDENTIALS.lastName}`
-    );
-
-    interceptURL('GET', `/api/v1/users/name/${USER_NAME}*`, 'getUserDetails');
-
-    cy.get(`[data-testid="${USER_NAME}"]`).click();
-
-    verifyResponseStatusCode('@getUserDetails', 200);
-
-    cy.get('[data-testid="user-profile"] .ant-collapse-arrow').click();
-
-    cy.get('[data-testid="edit-roles-button"]').click();
-
-    cy.get('[data-testid="inline-edit-container"] #select-role')
-      .click()
-      .type(role.name);
-
-    cy.get(`[title=${role.name}]`).click();
-
-    cy.clickOutside();
-
-    interceptURL('PATCH', `/api/v1/users/${USER_CREDENTIALS.id}`, 'updateRole');
-
-    cy.get('[data-testid="inline-save-btn"]').click();
-
-    verifyResponseStatusCode('@updateRole', 200);
+    cy.logout();
   });
 });
 
 describe('SearchIndexDetails page should work properly for data steward role', () => {
+  let data = {};
+
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
+
+      // Create search index entity
+      createSingleLevelEntity({
+        token,
+        ...SEARCH_SERVICE_DETAILS,
+      });
+
+      // Create Data Steward Policy
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/policies`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: POLICY_DETAILS,
+      }).then((policyResponse) => {
+        data.policy = policyResponse.body;
+
+        // Create Data Steward Role
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/roles`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: ROLE_DETAILS,
+        }).then((roleResponse) => {
+          data.role = roleResponse.body;
+
+          // Create a new user
+          cy.request({
+            method: 'POST',
+            url: `/api/v1/users/signup`,
+            headers: { Authorization: `Bearer ${token}` },
+            body: USER_CREDENTIALS,
+          }).then((userResponse) => {
+            data.user = userResponse.body;
+
+            // Assign data steward role to the user
+            cy.request({
+              method: 'PATCH',
+              url: `/api/v1/users/${data.user.id}`,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json-patch+json',
+              },
+              body: [
+                {
+                  op: 'add',
+                  path: '/roles/0',
+                  value: {
+                    id: data.role.id,
+                    type: 'role',
+                    name: data.role.name,
+                  },
+                },
+              ],
+            });
+          });
+        });
+      });
+
+      cy.logout();
+    });
+  });
+
+  after(() => {
+    cy.login();
+
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
+
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Delete policy
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/policies/${data.policy.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Delete role
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/roles/${data.role.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Delete search index
+      hardDeleteService({
+        token,
+        serviceFqn: SEARCH_SERVICE_DETAILS.service.name,
+        serviceType: SEARCH_SERVICE_DETAILS.serviceType,
+      });
+    });
+  });
+
   beforeEach(() => {
     // Login with the created user
     login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
-    cy.goToHomePage(true);
+
     cy.url().should('eq', `${BASE_URL}/my-data`);
   });
 
@@ -271,11 +301,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
 
     cy.get('#displayName').clear().type(SEARCH_INDEX_DISPLAY_NAME);
 
-    interceptURL(
-      'PATCH',
-      `/api/v1/searchIndexes/${SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.id}`,
-      'updateDisplayName'
-    );
+    interceptURL('PATCH', `/api/v1/searchIndexes/*`, 'updateDisplayName');
 
     cy.get('[data-testid="save-button"]').click();
 
@@ -290,6 +316,34 @@ describe('SearchIndexDetails page should work properly for data steward role', (
 });
 
 describe('SearchIndexDetails page should work properly for admin role', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
+
+      // Create search index entity
+      createSingleLevelEntity({
+        token,
+        ...SEARCH_SERVICE_DETAILS,
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+
+    cy.getAllLocalStorage().then((storageData) => {
+      const token = Object.values(storageData)[0].oidcIdToken;
+
+      // Delete search index
+      hardDeleteService({
+        token,
+        serviceFqn: SEARCH_SERVICE_DETAILS.service.name,
+        serviceType: SEARCH_SERVICE_DETAILS.serviceType,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
   });
@@ -377,43 +431,5 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
       'searchIndexes',
       'Search Index'
     );
-  });
-});
-
-describe('Cleanup', () => {
-  before(() => {
-    Cypress.session.clearAllSavedSessions();
-    cy.login();
-  });
-
-  it('Delete user, role and policy', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    // Delete created user
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/users/${USER_CREDENTIALS.id}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
-
-    // Delete policy
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/policies/${policyId}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
-
-    // Delete role
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/roles/${roleId}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
   });
 });

@@ -47,6 +47,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           inViewThreshold={200}
           lastStepNextButton={
             <Button
+              data-testid="last-step-button"
               icon={
                 <svg viewBox="0 0 18.4 14.4" width={16}>
                   <path

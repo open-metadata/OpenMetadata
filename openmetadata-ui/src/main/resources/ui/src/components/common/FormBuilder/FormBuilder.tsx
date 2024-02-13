@@ -15,14 +15,10 @@ import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, FunctionComponent, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { ConfigData } from '../../../interface/service.interface';
-import { getPipelineServiceHostIp } from '../../../rest/ingestionPipelineAPI';
 import { transformErrors } from '../../../utils/formUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
@@ -33,148 +29,89 @@ import AsyncSelectWidget from '../../JsonSchemaWidgets/AsyncSelectWidget';
 import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
 import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
 import Loader from '../../Loader/Loader';
-import TestConnection from '../TestConnection/TestConnection';
 
-interface Props extends FormProps {
+export interface Props extends FormProps {
   okText: string;
   cancelText: string;
-  disableTestConnection: boolean;
-  serviceType: string;
   serviceCategory: ServiceCategory;
-  serviceName?: string;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
-  showTestConnection?: boolean;
   useSelectWidget?: boolean;
 }
 
-const FormBuilder: FunctionComponent<Props> = ({
-  formData,
-  schema,
-  okText,
-  cancelText,
-  showFormHeader = false,
-  status = 'initial',
-  onCancel,
-  onSubmit,
-  uiSchema,
-  disableTestConnection,
-  onFocus,
-  serviceCategory,
-  serviceType,
-  serviceName,
-  showTestConnection = true,
-  useSelectWidget = false,
-  ...props
-}: Props) => {
-  const { isAirflowAvailable } = useAirflowStatus();
+const FormBuilder: FunctionComponent<Props> = forwardRef(
+  (
+    {
+      formData,
+      schema,
+      okText,
+      cancelText,
+      showFormHeader = false,
+      status = 'initial',
+      onCancel,
+      onSubmit,
+      uiSchema,
+      onFocus,
+      useSelectWidget = false,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
+      formatFormDataForRender(formData ?? {})
+    );
 
-  const formRef = useRef<Form<ConfigData>>(null);
-  const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
-    formatFormDataForRender(formData ?? {})
-  );
+    const widgets = {
+      PasswordWidget: PasswordWidget,
+      autoComplete: AsyncSelectWidget,
+      ...(useSelectWidget && { SelectWidget: MultiSelectWidget }),
+    };
 
-  const [hostIp, setHostIp] = useState<string>();
-
-  const widgets = {
-    PasswordWidget: PasswordWidget,
-    autoComplete: AsyncSelectWidget,
-    ...(useSelectWidget && { SelectWidget: MultiSelectWidget }),
-  };
-
-  const fetchHostIp = async () => {
-    try {
-      const { status, data } = await getPipelineServiceHostIp();
-      if (status === 200) {
-        setHostIp(data?.ip || '[unknown]');
-      } else {
-        setHostIp(undefined);
+    const handleCancel = () => {
+      setLocalFormData(formatFormDataForRender<ConfigData>(formData ?? {}));
+      if (onCancel) {
+        onCancel();
       }
-    } catch (error) {
-      setHostIp('[error - unknown]');
-    }
-  };
+    };
 
-  useEffect(() => {
-    if (isAirflowAvailable) {
-      fetchHostIp();
-    }
-  }, [isAirflowAvailable]);
+    const handleFormChange = (e: IChangeEvent<ConfigData>) => {
+      setLocalFormData(e.formData);
+      props.onChange && props.onChange(e);
+    };
 
-  const handleCancel = () => {
-    setLocalFormData(formatFormDataForRender<ConfigData>(formData ?? {}));
-    if (onCancel) {
-      onCancel();
-    }
-  };
-
-  const handleRequiredFieldsValidation = () => {
-    return Boolean(formRef.current?.validateForm());
-  };
-
-  const handleFormChange = (e: IChangeEvent<ConfigData>) => {
-    setLocalFormData(e.formData);
-    props.onChange && props.onChange(e);
-  };
-
-  return (
-    <Form
-      focusOnFirstError
-      noHtml5Validate
-      omitExtraData
-      className={classNames('rjsf', props.className, {
-        'no-header': !showFormHeader,
-      })}
-      formContext={{ handleFocus: onFocus }}
-      formData={localFormData}
-      idSeparator="/"
-      ref={formRef}
-      schema={schema}
-      showErrorList={false}
-      templates={{
-        ArrayFieldTemplate: ArrayFieldTemplate,
-        ObjectFieldTemplate: ObjectFieldTemplate,
-        DescriptionFieldTemplate: DescriptionFieldTemplate,
-        FieldErrorTemplate: FieldErrorTemplate,
-      }}
-      transformErrors={transformErrors}
-      uiSchema={uiSchema}
-      widgets={widgets}
-      onChange={handleFormChange}
-      onFocus={onFocus}
-      onSubmit={onSubmit}
-      {...props}>
-      {isEmpty(schema) && (
-        <div className="text-grey-muted text-center">
-          {t('message.no-config-available')}
-        </div>
-      )}
-      {!isEmpty(schema) && isAirflowAvailable && hostIp && (
+    return (
+      <Form
+        focusOnFirstError
+        noHtml5Validate
+        omitExtraData
+        className={classNames('rjsf', props.className, {
+          'no-header': !showFormHeader,
+        })}
+        formContext={{ handleFocus: onFocus }}
+        formData={localFormData}
+        idSeparator="/"
+        ref={ref}
+        schema={schema}
+        showErrorList={false}
+        templates={{
+          ArrayFieldTemplate: ArrayFieldTemplate,
+          ObjectFieldTemplate: ObjectFieldTemplate,
+          DescriptionFieldTemplate: DescriptionFieldTemplate,
+          FieldErrorTemplate: FieldErrorTemplate,
+        }}
+        transformErrors={transformErrors}
+        uiSchema={uiSchema}
+        widgets={widgets}
+        onChange={handleFormChange}
+        onFocus={onFocus}
+        onSubmit={onSubmit}
+        {...props}>
+        {children}
         <div
-          className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
-          data-testid="ip-address">
-          <div className="self-center">
-            {t('message.airflow-host-ip-address', { hostIp })}
-          </div>
-        </div>
-      )}
-      {showTestConnection &&
-        !isEmpty(schema) &&
-        !isUndefined(localFormData) &&
-        isAirflowAvailable && (
-          <TestConnection
-            connectionType={serviceType}
-            formData={localFormData}
-            isTestingDisabled={disableTestConnection}
-            serviceCategory={serviceCategory}
-            serviceName={serviceName}
-            onValidateFormRequiredFields={handleRequiredFieldsValidation}
-          />
-        )}
-      <div className="m-t-lg d-flex justify-between">
-        <div />
-        <div className="text-right" data-testid="buttons">
+          className="m-t-lg d-flex justify-end text-right"
+          data-testid="buttons">
           <Button type="link" onClick={handleCancel}>
             {cancelText}
           </Button>
@@ -202,9 +139,9 @@ const FormBuilder: FunctionComponent<Props> = ({
             </Button>
           )}
         </div>
-      </div>
-    </Form>
-  );
-};
+      </Form>
+    );
+  }
+);
 
 export default FormBuilder;

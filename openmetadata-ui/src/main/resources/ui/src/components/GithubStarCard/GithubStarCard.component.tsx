@@ -20,7 +20,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../assets/svg/ic-start-filled-github.svg';
-import { BLACK_COLOR, ROUTES, STAR_OMD_USER } from '../../constants/constants';
+import {
+  BLACK_COLOR,
+  ROUTES,
+  STAR_OMD_USER,
+  TWO_MINUTE_IN_MILLISECOND,
+} from '../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../constants/docs.constants';
 import { getRepositoryData } from '../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../utils/WhatsNewModal.util';
@@ -38,16 +43,14 @@ const GithubStarCard = () => {
   const [starredCount, setStarredCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const loggedInUserName = useMemo(() => currentUser?.name, [currentUser]);
-
   const isWhatNewAlertVisible = useMemo(
     () => cookieStorage.getItem(COOKIE_VERSION) !== 'true',
     [cookieStorage]
   );
 
   const userCookieName = useMemo(
-    () => `${STAR_OMD_USER}_${loggedInUserName}`,
-    [loggedInUserName]
+    () => `${STAR_OMD_USER}_${currentUser?.name}`,
+    [currentUser?.name]
   );
 
   const isHomePage = useMemo(
@@ -71,27 +74,39 @@ const GithubStarCard = () => {
     }
   };
 
-  const updateGithubPopup = useCallback(
-    (show: boolean) => {
-      if (loggedInUserName && show) {
-        fetchOpenMetaData();
-        cookieStorage.setItem(userCookieName, 'true', {
-          expires: getReleaseVersionExpiry(),
-        });
-      }
-      setShowGithubStarPopup(show);
-    },
-    [
-      loggedInUserName,
-      usernameExistsInCookie,
-      userCookieName,
-      getReleaseVersionExpiry,
-    ]
-  );
-
   const handleCancel = useCallback(() => {
     setShowGithubStarPopup(false);
   }, []);
+
+  const handleClosePopup = useCallback(() => {
+    cookieStorage.setItem(userCookieName, 'true', {
+      expires: getReleaseVersionExpiry(),
+    });
+    handleCancel();
+  }, [userCookieName, handleCancel]);
+
+  const githubPopup = useCallback(
+    (show: boolean) => {
+      if (currentUser?.name && show) {
+        fetchOpenMetaData();
+      }
+      setShowGithubStarPopup(show);
+    },
+    [currentUser?.name, userCookieName]
+  );
+
+  const updateGithubPopup = useCallback(
+    (show: boolean) => {
+      if (isWhatNewAlertVisible) {
+        setTimeout(() => {
+          githubPopup(show);
+        }, TWO_MINUTE_IN_MILLISECOND);
+      } else {
+        githubPopup(show);
+      }
+    },
+    [isWhatNewAlertVisible, githubPopup]
+  );
 
   useEffect(() => {
     updateGithubPopup(!usernameExistsInCookie);
@@ -119,10 +134,10 @@ const GithubStarCard = () => {
           </Space>
           <Button
             className="flex-center m--t-xss"
-            data-testid="close-whats-new-alert"
+            data-testid="close-github-star-popup-card"
             icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
             type="text"
-            onClick={handleCancel}
+            onClick={handleClosePopup}
           />
         </Space>
 
@@ -152,7 +167,9 @@ const GithubStarCard = () => {
             }}>
             <Button className="github-modal-action-button">
               {isLoading ? (
-                <Skeleton.Button active size="small" />
+                <div data-testid="skeleton-loader">
+                  <Skeleton.Button active size="small" />
+                </div>
               ) : (
                 starredCount
               )}

@@ -25,13 +25,13 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import EditTestCaseModal from '../../../components/AddDataQualityTest/EditTestCaseModal';
 import AppBadge from '../../../components/common/Badge/Badge.component';
-import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../components/common/LastRunGraph/LastRunGraph.component';
 import Table from '../../../components/common/Table/Table';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { getTableTabPath } from '../../../constants/constants';
+import { DATA_QUALITY_PROFILER_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../generated/configuration/testResultNotificationConfiguration';
@@ -40,7 +40,7 @@ import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../rest/testAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { getNameFromFQN, Transi18next } from '../../../utils/CommonUtils';
 import {
   formatDate,
   formatDateTime,
@@ -52,6 +52,7 @@ import { replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import {
   DataQualityTabProps,
@@ -401,7 +402,25 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           dataSource={sortedData}
           loading={isLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <FilterTablePlaceHolder
+                placeholderText={
+                  <Transi18next
+                    i18nKey="message.no-data-quality-test-case"
+                    renderElement={
+                      <Link
+                        rel="noreferrer"
+                        target="_blank"
+                        to={{ pathname: DATA_QUALITY_PROFILER_DOCS }}
+                      />
+                    }
+                    values={{
+                      explore: t('message.explore-our-guide-here'),
+                    }}
+                  />
+                }
+              />
+            ),
           }}
           pagination={false}
           rowKey="id"

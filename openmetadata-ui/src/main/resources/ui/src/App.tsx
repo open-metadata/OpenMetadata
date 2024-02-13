@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FC, ReactNode } from 'react';
+import React, { FC } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { Router } from 'react-router-dom';
@@ -33,11 +33,7 @@ import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
-interface AppProps {
-  routeElements?: ReactNode;
-}
-
-const App: FC<AppProps> = ({ routeElements }) => {
+const App: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
@@ -45,7 +41,7 @@ const App: FC<AppProps> = ({ routeElements }) => {
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
               <DirectionProvider>
-                <ApplicationConfigProvider routeElements={routeElements}>
+                <ApplicationConfigProvider>
                   <AuthProvider childComponentType={AppRouter}>
                     <TourProvider>
                       <HelmetProvider>

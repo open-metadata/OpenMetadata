@@ -57,6 +57,11 @@ services:
     ports:
       - "9200:9200"
       - "9300:9300"
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 10
     volumes:
       - es-data:/usr/share/opensearch/data
 
@@ -65,7 +70,7 @@ services:
       context: ../../.
       dockerfile: docker/development/Dockerfile
     container_name: execute_migrate_all
-    command: "./bootstrap/bootstrap_storage.sh migrate-all debug force"
+    command: "./bootstrap/openmetadata-ops.sh -d migrate --force"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -150,6 +155,7 @@ services:
       #Database configuration for postgresql
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
+      DB_PARAMS: ${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
       DB_USE_SSL: ${DB_USE_SSL:-false}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
@@ -247,7 +253,7 @@ services:
       WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
     depends_on:
       opensearch:
-        condition: service_started
+        condition: service_healthy
       postgresql:
         condition: service_healthy
     networks:
@@ -338,6 +344,7 @@ services:
       # Database configuration for Postgres
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
+      DB_PARAMS: ${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
       DB_USE_SSL: ${DB_USE_SSL:-false}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
@@ -414,7 +421,7 @@ services:
       - "5005:5005"
     depends_on:
       opensearch:
-        condition: service_started
+        condition: service_healthy
       postgresql:
         condition: service_healthy
       execute-migrate-all:

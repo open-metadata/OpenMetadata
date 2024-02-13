@@ -46,6 +46,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getVersionPath } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
@@ -55,6 +56,7 @@ import {
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -91,7 +93,9 @@ function SearchIndexDetailsPage() {
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
   const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -212,8 +216,16 @@ function SearchIndexDetailsPage() {
     [getEntityPermissionByFqn]
   );
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.SEARCH_INDEX, decodedSearchIndexFQN, setFeedCount);
+    getFeedCounts(
+      EntityType.SEARCH_INDEX,
+      decodedSearchIndexFQN,
+      handleFeedCount
+    );
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -257,7 +269,6 @@ function SearchIndexDetailsPage() {
           [key]: res[key],
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -418,7 +429,7 @@ function SearchIndexDetailsPage() {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -428,11 +439,14 @@ function SearchIndexDetailsPage() {
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
+              refetchFeed
+              entityFeedTotalCount={feedCount.totalCount}
               entityType={EntityType.SEARCH_INDEX}
               fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
               owner={searchIndexDetails?.owner}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchSearchIndexDetails}
+              onUpdateFeedCount={handleFeedCount}
             />
           </ActivityFeedProvider>
         ),
@@ -511,9 +525,11 @@ function SearchIndexDetailsPage() {
   }, [
     activeTab,
     searchIndexDetails,
-    feedCount,
+    feedCount.conversationCount,
+    feedCount.totalTasksCount,
     entityName,
     onExtensionUpdate,
+    handleFeedCount,
     getEntityFeedCount,
     viewSampleDataPermission,
     editLineagePermission,
@@ -592,7 +608,6 @@ function SearchIndexDetailsPage() {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -601,7 +616,7 @@ function SearchIndexDetailsPage() {
         })
       );
     }
-  }, [USERId, searchIndexId, getEntityFeedCount]);
+  }, [USERId, searchIndexId]);
 
   const unFollowSearchIndex = useCallback(async () => {
     try {
@@ -619,7 +634,6 @@ function SearchIndexDetailsPage() {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -628,7 +642,7 @@ function SearchIndexDetailsPage() {
         })
       );
     }
-  }, [USERId, searchIndexId, getEntityFeedCount]);
+  }, [USERId, searchIndexId]);
 
   const onUpdateVote = async (data: QueryVote, id: string) => {
     try {
@@ -698,7 +712,6 @@ function SearchIndexDetailsPage() {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -738,6 +751,7 @@ function SearchIndexDetailsPage() {
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={searchIndexDetails}
             entityType={EntityType.SEARCH_INDEX}
+            openTaskCount={feedCount.openTaskCount}
             permissions={searchIndexPermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowSearchIndex}

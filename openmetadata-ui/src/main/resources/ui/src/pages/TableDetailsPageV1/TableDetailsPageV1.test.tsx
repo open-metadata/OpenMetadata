@@ -215,7 +215,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
-      fields: `${COMMON_API_FIELDS},usageSummary`,
+      fields: `${COMMON_API_FIELDS}`,
     });
   });
 

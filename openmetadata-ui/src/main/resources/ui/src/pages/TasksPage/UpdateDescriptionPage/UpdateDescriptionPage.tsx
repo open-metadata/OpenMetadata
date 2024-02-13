@@ -74,6 +74,7 @@ const UpdateDescription = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [currentDescription, setCurrentDescription] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const sanitizeValue = useMemo(
     () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
@@ -129,6 +130,7 @@ const UpdateDescription = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
@@ -160,7 +162,8 @@ const UpdateDescription = () => {
           )
         );
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -225,7 +228,11 @@ const UpdateDescription = () => {
                   entity: t('label.task'),
                 })}
               </Typography.Paragraph>
-              <Form form={form} layout="vertical" onFinish={onCreateTask}>
+              <Form
+                data-testid="form-container"
+                form={form}
+                layout="vertical"
+                onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.title')}:`}
@@ -283,10 +290,14 @@ const UpdateDescription = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
-                    <Button htmlType="submit" type="primary">
+                    <Button
+                      data-testid="submit-btn"
+                      htmlType="submit"
+                      loading={isLoading}
+                      type="primary">
                       {t('label.submit')}
                     </Button>
                   </Space>

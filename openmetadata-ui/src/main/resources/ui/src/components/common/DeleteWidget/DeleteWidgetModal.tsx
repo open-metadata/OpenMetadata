@@ -78,7 +78,7 @@ const DeleteWidgetModal = ({
   const DELETE_OPTION = useMemo(
     () => [
       {
-        title: `${t('label.delete')} ${entityType} “${entityName}”`,
+        title: `${t('label.delete')} ${entityType} "${entityName}"`,
         description: `${getDeleteMessage(
           entityName,
           entityType,
@@ -88,7 +88,7 @@ const DeleteWidgetModal = ({
         isAllowed: allowSoftDelete,
       },
       {
-        title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
+        title: `${t('label.permanently-delete')} ${entityType} "${entityName}"`,
         description: (
           <>
             {deleteMessage ?? getDeleteMessage(entityName, entityType)}
@@ -261,7 +261,7 @@ const DeleteWidgetModal = ({
       maskClosable={false}
       okText={t('label.delete')}
       open={visible}
-      title={`${t('label.delete')} ${entityType} “${entityName}”`}
+      title={`${t('label.delete')} ${entityType} "${entityName}"`}
       onCancel={handleOnEntityDeleteCancel}>
       <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
         <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">

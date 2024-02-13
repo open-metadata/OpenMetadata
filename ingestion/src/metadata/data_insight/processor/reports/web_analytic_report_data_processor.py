@@ -78,6 +78,10 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
         super().__init__(metadata)
         self.pre_hook = self._pre_hook_fn
 
+    @property
+    def name(self) -> str:
+        return "Web Analytics Processor"
+
     def _pre_hook_fn(self):
         """Start our generator function"""
         # pylint: disable=attribute-defined-outside-init

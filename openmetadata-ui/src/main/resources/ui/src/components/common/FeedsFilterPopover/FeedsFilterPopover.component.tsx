@@ -123,7 +123,11 @@ const FeedsFilterPopover = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}>
-      <Button className="flex-center" icon={<FilterIcon height={16} />} />
+      <Button
+        className="flex-center"
+        data-testid="filter-button"
+        icon={<FilterIcon height={16} />}
+      />
     </Popover>
   );
 };

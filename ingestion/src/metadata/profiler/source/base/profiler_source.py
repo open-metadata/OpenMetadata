@@ -217,7 +217,6 @@ class ProfilerSource(ProfilerSourceInterface):
     def _get_context_entities(
         self, entity: Table
     ) -> Tuple[DatabaseSchema, Database, DatabaseService]:
-
         schema_entity = None
         database_entity = None
         db_service = None
@@ -279,7 +278,11 @@ class ProfilerSource(ProfilerSourceInterface):
         metrics = (
             [Metrics.get(name) for name in profiler_config.profiler.metrics]
             if profiler_config.profiler.metrics
-            else get_default_metrics(profiler_interface.table)
+            else get_default_metrics(
+                table=profiler_interface.table,
+                ometa_client=self.ometa_client,
+                db_service=db_service,
+            )
         )
 
         return Profiler(

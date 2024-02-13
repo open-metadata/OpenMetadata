@@ -53,6 +53,7 @@ import {
   getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
 } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -63,6 +64,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import StoredProcedureTab from '../../pages/StoredProcedure/StoredProcedureTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -70,14 +72,15 @@ import {
   restoreDatabaseSchema,
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
-import { getFeedCount, postThread } from '../../rest/feedsAPI';
+import { postThread } from '../../rest/feedsAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
 import {
   getEntityMissingError,
+  getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
@@ -111,7 +114,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useState<boolean>(true);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [threadLink, setThreadLink] = useState<string>('');
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -181,16 +186,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setThreadLink('');
   }, []);
 
-  const getEntityFeedCount = useCallback(async () => {
-    try {
-      const response = await getFeedCount(
-        getEntityFeedLink(EntityType.DATABASE_SCHEMA, decodedDatabaseSchemaFQN)
-      );
-      setFeedCount(response.totalCount);
-    } catch (err) {
-      // Error
-    }
-  }, [decodedDatabaseSchemaFQN]);
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DATABASE_SCHEMA,
+      decodedDatabaseSchemaFQN,
+      handleFeedCount
+    );
+  };
 
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
@@ -267,7 +273,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           if (response) {
             setDatabaseSchema(response);
             setDescription(updatedHTML);
-            getEntityFeedCount();
           } else {
             throw t('server.unexpected-response');
           }
@@ -280,7 +285,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setIsEdit(false);
       }
     },
-    [description, databaseSchema, getEntityFeedCount]
+    [description, databaseSchema]
   );
 
   const activeTabHandler = useCallback(
@@ -335,7 +340,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           ...res,
           tags: sortTagsCaseInsensitive(res.tags ?? []),
         });
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
@@ -359,7 +363,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         updatedSchemaDetails as DatabaseSchema
       );
       setDatabaseSchema(res);
-      getEntityFeedCount();
     },
     [saveUpdatedDatabaseSchemaData, databaseSchema]
   );
@@ -374,19 +377,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const res = await saveUpdatedDatabaseSchemaData(updatedData);
         setDatabaseSchema(res);
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
     },
-    [databaseSchema, saveUpdatedDatabaseSchemaData, getEntityFeedCount]
+    [databaseSchema, saveUpdatedDatabaseSchemaData]
   );
 
   const createThread = useCallback(
     async (data: CreateThread) => {
       try {
         await postThread(data);
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -621,7 +622,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
-          count={feedCount}
+          count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={t('label.activity-feed-plural')}
@@ -631,10 +632,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       children: (
         <ActivityFeedProvider>
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE_SCHEMA}
             fqn={databaseSchema.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         </ActivityFeedProvider>
       ),

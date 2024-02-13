@@ -116,8 +116,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.util.EntitiesCount;
@@ -330,6 +328,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DocStoreDAO docStoreDAO();
+
+  @CreateSqlObject
+  SuggestionDAO suggestionDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -1176,34 +1177,49 @@ public interface CollectionDAO {
     void update(@BindUUID("id") UUID id, @Bind("json") String json);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQNHash=MD5(te.id) "
-            + "WHERE (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash=:fqnPrefixHash) AND "
-            + "(:toType IS NULL OR fr.toType like concat(:toType, '.%') OR fr.toType=:toType) AND fr.fromType = :fromType "
-            + "AND fr.relation = :relation AND te.resolved= :isResolved AND (:status IS NULL OR te.taskStatus = :status) "
-            + "AND (:type IS NULL OR te.type = :type) "
-            + "GROUP BY entityLink")
-    @RegisterRowMapper(CountFieldMapper.class)
+        "SELECT te.entityLink, te.type, te.taskStatus, COUNT(id) count FROM thread_entity te "
+            + " where entityId = :entityId  OR "
+            + " MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= 3) "
+            + "GROUP BY te.type, te.taskStatus, entityLink")
+    @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
+        @BindUUID("entityId") UUID entityId,
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
-        @Bind("fromType") String fromType,
-        @Bind("toType") String toType,
-        @Bind("relation") int relation,
-        @Bind("type") ThreadType type,
-        @Bind("status") TaskStatus status,
-        @Bind("isResolved") boolean isResolved);
+        @Bind("toType") String toType);
 
-    @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM thread_entity <condition> AND "
-            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
-            + "GROUP BY entityLink")
-    @RegisterRowMapper(CountFieldMapper.class)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
+                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+                + "((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
+                + " OR (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username)"
+                + "GROUP BY te.type, te.taskStatus",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
+                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+                + "((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) OR "
+                + "(JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username)"
+                + "GROUP BY te.type, te.taskStatus",
+        connectionType = MYSQL)
+    @RegisterRowMapper(OwnerCountFieldMapper.class)
     List<List<String>> listCountByOwner(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
-        @Define("condition") String condition);
+        @Bind("username") String username,
+        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
+        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres);
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
@@ -1292,10 +1308,22 @@ public interface CollectionDAO {
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
 
-    class CountFieldMapper implements RowMapper<List<String>> {
+    class OwnerCountFieldMapper implements RowMapper<List<String>> {
       @Override
       public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Arrays.asList(rs.getString("entityLink"), rs.getString("count"));
+        return Arrays.asList(
+            rs.getString("type"), rs.getString("taskStatus"), rs.getString("count"));
+      }
+    }
+
+    class ThreadCountFieldMapper implements RowMapper<List<String>> {
+      @Override
+      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Arrays.asList(
+            rs.getString("entityLink"),
+            rs.getString("type"),
+            rs.getString("taskStatus"),
+            rs.getString("count"));
       }
     }
   }
@@ -3525,8 +3553,7 @@ public interface CollectionDAO {
     }
 
     default int countOfTestCases(List<UUID> testCaseIds) {
-      return countOfTestCases(
-          getTableName(), testCaseIds.stream().map(Object::toString).collect(Collectors.toList()));
+      return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).toList());
     }
 
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
@@ -4313,5 +4340,82 @@ public interface CollectionDAO {
         @Define("table") String table,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond);
+  }
+
+  interface SuggestionDAO {
+    default String getTableName() {
+      return "suggestions";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(@BindFQN("fqnHash") String fullyQualifiedName, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE suggestions SET json = :json where id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE suggestions SET json = (:json :: jsonb) where id = :id",
+        connectionType = POSTGRES)
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM suggestions WHERE id = :id")
+    String findById(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM suggestions WHERE id = :id")
+    void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM suggestions WHERE fqnHash = :fqnHash")
+    void deleteByFQN(@BindUUID("fqnHash") String fullyQualifiedName);
+
+    @SqlQuery("SELECT json FROM suggestions <condition> ORDER BY updatedAt DESC LIMIT :limit")
+    List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM suggestions <mysqlCond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM suggestions <postgresCond>",
+        connectionType = POSTGRES)
+    int listCount(
+        @Define("mysqlCond") String mysqlCond, @Define("postgresCond") String postgresCond);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT updatedAt, json FROM suggestions <mysqlCond> "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT updatedAt, json FROM suggestions <psqlCond> "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY updatedAt",
+        connectionType = POSTGRES)
+    List<String> listBefore(
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM suggestions <mysqlCond>  ORDER BY updatedAt DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM suggestions <psqlCond>  ORDER BY updatedAt DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listAfter(
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
   }
 }

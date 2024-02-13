@@ -45,6 +45,7 @@ export interface Option {
   value: string;
   type: string;
   name?: string;
+  displayName?: string;
   children?: string;
   'data-label'?: string;
   'data-testid'?: string;
@@ -59,6 +60,8 @@ export interface TaskAction {
 export enum TaskActionMode {
   VIEW = 'view',
   EDIT = 'edit',
+  RE_ASSIGN = 're-assign',
+  RESOLVE = 'resolve',
 }
 
 export enum TaskTabs {

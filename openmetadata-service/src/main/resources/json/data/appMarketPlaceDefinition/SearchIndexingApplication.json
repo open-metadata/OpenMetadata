@@ -21,6 +21,7 @@
       "dashboard",
       "topic",
       "pipeline",
+      "ingestionPipeline",
       "searchIndex",
       "user",
       "team",
@@ -48,6 +49,7 @@
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
+      "storageService",
       "dataProduct"
     ],
     "recreateIndex": true,

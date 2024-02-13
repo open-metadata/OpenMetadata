@@ -14,8 +14,6 @@ Base class for ingesting Object Storage services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
-from pandas import DataFrame
-
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.storageService import (
@@ -53,7 +51,10 @@ from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
 from metadata.utils import fqn
-from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_columns
+from metadata.utils.datalake.datalake_utils import (
+    DataFrameColumnParser,
+    fetch_dataframe,
+)
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.storage_metadata_config import (
     StorageMetadataConfigException,
@@ -67,7 +68,6 @@ OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
-
     root = TopologyNode(
         producer="get_services",
         stages=[
@@ -139,6 +139,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.global_manifest: Optional[
             ManifestMetadataConfig
         ] = self.get_manifest_file()
+
+    @property
+    def name(self) -> str:
+        return self.service_connection.type.name
 
     def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
         if self.source_config.storageMetadataConfigSource and not isinstance(
@@ -267,10 +271,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             ),
         )
         columns = []
-        if isinstance(data_structure_details, DataFrame):
-            columns = get_columns(data_structure_details)
-        if isinstance(data_structure_details, list) and data_structure_details:
-            columns = get_columns(data_structure_details[0])
+        column_parser = DataFrameColumnParser.create(
+            data_structure_details, SupportedTypes(metadata_entry.structureFormat)
+        )
+        columns = column_parser.get_columns()
         return columns
 
     def _get_columns(

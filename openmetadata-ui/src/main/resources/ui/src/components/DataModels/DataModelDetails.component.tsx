@@ -31,14 +31,15 @@ import {
   getDataModelDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { restoreDataModel } from '../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -75,7 +76,9 @@ const DataModelDetails = ({
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const { deleted, owner, description, version, entityName, tags } =
     useMemo(() => {
@@ -89,11 +92,15 @@ const DataModelDetails = ({
       };
     }, [dataModelData]);
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
       decodedDataModelFQN,
-      setFeedCount
+      handleFeedCount
     );
   };
 
@@ -192,6 +199,12 @@ const DataModelDetails = ({
     };
   }, [dataModelPermissions, deleted]);
 
+  const onDescriptionUpdate = async (value: string) => {
+    await handleUpdateDescription(value);
+
+    setIsEditDescription(false);
+  };
+
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
@@ -208,7 +221,7 @@ const DataModelDetails = ({
               showActions={!deleted}
               onCancel={() => setIsEditDescription(false)}
               onDescriptionEdit={() => setIsEditDescription(true)}
-              onDescriptionUpdate={handleUpdateDescription}
+              onDescriptionUpdate={onDescriptionUpdate}
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <ModelTab
@@ -254,7 +267,6 @@ const DataModelDetails = ({
     onThreadLinkSelect,
     handleColumnUpdateDataModel,
     handleUpdateDescription,
-    getEntityFieldThreadCounts,
   ]);
 
   const tabs = useMemo(() => {
@@ -273,7 +285,7 @@ const DataModelDetails = ({
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -282,10 +294,13 @@ const DataModelDetails = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             fqn={dataModelData?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDataModel}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -340,10 +355,12 @@ const DataModelDetails = ({
 
     return allTabs;
   }, [
-    feedCount,
+    feedCount.conversationCount,
+    feedCount.totalTasksCount,
     dataModelData?.sql,
     modelComponent,
     deleted,
+    handleFeedCount,
     editLineagePermission,
   ]);
 
@@ -362,6 +379,7 @@ const DataModelDetails = ({
             afterDomainUpdateAction={updateDataModelDetailsState}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
+            openTaskCount={feedCount.openTaskCount}
             permissions={dataModelPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}

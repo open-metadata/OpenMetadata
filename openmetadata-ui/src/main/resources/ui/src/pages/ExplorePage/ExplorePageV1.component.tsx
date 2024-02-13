@@ -36,6 +36,7 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
@@ -90,15 +91,13 @@ const ExplorePageV1: FunctionComponent = () => {
   const [advancesSearchQuickFilters, setAdvancedSearchQuickFilters] =
     useState<QueryFilterInterface>();
 
-  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
-
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
   const [isLoading, setIsLoading] = useState(true);
 
   const { queryFilter } = useAdvanceSearch();
 
-  const [parsedSearch, searchQueryParam, sortValue] = useMemo(() => {
+  const [parsedSearch, searchQueryParam, sortValue, sortOrder] = useMemo(() => {
     const parsedSearch = Qs.parse(
       location.search.startsWith('?')
         ? location.search.substring(1)
@@ -113,7 +112,11 @@ const ExplorePageV1: FunctionComponent = () => {
       ? parsedSearch.sort
       : INITIAL_SORT_FIELD;
 
-    return [parsedSearch, searchQueryParam, sortValue];
+    const sortOrder = isString(parsedSearch.sortOrder)
+      ? parsedSearch.sortOrder
+      : SORT_ORDER.DESC;
+
+    return [parsedSearch, searchQueryParam, sortValue, sortOrder];
   }, [location.search]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
@@ -129,6 +132,17 @@ const ExplorePageV1: FunctionComponent = () => {
         page,
         size: size ?? PAGE_SIZE,
         sort: sortVal,
+      }),
+    });
+  };
+
+  const handleSortOrderChange = (page: number, sortOrderVal: string) => {
+    history.push({
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? PAGE_SIZE,
+        sortOrder: sortOrderVal,
       }),
     });
   };
@@ -177,11 +191,14 @@ const ExplorePageV1: FunctionComponent = () => {
           getExplorePath({
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
-              sort: searchQueryParam ? '_score' : INITIAL_SORT_FIELD,
+              sort: searchQueryParam
+                ? '_score'
+                : tabsInfo[nSearchIndex].sortField,
               page: '1',
               quickFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
                 : undefined,
+              sortOrder: tabsInfo[nSearchIndex]?.sortOrder ?? SORT_ORDER.DESC,
             },
             isPersistFilters: false,
           })
@@ -216,7 +233,7 @@ const ExplorePageV1: FunctionComponent = () => {
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (searchHitCounts && isNil(tabInfo)) {
-      const activeKey = findActiveSearchIndex(searchHitCounts);
+      const activeKey = findActiveSearchIndex(searchHitCounts, tabsInfo);
 
       return activeKey ?? SearchIndex.TABLE;
     }
@@ -229,7 +246,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
       ([tabSearchIndex, tabDetail]) => {
-        const Icon = tabDetail.icon;
+        const Icon = tabDetail.icon as React.FC;
 
         return {
           key: tabSearchIndex,
@@ -334,12 +351,12 @@ const ExplorePageV1: FunctionComponent = () => {
     Promise.all([
       searchQuery({
         query: !isEmpty(searchQueryParam)
-          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
+          ? escapeESReservedCharacters(searchQueryParam)
           : '',
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: sortValue,
-        sortOrder,
+        sortOrder: sortOrder,
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
@@ -350,7 +367,7 @@ const ExplorePageV1: FunctionComponent = () => {
           setUpdatedAggregations(res.aggregations);
         }),
       searchQuery({
-        query: `*${escapeESReservedCharacters(searchQueryParam)}*`,
+        query: escapeESReservedCharacters(searchQueryParam),
         pageNumber: 0,
         pageSize: 0,
         queryFilter: combinedQueryFilter,
@@ -377,7 +394,10 @@ const ExplorePageV1: FunctionComponent = () => {
       }),
     ])
       .catch((error) => {
-        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
+        if (
+          error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
+          error.response?.data.message.includes(ES_EXCEPTION_SHARDS_FAILED)
+        ) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error);
@@ -430,15 +450,13 @@ const ExplorePageV1: FunctionComponent = () => {
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
-      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
-      onChangeSortOder={(sort) => {
-        handlePageChange(1);
-        setSortOrder(sort);
+      onChangeSortOder={(sortOrderVal) => {
+        handleSortOrderChange(1, sortOrderVal);
       }}
       onChangeSortValue={(sortVal) => {
         handleSortValueChange(1, sortVal);

@@ -14,8 +14,5 @@
 import { FilterResourceDescriptor } from '../../../generated/events/filterResourceDescriptor';
 
 export interface ObservabilityFormTriggerItemProps {
-  heading: string;
-  subHeading: string;
-  buttonLabel: string;
   filterResources: FilterResourceDescriptor[];
 }

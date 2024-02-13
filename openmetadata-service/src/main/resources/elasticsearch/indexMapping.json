@@ -27,7 +27,7 @@
     "indexName": "chart_search_index",
     "alias": "chart",
     "indexMappingFile": "/elasticsearch/%s/chart_index_mapping.json",
-    "parentAliases": ["dashboard", "dashboardService"]
+    "parentAliases": ["dashboard", "dashboardService", "dataAsset"]
   },
   "dashboard": {
     "indexName": "dashboard_search_index",
@@ -220,5 +220,11 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_resolution_status_index_mapping.json",
     "alias": "testCaseResolutionStatus",
     "parentAliases": []
+  },
+  "ingestionPipeline": {
+    "indexName": "ingestion_pipeline_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ingestion_pipeline_index_mapping.json",
+    "alias": "ingestionPipeline",
+    "parentAliases": ["all", "dataAsset"]
   }
 }

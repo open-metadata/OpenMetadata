@@ -40,7 +40,6 @@ class ProfilerProcessor(Processor):
     """
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
-
         super().__init__()
 
         self.config = config
@@ -51,8 +50,11 @@ class ProfilerProcessor(Processor):
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
 
-    def _run(self, record: ProfilerSourceAndEntity) -> Either[ProfilerResponse]:
+    @property
+    def name(self) -> str:
+        return "Profiler"
 
+    def _run(self, record: ProfilerSourceAndEntity) -> Either[ProfilerResponse]:
         profiler_runner: Profiler = record.profiler_source.get_profiler_runner(
             record.entity, self.profiler_config
         )

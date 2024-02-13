@@ -13,33 +13,35 @@
 
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { AxiosError } from 'axios';
-import { map, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import Loader from '../../components/Loader/Loader';
+import { ROUTES } from '../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
   ProviderType,
-  SubscriptionType,
+  SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { useFqn } from '../../hooks/useFqn';
 import {
   createObservabilityAlert,
+  getObservabilityAlertByFQN,
   getResourceFunctions,
+  updateObservabilityAlertWithPut,
 } from '../../rest/observabilityAPI';
-import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
+import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './add-observability-page.less';
+import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormActionItem from './ObservabilityFormActionItem/ObservabilityFormActionItem';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
@@ -49,192 +51,274 @@ function AddObservabilityPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm<CreateEventSubscription>();
+  const { fqn } = useFqn();
 
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
   >([]);
 
-  const notificationsPath = getSettingPath(
-    GlobalSettingsMenuCategory.NOTIFICATIONS,
-    GlobalSettingOptions.ALERT
-  );
+  const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [fetching, setFetching] = useState<number>(0);
+  const [saving, setSaving] = useState<boolean>(false);
 
-  const breadcrumb = useMemo(
-    () => [
-      {
-        name: t('label.setting-plural'),
-        url: notificationsPath,
-      },
-      {
-        name: t('label.observability'),
-        url: '',
-      },
-    ],
-    [notificationsPath]
-  );
+  const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+
+  const fetchAlert = async () => {
+    try {
+      setFetching((prev) => prev + 1);
+
+      const observabilityAlert = await getObservabilityAlertByFQN(fqn);
+      const modifiedAlertData: ModifiedEventSubscription = {
+        ...observabilityAlert,
+        destinations: observabilityAlert.destinations.map((destination) => {
+          const isExternalDestination =
+            destination.category === SubscriptionCategory.External;
+
+          return {
+            ...destination,
+            destinationType: isExternalDestination
+              ? destination.type
+              : destination.category,
+          };
+        }),
+      };
+
+      setAlert(modifiedAlertData);
+    } catch (error) {
+      // Error handling
+    } finally {
+      setFetching((prev) => prev - 1);
+    }
+  };
 
   const fetchFunctions = async () => {
     try {
+      setFetching((prev) => prev + 1);
       const filterResources = await getResourceFunctions();
 
       setFilterResources(filterResources.data);
     } catch (error) {
-      // TODO: Handle error
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.config') })
+      );
+    } finally {
+      setFetching((prev) => prev - 1);
     }
   };
 
   useEffect(() => {
     fetchFunctions();
-  }, []);
-
-  const handleSave = async (data: CreateEventSubscription) => {
-    try {
-      const resources = [data.resources as unknown as string];
-      await createObservabilityAlert({
-        ...data,
-        resources,
-      });
-
-      showSuccessToast(
-        t(`server.${'create'}-entity-success`, {
-          entity: t('label.alert-plural'),
-        })
-      );
-      history.push(
-        getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          // We need this check to have correct redirection after updating the subscription
-          alert?.name === 'ActivityFeedAlert'
-            ? GlobalSettingOptions.ACTIVITY_FEED
-            : GlobalSettingOptions.ALERTS
-        )
-      );
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.alert'),
-            entityPlural: t('label.alert-lowercase-plural'),
-            name: data.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t(`server.${'entity-creation-error'}`, {
-            entity: t('label.alert-lowercase'),
-          })
-        );
-      }
+    if (!fqn) {
+      return;
     }
-  };
+    fetchAlert();
+  }, [fqn]);
+
+  const breadcrumb = useMemo(
+    () => [
+      {
+        name: t('label.observability'),
+        url: '',
+      },
+      {
+        name: t('label.alert-plural'),
+        url: ROUTES.OBSERVABILITY_ALERTS,
+      },
+      {
+        name: fqn
+          ? t('label.edit-entity', { entity: t('label.alert') })
+          : t('label.create-entity', { entity: t('label.alert') }),
+        url: '',
+      },
+    ],
+    [fqn]
+  );
+
+  const handleSave = useCallback(
+    async (data: CreateEventSubscription) => {
+      try {
+        setSaving(true);
+
+        await handleAlertSave({
+          data,
+          fqn,
+          createAlertAPI: createObservabilityAlert,
+          updateAlertAPI: updateObservabilityAlertWithPut,
+          afterSaveAction: () => {
+            history.push(getObservabilityAlertDetailsPath(data.name));
+          },
+        });
+      } catch {
+        // Error handling done in "handleAlertSave"
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fqn, history]
+  );
+
+  const [selectedTrigger] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
+
+  const supportedFilters = useMemo(
+    () =>
+      filterResources.find((resource) => resource.name === selectedTrigger)
+        ?.supportedFilters,
+    [filterResources, selectedTrigger]
+  );
+
+  const supportedActions = useMemo(
+    () =>
+      filterResources.find((resource) => resource.name === selectedTrigger)
+        ?.supportedActions,
+    [filterResources, selectedTrigger]
+  );
+
+  const shouldShowFiltersSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
+    [selectedTrigger, supportedFilters]
+  );
+
+  const shouldShowActionsSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedActions) : true),
+    [selectedTrigger, supportedActions]
+  );
+
+  if (fetching) {
+    return <Loader />;
+  }
 
   return (
-    <Row className="add-notification-container" gutter={[24, 24]}>
-      <Col span={24}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
+    <ResizablePanels
+      hideSecondPanel
+      firstPanel={{
+        children: (
+          <div className="alert-page-container">
+            <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
+              <Col span={24}>
+                <TitleBreadcrumb titleLinks={breadcrumb} />
+              </Col>
 
-      <Col span={24}>
-        <Typography.Title level={5}>
-          {t('label.create-entity', { entity: t('label.observability') })}
-        </Typography.Title>
-        <Typography.Text>{t('message.alerts-description')}</Typography.Text>
-      </Col>
+              <Col span={24}>
+                <Typography.Title level={5}>
+                  {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
+                    entity: t('label.alert'),
+                  })}
+                </Typography.Title>
+                <Typography.Text>
+                  {t('message.alerts-description')}
+                </Typography.Text>
+              </Col>
 
-      <Col span={24}>
-        <Form<CreateEventSubscription> form={form} onFinish={handleSave}>
-          <Row gutter={[20, 20]}>
-            <Col span={24}>
-              <Form.Item
-                label={t('label.name')}
-                labelCol={{ span: 24 }}
-                name="name"
-                rules={[
-                  { required: true },
-                  {
-                    pattern: ENTITY_NAME_REGEX,
-                    message: t('message.entity-name-validation'),
-                  },
-                ]}>
-                <Input placeholder={t('label.name')} />
-              </Form.Item>
-            </Col>
-            <Col span={24}>
-              <Form.Item
-                label={t('label.description')}
-                labelCol={{ span: 24 }}
-                name="description"
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  data-testid="description"
-                  height="200px"
-                  initialValue=""
-                />
-              </Form.Item>
-            </Col>
-            <Col span={24}>
-              <ObservabilityFormTriggerItem
-                buttonLabel={t('label.add-entity', {
-                  entity: t('label.trigger'),
-                })}
-                filterResources={filterResources}
-                heading={t('label.trigger')}
-                subHeading={t('message.alerts-trigger-description')}
-              />
-            </Col>
-            <Col span={24}>
-              <ObservabilityFormFiltersItem
-                filterResources={filterResources}
-                heading={t('label.filter-plural')}
-                subHeading={t('message.alerts-filter-description')}
-              />
-            </Col>
-            <Col span={24}>
-              <ObservabilityFormActionItem
-                filterResources={filterResources}
-                heading={t('label.action-plural')}
-                subHeading={t('message.alerts-filter-description')}
-              />
-            </Col>
-            <Form.Item
-              hidden
-              initialValue={AlertType.Observability}
-              name="alertType"
-            />
-            <Form.Item
-              hidden
-              initialValue={ProviderType.User}
-              name="provider"
-            />
-            <Col span={24}>
-              <DestinationFormItem
-                buttonLabel={t('label.add-entity', {
-                  entity: t('label.destination'),
-                })}
-                filterResources={map(SubscriptionType, (type) => ({
-                  label: startCase(type),
-                  value: type,
-                }))}
-                heading={t('label.destination')}
-                subHeading={t('message.alerts-destination-description')}
-              />
-            </Col>
-            <Col span={24}>
-              <Button className="m-r-sm" htmlType="submit">
-                {t('label.save')}
-              </Button>
-              <Button onClick={() => history.goBack()}>
-                {t('label.cancel')}
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </Col>
-    </Row>
+              <Col span={24}>
+                <Form<CreateEventSubscription>
+                  form={form}
+                  initialValues={{
+                    ...alert,
+                    resources: alert?.filteringRules?.resources,
+                  }}
+                  onFinish={handleSave}>
+                  <Row gutter={[20, 20]}>
+                    <Col span={24}>
+                      <Form.Item
+                        label={t('label.name')}
+                        labelCol={{ span: 24 }}
+                        name="name"
+                        rules={[
+                          { required: true },
+                          {
+                            pattern: ENTITY_NAME_REGEX,
+                            message: t('message.entity-name-validation'),
+                          },
+                        ]}>
+                        <Input
+                          disabled={isEditMode}
+                          placeholder={t('label.name')}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
+                      <Form.Item
+                        label={t('label.description')}
+                        labelCol={{ span: 24 }}
+                        name="description"
+                        trigger="onTextChange"
+                        valuePropName="initialValue">
+                        <RichTextEditor
+                          data-testid="description"
+                          height="200px"
+                          initialValue=""
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
+                      <ObservabilityFormTriggerItem
+                        filterResources={filterResources}
+                      />
+                    </Col>
+                    {shouldShowFiltersSection && (
+                      <Col span={24}>
+                        <ObservabilityFormFiltersItem
+                          supportedFilters={supportedFilters}
+                        />
+                      </Col>
+                    )}
+                    {shouldShowActionsSection && (
+                      <Col span={24}>
+                        <ObservabilityFormActionItem
+                          supportedActions={supportedActions}
+                        />
+                      </Col>
+                    )}
+                    <Form.Item
+                      hidden
+                      initialValue={AlertType.Observability}
+                      name="alertType"
+                    />
+                    <Form.Item
+                      hidden
+                      initialValue={ProviderType.User}
+                      name="provider"
+                    />
+                    <Col span={24}>
+                      <DestinationFormItem
+                        buttonLabel={t('label.add-entity', {
+                          entity: t('label.destination'),
+                        })}
+                        heading={t('label.destination')}
+                        subHeading={t('message.alerts-destination-description')}
+                      />
+                    </Col>
+                    <Col flex="auto" />
+                    <Col flex="300px" pull="right">
+                      <Button
+                        className="m-l-sm float-right"
+                        data-testid="save-button"
+                        htmlType="submit"
+                        loading={saving}
+                        type="primary">
+                        {t('label.save')}
+                      </Button>
+                      <Button
+                        className="float-right"
+                        data-testid="cancel-button"
+                        onClick={() => history.goBack()}>
+                        {t('label.cancel')}
+                      </Button>
+                    </Col>
+                  </Row>
+                </Form>
+              </Col>
+            </Row>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      secondPanel={{ children: <></>, minWidth: 0 }}
+    />
   );
 }
 

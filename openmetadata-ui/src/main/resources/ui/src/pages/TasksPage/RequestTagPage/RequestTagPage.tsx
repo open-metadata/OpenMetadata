@@ -70,6 +70,7 @@ const RequestTag = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const taskMessage = useMemo(
     () =>
@@ -102,6 +103,7 @@ const RequestTag = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
@@ -133,7 +135,8 @@ const RequestTag = () => {
           )
         );
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -193,6 +196,7 @@ const RequestTag = () => {
                 })}
               </Typography.Paragraph>
               <Form
+                data-testid="form-container"
                 form={form}
                 initialValues={{
                   suggestTags: [],
@@ -246,12 +250,13 @@ const RequestTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
                       data-testid="submit-tag-request"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>

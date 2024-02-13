@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +46,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
+import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -74,8 +74,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     AppSchedule scheduleConfiguration = app.getAppSchedule();
-    long scheduleTime =
-        currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
+    long scheduleTime = currentTime - 604800000L;
     int numberOfDaysChange = getNumberOfDays(scheduleConfiguration);
     try {
       DataInsightsReportAppConfig insightAlertConfig =
@@ -99,7 +98,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private void sendReportsToTeams(
       SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws IOException {
+      throws SearchIndexException {
     PaginatedEntitiesSource teamReader =
         new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
@@ -364,7 +363,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private Map<String, Double> getTierData(List<TotalEntitiesByTier> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
-    Map<String, Double> data = new HashMap<>();
+    Map<String, Double> data = new TreeMap<>();
     for (TotalEntitiesByTier obj : entitiesByTypeList) {
       data.put(obj.getEntityTier(), obj.getEntityCountFraction() * 100);
     }

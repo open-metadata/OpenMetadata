@@ -106,7 +106,7 @@ export const getTestCaseByFqn = async (
     }
   );
 
-  return response;
+  return response.data;
 };
 export const getTestCaseById = async (
   id: string,
@@ -129,14 +129,9 @@ export const createTestCase = async (data: CreateTestCase) => {
 };
 
 export const updateTestCaseById = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<TestCase>>(
     `${testCaseUrl}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -244,14 +239,9 @@ export const getTestSuiteByName = async (
 };
 
 export const updateTestSuiteById = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
     `${testSuiteUrl}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -277,13 +267,9 @@ export const patchTestCaseResult = async ({
   timestamp: number;
   patch: Operation[];
 }) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
   const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
     `${testCaseUrl}/${getEncodedFqn(testCaseFqn)}/testCaseResult/${timestamp}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;

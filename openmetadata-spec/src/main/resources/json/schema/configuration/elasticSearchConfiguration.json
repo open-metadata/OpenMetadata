@@ -82,6 +82,10 @@
         "opensearch"
       ],
       "default": "elasticsearch"
+    },
+    "searchIndexFactoryClassName": {
+      "description": "Index factory name",
+      "type": "string"
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],

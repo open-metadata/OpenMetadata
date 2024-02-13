@@ -80,6 +80,7 @@ const UpdateTag = () => {
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const sanitizeValue = useMemo(
     () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
@@ -136,6 +137,7 @@ const UpdateTag = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
@@ -167,7 +169,8 @@ const UpdateTag = () => {
           )
         );
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -237,7 +240,11 @@ const UpdateTag = () => {
                   entity: t('label.task'),
                 })}
               </Typography.Paragraph>
-              <Form form={form} layout="vertical" onFinish={onCreateTask}>
+              <Form
+                data-testid="form-container"
+                form={form}
+                layout="vertical"
+                onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.title')}:`}
@@ -298,12 +305,13 @@ const UpdateTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
-                      data-testid="submit-test"
+                      data-testid="submit-tag-request"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {t('label.submit')}
                     </Button>

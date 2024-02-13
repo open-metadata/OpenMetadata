@@ -48,6 +48,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -62,6 +66,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -71,9 +79,6 @@
         "index_options": "docs"
       },
       "fqnParts": {
-        "type": "keyword"
-      },
-      "entityType": {
         "type": "keyword"
       },
       "suggest": {
@@ -99,10 +104,13 @@
       "chartType": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "keyword"
+      },
       "href": {
         "type": "text"
       },
-      "sourceUrl": {
+      "entityType": {
         "type": "keyword"
       },
       "owner": {
@@ -325,6 +333,12 @@
             "type": "text"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

@@ -85,8 +85,7 @@ export const softDeleteUser = (username: string, displayName: string) => {
   verifyResponseStatusCode('@searchUser', 200);
 
   // Click on delete button
-  cy.get(`[data-testid="delete-user-btn-${username}"]`);
-  cy.get(':nth-child(4) > .ant-space > .ant-space-item > .ant-btn').click();
+  cy.get(`[data-testid="delete-user-btn-${username}"]`).click();
   // Soft deleting the user
   cy.get('[data-testid="soft-delete"]').click();
   cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
@@ -378,7 +377,7 @@ export const editRole = (username: string, role: string) => {
 
 export const checkNoPermissionPlaceholder = (permission = false) => {
   cy.get('[data-testid="permission-error-placeholder"]').should(
-    permission ? 'not.exist' : 'be.visible'
+    permission ? 'not.be.visible' : 'be.visible'
   );
   if (!permission) {
     cy.get('[data-testid="permission-error-placeholder"]').should(

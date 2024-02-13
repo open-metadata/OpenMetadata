@@ -73,6 +73,7 @@ const RequestDescription = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const taskMessage = useMemo(
     () =>
@@ -109,6 +110,7 @@ const RequestDescription = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
@@ -141,7 +143,8 @@ const RequestDescription = () => {
             )
           );
         })
-        .catch((err: AxiosError) => showErrorToast(err));
+        .catch((err: AxiosError) => showErrorToast(err))
+        .finally(() => setIsLoading(false));
     } else {
       showErrorToast(t('server.no-task-creation-without-assignee'));
     }
@@ -206,7 +209,11 @@ const RequestDescription = () => {
                   entity: t('label.task'),
                 })}
               </Typography.Paragraph>
-              <Form form={form} layout="vertical" onFinish={onCreateTask}>
+              <Form
+                data-testid="form-container"
+                form={form}
+                layout="vertical"
+                onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.task-entity', {
@@ -262,12 +269,13 @@ const RequestDescription = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
-                      data-testid="submit-test"
+                      data-testid="submit-btn"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>

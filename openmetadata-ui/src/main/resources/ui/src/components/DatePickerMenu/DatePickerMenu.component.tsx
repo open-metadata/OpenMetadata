@@ -20,7 +20,7 @@ import moment from 'moment';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import {
   DEFAULT_SELECTED_RANGE,
   PROFILER_FILTER_RANGE,

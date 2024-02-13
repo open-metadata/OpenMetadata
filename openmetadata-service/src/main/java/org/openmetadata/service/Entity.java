@@ -59,7 +59,10 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
@@ -82,13 +85,15 @@ public final class Entity {
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
   @Getter @Setter private static TokenRepository tokenRepository;
+  @Getter @Setter private static PolicyRepository policyRepository;
+  @Getter @Setter private static RoleRepository roleRepository;
   @Getter @Setter private static FeedRepository feedRepository;
   @Getter @Setter private static LineageRepository lineageRepository;
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
   @Getter @Setter private static SearchRepository searchRepository;
-
+  @Getter @Setter private static SuggestionRepository suggestionRepository;
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
@@ -194,6 +199,7 @@ public final class Entity {
   // Other entities
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
+  public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";
 
   //
@@ -237,28 +243,13 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
   }
 
-  //
-  // List of entities whose changes should not be published to the Activity Feed
-  //
-  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
-      List.of(
-          TEAM,
-          ROLE,
-          POLICY,
-          BOT,
-          INGESTION_PIPELINE,
-          DATABASE_SERVICE,
-          PIPELINE_SERVICE,
-          DASHBOARD_SERVICE,
-          MESSAGING_SERVICE,
-          WORKFLOW,
-          DOCUMENT);
-
   private Entity() {}
 
   public static void initializeRepositories(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     if (!initializedRepositories) {
       tokenRepository = new TokenRepository();
+      policyRepository = new PolicyRepository();
+      roleRepository = new RoleRepository();
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
@@ -369,11 +360,6 @@ public final class Entity {
     EntityRepository<?> entityRepository = getEntityRepository(entityType);
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     ref.withHref(href);
-  }
-
-  /** Returns true if the change events of the given entity type should be published to the activity feed. */
-  public static boolean shouldDisplayEntityChangeOnFeed(@NonNull String entityType) {
-    return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
   public static Fields getFields(String entityType, List<String> fields) {

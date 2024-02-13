@@ -38,6 +38,7 @@ import {
   getPipelineDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { PIPELINE_TASK_TABS } from '../../constants/pipeline.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -50,11 +51,11 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import { restorePipeline } from '../../rest/pipelineAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getAllTags,
@@ -135,7 +136,9 @@ const PipelineDetails = ({
     index: number;
   }>();
 
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -162,8 +165,12 @@ const PipelineDetails = ({
     [pipelineDetails.tasks]
   );
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.PIPELINE, pipelineFQN, setFeedCount);
+    getFeedCounts(EntityType.PIPELINE, pipelineFQN, handleFeedCount);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -285,9 +292,9 @@ const PipelineDetails = ({
 
   const followPipeline = useCallback(async () => {
     if (isFollowing) {
-      await unFollowPipelineHandler(getEntityFeedCount);
+      await unFollowPipelineHandler();
     } else {
-      await followPipelineHandler(getEntityFeedCount);
+      await followPipelineHandler();
     }
   }, [isFollowing, followPipelineHandler, unFollowPipelineHandler]);
 
@@ -491,7 +498,6 @@ const PipelineDetails = ({
       getEntityName,
       onThreadLinkSelect,
       handleTableTagSelection,
-      getEntityFieldThreadCounts,
       editDescriptionPermission,
     ]
   );
@@ -507,7 +513,6 @@ const PipelineDetails = ({
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -633,7 +638,7 @@ const PipelineDetails = ({
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={tab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -642,10 +647,13 @@ const PipelineDetails = ({
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.PIPELINE}
             fqn={pipelineDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchPipeline}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -702,7 +710,7 @@ const PipelineDetails = ({
     [
       description,
       activeTab,
-      feedCount,
+      feedCount.totalCount,
       isEdit,
       deleted,
       owner,
@@ -712,9 +720,9 @@ const PipelineDetails = ({
       tasksDAGView,
       taskColumns,
       tasksInternal,
+      handleFeedCount,
       handleTagSelection,
       onExtensionUpdate,
-      getEntityFieldThreadCounts,
       onCancel,
       onDescriptionEdit,
       onDescriptionUpdate,
@@ -729,7 +737,7 @@ const PipelineDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [pipelineFQN, description, pipelineDetails]);
+  }, [pipelineFQN]);
 
   return (
     <PageLayoutV1
@@ -745,6 +753,7 @@ const PipelineDetails = ({
             afterDomainUpdateAction={updatePipelineDetailsState}
             dataAsset={pipelineDetails}
             entityType={EntityType.PIPELINE}
+            openTaskCount={feedCount.openTaskCount}
             permissions={pipelinePermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followPipeline}

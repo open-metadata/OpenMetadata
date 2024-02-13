@@ -109,8 +109,10 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -631,7 +633,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    List<String> errors = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
     List<T> entities = new ArrayList<>();
     int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
     int currentOffset = beforeOffset;
@@ -649,11 +651,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entities.add(withHref(uriInfo, entity));
         } catch (Exception e) {
           clearFieldsInternal(parsedEntity, fields);
-          String errorEntity = JsonUtils.pojoToJson(parsedEntity);
-          LOG.error("Failed in Set Fields for Entity with Json : {}", errorEntity);
-          errors.add(
-              String.format(
-                  "Error Message : %s , %n Entity Json : %s", e.getMessage(), errorEntity));
+          EntityError entityError =
+              new EntityError().withMessage(e.getMessage()).withEntity(parsedEntity);
+          errors.add(entityError);
+          LOG.error("[ListForIndexing] Failed for Entity : {}", entityError);
         }
       }
       currentOffset = currentOffset + limitParam;
@@ -1127,7 +1128,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final ResultList<T> getResultList(
-      List<T> entities, List<String> errors, String beforeCursor, String afterCursor, int total) {
+      List<T> entities,
+      List<EntityError> errors,
+      String beforeCursor,
+      String afterCursor,
+      int total) {
     return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
@@ -1677,7 +1682,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final EntityReference getOwner(EntityReference ref) {
-    return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+    return !supportsOwner ? null : getFromEntityRef(ref.getId(), Relationship.OWNS, null, false);
   }
 
   public final void inheritDomain(T entity, Fields fields, EntityInterface parent) {
@@ -1929,6 +1934,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(Suggestion suggestion) {
+    return new SuggestionRepository.SuggestionWorkflow(suggestion);
+  }
+
+  public EntityInterface applySuggestion(
+      EntityInterface entity, String childFQN, Suggestion suggestion) {
+    return entity;
+  }
+
   public final void validateTaskThread(ThreadContext threadContext) {
     ThreadType threadType = threadContext.getThread().getType();
     if (threadType != ThreadType.Task) {
@@ -2043,22 +2057,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // set changeDescription to null
       T updatedOld = updated;
       previous = getPreviousVersion(original);
-      LOG.debug(
-          "In session change consolidation. Reverting to previous version {}",
-          previous.getVersion());
-      updated = previous;
-      updateInternal();
-      LOG.info(
-          "In session change consolidation. Reverting to previous version {} completed",
-          previous.getVersion());
+      if (previous != null) {
+        LOG.debug(
+            "In session change consolidation. Reverting to previous version {}",
+            previous.getVersion());
+        updated = previous;
+        updateInternal();
+        LOG.info(
+            "In session change consolidation. Reverting to previous version {} completed",
+            previous.getVersion());
 
-      // Now go from original to updated
-      updated = updatedOld;
-      updateInternal();
+        // Now go from original to updated
+        updated = updatedOld;
+        updateInternal();
 
-      // Finally, go from previous to the latest updated entity to consolidate changes
-      original = previous;
-      entityChanged = false;
+        // Finally, go from previous to the latest updated entity to consolidate changes
+        original = previous;
+        entityChanged = false;
+      }
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */

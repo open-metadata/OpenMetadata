@@ -24,9 +24,7 @@ import {
   AppScheduleClass,
   AppType,
 } from '../../../generated/entity/applications/app';
-import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
-import { getIngestionFrequency } from '../../../utils/CommonUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
 import Loader from '../../Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
@@ -74,10 +72,6 @@ const AppSchedule = ({
 
       return cronstrue.toString(cronExp, {
         throwExceptionOnParseError: false,
-        // Quartz cron format accepts 1-7 or SUN-SAT so need to increment index by 1
-        // Ref: https://www.quartz-scheduler.org/api/2.1.7/org/quartz/CronExpression.html
-        dayOfWeekStartIndexZero: false,
-        monthStartIndexZero: false,
       });
     }
 
@@ -127,6 +121,16 @@ const AppSchedule = ({
       </Typography.Text>
     );
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
+
+  const initialOptions = useMemo(() => {
+    if (appData.name === 'DataInsightsReportApplication') {
+      return ['Week'];
+    } else if (appData.appType === AppType.External) {
+      return ['Day'];
+    }
+
+    return undefined;
+  }, [appData.name, appData.appType]);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -215,15 +219,14 @@ const AppSchedule = ({
         open={showModal}
         title={t('label.update-entity', { entity: t('label.schedule') })}>
         <TestSuiteScheduler
-          isQuartzCron
           buttonProps={{
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
-          includePeriodOptions={
-            appData.appType === AppType.External ? ['Day'] : undefined
+          includePeriodOptions={initialOptions}
+          initialData={
+            (appData.appSchedule as AppScheduleClass)?.cronExpression ?? ''
           }
-          initialData={getIngestionFrequency(PipelineType.Application)}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}
         />
