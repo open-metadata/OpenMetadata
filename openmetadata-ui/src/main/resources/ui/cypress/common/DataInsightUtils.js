@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RETRY_TIMES } from './common';
+import { SidebarItem } from '../constants/Entity.interface';
+import { interceptURL, RETRY_TIMES, verifyResponseStatusCode } from './common';
 
 const BASE_WAIT_TIME = 4000;
+let isSuccessStatus = false;
 
 export const checkDataInsightSuccessStatus = (
   count = 1,
@@ -38,10 +40,29 @@ export const checkDataInsightSuccessStatus = (
       if ($ingestionStatus.text() !== 'Success') {
         cy.get('@checkRun').should('have.text', 'Success');
 
-        return true;
+        isSuccessStatus = true;
       }
 
-      return false;
+      isSuccessStatus = false;
     }
   });
+};
+
+export const verifyKpiChart = () => {
+  interceptURL(
+    'GET',
+    '/api/v1/analytics/dataInsights/charts/aggregate?*',
+    'dataInsightsChart'
+  );
+  checkDataInsightSuccessStatus();
+
+  cy.sidebarClick(SidebarItem.DATA_INSIGHT);
+  verifyResponseStatusCode('@dataInsightsChart', 200);
+  cy.get('[data-testid="search-dropdown-Team"]').should('be.visible');
+  cy.get('[data-testid="search-dropdown-Tier"]').should('be.visible');
+  cy.get('[data-testid="summary-card"]').should('be.visible');
+  cy.get('[data-testid="kpi-card"]').should('be.visible');
+  if (isSuccessStatus) {
+    cy.get('#kpi-chart').scrollIntoView().should('be.visible');
+  }
 };
