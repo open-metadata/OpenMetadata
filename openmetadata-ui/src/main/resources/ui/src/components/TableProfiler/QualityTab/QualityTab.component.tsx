@@ -242,7 +242,7 @@ export const QualityTab = () => {
           testSummary={testSuite?.summary ?? INITIAL_TEST_SUMMARY}
         />
       </Col>
-      <Col data-testid="tabs-container" span={24}>
+      <Col span={24}>
         <Tabs items={tabs} />
       </Col>
     </Row>
