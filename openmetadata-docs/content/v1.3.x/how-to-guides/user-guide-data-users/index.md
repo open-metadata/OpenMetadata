@@ -112,7 +112,7 @@ Get quick access to all the data in your organization and the activities around 
   href="/how-to-guides/guide-for-data-users/delete"%}
   Soft, or hard delete data assets
  {%/inlineCallout%}
-  {%inlineCallout
+ {%inlineCallout
   color="violet-70"
   bold="Browser Extension"
   icon="MdExtension"
