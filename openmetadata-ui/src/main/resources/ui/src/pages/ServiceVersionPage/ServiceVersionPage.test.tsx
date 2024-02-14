@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import {
   MOCK_DATABASE_SERVICE,

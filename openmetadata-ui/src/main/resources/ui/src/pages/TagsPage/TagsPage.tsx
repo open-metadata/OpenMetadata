@@ -26,21 +26,21 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
-import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
-import { ClassificationDetailsRef } from '../../components/ClassificationDetails/ClassificationDetails.interface';
+import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
+import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
+import { TIER_CATEGORY } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TagsLeftPanelSkeleton from '../../components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { TIER_CATEGORY } from '../../constants/constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { LOADING_STATE } from '../../enums/common.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import {

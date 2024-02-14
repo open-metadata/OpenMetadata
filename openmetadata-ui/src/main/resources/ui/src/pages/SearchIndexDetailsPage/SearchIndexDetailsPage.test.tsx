@@ -13,7 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import SearchIndexDetailsPage from './SearchIndexDetailsPage';

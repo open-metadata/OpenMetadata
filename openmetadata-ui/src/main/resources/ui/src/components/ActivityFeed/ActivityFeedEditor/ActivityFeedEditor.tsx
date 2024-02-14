@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import React, { FC, HTMLAttributes, useRef, useState } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
-import { FeedEditor } from '../../FeedEditor/FeedEditor';
+import { FeedEditor } from '../FeedEditor/FeedEditor';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
 

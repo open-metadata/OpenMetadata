@@ -18,7 +18,7 @@ import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
-import Loader from '../../Loader/Loader';
+import Loader from '../Loader/Loader';
 
 type Props = {
   onSearch: (text: string) => void;

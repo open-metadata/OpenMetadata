@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,

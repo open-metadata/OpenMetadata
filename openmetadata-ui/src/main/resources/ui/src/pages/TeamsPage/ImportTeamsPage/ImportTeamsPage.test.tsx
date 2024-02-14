@@ -18,7 +18,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   MOCK_CURRENT_TEAM,
   MOCK_MARKETING_TEAM,

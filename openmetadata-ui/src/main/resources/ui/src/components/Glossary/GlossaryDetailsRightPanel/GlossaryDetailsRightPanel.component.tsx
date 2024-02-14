@@ -20,8 +20,6 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import TagButton from '../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   getTeamAndUserDetailsPath,
@@ -29,6 +27,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
@@ -48,6 +47,7 @@ import {
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import TagButton from '../../common/TagButton/TagButton.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryReviewers from './GlossaryReviewers';

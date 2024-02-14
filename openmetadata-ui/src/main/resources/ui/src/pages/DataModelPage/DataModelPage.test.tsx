@@ -18,7 +18,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { mockUserData } from '../../components/Users/mocks/User.mocks';
+import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import DataModelsPage from './DataModelPage.component';
 import {
   CREATE_THREAD,
