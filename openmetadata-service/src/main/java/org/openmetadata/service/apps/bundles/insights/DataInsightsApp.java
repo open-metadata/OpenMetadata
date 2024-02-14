@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import com.cronutils.model.Cron;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -82,8 +81,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
             .getByName(null, SERVICE_NAME, serviceRepository.getFields("id"))
             .getEntityReference();
 
-    Cron quartzCron = getCronParser().parse(getApp().getAppSchedule().getCronExpression());
-
     CreateIngestionPipeline createPipelineRequest =
         new CreateIngestionPipeline()
             .withName(INGESTION_PIPELINE_NAME)
@@ -94,7 +91,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
             .withSourceConfig(new SourceConfig().withConfig(new MetadataToElasticSearchPipeline()))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(getCronMapper().map(quartzCron).asString()))
+                    .withScheduleInterval(getApp().getAppSchedule().getCronExpression()))
             .withService(service);
 
     // Get Pipeline
