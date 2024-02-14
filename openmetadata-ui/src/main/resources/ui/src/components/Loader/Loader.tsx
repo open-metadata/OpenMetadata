@@ -19,6 +19,7 @@ type Props = {
   size?: 'default' | 'small' | 'x-small';
   type?: 'default' | 'success' | 'error' | 'white';
   className?: string;
+  fullScreen?: boolean;
   style?: CSSProperties;
 };
 
@@ -26,6 +27,7 @@ const Loader: FunctionComponent<Props> = ({
   size = 'default',
   type = 'default',
   className = '',
+  fullScreen = false,
   style,
 }: Props): JSX.Element => {
   let classes = 'loader';
@@ -58,6 +60,18 @@ const Loader: FunctionComponent<Props> = ({
       break;
     default:
       break;
+  }
+
+  if (fullScreen) {
+    return (
+      <div className="h-min-100 flex-center" data-testid="full-screen-loader">
+        <div
+          className={classNames(classes, className)}
+          data-testid="loader"
+          style={style}
+        />
+      </div>
+    );
   }
 
   return (

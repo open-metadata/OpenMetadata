@@ -120,6 +120,7 @@ ENTITY_FIELD
     | 'testCaseResult'
     | 'tests'
     | 'pipelineStatus'
+    | 'dataProducts'
     ;
 
     

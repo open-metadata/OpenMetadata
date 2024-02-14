@@ -20,10 +20,9 @@
   - '@akash-jain-10'
   - '@dhruvinmaniar123'
   - '@ShilpaVernekar'
-  - '@07Himank'
-  - '@Anuj359'
   - '@tutte'
   - '@IceS2'
+  - '@sushi30'
   - '@snyk-bot'
   - '@dependabot'
 
@@ -34,6 +33,7 @@ ingestion:
   - '@ulixius9'
   - '@pmbrull'
   - '@IceS2'
+  - '@sushi30'
 
 UI:
   - '@aniketkatkar97'
@@ -48,12 +48,10 @@ backend:
   - '@harshach'
   - '@mohityadav766'
   - '@sureshms'
-  - '@07Himank'
 
 devops:
   - '@akash-jain-10'
   - '@dhruvinmaniar123'
-  - '@Anuj359'
   - '@tutte'
 
 documentation:

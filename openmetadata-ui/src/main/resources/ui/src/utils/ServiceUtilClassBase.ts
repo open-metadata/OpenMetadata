@@ -22,6 +22,7 @@ import {
   ATLAS,
   AZURESQL,
   BIGQUERY,
+  BIGTABLE,
   CLICKHOUSE,
   COMMON_UI_SCHEMA,
   COUCHBASE,
@@ -159,6 +160,9 @@ class ServiceUtilClassBase {
 
       case DatabaseServiceType.BigQuery:
         return BIGQUERY;
+
+      case DatabaseServiceType.BigTable:
+        return BIGTABLE;
 
       case DatabaseServiceType.Hive:
         return HIVE;

@@ -4,9 +4,6 @@ on:
   pull_request_target:
     types:
       - opened
-      - reopened
-      - edited
-      - synchronize
 
 jobs:
     pr-labels:
@@ -23,6 +20,7 @@ jobs:
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
                   configuration-path: .github/labeler.yml
                   sync-labels: true
+
     pr-e2e-labels:
         # Job to assign e2e PR labels for cypress tags
         name: pr-e2e-labels

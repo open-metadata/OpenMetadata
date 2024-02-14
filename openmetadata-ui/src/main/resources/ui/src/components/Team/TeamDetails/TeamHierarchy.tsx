@@ -23,6 +23,10 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
+import {
+  DESCRIPTION_LENGTH,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { TeamType } from '../../../generated/api/teams/createTeam';
 import { Team } from '../../../generated/entity/teams/team';
@@ -34,6 +38,7 @@ import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { getMovedTeamData } from '../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import { DraggableBodyRowProps } from '../../Draggable/DraggableBodyRowProps.interface';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
@@ -122,16 +127,18 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         dataIndex: 'description',
         width: 300,
         key: 'description',
-        render: (description: string) => (
-          <Typography.Paragraph
-            className="m-b-0"
-            ellipsis={{
-              rows: 2,
-            }}
-            title={description}>
-            {isEmpty(description) ? '--' : description}
-          </Typography.Paragraph>
-        ),
+        render: (description: string) =>
+          isEmpty(description) ? (
+            <Typography.Paragraph className="m-b-0">
+              {NO_DATA_PLACEHOLDER}
+            </Typography.Paragraph>
+          ) : (
+            <RichTextEditorPreviewer
+              markdown={description}
+              maxLength={DESCRIPTION_LENGTH}
+              showReadMoreBtn={false}
+            />
+          ),
       },
     ];
   }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand]);

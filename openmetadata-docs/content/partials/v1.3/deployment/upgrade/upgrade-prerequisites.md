@@ -147,6 +147,30 @@ Either update your YAMLs or the env var you are using under `SECRET_MANAGER`.
 Note how we also added the possibility to add `prefix` when defining the secret key ID in the external secrets managers and
 the option to tag the created resources.
 
+### Docker user
+
+In this release we updated the server [Dockerfile](https://github.com/open-metadata/OpenMetadata/blob/1.3.0/docker/development/Dockerfile#L34)
+to work with `openmetadata` as a user instead of root.
+
+If you're mapping volumes, specially when [configuring JWK](https://docs.open-metadata.org/v1.3.x/deployment/docker#add-docker-volumes-for-openmetadata-server-compose-service),
+you will need to update the owner of the directory to get it working with the new `openmetadata` user.
+
+You will need to run:
+
+```bash
+chown 1000 private_key.der
+```
+
+Otherwise, you'll see a similar error in your server logs:
+
+```
+ERROR [2024-02-08 15:29:36,792] [main] o.o.s.s.j.JWTTokenGenerator - Failed to initialize JWTTokenGenerator
+java.nio.file.AccessDeniedException: /etc/openmetadata/jwtkeys/private_key.der
+at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:90)
+at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:106)
+...
+```
+
 ### Elasticsearch reindex from Python
 
 In 1.2.0 we introduced the Elasticsearch reindex job as part of the OpenMetadata server. In this release, we 
@@ -205,3 +229,67 @@ In case you are using this package directly in your python scripts please make s
 
 - From `from sqllineage.xxx import xxx`
 - To `from collate_sqllineage.xxx import xxx`
+
+## Service Connection Changes
+
+
+### MongoDB Connection
+
+We have removed the connection string authentication from MongoDB service and now we only support 
+passing the authentication credentials by value.
+
+{% note %}
+Before the upgrade make sure you review the mongodb connection 
+if you have provided the proper connection details/credentials to ensure the smooth migration.
+{% /note %}
+
+If you were using connection string based authentication then structure of connection details would change:
+
+#### From
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    connectionDetails:
+      connectionURI: mongodb+srv://user:pass@localhost:27017
+```
+
+#### To
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    scheme: mongodb+srv
+    username: username
+    password: password
+    hostPort:  localhost:27017
+```
+
+If you were using connection value based authentication then structure of connection details would change:
+
+#### From
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    connectionDetails:
+      scheme: mongodb+srv
+      username: username
+      password: password
+      hostPort:  localhost:27017
+```
+
+#### To
+
+```yaml
+...
+  serviceConnection:
+    config: Mongo
+    scheme: mongodb+srv
+    username: username
+    password: password
+    hostPort:  localhost:27017
+```

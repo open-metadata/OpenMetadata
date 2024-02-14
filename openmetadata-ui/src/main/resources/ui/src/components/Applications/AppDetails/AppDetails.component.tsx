@@ -348,7 +348,6 @@ const AppDetails = () => {
             {appData && (
               <AppSchedule
                 appData={appData}
-                onCancel={onBrowseAppsClick}
                 onDemandTrigger={onDemandTrigger}
                 onDeployTrigger={onDeployTrigger}
                 onSave={onAppScheduleSave}

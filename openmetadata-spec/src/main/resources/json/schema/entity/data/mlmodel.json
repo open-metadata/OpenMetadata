@@ -145,7 +145,7 @@
         },
         "imageRepository": {
           "description": "Container Repository with the ML Model image.",
-          "$ref": "../../type/basic.json#/definitions/href"
+          "type": "string"
         }
       }
     }
