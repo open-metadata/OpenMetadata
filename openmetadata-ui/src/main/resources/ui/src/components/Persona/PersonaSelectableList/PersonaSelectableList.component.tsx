@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover } from 'antd';
+import { Button, Popover, Space, Typography } from 'antd';
+import { t } from 'i18next';
 import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,10 +20,26 @@ import { DE_ACTIVE_COLOR, PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { SelectableList } from '../../common/SelectableList/SelectableList.component';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
+export const PersonaListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space>
+      {props ? (
+        <Typography.Text>{getEntityName(props)}</Typography.Text>
+      ) : (
+        <Typography.Text className="text-grey-body">
+          {t('message.no-data-available')}
+        </Typography.Text>
+      )}
+    </Space>
+  );
+};
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
@@ -97,6 +114,7 @@ export const PersonaSelectableList = ({
       destroyTooltipOnHide
       content={
         <SelectableList
+          customTagRenderer={PersonaListItemRenderer}
           fetchOptions={fetchOptions}
           multiSelect={multiSelect}
           searchPlaceholder={t('label.search-for-type', {
