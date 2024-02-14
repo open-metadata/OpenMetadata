@@ -44,16 +44,14 @@ const GithubStarCard = () => {
   const [starredCount, setStarredCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const loggedInUserName = useMemo(() => currentUser?.name, [currentUser]);
-
   const isWhatNewAlertVisible = useMemo(
     () => cookieStorage.getItem(COOKIE_VERSION) !== 'true',
     [cookieStorage]
   );
 
   const userCookieName = useMemo(
-    () => `${STAR_OMD_USER}_${loggedInUserName}`,
-    [loggedInUserName]
+    () => `${STAR_OMD_USER}_${currentUser?.name}`,
+    [currentUser?.name]
   );
 
   const isHomePage = useMemo(
@@ -90,12 +88,12 @@ const GithubStarCard = () => {
 
   const githubPopup = useCallback(
     (show: boolean) => {
-      if (loggedInUserName && show) {
+      if (currentUser?.name && show) {
         fetchOpenMetaData();
       }
       setShowGithubStarPopup(show);
     },
-    [loggedInUserName, userCookieName]
+    [currentUser?.name, userCookieName]
   );
 
   const updateGithubPopup = useCallback(
@@ -137,7 +135,7 @@ const GithubStarCard = () => {
           </Space>
           <Button
             className="flex-center m--t-xss"
-            data-testid="close-whats-new-alert"
+            data-testid="close-github-star-popup-card"
             icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
             type="text"
             onClick={handleClosePopup}
@@ -170,7 +168,9 @@ const GithubStarCard = () => {
             }}>
             <Button className="github-modal-action-button">
               {isLoading ? (
-                <Skeleton.Button active size="small" />
+                <div data-testid="skeleton-loader">
+                  <Skeleton.Button active size="small" />
+                </div>
               ) : (
                 starredCount
               )}

@@ -28,7 +28,7 @@ import Loader from '../Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LoginPage'))
+  React.lazy(() => import('../../pages/LoginPage/SignInPage'))
 );
 const PageNotFound = withSuspenseFallback(
   React.lazy(() => import('../../pages/PageNotFound/PageNotFound'))
@@ -36,7 +36,7 @@ const PageNotFound = withSuspenseFallback(
 
 const ForgotPassword = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/ForgotPassword/forgot-password.component')
+    () => import('../../pages/ForgotPassword/ForgotPassword.component')
   )
 );
 
@@ -113,7 +113,7 @@ const AppRouter = () => {
   }, [handleClickEvent]);
 
   if (loading) {
-    return <Loader />;
+    return <Loader fullScreen />;
   }
 
   if (!isAuthenticated && isProtectedRoute(location.pathname)) {

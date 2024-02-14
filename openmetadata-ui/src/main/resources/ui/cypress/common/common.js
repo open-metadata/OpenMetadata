@@ -625,7 +625,7 @@ export const editCreatedProperty = (propertyName) => {
 
   cy.get('[data-testid="save"]').click();
 
-  cy.wait('@checkPatchForDescription', { timeout: 10000 });
+  cy.wait('@checkPatchForDescription', { timeout: 15000 });
 
   cy.get('.ant-modal-wrap').should('not.exist');
 

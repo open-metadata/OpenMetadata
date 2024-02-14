@@ -143,6 +143,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["pyarrow"],
         "sqlalchemy-bigquery>=1.2.2",
     },
+    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
     "clickhouse": {"clickhouse-driver~=0.2", "clickhouse-sqlalchemy~=0.2"},
     "dagster": {
         VERSIONS["pymysql"],
