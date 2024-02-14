@@ -63,7 +63,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
-  maxDataCap = 5,
+  maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
@@ -252,7 +252,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Typography.Text className="right-panel-label">
               {t('label.custom-property-plural')}
             </Typography.Text>
-            {(entityTypeDetail.customProperties ?? []).length >= maxDataCap &&
+            {maxDataCap &&
+              (entityTypeDetail.customProperties ?? []).length >= maxDataCap &&
               entityDetails.fullyQualifiedName && (
                 <Link
                   to={getEntityDetailLink(
