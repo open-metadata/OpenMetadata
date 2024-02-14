@@ -344,7 +344,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
               templatePopulator,
               user.getEmail(),
               EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-              EmailUtil.INVITE_RANDOM_PWD);
+              EmailUtil.INVITE_RANDOM_PWD,
+              true);
         } catch (TemplateException ex) {
           LOG.error(
               "Failed in sending Mail to user [{}]. Reason : {}",

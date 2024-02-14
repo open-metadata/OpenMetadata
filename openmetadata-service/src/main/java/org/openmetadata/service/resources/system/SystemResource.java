@@ -39,6 +39,7 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
@@ -167,7 +168,15 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
-    EmailUtil.sendTestEmail(emailRequest.getEmail());
+
+    try {
+      EmailUtil.testConnection();
+      EmailUtil.sendTestEmail(emailRequest.getEmail(), false);
+    } catch (Exception ex) {
+      LOG.error("Failed in sending mail. Message: {}", ex.getMessage(), ex);
+      throw new UnhandledServerException(ex.getMessage());
+    }
+
     return Response.status(Response.Status.OK).entity("Test Email Sent Successfully.").build();
   }
 

@@ -90,6 +90,10 @@ public class EmailUtil {
   private static final String EMAIL_IGNORE_MSG =
       "Email was not sent to {} as SMTP setting is not enabled";
 
+  static {
+    getSmtpSettings();
+  }
+
   private EmailUtil() {
     try {
       getSmtpSettings();
@@ -140,7 +144,8 @@ public class EmailUtil {
           templatePopulator,
           user.getEmail(),
           EMAIL_TEMPLATE_BASEPATH,
-          ACCOUNT_STATUS_TEMPLATE_FILE);
+          ACCOUNT_STATUS_TEMPLATE_FILE,
+          true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
     }
@@ -160,7 +165,8 @@ public class EmailUtil {
           templatePopulator,
           user.getEmail(),
           EMAIL_TEMPLATE_BASEPATH,
-          EMAIL_VERIFICATION_TEMPLATE_PATH);
+          EMAIL_VERIFICATION_TEMPLATE_PATH,
+          true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
     }
@@ -178,7 +184,12 @@ public class EmailUtil {
       templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
 
       sendMail(
-          subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+          subject,
+          templatePopulator,
+          user.getEmail(),
+          EMAIL_TEMPLATE_BASEPATH,
+          templateFilePath,
+          true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
     }
@@ -203,7 +214,7 @@ public class EmailUtil {
       templatePopulator.put("fieldNewValue", thread.getTask().getSuggestion());
       templatePopulator.put("taskLink", taskLink);
 
-      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, email);
     }
@@ -214,7 +225,8 @@ public class EmailUtil {
       Map<String, Object> model,
       String to,
       String baseTemplatePackage,
-      String templatePath)
+      String templatePath,
+      boolean async)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
@@ -230,7 +242,7 @@ public class EmailUtil {
       template.process(model, stringWriter);
       String mailContent = stringWriter.toString();
       emailBuilder.withHTMLText(mailContent);
-      sendMail(emailBuilder.buildEmail());
+      sendMail(emailBuilder.buildEmail(), async);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, to);
     }
@@ -257,13 +269,15 @@ public class EmailUtil {
       template.process(model, stringWriter);
       String mailContent = stringWriter.toString();
       emailBuilder.withHTMLText(mailContent);
-      sendMail(emailBuilder.buildEmail());
+      sendMail(emailBuilder.buildEmail(), true);
     }
   }
 
-  public static void sendMail(Email email) {
+  public static void sendMail(Email email, boolean async) {
     if (mailer != null && getSmtpSettings().getEnableSmtpServer()) {
-      mailer.sendMail(email, true);
+      mailer.sendMail(email, async);
+    } else {
+      LOG.error("Mailer is not initialized or Smtp is not Enabled.");
     }
   }
 
@@ -281,7 +295,8 @@ public class EmailUtil {
             templatePopulator,
             user.getEmail(),
             EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-            EmailUtil.INVITE_RANDOM_PWD);
+            EmailUtil.INVITE_RANDOM_PWD,
+            true);
       } catch (Exception ex) {
         LOG.error(
             "Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
@@ -309,7 +324,8 @@ public class EmailUtil {
             templatePopulator,
             receiverMail,
             EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-            EmailUtil.CHANGE_EVENT_TEMPLATE);
+            EmailUtil.CHANGE_EVENT_TEMPLATE,
+            true);
       } catch (Exception ex) {
         LOG.error(
             "Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
@@ -344,7 +360,8 @@ public class EmailUtil {
     }
   }
 
-  public static void sendTestEmail(String email) throws IOException, TemplateException {
+  public static void sendTestEmail(String email, boolean async)
+      throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put("userName", email.split("@")[0]);
@@ -355,7 +372,8 @@ public class EmailUtil {
           templatePopulator,
           email,
           EMAIL_TEMPLATE_BASEPATH,
-          TEST_EMAIL_TEMPLATE);
+          TEST_EMAIL_TEMPLATE,
+          async);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, email);
     }
