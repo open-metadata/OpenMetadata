@@ -28,13 +28,17 @@ public class MigrationUtil {
       ListFilter filter = new ListFilter(Include.ALL);
       List<String> jsons = daoCollection.applicationDAO().listAfter(filter, Integer.MAX_VALUE, "");
       for (String jsonStr : jsons) {
-        App application = JsonUtils.convertValue(jsonStr, App.class);
+        App application = JsonUtils.readValue(jsonStr, App.class);
         String cronExpression = application.getAppSchedule().getCronExpression();
         Cron quartzCronExpression = quartzParser.parse(cronExpression);
         String unixCron = quartzToUnixMapper.map(quartzCronExpression).asString();
         application.getAppSchedule().setCronExpression(unixCron);
         daoCollection.applicationDAO().update(application);
       }
+    } catch (IllegalArgumentException e) {
+      LOG.warn(
+          "Got IllegalArgumentExpr Cron Expression might already be Migrated. Message : {}",
+          e.getMessage());
     } catch (Exception ex) {
       LOG.error("Error while migrating cron expression, Logging and moving further", ex);
     }
