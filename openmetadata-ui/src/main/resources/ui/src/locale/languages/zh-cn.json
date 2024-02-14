@@ -1227,7 +1227,7 @@
     "your-entity": "您的{{entity}}"
   },
   "message": {
-    "access-block-time-message": "Access will be blocked for milliseconds after max failed login attapmts performed.",
+    "access-block-time-message": "Access will be blocked for milliseconds after max failed login attempts performed.",
     "access-control-description": "Align with your organizational hierarchy and team access with roles and policies.",
     "access-to-collaborate": "允许任何人加入团队，查看数据并协作",
     "action-has-been-done-but-deploy-successfully": "{{action}}已完成并成功部署",
