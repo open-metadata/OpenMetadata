@@ -104,8 +104,8 @@ jest.mock('../../../rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../ApplicationConfigProvider/ApplicationConfigProvider', () => ({
-  useApplicationConfigContext: jest.fn().mockImplementation(() => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     cachedEntityData: {},
     updateCachedEntityData,
   })),

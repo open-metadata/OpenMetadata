@@ -81,19 +81,11 @@ jest.mock('../../components/WelcomeScreen/WelcomeScreen.component', () => {
     ));
 });
 
-jest.mock(
-  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest
-      .fn()
-      .mockImplementation(() => ({ selectedPersona: mockPersonaName })),
-  })
-);
-
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useApplicationStore: jest
-    .fn()
-    .mockImplementation(() => ({ currentUser: mockUserData })),
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    currentUser: mockUserData,
+    selectedPersona: { fullyQualifiedName: mockPersonaName },
+  })),
 }));
 
 jest.mock('../../rest/DocStoreAPI', () => ({
@@ -112,10 +104,6 @@ jest.mock('../../rest/userAPI', () => ({
   getUserById: jest.fn().mockImplementation(() => mockUserData),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
-}));
-
 jest.mock('react-grid-layout', () => ({
   WidthProvider: jest
     .fn()
@@ -128,10 +116,6 @@ jest.mock('react-grid-layout', () => ({
     ),
   __esModule: true,
   default: '',
-}));
-
-jest.mock('../../hooks/authHooks', () => ({
-  useAuth: jest.fn().mockImplementation(() => ({ isAuthDisabled: false })),
 }));
 
 describe('MyDataPage component', () => {

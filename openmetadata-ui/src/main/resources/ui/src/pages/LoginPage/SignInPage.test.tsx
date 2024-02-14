@@ -29,19 +29,15 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useApplicationStore: jest.fn(),
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    applicationConfig: {
+      customLogoUrlPath: 'https://custom-logo.png',
+      customMonogramUrlPath: 'https://custom-monogram.png',
+    },
+    getOidcToken: jest.fn(),
+  })),
 }));
-jest.mock(
-  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-      customLogoUrlPath: 'https://customlink.source',
-
-      customMonogramUrlPath: 'https://customlink.source',
-    })),
-  })
-);
 
 jest.mock('../../assets/img/login-bg.png', () => 'login-bg.png');
 
@@ -64,6 +60,7 @@ describe('Test SignInPage Component', () => {
       authConfig: { provider: 'google' },
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
     });
     const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
@@ -91,6 +88,7 @@ describe('Test SignInPage Component', () => {
       authConfig: { provider },
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
     });
     const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
@@ -113,6 +111,7 @@ describe('Test SignInPage Component', () => {
       authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
     });
     const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
@@ -128,6 +127,11 @@ describe('Test SignInPage Component', () => {
       authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
+      applicationConfig: {
+        customLogoUrlPath: 'https://custom-logo.png',
+        customMonogramUrlPath: 'https://custom-monogram.png',
+      },
     });
     render(<SignInPage />, {
       wrapper: MemoryRouter,
@@ -137,6 +141,6 @@ describe('Test SignInPage Component', () => {
 
     expect(brandLogoImage).toBeInTheDocument();
 
-    expect(brandLogoImage).toHaveAttribute('src', 'https://customlink.source');
+    expect(brandLogoImage).toHaveAttribute('src', 'https://custom-logo.png');
   });
 });

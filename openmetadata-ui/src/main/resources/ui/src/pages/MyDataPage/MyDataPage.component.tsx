@@ -47,8 +47,7 @@ const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
-  const { selectedPersona } = useApplicationStore();
+  const { currentUser, selectedPersona } = useApplicationStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
