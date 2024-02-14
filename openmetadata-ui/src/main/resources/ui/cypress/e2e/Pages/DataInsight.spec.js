@@ -22,7 +22,7 @@ import {
   interceptURL,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
+import { verifyKpiChart } from '../../common/DataInsightUtils';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -38,8 +38,6 @@ const KPI_DATA = [
     metricType: 'hasOwnerFraction (PERCENTAGE)',
   },
 ];
-
-let isSuccessStatus = false;
 
 const deleteKpiRequest = () => {
   cy.get('[data-menu-id*="kpi"]').click();
@@ -141,7 +139,7 @@ describe('Data Insight feature', () => {
     cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
     cy.reload();
-    isSuccessStatus = checkDataInsightSuccessStatus();
+    verifyKpiChart();
   });
 
   it('Verifying Data assets tab', () => {
@@ -151,9 +149,6 @@ describe('Data Insight feature', () => {
     cy.get('[data-testid="search-dropdown-Tier"]').should('be.visible');
     cy.get('[data-testid="summary-card"]').should('be.visible');
     cy.get('[data-testid="kpi-card"]').should('be.visible');
-    if (isSuccessStatus) {
-      cy.get('#kpi-chart').scrollIntoView().should('be.visible');
-    }
     cy.get('#entity-summary-chart').scrollIntoView().should('be.visible');
     cy.get('#PercentageOfEntitiesWithDescriptionByType-graph')
       .scrollIntoView()
