@@ -15,10 +15,12 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { PersonaSelectableList } from './PersonaSelectableList.component';
 
-const data = [{ id: '1', type: 'user', name: 'username' }];
+const personaName = 'personaName';
+
+const data = [{ id: '1', type: 'user', name: personaName }];
 
 const allData = [
-  { id: '1', type: 'user', name: 'username' },
+  { id: '1', type: 'user', name: personaName },
   { id: '2', type: 'user', name: 'username1' },
 ];
 
@@ -30,7 +32,7 @@ jest.mock('../../../rest/PersonaAPI', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('username'),
+  getEntityName: jest.fn().mockReturnValue('personaName'),
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue(allData),
 }));
 
@@ -57,7 +59,7 @@ jest.mock('../../common/SelectableList/SelectableList.component', () => ({
           {customTagRenderer('add-user')}
           <button
             data-testid="fetch-options"
-            onClick={() => fetchOptions('username')}>
+            onClick={() => fetchOptions(personaName)}>
             fetchOptions
           </button>
           <button data-testid="update" onClick={onUpdate}>
@@ -114,11 +116,11 @@ describe('PersonaSelectableList', () => {
       );
     });
 
-    expect(screen.getByTestId('persona-list-item')).toBeInTheDocument();
-    expect(screen.getByText('username')).toBeInTheDocument();
+    expect(await screen.findByTestId('persona-list-item')).toBeInTheDocument();
+    expect(await screen.findByText(personaName)).toBeInTheDocument();
   });
 
-  it('should return null if hasPermission is false', async () => {
+  it('should not render list if hasPermission is false', async () => {
     await act(async () => {
       render(
         <PersonaSelectableList
@@ -148,7 +150,7 @@ describe('PersonaSelectableList', () => {
         userEvent.click(await screen.findByTestId('update'));
       });
 
-      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockUpdate).toHaveBeenCalledWith('s');
     });
   });
 
