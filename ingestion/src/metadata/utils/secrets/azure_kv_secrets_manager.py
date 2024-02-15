@@ -69,3 +69,4 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
             logger.error(
                 f"Could not get the secret value of {secret_id} due to [{exc}]"
             )
+            raise exc
