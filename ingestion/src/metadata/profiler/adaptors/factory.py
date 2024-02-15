@@ -11,13 +11,14 @@
 """
 factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
-from typing import Callable, Dict, Type
+from typing import Callable, Dict
 
 from pymongo import MongoClient
 
 from metadata.profiler.adaptors.dynamodb import DynamoDB
 from metadata.profiler.adaptors.mongodb import MongoDB
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+
 NoSQLAdaptorConstructor = Callable[[any], NoSQLAdaptor]
 
 

@@ -13,10 +13,8 @@ MongoDB adaptor for the NoSQL profiler.
 """
 from typing import TYPE_CHECKING
 
-
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-
 
 if TYPE_CHECKING:
     from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
