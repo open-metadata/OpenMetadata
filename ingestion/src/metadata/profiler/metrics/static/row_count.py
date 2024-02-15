@@ -19,10 +19,9 @@ from sqlalchemy import func
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import StaticMetric, _label
-from metadata.profiler.metrics.nosql_metric import NoSQLMetric
 
 
-class RowCount(StaticMetric, NoSQLMetric):
+class RowCount(StaticMetric):
     """
     ROW_NUMBER Metric
 

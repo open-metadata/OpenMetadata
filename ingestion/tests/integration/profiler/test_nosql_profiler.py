@@ -74,6 +74,7 @@ def get_ingestion_config(mongo_port: str, mongo_user: str, mongo_pass: str):
 
 
 TEST_DATABASE = "test-database"
+EMPTY_COLLECTION = "empty-collection"
 TEST_COLLECTION = "test-collection"
 TEST_DATA = [
     {
@@ -108,6 +109,7 @@ class NoSQLProfiler(TestCase):
         self.db = self.client[TEST_DATABASE]
         self.collection = self.db[TEST_COLLECTION]
         self.collection.insert_many(TEST_DATA)
+        self.db.create_collection(EMPTY_COLLECTION)
         self.ingestion_config = get_ingestion_config(
             self.mongo_container.get_exposed_port("27017"), "test", "test"
         )
@@ -158,18 +160,20 @@ class NoSQLProfiler(TestCase):
 
         assert status == 0
 
-        table_profile = self.metadata.get_profile_data(
-            f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}",
-            datetime_to_ts(datetime.now() - timedelta(seconds=10)),
-            get_end_of_day_timestamp_mill(),
-        )
+        expectations = {TEST_COLLECTION: 3, EMPTY_COLLECTION: 0}
 
-        column_profile = self.metadata.get_profile_data(
-            f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}.age",
-            datetime_to_ts(datetime.now() - timedelta(seconds=10)),
-            get_end_of_day_timestamp_mill(),
-            profile_type=ColumnProfile,
-        )
-        assert table_profile.entities
-        assert table_profile.entities[-1].rowCount == 3
-        assert len(column_profile.entities) == 0
+        for collection, expected_row_count in expectations.items():
+            collection_profile = self.metadata.get_profile_data(
+                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{collection}",
+                datetime_to_ts(datetime.now() - timedelta(seconds=10)),
+                get_end_of_day_timestamp_mill(),
+            )
+            assert collection_profile.entities
+            assert collection_profile.entities[-1].rowCount == expected_row_count
+            column_profile = self.metadata.get_profile_data(
+                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}.age",
+                datetime_to_ts(datetime.now() - timedelta(seconds=10)),
+                get_end_of_day_timestamp_mill(),
+                profile_type=ColumnProfile,
+            )
+            assert len(column_profile.entities) == 0
