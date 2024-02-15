@@ -7,6 +7,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
+@SuppressWarnings("unused")
 public class NoOpTestApplication extends AbstractNativeApplication {
 
   @Override
