@@ -13,17 +13,25 @@
 
 package org.openmetadata.service.events.scheduled.template;
 
+import java.util.Map;
+
+@SuppressWarnings("unused")
 public class DataInsightTotalAssetTemplate {
   private String totalDataAssets;
   private String percentChangeTotalAssets;
   private String completeMessage;
   private int numberOfDaysChange;
+  private Map<String, Integer> dateMap;
 
   public DataInsightTotalAssetTemplate(
-      Double totalDataAssets, Double percentChangeTotalAssets, int numberOfDaysChange) {
+      Double totalDataAssets,
+      Double percentChangeTotalAssets,
+      int numberOfDaysChange,
+      Map<String, Integer> dateMap) {
     this.totalDataAssets = String.format("%.2f", totalDataAssets);
     this.percentChangeTotalAssets = String.format("%.2f", percentChangeTotalAssets);
     this.numberOfDaysChange = numberOfDaysChange;
+    this.dateMap = dateMap;
     String color = "#BF0000";
     if (percentChangeTotalAssets > 0) {
       color = "#008510";
@@ -64,5 +72,13 @@ public class DataInsightTotalAssetTemplate {
 
   public void setNumberOfDaysChange(int numberOfDaysChange) {
     this.numberOfDaysChange = numberOfDaysChange;
+  }
+
+  public Map<String, Integer> getDateMap() {
+    return dateMap;
+  }
+
+  public void setDateMap(Map<String, Integer> dateMap) {
+    this.dateMap = dateMap;
   }
 }
