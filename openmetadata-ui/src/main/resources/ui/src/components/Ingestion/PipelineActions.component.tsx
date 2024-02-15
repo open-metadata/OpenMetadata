@@ -12,7 +12,6 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Divider, Space } from 'antd';
-import { AxiosError } from 'axios';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -24,7 +23,6 @@ import {
   getEditIngestionPath,
   getLogsViewerPath,
 } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { PipelineActionsProps } from './PipelineActions.interface';
 
 function PipelineActions({
@@ -59,16 +57,11 @@ function PipelineActions({
       await triggerIngestion(id, displayName);
 
       setCurrTriggerId({ id, state: 'success' });
-      showSuccessToast(t('message.pipeline-trigger-success-message'));
       setTimeout(() => {
         setCurrTriggerId({ id: '', state: '' });
       }, 1500);
     } catch (error) {
       setCurrTriggerId({ id: '', state: '' });
-      showErrorToast(
-        error as AxiosError,
-        t('message.pipeline-trigger-failed-message')
-      );
     }
   };
 
