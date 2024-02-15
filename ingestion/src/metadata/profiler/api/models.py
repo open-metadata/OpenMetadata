@@ -102,6 +102,11 @@ class ProfilerProcessorConfig(ConfigModel):
     schemaConfig: Optional[List[DatabaseAndSchemaConfig]] = []
     databaseConfig: Optional[List[DatabaseAndSchemaConfig]] = []
 
+    # bypass the check of "supportsProfiler" in the source
+    # WARNING: this is only for development. Using this flag in production
+    # will lead to incorrect profiling results or a broken instance
+    ignoreValidation: Optional[bool] = False
+
 
 class ProfilerResponse(ConfigModel):
     """

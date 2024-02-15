@@ -15,9 +15,9 @@ from typing import Callable, Dict, Type
 
 from pymongo import MongoClient
 
+from metadata.profiler.adaptors.dynamodb import DynamoDB
 from metadata.profiler.adaptors.mongodb import MongoDB
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-
 NoSQLAdaptorConstructor = Callable[[any], NoSQLAdaptor]
 
 
@@ -43,18 +43,18 @@ class NoSQLAdaptorFactory:
         """
         self._clients: Dict[str, NoSQLAdaptorConstructor] = {}
 
-    def register(self, source_class: Type, target_class: NoSQLAdaptorConstructor):
+    def register(self, source_class_name: str, target_class: NoSQLAdaptorConstructor):
         """
         Register a client type with its constructor.
 
         Args:
-            source_class (Type): The class of the source client.
+            source_class_name (str): The class of the source client.
             target_class (NoSQLClientConstructor): The constructor for the target client.
 
         Returns:
             None
         """
-        self._clients[source_class.__name__] = target_class
+        self._clients[source_class_name] = target_class
 
     def construct(self, source_client: any) -> NoSQLAdaptor:
         """
@@ -71,9 +71,10 @@ class NoSQLAdaptorFactory:
         """
         client_class = self._clients.get(type(source_client).__name__)
         if not client_class:
-            raise ValueError(f"Unknown NoSQL source: {source_client.__name__}")
+            raise ValueError(f"Unknown NoSQL source: {type(source_client).__name__}")
         return client_class(source_client)
 
 
 factory = NoSQLAdaptorFactory()
-factory.register(MongoClient, MongoDB)
+factory.register(type(MongoClient).__name__, MongoDB)
+factory.register("dynamodb.ServiceResource", DynamoDB)
