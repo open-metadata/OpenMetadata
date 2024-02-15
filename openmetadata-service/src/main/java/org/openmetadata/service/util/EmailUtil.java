@@ -337,6 +337,8 @@ public class EmailUtil {
 
   public static void sendDataInsightEmailNotificationToUser(
       Set<String> emails,
+      String startDate,
+      String endDate,
       DataInsightTotalAssetTemplate totalAssetObj,
       DataInsightDescriptionAndOwnerTemplate descriptionObj,
       DataInsightDescriptionAndOwnerTemplate ownerShipObj,
@@ -346,6 +348,8 @@ public class EmailUtil {
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
+      templatePopulator.put("startDate", startDate);
+      templatePopulator.put("endDate", endDate);
       templatePopulator.put("totalAssetObj", totalAssetObj);
       templatePopulator.put("descriptionObj", descriptionObj);
       templatePopulator.put("ownershipObj", ownerShipObj);

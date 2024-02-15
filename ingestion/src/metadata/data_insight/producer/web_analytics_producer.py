@@ -75,7 +75,7 @@ class WebAnalyticsProducer(ProducerInterface):
         CACHED_EVENTS.clear()
 
     def fetch_data(
-        self, limit=100, fields=["*"]
+        self, limit=100, fields=["*"], entities_cache=None
     ):  # pylint: disable=dangerous-default-value
         """fetch data for web analytics event"""
         events = self._get_events(None, limit, fields)
