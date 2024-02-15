@@ -29,7 +29,7 @@ import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
   return (
-    <Space>
+    <Space data-testid="persona-list-item">
       {props ? (
         <Typography.Text>{getEntityName(props)}</Typography.Text>
       ) : (
