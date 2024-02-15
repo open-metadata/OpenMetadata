@@ -74,7 +74,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
-  const [testDefinition, setTestDefinition] = useState<TestDefinition>({} as TestDefinition);
+  const [testDefinition, setTestDefinition] = useState<TestDefinition>();
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
     initialValue?.testDefinition
   );
@@ -152,7 +152,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
-    return;
+    return null;
   }, [selectedTestType, initialValue, testDefinitions]);
 
   const createTestCaseObj = (value: {
@@ -179,9 +179,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
     const name =
       value.testName?.trim() ||
-      `${replaceAllSpacialCharWith_(
-        columnName ? columnName : table.name
-      )}_${snakeCase(selectedTestType)}_${cryptoRandomString({
+      `${replaceAllSpacialCharWith_(columnName ?? table.name)}_${snakeCase(
+        selectedTestType
+      )}_${cryptoRandomString({
         length: 4,
         type: 'alphanumeric',
       })}`;
@@ -230,6 +230,12 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     if (value.testTypeId) {
       setSelectedTestType(value.testTypeId);
     }
+  };
+
+  const handleTestDefinitionChange = (value: string) => {
+    setTestDefinition(
+      testDefinitions.find((item) => item.fullyQualifiedName === value)
+    );
   };
 
   useEffect(() => {
@@ -286,18 +292,12 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
                 field: t('label.column'),
               })}`,
             },
-          ]}
-          tooltip={testDefinition?.description}>
+          ]}>
           <Select
             data-testid="column"
             placeholder={t('label.please-select-entity', {
               entity: t('label.column-lowercase'),
-            })}
-            onChange={(value) => {
-              setTestDefinition(
-                  testDefinitions.find((item) => item.fullyQualifiedName === value) as TestDefinition
-              );
-            }}>
+            })}>
             {table.columns.map((column) => (
               <Select.Option key={column.name}>{column.name}</Select.Option>
             ))}
@@ -348,7 +348,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
               field: t('label.test-type'),
             })}`,
           },
-        ]}>
+        ]}
+        tooltip={testDefinition?.description}>
         <Select
           showSearch
           data-testid="test-type"
@@ -357,6 +358,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             value: suite.fullyQualifiedName,
           }))}
           placeholder={t('label.select-field', { field: t('label.test-type') })}
+          onChange={handleTestDefinitionChange}
         />
       </Form.Item>
 
