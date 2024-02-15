@@ -42,6 +42,8 @@ class TableColumnToMatchSetValidator(
             raise ValueError(
                 f"Column names for test case {self.test_case.name} returned None"
             )
-        names = cast(ColumnCollection, names) # satisfy type checker for names.keys() access
+        names = cast(
+            ColumnCollection, names
+        )  # satisfy type checker for names.keys() access
         names = list(names.keys())
         return names
