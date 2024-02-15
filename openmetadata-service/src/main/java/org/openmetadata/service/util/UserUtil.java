@@ -119,8 +119,10 @@ public final class UserUtil {
 
   private static String getPassword() {
     try {
-      EmailUtil.testConnection();
-      return PasswordUtil.generateRandomPassword();
+      if (Boolean.FALSE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer())) {
+        EmailUtil.testConnection();
+        return PasswordUtil.generateRandomPassword();
+      }
     } catch (Exception ex) {
       LOG.info("Password set to Default.");
     }
