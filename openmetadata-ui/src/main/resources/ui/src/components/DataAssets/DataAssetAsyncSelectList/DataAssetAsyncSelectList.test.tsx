@@ -17,9 +17,9 @@ import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';
 import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
 
-jest.mock('../../rest/searchAPI');
-jest.mock('../../utils/TableUtils');
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../../rest/searchAPI');
+jest.mock('../../../utils/TableUtils');
+jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test'),
   getEntityReferenceFromEntity: jest
     .fn()
@@ -29,7 +29,7 @@ jest.mock('../../utils/EntityUtils', () => ({
       type: type,
     })),
 }));
-jest.mock('../common/ProfilePicture/ProfilePicture', () => {
+jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="profile-pic">ProfilePicture</p>);

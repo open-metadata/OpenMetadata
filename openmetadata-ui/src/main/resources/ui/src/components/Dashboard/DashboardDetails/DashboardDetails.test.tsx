@@ -93,18 +93,18 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('../common/EntityDescription/Description', () => {
+jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
-jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest
       .fn()
@@ -112,7 +112,7 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/TableTags/TableTags.component', () =>
+jest.mock('../../Database/TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -120,24 +120,24 @@ jest.mock('../../components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
-});
-
-jest.mock('../../components/Lineage/Lineage.component', () => {
+jest.mock('../../Lineage/Lineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
-jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../ActivityFeed/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor.component</p>);
+});
+
+jest.mock('../../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
@@ -150,12 +150,12 @@ jest.mock('../../utils/CommonUtils', () => ({
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
-jest.mock('../../utils/TagsUtils', () => ({
+jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn(() => Promise.resolve(mockTagList)),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/GlossaryUtils', () => ({
+jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermsList: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));

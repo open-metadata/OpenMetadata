@@ -21,45 +21,41 @@ import TopicVersion from './TopicVersion.component';
 const mockPush = jest.fn();
 
 jest.mock(
-  '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
+jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock(
-  '../../components/common/CustomPropertyTable/CustomPropertyTable',
-  () => ({
-    CustomPropertyTable: jest
-      .fn()
-      .mockImplementation(() => <div>CustomPropertyTable</div>),
-  })
-);
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockImplementation(() => <div>CustomPropertyTable</div>),
+}));
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../common/EntityDescription/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock(
-  '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
-  () => jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
+jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
+  jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 
-jest.mock('../../components/TopicDetails/TopicSchema/TopicSchema', () =>
+jest.mock('../../Topic/TopicSchema/TopicSchema', () =>
   jest.fn().mockImplementation(() => <div>TopicSchema</div>)
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 

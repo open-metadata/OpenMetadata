@@ -29,29 +29,29 @@ const mockProps: TableQueryRightPanelProps = {
 };
 
 jest.mock(
-  '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component',
+  '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
     UserTeamSelectableList: jest
       .fn()
       .mockImplementation(() => <div>UserTeamSelectableList</div>),
   })
 );
-jest.mock('../../../components/common/EntityDescription/Description', () => {
+jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
-jest.mock('../../../components/TagsInput/TagsInput.component', () => {
+jest.mock('../../../TagsInput/TagsInput.component', () => {
   return jest.fn().mockImplementation(() => <div>TagsInput.component</div>);
 });
-jest.mock('../../../components/Loader/Loader', () => {
+jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('../../../utils/TagsUtils', () => ({
+jest.mock('../../../../utils/TagsUtils', () => ({
   fetchTagsAndGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
 
-jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () => {
+jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <>testProfilePicture</>);
 });
 

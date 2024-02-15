@@ -28,11 +28,11 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-jest.mock('../../utils/WhatsNewModal.util', () => ({
+jest.mock('../../../utils/WhatsNewModal.util', () => ({
   getReleaseVersionExpiry: jest.fn().mockImplementation(() => new Date()),
 }));
 
-jest.mock('../../rest/commonAPI', () => ({
+jest.mock('../../../rest/commonAPI', () => ({
   getRepositoryData: jest.fn().mockImplementation(() =>
     Promise.resolve({
       stargazers_count: 10,
@@ -40,7 +40,7 @@ jest.mock('../../rest/commonAPI', () => ({
   ),
 }));
 
-jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     currentUser: {
       name: 'admin',

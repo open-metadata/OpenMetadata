@@ -65,12 +65,9 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>CustomMetricForm</div>);
   }
 );
-jest.mock(
-  '../../Profiler/ProfilerDashboard/component/ProfilerLatestValue',
-  () => {
-    return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
-  }
-);
+jest.mock('../../Profiler/ProfilerLatestValue/ProfilerLatestValue', () => {
+  return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
+});
 jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () => {
   return jest.fn().mockImplementation(() => <div>DeleteWidgetModal</div>);
 });

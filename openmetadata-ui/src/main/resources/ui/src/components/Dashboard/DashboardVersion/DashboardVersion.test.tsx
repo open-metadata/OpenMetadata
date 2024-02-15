@@ -26,64 +26,52 @@ import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const mockPush = jest.fn();
 
-jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
-  }
-);
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
+});
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
-jest.mock(
-  '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
-  }
-);
+jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
+});
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
-  }
-);
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
+});
 
 jest.mock(
-  '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
+jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
+jest.mock('../../Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
-jest.mock(
-  '../../components/common/CustomPropertyTable/CustomPropertyTable',
-  () => ({
-    CustomPropertyTable: jest
-      .fn()
-      .mockImplementation(() => <div>CustomPropertyTable</div>),
-  })
-);
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockImplementation(() => <div>CustomPropertyTable</div>),
+}));
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

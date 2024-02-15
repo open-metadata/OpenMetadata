@@ -34,7 +34,7 @@ jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn(),
 }));
 
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>Loader</p>);
 });
 
@@ -104,12 +104,15 @@ jest.mock('../../../rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../ApplicationConfigProvider/ApplicationConfigProvider', () => ({
-  useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-    cachedEntityData: {},
-    updateCachedEntityData,
-  })),
-}));
+jest.mock(
+  '../../../context/ApplicationConfigProvider/ApplicationConfigProvider',
+  () => ({
+    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
+      cachedEntityData: {},
+      updateCachedEntityData,
+    })),
+  })
+);
 
 describe('Test EntityPopoverCard component', () => {
   it('EntityPopoverCard should render element', () => {

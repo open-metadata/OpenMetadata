@@ -12,13 +12,7 @@
  */
 
 // Library imports
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 // internal imports
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -45,31 +39,18 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-// mock internal imports
-jest.mock('./Component/ProfilerSettingsModal', () => {
-  return jest.fn().mockImplementation(() => {
-    return <div>ProfilerSettingsModal.component</div>;
-  });
-});
-jest.mock('./Component/ColumnProfileTable', () => {
+jest.mock('./ColumnProfileTable/ColumnProfileTable', () => {
   return jest.fn().mockImplementation(() => {
     return <div>ColumnProfileTable.component</div>;
   });
 });
 
-jest.mock('../../utils/CommonUtils', () => ({
-  formatNumberWithComma: jest.fn(),
-  formTwoDigitNumber: jest.fn(),
-  getStatisticsDisplayValue: jest.fn(),
-  getEntityDeleteMessage: jest.fn(),
-}));
-
-jest.mock('../../rest/testAPI', () => ({
+jest.mock('../../../rest/testAPI', () => ({
   getListTestCase: jest
     .fn()
     .mockImplementation(() => Promise.resolve(TEST_CASE)),
 }));
-jest.mock('../../rest/tableAPI', () => ({
+jest.mock('../../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('./QualityTab/QualityTab.component', () => ({
@@ -132,21 +113,5 @@ describe('Test TableProfiler component', () => {
     );
 
     expect(addTableTest).toBeInTheDocument();
-  });
-
-  it('CTA: Setting button should work properly', async () => {
-    render(<TableProfilerV1 {...mockProps} />);
-
-    const settingBtn = await screen.findByTestId('profiler-setting-btn');
-
-    expect(settingBtn).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(settingBtn);
-    });
-
-    expect(
-      await screen.findByText('ProfilerSettingsModal.component')
-    ).toBeInTheDocument();
   });
 });

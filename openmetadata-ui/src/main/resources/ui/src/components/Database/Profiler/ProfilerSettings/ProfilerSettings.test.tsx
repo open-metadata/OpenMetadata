@@ -31,7 +31,7 @@ const mockProfilerConfig = {
   },
 };
 
-jest.mock('../../rest/databaseAPI', () => ({
+jest.mock('../../../../rest/databaseAPI', () => ({
   getDatabaseProfilerConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockProfilerConfig)),
@@ -46,7 +46,7 @@ jest.mock('../../rest/databaseAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockProfilerConfig)),
 }));
 
-jest.mock('../../jsons/profilerSettings.json', () => ({
+jest.mock('../../../../jsons/profilerSettings.json', () => ({
   __esModule: true,
   default: MOCK_SCHEMA,
 }));

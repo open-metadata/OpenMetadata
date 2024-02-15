@@ -25,7 +25,7 @@ import TopicDetails from './TopicDetails.component';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
 
-jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
+jest.mock('../../common/EntitySummaryDetails/EntitySummaryDetails', () => {
   return jest
     .fn()
     .mockReturnValue(
@@ -73,58 +73,50 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../components/Lineage/Lineage.component', () => {
+jest.mock('../../Lineage/Lineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 
-jest.mock('../common/EntityDescription/Description', () => {
+jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 
-jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
+jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
   return jest.fn().mockReturnValue(<p>Breadcrumb</p>);
 });
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
-  return jest.fn().mockReturnValue(<p>TagsContainerV2</p>);
-});
-
-jest.mock('../FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
-});
-
-jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('../SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
+jest.mock('../../ActivityFeed/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor.component</p>);
 });
 
-jest.mock('./TopicSchema/TopicSchema', () => {
+jest.mock('../TopicSchema/TopicSchema', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="schema-fields">TopicSchema</div>);
 });
 
 jest.mock(
-  '../../components/SampleDataWithMessages/SampleDataWithMessages',
+  '../../Database/SampleDataWithMessages/SampleDataWithMessages',
   () => {
     return jest.fn().mockReturnValue(<div>SampleDataWithMessages</div>);
   }
 );
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),

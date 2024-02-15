@@ -29,7 +29,7 @@ const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
@@ -73,7 +73,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
@@ -133,7 +133,7 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>testLoader</div>)
 );
 
@@ -141,7 +141,7 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),

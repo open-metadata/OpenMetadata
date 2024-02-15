@@ -69,13 +69,13 @@ const mockProps: TestCaseResultTabProps = {
   onTestCaseUpdate: jest.fn(),
 };
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
-jest.mock('../../SchemaEditor/SchemaEditor', () => {
+jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
 });
-jest.mock('../../ProfilerDashboard/component/TestSummary', () => {
+jest.mock('../../../Database/Profiler/TestSummary/TestSummary', () => {
   return jest.fn().mockImplementation(() => <div>TestSummary</div>);
 });
 jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
@@ -91,7 +91,7 @@ jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
     </div>
   ));
 });
-jest.mock('../../../utils/PermissionsUtils', () => ({
+jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 

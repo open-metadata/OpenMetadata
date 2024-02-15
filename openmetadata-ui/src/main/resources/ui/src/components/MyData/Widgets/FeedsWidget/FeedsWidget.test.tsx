@@ -73,19 +73,20 @@ const widgetProps = {
 const tabs = ['All', 'Mentions', 'Tasks'];
 
 jest.mock(
-  '../../../components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
+  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
   () => jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
-jest.mock('../../common/FeedsFilterPopover/FeedsFilterPopover.component', () =>
-  jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
+jest.mock(
+  '../../../common/FeedsFilterPopover/FeedsFilterPopover.component',
+  () => jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
-jest.mock('../../../rest/feedsAPI', () => ({
+jest.mock('../../../../rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockReturnValue(Promise.resolve(mockThread)),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/CommonUtils', () => ({
   getCountBadge: jest.fn(),
   getEntityDetailLink: jest.fn(),
   Transi18next: jest.fn(),
@@ -105,7 +106,7 @@ jest.mock('quilljs-markdown', () => {
 });
 
 jest.mock(
-  '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest
       .fn()

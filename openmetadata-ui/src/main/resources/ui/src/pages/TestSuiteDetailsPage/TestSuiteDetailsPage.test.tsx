@@ -20,7 +20,7 @@ import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 jest.mock(
@@ -58,11 +58,14 @@ jest.mock(
 jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
-jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DataQualityTab.component</div>);
-});
+jest.mock(
+  '../../components/Database/Profiler/DataQualityTab/DataQualityTab',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>DataQualityTab.component</div>);
+  }
+);
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest
@@ -96,7 +99,7 @@ jest.mock('../../rest/testAPI', () => {
       .mockImplementation(() => Promise.resolve({ data: [] })),
   };
 });
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest
       .fn()

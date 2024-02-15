@@ -19,7 +19,7 @@ import Reaction from './Reaction';
 const onReactionSelect = jest.fn();
 const onHide = jest.fn();
 
-jest.mock('../../hooks/useImage', () =>
+jest.mock('../../../hooks/useImage', () =>
   jest.fn().mockReturnValue({ image: null })
 );
 

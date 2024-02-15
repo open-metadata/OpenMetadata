@@ -45,6 +45,10 @@ const mockUsers = [
   },
 ];
 
+jest.mock('../../../common/PopOverCard/UserPopOverCard', () =>
+  jest.fn().mockReturnValue('Aaron Johnson')
+);
+
 const mockOnRemoveUser = jest.fn();
 
 describe('UsersTab', () => {

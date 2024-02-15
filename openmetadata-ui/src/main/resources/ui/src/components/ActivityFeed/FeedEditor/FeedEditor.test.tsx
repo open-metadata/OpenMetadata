@@ -73,7 +73,7 @@ jest.mock('react-quill', () => {
   };
 });
 
-jest.mock('../../utils/QuillLink/QuillLink', () => {
+jest.mock('../../../utils/QuillLink/QuillLink', () => {
   return jest.fn();
 });
 

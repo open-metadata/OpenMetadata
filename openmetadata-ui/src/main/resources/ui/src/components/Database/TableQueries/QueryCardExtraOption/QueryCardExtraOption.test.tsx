@@ -35,14 +35,14 @@ let mockUserData: User = {
   email: '',
 };
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     currentUser: mockUserData,
   })),
 }));
 
-jest.mock('../../../rest/queryAPI', () => ({
-  ...jest.requireActual('../../../rest/queryAPI'),
+jest.mock('../../../../rest/queryAPI', () => ({
+  ...jest.requireActual('../../../../rest/queryAPI'),
   deleteQuery: jest.fn(),
 }));
 

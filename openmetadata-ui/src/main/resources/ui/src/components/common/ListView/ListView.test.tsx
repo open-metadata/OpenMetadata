@@ -18,16 +18,13 @@ const mockCardRenderer = jest.fn().mockImplementation(() => <>Card</>);
 const mockOnSearch = jest.fn();
 const mockHandleDeletedSwitchChange = jest.fn();
 
-jest.mock('../../components/common/Table/Table', () => {
+jest.mock('../Table/Table', () => {
   return jest.fn(() => <p>Table</p>);
 });
 
-jest.mock(
-  '../../components/common/SearchBarComponent/SearchBar.component',
-  () => {
-    return jest.fn().mockImplementation(() => <p>Searchbar</p>);
-  }
-);
+jest.mock('../SearchBarComponent/SearchBar.component', () => {
+  return jest.fn().mockImplementation(() => <p>Searchbar</p>);
+});
 
 describe('ListView component', () => {
   it('should render toggle button for card and table', async () => {

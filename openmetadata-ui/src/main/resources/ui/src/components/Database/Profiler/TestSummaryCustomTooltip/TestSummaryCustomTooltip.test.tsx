@@ -38,7 +38,7 @@ const mockProps = {
     },
   ],
 };
-jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM'),
 }));
 

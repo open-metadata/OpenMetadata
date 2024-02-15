@@ -28,11 +28,11 @@ const mockProps: AddWidgetModalProps = {
   placeholderWidgetKey: 'placeholderKey',
 };
 
-jest.mock('../../Loader/Loader', () =>
+jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
@@ -47,17 +47,17 @@ jest.mock('./AddWidgetTabContent', () =>
   ))
 );
 
-jest.mock('../../../utils/ToastUtils', () => ({
+jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../rest/DocStoreAPI', () => ({
+jest.mock('../../../../rest/DocStoreAPI', () => ({
   getAllKnowledgePanels: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockWidgetsData)),
 }));
 
-jest.mock('../../../utils/CustomizableLandingPageUtils', () => ({
+jest.mock('../../../../utils/CustomizableLandingPageUtils', () => ({
   getWidgetWidthLabelFromKey: jest.fn().mockImplementation((label) => label),
 }));
 

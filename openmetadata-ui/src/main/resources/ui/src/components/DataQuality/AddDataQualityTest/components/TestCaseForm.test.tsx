@@ -79,7 +79,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
-jest.mock('../../../rest/testAPI', () => ({
+jest.mock('../../../../rest/testAPI', () => ({
   getListTestCase: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
@@ -87,7 +87,7 @@ jest.mock('../../../rest/testAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockTestDefinition)),
 }));
-jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
+jest.mock('../../../common/RichTextEditor/RichTextEditor', () =>
   forwardRef(
     jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
   )

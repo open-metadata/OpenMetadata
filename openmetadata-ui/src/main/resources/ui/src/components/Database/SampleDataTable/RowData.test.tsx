@@ -16,7 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { RowData } from './RowData';
 
-jest.mock('../Modals/SchemaModal/SchemaModal', () => {
+jest.mock('../../Modals/SchemaModal/SchemaModal', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="schema-modal">Schema Modal</div>);

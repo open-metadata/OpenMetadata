@@ -99,7 +99,7 @@ const mockUseActivityFeedProviderValue = {
   setActiveThread: jest.fn(),
 };
 
-jest.mock('../../Task/TaskTab/TaskTab.component', () => {
+jest.mock('../../../Entity/Task/TaskTab/TaskTab.component', () => {
   return {
     TaskTab: jest.fn().mockImplementation(({ onAfterClose }) => (
       <div>
@@ -111,11 +111,11 @@ jest.mock('../../Task/TaskTab/TaskTab.component', () => {
     )),
   };
 });
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock(
-  '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
+  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
   () => {
     return jest.fn().mockImplementation(({ onFeedClick }) => (
       <div>
@@ -128,7 +128,7 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest
       .fn()

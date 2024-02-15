@@ -24,11 +24,11 @@ const mockUserData: User = {
   id: '2e424734-761a-443f-bf2a-a5b361823c80',
 };
 
-jest.mock('../../hooks/useImage', () =>
+jest.mock('../../../hooks/useImage', () =>
   jest.fn().mockReturnValue({ image: null })
 );
 
-jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     currentUser: mockUserData,
   })),

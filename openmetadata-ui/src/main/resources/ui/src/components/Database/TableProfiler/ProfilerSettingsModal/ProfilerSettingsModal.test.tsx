@@ -25,7 +25,7 @@ import { getTableProfilerConfig } from '../../../../rest/tableAPI';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
 
-jest.mock('../../../rest/tableAPI', () => ({
+jest.mock('../../../../rest/tableAPI', () => ({
   getTableProfilerConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),

@@ -24,29 +24,29 @@ import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import ColumnProfileTable from './ColumnProfileTable';
 
-jest.mock('../../../components/common/Table/Table', () =>
+jest.mock('../../../common/Table/Table', () =>
   jest.fn().mockImplementation(() => <div>Table</div>)
 );
-jest.mock('../../PageHeader/PageHeader.component', () =>
+jest.mock('../../../PageHeader/PageHeader.component', () =>
   jest.fn().mockImplementation(() => <div>PageHeader</div>)
 );
-jest.mock('../../DatePickerMenu/DatePickerMenu.component', () =>
+jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () =>
   jest.fn().mockImplementation(() => <div>DatePickerMenu</div>)
 );
-jest.mock('./ColumnPickerMenu', () =>
+jest.mock('../ColumnPickerMenu', () =>
   jest.fn().mockImplementation(() => <div>ColumnPickerMenu</div>)
 );
-jest.mock('./ColumnSummary', () =>
+jest.mock('../ColumnSummary', () =>
   jest.fn().mockImplementation(() => <div>ColumnSummary</div>)
 );
-jest.mock('../../common/SummaryCard/SummaryCard.component', () => ({
+jest.mock('../../../common/SummaryCard/SummaryCard.component', () => ({
   SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
 }));
-jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
     .fn()
     .mockImplementation(({ searchValue, onSearch }) => (
@@ -57,14 +57,14 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
       />
     ));
 });
-jest.mock('./ProfilerProgressWidget', () => {
+jest.mock('../ProfilerProgressWidget/ProfilerProgressWidget', () => {
   return jest.fn().mockImplementation(({ value }) => (
     <span data-testid="profiler-progress-widget">
       {value} <span>Progress bar</span>{' '}
     </span>
   ));
 });
-jest.mock('../../common/TestIndicator/TestIndicator', () => {
+jest.mock('../../../common/TestIndicator/TestIndicator', () => {
   return jest.fn().mockImplementation(({ value, type }) => (
     <span data-testid="test-indicator">
       {value} <span>{type}</span>
@@ -77,7 +77,6 @@ jest.mock('../TableProfilerProvider', () => ({
     splitTestCases: { column: [] },
   })),
 }));
-jest.mock('../../../utils/DatasetDetailsUtils');
 
 describe('Test ColumnProfileTable component', () => {
   beforeEach(() => {

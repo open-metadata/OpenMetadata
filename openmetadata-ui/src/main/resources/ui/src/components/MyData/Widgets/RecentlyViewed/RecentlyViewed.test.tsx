@@ -20,7 +20,7 @@ const mockProp = {
 };
 
 jest.mock(
-  '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
+  '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () => {
     return jest
       .fn()
@@ -33,7 +33,7 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/CommonUtils', () => ({
   getRecentlyViewedData: jest.fn().mockReturnValue([
     {
       displayName: 'test',

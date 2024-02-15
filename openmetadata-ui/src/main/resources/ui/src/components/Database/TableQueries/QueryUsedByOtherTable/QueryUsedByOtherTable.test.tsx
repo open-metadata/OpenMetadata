@@ -27,13 +27,13 @@ const mockProps: QueryUsedByOtherTableProps = {
   onChange: jest.fn(),
 };
 
-jest.mock('../../AsyncSelect/AsyncSelect', () => ({
+jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
     .mockImplementation(() => <div>AsyncSelect.component</div>),
 }));
 
-jest.mock('../../../rest/miscAPI', () => ({
+jest.mock('../../../../rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockReturnValue(() => Promise.resolve(MOCK_EXPLORE_SEARCH_RESULTS)),

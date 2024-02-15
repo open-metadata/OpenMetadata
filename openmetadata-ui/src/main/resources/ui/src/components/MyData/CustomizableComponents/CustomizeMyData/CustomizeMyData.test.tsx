@@ -37,7 +37,7 @@ const mockProps: CustomizeMyDataProps = {
 };
 
 jest.mock(
-  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => {
     return jest
       .fn()
@@ -56,20 +56,23 @@ jest.mock('../AddWidgetModal/AddWidgetModal', () => {
   ));
 });
 
-jest.mock('../EmptyWidgetPlaceholder/EmptyWidgetPlaceholder', () => {
-  return jest.fn().mockImplementation(({ handleOpenAddWidgetModal }) => (
-    <div>
-      EmptyWidgetPlaceholder
-      <div onClick={handleOpenAddWidgetModal}>handleOpenAddWidgetModal</div>
-    </div>
-  ));
-});
+jest.mock(
+  '../../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder',
+  () => {
+    return jest.fn().mockImplementation(({ handleOpenAddWidgetModal }) => (
+      <div>
+        EmptyWidgetPlaceholder
+        <div onClick={handleOpenAddWidgetModal}>handleOpenAddWidgetModal</div>
+      </div>
+    ));
+  }
+);
 
-jest.mock('../../../utils/CustomizePageClassBase', () => {
+jest.mock('../../../../utils/CustomizePageClassBase', () => {
   return mockCustomizePageClassBase;
 });
 
-jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children, header }) => (
     <div data-testid="page-layout-v1">
       <div data-testid="page-header">{header}</div>
@@ -78,19 +81,19 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   ));
 });
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest
     .fn()
     .mockImplementation(() => ({ currentUser: mockUserData })),
 }));
 
-jest.mock('../../../rest/feedsAPI', () => ({
+jest.mock('../../../../rest/feedsAPI', () => ({
   getActiveAnnouncement: jest
     .fn()
     .mockImplementation(() => mockActiveAnnouncementData),
 }));
 
-jest.mock('../../../rest/userAPI', () => ({
+jest.mock('../../../../rest/userAPI', () => ({
   getUserById: jest.fn().mockImplementation(() => mockUserData),
 }));
 
@@ -120,7 +123,7 @@ jest.mock('react-grid-layout', () => ({
   default: '',
 }));
 
-jest.mock('../../../hooks/authHooks', () => ({
+jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAuthDisabled: false })),
 }));
 

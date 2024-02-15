@@ -34,7 +34,7 @@ const mockTableQueriesProp: TableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
-jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
+jest.mock('../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
@@ -42,15 +42,15 @@ jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
     .fn()
     .mockImplementation(() => <div>TableQueryRightPanel.component</div>);
 });
-jest.mock('../../rest/queryAPI', () => ({
-  ...jest.requireActual('../../rest/queryAPI'),
+jest.mock('../../../rest/queryAPI', () => ({
+  ...jest.requireActual('../../../rest/queryAPI'),
   getQueriesList: jest
     .fn()
     .mockImplementation(() =>
       Promise.resolve({ data: MOCK_QUERIES, paging: { total: 2 } })
     ),
 }));
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest.fn(),
     permissions: {
@@ -60,7 +60,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
     },
   })),
 }));
-jest.mock('../../rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   getSearchedUsers: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),

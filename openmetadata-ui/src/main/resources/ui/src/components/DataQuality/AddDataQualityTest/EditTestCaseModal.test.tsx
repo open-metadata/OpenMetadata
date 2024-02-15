@@ -26,7 +26,7 @@ const mockProps: EditTestCaseModalProps = {
   onUpdate: jest.fn(),
 };
 
-jest.mock('../common/RichTextEditor/RichTextEditor', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
   );
@@ -34,7 +34,7 @@ jest.mock('../common/RichTextEditor/RichTextEditor', () => {
 jest.mock('./components/ParameterForm', () => {
   return jest.fn().mockImplementation(() => <div>ParameterForm.component</div>);
 });
-jest.mock('../../rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
     getTestDefinitionById: jest
       .fn()

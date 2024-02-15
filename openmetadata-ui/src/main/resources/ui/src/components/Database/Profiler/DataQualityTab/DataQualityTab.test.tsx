@@ -47,29 +47,22 @@ jest.mock('react-router-dom', () => ({
       <span {...rest}>{children}</span>
     )),
 }));
-jest.mock('../../../hooks/authHooks', () => ({
+jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: () => {
     return {
       isAdminUser: mockAuthData.isAdminUser,
     };
   },
 }));
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => mockPermissionsData,
 }));
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: mockAuthData.isAuthDisabled,
-    })),
-  };
-});
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => {
     return <span>Loader</span>;
   });
 });
-jest.mock('../../common/DeleteWidget/DeleteWidgetModal', () => {
+jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () => {
   return jest.fn().mockImplementation(({ visible, onCancel }) => {
     return (
       visible && (
@@ -81,7 +74,7 @@ jest.mock('../../common/DeleteWidget/DeleteWidgetModal', () => {
     );
   });
 });
-jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
+jest.mock('../../../DataQuality/AddDataQualityTest/EditTestCaseModal', () => {
   return jest.fn().mockImplementation(({ visible, onCancel, onUpdate }) => {
     return (
       visible && (
@@ -92,11 +85,6 @@ jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
         </div>
       )
     );
-  });
-});
-jest.mock('./TestSummary', () => {
-  return jest.fn().mockImplementation(() => {
-    return <div>TestSummary</div>;
   });
 });
 

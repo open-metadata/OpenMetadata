@@ -23,7 +23,7 @@ const mockUseTourProvider = {
   updateTourPage: jest.fn(),
   updateTourSearch: jest.fn(),
 };
-jest.mock('../../components/TourProvider/TourProvider', () => ({
+jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => mockUseTourProvider),
 }));
 jest.mock('../../components/AppTour/Tour', () => {

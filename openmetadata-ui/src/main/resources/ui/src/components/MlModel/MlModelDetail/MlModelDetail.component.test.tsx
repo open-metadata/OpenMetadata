@@ -231,6 +231,10 @@ jest.mock('../../../utils/TableUtils', () => {
   };
 });
 
+jest.mock('../../ActivityFeed/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor.component</p>);
+});
+
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()

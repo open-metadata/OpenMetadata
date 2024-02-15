@@ -30,7 +30,7 @@ const mockHistory = {
   goBack: jest.fn(),
 };
 
-jest.mock('../../../rest/testAPI', () => {
+jest.mock('../../../../rest/testAPI', () => {
   return {
     getListTestCaseResults: jest
       .fn()
@@ -46,23 +46,23 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../../../components/DatePickerMenu/DatePickerMenu.component', () => {
+jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>DatePickerMenu.component</div>);
 });
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
 });
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 jest.mock('../../SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
 });
-jest.mock('../../../utils/date-time/DateTimeUtils', () => {
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => {
   return {
     formatDateTime: jest.fn(),
     getCurrentMillis: jest.fn(),
@@ -71,7 +71,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => {
 });
 
 jest.mock(
-  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       entityThread: [],

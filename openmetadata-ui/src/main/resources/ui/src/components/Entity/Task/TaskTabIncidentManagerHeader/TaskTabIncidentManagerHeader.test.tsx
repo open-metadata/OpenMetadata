@@ -137,27 +137,30 @@ const mockStatus = [
 ];
 
 jest.mock(
-  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest
       .fn()
       .mockImplementation(() => ({ testCaseResolutionStatus: mockStatus })),
   })
 );
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => {
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => {
   return {
     OwnerLabel: jest
       .fn()
       .mockImplementation(() => <div>OwnerLabel.component</div>),
   };
 });
-jest.mock('../../common/AssigneeList/AssigneeList', () => {
+jest.mock('../../../common/AssigneeList/AssigneeList', () => {
   return jest.fn().mockImplementation(() => <div>AssigneeList.component</div>);
 });
-jest.mock('../../IncidentManager/Severity/Severity.component', () => {
-  return jest.fn().mockImplementation(() => <div>Severity.component</div>);
-});
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock(
+  '../../../DataQuality/IncidentManager/Severity/Severity.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>Severity.component</div>);
+  }
+);
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);

@@ -66,7 +66,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../TableTags/TableTags.component', () =>
+jest.mock('../../Database/TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -82,7 +82,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
-jest.mock('../../SchemaEditor/SchemaEditor', () =>
+jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
   jest
     .fn()
     .mockImplementation(() => (

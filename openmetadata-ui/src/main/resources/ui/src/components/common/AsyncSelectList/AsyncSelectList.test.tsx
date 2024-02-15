@@ -31,19 +31,19 @@ jest.mock('lodash', () => {
   return module;
 });
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../Tag/TagsV1/TagsV1.component', () =>
+jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
   jest.fn().mockImplementation(() => <div>TagsV1</div>)
 );
 
-jest.mock('../../utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../utils/TagsUtils', () => ({
+jest.mock('../../../utils/TagsUtils', () => ({
   getTagDisplay: jest.fn().mockReturnValue('tags'),
   tagRender: jest.fn().mockReturnValue(<p>Tags Render</p>),
 }));

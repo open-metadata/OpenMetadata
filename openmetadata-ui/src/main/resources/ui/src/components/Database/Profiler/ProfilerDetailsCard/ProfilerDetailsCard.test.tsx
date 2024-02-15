@@ -22,12 +22,12 @@ const mockProps: ProfilerDetailsCardProps = {
   name: 'rowCount',
 };
 
-jest.mock('./ProfilerLatestValue', () => {
+jest.mock('../ProfilerLatestValue/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => {
     return <div>ProfilerLatestValue</div>;
   });
 });
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => {
     return <div>ErrorPlaceHolder</div>;
   });

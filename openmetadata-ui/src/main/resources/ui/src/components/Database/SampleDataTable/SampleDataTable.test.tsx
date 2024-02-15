@@ -38,13 +38,13 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'test' })),
 }));
 
-jest.mock('../../rest/tableAPI', () => ({
+jest.mock('../../../rest/tableAPI', () => ({
   getSampleDataByTableId: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
-jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest
     .fn()
     .mockReturnValue(
@@ -52,7 +52,7 @@ jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
     );
 });
 
-jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
+jest.mock('../../Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockReturnValue(<p>EntityDeleteModal</p>);
 });
 

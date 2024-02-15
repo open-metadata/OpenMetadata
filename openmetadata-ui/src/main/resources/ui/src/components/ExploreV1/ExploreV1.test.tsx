@@ -37,7 +37,7 @@ jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
 
-jest.mock('../../components/GlobalSearchProvider/GlobalSearchProvider', () => ({
+jest.mock('../../context/GlobalSearchProvider/GlobalSearchProvider', () => ({
   useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
   })),

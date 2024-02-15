@@ -46,7 +46,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
-import { ReactComponent as FilterPlaceHolderIcon } from '../../../../../assets/svg/no-search-placeholder.svg';
+import { ReactComponent as FilterPlaceHolderIcon } from '../../../../assets/svg/no-search-placeholder.svg';
 import {
   GREEN_3,
   GREEN_3_OPACITY,

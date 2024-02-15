@@ -119,7 +119,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -127,7 +127,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/TableTags/TableTags.component', () =>
+jest.mock('../../Database/TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -135,14 +135,12 @@ jest.mock('../../../components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="error-placeholder">ErrorPlaceHolder</div>
-      ))
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
+    ))
 );
 
 describe('ContainerDataModel', () => {

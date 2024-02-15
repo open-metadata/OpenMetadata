@@ -27,28 +27,28 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 jest.mock('../../../../rest/tableAPI');
-jest.mock('../../ProfilerDashboard/component/ProfilerLatestValue', () => {
+jest.mock('../../Profiler/ProfilerLatestValue/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
 });
-jest.mock('../../ProfilerDashboard/component/ProfilerDetailsCard', () => {
+jest.mock('../../Profiler/ProfilerDetailsCard/ProfilerDetailsCard', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerDetailsCard</div>);
 });
-jest.mock('../../Chart/CustomBarChart', () => {
+jest.mock('../../../Visualisations/Chart/CustomBarChart', () => {
   return jest.fn().mockImplementation(() => <div>CustomBarChart</div>);
 });
-jest.mock('../../Chart/OperationDateBarChart', () => {
+jest.mock('../../../Visualisations/Chart/OperationDateBarChart', () => {
   return jest.fn().mockImplementation(() => <div>OperationDateBarChart</div>);
 });
-jest.mock('../../PageHeader/PageHeader.component', () => {
+jest.mock('../../../PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader</div>);
 });
-jest.mock('../../DatePickerMenu/DatePickerMenu.component', () => {
+jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () => {
   return jest.fn().mockImplementation(() => <div>DatePickerMenu</div>);
 });
-jest.mock('./NoProfilerBanner.component', () => {
+jest.mock('../NoProfilerBanner/NoProfilerBanner.component', () => {
   return jest.fn().mockImplementation(() => <div>NoProfilerBanner</div>);
 });
-jest.mock('../../common/SummaryCard/SummaryCard.component', () => {
+jest.mock('../../../common/SummaryCard/SummaryCard.component', () => {
   return {
     SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
   };

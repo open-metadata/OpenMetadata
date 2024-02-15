@@ -48,32 +48,29 @@ const mockProps: TestCaseStatusIncidentManagerProps = {
   onSubmit: jest.fn(),
 };
 
-jest.mock('../../common/Badge/Badge.component', () =>
+jest.mock('../../../common/Badge/Badge.component', () =>
   jest.fn().mockImplementation(({ label }) => <div>{label}</div>)
 );
-jest.mock('../../../utils/PermissionsUtils', () => ({
+jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
-jest.mock(
-  '../../DataQuality/TestCaseStatusModal/TestCaseStatusModal.component',
-  () => ({
-    TestCaseStatusModal: jest
-      .fn()
-      .mockImplementation(({ onSubmit, onCancel }) => (
-        <div>
-          TestCaseStatusModal
-          <button data-testid="cancel-btn" onClick={onCancel}>
-            Cancel
-          </button>
-          <button
-            data-testid="submit-btn"
-            onClick={() => onSubmit(mockProps.data)}>
-            Submit
-          </button>
-        </div>
-      )),
-  })
-);
+jest.mock('../../TestCaseStatusModal/TestCaseStatusModal.component', () => ({
+  TestCaseStatusModal: jest
+    .fn()
+    .mockImplementation(({ onSubmit, onCancel }) => (
+      <div>
+        TestCaseStatusModal
+        <button data-testid="cancel-btn" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          data-testid="submit-btn"
+          onClick={() => onSubmit(mockProps.data)}>
+          Submit
+        </button>
+      </div>
+    )),
+}));
 
 describe('TestCaseIncidentManagerStatus', () => {
   it('Should render component', async () => {

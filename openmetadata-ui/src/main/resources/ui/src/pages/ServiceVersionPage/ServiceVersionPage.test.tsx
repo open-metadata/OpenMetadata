@@ -52,7 +52,7 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
@@ -72,7 +72,7 @@ jest.mock(
     ))
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
@@ -80,7 +80,7 @@ jest.mock('./ServiceVersionMainTabContent', () =>
   jest.fn().mockImplementation(() => <div>ServiceVersionMainTabContent</div>)
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest
       .fn()
