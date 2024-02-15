@@ -15,7 +15,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 import traceback
-from typing import Dict, Iterable, List, Optional, Type
+from typing import Dict, List, Optional, Type
 
 from sqlalchemy import Column
 
