@@ -20,6 +20,7 @@
         "Airflow",
         "GluePipeline",
         "Airbyte",
+        "Rivery",
         "Fivetran",
         "Dagster",
         "Nifi",
@@ -32,6 +33,9 @@
       "javaEnums": [
         {
           "name": "Airflow"
+        },
+        {
+          "name": "Rivery"
         },
         {
           "name": "GluePipeline"
@@ -84,6 +88,9 @@
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/riveryConnection.json"
             },
             {
               "$ref": "./connections/pipeline/fivetranConnection.json"

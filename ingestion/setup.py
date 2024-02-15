@@ -266,6 +266,7 @@ plugins: Dict[str, Set[str]] = {
     "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": pii_requirements,
+    "rivery": {},
 }
 
 dev = {

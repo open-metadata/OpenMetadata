@@ -201,11 +201,15 @@ class TableauSource(DashboardServiceSource):
                 f"{clean_uri(str(self.config.serviceConnection.__root__.config.hostPort))}"
                 f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
             )
+            project_name = self.get_project_name(dashboard_details=dashboard_details)
+            # print('dashboard_details***')
+            # print(dashboard_details)
+            # print('end_dashboard_details***')
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
-                displayName=dashboard_details.name,
+                displayName=dashboard_details.name + " | Project: " + project_name,
                 description=dashboard_details.description,
-                project=self.get_project_name(dashboard_details=dashboard_details),
+                project= project_name,
                 charts=[
                     fqn.build(
                         self.metadata,

@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/riveryConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RiveryConnection",
+  "description": "Rivery Metadata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.RiveryConnection",
+  "definitions": {
+    "RiveryType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Rivery"],
+      "default": "Rivery"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/RiveryType",
+      "default": "Rivery"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "API URI",
+      "description": "Pipeline Service Management/UI URI. Usually:api.rivery.io, for europe deployment use: api.eu-west-1.rivery.io",
+      "type": "string",
+      "format": "uri",
+      "default": "api.rivery.io"
+    },"AccountID": {
+      "title": "Account ID",
+      "description": "Rivery account can be found in the url",
+      "type": "string"
+    },"EnviromentID": {
+      "title": "Enviroment ID",
+      "description": "Rivery environment can be found in the url",
+      "type": "string"
+    },"apiToken": {
+      "title": "Rivery Token API",
+      "description": "See in the doc how to generate token: https://docs.rivery.io/docs/rivery-api",
+      "type": "string"
+    },
+    "apiSecret": {
+      "title": "Rivery API Secret",
+      "description": "Rivery API Secret.",
+      "type": "string",
+      "format": "password"
+    },
+    "apiVersion": {
+      "title": "Rivery API Version",
+      "description": "",
+      "type": "string",
+      "format": "string",
+      "default": "v1"
+    },
+    "limit": {
+      "title": "Rivery API Limit",
+      "description": "Rivery API Limit For Pagination.",
+      "type": "integer",
+      "default": 500
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["apiKey", "apiSecret"]
+}

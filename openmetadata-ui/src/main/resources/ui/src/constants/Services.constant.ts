@@ -66,6 +66,7 @@ import quicksight from '../assets/img/service-icon-quicksight.png';
 import redash from '../assets/img/service-icon-redash.png';
 import redpanda from '../assets/img/service-icon-redpanda.png';
 import redshift from '../assets/img/service-icon-redshift.png';
+import rivery from '../assets/img/service-icon-rivery.png';
 import sagemaker from '../assets/img/service-icon-sagemaker.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
 import sapHana from '../assets/img/service-icon-sap-hana.png';
@@ -169,6 +170,7 @@ export const SAS = sas;
 export const LOGO = logo;
 
 export const AIRFLOW = airflow;
+export const RIVERY = rivery;
 export const PREFECT = prefect;
 export const POWERBI = powerbi;
 export const DATABASE_DEFAULT = databaseDefault;
