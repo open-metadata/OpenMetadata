@@ -131,6 +131,9 @@
       "$ref": "../type/entityReference.json",
       "default": null
     },
+    "provider" : {
+      "$ref": "../type/basic.json#/definitions/providerType"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"

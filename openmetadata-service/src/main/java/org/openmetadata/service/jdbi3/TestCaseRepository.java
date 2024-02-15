@@ -193,7 +193,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestDefinition(TestCase test) {
-    return getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
+    return getFromEntityRef(test.getId(), Relationship.CONTAINS, TEST_DEFINITION, true);
   }
 
   private void validateTestParameters(
@@ -247,7 +247,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         test.getId(),
         TEST_DEFINITION,
         TEST_CASE,
-        Relationship.APPLIED_TO);
+        Relationship.CONTAINS);
   }
 
   @Override
@@ -900,7 +900,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_DEFINITION,
           original.getTestDefinition(),
           updated.getTestDefinition(),
-          Relationship.APPLIED_TO,
+          Relationship.CONTAINS,
           TEST_CASE,
           updated.getId());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
