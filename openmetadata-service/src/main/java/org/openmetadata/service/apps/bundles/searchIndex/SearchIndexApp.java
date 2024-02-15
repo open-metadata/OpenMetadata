@@ -48,6 +48,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
+@SuppressWarnings("unused")
 public class SearchIndexApp extends AbstractNativeApplication {
 
   private static final String ALL = "all";

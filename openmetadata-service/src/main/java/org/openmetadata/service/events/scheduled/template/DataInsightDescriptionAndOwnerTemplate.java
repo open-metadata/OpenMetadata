@@ -15,6 +15,7 @@ package org.openmetadata.service.events.scheduled.template;
 
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public class DataInsightDescriptionAndOwnerTemplate {
   public enum MetricType {
     DESCRIPTION,
@@ -36,6 +37,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
   private String completeMessage;
   private int numberOfDaysChange;
   private Map<String, Double> tierMap;
+  private Map<String, Integer> dateMap;
 
   public DataInsightDescriptionAndOwnerTemplate(
       MetricType metricType,
@@ -46,7 +48,8 @@ public class DataInsightDescriptionAndOwnerTemplate {
       boolean isKpiAvailable,
       String numberOfDaysLeft,
       int numberOfDaysChange,
-      Map<String, Double> tierMap) {
+      Map<String, Double> tierMap,
+      Map<String, Integer> dateMap) {
     this.percentCompleted = String.format("%.2f", percentCompleted);
     this.targetKpi = targetKpi;
     this.percentChange = String.format("%.2f", percentChange);
@@ -54,6 +57,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
     this.numberOfDaysLeft = numberOfDaysLeft;
     this.tierMap = tierMap;
     this.numberOfDaysChange = numberOfDaysChange;
+    this.dateMap = dateMap;
     String color = "#BF0000";
     if (percentChange > 0) {
       color = "#008510";
@@ -86,7 +90,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
           case NOT_MET -> "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
         };
       }
-      return "You have not set any KPIS yet, it’s time to restructure your goals, set KPIs and progress faster.";
+      return "You have not set any KPIs yet, it’s time to restructure your goals, set KPIs and progress faster.";
     }
     return "";
   }
@@ -149,5 +153,13 @@ public class DataInsightDescriptionAndOwnerTemplate {
 
   public void setNumberOfDaysChange(int numberOfDaysChange) {
     this.numberOfDaysChange = numberOfDaysChange;
+  }
+
+  public Map<String, Integer> getDateMap() {
+    return dateMap;
+  }
+
+  public void setDateMap(Map<String, Integer> dateMap) {
+    this.dateMap = dateMap;
   }
 }
