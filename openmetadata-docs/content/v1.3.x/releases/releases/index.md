@@ -437,8 +437,11 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 
 # 0.12.0 Release
 
-You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
-or watch an awesome video showing the new features!
+{% note noteType="Tip" %} 
+**2022, September 7th**
+
+[OpenMetadata 0.12.0 Release](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
+{% /note %}
 
 {%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" width="560px" height="315px" /%}
 
@@ -512,7 +515,91 @@ When creating a new user or when a user is registering for the first time, the d
 UI improvements have been made on the Schema, Service, and Database details pages.
 Manage Tab has been replaced with the manage button on the UI.
 
+# 0.11.0 Release
+
+{% note noteType="Tip" %} 
+**2022, July 1st**
+
+[OpenMetadata 0.11.0 Release](https://blog.open-metadata.org/openmetadata-0-11-release-8b82c85636a)
+{% /note %}
+
+## Data Collaboration - Tasks, Announcements, & Emojis
+- Tasks have been introduced as an extension to the ability to create conversations and post replies.
+- Tasks can be created around descriptions for tables, pipelines, dashboards, and topics.
+- Users can Request a description, or even Suggest a new description and make edits to an existing description.
+- Submitting the request automatically creates a task for the owner of a data asset.
+- Tasks can be further reassigned to the relevant user.
+- Other users can participate in this activity by posting a reply, comment, or react to conversations with emojis.
+- All the tasks assigned to a user can be tracked in the User Profile page.
+- Tasks associated with a particular data asset are kept track of in the dataset details page.
+- Task owners can provide description or accept/reject suggestions and those tasks are automatically closed.
+
+## Column Level Lineage
+- Column level lineage API support has been added in the backend.
+- Supports table level and column level lineage from Snowflake, Redshift, and BigQuery.
+
+## Custom Properties
+- Now supports adding new types and extending entities when organizations need to capture custom metadata.
+- New types and custom fields can be added to entities either using API or in OpenMetadata UI.
+
+## Advanced Search
+- Users can search by column, schema, database, owner, tag, and service.
+- Users can search by multiple parameters to narrow down the search results.
+- Separate advanced search options are available for Tables, Topics, Dashboards, Pipelines, and ML Models.
+- All entities are searchable by common search options such as Owner, Tag, and Service.
+- Entity specific search options are also available - table specific options include Column, Schema, and Database, pipeline specific options include Task, and dashboards specific option includes Chart.
+
+## Glossary UI Updates
+- The Glossary UI has been upgraded.
+- The arrangement to display the Summary, Related Terms, Synonyms, and References has been changed.
+- Reviewers are shown on the right panel with an option to add or remove existing reviewers.
+
+## Profiler and Data Quality Improvements
+- Seven additional data quality tests have been added as follows.
+- - tableColumnCountToBeBetween: Ensure the number of columns in your table stays within the expected range
+- - tableColumnNameToExist: Check that a specific column is in your table
+- - tableColumnToMatchSet: Check that your table has the expected columns. You can enforce a check for column order.
+- - columnValueMaxToBeBetween: Verify the max value in a column is between expected bounds
+- - columnValueMinToBeBetween: Verify the min value in a column is between expected bounds
+- - columnValuesToBeInSet: Check if specific value(s) are in a column
+- - columnValuesSumToBeBetween: Verify the sum of the values in a column is between expected bounds
+- The Profiler now determines if a BigQuery table is partitioned, and filters it accordingly.
+- Now, you can pass a custom query to your profiler workflow file.
+- Developed a direct integration between Great Expectations and OpenMetadata. Now, you can add custom actions to your Great Expectations checkpoints file that will automatically ingest your data quality tests results into OpenMetadata at the end of your checkpoint file run.
+
+## ML Models
+- ML Model entities have been added to the UI.
+- Supports ingestion through the UI from MLflow.
+
+## Connectors
+- Five new connectors have been added - Airbyte, Mode, AWS Data Lake, Google Cloud Data Lake, and Apache Pinot.
+- DBT Cloud support was added and we now extract manifest and catalog files from API.
+- The ingestion scheduler now supports a minute level selection.
+- The Snowflake metadata extraction has been optimized.
+- The Looker connector now fetches the ‘Usage’ and ‘Access’ metadata for Dashboards and Charts.
+
+## UI Improvements
+- The OpenMetadata UI has a new layout.
+- In the Activity Feeds, the options to reply to a conversation, as well as to delete can now be found on hovering over the conversation.
+- Users can react with Emojis on the activity feeds, conversations and replies.
+- Hovering on the links provides a quick preview of the entity details.
+- The UI supports adding Tasks. Pending tasks will be displayed on the right panel.
+- A tooltip has been added to display the FQN on hover in the Activity Feed header.
+
+## Other Changes
+- Admin users define Roles and associate these roles to Teams. When a user picks a Team, the Role gets automatically assigned.
+- An option has been added to recreate a fresh index from the data available in Elasticsearch.
+- A simple webhook server has been added to the metadata command to register and listen to the metadata change events.
+- The ingestion configurations are supported as YAML.
+- In the previous release, we added support for Azure SSO on Airflow. In the current release, we’ve added support for Azure SSO in Java SDK Client.
+- OpenMetadata now supports AWS Cognito SSO.
+- When deleting a database service, the number of databases, schemas and tables is displayed in the confirmation dialog.
+
 # 0.10.1 Release
+
+{% note noteType="Tip" %} 
+**2022, May 17th**
+{% /note %}
 
 - Support for Postgres as OpenMetadata Store [#4601](https://github.com/open-metadata/OpenMetadata/issues/4601)
 - UI Improvements in 0.10.1 Release [#4600](https://github.com/open-metadata/OpenMetadata/issues/4600)
@@ -521,6 +608,12 @@ Manage Tab has been replaced with the manage button on the UI.
 - Security: Fix Azure SSO and support refresh tokens in [#4989](https://github.com/open-metadata/OpenMetadata/issues/4989)
 
 # 0.10.0 Release
+
+{% note noteType="Tip" %} 
+**2022, April 27th**
+
+[OpenMetadata 0.10.0 Release](https://blog.open-metadata.org/openmetadata-0-10-0-release-82c4f5533c3f)
+{% /note %}
 
 ## Support for Database Schema
 
@@ -587,6 +680,12 @@ and prepares handy methods to help us test the connection to the source before c
 
 # 0.9.0 Release
 
+{% note noteType="Tip" %} 
+**2022, March 10th**
+
+[OpenMetadata 0.9.0 Release](https://blog.open-metadata.org/openmetadata-0-9-0-release-8e7b93ab1882)
+{% /note %}
+
 ## Collaboration
 
 - Conversations in the main feed.
@@ -639,6 +738,12 @@ and prepares handy methods to help us test the connection to the source before c
 
 # 0.8.0 Release
 
+{% note noteType="Tip" %} 
+**2022, January 22nd**
+
+[OpenMetadata 0.8.0 Release](https://blog.open-metadata.org/openmetadata-0-8-0-release-ca09bd2fbf54)
+{% /note %}
+
 ## Access Control Policies
 - Design of Access Control Policies.
 - Provide Role based access control with community feedback.
@@ -656,6 +761,12 @@ and prepares handy methods to help us test the connection to the source before c
 - Azure SQL
 
 # 0.7.0 Release
+
+{% note noteType="Tip" %} 
+**2021, November 17th**
+
+[OpenMetadata 0.7.0 Release](https://blog.open-metadata.org/openmetadata-0-7-0-release-9f741b8d5089)
+{% /note %}
 
 ## UI - Activity Feed, Improved UX for Search
 - Users will have access to Activity Feed of all the changes to the Metadata.
@@ -684,6 +795,12 @@ and prepares handy methods to help us test the connection to the source before c
 
 # 0.6.0 Release
 
+{% note noteType="Tip" %} 
+**2021, November 17th**
+
+[OpenMetadata 0.6.0 Release — Metadata Versioning, Events API, One-Click Ingestion, and more](https://blog.open-metadata.org/openmetadata-0-6-0-release-metadata-versioning-events-api-one-click-ingestion-and-more-4394c4f08e0b)
+{% /note %}
+
 ## Metadata Versioning and Eventing Framework
 - Capture changes to Entity Metadata from source and user interactions as versions.
 - Versioned changes will be published as events for clients to consume to take actions on.
@@ -702,6 +819,12 @@ and prepares handy methods to help us test the connection to the source before c
 - MariaDB
 
 # 0.5.0 Release
+
+{% note noteType="Tip" %} 
+**2021, October 19th**
+
+[OpenMetadata 0.5.0 Release is here — Lineage, Pipelines, Complex Types, Data Profiler and so much more](https://blog.open-metadata.org/openmetadata-0-5-0-1144a4000644)
+{% /note %}
 
 ## Support for Lineage
 - Lineage related schemas and APIs.
@@ -725,6 +848,11 @@ and prepares handy methods to help us test the connection to the source before c
 - Integration with Airflow to extract Pipeline details.
 
 # 0.4.0 Release
+{% note noteType="Tip" %} 
+**2021, September 20th**
+
+[OpenMetadata 0.4.0 Release — Dashboards, Topics, Data Reliability](https://blog.open-metadata.org/openmetadata-0-4-0-release-dashboards-topics-data-reliability-14e8672ae0f5)
+{% /note %}
 
 ## Support for Kafka (and Pulsar WIP)
 - Support for Message Service and Topic entities in schemas, APIs, and UI.
