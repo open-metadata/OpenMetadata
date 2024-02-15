@@ -34,14 +34,7 @@ from testcontainers.mongodb import MongoDbContainer
 
 from ingestion.tests.integration.integration_base import int_admin_ometa
 from metadata.generated.schema.entity.data.table import ColumnProfile
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.test_utils import accumulate_errors
 from metadata.utils.time_utils import get_end_of_day_timestamp_mill

@@ -21,7 +21,6 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
-from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.api.models import ThreadPoolMetrics
@@ -35,7 +34,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 logger = profiler_interface_registry_logger()
 
 
-class NoSQLProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
+class NoSQLProfilerInterface(ProfilerInterface):
     """
     Interface to interact with registry supporting
     sqlalchemy.
