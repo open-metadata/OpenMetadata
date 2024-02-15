@@ -113,6 +113,7 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.quartz.SchedulerException;
 
@@ -136,6 +137,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
+    // Init Settings Cache after repositories
+    SettingsCache.initialize(catalogConfig);
+
+    // Instantiate incident severity classifier
+    IncidentSeverityClassifierInterface.createInstance(catalogConfig.getDataQualityConfiguration());
+
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
@@ -148,9 +155,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
-
-    // Init Settings Cache after repositories
-    SettingsCache.initialize(catalogConfig);
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);

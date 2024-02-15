@@ -8,8 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-from typing import Optional, List
+"""BigTable connection"""
+from typing import List, Optional
 
 from google.cloud.bigtable import Client
 
@@ -20,12 +20,12 @@ from metadata.generated.schema.entity.services.connections.database.bigTableConn
     BigTableConnection,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
-    SingleProjectId,
     GcpCredentialsValues,
+    SingleProjectId,
 )
 from metadata.ingestion.connections.test_connections import (
-    test_connection_steps,
     SourceConnectionException,
+    test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigtable.client import MultiProjectClient
@@ -58,6 +58,11 @@ def get_nested_index(lst: list, index: List[int], default=None):
 
 
 class Tester:
+    """
+    A wrapper class that holds state. We need it because the different testing stages
+    are not independent of each other. For example, we need to list instances before we can list
+    """
+
     def __init__(self, client: MultiProjectClient):
         self.client = client
         self.project_id = None

@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Bigtable source models.
+"""
 from typing import Dict, List
 
 from google.cloud.bigtable.row import PartialRowData
@@ -15,15 +18,21 @@ from pydantic import BaseModel
 
 
 class Value(BaseModel):
+    """A Bigtable cell value."""
+
     timestamp: int
     value: bytes
 
 
 class Cell(BaseModel):
+    """A Bigtable cell."""
+
     values: List[Value]
 
 
 class Row(BaseModel):
+    """A Bigtable row."""
+
     cells: Dict[str, Dict[bytes, Cell]]
     row_key: bytes
 
@@ -31,8 +40,7 @@ class Row(BaseModel):
     def from_partial_row(cls, row: PartialRowData):
         cells = {}
         for cf, cf_cells in row.cells.items():
-            if cf not in cells:
-                cells[cf] = {}
+            cells.setdefault(cf, {})
             for column, cell in cf_cells.items():
                 cells[cf][column] = Cell(
                     values=[Value(timestamp=c.timestamp, value=c.value) for c in cell]
