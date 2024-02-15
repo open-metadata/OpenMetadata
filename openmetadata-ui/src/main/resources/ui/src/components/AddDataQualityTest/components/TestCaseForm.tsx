@@ -178,7 +178,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       })
     );
     const name =
-      value.testName?.trim() ??
+      value.testName?.trim() ||
       `${replaceAllSpacialCharWith_(columnName ?? table.name)}_${snakeCase(
         selectedTestType
       )}_${cryptoRandomString({
@@ -214,10 +214,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     return initialValue?.parameterValues?.reduce(
       (acc, curr) => ({
         ...acc,
-        [curr.name ?? '']:
+        [curr.name || '']:
           getSelectedTestDefinition()?.parameterDefinition?.[0].dataType ===
           TestDataType.Array
-            ? (JSON.parse(curr?.value ?? '[]') as string[]).map((val) => ({
+            ? (JSON.parse(curr?.value || '[]') as string[]).map((val) => ({
                 value: val,
               }))
             : curr?.value,
@@ -370,7 +370,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         trigger="onTextChange">
         <RichTextEditor
           height="200px"
-          initialValue={initialValue?.description ?? ''}
+          initialValue={initialValue?.description || ''}
           style={{
             margin: 0,
           }}
