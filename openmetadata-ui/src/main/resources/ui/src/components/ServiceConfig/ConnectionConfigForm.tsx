@@ -185,7 +185,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         onFocus={onFocus}
         onSubmit={handleSave}>
         {isEmpty(connSch.schema) && (
-          <div className="text-grey-muted text-center">
+          <div
+            className="text-grey-muted text-center"
+            data-testid="no-config-available">
             {t('message.no-config-available')}
           </div>
         )}
