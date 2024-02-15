@@ -389,10 +389,15 @@ services:
 
       #secretsManagerConfiguration
       SECRET_MANAGER: ${SECRET_MANAGER:-db}
-      #parameters:
+      # AWS:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}
       OM_SM_ACCESS_KEY: ${OM_SM_ACCESS_KEY:-""}
+      # Azure:
+      OM_SM_VAULT_NAME: ${OM_SM_VAULT_NAME:-""}
+      OM_SM_CLIENT_ID: ${OM_SM_CLIENT_ID:-""}
+      OM_SM_CLIENT_SECRET: ${OM_SM_CLIENT_SECRET:-""}
+      OM_SM_TENANT_ID: ${OM_SM_TENANT_ID:-""}
       
       #email configuration:
       OM_EMAIL_ENTITY: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
@@ -462,6 +467,12 @@ services:
       # AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: local_airflow
       # AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
       # AIRFLOW__LINEAGE__JWT_TOKEN: ...
+
+      # To integrate Azure Key Vault
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_KEY_VAULT_NAME: ${OM_SM_VAULT_NAME:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_TENANT_ID: ${OM_SM_TENANT_ID:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_CLIENT_ID: ${OM_SM_CLIENT_ID:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_CLIENT_SECRET: ${OM_SM_CLIENT_SECRET:-""}
 
     entrypoint: /bin/bash
     command:

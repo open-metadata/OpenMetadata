@@ -12,7 +12,7 @@
 """
 Secrets manager factory module
 """
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
@@ -22,6 +22,7 @@ from metadata.generated.schema.security.secrets.secretsManagerProvider import (
 )
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
+from metadata.utils.secrets.azure_kv_secrets_manager import AzureKVSecretsManager
 from metadata.utils.secrets.client.loader import secrets_manager_client_loader
 from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
@@ -98,12 +99,19 @@ class SecretsManagerFactory(metaclass=Singleton):
             SecretsManagerProvider.managed_aws_ssm,
         ):
             return AWSSSMSecretsManager(credentials)
+        if secrets_manager_provider in (
+            SecretsManagerProvider.azure_kv,
+            SecretsManagerProvider.managed_azure_kv,
+        ):
+            return AzureKVSecretsManager(credentials)
         raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
 
     def get_secrets_manager(self):
         return self.secrets_manager
 
-    def _load_secrets_manager_credentials(self) -> Optional["AWSCredentials"]:
+    def _load_secrets_manager_credentials(
+        self,
+    ) -> Optional[Union["AWSCredentials", "AzureCredentials"]]:
         if not self.secrets_manager_loader:
             return None
 
