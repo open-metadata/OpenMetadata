@@ -19,7 +19,6 @@
     <awssdk.version>2.23.3</awssdk.version>
     <azure-identity.version>1.11.2</azure-identity.version>
     <azure-kv.version>4.7.3</azure-kv.version>
-    <azure-msal.version>1.14.2</azure-msal.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
@@ -244,11 +243,10 @@
     </dependency>
     <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
     <dependency>
-      <groupId>com.microsoft.azure</groupId>
-      <artifactId>msal4j</artifactId>
-      <version>${azure-msal.version}</version>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>9.37.3</version>
     </dependency>
-
 
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
