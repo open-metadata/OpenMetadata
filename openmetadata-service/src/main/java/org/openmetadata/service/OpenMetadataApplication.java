@@ -137,6 +137,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
+    // Init Settings Cache after repositories
+    SettingsCache.initialize(catalogConfig);
+
     // Instantiate incident severity classifier
     IncidentSeverityClassifierInterface.createInstance(catalogConfig.getDataQualityConfiguration());
 
@@ -152,9 +155,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
-
-    // Init Settings Cache after repositories
-    SettingsCache.initialize(catalogConfig);
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
