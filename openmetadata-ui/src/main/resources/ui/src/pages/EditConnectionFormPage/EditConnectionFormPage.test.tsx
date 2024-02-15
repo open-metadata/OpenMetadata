@@ -74,6 +74,7 @@ jest.mock('../../components/Loader/Loader', () =>
 );
 
 let withActiveField = true;
+let updateServiceData = true;
 
 jest.mock('../../components/ServiceConfig/ServiceConfig', () =>
   jest.fn().mockImplementation(({ onFocus, handleUpdate }) => (
@@ -81,10 +82,14 @@ jest.mock('../../components/ServiceConfig/ServiceConfig', () =>
       <p>ServiceConfig</p>
       <button
         onClick={() =>
-          handleUpdate({
-            ...mockServiceData.connection.config,
-            databaseSchema: 'openmetadata_db',
-          })
+          handleUpdate(
+            updateServiceData
+              ? {
+                  ...mockServiceData.connection.config,
+                  databaseSchema: 'openmetadata_db',
+                }
+              : mockServiceData.connection.config
+          )
         }>
         {SERVICE_CONFIG_UPDATE}
       </button>
@@ -245,5 +250,21 @@ describe('EditConnectionFormPage component', () => {
     });
 
     expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('patchService should not call if there is no change', async () => {
+    updateServiceData = false;
+    const mockUpdateService = patchService as jest.Mock;
+    await act(async () => {
+      render(<EditConnectionFormPage />);
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: SERVICE_CONFIG_UPDATE })
+      );
+    });
+
+    expect(mockUpdateService).not.toHaveBeenCalled();
   });
 });
