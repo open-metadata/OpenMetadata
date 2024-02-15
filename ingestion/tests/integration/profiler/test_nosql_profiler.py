@@ -27,14 +27,17 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
+from random import choice, randint
 from unittest import TestCase
 
-from pymongo import MongoClient
+from pymongo import MongoClient, database
 from testcontainers.mongodb import MongoDbContainer
 
 from ingestion.tests.integration.integration_base import int_admin_ometa
-from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.api.models import TableConfig
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.test_utils import accumulate_errors
 from metadata.utils.time_utils import get_end_of_day_timestamp_mill
@@ -43,6 +46,13 @@ from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import print_status
 
 SERVICE_NAME = Path(__file__).stem
+
+
+def add_query_config(config, table_config: TableConfig) -> dict:
+    config_copy = deepcopy(config)
+    config_copy["processor"]["config"].setdefault("tableConfig", [])
+    config_copy["processor"]["config"]["tableConfig"].append(table_config)
+    return config_copy
 
 
 def get_ingestion_config(mongo_port: str, mongo_user: str, mongo_pass: str):
@@ -76,63 +86,66 @@ def get_ingestion_config(mongo_port: str, mongo_user: str, mongo_pass: str):
 TEST_DATABASE = "test-database"
 EMPTY_COLLECTION = "empty-collection"
 TEST_COLLECTION = "test-collection"
-TEST_DATA = [
-    {
-        "first_name": "John",
-        "last_name": "Doe",
-        "age": 30,
-    },
-    {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "age": 25,
-    },
-    {
-        "first_name": "John",
-        "last_name": "Smith",
-        "age": 35,
-    },
-]
+NUM_ROWS = 200
+
+
+def random_row():
+    return {
+        "name": choice(["John", "Jane", "Alice", "Bob"]),
+        "age": randint(20, 60),
+        "city": choice(["New York", "Chicago", "San Francisco"]),
+        "nested": {"key": "value" + str(randint(1, 10))},
+    }
+
+
+TEST_DATA = [random_row() for _ in range(NUM_ROWS)]
 
 
 class NoSQLProfiler(TestCase):
     """datalake profiler E2E test"""
 
+    mongo_container: MongoDbContainer
+    client: MongoClient
+    db: database.Database
+    collection: database.Collection
+    ingestion_config: dict
+    metadata: OpenMetadata
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.metadata = int_admin_ometa()
-
-    def setUp(self) -> None:
-        self.mongo_container = MongoDbContainer("mongo:7.0.5-jammy")
-        self.mongo_container.start()
-        self.client = MongoClient(self.mongo_container.get_connection_url())
-        self.db = self.client[TEST_DATABASE]
-        self.collection = self.db[TEST_COLLECTION]
-        self.collection.insert_many(TEST_DATA)
-        self.db.create_collection(EMPTY_COLLECTION)
-        self.ingestion_config = get_ingestion_config(
-            self.mongo_container.get_exposed_port("27017"), "test", "test"
+        cls.mongo_container = MongoDbContainer("mongo:7.0.5-jammy")
+        cls.mongo_container.start()
+        cls.client = MongoClient(cls.mongo_container.get_connection_url())
+        cls.db = cls.client[TEST_DATABASE]
+        cls.collection = cls.db[TEST_COLLECTION]
+        cls.collection.insert_many(TEST_DATA)
+        cls.db.create_collection(EMPTY_COLLECTION)
+        cls.ingestion_config = get_ingestion_config(
+            cls.mongo_container.get_exposed_port("27017"), "test", "test"
         )
         ingestion_workflow = MetadataWorkflow.create(
-            self.ingestion_config,
+            cls.ingestion_config,
         )
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
         print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         with accumulate_errors() as error_handler:
-            error_handler.try_execute(partial(self.mongo_container.stop, force=True))
-            error_handler.try_execute(self.delete_service)
+            error_handler.try_execute(partial(cls.mongo_container.stop, force=True))
+            error_handler.try_execute(cls.delete_service)
 
-    def delete_service(self):
+    @classmethod
+    def delete_service(cls):
         service_id = str(
-            self.metadata.get_by_name(
+            cls.metadata.get_by_name(
                 entity=DatabaseService, fqn=SERVICE_NAME
             ).id.__root__
         )
-        self.metadata.delete(
+        cls.metadata.delete(
             entity=DatabaseService,
             entity_id=service_id,
             recursive=True,
@@ -140,9 +153,12 @@ class NoSQLProfiler(TestCase):
         )
 
     def test_setup_teardown(self):
+        """
+        does nothing. useful to check if the setup and teardown methods are working
+        """
         pass
 
-    def test_row_count(self):
+    def test_simple(self):
         workflow_config = deepcopy(self.ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {
@@ -160,7 +176,7 @@ class NoSQLProfiler(TestCase):
 
         assert status == 0
 
-        expectations = {TEST_COLLECTION: 3, EMPTY_COLLECTION: 0}
+        expectations = {TEST_COLLECTION: len(TEST_DATA), EMPTY_COLLECTION: 0}
 
         for collection, expected_row_count in expectations.items():
             collection_profile = self.metadata.get_profile_data(
@@ -177,3 +193,74 @@ class NoSQLProfiler(TestCase):
                 profile_type=ColumnProfile,
             )
             assert len(column_profile.entities) == 0
+
+        table = self.metadata.get_by_name(
+            Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
+        )
+        sample_data = self.metadata.get_sample_data(table)
+        assert [c.__root__ for c in sample_data.sampleData.columns] == [
+            "_id",
+            "name",
+            "city",
+            "age",
+            "nested",
+        ]
+        assert len(sample_data.sampleData.rows) == len(TEST_DATA)
+
+    def test_custom_query(self):
+        workflow_config = deepcopy(self.ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        query_age = TEST_DATA[0]["age"]
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}",
+                        "profileQuery": '{"age": %s}' % query_age,
+                    }
+                ],
+            },
+        }
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        # query profiler in MongoDB does not change the item count
+        expectations = {TEST_COLLECTION: len(TEST_DATA), EMPTY_COLLECTION: 0}
+
+        for collection, expected_row_count in expectations.items():
+            collection_profile = self.metadata.get_profile_data(
+                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{collection}",
+                datetime_to_ts(datetime.now() - timedelta(seconds=10)),
+                get_end_of_day_timestamp_mill(),
+            )
+            assert collection_profile.entities, collection
+            assert (
+                collection_profile.entities[-1].rowCount == expected_row_count
+            ), collection
+            column_profile = self.metadata.get_profile_data(
+                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}.age",
+                datetime_to_ts(datetime.now() - timedelta(seconds=10)),
+                get_end_of_day_timestamp_mill(),
+                profile_type=ColumnProfile,
+            )
+            assert len(column_profile.entities) == 0, collection
+
+        table = self.metadata.get_by_name(
+            Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
+        )
+        sample_data = self.metadata.get_sample_data(table)
+        age_column_index = [
+            col.__root__ for col in sample_data.sampleData.columns
+        ].index("age")
+        assert all(
+            [r[age_column_index] == query_age for r in sample_data.sampleData.rows]
+        )

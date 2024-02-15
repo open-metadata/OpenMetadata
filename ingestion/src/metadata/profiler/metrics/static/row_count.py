@@ -54,4 +54,4 @@ class RowCount(StaticMetric):
 
     @classmethod
     def nosql_fn(cls, client: NoSQLAdaptor) -> Callable[[Table], int]:
-        return client.get_row_count
+        return client.item_count
