@@ -24,6 +24,6 @@ class ProducerInterface(ABC):
         self.metadata = metadata
 
     @abstractmethod
-    def fetch_data(self, limit, fields):
+    def fetch_data(self, limit, fields, entities_cache=None):
         """fetch data from source"""
         raise NotImplementedError

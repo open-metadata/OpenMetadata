@@ -47,6 +47,7 @@ class DataProcessor(abc.ABC):
         self._refined_data = {}
         self.post_hook: Optional[Callable] = None
         self.pre_hook: Optional[Callable] = None
+        self.clean_up_cache: bool = False
 
     @classmethod
     def create(cls, _data_processor_type, metadata: OpenMetadata):
