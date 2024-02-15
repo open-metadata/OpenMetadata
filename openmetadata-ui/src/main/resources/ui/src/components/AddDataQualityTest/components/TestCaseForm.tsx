@@ -74,9 +74,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
-  const [testDefinition, setTestDefinition] = useState<TestDefinition>(
-    {} as TestDefinition
-  );
+  const [testDefinition, setTestDefinition] = useState<TestDefinition>({} as TestDefinition);
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
     initialValue?.testDefinition
   );
@@ -297,9 +295,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             })}
             onChange={(value) => {
               setTestDefinition(
-                testDefinitions.find(
-                  (item) => item.fullyQualifiedName === value
-                ) as TestDefinition
+                  testDefinitions.find((item) => item.fullyQualifiedName === value) as TestDefinition
               );
             }}>
             {table.columns.map((column) => (
