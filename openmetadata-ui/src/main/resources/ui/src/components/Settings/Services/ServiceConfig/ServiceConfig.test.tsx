@@ -48,7 +48,7 @@ const mockUseHistory = {
   goBack: jest.fn(),
 };
 
-jest.mock('../../utils/RouterUtils', () => ({
+jest.mock('../../../../utils/RouterUtils', () => ({
   getPathByServiceFQN: jest.fn().mockReturnValue('/test-path'),
 }));
 

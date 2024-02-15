@@ -109,68 +109,65 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../utils/DatabaseServiceUtils', () => ({
+jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
   getDatabaseConfig: jest.fn().mockReturnValue({
     schema: MOCK_ATHENA_SERVICE,
   }),
 }));
 
-jest.mock('../../utils/DashboardServiceUtils', () => ({
+jest.mock('../../../../utils/DashboardServiceUtils', () => ({
   getDashboardConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
 }));
 
-jest.mock('../../utils/MessagingServiceUtils', () => ({
+jest.mock('../../../../utils/MessagingServiceUtils', () => ({
   getMessagingConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
 }));
 
-jest.mock('../../utils/MetadataServiceUtils', () => ({
+jest.mock('../../../../utils/MetadataServiceUtils', () => ({
   getMetadataConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
 }));
 
-jest.mock('../../utils/MlmodelServiceUtils', () => ({
+jest.mock('../../../../utils/MlmodelServiceUtils', () => ({
   getMlmodelConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
 }));
 
-jest.mock('../../utils/PipelineServiceUtils', () => ({
+jest.mock('../../../../utils/PipelineServiceUtils', () => ({
   getPipelineConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
 }));
 
-jest.mock('../../utils/SearchServiceUtils', () => ({
+jest.mock('../../../../utils/SearchServiceUtils', () => ({
   getSearchServiceConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
 }));
 
-jest.mock('../../utils/ServiceUtilClassBase', () => ({
+jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
   serviceUtilClassBase: jest.fn(),
 }));
 
-jest.mock('../../utils/JSONSchemaFormUtils', () => ({
+jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
   formatFormDataForSubmit: jest.fn(),
 }));
 
-jest.mock(
-  '../../components/common/AirflowMessageBanner/AirflowMessageBanner',
-  () => {
-    return jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="airflowMessageBanner">AirflowMessageBanner</div>
-      );
-  }
-);
+jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="airflowMessageBanner">AirflowMessageBanner</div>
+    );
+});
 
-jest.mock('../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilder/FormBuilder', () =>
   forwardRef(
     jest.fn().mockImplementation(({ children, onSubmit, onCancel }) => (
       <div data-testid="form-builder">
@@ -186,7 +183,7 @@ jest.mock('../common/FormBuilder/FormBuilder', () =>
   )
 );
 
-jest.mock('../common/TestConnection/TestConnection', () =>
+jest.mock('../../../common/TestConnection/TestConnection', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -194,7 +191,7 @@ jest.mock('../common/TestConnection/TestConnection', () =>
     ))
 );
 
-jest.mock('../../rest/ingestionPipelineAPI', () => ({
+jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getPipelineServiceHostIp: jest.fn().mockReturnValue({
     data: {
       ip: '192.168.0.1',
@@ -209,7 +206,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../hooks/useAirflowStatus', () => ({
+jest.mock('../../../../hooks/useAirflowStatus', () => ({
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     reason: 'reason message',
     isAirflowAvailable: true,

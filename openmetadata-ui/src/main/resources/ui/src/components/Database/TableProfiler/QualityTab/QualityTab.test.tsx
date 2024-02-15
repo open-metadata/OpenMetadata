@@ -43,7 +43,7 @@ jest.mock('../TableProfilerProvider', () => ({
   })),
 }));
 
-jest.mock('../../PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
@@ -51,7 +51,7 @@ jest.mock('../../PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../../hooks/useFqn', () => ({
+jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
 
@@ -62,7 +62,7 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
-jest.mock('../../../rest/tableAPI', () => ({
+jest.mock('../../../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockTable)),
