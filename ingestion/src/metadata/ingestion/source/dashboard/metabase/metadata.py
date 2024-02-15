@@ -324,8 +324,9 @@ class MetabaseSource(DashboardServiceSource):
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
     ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
+        table_name = table.name or table.display_name
 
-        if table is None or table.display_name is None:
+        if table is None or table_name is None:
             return
 
         database_name = table.db.details.db if table.db and table.db.details else None
@@ -334,7 +335,7 @@ class MetabaseSource(DashboardServiceSource):
             database=database_name,
             service_name=db_service_name,
             database_schema=table.table_schema,
-            table=table.display_name,
+            table=table_name,
         )
 
         to_fqn = fqn.build(
