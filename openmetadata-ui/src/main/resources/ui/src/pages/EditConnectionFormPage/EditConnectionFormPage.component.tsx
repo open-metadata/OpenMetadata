@@ -77,6 +77,10 @@ function EditConnectionFormPage() {
 
     const jsonPatch = compare(serviceDetails, configData);
 
+    if (isEmpty(jsonPatch)) {
+      return;
+    }
+
     try {
       const response = await patchService(
         serviceCategory,
