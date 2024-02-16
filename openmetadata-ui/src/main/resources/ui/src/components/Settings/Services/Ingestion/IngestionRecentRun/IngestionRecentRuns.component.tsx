@@ -186,6 +186,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                 }
                 data-testid="pipeline-status"
                 key={i}
+                onClick={() => setSelectedStatus(r)}
               />
             );
 

@@ -259,6 +259,35 @@ describe('Test IngestionRecentRun component', () => {
     expect(await screen.findAllByText(/label.log-plural/)).toHaveLength(1);
   });
 
+  it('should show additional details for clicked on non latest run', async () => {
+    (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+      data: [...executionRuns],
+      paging: { total: 4 },
+    });
+
+    await act(async () => {
+      render(<IngestionRecentRuns ingestion={mockIngestion} />);
+    });
+
+    const runs = await screen.findAllByTestId('pipeline-status');
+    const partialSuccess = await screen.findByText(/Partial Success/);
+
+    expect(partialSuccess).toBeInTheDocument();
+    expect(runs).toHaveLength(3);
+
+    await act(async () => {
+      // click on second last
+      fireEvent.click(runs[runs.length - 1]);
+    });
+
+    expect(await findByRole(document.body, 'dialog')).toBeInTheDocument();
+
+    expect(await screen.findByText(/Source/)).toBeInTheDocument();
+
+    expect(await screen.findByText(/Sink/)).toBeInTheDocument();
+    expect(await screen.findAllByText(/label.log-plural/)).toHaveLength(1);
+  });
+
   it('should show stacktrace when click on logs', async () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
       data: [...executionRuns],
