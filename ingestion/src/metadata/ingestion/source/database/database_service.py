@@ -152,7 +152,7 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["table", "stored_procedure"],
         post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
-        threads=True,
+        # threads=True,
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -177,6 +177,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        threads=True,
     )
     stored_procedure = TopologyNode(
         producer="get_stored_procedures",
