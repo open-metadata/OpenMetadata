@@ -9,31 +9,25 @@ else
     ROOT_DIR := .
 endif
 
-.PHONY: uv
-uv:  ## Install uv & prep the virtualenv
-	pip install "uv~=0.1"
-	uv venv venv
-	. venv/bin/activate
-
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
-	uv pip install -e $(INGESTION_DIR)/
+	python -m pip install $(INGESTION_DIR)/
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
-	uv pip install -e "$(INGESTION_DIR)[dev]/"
+	python -m pip install "$(INGESTION_DIR)[dev]/"
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	uv pip install -e "$(INGESTION_DIR)[test]/"
+	python -m pip install "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	uv pip install -e "$(INGESTION_DIR)[all]/"
+	python -m pip install "$(INGESTION_DIR)[all]/"
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	uv pip install -e $(ROOT_DIR)/openmetadata-airflow-apis/
+	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/
 
 .PHONY: lint
 lint:  ## Run pylint on the Python sources to analyze the codebase
