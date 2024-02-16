@@ -20,10 +20,10 @@ from enum import Enum
 from functools import wraps
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 
+from metadata.generated.schema.entity.data.table import Table
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta, Session
 
-from ingestion.build.lib.metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 
 # When creating complex metrics, use inherit_cache = CACHE
