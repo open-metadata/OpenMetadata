@@ -23,7 +23,7 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../../components/BotListV1/BotListV1.component', () =>
+jest.mock('../../components/Settings/Bot/BotListV1/BotListV1.component', () =>
   jest
     .fn()
     .mockImplementation(

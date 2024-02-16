@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PipelineVersionProp } from '../components/PipelineVersion/PipelineVersion.interface';
+import { PipelineVersionProp } from '../components/Pipeline/PipelineVersion/PipelineVersion.interface';
 import {
   PipelineServiceType,
   StatusType,

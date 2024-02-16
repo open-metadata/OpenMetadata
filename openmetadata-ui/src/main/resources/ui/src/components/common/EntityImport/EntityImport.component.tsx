@@ -27,8 +27,6 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-drag-drop.svg';
 import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
-import Stepper from '../../../components/IngestionStepper/IngestionStepper.component';
-import Loader from '../../../components/Loader/Loader';
 import { STEPS_FOR_IMPORT_ENTITY } from '../../../constants/entity.constants';
 import {
   CSVImportResult,
@@ -36,6 +34,8 @@ import {
 } from '../../../generated/type/csvImportResult';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Stepper from '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
+import Loader from '../Loader/Loader';
 import './entity-import.style.less';
 import { EntityImportProps } from './EntityImport.interface';
 import { ImportStatus } from './ImportStatus/ImportStatus.component';

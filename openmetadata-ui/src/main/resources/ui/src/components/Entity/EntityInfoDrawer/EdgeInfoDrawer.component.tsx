@@ -27,9 +27,9 @@ import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
+import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
-import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import './entity-info-drawer.less';
 import {
   EdgeInfoDrawerInfo,
