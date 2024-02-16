@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,26 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CustomMetric } from '../../../../../generated/tests/customMetric';
+import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 
-import { TableTestsType } from '../components/Database/Profiler/TableProfiler/TableProfiler.interface';
-import { TestCaseStatus } from '../generated/tests/testCase';
+export interface CustomMetricGraphsProps {
+  customMetricsGraphData?: Record<string, MetricChartType['data']>;
+  customMetrics?: CustomMetric[];
+  isLoading: boolean;
+}
 
-export const updateTestResults = (
-  results: TableTestsType['results'],
-  testCaseStatus: string
-) => {
-  switch (testCaseStatus) {
-    case TestCaseStatus.Success:
-      results.success += 1;
-
-      break;
-    case TestCaseStatus.Failed:
-      results.failed += 1;
-
-      break;
-    case TestCaseStatus.Aborted:
-      results.aborted += 1;
-
-      break;
-  }
-};
+export enum MenuOptions {
+  EDIT = 'edit',
+  DELETE = 'delete',
+}
