@@ -48,7 +48,7 @@ jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
   jest.fn().mockReturnValue(<div>DataInsightHeader.component</div>)
 );
 jest.mock(
-  '../../components/DataInsightDetail/DataAssetsTab/DataAssetsTab.component',
+  '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component',
   () => jest.fn().mockReturnValue(<div>DataAssetsTab.component</div>)
 );
 const mockComponent = () => <div>dataAssetsComponent</div>;

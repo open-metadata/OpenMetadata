@@ -21,8 +21,8 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { TableProfilerTab } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import SingleColumnProfile from '../../components/Database/TableProfiler/SingleColumnProfile';
-import TableProfilerChart from '../../components/Database/TableProfiler/TableProfilerChart/TableProfilerChart';
+import SingleColumnProfile from '../../components/Database/Profiler/TableProfiler/SingleColumnProfile';
+import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
 import { getTableTabPath } from '../../constants/constants';
