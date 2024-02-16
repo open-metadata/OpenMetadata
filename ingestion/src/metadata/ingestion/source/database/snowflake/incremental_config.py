@@ -90,7 +90,7 @@ class IncrementalConfigCreator:
         self, pipeline_statuses: List[PipelineStatus]
     ) -> Optional[int]:
         """Filter the pipeline statuses to get the last time the pipeline was run succesfully."""
-        return max(
+        return max(  # pylint: disable=R1728
             [
                 pipeline.startDate.__root__
                 for pipeline in pipeline_statuses

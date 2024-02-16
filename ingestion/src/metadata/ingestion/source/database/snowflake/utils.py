@@ -144,7 +144,7 @@ def _get_query_parameters(
     parameters = {"schema": fqn.unquote_name(schema)}
 
     if incremental and incremental.enabled:
-        database, _ = self._current_database_schema(connection)
+        database, _ = self._current_database_schema(connection)  # pylint: disable=W0212
         parameters = {
             **parameters,
             "date": incremental.start_timestamp,
@@ -155,6 +155,7 @@ def _get_query_parameters(
 
 
 def get_table_names(self, connection, schema: str, **kw):
+    """Return the Table names to process based on the incremental setup."""
     incremental = kw.get("incremental")
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
