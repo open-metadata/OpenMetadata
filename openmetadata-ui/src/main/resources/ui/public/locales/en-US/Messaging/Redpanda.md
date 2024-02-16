@@ -61,7 +61,7 @@ Supported: `GSSAPI`, `PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`, `OAUTHBEARER`.
 $$
 
 $$section
-### Basic Auth User Info $(id="basicAuthUserInfo")
+### Schema Registry Basic Auth User Info $(id="basicAuthUserInfo")
 
 Schema Registry Client HTTP credentials in the form of `username:password`.
 
