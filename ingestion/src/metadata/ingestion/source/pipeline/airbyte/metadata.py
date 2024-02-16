@@ -67,6 +67,14 @@ class AirbytePipelineDetails(BaseModel):
     workspace: dict
     connection: dict
 
+    @property
+    def pipeline_name(self):
+        return f'{self.workspace.get("cross_id")}_{self.connection.get("_id")}'
+
+    @property
+    def pipeline_display_name(self):
+        return f'{self.workspace.get("name")}' # <> {self.connection.get("schema")}'
+
 
 class AirbyteSource(PipelineServiceSource):
     """
@@ -90,7 +98,7 @@ class AirbyteSource(PipelineServiceSource):
         """
         return [
             Task(
-                name=connection["connectionId"],
+                name=connection["river_cross_id"],
                 displayName=connection["name"],
                 sourceUrl=f"{connection_url}/status",
             )
@@ -105,172 +113,170 @@ class AirbyteSource(PipelineServiceSource):
         :return: Create Pipeline request with tasks
         """
         connection_url = (
-            f"{clean_uri(self.service_connection.hostPort)}/workspaces"
-            f"/{pipeline_details.workspace.get('workspaceId')}"
-            f"/connections/{pipeline_details.connection.get('connectionId')}"
+            f"{clean_uri(self.service_connection.hostPort)}/environments"
+            f"/{pipeline_details.workspace.get('cross_id')}"
+            f"/connections/{pipeline_details.connection.get('river_cross_id')}"
         )
         pipeline_request = CreatePipelineRequest(
-            name=pipeline_details.connection.get("connectionId"),
+            name=pipeline_details.connection.get("river_cross_id"),
             displayName=pipeline_details.connection.get("name"),
             sourceUrl=connection_url,
-            tasks=self.get_connections_jobs(
-                pipeline_details.connection, connection_url
-            ),
-            service=self.context.pipeline_service,
+            # tasks=self.get_connections_jobs(
+            #     pipeline_details.connection, connection_url
+            # ),
+            # service=self.context.pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
-    def yield_pipeline_status(
-        self, pipeline_details: AirbytePipelineDetails
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
-        """
-        Method to get task & pipeline status
-        """
+    # def yield_pipeline_status(
+    #     self, pipeline_details: AirbytePipelineDetails
+    # ) -> Iterable[Either[OMetaPipelineStatus]]:
+    #     """
+    #     Method to get task & pipeline status
+    #     """
+    #
+    #     # Airbyte does not offer specific attempt link, just at pipeline level
+    #     log_link = (
+    #         f"{self.service_connection.hostPort}/workspaces/{pipeline_details.workspace.get('cross_id')}"
+    #         f"/connections/{pipeline_details.connection.get('connectionId')}/status"
+    #     )
+    #
+    #     for job in self.client.list_jobs(
+    #         pipeline_details.connection.get("connectionId")
+    #     ):
+    #         if not job or not job.get("attempts"):
+    #             continue
+    #         for attempt in job["attempts"]:
+    #             created_at = (
+    #                 convert_timestamp_to_milliseconds(attempt["createdAt"])
+    #                 if attempt.get("createdAt")
+    #                 else None
+    #             )
+    #             ended_at = (
+    #                 convert_timestamp_to_milliseconds(attempt["endedAt"])
+    #                 if attempt.get("endedAt")
+    #                 else None
+    #             )
+    #             task_status = [
+    #                 TaskStatus(
+    #                     name=str(pipeline_details.connection.get("connectionId")),
+    #                     executionStatus=STATUS_MAP.get(
+    #                         attempt["status"].lower(), StatusType.Pending
+    #                     ).value,
+    #                     startTime=created_at,
+    #                     endTime=ended_at,
+    #                     logLink=log_link,
+    #                 )
+    #             ]
+    #             pipeline_status = PipelineStatus(
+    #                 executionStatus=STATUS_MAP.get(
+    #                     attempt["status"].lower(), StatusType.Pending
+    #                 ).value,
+    #                 taskStatus=task_status,
+    #                 timestamp=created_at,
+    #             )
+    #             pipeline_fqn = fqn.build(
+    #                 metadata=self.metadata,
+    #                 entity_type=Pipeline,
+    #                 service_name=self.context.pipeline_service,
+    #                 pipeline_name=self.context.pipeline,
+    #             )
+    #             yield Either(
+    #                 right=OMetaPipelineStatus(
+    #                     pipeline_fqn=pipeline_fqn,
+    #                     pipeline_status=pipeline_status,
+    #                 )
+    #             )
 
-        # Airbyte does not offer specific attempt link, just at pipeline level
-        log_link = (
-            f"{self.service_connection.hostPort}/workspaces/{pipeline_details.workspace.get('workspaceId')}"
-            f"/connections/{pipeline_details.connection.get('connectionId')}/status"
-        )
-
-        for job in self.client.list_jobs(
-            pipeline_details.connection.get("connectionId")
-        ):
-            if not job or not job.get("attempts"):
-                continue
-            for attempt in job["attempts"]:
-                created_at = (
-                    convert_timestamp_to_milliseconds(attempt["createdAt"])
-                    if attempt.get("createdAt")
-                    else None
-                )
-                ended_at = (
-                    convert_timestamp_to_milliseconds(attempt["endedAt"])
-                    if attempt.get("endedAt")
-                    else None
-                )
-                task_status = [
-                    TaskStatus(
-                        name=str(pipeline_details.connection.get("connectionId")),
-                        executionStatus=STATUS_MAP.get(
-                            attempt["status"].lower(), StatusType.Pending
-                        ).value,
-                        startTime=created_at,
-                        endTime=ended_at,
-                        logLink=log_link,
-                    )
-                ]
-                pipeline_status = PipelineStatus(
-                    executionStatus=STATUS_MAP.get(
-                        attempt["status"].lower(), StatusType.Pending
-                    ).value,
-                    taskStatus=task_status,
-                    timestamp=created_at,
-                )
-                pipeline_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Pipeline,
-                    service_name=self.context.pipeline_service,
-                    pipeline_name=self.context.pipeline,
-                )
-                yield Either(
-                    right=OMetaPipelineStatus(
-                        pipeline_fqn=pipeline_fqn,
-                        pipeline_status=pipeline_status,
-                    )
-                )
-
-    def yield_pipeline_lineage_details(
-        self, pipeline_details: AirbytePipelineDetails
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """
-        Parse all the stream available in the connection and create a lineage between them
-        :param pipeline_details: pipeline_details object from airbyte
-        :return: Lineage from inlets and outlets
-        """
-        source_connection = self.client.get_source(
-            pipeline_details.connection.get("sourceId")
-        )
-        destination_connection = self.client.get_destination(
-            pipeline_details.connection.get("destinationId")
-        )
-        source_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=source_connection.get("name")
-        )
-        destination_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=destination_connection.get("name")
-        )
-        if not source_service or not destination_service:
-            return
-
-        for task in (
-            pipeline_details.connection.get("syncCatalog", {}).get("streams") or []
-        ):
-            stream = task.get("stream")
-            from_fqn = fqn.build(
-                self.metadata,
-                Table,
-                table_name=stream.get("name"),
-                database_name=None,
-                schema_name=stream.get("namespace"),
-                service_name=source_connection.get("name"),
-            )
-
-            to_fqn = fqn.build(
-                self.metadata,
-                Table,
-                table_name=stream.get("name"),
-                database_name=None,
-                schema_name=stream.get("namespace"),
-                service_name=destination_connection.get("name"),
-            )
-
-            from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-            to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
-
-            if not from_entity and not to_entity:
-                continue
-
-            pipeline_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.pipeline_service,
-                pipeline_name=self.context.pipeline,
-            )
-            pipeline_entity = self.metadata.get_by_name(
-                entity=Pipeline, fqn=pipeline_fqn
-            )
-
-            lineage_details = LineageDetails(
-                pipeline=EntityReference(
-                    id=pipeline_entity.id.__root__, type="pipeline"
-                ),
-                source=LineageSource.PipelineLineage,
-            )
-
-            yield Either(
-                right=AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type="table"),
-                        toEntity=EntityReference(id=to_entity.id, type="table"),
-                        lineageDetails=lineage_details,
-                    )
-                )
-            )
+    # def yield_pipeline_lineage_details(
+    #     self, pipeline_details: AirbytePipelineDetails
+    # ) -> Iterable[Either[AddLineageRequest]]:
+    #     """
+    #     Parse all the stream available in the connection and create a lineage between them
+    #     :param pipeline_details: pipeline_details object from airbyte
+    #     :return: Lineage from inlets and outlets
+    #     """
+    #     source_connection = self.client.get_source(
+    #         pipeline_details.connection.get("sourceId")
+    #     )
+    #     destination_connection = self.client.get_destination(
+    #         pipeline_details.connection.get("destinationId")
+    #     )
+    #     source_service = self.metadata.get_by_name(
+    #         entity=DatabaseService, fqn=source_connection.get("name")
+    #     )
+    #     destination_service = self.metadata.get_by_name(
+    #         entity=DatabaseService, fqn=destination_connection.get("name")
+    #     )
+    #     if not source_service or not destination_service:
+    #         return
+    #
+    #     for task in (
+    #         pipeline_details.connection.get("syncCatalog", {}).get("streams") or []
+    #     ):
+    #         stream = task.get("stream")
+    #         from_fqn = fqn.build(
+    #             self.metadata,
+    #             Table,
+    #             table_name=stream.get("name"),
+    #             database_name=None,
+    #             schema_name=stream.get("namespace"),
+    #             service_name=source_connection.get("name"),
+    #         )
+    #
+    #         to_fqn = fqn.build(
+    #             self.metadata,
+    #             Table,
+    #             table_name=stream.get("name"),
+    #             database_name=None,
+    #             schema_name=stream.get("namespace"),
+    #             service_name=destination_connection.get("name"),
+    #         )
+    #
+    #         from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
+    #         to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+    #
+    #         if not from_entity and not to_entity:
+    #             continue
+    #
+    #         pipeline_fqn = fqn.build(
+    #             metadata=self.metadata,
+    #             entity_type=Pipeline,
+    #             service_name=self.context.pipeline_service,
+    #             pipeline_name=self.context.pipeline,
+    #         )
+    #         pipeline_entity = self.metadata.get_by_name(
+    #             entity=Pipeline, fqn=pipeline_fqn
+    #         )
+    #
+    #         lineage_details = LineageDetails(
+    #             pipeline=EntityReference(
+    #                 id=pipeline_entity.id.__root__, type="pipeline"
+    #             ),
+    #             source=LineageSource.PipelineLineage,
+    #         )
+    #
+    #         yield Either(
+    #             right=AddLineageRequest(
+    #                 edge=EntitiesEdge(
+    #                     fromEntity=EntityReference(id=from_entity.id, type="table"),
+    #                     toEntity=EntityReference(id=to_entity.id, type="table"),
+    #                     lineageDetails=lineage_details,
+    #                 )
+    #             )
+    #         )
 
     def get_pipelines_list(self) -> Iterable[AirbytePipelineDetails]:
         """
         Get List of all pipelines
         """
-        for workspace in self.client.list_workspaces():
-            for connection in self.client.list_connections(
-                workflow_id=workspace.get("workspaceId")
-            ):
-                yield AirbytePipelineDetails(workspace=workspace, connection=connection)
+        for environment in self.client.list_environments():
+            for connection in self.client.list_connections(environment_id=environment.get("cross_id")):
+                yield AirbytePipelineDetails(workspace=environment, connection=connection)
 
     def get_pipeline_name(self, pipeline_details: AirbytePipelineDetails) -> str:
         """
         Get Pipeline Name
         """
-        return pipeline_details.connection.get("connectionId")
+        return pipeline_details.connection.get("river_cross_id")

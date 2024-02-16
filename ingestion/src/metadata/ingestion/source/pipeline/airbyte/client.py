@@ -29,42 +29,41 @@ class AirbyteClient:
 
     def __init__(self, config: AirbyteConnection):
         self.config = config
+
+
+        api_token = "eyJhbGciOiJIUzI1NiIsImV4cCI6MjAyMjU3MTQxMiwiaWF0IjoxNzA3MjExNDEyfQ.eyJhY2MiOiI1ZDdkZjg1NTZiMDI4ZTFiN2U3MzcyMjEiLCJzY29wZXMiOnsiNWQ3ZGY4NTU2YjAyOGUxYjdlNzM3MjI0IjpbInJpdmVyOmV4ZWN1dGUiLCJtZTpsaXN0IiwiZGF0YXNvdXJjZTpsaXN0IiwiZGF0YWZyYW1lOmxpc3QiLCJkYXRhX3F1YWxpdHlfdGVzdDpsaXN0IiwibG9naWNvZGU6bGlzdCIsIm9wZXJhdGlvbnM6bGlzdCIsImFjdGl2aXR5Omxpc3QiLCJlbnZpcm9ubWVudDpsaXN0IiwiYWNjb3VudDpsaXN0IiwiYXVkaXQ6bGlzdCIsImNvbm5lY3Rpb246bGlzdCIsInJpdmVyOmxpc3QiLCJhY3Rpdml0eTpsb2ciLCJncm91cDpsaXN0Il19LCJ0b2tlbl9uYW1lIjoib3Blbl9tZXRhZGF0YSIsImlzcyI6IjU1YzhiZTNjZjc0YzA3MTc2Yzk4YzVmMCIsImp0aSI6IjBmNjY0YjIwZGUyZTQzZGZiOWZkZDhmYTQwYzU4Mjg3IiwiZW52IjoiNWQ3ZGY4NTU2YjAyOGUxYjdlNzM3MjI0Iiwic3ViIjoiUml2ZXJ5IEFQSSJ9.Bi37UpFbLDLKYD3IyVXaM-Kw34nbohr0B4_-79mQlLg"
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.hostPort,
-            api_version="api/v1",
-            auth_header=AUTHORIZATION_HEADER,
-            auth_token=lambda: (NO_ACCESS_TOKEN, 0),
+            base_url= self.config.hostPort,
+            api_version=f"v1/accounts/{self.config.AccountID}",
+            auth_header=  "Authorization",
+            auth_token= lambda: (self.config.apiToken,0)
         )
-        if self.config.username:
-            client_config.auth_token_mode = "Basic"
-            client_config.auth_token = lambda: (
-                generate_http_basic_token(
-                    self.config.username, self.config.password.get_secret_value()
-                ),
-                0,
-            )
 
         self.client = REST(client_config)
 
-    def list_workspaces(self) -> List[dict]:
+    def list_environments(self) -> List[dict]:
         """
-        Method returns the list of workflows
-        an airbyte instance can contain multiple workflows
+        Method returns the list of environments
         """
-        response = self.client.post("/workspaces/list")
+        ACCOUNT_ID = '5d7df8556b028e1b7e737221'
+        response = self.client.get(f"/environments")
+
         if response.get("exceptionStack"):
             raise APIError(response["message"])
-        return response.get("workspaces")
+        return response.get("items",[])
 
-    def list_connections(self, workflow_id: str) -> List[dict]:
+
+
+    def list_connections(self, environment_id: str) -> List[dict]:
         """
         Method returns the list all of connections of workflow
         """
-        data = {"workspaceId": workflow_id}
-        response = self.client.post("/connections/list", data=json.dumps(data))
+        ACCOUNT_ID = '5d7df8556b028e1b7e737221'
+        # data = {"workspaceId": environment_id}
+        response = self.client.get(f"/environments/{environment_id}/rivers")
         if response.get("exceptionStack"):
             raise APIError(response["message"])
-        return response.get("connections")
+        return response.get("items")
 
     def list_jobs(self, connection_id: str) -> List[dict]:
         """

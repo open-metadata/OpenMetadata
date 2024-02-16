@@ -12,6 +12,7 @@
 Python API REST wrapper and helpers
 """
 import datetime
+import json
 import time
 import traceback
 from typing import Callable, Dict, List, Optional, Union
@@ -143,11 +144,14 @@ class REST:
         base_url = base_url or self._base_url
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + "/" + version + path)
+
         if (
             self.config.expires_in
             and datetime.datetime.utcnow().timestamp() >= self.config.expires_in
             or not self.config.access_token
         ):
+
+
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":
                 if isinstance(expiry, datetime.datetime):
@@ -162,6 +166,8 @@ class REST:
             if self._auth_token_mode
             else self.config.access_token
         )
+
+        print("headers:", headers)
 
         # Merge extra headers if provided.
         # If a header value is provided in modulo string format and matches an existing header,
@@ -213,6 +219,9 @@ class REST:
         retry_codes = self._retry_codes
         try:
             resp = self._session.request(method, url, **opts)
+
+            print("resp:",resp.json())
+
             resp.raise_for_status()
 
             if resp.text != "":

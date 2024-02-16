@@ -65,5 +65,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["apiKey", "apiSecret"]
+  "required": ["apiToken"]
 }

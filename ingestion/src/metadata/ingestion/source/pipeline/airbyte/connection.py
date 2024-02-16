@@ -43,7 +43,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"GetPipelines": client.list_workspaces}
+    test_fn = {"GetPipelines": client.list_environments}
 
     test_connection_steps(
         metadata=metadata,
