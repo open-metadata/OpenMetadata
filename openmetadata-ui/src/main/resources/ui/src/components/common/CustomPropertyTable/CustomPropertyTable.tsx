@@ -63,7 +63,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
-  maxDataCap = 5,
+  maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
@@ -189,6 +189,34 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onExtensionUpdate,
   ]);
 
+  const viewAllBtn = useMemo(() => {
+    const customProp = entityTypeDetail.customProperties ?? [];
+
+    if (
+      maxDataCap &&
+      customProp.length >= maxDataCap &&
+      entityDetails.fullyQualifiedName
+    ) {
+      return (
+        <Link
+          to={getEntityDetailLink(
+            entityType,
+            entityDetails.fullyQualifiedName,
+            EntityTabs.CUSTOM_PROPERTIES
+          )}>
+          {t('label.view-all')}
+        </Link>
+      );
+    }
+
+    return null;
+  }, [
+    entityTypeDetail.customProperties,
+    entityType,
+    entityDetails,
+    maxDataCap,
+  ]);
+
   useEffect(() => {
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();
@@ -252,17 +280,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Typography.Text className="right-panel-label">
               {t('label.custom-property-plural')}
             </Typography.Text>
-            {(entityTypeDetail.customProperties ?? []).length >= maxDataCap &&
-              entityDetails.fullyQualifiedName && (
-                <Link
-                  to={getEntityDetailLink(
-                    entityType,
-                    entityDetails.fullyQualifiedName,
-                    EntityTabs.CUSTOM_PROPERTIES
-                  )}>
-                  {t('label.view-all')}
-                </Link>
-              )}
+            {viewAllBtn}
           </div>
           <Table
             bordered

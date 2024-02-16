@@ -12,7 +12,7 @@
  */
 
 import { EntityType } from '../../constants/Entity.interface';
-import { interceptURL, verifyResponseStatusCode } from '../common';
+import { interceptURL, uuid, verifyResponseStatusCode } from '../common';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -144,3 +144,47 @@ export const validateValueForProperty = (propertyName, value: string) => {
     value.replace(/\*|_/gi, '')
   );
 };
+export const generateCustomProperties = () => {
+  return {
+    name: `cyCustomProperty${uuid()}`,
+    description: `cyCustomProperty${uuid()}`,
+  };
+};
+export const verifyCustomPropertyRows = () => {
+  cy.get('[data-testid="custom_properties"]').click();
+  cy.get('.ant-table-row').should('have.length.gte', 10);
+  cy.get('.ant-tabs-tab').first().click();
+  cy.get(
+    '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"]',
+    {
+      timeout: 10000,
+    }
+  ).scrollIntoView();
+  cy.get(
+    '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"] tbody tr'
+  ).should('have.length', 5);
+};
+
+export const deleteCustomProperties = (
+  tableSchemaId: string,
+  token: string
+) => {
+  cy.request({
+    method: 'PATCH',
+    url: `/api/v1/metadata/types/${tableSchemaId}`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json-patch+json',
+    },
+    body: [
+      {
+        op: 'remove',
+        path: '/customProperties',
+      },
+    ],
+  });
+};
+
+export const customPropertiesArray = Array(10)
+  .fill(null)
+  .map(() => generateCustomProperties());
