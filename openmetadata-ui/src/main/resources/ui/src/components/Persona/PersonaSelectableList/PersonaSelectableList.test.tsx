@@ -10,19 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { PersonaSelectableList } from './PersonaSelectableList.component';
 
 const personaName = 'personaName';
+const data = { id: '1', type: 'user', name: personaName };
+const allData = [data, { id: '2', type: 'user', name: 'username1' }];
+const fetchOptionsParams = { after: undefined, limit: 50 };
+let isSearchValue = false;
 
-const data = [{ id: '1', type: 'user', name: personaName }];
-
-const allData = [
-  { id: '1', type: 'user', name: personaName },
-  { id: '2', type: 'user', name: 'username1' },
-];
+const mockUpdate = jest.fn();
+const mockFilterFunction = jest.fn();
 
 jest.mock('../../../rest/PersonaAPI', () => ({
   getAllPersonas: jest.fn().mockResolvedValue({
@@ -34,12 +35,6 @@ jest.mock('../../../rest/PersonaAPI', () => ({
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('personaName'),
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue(allData),
-}));
-
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (label: string) => label,
-  }),
 }));
 
 jest.mock('../../common/SelectableList/SelectableList.component', () => ({
@@ -56,13 +51,13 @@ jest.mock('../../common/SelectableList/SelectableList.component', () => ({
         <div data-testid="selectable-list">
           {children}
           {searchPlaceholder}
-          {customTagRenderer('add-user')}
+          {customTagRenderer('tag')}
           <button
             data-testid="fetch-options"
-            onClick={() => fetchOptions(personaName)}>
+            onClick={() => fetchOptions(isSearchValue ? 'username1' : '')}>
             fetchOptions
           </button>
-          <button data-testid="update" onClick={onUpdate}>
+          <button data-testid="update-button" onClick={() => onUpdate(allData)}>
             Update
           </button>
         </div>
@@ -86,15 +81,13 @@ jest.mock('antd', () => ({
   }),
 }));
 
-const mockUpdate = jest.fn();
-
 describe('PersonaSelectableList', () => {
   it('should render Persona Selectable List', () => {
     render(
       <PersonaSelectableList
         hasPermission
         multiSelect={false}
-        selectedPersonas={data}
+        selectedPersonas={[data]}
         onUpdate={mockUpdate}
       />
     );
@@ -110,7 +103,7 @@ describe('PersonaSelectableList', () => {
         <PersonaSelectableList
           hasPermission
           multiSelect={false}
-          selectedPersonas={data}
+          selectedPersonas={[data]}
           onUpdate={mockUpdate}
         />
       );
@@ -126,7 +119,7 @@ describe('PersonaSelectableList', () => {
         <PersonaSelectableList
           hasPermission={false}
           multiSelect={false}
-          selectedPersonas={data}
+          selectedPersonas={[data]}
           onUpdate={mockUpdate}
         />
       );
@@ -142,15 +135,15 @@ describe('PersonaSelectableList', () => {
         <PersonaSelectableList
           hasPermission
           multiSelect={false}
-          selectedPersonas={data}
+          selectedPersonas={[data]}
           onUpdate={mockUpdate}
         />
       );
       await act(async () => {
-        userEvent.click(await screen.findByTestId('update'));
+        userEvent.click(await screen.findByTestId('update-button'));
       });
 
-      expect(mockUpdate).toHaveBeenCalledWith('s');
+      expect(mockUpdate).toHaveBeenCalledWith(data);
     });
   });
 
@@ -160,15 +153,84 @@ describe('PersonaSelectableList', () => {
         <PersonaSelectableList
           hasPermission
           multiSelect
-          selectedPersonas={data}
+          selectedPersonas={[data]}
           onUpdate={mockUpdate}
         />
       );
       await act(async () => {
-        userEvent.click(await screen.findByTestId('update'));
+        userEvent.click(await screen.findByTestId('update-button'));
       });
 
-      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockUpdate).toHaveBeenCalledWith(allData);
+    });
+  });
+
+  it('should call fetch options', async () => {
+    await act(async () => {
+      render(
+        <PersonaSelectableList
+          hasPermission
+          multiSelect
+          selectedPersonas={[data]}
+          onUpdate={mockUpdate}
+        />
+      );
+      await act(async () => {
+        userEvent.click(await screen.findByTestId('fetch-options'));
+      });
+
+      expect(getAllPersonas as jest.Mock).toHaveBeenCalledWith(
+        fetchOptionsParams
+      );
+    });
+  });
+
+  it('should call fetch options when persona list is already present', async () => {
+    await act(async () => {
+      render(
+        <PersonaSelectableList
+          hasPermission
+          multiSelect
+          personaList={allData}
+          selectedPersonas={[data]}
+          onUpdate={mockUpdate}
+        />
+      );
+      await act(async () => {
+        userEvent.click(await screen.findByTestId('fetch-options'));
+      });
+
+      expect(await screen.findByText(personaName)).toBeInTheDocument();
+    });
+  });
+
+  it('should call fetch options when search text is present', async () => {
+    isSearchValue = true;
+
+    function filterArray<T>(
+      array: T[],
+      filterFunction: (value: T) => boolean
+    ): T[] {
+      return array.filter(filterFunction);
+    }
+
+    await act(async () => {
+      render(
+        <PersonaSelectableList
+          hasPermission
+          multiSelect
+          personaList={allData}
+          selectedPersonas={[data]}
+          onUpdate={mockUpdate}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(await screen.findByTestId('fetch-options'));
+      });
+
+      filterArray(allData, mockFilterFunction);
+
+      expect(mockFilterFunction).toHaveBeenCalled();
     });
   });
 });
