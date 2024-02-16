@@ -36,6 +36,7 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 - [Query Usage](#query-usage)
 - [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
@@ -258,6 +259,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "clickhouse"} /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "clickhouse"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 
