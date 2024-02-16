@@ -48,17 +48,25 @@ This makes it easy for any user to contribute tests via the UI, while maintainin
 
 {% /note %}
 
+You can keep your YAML config as simple as follows if the table already has tests.
+
+```yaml
+processor:
+  type: "orm-test-runner"
+  config: {}
+```
+
 ### Key reference:
 
 - `forceUpdate`: if the test case exists (base on the test case name) for the entity, implements the strategy to follow when running the test (i.e. whether or not to update parameters)
-- `testCases`: list of test cases to execute against the entity referenced
+- `testCases`: list of test cases to add to the entity referenced. Note that we will execute all the tests present in the Table.
 - `name`: test case name
 - `testDefinitionName`: test definition
 - `columnName`: only applies to column test. The name of the column to run the test against
 - `parameterValues`: parameter values of the test
 
 
-`sink` and `workflowConfig` will have the same settings than the ingestion and profiler workflow.
+The `sink` and `workflowConfig` will have the same settings as the ingestion and profiler workflow.
 
 ### Full  `yaml` config example
 
