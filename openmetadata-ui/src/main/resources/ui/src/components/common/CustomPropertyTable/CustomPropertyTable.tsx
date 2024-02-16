@@ -189,7 +189,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onExtensionUpdate,
   ]);
 
-  const renderViewAll = useMemo(() => {
+  const viewAllBtn = useMemo(() => {
     const customProp = entityTypeDetail.customProperties ?? [];
 
     if (
@@ -280,7 +280,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Typography.Text className="right-panel-label">
               {t('label.custom-property-plural')}
             </Typography.Text>
-            {renderViewAll}
+            {viewAllBtn}
           </div>
           <Table
             bordered
