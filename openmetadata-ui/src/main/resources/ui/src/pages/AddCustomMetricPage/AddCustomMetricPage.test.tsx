@@ -30,11 +30,14 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>CustomMetricForm</div>);
   }
 );
-jest.mock('../../components/Database/TableProfiler/SingleColumnProfile', () => {
-  return jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>);
-});
 jest.mock(
-  '../../components/Database/TableProfiler/TableProfilerChart/TableProfilerChart',
+  '../../components/Database/Profiler/TableProfiler/SingleColumnProfile',
+  () => {
+    return jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>);
+  }
+);
+jest.mock(
+  '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart',
   () => {
     return jest.fn().mockImplementation(() => <div>TableProfilerChart</div>);
   }

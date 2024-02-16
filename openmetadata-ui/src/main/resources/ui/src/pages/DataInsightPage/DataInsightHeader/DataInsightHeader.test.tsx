@@ -25,11 +25,11 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => ({ tab: 'tab' })),
 }));
 
-jest.mock('../../../components/DataInsightDetail/DataInsightSummary', () =>
+jest.mock('../../../components/DataInsight/DataInsightSummary', () =>
   jest.fn(() => <div>DataInsightSummary</div>)
 );
 
-jest.mock('../../../components/DataInsightDetail/KPIChart', () =>
+jest.mock('../../../components/DataInsight/KPIChart', () =>
   jest.fn(() => <div>KPIChart</div>)
 );
 

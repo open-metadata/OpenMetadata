@@ -29,7 +29,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 jest.mock(
-  '../../components/DataQuality/TestSuites/TestSuites.component',
+  '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component',
   () => {
     return {
       TestSuites: jest

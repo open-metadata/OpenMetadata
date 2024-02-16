@@ -19,7 +19,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { SummaryPanel } from '../../components/DataQuality/SummaryPannel/SummaryPanel.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
-import { TestSuites } from '../../components/DataQuality/TestSuites/TestSuites.component';
+import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
