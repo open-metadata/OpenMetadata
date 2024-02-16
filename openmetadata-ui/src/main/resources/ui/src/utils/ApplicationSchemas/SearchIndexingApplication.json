@@ -6,7 +6,7 @@
   "properties": {
     "batchSize": {
       "title": "Batch Size",
-      "description": "Maximum number of events entities in a batch (Default 1000).",
+      "description": "Maximum number of events entities in a batch (Default 100).",
       "type": "integer",
       "default": 100
     },
