@@ -57,7 +57,7 @@ jest.mock(
   () => ({ SummaryPanel: jest.fn() })
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest
     .fn()
     .mockImplementation(() => ({ permissions: DEFAULT_ENTITY_PERMISSION })),
