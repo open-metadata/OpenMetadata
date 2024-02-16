@@ -38,6 +38,9 @@
         "$ref": "../../entity/data/table.json#/definitions/dataType"
       }
     },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
     "parameterDefinition": {
       "type": "array",
       "items": {

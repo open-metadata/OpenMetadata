@@ -36,8 +36,8 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../Loader/Loader';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
 

@@ -28,26 +28,26 @@ describe(
       verifyResponseStatusCode('@getApplications', 200);
     });
 
-    it('Edit data insight application', () => {
-      interceptURL(
-        'GET',
-        '/api/v1/apps/name/DataInsightsApplication?fields=*',
-        'getDataInsightDetails'
-      );
-      interceptURL('PATCH', '/api/v1/apps/*', 'updateApplication');
-      cy.get(
-        '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
-      ).click();
-      verifyResponseStatusCode('@getDataInsightDetails', 200);
-      cy.get('[data-testid="edit-button"]').click();
-      cy.get('#cronType').click();
-      cy.get('[title="Day"]').click();
-      cy.get('[data-testid="hour-options"]').click();
-      cy.get('[title="01"]').click();
-      cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
-      verifyResponseStatusCode('@updateApplication', 200);
-      cy.get('[data-testid="cron-string"]').should('contain', 'At 01:00 AM');
-    });
+  it('Edit data insight application', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/apps/name/DataInsightsApplication?fields=*',
+      'getDataInsightDetails'
+    );
+    interceptURL('PATCH', '/api/v1/apps/*', 'updateApplication');
+    cy.get(
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+    ).click();
+    verifyResponseStatusCode('@getDataInsightDetails', 200);
+    cy.get('[data-testid="edit-button"]').click();
+    cy.get('[data-testid="cron-type"]').click();
+    cy.get('[title="Day"]').click();
+    cy.get('[data-testid="hour-options"]').click();
+    cy.get('[title="01"]').click();
+    cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@updateApplication', 200);
+    cy.get('[data-testid="cron-string"]').should('contain', 'At 01:00 AM');
+  });
 
     it('Uninstall application', () => {
       interceptURL(
@@ -75,26 +75,27 @@ describe(
       );
     });
 
-    it('Install application', () => {
-      interceptURL('GET', '/api/v1/apps/marketplace?limit=*', 'getMarketPlace');
-      interceptURL('POST', '/api/v1/apps', 'installApplication');
-      cy.get('[data-testid="add-application"]').click();
-      verifyResponseStatusCode('@getMarketPlace', 200);
-      cy.get(
-        '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
-      ).click();
-      cy.get('[data-testid="install-application"]').click();
-      cy.get('[data-testid="save-button"]').click();
-      cy.get('#cronType').click();
-      cy.get('[title="Day"]').click();
-      cy.get('[data-testid="cron-type"]').should('contain', 'Day');
-      cy.get('[data-testid="deploy-button"]').click();
-      verifyResponseStatusCode('@installApplication', 201);
-      verifyResponseStatusCode('@getApplications', 200);
-      cy.get('[data-testid="data-insights-application-card"]').should(
-        'be.visible'
-      );
-    });
+  it('Install application', () => {
+    interceptURL('GET', '/api/v1/apps/marketplace?limit=*', 'getMarketPlace');
+    interceptURL('POST', '/api/v1/apps', 'installApplication');
+    cy.get('[data-testid="add-application"]').click();
+    verifyResponseStatusCode('@getMarketPlace', 200);
+    cy.get(
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+    ).click();
+    cy.get('[data-testid="install-application"]').click();
+    cy.get('[data-testid="save-button"]').click();
+    cy.get('[data-testid="cron-type"]').click();
+    cy.get('.rc-virtual-list [title="Day"]').click();
+    cy.get('[data-testid="cron-type"]').should('contain', 'Day');
+    cy.get('[data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@installApplication', 201);
+    verifyResponseStatusCode('@getApplications', 200);
+    cy.get('[data-testid="data-insights-application-card"]').should(
+      'be.visible'
+    );
+  });
+
 
     it('Deploy & run application', () => {
       interceptURL(

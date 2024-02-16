@@ -40,7 +40,7 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     interceptURL('PATCH', '/api/v1/apps/*', 'updateApplication');
     visitSearchApplicationPage();
     cy.get('[data-testid="edit-button"]').click();
-    cy.get('#cronType').click();
+    cy.get('[data-testid="cron-type"]').click();
     cy.get('[title="Day"]').click();
     cy.get('[data-testid="hour-options"]').click();
     cy.get('[title="01"]').click();
@@ -86,8 +86,8 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     cy.get('[data-testid="install-application"]').click();
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
-    cy.get('#cronType').click();
-    cy.get('[title="Day"]').click();
+    cy.get('[data-testid="cron-type"]').click();
+    cy.get('.rc-virtual-list [title="Day"]').click();
     cy.get('[data-testid="cron-type"]').should('contain', 'Day');
     cy.get('[data-testid="deploy-button"]').click();
     verifyResponseStatusCode('@installApplication', 201);

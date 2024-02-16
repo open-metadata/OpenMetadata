@@ -48,7 +48,7 @@ jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
   jest.fn().mockReturnValue(<div>DataInsightHeader.component</div>)
 );
 jest.mock(
-  '../../components/DataInsightDetail/DataAssetsTab/DataAssetsTab.component',
+  '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component',
   () => jest.fn().mockReturnValue(<div>DataAssetsTab.component</div>)
 );
 const mockComponent = () => <div>dataAssetsComponent</div>;
@@ -62,7 +62,7 @@ jest.mock('./DataInsightClassBase', () => ({
   ]),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       dataInsightChart: {

@@ -16,8 +16,21 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  DashboardSource,
+  DataProductSource,
+  GlossarySource,
+  MlModelSource,
+  Option,
+  PipelineSource,
+  SearchIndexSource,
+  SearchSuggestions,
+  TableSource,
+  TagSource,
+  TopicSource,
+} from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   ContainerSearchSource,
@@ -33,20 +46,7 @@ import {
   getSuggestionElement,
 } from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  DashboardSource,
-  DataProductSource,
-  GlossarySource,
-  MlModelSource,
-  Option,
-  PipelineSource,
-  SearchIndexSource,
-  SearchSuggestions,
-  TableSource,
-  TagSource,
-  TopicSource,
-} from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { useTourProvider } from '../TourProvider/TourProvider';
+import Loader from '../common/Loader/Loader';
 
 type SuggestionProp = {
   searchText: string;

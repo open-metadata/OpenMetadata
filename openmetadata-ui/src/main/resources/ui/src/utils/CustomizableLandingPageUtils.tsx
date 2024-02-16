@@ -22,7 +22,7 @@ import {
 } from 'lodash';
 import React from 'react';
 import { Layout } from 'react-grid-layout';
-import EmptyWidgetPlaceholder from '../components/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,

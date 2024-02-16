@@ -32,7 +32,7 @@ const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
 const mockUseHistory = { push: jest.fn() };
 const mockLocation = { search: '' };
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
@@ -68,35 +68,26 @@ jest.mock('react-router-dom', () => {
     useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
-jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
+jest.mock('../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock(
-  '../../../components/common/SearchBarComponent/SearchBar.component',
-  () => {
-    return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
-  }
-);
-jest.mock(
-  '../../../components/ProfilerDashboard/component/DataQualityTab',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>DataQualityTab.component</div>);
-  }
-);
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={`error-placeholder-type-${type}`}>
-          ErrorPlaceHolder.component
-        </div>
-      ));
-  }
-);
+jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
+  return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
+});
+jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>DataQualityTab.component</div>);
+});
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ type }) => (
+      <div data-testid={`error-placeholder-type-${type}`}>
+        ErrorPlaceHolder.component
+      </div>
+    ));
+});
 
 const mockProps = {
   summaryPanel: <div>SummaryPanel.component</div>,

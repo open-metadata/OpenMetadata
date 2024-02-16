@@ -74,6 +74,7 @@ class DataInsightSource(Source):
         super().__init__()
         self.metadata = metadata
         self.date = datetime.utcnow().strftime("%Y-%m-%d")
+        self.entities_cache = {}
 
         _processors = self._instantiate_processors()
         self._processors: Dict[
@@ -130,10 +131,18 @@ class DataInsightSource(Source):
                 processor = cast(DataProcessor, processor)
                 processor.pre_hook() if processor.pre_hook else None  # pylint: disable=expression-not-assigned
 
-                for data in producer.fetch_data(fields=["owner", "tags"]):
+                for data in (
+                    producer.fetch_data(
+                        fields=["owner", "tags"], entities_cache=self.entities_cache
+                    )
+                    or []
+                ):
                     processor.refine(data)
 
                 processor.post_hook() if processor.post_hook else None  # pylint: disable=expression-not-assigned
+
+                if processor.clean_up_cache:
+                    self.entities_cache.clear()
 
                 for data in processor.yield_refined_data():
                     yield Either(left=None, right=DataInsightRecord(data=data))
