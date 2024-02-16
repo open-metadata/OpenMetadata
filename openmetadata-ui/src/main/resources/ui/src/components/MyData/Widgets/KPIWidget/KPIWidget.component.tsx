@@ -49,7 +49,7 @@ import {
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import KPILatestResultsV1 from '../../../DataInsightDetail/KPILatestResultsV1';
+import KPILatestResultsV1 from '../../../DataInsight/KPILatestResultsV1';
 import './kpi-widget.less';
 import { KPIWidgetProps } from './KPIWidget.interface';
 
