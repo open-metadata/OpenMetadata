@@ -276,7 +276,7 @@ describe('Test IngestionRecentRun component', () => {
     expect(runs).toHaveLength(3);
 
     await act(async () => {
-      // click on second last
+      // click on last run
       fireEvent.click(runs[runs.length - 1]);
     });
 
