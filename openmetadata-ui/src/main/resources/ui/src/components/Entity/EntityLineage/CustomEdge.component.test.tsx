@@ -65,7 +65,7 @@ const mockCustomEdgeProp = {
   selected: true,
 } as EdgeProps;
 
-jest.mock('../../LineageProvider/LineageProvider', () => ({
+jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
     tracedColumns: [],

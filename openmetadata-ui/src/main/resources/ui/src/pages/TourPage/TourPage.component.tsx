@@ -13,8 +13,8 @@
 
 import React, { useEffect, useMemo } from 'react';
 import Tour from '../../components/AppTour/Tour';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';

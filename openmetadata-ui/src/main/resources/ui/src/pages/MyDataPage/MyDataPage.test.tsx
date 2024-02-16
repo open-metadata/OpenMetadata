@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,
@@ -57,7 +57,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
@@ -73,16 +73,19 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
     ));
 });
 
-jest.mock('../../components/WelcomeScreen/WelcomeScreen.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onClose }) => (
-      <div onClick={onClose}>WelcomeScreen</div>
-    ));
-});
+jest.mock(
+  '../../components/MyData/WelcomeScreen/WelcomeScreen.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ onClose }) => (
+        <div onClick={onClose}>WelcomeScreen</div>
+      ));
+  }
+);
 
 jest.mock(
-  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
+  '../../context/ApplicationConfigProvider/ApplicationConfigProvider',
   () => ({
     useApplicationConfigContext: jest
       .fn()

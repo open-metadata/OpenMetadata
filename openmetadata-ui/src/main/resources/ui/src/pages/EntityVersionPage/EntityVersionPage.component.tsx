@@ -22,22 +22,17 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ContainerVersion from '../../components/ContainerVersion/ContainerVersion.component';
-import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
-import DataModelVersion from '../../components/DataModelVersion/DataModelVersion.component';
-import Loader from '../../components/Loader/Loader';
-import MlModelVersion from '../../components/MlModelVersion/MlModelVersion.component';
+import Loader from '../../components/common/Loader/Loader';
+import ContainerVersion from '../../components/Container/ContainerVersion/ContainerVersion.component';
+import DashboardVersion from '../../components/Dashboard/DashboardVersion/DashboardVersion.component';
+import DataModelVersion from '../../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component';
+import StoredProcedureVersion from '../../components/Database/StoredProcedureVersion/StoredProcedureVersion.component';
+import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
+import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import PipelineVersion from '../../components/PipelineVersion/PipelineVersion.component';
+import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
 import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
-import StoredProcedureVersion from '../../components/StoredProcedureVersion/StoredProcedureVersion.component';
-import TableVersion from '../../components/TableVersion/TableVersion.component';
-import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
+import TopicVersion from '../../components/Topic/TopicVersion/TopicVersion.component';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -50,6 +45,11 @@ import {
   getVersionPath,
   getVersionPathWithTab,
 } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Container } from '../../generated/entity/data/container';
