@@ -22,14 +22,21 @@ import {
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
+  customPropertiesArray,
   CustomPropertyType,
+  deleteCustomProperties,
   deleteCustomPropertyForEntity,
   generateCustomProperty,
   setValueForProperty,
   validateValueForProperty,
+  verifyCustomPropertyRows,
 } from '../../common/Utils/CustomProperty';
-import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
+  createEntityTableViaREST,
+  visitEntityDetailsPage,
+} from '../../common/Utils/Entity';
+import {
+  DATA_ASSETS,
   ENTITIES,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -39,6 +46,7 @@ import {
   uuid,
 } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 
 const CREDENTIALS = {
   name: 'aaron_johnson0',
@@ -574,6 +582,67 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       // delete glossary and glossary term
       cy.sidebarClick(SidebarItem.GLOSSARY);
       deleteGlossary(NEW_GLOSSARY.name);
+    });
+  });
+
+  describe('Verify custom properties in right panel and custom properties tab', () => {
+    let tableSchemaId = '';
+    let token = '';
+    before(() => {
+      cy.login();
+
+      cy.getAllLocalStorage().then((data) => {
+        token = Object.values(data)[0].oidcIdToken;
+        createEntityTableViaREST({
+          token,
+          ...DATABASE_SERVICE,
+          tables: [DATABASE_SERVICE.entity],
+        });
+
+        cy.request({
+          method: 'GET',
+          url: `/api/v1/metadata/types?category=field&limit=12`,
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(({ body }) => {
+          const integerProp = body.data.find((item) => item.name === 'integer');
+
+          cy.request({
+            method: 'GET',
+            url: `/api/v1/metadata/types/name/table`,
+            headers: { Authorization: `Bearer ${token}` },
+          }).then(({ body }) => {
+            tableSchemaId = body.id;
+
+            customPropertiesArray.map((item) => {
+              cy.request({
+                method: 'PUT',
+                url: `/api/v1/metadata/types/${tableSchemaId}`,
+                headers: { Authorization: `Bearer ${token}` },
+                body: {
+                  ...item,
+                  propertyType: {
+                    id: integerProp.id ?? '',
+                    type: 'type',
+                  },
+                },
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('Verify custom properties in right panel and custom properties tab', () => {
+      visitEntityDetailsPage({
+        term: DATABASE_SERVICE.entity.name,
+        serviceName: DATABASE_SERVICE.service.name,
+        entity: DATA_ASSETS.tables,
+      });
+      verifyCustomPropertyRows();
+    });
+
+    after(() => {
+      deleteCustomProperties(tableSchemaId, token);
     });
   });
 });
