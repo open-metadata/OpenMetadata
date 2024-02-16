@@ -52,7 +52,7 @@ jest.mock('../../rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock(
-  '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
+  '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
   () => ({
     IngestionRecentRuns: jest
       .fn()

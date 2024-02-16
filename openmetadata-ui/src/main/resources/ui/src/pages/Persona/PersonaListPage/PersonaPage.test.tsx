@@ -45,7 +45,7 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () => {
     .mockImplementation(() => <div>DeleteWidgetModal.component</div>);
 });
 jest.mock(
-  '../../../components/Persona/PersonaDetailsCard/PersonaDetailsCard',
+  '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard',
   () => {
     return {
       PersonaDetailsCard: jest
@@ -55,7 +55,7 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../../components/Persona/AddEditPersona/AddEditPersona.component',
+  '../../../components/MyData//Persona/AddEditPersona/AddEditPersona.component',
   () => {
     return {
       AddEditPersonaForm: jest.fn().mockImplementation(({ onSave }) => (

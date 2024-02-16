@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { IngestionListTableProps } from '../components/Ingestion/IngestionListTable.interface';
+import { IngestionListTableProps } from '../components/Settings/Services/Ingestion/IngestionListTable.interface';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   AuthProvider,

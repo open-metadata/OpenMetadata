@@ -53,7 +53,7 @@ jest.mock('../../../rest/tagAPI', () => ({
   getTags: jest.fn().mockImplementation(() => mockGetTags()),
 }));
 
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
 

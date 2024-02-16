@@ -31,14 +31,14 @@ import {
   getUserPath,
   TERM_ADMIN,
 } from '../../../constants/constants';
+import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import Loader from '../../Loader/Loader';
 import { UserTeam } from '../AssigneeList/AssigneeList.interface';
+import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 const UserTeams = React.memo(({ userName }: { userName: string }) => {

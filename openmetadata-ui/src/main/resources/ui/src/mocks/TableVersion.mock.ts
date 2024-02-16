@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TableVersionProp } from '../components/TableVersion/TableVersion.interface';
+import { TableVersionProp } from '../components/Database/TableVersion/TableVersion.interface';
 import {
   Constraint,
   DatabaseServiceType,

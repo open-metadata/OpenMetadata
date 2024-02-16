@@ -78,18 +78,21 @@ jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockReturnValue(<div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../components/AddDataQualityTest/TestSuiteIngestion', () =>
-  jest.fn().mockImplementation(({ onCancel }) => (
-    <div>
-      <p>TestSuiteIngestion.component</p>
-      <button data-testid="back-btn" onClick={onCancel}>
-        Back
-      </button>
-    </div>
-  ))
+jest.mock(
+  '../../components/DataQuality/AddDataQualityTest/TestSuiteIngestion',
+  () =>
+    jest.fn().mockImplementation(({ onCancel }) => (
+      <div>
+        <p>TestSuiteIngestion.component</p>
+        <button data-testid="back-btn" onClick={onCancel}>
+          Back
+        </button>
+      </div>
+    ))
 );
-jest.mock('../../components/AddDataQualityTest/components/RightPanel', () =>
-  jest.fn().mockReturnValue(<div>RightPanel.component</div>)
+jest.mock(
+  '../../components/DataQuality/AddDataQualityTest/components/RightPanel',
+  () => jest.fn().mockReturnValue(<div>RightPanel.component</div>)
 );
 
 describe('TestSuiteIngestionPage', () => {

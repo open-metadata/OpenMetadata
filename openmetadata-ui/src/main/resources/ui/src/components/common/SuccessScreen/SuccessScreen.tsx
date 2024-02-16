@@ -21,8 +21,8 @@ import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import Loader from '../../Loader/Loader';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
+import Loader from '../Loader/Loader';
 
 export type SuccessScreenProps = {
   name: string;

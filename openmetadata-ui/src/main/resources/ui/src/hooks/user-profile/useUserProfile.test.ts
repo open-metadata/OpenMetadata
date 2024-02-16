@@ -15,7 +15,7 @@ import { getUserByName } from '../../rest/userAPI';
 import { useUserProfile } from './useUserProfile';
 
 jest.mock(
-  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
+  '../../context/ApplicationConfigProvider/ApplicationConfigProvider',
   () => ({
     useApplicationConfigContext: jest.fn().mockImplementation(() => ({
       userProfilePics: {

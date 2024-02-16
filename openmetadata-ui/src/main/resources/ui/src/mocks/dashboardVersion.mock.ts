@@ -12,7 +12,7 @@
  */
 /* eslint-disable max-len */
 
-import { DashboardVersionProp } from '../components/DashboardVersion/DashboardVersion.interface';
+import { DashboardVersionProp } from '../components/Dashboard/DashboardVersion/DashboardVersion.interface';
 import { Dashboard, DashboardType } from '../generated/entity/data/dashboard';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';

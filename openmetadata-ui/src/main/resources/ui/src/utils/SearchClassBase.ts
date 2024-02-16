@@ -27,10 +27,6 @@ import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
-import {
-  Option,
-  SearchSuggestions,
-} from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
@@ -53,6 +49,10 @@ import {
   TAGS_INITIAL_SORT_FIELD,
   TAGS_INITIAL_SORT_ORDER,
 } from '../constants/explore.constants';
+import {
+  Option,
+  SearchSuggestions,
+} from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';

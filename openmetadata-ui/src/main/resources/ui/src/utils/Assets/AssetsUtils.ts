@@ -13,7 +13,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { EntityDetailUnion } from 'Models';
-import { MapPatchAPIResponse } from '../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';

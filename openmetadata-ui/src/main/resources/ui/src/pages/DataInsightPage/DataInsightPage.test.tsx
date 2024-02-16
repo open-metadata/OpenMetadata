@@ -62,7 +62,7 @@ jest.mock('./DataInsightClassBase', () => ({
   ]),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       dataInsightChart: {

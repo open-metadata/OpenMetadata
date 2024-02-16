@@ -44,8 +44,6 @@ import { useEntityExportModalProvider } from '../../../components/Entity/EntityE
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
-import Voting from '../../../components/Voting/Voting.component';
-import { VotingDataProps } from '../../../components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
@@ -71,6 +69,8 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
+import Voting from '../../Entity/Voting/Voting.component';
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 import { useFqn } from '../../../hooks/useFqn';
 import { showErrorToast } from '../../../utils/ToastUtils';

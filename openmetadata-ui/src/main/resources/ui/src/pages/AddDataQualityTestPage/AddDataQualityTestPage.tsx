@@ -13,8 +13,8 @@
 
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
-import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import AddDataQualityTestV1 from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1';
 import { Table } from '../../generated/entity/data/table';
 import { useFqn } from '../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';

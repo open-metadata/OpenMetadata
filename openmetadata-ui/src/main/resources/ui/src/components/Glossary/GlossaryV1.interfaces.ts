@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { LoadingState } from 'Models';
-import { VotingDataProps } from '../../components/Voting/voting.interface';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { VotingDataProps } from '../Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 
 export type GlossaryV1Props = {

@@ -13,7 +13,6 @@
 
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
 import DomainPage from '../../components/Domain/DomainPage.component';
 import { ROUTES } from '../../constants/constants';
@@ -21,6 +20,8 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/policy';
 import { TeamType } from '../../generated/entity/teams/team';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
@@ -36,8 +37,7 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import DataProductsPage from '../DataProducts/DataProductsPage/DataProductsPage.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -79,7 +79,8 @@ const AddDataQualityTestPage = withSuspenseFallback(
 
 const AddCustomProperty = withSuspenseFallback(
   React.lazy(
-    () => import('../CustomEntityDetail/AddCustomProperty/AddCustomProperty')
+    () =>
+      import('../Settings/CustomProperty/AddCustomProperty/AddCustomProperty')
   )
 );
 
@@ -158,7 +159,7 @@ const MarketPlaceAppDetails = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../components/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
+        '../Settings/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
       )
   )
 );
@@ -327,7 +328,7 @@ const EditKPIPage = withSuspenseFallback(
 
 const AddTestSuitePage = withSuspenseFallback(
   React.lazy(
-    () => import('../../components/TestSuite/TestSuiteStepper/TestSuiteStepper')
+    () => import('../DataQuality/TestSuite/TestSuiteStepper/TestSuiteStepper')
   )
 );
 
@@ -438,8 +439,7 @@ const CustomPropertiesPageV1 = withSuspenseFallback(
 
 const AppDetailsPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../components/Applications/AppDetails/AppDetails.component')
+    () => import('../Settings/Applications/AppDetails/AppDetails.component')
   )
 );
 

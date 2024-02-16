@@ -39,7 +39,6 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
-import Loader from '../../../components/Loader/Loader';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
@@ -64,7 +63,8 @@ import {
   getTableExpandableConfig,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { DraggableBodyRowProps } from '../../Draggable/DraggableBodyRowProps.interface';
+import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
+import Loader from '../../common/Loader/Loader';
 import {
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,

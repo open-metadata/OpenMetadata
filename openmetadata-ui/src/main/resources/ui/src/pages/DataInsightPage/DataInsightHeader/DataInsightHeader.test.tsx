@@ -33,11 +33,12 @@ jest.mock('../../../components/DataInsightDetail/KPIChart', () =>
   jest.fn(() => <div>KPIChart</div>)
 );
 
-jest.mock('../../../components/DatePickerMenu/DatePickerMenu.component', () =>
-  jest.fn(() => <div>DatePickerMenu</div>)
+jest.mock(
+  '../../../components/common/DatePickerMenu/DatePickerMenu.component',
+  () => jest.fn(() => <div>DatePickerMenu</div>)
 );
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(() => ({
     permissions: {},
   })),

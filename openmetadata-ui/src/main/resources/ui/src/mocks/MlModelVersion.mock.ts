@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { MlModelVersionProp } from '../components/MlModelVersion/MlModelVersion.interface';
+import { MlModelVersionProp } from '../components/MlModel/MlModelVersion/MlModelVersion.interface';
 import {
   FeatureSourceDataType,
   FeatureType,

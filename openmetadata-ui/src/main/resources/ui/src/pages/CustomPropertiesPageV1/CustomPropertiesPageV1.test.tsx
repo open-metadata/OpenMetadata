@@ -37,13 +37,16 @@ jest.mock(
   () => jest.fn(() => <div>TitleBreadcrumb</div>)
 );
 
-jest.mock('../../components/CustomEntityDetail/CustomPropertyTable', () => ({
-  CustomPropertyTable: jest.fn(({ updateEntityType }) => (
-    <button onClick={() => updateEntityType([] as Type['customProperties'])}>
-      Update Entity Type
-    </button>
-  )),
-}));
+jest.mock(
+  '../../components/Settings/CustomProperty/CustomPropertyTable',
+  () => ({
+    CustomPropertyTable: jest.fn(({ updateEntityType }) => (
+      <button onClick={() => updateEntityType([] as Type['customProperties'])}>
+        Update Entity Type
+      </button>
+    )),
+  })
+);
 
 jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div>PageHeader</div>)
@@ -57,17 +60,17 @@ const mockGetEntityPermission = jest.fn().mockResolvedValue({
   EditAll: true,
 });
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest.fn(() => mockGetEntityPermission()),
   })),
 }));
 
-jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
+jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
 });
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 

@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
 import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge.svg';
-import Loader from '../../../components/Loader/Loader';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
@@ -58,6 +57,7 @@ import {
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';

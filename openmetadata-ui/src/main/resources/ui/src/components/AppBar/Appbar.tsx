@@ -27,8 +27,6 @@ import { ReactComponent as IconTour } from '../../assets/svg/icon-tour.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
 import { ReactComponent as IconWhatsNew } from '../../assets/svg/whats-new.svg';
-import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import {
   getExplorePath,
   ROUTES,
@@ -39,6 +37,8 @@ import {
   urlGithubRepo,
   urlJoinSlack,
 } from '../../constants/URL.constants';
+import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { getVersion } from '../../rest/miscAPI';
 import {

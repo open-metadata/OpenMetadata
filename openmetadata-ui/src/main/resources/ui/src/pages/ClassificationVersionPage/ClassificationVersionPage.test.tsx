@@ -31,7 +31,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/ClassificationDetails/ClassificationDetails',
+  '../../components/Classifications/ClassificationDetails/ClassificationDetails',
   () => ({
     ClassificationDetails: jest
       .fn()
@@ -53,7 +53,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader component</div>);
 });
 
@@ -68,7 +68,7 @@ const mockGetEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   })),

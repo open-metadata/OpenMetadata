@@ -19,9 +19,12 @@ const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-jest.mock('../../components/AddService/AddService.component', () => {
-  return jest.fn().mockImplementation(() => <div>AddService.component</div>);
-});
+jest.mock(
+  '../../components/Settings/Services/AddService/AddService.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>AddService.component</div>);
+  }
+);
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParam),

@@ -44,17 +44,19 @@ jest.mock(
   () => jest.fn(() => <div>TitleBreadcrumb</div>)
 );
 
-jest.mock('../../components/EmailConfigForm/EmailConfigForm.component', () =>
-  jest.fn().mockImplementation(({ onCancel, onFocus, onSubmit }) => (
-    <>
-      EmailConfigForm
-      <button onClick={onCancel}>Cancel EmailConfigForm</button>
-      <button onClick={() => onFocus({ target: { id: ACTIVE_FIELD } })}>
-        Focus EmailConfigForm
-      </button>
-      <button onClick={onSubmit}>Submit EmailConfigForm</button>
-    </>
-  ))
+jest.mock(
+  '../../components/Settings/Email/EmailConfigForm/EmailConfigForm.component',
+  () =>
+    jest.fn().mockImplementation(({ onCancel, onFocus, onSubmit }) => (
+      <>
+        EmailConfigForm
+        <button onClick={onCancel}>Cancel EmailConfigForm</button>
+        <button onClick={() => onFocus({ target: { id: ACTIVE_FIELD } })}>
+          Focus EmailConfigForm
+        </button>
+        <button onClick={onSubmit}>Submit EmailConfigForm</button>
+      </>
+    ))
 );
 
 const mockPush = jest.fn();

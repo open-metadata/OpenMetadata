@@ -54,7 +54,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/DataProductsContainer/DataProductsContainer.component',
+  '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component',
   () => jest.fn().mockImplementation(() => <div>{DATA_PRODUCT_CONTAINER}</div>)
 );
 
@@ -68,7 +68,7 @@ jest.mock(
       ))
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>{LOADER}</div>)
 );
 
@@ -80,13 +80,13 @@ const mockGetEntityPermissionByFqn = jest.fn().mockReturnValue({
   ViewAll: true,
 });
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn(() => mockGetEntityPermissionByFqn()),
   }),
 }));
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 

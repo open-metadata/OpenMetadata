@@ -16,6 +16,7 @@ import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -36,8 +37,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import DataQualityTab from '../../ProfilerDashboard/component/DataQualityTab';
+import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {

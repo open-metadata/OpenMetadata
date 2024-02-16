@@ -21,11 +21,10 @@ import { UserSelectableList } from '../../../../components/common/UserSelectable
 import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DomainExperts from '../../../../components/Domain/DomainExperts/DomainExperts.component';
 import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
-import { usePermissionProvider } from '../../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../components/PermissionProvider/PermissionProvider.interface';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
@@ -44,7 +43,8 @@ import {
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import FormItemLabel from '../../../Form/FormItemLabel';
+import FormItemLabel from '../../../common/Form/FormItemLabel';
+import TagButton from '../../../common/TagButton/TagButton.component';
 import '../../domain.less';
 import {
   DocumentationEntity,

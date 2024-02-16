@@ -38,7 +38,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData',
+  '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData',
   () =>
     jest
       .fn()
@@ -56,7 +56,7 @@ jest.mock(
       )
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 

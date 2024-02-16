@@ -42,7 +42,7 @@ jest.mock('reactflow', () => ({
   }),
 }));
 
-jest.mock('../../LineageProvider/LineageProvider', () => ({
+jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     toggleColumnView: mockOnExpandColumnClick,
     onLineageEditClick: mockOnEditLineageClick,

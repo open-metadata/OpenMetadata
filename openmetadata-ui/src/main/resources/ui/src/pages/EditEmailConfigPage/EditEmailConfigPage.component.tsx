@@ -25,7 +25,7 @@ import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import EmailConfigForm from '../../components/EmailConfigForm/EmailConfigForm.component';
+import EmailConfigForm from '../../components/Settings/Email/EmailConfigForm/EmailConfigForm.component';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,

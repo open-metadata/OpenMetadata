@@ -23,7 +23,7 @@ import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
-import Loader from '../Loader/Loader';
+import Loader from '../common/Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(

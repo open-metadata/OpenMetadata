@@ -147,13 +147,16 @@ jest.mock('../../rest/mlModelAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
-jest.mock('../../components/MlModelDetail/MlModelDetail.component', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<div data-testid="mlmodel-details">MlModelDetails</div>);
-});
+jest.mock(
+  '../../components/MlModel/MlModelDetail/MlModelDetail.component',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(<div data-testid="mlmodel-details">MlModelDetails</div>);
+  }
+);
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({

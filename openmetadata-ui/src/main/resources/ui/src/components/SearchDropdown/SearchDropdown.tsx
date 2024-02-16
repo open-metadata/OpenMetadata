@@ -43,7 +43,7 @@ import {
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import Loader from '../Loader/Loader';
+import Loader from '../common/Loader/Loader';
 import './search-dropdown.less';
 import {
   SearchDropdownOption,

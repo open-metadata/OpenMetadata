@@ -119,11 +119,11 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => new URLSearchParams()),
 }));
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });
 
-jest.mock('../../components/Users/Users.component', () => {
+jest.mock('../../components/Settings/Users/Users.component', () => {
   return jest.fn().mockReturnValue(<p>User Component</p>);
 });
 

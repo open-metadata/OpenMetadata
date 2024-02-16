@@ -16,13 +16,13 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { getDatabaseDetailsPath } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { PROMISE_STATE } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';

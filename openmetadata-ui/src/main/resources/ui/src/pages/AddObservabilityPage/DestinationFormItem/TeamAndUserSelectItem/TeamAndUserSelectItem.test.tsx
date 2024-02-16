@@ -21,7 +21,7 @@ import {
 } from '../../../../constants/TeamAndUserSelectItem.constants';
 import TeamAndUserSelectItem from './TeamAndUserSelectItem';
 
-jest.mock('../../../../components/Loader/Loader', () =>
+jest.mock('../../../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 

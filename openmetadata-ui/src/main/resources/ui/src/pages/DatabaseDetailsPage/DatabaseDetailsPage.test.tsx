@@ -116,7 +116,7 @@ const mockFeedCount = {
   ],
 };
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -209,7 +209,7 @@ jest.mock('../../utils/TagsUtils', () => ({
     },
   ]),
 }));
-jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   return jest
     .fn()
     .mockImplementation(({ name, id }) => <div data-testid={id}>{name}</div>);

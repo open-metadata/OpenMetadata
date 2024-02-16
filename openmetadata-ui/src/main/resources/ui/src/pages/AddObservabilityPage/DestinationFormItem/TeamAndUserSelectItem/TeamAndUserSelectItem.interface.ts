@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SelectOption } from '../../../../components/AsyncSelectList/AsyncSelectList.interface';
+import { SelectOption } from '../../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 
 export interface TeamAndUserSelectItemProps {
   entityType: string;

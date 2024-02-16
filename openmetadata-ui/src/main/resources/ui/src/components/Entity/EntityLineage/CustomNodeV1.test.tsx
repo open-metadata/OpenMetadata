@@ -69,7 +69,7 @@ const mockNodeDataProps2 = {
 
 const onMockColumnClick = jest.fn();
 
-jest.mock('../../LineageProvider/LineageProvider', () => ({
+jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
     tracedColumns: [],

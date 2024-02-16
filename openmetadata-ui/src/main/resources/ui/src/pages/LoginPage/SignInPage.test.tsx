@@ -31,22 +31,14 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
-jest.mock(
-  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-      customLogoUrlPath: 'https://customlink.source',
-
-      customMonogramUrlPath: 'https://customlink.source',
-    })),
-  })
-);
-
-jest.mock('../../assets/img/login-bg.png', () => 'login-bg.png');
 
 jest.mock('./LoginCarousel', () =>
   jest.fn().mockReturnValue(<p>LoginCarousel</p>)
 );
+
+jest.mock('../../components/common/BrandImage/BrandImage', () => {
+  return jest.fn().mockReturnValue(<p>testBrandLogo</p>);
+});
 
 describe('Test SignInPage Component', () => {
   afterEach(() => {
@@ -121,7 +113,7 @@ describe('Test SignInPage Component', () => {
     expect(signinButton).toBeInTheDocument();
   });
 
-  it('Page should render the correct logo image', async () => {
+  it('Page should render the brand logo', async () => {
     mockUseAuthContext.mockReturnValue({
       isAuthDisabled: false,
       authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
@@ -132,10 +124,8 @@ describe('Test SignInPage Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const brandLogoImage = await screen.findByTestId('brand-logo-image');
+    const brandLogoImage = await screen.findByText('testBrandLogo');
 
     expect(brandLogoImage).toBeInTheDocument();
-
-    expect(brandLogoImage).toHaveAttribute('src', 'https://customlink.source');
   });
 });

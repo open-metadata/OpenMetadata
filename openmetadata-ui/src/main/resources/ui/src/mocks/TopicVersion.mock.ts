@@ -23,7 +23,7 @@
  *  limitations under the License.
  */
 
-import { TopicVersionProp } from '../components/TopicVersion/TopicVersion.interface';
+import { TopicVersionProp } from '../components/Topic/TopicVersion/TopicVersion.interface';
 import {
   CleanupPolicy,
   MessagingServiceType,

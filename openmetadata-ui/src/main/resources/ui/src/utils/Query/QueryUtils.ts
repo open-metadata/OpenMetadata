@@ -12,11 +12,11 @@
  */
 
 import Qs from 'qs';
-import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import {
   QuerySearchFilterType,
   QuerySearchParams,
-} from '../../components/TableQueries/TableQueries.interface';
+} from '../../components/Database/TableQueries/TableQueries.interface';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 
 export const createQueryFilter = (
   allFilter: SearchDropdownOption[],

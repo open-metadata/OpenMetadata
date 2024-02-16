@@ -32,9 +32,9 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {

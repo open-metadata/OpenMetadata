@@ -14,14 +14,14 @@
 import classNames from 'classnames';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference, User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
-import Loader from '../../Loader/Loader';
-import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import Avatar from '../AvatarComponent/Avatar';
+import Loader from '../Loader/Loader';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 

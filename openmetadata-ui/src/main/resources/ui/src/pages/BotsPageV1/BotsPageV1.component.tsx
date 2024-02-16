@@ -14,8 +14,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import BotListV1 from '../../components/BotListV1/BotListV1.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import BotListV1 from '../../components/Settings/Bot/BotListV1/BotListV1.component';
 import { getCreateUserPath } from '../../constants/constants';
 
 export const BotsPageV1 = () => {

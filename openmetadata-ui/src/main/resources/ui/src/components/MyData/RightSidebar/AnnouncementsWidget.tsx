@@ -22,7 +22,7 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import './announcements-widget.less';
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {

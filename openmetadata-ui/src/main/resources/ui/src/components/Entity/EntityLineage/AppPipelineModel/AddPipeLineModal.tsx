@@ -31,8 +31,8 @@ import {
 import Fqn from '../../../../utils/Fqn';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import '../../../ActivityFeed/FeedEditor/feed-editor.less';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import '../../../FeedEditor/feed-editor.less';
 import './add-pipeline-modal.less';
 
 interface AddPipeLineModalType {

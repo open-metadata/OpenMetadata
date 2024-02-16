@@ -21,18 +21,17 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
+import DatePickerMenu from '../../components/common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import DatePickerMenu from '../../components/DatePickerMenu/DatePickerMenu.component';
-import Severity from '../../components/IncidentManager/Severity/Severity.component';
-import TestCaseIncidentManagerStatus from '../../components/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
+import { TableProfilerTab } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import Severity from '../../components/DataQuality/IncidentManager/Severity/Severity.component';
+import TestCaseIncidentManagerStatus from '../../components/DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   getTableTabPath,
@@ -41,6 +40,7 @@ import {
 } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { DEFAULT_SELECTED_RANGE } from '../../constants/profiler.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';

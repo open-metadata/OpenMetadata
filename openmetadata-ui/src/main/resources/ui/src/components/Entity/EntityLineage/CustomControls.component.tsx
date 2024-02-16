@@ -35,6 +35,7 @@ import {
   LINEAGE_DEFAULT_QUICK_FILTERS,
   ZOOM_TRANSITION_DURATION,
 } from '../../../constants/Lineage.constants';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { handleSearchFilterOption } from '../../../utils/CommonUtils';
@@ -47,7 +48,6 @@ import {
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 

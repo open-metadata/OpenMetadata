@@ -12,8 +12,7 @@
  */
 import { ReactNode } from 'react';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from '../../../components/TableQueries/TableQueries.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Container } from '../../../generated/entity/data/container';
@@ -39,6 +38,7 @@ import { StorageService } from '../../../generated/entity/services/storageServic
 import { EntityReference } from '../../../generated/entity/type';
 import { ServicesType } from '../../../interface/service.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export type DataAssetsType =
   | Table

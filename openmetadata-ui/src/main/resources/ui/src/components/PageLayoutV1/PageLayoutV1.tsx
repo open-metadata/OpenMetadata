@@ -21,7 +21,7 @@ import React, {
   ReactNode,
   useMemo,
 } from 'react';
-import DocumentTitle from '../../components/DocumentTitle/DocumentTitle';
+import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {

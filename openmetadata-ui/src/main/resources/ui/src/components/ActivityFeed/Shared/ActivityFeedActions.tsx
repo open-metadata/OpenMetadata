@@ -20,7 +20,6 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
 import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
-import Reaction from '../../../components/Reactions/Reaction';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
@@ -31,6 +30,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import Reaction from '../Reactions/Reaction';
 import './activity-feed-actions.less';
 
 interface ActivityFeedActionsProps {

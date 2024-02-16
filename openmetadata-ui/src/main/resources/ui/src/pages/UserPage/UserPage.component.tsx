@@ -26,8 +26,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
-import Loader from '../../components/Loader/Loader';
-import Users from '../../components/Users/Users.component';
+import Loader from '../../components/common/Loader/Loader';
+import Users from '../../components/Settings/Users/Users.component';
 import { User } from '../../generated/entity/teams/user';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';

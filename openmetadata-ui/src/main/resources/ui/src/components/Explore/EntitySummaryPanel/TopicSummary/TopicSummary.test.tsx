@@ -38,7 +38,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component',
+  '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component',
   () => jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 

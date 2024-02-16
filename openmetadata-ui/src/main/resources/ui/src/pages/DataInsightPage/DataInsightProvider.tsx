@@ -20,7 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { ListItem } from 'react-awesome-query-builder';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE } from '../../constants/constants';

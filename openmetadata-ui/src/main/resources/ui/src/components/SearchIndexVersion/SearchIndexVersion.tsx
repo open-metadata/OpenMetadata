@@ -21,10 +21,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../components/Loader/Loader';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import VersionTable from '../../components/VersionTable/VersionTable.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getVersionPathWithTab } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -38,7 +35,10 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
-import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
+import Loader from '../common/Loader/Loader';
+import TabsLabel from '../common/TabsLabel/TabsLabel.component';
+import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import VersionTable from '../Entity/VersionTable/VersionTable.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
 
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({

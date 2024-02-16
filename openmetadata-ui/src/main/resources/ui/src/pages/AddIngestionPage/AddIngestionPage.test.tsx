@@ -68,8 +68,9 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>)
 );
 
-jest.mock('../../components/AddIngestion/AddIngestion.component', () =>
-  jest.fn().mockImplementation(() => <div>AddIngestion</div>)
+jest.mock(
+  '../../components/Settings/Services/AddIngestion/AddIngestion.component',
+  () => jest.fn().mockImplementation(() => <div>AddIngestion</div>)
 );
 
 jest.mock('../../rest/ingestionPipelineAPI', () => ({

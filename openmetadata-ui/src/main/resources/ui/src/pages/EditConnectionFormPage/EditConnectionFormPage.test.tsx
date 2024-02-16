@@ -47,22 +47,24 @@ jest.mock(
   () => jest.fn(() => <div>TitleBreadcrumb</div>)
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
 let withActiveField = true;
 
-jest.mock('../../components/ServiceConfig/ServiceConfig', () =>
-  jest.fn().mockImplementation(({ onFocus, handleUpdate }) => (
-    <>
-      ServiceConfig
-      <button onClick={handleUpdate}>{SERVICE_CONFIG_UPDATE}</button>
-      <button onClick={() => onFocus(withActiveField ? ACTIVE_FIELD : '')}>
-        {SERVICE_CONFIG_FOCUS}
-      </button>
-    </>
-  ))
+jest.mock(
+  '../../components/Settings/Services/ServiceConfig/ServiceConfig',
+  () =>
+    jest.fn().mockImplementation(({ onFocus, handleUpdate }) => (
+      <>
+        ServiceConfig
+        <button onClick={handleUpdate}>{SERVICE_CONFIG_UPDATE}</button>
+        <button onClick={() => onFocus(withActiveField ? ACTIVE_FIELD : '')}>
+          {SERVICE_CONFIG_FOCUS}
+        </button>
+      </>
+    ))
 );
 
 jest.mock('../../hooks/useFqn', () => ({

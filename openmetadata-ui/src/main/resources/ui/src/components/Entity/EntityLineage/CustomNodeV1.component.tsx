@@ -27,12 +27,12 @@ import {
 } from 'reactflow';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
 import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getConstraintIcon, getEntityIcon } from '../../../utils/TableUtils';
-import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import './custom-node.less';
 import {
   getCollapseHandle,

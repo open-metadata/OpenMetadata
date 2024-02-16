@@ -17,7 +17,7 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 
 interface DataProductSummaryProps {
   entityDetails: DataProduct;

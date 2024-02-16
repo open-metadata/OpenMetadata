@@ -21,7 +21,6 @@ import MyDataImg from '../assets/img/my-data.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets.png';
-import KPIWidget from '../components/KPIWidget/KPIWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
   AnnouncementsWidgetProps,
@@ -29,9 +28,10 @@ import AnnouncementsWidget, {
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
-import TotalDataAssetsWidget from '../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
-import FeedsWidget from '../components/Widgets/FeedsWidget/FeedsWidget.component';
-import RecentlyViewed from '../components/Widgets/RecentlyViewed/RecentlyViewed';
+import FeedsWidget from '../components/MyData/Widgets/FeedsWidget/FeedsWidget.component';
+import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
+import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
+import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,

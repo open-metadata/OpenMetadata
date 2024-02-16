@@ -35,8 +35,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../../assets/svg/arrow-down-light.svg';
-import { SelectOption } from '../../../../components/AsyncSelectList/AsyncSelectList.interface';
-import Loader from '../../../../components/Loader/Loader';
+import { SelectOption } from '../../../../components/common/AsyncSelectList/AsyncSelectList.interface';
+import Loader from '../../../../components/common/Loader/Loader';
 import { Webhook } from '../../../../generated/events/eventSubscription';
 import './team-and-user-select-item.less';
 import { TeamAndUserSelectItemProps } from './TeamAndUserSelectItem.interface';

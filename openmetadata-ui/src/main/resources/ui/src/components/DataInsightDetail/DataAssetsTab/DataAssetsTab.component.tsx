@@ -15,7 +15,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataInsightChartType } from '../../../generated/dataInsight/dataInsightChartResult';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import DescriptionInsight from '../DescriptionInsight';
 import OwnerInsight from '../OwnerInsight';
 import TierInsight from '../TierInsight';

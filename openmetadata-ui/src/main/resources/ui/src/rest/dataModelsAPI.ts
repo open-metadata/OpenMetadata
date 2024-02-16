@@ -13,7 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { EntityHistory } from '../generated/type/entityHistory';

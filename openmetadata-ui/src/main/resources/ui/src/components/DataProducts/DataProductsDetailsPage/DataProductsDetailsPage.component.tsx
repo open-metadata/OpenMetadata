@@ -32,28 +32,13 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { AssetSelectionModal } from '../../../components/Assets/AssetsSelectionModal/AssetSelectionModal';
-import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { DomainTabs } from '../../../components/Domain/DomainPage.interface';
-import DocumentationTab from '../../../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
-import { DocumentationEntity } from '../../../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
-import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
-import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import AssetsTabs, {
-  AssetsTabRef,
-} from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
-import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
-import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../../components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityField } from '../../../constants/Feeds.constants';
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
@@ -84,8 +69,23 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { DomainTabs } from '../../Domain/DomainPage.interface';
+import DocumentationTab from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
+import { DocumentationEntity } from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
+import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
+import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
+import AssetsTabs, {
+  AssetsTabRef,
+} from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './data-products-details-page.less';
 import {
   DataProductsDetailsPageProps,

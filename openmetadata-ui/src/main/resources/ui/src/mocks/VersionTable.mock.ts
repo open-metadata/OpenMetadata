@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { VersionTableProps } from '../components/VersionTable/VersionTable.interfaces';
+import { VersionTableProps } from '../components/Entity/VersionTable/VersionTable.interfaces';
 import {
   Column,
   ConstraintType,
