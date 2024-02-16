@@ -40,12 +40,6 @@
       "description": "See in the doc how to generate token: https://docs.rivery.io/docs/rivery-api",
       "type": "string"
     },
-    "apiSecret": {
-      "title": "Rivery API Secret",
-      "description": "Rivery API Secret.",
-      "type": "string",
-      "format": "password"
-    },
     "apiVersion": {
       "title": "Rivery API Version",
       "description": "",
