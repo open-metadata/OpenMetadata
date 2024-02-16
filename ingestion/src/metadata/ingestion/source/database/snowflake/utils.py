@@ -22,7 +22,9 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.sql import text
 from sqlalchemy.types import FLOAT
 
-from metadata.ingestion.source.database.snowflake.incremental_config import IncrementalConfig
+from metadata.ingestion.source.database.snowflake.incremental_config import (
+    IncrementalConfig,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeTable,
     SnowflakeTableList,
@@ -35,18 +37,17 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
-    SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
-    SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
-    SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
 from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
 )
-
 
 Query = str
 QueryMap = Dict[str, Query]
@@ -56,24 +57,24 @@ TABLE_QUERY_MAPS = {
     "full": {
         "default": SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
         "transient_tables": SNOWFLAKE_GET_TRANSIENT_NAMES,
-        "external_tables": SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
+        "external_tables": SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     },
     "incremental": {
         "default": SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
         "transient_tables": SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
-        "external_tables": SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES
-    }
+        "external_tables": SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
+    },
 }
 
 VIEW_QUERY_MAPS = {
     "full": {
         "views": SNOWFLAKE_GET_VIEW_NAMES,
-        "materialized_views": SNOWFLAKE_GET_MVIEW_NAMES
+        "materialized_views": SNOWFLAKE_GET_MVIEW_NAMES,
     },
     "incremental": {
         "views": SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
-        "materialized_views": SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES
-    }
+        "materialized_views": SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
+    },
 }
 
 
@@ -127,22 +128,24 @@ def get_view_names_reflection(self, schema=None, **kw):
         )
 
 
-def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):
+def _get_query_map(
+    incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]
+):
     """Returns the proper queries depending if the extraction is Incremental or Full."""
     if incremental and incremental.enabled:
         return query_maps["incremental"]
     return query_maps["full"]
 
 
-def _get_query_parameters(self, connection, schema: str, incremental: Optional[IncrementalConfig]):
+def _get_query_parameters(
+    self, connection, schema: str, incremental: Optional[IncrementalConfig]
+):
     """Returns the proper query parameters depending if the extraciton is Incremental or Full"""
-    parameters = {
-        "schema": fqn.unquote_name(schema)
-    }
+    parameters = {"schema": fqn.unquote_name(schema)}
 
     if incremental and incremental.enabled:
         database, _ = self._current_database_schema(connection)
-        parameters =  {
+        parameters = {
             **parameters,
             "date": incremental.start_timestamp,
             "database": database,
@@ -151,13 +154,11 @@ def _get_query_parameters(self, connection, schema: str, incremental: Optional[I
     return parameters
 
 
-
 def get_table_names(self, connection, schema: str, **kw):
     incremental = kw.get("incremental")
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
     parameters = _get_query_parameters(self, connection, schema, incremental)
-
 
     query = queries["default"]
 
@@ -170,10 +171,7 @@ def get_table_names(self, connection, schema: str, **kw):
     cursor = connection.execute(query.format(**parameters))
     result = SnowflakeTableList(
         tables=[
-            SnowflakeTable(
-                name=self.normalize_name(row[0]),
-                deleted=row[1]
-            )
+            SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1])
             for row in cursor
         ]
     )
@@ -194,10 +192,7 @@ def get_view_names(self, connection, schema, **kw):
     cursor = connection.execute(query.format(**parameters))
     result = SnowflakeTableList(
         tables=[
-            SnowflakeTable(
-                name=self.normalize_name(row[0]),
-                deleted=row[1]
-            )
+            SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1])
             for row in cursor
         ]
     )

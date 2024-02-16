@@ -57,12 +57,14 @@ class MetadataWorkflow(IngestionWorkflow):
             )
         )
 
-        pipeline_name = self.ingestion_pipeline.fullyQualifiedName.__root__ if self.ingestion_pipeline else None
+        pipeline_name = (
+            self.ingestion_pipeline.fullyQualifiedName.__root__
+            if self.ingestion_pipeline
+            else None
+        )
 
         source: Source = source_class.create(
-            self.config.source.dict(),
-            self.metadata,
-            pipeline_name
+            self.config.source.dict(), self.metadata, pipeline_name
         )
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()

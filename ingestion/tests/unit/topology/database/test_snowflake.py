@@ -52,7 +52,7 @@ SNOWFLAKE_CONFIGURATION = {
             },
         }
     },
-    "ingestionPipelineFQN": "snowflake.mock_pipeline"
+    "ingestionPipelineFQN": "snowflake.mock_pipeline",
 }
 
 SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
@@ -60,9 +60,9 @@ SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
     **{
         "source": {
             **SNOWFLAKE_CONFIGURATION["source"],
-            "sourceConfig": {"config": {"type": "DatabaseMetadata"}}
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
         }
-    }
+    },
 }
 
 SNOWFLAKE_CONFIGURATIONS = {
@@ -124,24 +124,29 @@ def get_snowflake_sources():
 
     with patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection",
-        return_value=False
+        return_value=False,
     ):
-        config = OpenMetadataWorkflowConfig.parse_obj(SNOWFLAKE_CONFIGURATIONS["not_incremental"])
+        config = OpenMetadataWorkflowConfig.parse_obj(
+            SNOWFLAKE_CONFIGURATIONS["not_incremental"]
+        )
 
         sources["not_incremental"] = SnowflakeSource.create(
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]["source"],
             config.workflowConfig.openMetadataServerConfig,
-            SNOWFLAKE_CONFIGURATIONS["not_incremental"]["ingestionPipelineFQN"]
+            SNOWFLAKE_CONFIGURATIONS["not_incremental"]["ingestionPipelineFQN"],
         )
 
         with patch(
-            "metadata.ingestion.source.database.snowflake.incremental_config.IncrementalConfigCreator._get_pipeline_statuses", return_value=MOCK_PIPELINE_STATUSES
+            "metadata.ingestion.source.database.snowflake.incremental_config.IncrementalConfigCreator._get_pipeline_statuses",
+            return_value=MOCK_PIPELINE_STATUSES,
         ):
-            config = OpenMetadataWorkflowConfig.parse_obj(SNOWFLAKE_CONFIGURATIONS["incremental"])
+            config = OpenMetadataWorkflowConfig.parse_obj(
+                SNOWFLAKE_CONFIGURATIONS["incremental"]
+            )
             sources["incremental"] = SnowflakeSource.create(
                 SNOWFLAKE_CONFIGURATIONS["incremental"]["source"],
                 config.workflowConfig.openMetadataServerConfig,
-                SNOWFLAKE_CONFIGURATIONS["incremental"]["ingestionPipelineFQN"]
+                SNOWFLAKE_CONFIGURATIONS["incremental"]["ingestionPipelineFQN"],
             )
     return sources
 
@@ -150,6 +155,7 @@ class SnowflakeUnitTest(TestCase):
     """
     Unit test for snowflake source
     """
+
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
         self.sources = get_snowflake_sources()
@@ -172,7 +178,7 @@ class SnowflakeUnitTest(TestCase):
 
         self.assertEqual(
             self.sources["incremental"].incremental.start_timestamp,
-            30 - safety_margin_days * milliseconds_in_one_day
+            30 - safety_margin_days * milliseconds_in_one_day,
         )
 
     def _assert_urls(self):

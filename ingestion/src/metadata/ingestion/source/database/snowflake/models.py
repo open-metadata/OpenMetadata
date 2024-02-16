@@ -12,9 +12,9 @@
 Snowflake models
 """
 import urllib
+from datetime import datetime
 from typing import List, Optional
 
-from datetime import datetime
 from pydantic import BaseModel, Field, validator
 from requests.utils import quote
 
@@ -76,16 +76,18 @@ class SnowflakeStoredProcedure(BaseModel):
 
 
 class SnowflakeTable(BaseModel):
-    """ Models the items returned from the Table and View Queries used to get the entities to process.
+    """Models the items returned from the Table and View Queries used to get the entities to process.
     :name: Holds the table/view name.
     :deleted: Holds either a datetime if the table was deleted or None.
     """
+
     name: str
     deleted: Optional[datetime]
 
 
 class SnowflakeTableList(BaseModel):
-    """ Understands how to return the deleted and not deleted tables/views from a given list. """
+    """Understands how to return the deleted and not deleted tables/views from a given list."""
+
     tables: List[SnowflakeTable]
 
     def get_deleted(self) -> List[SnowflakeTable]:

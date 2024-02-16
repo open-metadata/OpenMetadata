@@ -79,8 +79,7 @@ def delete_entity_by_name(
             if entity:
                 yield Either(
                     right=DeleteEntity(
-                        entity=entity,
-                        mark_deleted_entities=mark_deleted_entity
+                        entity=entity, mark_deleted_entities=mark_deleted_entity
                     )
                 )
     except Exception as exc:
@@ -88,6 +87,6 @@ def delete_entity_by_name(
             left=StackTraceError(
                 name="Delete Entity",
                 error=f"Error deleting {entity_type.__class__}: {exc}",
-                stackTrace=traceback.format_exc()
+                stackTrace=traceback.format_exc(),
             )
         )

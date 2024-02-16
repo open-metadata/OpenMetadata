@@ -13,9 +13,9 @@ Snowflake source module
 """
 import json
 import traceback
+from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from datetime import datetime
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
@@ -58,7 +58,9 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.snowflake.incremental_config import IncrementalConfig
+from metadata.ingestion.source.database.snowflake.incremental_config import (
+    IncrementalConfig,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -149,18 +151,22 @@ class SnowflakeSource(
         self._org_name: Optional[str] = None
         self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
         self.context.deleted_tables = []
+        self.pipeline_name = pipeline_name
         self.incremental = IncrementalConfig.create(
-            self.source_config.incremental,
-            pipeline_name,
-            metadata
+            self.source_config.incremental, pipeline_name, metadata
         )
 
         if self.incremental.enabled:
             date = datetime.fromtimestamp(self.incremental.start_timestamp / 1000)
-            logger.info("Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s", date)
+            logger.info(
+                "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
+                date,
+            )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):
@@ -394,37 +400,33 @@ class SnowflakeSource(
                 )
 
     def _get_table_names_and_types(
-        self,
-        schema_name: str,
-        table_type: TableType = TableType.Regular
+        self, schema_name: str, table_type: TableType = TableType.Regular
     ) -> List[TableNameAndType]:
         table_type_to_params_map = {
             TableType.Regular: {},
-            TableType.External: {
-                "external_tables": True
-            },
-            TableType.Transient: {
-                "include_transient_tables": True
-            }
+            TableType.External: {"external_tables": True},
+            TableType.Transient: {"include_transient_tables": True},
         }
 
         snowflake_tables = self.inspector.get_table_names(
             schema=schema_name,
             incremental=self.incremental,
-            **table_type_to_params_map[table_type]
+            **table_type_to_params_map[table_type],
         )
 
-        self.context.deleted_tables.extend([
-            fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=schema_name,
-                table_name=table.name
-            )
-            for table in snowflake_tables.get_deleted()
-        ])
+        self.context.deleted_tables.extend(
+            [
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                    table_name=table.name,
+                )
+                for table in snowflake_tables.get_deleted()
+            ]
+        )
 
         return [
             TableNameAndType(name=table.name, type_=table_type)
@@ -444,10 +446,16 @@ class SnowflakeSource(
         """
         table_list = self._get_table_names_and_types(schema_name)
 
-        table_list.extend(self._get_table_names_and_types(schema_name, table_type=TableType.External))
+        table_list.extend(
+            self._get_table_names_and_types(schema_name, table_type=TableType.External)
+        )
 
         if self.service_connection.includeTransientTables:
-            table_list.extend(self._get_table_names_and_types(schema_name, table_type=TableType.Transient))
+            table_list.extend(
+                self._get_table_names_and_types(
+                    schema_name, table_type=TableType.Transient
+                )
+            )
 
         return table_list
 
@@ -508,29 +516,31 @@ class SnowflakeSource(
         return None
 
     def _get_view_names_and_types(
-        self,
-        schema_name: str,
-        materialized_views: bool = False
+        self, schema_name: str, materialized_views: bool = False
     ) -> List[TableNameAndType]:
-        table_type = TableType.MaterializedView if materialized_views else TableType.View
+        table_type = (
+            TableType.MaterializedView if materialized_views else TableType.View
+        )
 
         snowflake_views = self.inspector.get_view_names(
             schema=schema_name,
             incremental=self.incremental,
-            materialized_views=materialized_views
+            materialized_views=materialized_views,
         )
 
-        self.context.deleted_tables.extend([
-            fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=schema_name,
-                table_name=view.name
-            )
-            for view in snowflake_views.get_deleted()
-        ])
+        self.context.deleted_tables.extend(
+            [
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                    table_name=view.name,
+                )
+                for view in snowflake_views.get_deleted()
+            ]
+        )
 
         return [
             TableNameAndType(name=view.name, type_=table_type)
@@ -549,7 +559,9 @@ class SnowflakeSource(
         logic on how to handle table types, e.g., material views,...
         """
         views = self._get_view_names_and_types(schema_name)
-        views.extend(self._get_view_names_and_types(schema_name, materialized_views=True))
+        views.extend(
+            self._get_view_names_and_types(schema_name, materialized_views=True)
+        )
 
         return views
 
@@ -669,6 +681,7 @@ class SnowflakeSource(
                     self.metadata,
                     entity_type=Table,
                     entity_names=self.context.deleted_tables,
-                    mark_deleted_entity=self.source_config.markDeletedTables)
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                )
         else:
             yield from super().mark_tables_as_deleted()
