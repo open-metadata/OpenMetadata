@@ -158,6 +158,11 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     }
   }, [ingestion, ingestion.fullyQualifiedName]);
 
+  const handleRunStatusClick = (status: PipelineStatus) => {
+    setExpandedKeys([]);
+    setSelectedStatus(status);
+  };
+
   return (
     <Space className={classNames} size={2}>
       {loading ? (
@@ -175,7 +180,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                 }
                 data-testid="pipeline-status"
                 key={i}
-                onClick={() => setSelectedStatus(r)}>
+                onClick={() => handleRunStatusClick(r)}>
                 {startCase(r?.pipelineState)}
               </Tag>
             ) : (
@@ -186,6 +191,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                 }
                 data-testid="pipeline-status"
                 key={i}
+                onClick={() => handleRunStatusClick(r)}
               />
             );
 
@@ -225,6 +231,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
 
       <Modal
         centered
+        destroyOnClose
         closeIcon={<></>}
         maskClosable={false}
         okButtonProps={{ style: { display: 'none' } }}
