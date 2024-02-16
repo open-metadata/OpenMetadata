@@ -41,6 +41,8 @@ module.exports = {
     '<rootDir>/src/enums/*',
   ],
 
+  verbose: true,
+
   // Transforms
   transform: {
     '^.+\\.ts|tsx?$': 'ts-jest',
