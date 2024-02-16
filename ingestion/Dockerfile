@@ -1,4 +1,9 @@
 FROM apache/airflow:2.7.3-python3.10
+
+ENV VIRTUAL_ENV=/usr/local
+ADD --chmod=655 https://astral.sh/uv/install.sh /install.sh
+RUN /install.sh && rm /install.sh
+
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -82,26 +87,25 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 ARG RI_VERSION="1.3.0.0.dev0"
-RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.7.3/constraints-3.10.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+RUN /root/.cargo/bin/uv pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.7.3/constraints-3.10.txt"
+RUN /root/.cargo/bin/uv pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
 RUN if [[ $(uname -m) != "aarch64" ]]; \
  then \
- pip install "ibm-db-sa~=0.4"; \
+ uv pip install "ibm-db-sa~=0.4"; \
  fi
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
-RUN pip install "python-daemon>=3.0.0"
+RUN /root/.cargo/bin/uv pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker and cncf kubernetes
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf" | xargs pip uninstall -y
+RUN /root/.cargo/bin/uv pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf" | xargs pip uninstall -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
-RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
+RUN /root/.cargo/bin/uv pip uninstall psycopg2-binary -y
+RUN /root/.cargo/bin/uv pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file

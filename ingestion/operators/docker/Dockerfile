@@ -1,5 +1,9 @@
 FROM python:3.10-bullseye
 
+ENV VIRTUAL_ENV=/usr/local
+ADD --chmod=655 https://astral.sh/uv/install.sh /install.sh
+RUN /install.sh && rm /install.sh
+
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
@@ -84,13 +88,11 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 
-RUN pip install --upgrade pip
-
 ARG INGESTION_DEPENDENCY="all"
 ARG RI_VERSION="1.3.0.0.dev0"
-RUN pip install --upgrade pip
-RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+RUN /root/.cargo/bin/uv pip install --upgrade pip
+RUN /root/.cargo/bin/uv pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
+RUN /root/.cargo/bin/uv pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
@@ -102,5 +104,5 @@ RUN if [[ $(uname -m) == "arm64" ]]; \
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
-RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
+RUN /root/.cargo/bin/uv pip uninstall psycopg2-binary -y
+RUN /root/.cargo/bin/uv pip install psycopg2 mysqlclient==2.1.1
