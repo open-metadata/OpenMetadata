@@ -170,27 +170,6 @@ describe('Observability Alert Flow', () => {
     cy.getAllLocalStorage().then((storageData) => {
       const token = Object.values(storageData)[0].oidcIdToken;
 
-      // Delete test case
-      cy.request({
-        method: 'DELETE',
-        url: `/api/v1/dataQuality/testCases/logicalTestCases/${data.testSuite.id}/${data.testCase.id}`,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // Delete test suite
-      cy.request({
-        method: 'DELETE',
-        url: `/api/v1/dataQuality/testSuites/executable/${data.testSuite.id}`,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // Delete ingestion pipeline
-      cy.request({
-        method: 'DELETE',
-        url: `/api/v1/services/ingestionPipelines/${data.ingestionPipeline.id}?hardDelete=true`,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
       // Delete created services
       hardDeleteService({
         token,

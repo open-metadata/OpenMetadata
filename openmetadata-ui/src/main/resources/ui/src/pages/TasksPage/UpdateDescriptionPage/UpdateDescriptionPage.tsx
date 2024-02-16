@@ -20,10 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -228,7 +228,11 @@ const UpdateDescription = () => {
                   entity: t('label.task'),
                 })}
               </Typography.Paragraph>
-              <Form form={form} layout="vertical" onFinish={onCreateTask}>
+              <Form
+                data-testid="form-container"
+                form={form}
+                layout="vertical"
+                onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.title')}:`}
@@ -286,10 +290,11 @@ const UpdateDescription = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
+                      data-testid="submit-btn"
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">

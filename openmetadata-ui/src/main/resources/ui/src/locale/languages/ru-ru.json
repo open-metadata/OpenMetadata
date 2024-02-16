@@ -1227,7 +1227,7 @@
     "your-entity": "Ваш {{entity}}"
   },
   "message": {
-    "access-block-time-message": "Access will be blocked for milliseconds after max failed login attapmts performed.",
+    "access-block-time-message": "Access will be blocked for milliseconds after max failed login attempts performed.",
     "access-control-description": "Align with your organizational hierarchy and team access with roles and policies.",
     "access-to-collaborate": "Разрешить открытый доступ для всех, кто может присоединиться к команде, просматривать данные и сотрудничать.",
     "action-has-been-done-but-deploy-successfully": "было выполнено {{action}} и успешно развернуто",

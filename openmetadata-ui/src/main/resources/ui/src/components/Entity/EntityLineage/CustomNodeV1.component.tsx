@@ -12,6 +12,7 @@
  */
 
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Input } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -24,14 +25,14 @@ import {
   NodeProps,
   Position,
 } from 'reactflow';
+import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
 import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import { getConstraintIcon, getEntityIcon } from '../../../utils/TableUtils';
-import { useLineageProvider } from '../../LineageProvider/LineageProvider';
 import './custom-node.less';
 import {
   getCollapseHandle,
@@ -186,10 +187,11 @@ const CustomNodeV1 = (props: NodeProps) => {
               className="lineage-node-remove-btn bg-body-hover"
               data-testid="lineage-node-remove-btn"
               icon={
-                <SVGIcons
+                <Icon
                   alt="times-circle"
-                  icon="icon-times-circle"
-                  width="16px"
+                  className="align-middle"
+                  component={IconTimesCircle}
+                  style={{ fontSize: '16px' }}
                 />
               }
               type="link"

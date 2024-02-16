@@ -11,34 +11,29 @@
  *  limitations under the License.
  */
 
-import React, { FC, ReactNode } from 'react';
+import React, { FC } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import ApplicationConfigProvider from './components/ApplicationConfigProvider/ApplicationConfigProvider';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
-import DirectionProvider from './components/DirectionProvider/DirectionProvider';
+import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
-import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
-import MetaPilotProvider from './components/MetaPilot/MetaPilotProvider/MetaPilotProvider';
-import PermissionProvider from './components/PermissionProvider/PermissionProvider';
-import TourProvider from './components/TourProvider/TourProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
-import WebSocketProvider from './components/WebSocketProvider/WebSocketProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
+import ApplicationConfigProvider from './context/ApplicationConfigProvider/ApplicationConfigProvider';
+import DirectionProvider from './context/DirectionProvider/DirectionProvider';
+import GlobalSearchProvider from './context/GlobalSearchProvider/GlobalSearchProvider';
+import PermissionProvider from './context/PermissionProvider/PermissionProvider';
+import TourProvider from './context/TourProvider/TourProvider';
+import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
-interface AppProps {
-  routeElements?: ReactNode;
-}
-
-const App: FC<AppProps> = ({ routeElements }) => {
+const App: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
@@ -46,7 +41,7 @@ const App: FC<AppProps> = ({ routeElements }) => {
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
               <DirectionProvider>
-                <ApplicationConfigProvider routeElements={routeElements}>
+                <ApplicationConfigProvider>
                   <AuthProvider childComponentType={AppRouter}>
                     <TourProvider>
                       <HelmetProvider>
@@ -55,11 +50,9 @@ const App: FC<AppProps> = ({ routeElements }) => {
                             <WebSocketProvider>
                               <GlobalSearchProvider>
                                 <DomainProvider>
-                                  <MetaPilotProvider>
-                                    <EntityExportModalProvider>
-                                      <AppRouter />
-                                    </EntityExportModalProvider>
-                                  </MetaPilotProvider>
+                                  <EntityExportModalProvider>
+                                    <AppRouter />
+                                  </EntityExportModalProvider>
                                 </DomainProvider>
                               </GlobalSearchProvider>
                             </WebSocketProvider>

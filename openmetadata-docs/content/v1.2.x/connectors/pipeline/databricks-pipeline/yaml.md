@@ -11,7 +11,7 @@ slug: /connectors/pipeline/databricks-pipeline/yaml
 | Pipeline Status | {% icon iconName="check" /%} |
 | Owners          | {% icon iconName="cross" /%} |
 | Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="check" /%} |
+| Lineage         | {% icon iconName="cross" /%} |
 
 
 In this section, we provide guides and references to use the Databricks Pipeline connector.

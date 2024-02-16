@@ -236,8 +236,7 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
   CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
   INNER JOIN sys.databases db
     ON db.database_id = t.dbid
-  WHERE s.last_execution_time between '2024-01-13' and '2024-01-20'
-    AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND p.objtype NOT IN ('Prepared', 'Proc')
     AND s.last_execution_time > '{start_date}'

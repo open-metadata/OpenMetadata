@@ -13,7 +13,6 @@
 
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
 import DomainPage from '../../components/Domain/DomainPage.component';
 import { ROUTES } from '../../constants/constants';
@@ -21,6 +20,8 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/policy';
 import { TeamType } from '../../generated/entity/teams/team';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
@@ -29,15 +30,14 @@ import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSet
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import DataProductsPage from '../DataProducts/DataProductsPage/DataProductsPage.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -79,7 +79,8 @@ const AddDataQualityTestPage = withSuspenseFallback(
 
 const AddCustomProperty = withSuspenseFallback(
   React.lazy(
-    () => import('../CustomEntityDetail/AddCustomProperty/AddCustomProperty')
+    () =>
+      import('../Settings/CustomProperty/AddCustomProperty/AddCustomProperty')
   )
 );
 
@@ -158,7 +159,7 @@ const MarketPlaceAppDetails = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../components/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
+        '../Settings/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
       )
   )
 );
@@ -307,13 +308,6 @@ const EditRulePage = withSuspenseFallback(
   )
 );
 
-const TestCaseDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
-  )
-);
-
 const LogsViewer = withSuspenseFallback(
   React.lazy(() => import('../../pages/LogsViewer/LogsViewer.component'))
 );
@@ -334,7 +328,7 @@ const EditKPIPage = withSuspenseFallback(
 
 const AddTestSuitePage = withSuspenseFallback(
   React.lazy(
-    () => import('../../components/TestSuite/TestSuiteStepper/TestSuiteStepper')
+    () => import('../DataQuality/TestSuite/TestSuiteStepper/TestSuiteStepper')
   )
 );
 
@@ -445,8 +439,7 @@ const CustomPropertiesPageV1 = withSuspenseFallback(
 
 const AppDetailsPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../components/Applications/AppDetails/AppDetails.component')
+    () => import('../Settings/Applications/AppDetails/AppDetails.component')
   )
 );
 
@@ -507,7 +500,7 @@ const ApplicationPageV1 = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const { routeElements } = useApplicationConfigContext();
+  const RouteElements = applicationRoutesClass.getRouteElements();
 
   const glossaryPermission = useMemo(
     () =>
@@ -1081,15 +1074,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={TestCaseDetailsPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_CASE,
-          permissions
-        )}
-        path={ROUTES.TEST_CASE_DETAILS}
-      />
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route
         exact
@@ -1340,7 +1324,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
       />
-      {routeElements}
+      {RouteElements && <RouteElements />}
       <Route
         exact
         path={[

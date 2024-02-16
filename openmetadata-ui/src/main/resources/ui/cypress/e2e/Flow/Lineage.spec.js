@@ -58,7 +58,9 @@ const connectEdgeBetweenNodes = (fromNode, toNode) => {
 
   cy.get('[data-testid="suggestion-node"]').click();
   cy.get('[data-testid="suggestion-node"] input').click().type(toNode.term);
-  cy.get('.ant-select-dropdown .ant-select-item').eq(0).click();
+  cy.get(`[data-testid="node-suggestion-${toNode.fqn}"]`)
+    .scrollIntoView()
+    .click();
 
   dragConnection(`lineage-node-${fromNode.fqn}`, `lineage-node-${toNode.fqn}`);
   verifyResponseStatusCode('@lineageApi', 200);
@@ -184,7 +186,7 @@ const addColumnLineage = (fromNode, toNode) => {
   );
 };
 
-describe('Lineage verification', () => {
+describe('Lineage verification', { tags: 'Lineage' }, () => {
   beforeEach(() => {
     cy.login();
   });

@@ -24,11 +24,11 @@ import React, {
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import SigninPage from '../../../pages/LoginPage/index';
+import SignInPage from '../../../pages/LoginPage/SignInPage';
 import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
 import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import { useAuthContext } from '../AuthProviders/AuthProvider';
 import {
   AuthenticatorRef,
@@ -125,7 +125,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           </Route>
           <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
           {!isSigningIn ? (
-            <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+            <Route exact component={SignInPage} path={ROUTES.SIGNIN} />
           ) : null}
           <Route
             path={ROUTES.CALLBACK}
@@ -174,7 +174,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             <AppWithAuth />
           )}
         </Switch>
-        {loading && isSigningIn && <Loader />}
+        {loading && isSigningIn && <Loader fullScreen />}
       </>
     );
   }

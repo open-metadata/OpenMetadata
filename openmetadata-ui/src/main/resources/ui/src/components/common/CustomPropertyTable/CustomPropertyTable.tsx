@@ -33,6 +33,11 @@ import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 
 import { getEntityDetailLink, Transi18next } from '../../../utils/CommonUtils';
 
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -40,11 +45,6 @@ import {
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../PermissionProvider/PermissionProvider.interface';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../Table/Table';
 import {
@@ -63,7 +63,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
-  maxDataCap = 5,
+  maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
@@ -189,6 +189,34 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onExtensionUpdate,
   ]);
 
+  const viewAllBtn = useMemo(() => {
+    const customProp = entityTypeDetail.customProperties ?? [];
+
+    if (
+      maxDataCap &&
+      customProp.length >= maxDataCap &&
+      entityDetails.fullyQualifiedName
+    ) {
+      return (
+        <Link
+          to={getEntityDetailLink(
+            entityType,
+            entityDetails.fullyQualifiedName,
+            EntityTabs.CUSTOM_PROPERTIES
+          )}>
+          {t('label.view-all')}
+        </Link>
+      );
+    }
+
+    return null;
+  }, [
+    entityTypeDetail.customProperties,
+    entityType,
+    entityDetails,
+    maxDataCap,
+  ]);
+
   useEffect(() => {
     if (typePermission?.ViewAll || typePermission?.ViewBasic) {
       fetchTypeDetail();
@@ -252,17 +280,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Typography.Text className="right-panel-label">
               {t('label.custom-property-plural')}
             </Typography.Text>
-            {(entityTypeDetail.customProperties ?? []).length >= maxDataCap &&
-              entityDetails.fullyQualifiedName && (
-                <Link
-                  to={getEntityDetailLink(
-                    entityType,
-                    entityDetails.fullyQualifiedName,
-                    EntityTabs.CUSTOM_PROPERTIES
-                  )}>
-                  {t('label.view-all')}
-                </Link>
-              )}
+            {viewAllBtn}
           </div>
           <Table
             bordered

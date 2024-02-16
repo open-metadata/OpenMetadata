@@ -32,24 +32,24 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
+import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataModelTable from '../../components/DataModels/DataModelsTable';
-import Ingestion from '../../components/Ingestion/Ingestion.component';
-import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
-import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
+import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
   getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -321,6 +321,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (id: string, displayName: string) => {
       try {
         const data = await triggerIngestionPipelineById(id);
+        showSuccessToast(t('message.pipeline-trigger-success-message'));
 
         updateCurrentSelectedIngestion(id, data, 'pipelineStatuses');
       } catch (err) {

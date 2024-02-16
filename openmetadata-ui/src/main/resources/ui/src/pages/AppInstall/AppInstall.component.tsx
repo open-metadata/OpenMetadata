@@ -18,14 +18,14 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
-import applicationSchemaClassBase from '../../components/Applications/AppDetails/ApplicationSchemaClassBase';
-import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
-import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationSchemaClassBase';
+import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import {
   APP_UI_SCHEMA,
   STEPS_FOR_APP_INSTALL,
@@ -38,14 +38,11 @@ import {
   ScheduleTimeline,
 } from '../../generated/entity/applications/createAppRequest';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
-import {
-  getEntityMissingError,
-  getIngestionFrequency,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getCronInitialValue } from '../../utils/CronUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -71,6 +68,24 @@ const AppInstall = () => {
         : STEPS_FOR_APP_INSTALL,
     [appData]
   );
+
+  const { initialOptions, initialValue } = useMemo(() => {
+    let initialOptions;
+
+    if (appData?.name === 'DataInsightsReportApplication') {
+      initialOptions = ['Week'];
+    } else if (appData?.appType === AppType.External) {
+      initialOptions = ['Day'];
+    }
+
+    return {
+      initialOptions,
+      initialValue: getCronInitialValue(
+        appData?.appType ?? AppType.Internal,
+        appData?.name ?? ''
+      ),
+    };
+  }, [appData?.name, appData?.appType]);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -126,16 +141,6 @@ const AppInstall = () => {
     setActiveServiceStep(3);
   };
 
-  const initialOptions = useMemo(() => {
-    if (appData?.name === 'DataInsightsReportApplication') {
-      return ['Week'];
-    } else if (appData?.appType === AppType.External) {
-      return ['Day'];
-    }
-
-    return undefined;
-  }, [appData?.name, appData?.appType]);
-
   const RenderSelectedTab = useCallback(() => {
     if (!appData || !jsonSchema) {
       return <></>;
@@ -180,9 +185,8 @@ const AppInstall = () => {
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
-              isQuartzCron
               includePeriodOptions={initialOptions}
-              initialData={getIngestionFrequency(PipelineType.Application)}
+              initialData={initialValue}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }

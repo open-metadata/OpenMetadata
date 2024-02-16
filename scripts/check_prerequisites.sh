@@ -12,6 +12,16 @@
 
 set -eu
 
+set +e
+declare -A test_map
+res=$?
+if [[ $res -ne 0 ]]; then
+  echo "✗ ERROR: declare -A is not supported. Do you have bash version 4.0 or higher installed?"
+  exit 2
+fi
+set -e
+
+
 declare -A python
 python["name"]="Python"
 python["version_command"]="python --version 2>&1 | awk '{print \$2}'"
@@ -40,7 +50,7 @@ jq["required_version"]="any"
 declare -A node
 node["name"]="Node"
 node["version_command"]="node --version"
-node["required_version"]="16 17 18"
+node["required_version"]="18"
 
 declare -A yarn
 yarn["name"]="Yarn"

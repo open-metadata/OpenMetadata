@@ -32,6 +32,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -43,8 +44,6 @@ import { useEntityExportModalProvider } from '../../../components/Entity/EntityE
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
-import Voting from '../../../components/Voting/Voting.component';
-import { VotingDataProps } from '../../../components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
@@ -70,9 +69,10 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
+import Voting from '../../Entity/Voting/Voting.component';
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 import { useFqn } from '../../../hooks/useFqn';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -368,7 +368,13 @@ const GlossaryHeader = ({
                       : t('label.glossary-term'),
                   }
                 )}
-                icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
+                icon={
+                  <Icon
+                    className="align-middle"
+                    component={IconDelete}
+                    style={{ fontSize: '16px' }}
+                  />
+                }
                 id="delete-button"
                 name={t('label.delete')}
               />

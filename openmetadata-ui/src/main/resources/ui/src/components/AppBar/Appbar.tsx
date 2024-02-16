@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import Qs from 'qs';
@@ -22,10 +23,10 @@ import { toast } from 'react-toastify';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
 import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
+import { ReactComponent as IconTour } from '../../assets/svg/icon-tour.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
-import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
+import { ReactComponent as IconWhatsNew } from '../../assets/svg/whats-new.svg';
 import {
   getExplorePath,
   ROUTES,
@@ -36,6 +37,8 @@ import {
   urlGithubRepo,
   urlJoinSlack,
 } from '../../constants/URL.constants';
+import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { getVersion } from '../../rest/miscAPI';
 import {
@@ -45,7 +48,6 @@ import {
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import NavBar from '../NavBar/NavBar';
@@ -95,59 +97,71 @@ const Appbar: React.FC = (): JSX.Element => {
   const supportLink = [
     {
       label: (
-        <Space
-          className="cursor-pointer w-full"
-          size={4}
+        <Row
+          className="cursor-pointer"
           onClick={() => history.push(ROUTES.TOUR)}>
-          <SVGIcons
-            alt="tour-con"
-            className="align-middle m-r-xss"
-            icon={Icons.TOUR}
-            width="12"
-          />
-          <span className="text-base-color">{t('label.tour')}</span>
-        </Space>
+          <Col span={4}>
+            <Icon
+              className="align-middle m-r-xss"
+              component={IconTour}
+              style={{ fontSize: '18px' }}
+            />
+          </Col>
+          <Col span={20}>
+            <span className="text-base-color">{t('label.tour')}</span>
+          </Col>
+        </Row>
       ),
       key: 'tour',
     },
     {
       label: (
         <a
-          className="link-title"
+          className="link-title no-underline"
           href={urlGitbookDocs}
           rel="noreferrer"
           target="_blank">
-          <Space size={4}>
-            <IconDoc
-              className="align-middle"
-              height={14}
-              name="Doc icon"
-              width={14}
-            />
-            <span className="text-base-color">{t('label.doc-plural')}</span>
+          <Row className="cursor-pointer">
+            <Col span={4}>
+              <Icon
+                className="align-middle"
+                component={IconDoc}
+                name="Doc icon"
+                style={{ fontSize: '18px' }}
+              />
+            </Col>
+            <Col span={20}>
+              <span className="text-base-color">{t('label.doc-plural')}</span>
 
-            <IconExternalLink
-              className="text-base-color m-l-xss"
-              height={14}
-              width={14}
-            />
-          </Space>
+              <IconExternalLink
+                className="text-base-color m-l-xss"
+                height={14}
+                width={14}
+              />
+            </Col>
+          </Row>
         </a>
       ),
       key: 'docs',
     },
     {
       label: (
-        <Link className="link-title" to={ROUTES.SWAGGER}>
-          <Space size={4}>
-            <IconAPI
-              className="align-middle"
-              height={14}
-              name="API icon"
-              width={14}
-            />
-            <span className="text-base-color">{t('label.api-uppercase')}</span>
-          </Space>
+        <Link className="link-title no-underline" to={ROUTES.SWAGGER}>
+          <Row className="cursor-pointer">
+            <Col span={4}>
+              <Icon
+                className="align-middle"
+                component={IconAPI}
+                name="API icon"
+                style={{ fontSize: '18px' }}
+              />
+            </Col>
+            <Col span={20}>
+              <span className="text-base-color">
+                {t('label.api-uppercase')}
+              </span>
+            </Col>
+          </Row>
         </Link>
       ),
       key: 'api',
@@ -155,24 +169,30 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       label: (
         <a
-          className="link-title"
+          className="link-title no-underline"
           href={urlJoinSlack}
           rel="noreferrer"
           target="_blank">
-          <Space size={4}>
-            <IconSlackGrey
-              className="align-middle"
-              height={14}
-              name="slack icon"
-              width={14}
-            />
-            <span className="text-base-color">{t('label.slack-support')}</span>
-            <IconExternalLink
-              className="text-base-color m-l-xss"
-              height={14}
-              width={14}
-            />
-          </Space>
+          <Row className="cursor-pointer">
+            <Col span={4}>
+              <Icon
+                className="align-middle"
+                component={IconSlackGrey}
+                name="slack icon"
+                style={{ fontSize: '18px' }}
+              />
+            </Col>
+            <Col span={20}>
+              <span className="text-base-color">
+                {t('label.slack-support')}
+              </span>
+              <IconExternalLink
+                className="text-base-color m-l-xss"
+                height={14}
+                width={14}
+              />
+            </Col>
+          </Row>
         </a>
       ),
       key: 'slack',
@@ -180,46 +200,51 @@ const Appbar: React.FC = (): JSX.Element => {
 
     {
       label: (
-        <Space
-          className="cursor-pointer w-full"
-          size={4}
+        <Row
+          className="cursor-pointer"
           onClick={() => handleFeatureModal(true)}>
-          <SVGIcons
-            alt="Doc icon"
-            className="align-middle m-r-xss"
-            icon={Icons.WHATS_NEW}
-            width="14"
-          />
-          <span className="text-base-color">{t('label.whats-new')}</span>
-        </Space>
+          <Col span={4}>
+            <Icon
+              className="align-middle"
+              component={IconWhatsNew}
+              style={{ fontSize: '18px' }}
+            />
+          </Col>
+          <Col span={20}>
+            <span className="text-base-color">{t('label.whats-new')}</span>
+          </Col>
+        </Row>
       ),
       key: 'whats-new',
     },
     {
       label: (
         <a
-          className="link-title"
+          className="link-title no-underline"
           href={urlGithubRepo}
           rel="noreferrer"
           target="_blank">
-          <Space size={4}>
-            <IconVersionBlack
-              className="align-middle"
-              height={14}
-              name="Version icon"
-              width={14}
-            />
+          <Row className="cursor-pointer">
+            <Col span={4}>
+              <Icon
+                className="align-middle"
+                component={IconVersionBlack}
+                name="Version icon"
+                style={{ fontSize: '18px' }}
+              />
+            </Col>
+            <Col span={20}>
+              <span className="text-base-color">{`${t('label.version')} ${
+                (version ? version : '?').split('-')[0]
+              }`}</span>
 
-            <span className="text-base-color hover:text-primary">{`${t(
-              'label.version'
-            )} ${(version ? version : '?').split('-')[0]}`}</span>
-
-            <IconExternalLink
-              className="text-base-color m-l-xss"
-              height={14}
-              width={14}
-            />
-          </Space>
+              <IconExternalLink
+                className="text-base-color m-l-xss"
+                height={14}
+                width={14}
+              />
+            </Col>
+          </Row>
         </a>
       ),
       key: 'versions',

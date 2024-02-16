@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
@@ -28,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as IconInfoSecondary } from '../../../assets/svg/icon-info.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -35,7 +37,6 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
@@ -60,7 +61,11 @@ const InfoIcon = ({
   content: React.ReactNode | RenderFunction;
 }): JSX.Element => (
   <Tooltip title={content}>
-    <SVGIcons alt="info-secondary" icon="info-secondary" width="12px" />
+    <Icon
+      alt="info-secondary"
+      component={IconInfoSecondary}
+      style={{ fontSize: '12px' }}
+    />
   </Tooltip>
 );
 

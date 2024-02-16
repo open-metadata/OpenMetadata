@@ -534,14 +534,6 @@ export const getGlossaryTermsVersionsPath = (
   return path;
 };
 
-export const getTestCaseDetailsPath = (testCaseFqn: string) => {
-  let path = ROUTES.TEST_CASE_DETAILS;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(testCaseFqn));
-
-  return path;
-};
-
 export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
   let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
 

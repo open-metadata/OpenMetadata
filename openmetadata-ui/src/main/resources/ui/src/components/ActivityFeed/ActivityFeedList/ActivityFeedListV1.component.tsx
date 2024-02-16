@@ -15,10 +15,10 @@ import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import './activity-feed-list.less';
 
@@ -51,7 +51,7 @@ const ActivityFeedListV1 = ({
   }, [feedList]);
 
   useEffect(() => {
-    if (onFeedClick && entityThread[0]) {
+    if (onFeedClick) {
       onFeedClick(entityThread[0]);
     }
   }, [entityThread, onFeedClick]);

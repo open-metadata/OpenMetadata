@@ -27,32 +27,31 @@ import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import TableProfiler from '../../components/Database/Profiler/TableProfiler/TableProfiler';
+import SampleDataTableComponent from '../../components/Database/SampleDataTable/SampleDataTable.component';
+import SchemaTab from '../../components/Database/SchemaTab/SchemaTab.component';
+import TableQueries from '../../components/Database/TableQueries/TableQueries';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../components/Lineage/Lineage.component';
-import LineageProvider from '../../components/LineageProvider/LineageProvider';
-import Loader from '../../components/Loader/Loader';
-import { useMetaPilotContext } from '../../components/MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SampleDataTableComponent from '../../components/SampleDataTable/SampleDataTable.component';
-import SchemaTab from '../../components/SchemaTab/SchemaTab.component';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import TableProfiler from '../../components/TableProfiler/TableProfiler';
-import TableQueries from '../../components/TableQueries/TableQueries';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableTabPath, getVersionPath } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
+import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -63,7 +62,6 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
-import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
@@ -86,7 +84,6 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import EntityLink from '../../utils/EntityLink';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -117,7 +114,6 @@ const TableDetailsPageV1 = () => {
     ThreadType.Conversation
   );
   const [queryCount, setQueryCount] = useState(0);
-  const { resetMetaPilot, initMetaPilot } = useMetaPilotContext();
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -281,59 +277,11 @@ const TableDetailsPageV1 = () => {
     [getEntityPermissionByFqn, setTablePermissions]
   );
 
-  const updateDescriptionFromMetaPilot = useCallback(
-    (suggestion: Suggestion) => {
-      setTableDetails((prev) => {
-        if (!prev) {
-          return;
-        }
-
-        const activeCol = prev?.columns.find((column) => {
-          return (
-            EntityLink.getTableEntityLink(
-              prev.fullyQualifiedName ?? '',
-              column.name ?? ''
-            ) === suggestion.entityLink
-          );
-        });
-
-        if (!activeCol) {
-          return {
-            ...prev,
-            description: suggestion.description,
-          };
-        } else {
-          const updatedColumns = prev.columns.map((column) => {
-            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
-              return {
-                ...column,
-                description: suggestion.description,
-              };
-            } else {
-              return column;
-            }
-          });
-
-          return {
-            ...prev,
-            columns: updatedColumns,
-          };
-        }
-      });
-    },
-    []
-  );
-
   useEffect(() => {
-    if (tableFqn && updateDescriptionFromMetaPilot) {
+    if (tableFqn) {
       fetchResourcePermission(tableFqn);
-      initMetaPilot(tableFqn, updateDescriptionFromMetaPilot);
     }
-
-    return () => {
-      resetMetaPilot();
-    };
-  }, [tableFqn, updateDescriptionFromMetaPilot]);
+  }, [tableFqn]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
