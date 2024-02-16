@@ -7,7 +7,7 @@
 Before proceeding, ensure that you have installed the node and yarn with the versions given below.
 
 ```
-"node": ">=10.0.0",
+"node": ">=18.19.0",
 "yarn": "^1.22.0"
 ```
 
