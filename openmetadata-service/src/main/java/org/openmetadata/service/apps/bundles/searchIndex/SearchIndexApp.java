@@ -48,6 +48,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
+@SuppressWarnings("unused")
 public class SearchIndexApp extends AbstractNativeApplication {
 
   private static final String ALL = "all";
@@ -57,6 +58,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "dashboard",
           "topic",
           "pipeline",
+          "ingestionPipeline",
           "searchIndex",
           "user",
           "team",
@@ -83,7 +85,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "webAnalyticEntityViewReportData",
           "webAnalyticUserActivityReportData",
           "domain",
-          "storedProcedure");
+          "storedProcedure",
+          "storageService");
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
   private Processor entityProcessor;

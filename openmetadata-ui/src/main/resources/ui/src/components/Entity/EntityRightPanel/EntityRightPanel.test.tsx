@@ -19,9 +19,12 @@ import { EntityReference } from '../../../generated/entity/type';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
 
-jest.mock('../../DataProductsContainer/DataProductsContainer.component', () => {
-  return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
-});
+jest.mock(
+  '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
+  }
+);
 
 jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <div>TagsContainerV2</div>);

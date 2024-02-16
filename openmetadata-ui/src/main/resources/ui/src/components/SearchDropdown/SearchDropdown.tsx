@@ -36,14 +36,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
 import {
   generateSearchDropdownLabel,
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import Loader from '../Loader/Loader';
+import Loader from '../common/Loader/Loader';
 import './search-dropdown.less';
 import {
   SearchDropdownOption,

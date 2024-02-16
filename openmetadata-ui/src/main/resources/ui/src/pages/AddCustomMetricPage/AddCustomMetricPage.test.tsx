@@ -25,21 +25,21 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/CustomMetricForm/CustomMetricForm.component',
+  '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component',
   () => {
     return jest.fn().mockImplementation(() => <div>CustomMetricForm</div>);
   }
 );
+jest.mock('../../components/Database/TableProfiler/SingleColumnProfile', () => {
+  return jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>);
+});
 jest.mock(
-  '../../components/TableProfiler/Component/SingleColumnProfile',
+  '../../components/Database/TableProfiler/TableProfilerChart/TableProfilerChart',
   () => {
-    return jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>);
+    return jest.fn().mockImplementation(() => <div>TableProfilerChart</div>);
   }
 );
-jest.mock('../../components/TableProfiler/Component/TableProfilerChart', () => {
-  return jest.fn().mockImplementation(() => <div>TableProfilerChart</div>);
-});
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock('react-router-dom', () => ({

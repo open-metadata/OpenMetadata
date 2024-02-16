@@ -44,6 +44,7 @@ import {
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
+import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
@@ -72,8 +73,7 @@ import {
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
@@ -628,7 +628,7 @@ export const AuthProvider = ({
             {children}
           </OidcAuthenticator>
         ) : (
-          <Loader />
+          <Loader fullScreen />
         );
       }
       case AuthProviderEnum.Azure: {
@@ -643,7 +643,7 @@ export const AuthProvider = ({
             </MsalAuthenticator>
           </MsalProvider>
         ) : (
-          <Loader />
+          <Loader fullScreen />
         );
       }
       default: {
@@ -687,7 +687,7 @@ export const AuthProvider = ({
 
   return (
     <AuthContext.Provider value={authContext}>
-      {isLoading ? <Loader /> : getProtectedApp()}
+      {isLoading ? <Loader fullScreen /> : getProtectedApp()}
     </AuthContext.Provider>
   );
 };

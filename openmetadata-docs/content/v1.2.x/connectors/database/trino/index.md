@@ -44,12 +44,7 @@ Configure and schedule Trino metadata and profiler workflows from the OpenMetada
 
 ### Metadata
 
-To extract metadata, the user needs to be able to have `SELECT` permission to the following tables:
-- `information_schema.schemata`
-- `information_schema.columns`
-- `information_schema.tables`
-- `information_schema.views`
-- `system.metadata.table_comments`
+To extract metadata, the user needs to be able to have `SELECT` privilege on all the tables that you would like to ingest in OpenMetadata as well as `SELECT` privilege `system.metadata.table_comments` table.
 
 Access to resources will be based on the user access permission to access specific data sources. More information regarding access and security can be found in the Trino documentation [here](https://trino.io/docs/current/security.html).
 

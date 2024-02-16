@@ -17,7 +17,6 @@ import { noop } from 'lodash';
 import React, { useState } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import Reactions from '../../../components/Reactions/Reactions';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
   Post,
@@ -25,6 +24,7 @@ import {
   Thread,
 } from '../../../generated/entity/feed/thread';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './activity-feed-card.style.less';
 import FeedCardBodyV1 from './FeedCardBody/FeedCardBodyV1';

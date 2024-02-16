@@ -21,16 +21,16 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
 import { transformErrors } from '../../../utils/formUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
-import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
-import DescriptionFieldTemplate from '../../JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from '../../JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
-import AsyncSelectWidget from '../../JsonSchemaWidgets/AsyncSelectWidget';
-import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
-import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
-import Loader from '../../Loader/Loader';
+import { ArrayFieldTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/ArrayFieldTemplate';
+import DescriptionFieldTemplate from '../Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import { ObjectFieldTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
+import AsyncSelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/AsyncSelectWidget';
+import MultiSelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/MultiSelectWidget';
+import PasswordWidget from '../Form/JSONSchema/JsonSchemaWidgets/PasswordWidget';
+import Loader from '../Loader/Loader';
 
-interface Props extends FormProps {
+export interface Props extends FormProps {
   okText: string;
   cancelText: string;
   serviceCategory: ServiceCategory;

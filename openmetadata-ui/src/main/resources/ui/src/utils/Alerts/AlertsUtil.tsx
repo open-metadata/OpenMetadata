@@ -22,7 +22,7 @@ import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
-import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import {
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
   EXTERNAL_CATEGORY_OPTIONS,
@@ -702,7 +702,7 @@ export const getFieldByArgumentType = (
               className="w-full"
               data-testid="test-status-select"
               mode="multiple"
-              options={getSelectOptionsFromEnum(StatusType)}
+              options={getSelectOptionsFromEnum(TestCaseStatus)}
               placeholder={t('label.select-field', {
                 field: t('label.test-suite-status'),
               })}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import GithubStarCard from '../GithubStarCard/GithubStarCard.component';
 import WhatsNewAlert from '../Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
+import GithubStarCard from '../MyData/GithubStarCard/GithubStarCard.component';
 
 class PopupAlertsCardsClassBase {
   public alertsCards() {

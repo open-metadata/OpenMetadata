@@ -60,9 +60,9 @@ import {
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import Loader from '../../Loader/Loader';
-import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import '../../Widgets/FeedsWidget/feeds-widget.less';
+import Loader from '../../common/Loader/Loader';
+import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
+import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -343,11 +343,12 @@ export const ActivityFeedTab = ({
                 </Space>
 
                 <span>
-                  {getCountBadge(
-                    count.conversationCount,
-                    '',
-                    activeTab === ActivityFeedTabs.ALL
-                  )}
+                  {!isUserEntity &&
+                    getCountBadge(
+                      count.conversationCount,
+                      '',
+                      activeTab === ActivityFeedTabs.ALL
+                    )}
                 </span>
               </div>
             ),
@@ -390,7 +391,7 @@ export const ActivityFeedTab = ({
                   <span>{t('label.task-plural')}</span>
                 </Space>
                 <span>
-                  {getCountBadge(count.totalTasksCount, '', isTaskActiveTab)}
+                  {getCountBadge(count.openTaskCount, '', isTaskActiveTab)}
                 </span>
               </div>
             ),

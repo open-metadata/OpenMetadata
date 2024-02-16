@@ -119,6 +119,8 @@ ENTITY_FIELD
     | 'sourceHash'
     | 'testCaseResult'
     | 'tests'
+    | 'pipelineStatus'
+    | 'dataProducts'
     ;
 
     

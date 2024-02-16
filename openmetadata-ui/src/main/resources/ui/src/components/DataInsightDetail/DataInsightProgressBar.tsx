@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Progress } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
 import React from 'react';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
 import CustomStatistic from './CustomStatistic';
 
 interface DataInsightProgressBarProps {
@@ -75,7 +76,11 @@ const DataInsightProgressBar = ({
           strokeColor="#B3D4F4"
         />
         {showSuccessInfo && progress >= 100 && (
-          <SVGIcons className="m-l-xs" icon={Icons.SUCCESS_BADGE} />
+          <Icon
+            className="align-middle m-l-xs"
+            component={IconSuccessBadge}
+            style={{ fontSize: '16px' }}
+          />
         )}
       </div>
     </div>

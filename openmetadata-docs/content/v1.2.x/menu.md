@@ -36,6 +36,8 @@ site_menu:
     url: /deployment/kubernetes/eks
   - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
+  - category: Deployment / Kubernetes Deployment / AKS
+    url: /deployment/kubernetes/aks
   - category: Deployment / Kubernetes Deployment / On Premises
     url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
@@ -253,6 +255,8 @@ site_menu:
     url: /how-to-guides/guide-for-data-users/versions
   - category: How-to Guides / Guide for Data Users / How to Delete a Data Asset
     url: /how-to-guides/guide-for-data-users/delete
+  - category: How-to Guides / Guide for Data Users / OpenMetadata Browser Extension
+    url: /how-to-guides/guide-for-data-users/browser-ext
 
   - category: How-to Guides / Data Discovery
     url: /how-to-guides/data-discovery

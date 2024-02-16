@@ -36,6 +36,8 @@ site_menu:
     url: /deployment/kubernetes/eks
   - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
+  - category: Deployment / Kubernetes Deployment / AKS
+    url: /deployment/kubernetes/aks
   - category: Deployment / Kubernetes Deployment / On Premises
     url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
@@ -257,6 +259,8 @@ site_menu:
     url: /how-to-guides/guide-for-data-users/versions
   - category: How-to Guides / Guide for Data Users / How to Delete a Data Asset
     url: /how-to-guides/guide-for-data-users/delete
+  - category: How-to Guides / Guide for Data Users / OpenMetadata Browser Extension
+    url: /how-to-guides/guide-for-data-users/browser-ext
 
   - category: How-to Guides / Data Discovery
     url: /how-to-guides/data-discovery
@@ -368,6 +372,52 @@ site_menu:
     url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.3.0 Release
+    url: /releases/all-releases/#1.3.0-release
+  - category: Releases / All Releases / 1.2.0 Release
+    url: /releases/all-releases/#1.2.0-release
+  - category: Releases / All Releases / 1.1.2 Release
+    url: /releases/all-releases/#1.1.2-release
+  - category: Releases / All Releases / 1.1.1 Release
+    url: /releases/all-releases/#1.1.1-release
+  - category: Releases / All Releases / 1.1.0 Release
+    url: /releases/all-releases/#1.1.0-release
+  - category: Releases / All Releases / 1.0.0 Release
+    url: /releases/all-releases/#1.0.0-release
+  - category: Releases / All Releases / 0.13.3 Release
+    url: /releases/all-releases/#0.13.3-release
+  - category: Releases / All Releases / 0.13.2 Release
+    url: /releases/all-releases/#0.13.2-release
+  - category: Releases / All Releases / 0.13.1 Release
+    url: /releases/all-releases/#0.13.1-release
+  - category: Releases / All Releases / 0.13.0 Release
+    url: /releases/all-releases/#0.13.0-release
+  - category: Releases / All Releases / 0.12.3 Release
+    url: /releases/all-releases/#0.12.3-release
+  - category: Releases / All Releases / 0.12.2 Release
+    url: /releases/all-releases/#0.12.2-release
+  - category: Releases / All Releases / 0.12.1 Release
+    url: /releases/all-releases/#0.12.1-release
+  - category: Releases / All Releases / 0.12.0 Release
+    url: /releases/all-releases/#0.12.0-release
+  - category: Releases / All Releases / 0.11.0 Release
+    url: /releases/all-releases/#0.11.0-release
+  - category: Releases / All Releases / 0.10.1 Release
+    url: /releases/all-releases/#0.10.1-release
+  - category: Releases / All Releases / 0.10.0 Release
+    url: /releases/all-releases/#0.10.0-release
+  - category: Releases / All Releases / 0.9.0 Release
+    url: /releases/all-releases/#0.9.0-release
+  - category: Releases / All Releases / 0.8.0 Release
+    url: /releases/all-releases/#0.8.0-release
+  - category: Releases / All Releases / 0.7.0 Release
+    url: /releases/all-releases/#0.7.0-release
+  - category: Releases / All Releases / 0.6.0 Release
+    url: /releases/all-releases/#0.6.0-release
+  - category: Releases / All Releases / 0.5.0 Release
+    url: /releases/all-releases/#0.5.0-release
+  - category: Releases / All Releases / 0.4.0 Release
+    url: /releases/all-releases/#0.4.0-release
 
   - category: Connectors
     url: /connectors

@@ -93,3 +93,6 @@ export const DATA_QUALITY_PROFILER_DOCS =
 
 export const CUSTOM_PROPERTIES_DOCS =
   'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom';
+
+export const DATA_DISCOVERY_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/data-discovery';
