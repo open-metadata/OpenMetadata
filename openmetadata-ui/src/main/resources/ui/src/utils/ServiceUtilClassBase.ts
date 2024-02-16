@@ -12,7 +12,6 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { SearchSuggestions } from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -22,6 +21,7 @@ import {
   ATLAS,
   AZURESQL,
   BIGQUERY,
+  BIGTABLE,
   CLICKHOUSE,
   COMMON_UI_SCHEMA,
   COUCHBASE,
@@ -88,6 +88,7 @@ import {
   UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
+import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -159,6 +160,9 @@ class ServiceUtilClassBase {
 
       case DatabaseServiceType.BigQuery:
         return BIGQUERY;
+
+      case DatabaseServiceType.BigTable:
+        return BIGTABLE;
 
       case DatabaseServiceType.Hive:
         return HIVE;

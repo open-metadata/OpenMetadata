@@ -32,7 +32,7 @@ import { isEmpty } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconFormatImage } from '../../../../assets/svg/ic-format-image.svg';
-import Loader from '../../../Loader/Loader';
+import Loader from '../../../common/Loader/Loader';
 
 interface PopoverContentProps {
   updateAttributes: NodeViewProps['updateAttributes'];

@@ -17,7 +17,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import ColorPicker from '../../common/ColorPicker/ColorPicker.component';
-import FormItemLabel from '../../Form/FormItemLabel';
+import FormItemLabel from '../../common/Form/FormItemLabel';
 import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
 
 const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {

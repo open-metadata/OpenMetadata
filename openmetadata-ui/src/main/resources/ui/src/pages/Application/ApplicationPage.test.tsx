@@ -26,7 +26,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/Applications/ApplicationCard/ApplicationCard.component',
+  '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component',
   () =>
     jest.fn(({ onClick }) => <button onClick={onClick}>ApplicationCard</button>)
 );

@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { getTableTabPath, ROUTES } from '../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../constants/TestSuite.constant';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { TestSummary } from '../../../generated/entity/data/table';
@@ -47,9 +48,8 @@ import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import Table from '../../common/Table/Table';
-import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
-import ProfilerProgressWidget from '../../TableProfiler/Component/ProfilerProgressWidget';
+import { TableProfilerTab } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import ProfilerProgressWidget from '../../Database/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();

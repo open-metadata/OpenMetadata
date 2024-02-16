@@ -12,7 +12,7 @@
  */
 
 import { isUndefined, startCase } from 'lodash';
-import { TableProfilerTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
+import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { getTableTabPath } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../constants/service-guide.constant';
