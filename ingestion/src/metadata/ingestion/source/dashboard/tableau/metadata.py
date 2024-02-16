@@ -152,6 +152,23 @@ class TableauSource(DashboardServiceSource):
                 include_tags=self.source_config.includeTags,
             )
 
+    def _get_datamodel_sql_query(self, data_model: DataSource) -> Optional[str]:
+        """
+        Method to fetch the custom sql query from the tableau datamodels
+        """
+        try:
+            sql_queries = []
+            for table in data_model.upstreamTables or []:
+                for referenced_query in table.referencedByQueries or []:
+                    sql_queries.append(referenced_query.query)
+            return "\n\n".join(sql_queries) or None
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error processing queries for datamodel [{data_model.id}]: {exc}"
+            )
+        return None
+
     def yield_datamodel(
         self, dashboard_details: TableauDashboard
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -171,6 +188,7 @@ class TableauSource(DashboardServiceSource):
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
                         columns=self.get_column_info(data_model),
+                        sql=self._get_datamodel_sql_query(data_model=data_model),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
