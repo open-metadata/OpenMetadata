@@ -35,8 +35,8 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
+- [Data Profiler](#data-profiler)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
@@ -204,12 +204,9 @@ source:
 
 {% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "redshift"} /%}
 
+{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "redshift"} /%}
+
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "redshift"} /%}
-
-
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
 
 ## dbt Integration
 
