@@ -9,6 +9,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.emailNotFound;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -245,7 +246,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, MULTIPLE_EMAIL_ENTRIES);
       } else {
         throw new CustomExceptionMessage(
-            INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, INVALID_EMAIL_PASSWORD);
+            INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, emailNotFound(email));
       }
     } catch (LDAPException ex) {
       throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, "LDAP_ERROR", ex.getMessage());

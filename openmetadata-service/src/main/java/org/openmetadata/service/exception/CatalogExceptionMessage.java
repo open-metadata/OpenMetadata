@@ -320,4 +320,8 @@ public final class CatalogExceptionMessage {
             .collect(Collectors.joining(", "));
     return "query param " + key + " must be one of [" + enumValues + "]";
   }
+
+  public static String emailNotFound(String email) {
+    return String.format("Email %s not found.", email);
+  }
 }
