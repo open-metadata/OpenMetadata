@@ -17,8 +17,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
 import {
   ERROR_MESSAGE,
   getBotsPagePath,

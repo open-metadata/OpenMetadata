@@ -24,7 +24,7 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import Reaction from '../../Reactions/Reaction';
+import Reaction from '../Reactions/Reaction';
 import { ConfirmState } from './ActivityFeedCard.interface';
 
 interface Props {

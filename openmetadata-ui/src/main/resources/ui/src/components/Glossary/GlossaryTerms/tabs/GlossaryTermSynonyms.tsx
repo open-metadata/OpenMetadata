@@ -18,14 +18,13 @@ import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import {
@@ -33,6 +32,7 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
+import TagButton from '../../../common/TagButton/TagButton.component';
 
 interface GlossaryTermSynonymsProps {
   isVersionView?: boolean;

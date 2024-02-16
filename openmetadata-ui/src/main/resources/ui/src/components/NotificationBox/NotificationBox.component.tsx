@@ -33,7 +33,7 @@ import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
-import Loader from '../Loader/Loader';
+import Loader from '../common/Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { getFilters, tabsInfo } from './NotificationBox.utils';

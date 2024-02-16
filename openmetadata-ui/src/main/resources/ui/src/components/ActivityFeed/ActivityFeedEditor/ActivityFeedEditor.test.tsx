@@ -27,7 +27,7 @@ jest.mock('../../../utils/FeedUtils', () => ({
   HTMLToMarkdown: jest.fn().mockReturnValue({ turndown: jest.fn() }),
 }));
 
-jest.mock('../../FeedEditor/FeedEditor', () => ({
+jest.mock('../FeedEditor/FeedEditor', () => ({
   __esModule: true,
   FeedEditor: forwardRef(
     jest.fn().mockImplementation(({ onChangeHandler, onSave }, ref) => {

@@ -28,8 +28,8 @@ import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
-import Loader from '../../components/Loader/Loader';
-import LoginButton from '../../components/LoginButton/LoginButton';
+import Loader from '../../components/common/Loader/Loader';
+import LoginButton from '../../components/common/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import localState from '../../utils/LocalStorageUtils';
