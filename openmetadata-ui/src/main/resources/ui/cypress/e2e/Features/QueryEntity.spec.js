@@ -51,7 +51,7 @@ const DATA = {
   },
 };
 
-describe('Query Entity', { tags: 'e2eDataAssets' }, () => {
+describe('Query Entity', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {

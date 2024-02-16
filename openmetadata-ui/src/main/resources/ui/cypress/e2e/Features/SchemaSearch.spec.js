@@ -21,7 +21,7 @@ const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
 let serviceId;
 const serviceName = 'cypress_mysql_schema_test';
 
-describe('Schema search', { tags: 'e2eDataAssets' }, () => {
+describe('Schema search', { tags: 'DataAssets' }, () => {
   beforeEach(() => {
     cy.login();
   });
