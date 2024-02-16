@@ -34,6 +34,7 @@ Configure and schedule Vertica metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
@@ -216,6 +217,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "vertica"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 
