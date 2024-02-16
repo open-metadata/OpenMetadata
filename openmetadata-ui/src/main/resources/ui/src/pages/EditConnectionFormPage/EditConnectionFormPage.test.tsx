@@ -76,28 +76,30 @@ jest.mock('../../components/common/Loader/Loader', () =>
 let withActiveField = true;
 let updateServiceData = true;
 
-jest.mock('../../components/ServiceConfig/ServiceConfig', () =>
-  jest.fn().mockImplementation(({ onFocus, handleUpdate }) => (
-    <>
-      <p>ServiceConfig</p>
-      <button
-        onClick={() =>
-          handleUpdate(
-            updateServiceData
-              ? {
-                  ...mockServiceData.connection.config,
-                  databaseSchema: 'openmetadata_db',
-                }
-              : mockServiceData.connection.config
-          )
-        }>
-        {SERVICE_CONFIG_UPDATE}
-      </button>
-      <button onClick={() => onFocus(withActiveField ? ACTIVE_FIELD : '')}>
-        {SERVICE_CONFIG_FOCUS}
-      </button>
-    </>
-  ))
+jest.mock(
+  '../../components/Settings/Services/ServiceConfig/ServiceConfig',
+  () =>
+    jest.fn().mockImplementation(({ onFocus, handleUpdate }) => (
+      <>
+        <p>ServiceConfig</p>
+        <button
+          onClick={() =>
+            handleUpdate(
+              updateServiceData
+                ? {
+                    ...mockServiceData.connection.config,
+                    databaseSchema: 'openmetadata_db',
+                  }
+                : mockServiceData.connection.config
+            )
+          }>
+          {SERVICE_CONFIG_UPDATE}
+        </button>
+        <button onClick={() => onFocus(withActiveField ? ACTIVE_FIELD : '')}>
+          {SERVICE_CONFIG_FOCUS}
+        </button>
+      </>
+    ))
 );
 
 jest.mock('../../hooks/useFqn', () => ({
