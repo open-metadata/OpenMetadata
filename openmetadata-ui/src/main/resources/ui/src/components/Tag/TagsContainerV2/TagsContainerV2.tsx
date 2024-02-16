@@ -21,7 +21,6 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
@@ -38,7 +37,8 @@ import {
   getRequestTagsPath,
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
-import { SelectOption } from '../../AsyncSelectList/AsyncSelectList.interface';
+import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';

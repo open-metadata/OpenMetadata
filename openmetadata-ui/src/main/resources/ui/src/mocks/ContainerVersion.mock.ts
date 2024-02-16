@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ContainerVersionProp } from '../components/ContainerVersion/ContainerVersion.interface';
+import { ContainerVersionProp } from '../components/Container/ContainerVersion/ContainerVersion.interface';
 import {
   Constraint,
   DataType,

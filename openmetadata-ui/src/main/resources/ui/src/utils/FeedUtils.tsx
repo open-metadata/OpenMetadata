@@ -20,8 +20,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
+import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
-import { MentionSuggestionsItem } from '../components/FeedEditor/FeedEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,

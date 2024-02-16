@@ -101,7 +101,7 @@ jest.mock(
       .mockImplementation(() => <div>NoDataPlaceholder.component</div>);
   }
 );
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockResolvedValue({
       Create: true,

@@ -12,7 +12,7 @@
  */
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
-import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
 import {

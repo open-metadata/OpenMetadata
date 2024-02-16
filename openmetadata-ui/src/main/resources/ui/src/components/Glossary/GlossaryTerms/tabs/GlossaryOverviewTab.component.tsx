@@ -13,6 +13,7 @@
 import { Col, Row, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -24,7 +25,6 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
-import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';

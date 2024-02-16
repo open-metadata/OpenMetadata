@@ -28,7 +28,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
-import TabsLabel from '../../TabsLabel/TabsLabel.component';
+import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';

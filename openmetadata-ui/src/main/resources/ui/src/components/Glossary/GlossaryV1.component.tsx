@@ -18,12 +18,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import Loader from '../../components/Loader/Loader';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   API_RES_MAX_SIZE,
   getGlossaryTermDetailsPath,
 } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityAction } from '../../enums/entity.enum';
 import {
   CreateThread,
@@ -44,12 +48,8 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import Loader from '../common/Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../PermissionProvider/PermissionProvider.interface';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';

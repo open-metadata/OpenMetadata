@@ -52,7 +52,7 @@ class EntityProducer(ProducerInterface):
     ]
 
     # pylint: disable=dangerous-default-value
-    def fetch_data(self, limit=100, fields=["*"]) -> Iterable:
+    def fetch_data(self, limit=100, fields=["*"], entities_cache=None) -> Iterable:
         for entity in self.entities:
             try:
                 yield from self.metadata.list_all_entities(

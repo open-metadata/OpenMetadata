@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import React, { FC, useMemo } from 'react';
-import { useApplicationConfigContext } from '../../../components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
 
 interface BrandImageProps {

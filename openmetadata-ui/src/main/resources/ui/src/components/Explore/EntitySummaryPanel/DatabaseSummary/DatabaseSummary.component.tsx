@@ -16,7 +16,6 @@ import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import SummaryTagsDescription from '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import {
@@ -27,6 +26,7 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
