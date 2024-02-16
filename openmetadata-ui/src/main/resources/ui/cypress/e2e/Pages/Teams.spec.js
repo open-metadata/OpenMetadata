@@ -23,7 +23,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { deleteTeamPermanently } from '../../common/TeamUtils';
+import { deleteTeamPermanently } from '../../common/Utils/Teams';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 

@@ -15,9 +15,7 @@ import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
-} from './common';
-
-const dataTransfer = new DataTransfer();
+} from '../common';
 
 export const commonTeamDetails = {
   username: 'Aaron Johnson',
@@ -26,28 +24,10 @@ export const commonTeamDetails = {
   email: 'team1@gmail.com',
   updatedEmail: 'updatedemail@gmail.com',
 };
-
-export const openTeamDropdown = (teamName) => {
-  cy.get(
-    `[data-row-key=${teamName}] > .whitespace-nowrap > [data-testid="expand-icon"] > svg`
-  ).click();
-};
-
-export const dragAndDropElement = (dragElement, dropTarget, isHeader) => {
-  cy.get(`[data-row-key=${dragElement}]`)
-    .invoke('attr', 'draggable')
-    .should('contain', 'true');
-
-  cy.get(`[data-row-key=${dragElement}]`).trigger('dragstart', {
-    dataTransfer,
-  });
-
-  cy.get(isHeader ? dropTarget : `[data-row-key=${dropTarget}]`)
-    .trigger('drop', { dataTransfer })
-    .trigger('dragend', { force: true });
-};
-
-export const confirmationDragAndDropTeam = (dragTeam, dropTeam) => {
+export const confirmationDragAndDropTeam = (
+  dragTeam: string,
+  dropTeam: string
+) => {
   interceptURL('PUT', `/api/v1/teams`, 'putTeam');
 
   // confirmation message before the transfer
@@ -65,7 +45,7 @@ export const confirmationDragAndDropTeam = (dragTeam, dropTeam) => {
   toastNotification('Team moved successfully!');
 };
 
-export const deleteTeamPermanently = (teamName) => {
+export const deleteTeamPermanently = (teamName: string) => {
   interceptURL('GET', `/api/v1/teams/name/${teamName}*`, 'getSelectedTeam');
   // Click on created team
   cy.get(`[data-row-key="${teamName}"]`).contains(teamName).click();

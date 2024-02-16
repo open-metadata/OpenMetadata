@@ -20,6 +20,7 @@ import {
   Table,
   TableProps,
   Tooltip,
+  Typography,
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -426,17 +427,19 @@ const GlossaryTermTab = ({
           })}
           onCancel={onDragConfirmationModalClose}
           onOk={handleChangeGlossaryTerm}>
-          <Transi18next
-            i18nKey="message.entity-transfer-message"
-            renderElement={<strong />}
-            values={{
-              from: movedGlossaryTerm?.from.name,
-              to: movedGlossaryTerm?.to?.name ?? getEntityName(selectedData),
-              entity: isUndefined(movedGlossaryTerm?.to)
-                ? ''
-                : t('label.term-lowercase'),
-            }}
-          />
+          <Typography.Text data-testid="transfer-message">
+            <Transi18next
+              i18nKey="message.entity-transfer-message"
+              renderElement={<strong />}
+              values={{
+                from: movedGlossaryTerm?.from.name,
+                to: movedGlossaryTerm?.to?.name ?? getEntityName(selectedData),
+                entity: isUndefined(movedGlossaryTerm?.to)
+                  ? ''
+                  : t('label.term-lowercase'),
+              }}
+            />
+          </Typography.Text>
         </Modal>
       </Col>
     </Row>

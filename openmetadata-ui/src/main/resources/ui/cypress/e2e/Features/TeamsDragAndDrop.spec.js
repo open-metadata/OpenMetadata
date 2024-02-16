@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { addTeam, interceptURL, toastNotification } from '../../common/common';
+import {
+  addTeam,
+  dragAndDropElement,
+  interceptURL,
+  openDragDropDropdown,
+  toastNotification,
+} from '../../common/common';
 import {
   commonTeamDetails,
   confirmationDragAndDropTeam,
   deleteTeamPermanently,
-  dragAndDropElement,
-  openTeamDropdown,
-} from '../../common/TeamUtils';
+} from '../../common/Utils/Teams';
 import { uuid } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
@@ -125,7 +129,7 @@ describe('Teams drag and drop should work properly', () => {
       it(`Should drag and drop on  ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, () => {
         // nested team will be shown once anything is moved under it
         if (index !== 0) {
-          openTeamDropdown(
+          openDragDropDropdown(
             [teamNameBusiness, teamNameDivision, teamNameDepartment][index - 1]
           );
         }
@@ -135,7 +139,7 @@ describe('Teams drag and drop should work properly', () => {
         confirmationDragAndDropTeam(teamNameGroup, droppableTeamName);
 
         // verify the team is moved under the business team
-        openTeamDropdown(droppableTeamName);
+        openDragDropDropdown(droppableTeamName);
         cy.get(
           `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
         ).should('be.visible');
@@ -145,7 +149,7 @@ describe('Teams drag and drop should work properly', () => {
 
   it(`Should drag and drop team on table level`, () => {
     // open department team dropdown as it is moved under it from last test
-    openTeamDropdown(teamNameDepartment);
+    openDragDropDropdown(teamNameDepartment);
 
     dragAndDropElement(teamNameGroup, '.ant-table-thead > tr', true);
     confirmationDragAndDropTeam(teamNameGroup, 'Organization');
