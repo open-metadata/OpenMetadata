@@ -23,7 +23,7 @@ import Searchbar from './SearchBar.component';
 
 jest.useRealTimers();
 
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });
 

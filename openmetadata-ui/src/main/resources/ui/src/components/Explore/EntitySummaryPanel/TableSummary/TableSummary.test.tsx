@@ -58,7 +58,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
 }));
 
-jest.mock('../../../PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest
       .fn()
