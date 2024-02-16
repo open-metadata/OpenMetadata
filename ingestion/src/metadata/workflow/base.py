@@ -44,6 +44,7 @@ from metadata.utils.class_helper import (
     get_reference_type_from_service_type,
     get_service_class_from_service_type,
 )
+from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.workflow.output_handler import report_ingestion_status
@@ -92,6 +93,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self._timer: Optional[RepeatedTimer] = None
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
         self._start_ts = datetime_to_ts(datetime.now())
+        self._execution_time_tracker = ExecutionTimeTracker(
+            log_level == LogLevels.DEBUG
+        )
 
         set_loggers_level(log_level.value)
 
