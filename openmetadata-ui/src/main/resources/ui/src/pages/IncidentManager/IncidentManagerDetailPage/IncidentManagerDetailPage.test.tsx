@@ -94,11 +94,11 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
       <div data-testid="page-layout-v1">{children}</div>
     ))
 );
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 jest.mock(
-  '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
+  '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
   () => jest.fn().mockImplementation(() => <div>IncidentManagerPageHeader</div>)
 );
 jest.mock(
@@ -117,11 +117,11 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
 );
 jest.mock(
-  '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
+  '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
   () => jest.fn().mockImplementation(() => <div>TestCaseResultTab</div>)
 );
 jest.mock(
-  '../../../components/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component',
+  '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component',
   () => jest.fn().mockImplementation(() => <div>TestCaseIncidentTab</div>)
 );
 jest.mock(

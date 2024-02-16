@@ -50,8 +50,8 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../Loader/Loader';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import Loader from '../Loader/Loader';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {

@@ -19,12 +19,11 @@ import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
-
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import Loader from '../Loader/Loader';
+import Loader from '../common/Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(

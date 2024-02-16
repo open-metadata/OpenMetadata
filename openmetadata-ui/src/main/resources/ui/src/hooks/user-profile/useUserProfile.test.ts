@@ -17,7 +17,7 @@ import { useUserProfile } from './useUserProfile';
 jest.mock('../useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     userProfilePics: {
-      chirag: {
+      userJohn: {
         profile: {
           iamge512: 'profile512',
         },
@@ -78,7 +78,7 @@ describe('useUserProfile hook', () => {
 
   it('should return profileURL & user data for name mentioned if already present', async () => {
     const { result } = renderHook(() =>
-      useUserProfile({ permission: true, name: 'chirag' })
+      useUserProfile({ permission: true, name: 'userJohn' })
     );
 
     expect(result.current[0]).toBe('');

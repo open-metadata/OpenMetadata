@@ -18,7 +18,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
-import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
+import TeamsSelectable from '../../components/Settings/Team/TeamsSelectable/TeamsSelectable';
 import {
   REDIRECT_PATHNAME,
   ROUTES,

@@ -42,8 +42,9 @@ jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/TeamsSelectable/TeamsSelectable', () =>
-  jest.fn().mockImplementation(() => <div>TeamSelectable</div>)
+jest.mock(
+  '../../components/Settings/Team/TeamsSelectable/TeamsSelectable',
+  () => jest.fn().mockImplementation(() => <div>TeamSelectable</div>)
 );
 
 jest.mock('../../rest/userAPI', () => ({

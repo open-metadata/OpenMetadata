@@ -30,7 +30,7 @@ const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
 };
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testSuite: testSuitePermission,
@@ -53,21 +53,18 @@ jest.mock('react-router-dom', () => {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
-jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
+jest.mock('../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={`error-placeholder-type-${type}`}>
-          ErrorPlaceHolder.component
-        </div>
-      ));
-  }
-);
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ type }) => (
+      <div data-testid={`error-placeholder-type-${type}`}>
+        ErrorPlaceHolder.component
+      </div>
+    ));
+});
 
 const mockProps = {
   summaryPanel: <div>SummaryPanel.component</div>,

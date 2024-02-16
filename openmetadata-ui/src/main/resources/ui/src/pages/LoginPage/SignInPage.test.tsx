@@ -39,11 +39,13 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
-jest.mock('../../assets/img/login-bg.png', () => 'login-bg.png');
-
 jest.mock('./LoginCarousel', () =>
   jest.fn().mockReturnValue(<p>LoginCarousel</p>)
 );
+
+jest.mock('../../components/common/BrandImage/BrandImage', () => {
+  return jest.fn().mockReturnValue(<p>testBrandLogo</p>);
+});
 
 describe('Test SignInPage Component', () => {
   afterEach(() => {
@@ -137,10 +139,8 @@ describe('Test SignInPage Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const brandLogoImage = await screen.findByTestId('brand-logo-image');
+    const brandLogoImage = await screen.findByText('testBrandLogo');
 
     expect(brandLogoImage).toBeInTheDocument();
-
-    expect(brandLogoImage).toHaveAttribute('src', 'https://custom-logo.png');
   });
 });

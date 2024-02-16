@@ -28,7 +28,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import {
   AuthenticatorRef,
   OidcUser,

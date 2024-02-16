@@ -25,8 +25,8 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import Loader from '../../components/Loader/Loader';
-import Users from '../../components/Users/Users.component';
+import Loader from '../../components/common/Loader/Loader';
+import Users from '../../components/Settings/Users/Users.component';
 import { User } from '../../generated/entity/teams/user';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';

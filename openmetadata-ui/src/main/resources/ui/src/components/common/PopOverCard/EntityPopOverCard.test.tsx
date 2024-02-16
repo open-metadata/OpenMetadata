@@ -34,7 +34,7 @@ jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn(),
 }));
 
-jest.mock('../../Loader/Loader', () => {
+jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>Loader</p>);
 });
 

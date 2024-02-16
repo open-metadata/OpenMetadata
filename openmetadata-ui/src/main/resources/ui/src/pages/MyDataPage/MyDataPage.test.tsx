@@ -57,7 +57,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
@@ -73,13 +73,16 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
     ));
 });
 
-jest.mock('../../components/WelcomeScreen/WelcomeScreen.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onClose }) => (
-      <div onClick={onClose}>WelcomeScreen</div>
-    ));
-});
+jest.mock(
+  '../../components/MyData/WelcomeScreen/WelcomeScreen.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ onClose }) => (
+        <div onClick={onClose}>WelcomeScreen</div>
+      ));
+  }
+);
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({

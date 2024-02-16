@@ -74,7 +74,7 @@ jest.mock('../../components/common/Table/Table', () => {
   return jest.fn().mockImplementation(() => <table>mockTable</table>);
 });
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 

@@ -27,14 +27,14 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsightDetail/EmptyGraphPlaceholder';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import {
   getKpiPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';

@@ -71,7 +71,7 @@ import {
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';

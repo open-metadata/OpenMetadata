@@ -23,10 +23,9 @@ import React, {
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';

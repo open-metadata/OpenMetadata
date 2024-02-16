@@ -29,12 +29,11 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import Loader from '../Loader/Loader';
+import Loader from '../common/Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { getFilters, tabsInfo } from './NotificationBox.utils';

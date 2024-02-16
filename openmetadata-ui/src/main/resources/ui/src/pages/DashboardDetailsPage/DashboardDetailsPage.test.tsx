@@ -20,7 +20,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import { mockUserData } from '../../components/Users/mocks/User.mocks';
+import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import DashboardDetailsPage from './DashboardDetailsPage.component';
 import {
   CREATE_THREAD,
@@ -63,50 +63,52 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../components/DashboardDetails/DashboardDetails.component', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        dashboardDetails,
-        createThread,
-        chartDescriptionUpdateHandler,
-        chartTagUpdateHandler,
-        fetchDashboard,
-        followDashboardHandler,
-        handleToggleDelete,
-        unFollowDashboardHandler,
-        versionHandler,
-        onDashboardUpdate,
-        onUpdateVote,
-      }) => (
-        <div>
-          DashboardDetailsComponent
-          <span>{dashboardDetails.deleted ? DASHBOARD_DELETED : ''}</span>
-          <button onClick={createThread}>{CREATE_THREAD}</button>
-          <button onClick={chartDescriptionUpdateHandler}>
-            {UPDATE_CHART_DESCRIPTION}
-          </button>
-          <button onClick={chartTagUpdateHandler}>{UPDATE_CHART_TAGS}</button>
-          <button onClick={fetchDashboard}>{FETCH_DASHBOARD}</button>
-          <button onClick={followDashboardHandler}>{FOLLOW_DASHBOARD}</button>
-          <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
-          <button onClick={unFollowDashboardHandler}>
-            {UNFOLLOW_DASHBOARD}
-          </button>
-          <button onClick={versionHandler}>{VERSION_HANDLER}</button>
-          <button onClick={onDashboardUpdate}>{UPDATE_DASHBOARD}</button>
-          <button onClick={onUpdateVote}>{UPDATE_VOTE}</button>
-        </div>
+jest.mock(
+  '../../components/Dashboard/DashboardDetails/DashboardDetails.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          dashboardDetails,
+          createThread,
+          chartDescriptionUpdateHandler,
+          chartTagUpdateHandler,
+          fetchDashboard,
+          followDashboardHandler,
+          handleToggleDelete,
+          unFollowDashboardHandler,
+          versionHandler,
+          onDashboardUpdate,
+          onUpdateVote,
+        }) => (
+          <div>
+            DashboardDetailsComponent
+            <span>{dashboardDetails.deleted ? DASHBOARD_DELETED : ''}</span>
+            <button onClick={createThread}>{CREATE_THREAD}</button>
+            <button onClick={chartDescriptionUpdateHandler}>
+              {UPDATE_CHART_DESCRIPTION}
+            </button>
+            <button onClick={chartTagUpdateHandler}>{UPDATE_CHART_TAGS}</button>
+            <button onClick={fetchDashboard}>{FETCH_DASHBOARD}</button>
+            <button onClick={followDashboardHandler}>{FOLLOW_DASHBOARD}</button>
+            <button onClick={handleToggleDelete}>{TOGGLE_DELETE}</button>
+            <button onClick={unFollowDashboardHandler}>
+              {UNFOLLOW_DASHBOARD}
+            </button>
+            <button onClick={versionHandler}>{VERSION_HANDLER}</button>
+            <button onClick={onDashboardUpdate}>{UPDATE_DASHBOARD}</button>
+            <button onClick={onUpdateVote}>{UPDATE_VOTE}</button>
+          </div>
+        )
       )
-    )
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       ViewAll: true,
