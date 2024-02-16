@@ -1,7 +1,7 @@
 FROM python:3.10-bullseye
 
 ENV VIRTUAL_ENV=/usr/local
-ENV UV_NO_CACHE=1
+ENV UV_NO_CACHE=true
 RUN pip install "uv~=0.1"
 
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -

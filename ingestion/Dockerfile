@@ -78,7 +78,7 @@ COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
 USER airflow
 ENV VIRTUAL_ENV=/usr/local
-ENV UV_NO_CACHE=1
+ENV UV_NO_CACHE=true
 RUN pip install "uv~=0.1"
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all

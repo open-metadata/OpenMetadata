@@ -84,7 +84,7 @@ ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airfl
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
 ENV PIP_NO_CACHE_DIR=1
-ENV UV_NO_CACHE=1
+ENV UV_NO_CACHE=true
 # Make pip silent
 ENV PIP_QUIET=1
 # Use uv
