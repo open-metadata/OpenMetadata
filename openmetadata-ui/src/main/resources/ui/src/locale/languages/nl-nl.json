@@ -1403,7 +1403,7 @@
     "entity-size-in-between": "{{entity}} grootte moet tussen {{min}} en {{max}} liggen",
     "entity-size-must-be-between-2-and-64": "{{entity}} grootte moet tussen 2 en 64 liggen",
     "entity-transfer-message": "Klik op Bevestigen als je <0>{{from}}</0> {{entity}} wilt verplaatsen naar <0>{{to}}</0> {{entity}}.",
-    "error-team-transfer-message": "Je kunt niet naar dit team verplaatsen, omdat een groep van het teamtype geen kinderen kan hebben",
+    "error-team-transfer-message": "You cannot move to this team as Team Type {{dragTeam}} can't be {{dropTeam}} children",
     "error-while-fetching-access-token": "Fout bij het ophalen van toegangstoken.",
     "explore-our-guide-here": "explore our guide here.",
     "export-entity-help": "Download al je {{entity}} als een CSV-bestand en deel het met je team.",
