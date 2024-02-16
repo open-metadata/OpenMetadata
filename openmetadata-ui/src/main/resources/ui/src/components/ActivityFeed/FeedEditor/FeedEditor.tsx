@@ -75,8 +75,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
-    const { userProfilePics, updateUserProfilePics } =
-      useApplicationConfigContext();
+    const { userProfilePics } = useApplicationConfigContext();
 
     const userSuggestionRenderer = async (
       searchTerm: string,
@@ -91,8 +90,6 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           if (item.type === 'user') {
             return getUserByName(item.name, { fields: 'profile' }).then(
               (res) => {
-                updateUserProfilePics({ id: item.name, user: res });
-
                 newMatches[index] = {
                   ...item,
                   avatarEle: userMentionItemWithAvatar(
