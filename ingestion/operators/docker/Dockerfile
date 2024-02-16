@@ -1,8 +1,7 @@
 FROM python:3.10-bullseye
 
 ENV VIRTUAL_ENV=/usr/local
-ADD --chmod=655 https://astral.sh/uv/install.sh /install.sh
-RUN /install.sh && rm /install.sh
+RUN pip install --no-cache-dir "uv~=0.1"
 
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -90,19 +89,18 @@ ENV PIP_QUIET=1
 
 ARG INGESTION_DEPENDENCY="all"
 ARG RI_VERSION="1.3.0.0.dev0"
-RUN /root/.cargo/bin/uv pip install --upgrade pip
-RUN /root/.cargo/bin/uv pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
-RUN /root/.cargo/bin/uv pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+RUN uv pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
+RUN uv pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
 RUN if [[ $(uname -m) == "arm64" ]]; \
     then \
-    pip install "ibm-db-sa~=0.4"; \
+    uv pip install "ibm-db-sa~=0.4"; \
     fi
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
-RUN /root/.cargo/bin/uv pip uninstall psycopg2-binary -y
-RUN /root/.cargo/bin/uv pip install psycopg2 mysqlclient==2.1.1
+RUN uv pip uninstall psycopg2-binary -y
+RUN uv pip install psycopg2 mysqlclient==2.1.1
