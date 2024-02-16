@@ -1,5 +1,8 @@
 FROM apache/airflow:2.7.3-python3.10
 USER root
+# uv needs permissions to write /usr/local/.lock file
+RUN chown -R 50000:0 /usr/local/
+RUN chmod -R 755 /usr/local/
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 # Install Dependencies (listed in alphabetical order)
@@ -75,7 +78,8 @@ COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
 USER airflow
 ENV VIRTUAL_ENV=/usr/local
-RUN pip install --no-cache-dir "uv~=0.1"
+ENV UV_NO_CACHE=1
+RUN pip install "uv~=0.1"
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"

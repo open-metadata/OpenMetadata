@@ -1,6 +1,9 @@
 FROM python:3.10-bullseye
+
 ENV VIRTUAL_ENV=/usr/local
-RUN pip install --no-cache-dir "uv~=0.1"
+ENV UV_NO_CACHE=1
+RUN pip install "uv~=0.1"
+
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
