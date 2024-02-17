@@ -568,7 +568,13 @@ export const TaskTab = ({
                 onClick={() =>
                   handleMenuItemClick({ key: TaskActionMode.EDIT } as MenuInfo)
                 }>
-                {t('label.add-suggestion')}
+                {taskThread.task?.newValue
+                  ? t('label.add-suggestion')
+                  : t('label.add-entity', {
+                      entity: isTaskTags
+                        ? t('label.tag-plural')
+                        : t('label.description'),
+                    })}
               </Button>
             ) : (
               <Dropdown.Button
