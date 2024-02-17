@@ -22,7 +22,7 @@ In `docker/docker-compose-quickstart/docker-compose.yml` file configure the volu
 For docker container to access cacerts, copy the cacerts to `docker/ldap/config` and add the path in volumes.
 ```shell
     volumes:
-      - docker/ldap/config/cacerts:/usr/lib/jvm/java-11-openjdk/lib/security/cacerts
+      - docker/ldap/config/cacerts:/usr/lib/jvm/java-17-openjdk/lib/security/cacerts
 ```
 
 ### **Using CustomTrustStore**
@@ -41,7 +41,7 @@ Create a docker file and add the following details based on the `truststoreConfi
    For docker container to access cacerts, copy the cacerts to `docker/ldap/config` as shown below.
 ```shell
 FROM docker.getcollate.io/openmetadata/server:0.13.2
-COPY docker/ldap/config/cacerts /usr/lib/jvm/java-11-openjdk/lib/security/cacerts
+COPY docker/ldap/config/cacerts /usr/lib/jvm/java-17-openjdk/lib/security/cacerts
 ```
 
 ### **Using CustomTrustStore**
