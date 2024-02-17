@@ -103,11 +103,11 @@ RUN if [[ $(uname -m) != "aarch64" ]]; \
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN uv pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker and cncf kubernetes
-RUN uv pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf" | xargs pip uninstall -y
+RUN uv pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf" | xargs uv pip uninstall
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
-RUN uv pip uninstall psycopg2-binary -y
+RUN uv pip uninstall psycopg2-binary
 RUN uv pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
