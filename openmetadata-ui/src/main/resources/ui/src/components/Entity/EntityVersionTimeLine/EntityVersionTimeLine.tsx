@@ -13,14 +13,14 @@
 
 import { Col, Divider, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize, isEmpty, toString } from 'lodash';
-import React, { Fragment, useMemo, useState } from 'react';
+import { isEmpty, toString } from 'lodash';
+import React, { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityHistory } from '../../../generated/type/entityHistory';
-import { getUserByName } from '../../../rest/userAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CloseIcon from '../../Modals/CloseIcon.component';
+import './entity-version-timeline.less';
 
 type Props = {
   versionList: EntityHistory;
@@ -28,7 +28,6 @@ type Props = {
   versionHandler: (v: string) => void;
   onBack: () => void;
 };
-type VersionType = 'all' | 'major' | 'minor';
 
 const EntityVersionTimeLine: React.FC<Props> = ({
   versionList = {} as EntityHistory,
@@ -37,74 +36,18 @@ const EntityVersionTimeLine: React.FC<Props> = ({
   onBack,
 }: Props) => {
   const { t } = useTranslation();
-  const [versionType] = useState<VersionType>('all');
-  const [uname, setUname] = useState<string>('');
 
-  const fetchUserName = async (userName: string) => {
-    try {
-      const userData = await getUserByName(userName);
+  const versions = useMemo(
+    () =>
+      versionList.versions.map((v, i) => {
+        const currV = JSON.parse(v);
 
-      const name: string = getEntityName(userData);
-      setUname(name);
-    } catch (err) {
-      setUname(userName);
-    }
-  };
-
-  const versions = useMemo(() => {
-    let versionTypeList = [];
-    const list = versionList.versions ?? [];
-
-    switch (versionType) {
-      case 'major':
-        versionTypeList = list.filter((v) => {
-          const currV = JSON.parse(v);
-
+        const majorVersionChecks = () => {
           return isMajorVersion(
             parseFloat(currV?.changeDescription?.previousVersion)
               .toFixed(1)
               .toString(),
             parseFloat(currV?.version).toFixed(1).toString()
-          );
-        });
-
-        break;
-      case 'minor':
-        versionTypeList = list.filter((v) => {
-          const currV = JSON.parse(v);
-
-          return !isMajorVersion(
-            parseFloat(currV?.changeDescription?.previousVersion)
-              .toFixed(1)
-              .toString(),
-            parseFloat(currV?.version).toFixed(1).toString()
-          );
-        });
-
-        break;
-      case 'all':
-      default:
-        versionTypeList = list;
-
-        break;
-    }
-
-    return versionTypeList.length ? (
-      versionTypeList.map((v, i) => {
-        const currV = JSON.parse(v);
-        const userId: string = currV?.updatedBy;
-        fetchUserName(userId);
-        {
-          userId === 'admin' ? setUname('admin') : ' ';
-        }
-        const majorVersionChecks = () => {
-          return (
-            isMajorVersion(
-              parseFloat(currV?.changeDescription?.previousVersion)
-                .toFixed(1)
-                .toString(),
-              parseFloat(currV?.version).toFixed(1).toString()
-            ) && versionType === 'all'
           );
         };
         const versionText = `v${parseFloat(currV?.version).toFixed(1)}`;
@@ -160,32 +103,27 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                     isGlossaryTerm: !isEmpty(currV?.glossary),
                   })}
                 </div>
-                <p className="text-xs font-italic">
-                  <span className="font-medium">{uname}</span>
-                  <span className="text-grey-muted">
-                    {' '}
-                    {t('label.updated-on')}{' '}
-                  </span>
-                  <span className="font-medium">
+                <div className="text-xs d-flex gap-1 items-center flex-wrap">
+                  <UserPopOverCard
+                    showUserName
+                    className="font-italic"
+                    profileWidth={16}
+                    userName={currV?.updatedBy as string}
+                  />
+                  <span className="font-medium font-italic version-timestamp">
                     {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
                       hour: 'numeric',
                       minute: 'numeric',
                     })}
                   </span>
-                </p>
+                </div>
               </div>
             </div>
           </Fragment>
         );
-      })
-    ) : (
-      <p className="text-grey-muted d-flex justify-center items-center">
-        {t('message.no-version-type-available', {
-          type: capitalize(versionType),
-        })}
-      </p>
-    );
-  }, [versionList, currentVersion, versionHandler, versionType]);
+      }),
+    [versionList, currentVersion, versionHandler]
+  );
 
   return (
     <Drawer
