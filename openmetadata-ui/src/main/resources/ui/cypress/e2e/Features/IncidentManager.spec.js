@@ -159,7 +159,7 @@ const assignIncident = (testCaseName) => {
   ).should('contain', 'Assigned');
 };
 
-describe('Incident Manager', () => {
+describe('Incident Manager', { tags: 'Observability' }, () => {
   before(() => {
     cy.login();
 
