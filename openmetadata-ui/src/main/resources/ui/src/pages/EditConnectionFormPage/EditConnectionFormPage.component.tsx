@@ -13,7 +13,8 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, startCase } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +32,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getServiceByFQN, updateService } from '../../rest/serviceAPI';
+import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
@@ -63,22 +64,28 @@ function EditConnectionFormPage() {
   const [activeField, setActiveField] = useState<string>('');
 
   const handleConfigUpdate = async (updatedData: ConfigData) => {
-    const configData = {
-      name: serviceDetails?.name,
-      displayName: serviceDetails?.displayName,
-      serviceType: serviceDetails?.serviceType,
-      description: serviceDetails?.description,
-      owner: serviceDetails?.owner,
+    if (isUndefined(serviceDetails)) {
+      return;
+    }
+
+    const configData: ServicesUpdateRequest = {
+      ...serviceDetails,
       connection: {
         config: updatedData,
       },
-    } as ServicesUpdateRequest;
+    };
+
+    const jsonPatch = compare(serviceDetails, configData);
+
+    if (isEmpty(jsonPatch)) {
+      return;
+    }
 
     try {
-      const response = await updateService(
+      const response = await patchService(
         serviceCategory,
-        serviceDetails?.id ?? '',
-        configData
+        serviceDetails.id,
+        jsonPatch
       );
       setServiceDetails({
         ...response,
