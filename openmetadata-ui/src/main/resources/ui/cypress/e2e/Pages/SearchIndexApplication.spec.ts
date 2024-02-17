@@ -41,7 +41,7 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     visitSearchApplicationPage();
     cy.get('[data-testid="edit-button"]').click();
     cy.get('[data-testid="cron-type"]').click();
-    cy.get('[title="Day"]').click();
+    cy.get('.rc-virtual-list [title="Day"]').click();
     cy.get('[data-testid="hour-options"]').click();
     cy.get('[title="01"]').click();
     cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
