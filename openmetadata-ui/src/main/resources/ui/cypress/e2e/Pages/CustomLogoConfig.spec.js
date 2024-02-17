@@ -23,7 +23,7 @@ const config = {
   monogramError: 'Monogram URL is not valid url',
 };
 
-describe('Custom Logo Config', () => {
+describe('Custom Logo Config', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 

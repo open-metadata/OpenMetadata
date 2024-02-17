@@ -33,7 +33,7 @@ import {
 
 let domainId;
 
-describe('Version page tests for data assets', () => {
+describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {

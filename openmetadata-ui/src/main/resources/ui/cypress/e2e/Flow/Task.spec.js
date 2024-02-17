@@ -40,7 +40,7 @@ const ENTITY_TABLE = {
   entityType: 'Table',
 };
 
-describe('Task flow should work', () => {
+describe('Task flow should work', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {

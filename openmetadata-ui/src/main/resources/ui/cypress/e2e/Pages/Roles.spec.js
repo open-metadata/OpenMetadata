@@ -56,7 +56,7 @@ const removePolicyFromRole = (policyName) => {
   cy.get('[type="button"]').contains('Confirm').should('be.visible').click();
 };
 
-describe('Roles page should work properly', () => {
+describe('Roles page should work properly', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 

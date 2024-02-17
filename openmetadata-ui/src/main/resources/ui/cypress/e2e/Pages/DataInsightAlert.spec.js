@@ -28,7 +28,7 @@ const dataInsightReport = {
 };
 
 // need to re-write full test based on new changes (Data insight report as application)
-describe.skip('Data Insight Alert', () => {
+describe.skip('Data Insight Alert', { tags: 'Observability' }, () => {
   beforeEach(() => {
     cy.login();
     cy.sidebarClick(SidebarItem.SETTINGS);

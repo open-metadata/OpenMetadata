@@ -53,7 +53,7 @@ const TRIGGER_DISPLAY_NAME_1 = 'All';
 const TRIGGER_NAME_2 = 'dashboard';
 const TRIGGER_DISPLAY_NAME_2 = 'Dashboard';
 
-describe('Notification Alert Flow', () => {
+describe('Notification Alert Flow', { tags: 'Settings' }, () => {
   let data = {};
 
   before(() => {

@@ -81,7 +81,7 @@ const addKpi = (data) => {
   verifyResponseStatusCode('@createKpi', 201);
 };
 
-describe('Data Insight feature', () => {
+describe('Data Insight feature', { tags: 'Observability' }, () => {
   beforeEach(() => {
     interceptURL(
       'GET',

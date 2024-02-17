@@ -12,7 +12,7 @@ import { GlobalSettingOptions } from '../../constants/settings.constant';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-describe('template spec', () => {
+describe('Login configuration', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 

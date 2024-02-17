@@ -41,7 +41,7 @@ const updatePersonaDisplayName = (displayName) => {
   verifyResponseStatusCode('@updatePersona', 200);
 };
 
-describe('Persona operations', () => {
+describe('Persona operations', { tags: 'Settings' }, () => {
   let user = {};
   const userSearchText = `${USER_DETAILS.firstName}${USER_DETAILS.lastName}`;
   before(() => {

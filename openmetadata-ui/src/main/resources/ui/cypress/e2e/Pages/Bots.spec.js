@@ -68,7 +68,7 @@ const revokeToken = () => {
   cy.get('[data-testid="save-edit"]').should('exist').should('be.visible');
 };
 
-describe('Bots Page should work properly', () => {
+describe('Bots Page should work properly', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
     interceptURL(

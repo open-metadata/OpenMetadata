@@ -31,248 +31,261 @@ import {
   TIER,
 } from '../../constants/Version.constants';
 
-describe('Data model version page should work properly', () => {
-  const dataModelName = DATA_MODEL_DETAILS.name;
-  let dataModelId;
-  let dataModelFQN;
+describe(
+  'Data model version page should work properly',
+  { tags: 'DataAssets' },
+  () => {
+    const dataModelName = DATA_MODEL_DETAILS.name;
+    let dataModelId;
+    let dataModelFQN;
 
-  before(() => {
-    cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
-
-      cy.request({
-        method: 'PUT',
-        url: `/api/v1/dashboard/datamodels`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: DATA_MODEL_DETAILS_FOR_VERSION_TEST,
-      }).then((response) => {
-        dataModelId = response.body.id;
-        dataModelFQN = response.body.fullyQualifiedName;
+    before(() => {
+      cy.login();
+      cy.getAllLocalStorage().then((data) => {
+        const token = Object.values(data)[0].oidcIdToken;
 
         cy.request({
-          method: 'PATCH',
-          url: `/api/v1/dashboard/datamodels/${dataModelId}`,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json-patch+json',
-          },
-          body: DATA_MODEL_PATCH_PAYLOAD,
+          method: 'PUT',
+          url: `/api/v1/dashboard/datamodels`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: DATA_MODEL_DETAILS_FOR_VERSION_TEST,
+        }).then((response) => {
+          dataModelId = response.body.id;
+          dataModelFQN = response.body.fullyQualifiedName;
+
+          cy.request({
+            method: 'PATCH',
+            url: `/api/v1/dashboard/datamodels/${dataModelId}`,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json-patch+json',
+            },
+            body: DATA_MODEL_PATCH_PAYLOAD,
+          });
         });
       });
     });
-  });
 
-  beforeEach(() => {
-    cy.login();
-  });
+    beforeEach(() => {
+      cy.login();
+    });
 
-  it('Data model version page should show description and tag changes properly', () => {
-    visitDataModelVersionPage(dataModelFQN, dataModelId, dataModelName, '0.2');
+    it('Data model version page should show description and tag changes properly', () => {
+      visitDataModelVersionPage(
+        dataModelFQN,
+        dataModelId,
+        dataModelName,
+        '0.2'
+      );
 
-    cy.get(
-      `[data-testid="asset-description-container"] [data-testid="diff-added"]`
-    ).should('be.visible');
+      cy.get(
+        `[data-testid="asset-description-container"] [data-testid="diff-added"]`
+      ).should('be.visible');
 
-    cy.get(
-      `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`
-    )
-      .scrollIntoView()
-      .should('be.visible');
+      cy.get(
+        `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`
+      )
+        .scrollIntoView()
+        .should('be.visible');
 
-    cy.get(
-      `[data-row-key="${DATA_MODEL_DETAILS.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PersonalData.Personal"]`
-    )
-      .scrollIntoView()
-      .should('be.visible');
+      cy.get(
+        `[data-row-key="${DATA_MODEL_DETAILS.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PersonalData.Personal"]`
+      )
+        .scrollIntoView()
+        .should('be.visible');
 
-    cy.get(
-      `[data-row-key="${DATA_MODEL_DETAILS.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PII.Sensitive"]`
-    )
-      .scrollIntoView()
-      .should('be.visible');
+      cy.get(
+        `[data-row-key="${DATA_MODEL_DETAILS.updatedTagEntityChildName}"] .diff-added [data-testid="tag-PII.Sensitive"]`
+      )
+        .scrollIntoView()
+        .should('be.visible');
 
-    cy.get(`[data-row-key="column_2"] [data-testid="diff-removed"]`)
-      .scrollIntoView()
-      .should('be.visible');
+      cy.get(`[data-row-key="column_2"] [data-testid="diff-removed"]`)
+        .scrollIntoView()
+        .should('be.visible');
 
-    cy.get(`[data-row-key="column_3"] [data-testid="diff-added"]`)
-      .scrollIntoView()
-      .should('be.visible');
-  });
+      cy.get(`[data-row-key="column_3"] [data-testid="diff-added"]`)
+        .scrollIntoView()
+        .should('be.visible');
+    });
 
-  it(`Data model version page should show owner changes properly`, () => {
-    visitDataModelPage(dataModelFQN, dataModelName);
+    it(`Data model version page should show owner changes properly`, () => {
+      visitDataModelPage(dataModelFQN, dataModelName);
 
-    cy.get('[data-testid="version-button"]').as('versionButton');
+      cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.2');
+      cy.get('@versionButton').contains('0.2');
 
-    addOwner(OWNER);
+      addOwner(OWNER);
 
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
-      `getDataModelDetails`
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions`,
-      'getVersionsList'
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.2`,
-      'getSelectedVersionDetails'
-    );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
+        `getDataModelDetails`
+      );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/${dataModelId}/versions`,
+        'getVersionsList'
+      );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.2`,
+        'getSelectedVersionDetails'
+      );
 
-    cy.get('@versionButton').contains('0.2').click();
+      cy.get('@versionButton').contains('0.2').click();
 
-    verifyResponseStatusCode(`@getDataModelDetails`, 200);
-    verifyResponseStatusCode('@getVersionsList', 200);
-    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+      verifyResponseStatusCode(`@getDataModelDetails`, 200);
+      verifyResponseStatusCode('@getVersionsList', 200);
+      verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get('[data-testid="owner-link"] > [data-testid="diff-added"]')
-      .scrollIntoView()
-      .should('be.visible');
-  });
+      cy.get('[data-testid="owner-link"] > [data-testid="diff-added"]')
+        .scrollIntoView()
+        .should('be.visible');
+    });
 
-  it(`Data model version page should show tier changes properly`, () => {
-    visitDataModelPage(dataModelFQN, dataModelName);
+    it(`Data model version page should show tier changes properly`, () => {
+      visitDataModelPage(dataModelFQN, dataModelName);
 
-    cy.get('[data-testid="version-button"]').as('versionButton');
+      cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.2');
+      cy.get('@versionButton').contains('0.2');
 
-    addTier(TIER);
+      addTier(TIER);
 
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
-      `getDataModelDetails`
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions`,
-      'getVersionsList'
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.2`,
-      'getSelectedVersionDetails'
-    );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
+        `getDataModelDetails`
+      );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/${dataModelId}/versions`,
+        'getVersionsList'
+      );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.2`,
+        'getSelectedVersionDetails'
+      );
 
-    cy.get('@versionButton').contains('0.2').click();
+      cy.get('@versionButton').contains('0.2').click();
 
-    verifyResponseStatusCode(`@getDataModelDetails`, 200);
-    verifyResponseStatusCode('@getVersionsList', 200);
-    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+      verifyResponseStatusCode(`@getDataModelDetails`, 200);
+      verifyResponseStatusCode('@getVersionsList', 200);
+      verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get('[data-testid="Tier"] > [data-testid="diff-added"]')
-      .scrollIntoView()
-      .should('be.visible');
-  });
+      cy.get('[data-testid="Tier"] > [data-testid="diff-added"]')
+        .scrollIntoView()
+        .should('be.visible');
+    });
 
-  it('Data model version page should show version details after soft deleted', () => {
-    visitDataModelPage(dataModelFQN, dataModelName);
+    it('Data model version page should show version details after soft deleted', () => {
+      visitDataModelPage(dataModelFQN, dataModelName);
 
-    cy.get('[data-testid="manage-button"]').click();
+      cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-    cy.get('[data-testid="delete-button-title"]').click();
+      cy.get('[data-menu-id*="delete-button"]').should('be.visible');
+      cy.get('[data-testid="delete-button-title"]').click();
 
-    // Clicking on permanent delete radio button and checking the service name
-    cy.get('[data-testid="soft-delete-option"]')
-      .contains(DATA_MODEL_DETAILS.name)
-      .click();
+      // Clicking on permanent delete radio button and checking the service name
+      cy.get('[data-testid="soft-delete-option"]')
+        .contains(DATA_MODEL_DETAILS.name)
+        .click();
 
-    cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
+      cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 
-    interceptURL('DELETE', `/api/v1/dashboard/datamodels/*`, 'deleteDataModel');
+      interceptURL(
+        'DELETE',
+        `/api/v1/dashboard/datamodels/*`,
+        'deleteDataModel'
+      );
 
-    cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+      cy.get('[data-testid="confirm-button"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@deleteDataModel', 200);
+      verifyResponseStatusCode('@deleteDataModel', 200);
 
-    // Closing the toast notification
-    toastNotification(`"${DATA_MODEL_DETAILS.name}" deleted successfully!`);
+      // Closing the toast notification
+      toastNotification(`"${DATA_MODEL_DETAILS.name}" deleted successfully!`);
 
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
-      `getDataModelDetails`
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions`,
-      'getVersionsList'
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.3`,
-      'getSelectedVersionDetails'
-    );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
+        `getDataModelDetails`
+      );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/${dataModelId}/versions`,
+        'getVersionsList'
+      );
+      interceptURL(
+        'GET',
+        `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.3`,
+        'getSelectedVersionDetails'
+      );
 
-    cy.get('[data-testid="version-button"]').as('versionButton');
+      cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.3').click();
+      cy.get('@versionButton').contains('0.3').click();
 
-    verifyResponseStatusCode(`@getDataModelDetails`, 200);
-    verifyResponseStatusCode('@getVersionsList', 200);
-    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+      verifyResponseStatusCode(`@getDataModelDetails`, 200);
+      verifyResponseStatusCode('@getVersionsList', 200);
+      verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    // Deleted badge should be visible
-    cy.get('[data-testid="deleted-badge"]')
-      .scrollIntoView()
-      .should('be.visible');
+      // Deleted badge should be visible
+      cy.get('[data-testid="deleted-badge"]')
+        .scrollIntoView()
+        .should('be.visible');
 
-    cy.get('@versionButton').click();
+      cy.get('@versionButton').click();
 
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+      cy.get('[data-testid="manage-button"]')
+        .should('exist')
+        .should('be.visible')
+        .click();
 
-    cy.get('[data-testid="restore-button-title"]').click();
+      cy.get('[data-testid="restore-button-title"]').click();
 
-    interceptURL(
-      'PUT',
-      `/api/v1/dashboard/datamodels/restore`,
-      'restoreDataModel'
-    );
+      interceptURL(
+        'PUT',
+        `/api/v1/dashboard/datamodels/restore`,
+        'restoreDataModel'
+      );
 
-    cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
+      cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
 
-    verifyResponseStatusCode('@restoreDataModel', 200);
+      verifyResponseStatusCode('@restoreDataModel', 200);
 
-    toastNotification(`Data Model restored successfully`);
+      toastNotification(`Data Model restored successfully`);
 
-    cy.get('@versionButton').should('contain', '0.4');
-  });
+      cy.get('@versionButton').should('contain', '0.4');
+    });
 
-  it(`Cleanup for data model version page test`, () => {
-    visitDataModelPage(dataModelFQN, dataModelName);
+    it(`Cleanup for data model version page test`, () => {
+      visitDataModelPage(dataModelFQN, dataModelName);
 
-    cy.get('[data-testid="manage-button"]').click();
+      cy.get('[data-testid="manage-button"]').click();
 
-    cy.get('[data-testid="delete-button-title"]').click();
+      cy.get('[data-testid="delete-button-title"]').click();
 
-    cy.get('.ant-modal-header').should('contain', dataModelName);
+      cy.get('.ant-modal-header').should('contain', dataModelName);
 
-    cy.get(`[data-testid="hard-delete-option"]`).click();
+      cy.get(`[data-testid="hard-delete-option"]`).click();
 
-    cy.get('[data-testid="confirm-button"]').should('be.disabled');
-    cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
+      cy.get('[data-testid="confirm-button"]').should('be.disabled');
+      cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 
-    interceptURL(
-      'DELETE',
-      `api/v1/dashboard/datamodels/*?hardDelete=true&recursive=true`,
-      `hardDeleteDataModel`
-    );
-    cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
-    cy.get('[data-testid="confirm-button"]').click();
-    verifyResponseStatusCode(`@hardDeleteDataModel`, 200);
+      interceptURL(
+        'DELETE',
+        `api/v1/dashboard/datamodels/*?hardDelete=true&recursive=true`,
+        `hardDeleteDataModel`
+      );
+      cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
+      cy.get('[data-testid="confirm-button"]').click();
+      verifyResponseStatusCode(`@hardDeleteDataModel`, 200);
 
-    toastNotification(`"${dataModelName}" deleted successfully!`, false);
-  });
-});
+      toastNotification(`"${dataModelName}" deleted successfully!`, false);
+    });
+  }
+);

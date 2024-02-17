@@ -31,7 +31,7 @@ import {
 import { DOMAIN_1, DOMAIN_2, DOMAIN_3 } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 
-describe('Domain page should work properly', () => {
+describe('Domain page should work properly', { tags: 'Governance' }, () => {
   beforeEach(() => {
     cy.login();
     cy.sidebarClick(SidebarItem.DOMAIN);

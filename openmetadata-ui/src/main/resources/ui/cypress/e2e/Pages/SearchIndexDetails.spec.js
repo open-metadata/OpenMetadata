@@ -76,85 +76,89 @@ const performCommonOperations = () => {
   ).contains('No Description');
 };
 
-describe('SearchIndexDetails page should work properly for data consumer role', () => {
-  let data = {};
+describe(
+  'SearchIndexDetails page should work properly for data consumer role',
+  { tags: 'DataAssets' },
+  () => {
+    let data = {};
 
-  before(() => {
-    cy.login();
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+    before(() => {
+      cy.login();
+      cy.getAllLocalStorage().then((storageData) => {
+        const token = Object.values(storageData)[0].oidcIdToken;
 
-      // Create search index entity
-      createSingleLevelEntity({
-        token,
-        ...SEARCH_SERVICE_DETAILS,
+        // Create search index entity
+        createSingleLevelEntity({
+          token,
+          ...SEARCH_SERVICE_DETAILS,
+        });
+
+        // Create a new user
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: USER_CREDENTIALS,
+        }).then((response) => {
+          data.user = response.body;
+        });
+
+        cy.logout();
+      });
+    });
+
+    after(() => {
+      cy.login();
+
+      cy.getAllLocalStorage().then((storageData) => {
+        const token = Object.values(storageData)[0].oidcIdToken;
+
+        // Delete search index
+        hardDeleteService({
+          token,
+          serviceFqn: SEARCH_SERVICE_DETAILS.service.name,
+          serviceType: SEARCH_SERVICE_DETAILS.serviceType,
+        });
+
+        // Delete created user
+        cy.request({
+          method: 'DELETE',
+          url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      });
+    });
+
+    beforeEach(() => {
+      // Login with the created user
+      cy.login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
+
+      cy.url().should('eq', `${BASE_URL}/my-data`);
+    });
+
+    it('All permissible actions on search index details page should work properly', () => {
+      visitEntityDetailsPage({
+        term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+        serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+        entity: 'searchIndexes',
       });
 
-      // Create a new user
-      cy.request({
-        method: 'POST',
-        url: `/api/v1/users/signup`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: USER_CREDENTIALS,
-      }).then((response) => {
-        data.user = response.body;
-      });
+      // Edit domain option should not be available
+      cy.get(
+        `[data-testid="entity-page-header"] [data-testid="add-domain"]`
+      ).should('not.exist');
+
+      // Manage button should not be visible on service page
+      cy.get(
+        '[data-testid="asset-header-btn-group"] [data-testid="manage-button"]'
+      ).should('not.exist');
+
+      performCommonOperations();
 
       cy.logout();
     });
-  });
-
-  after(() => {
-    cy.login();
-
-    cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
-
-      // Delete search index
-      hardDeleteService({
-        token,
-        serviceFqn: SEARCH_SERVICE_DETAILS.service.name,
-        serviceType: SEARCH_SERVICE_DETAILS.serviceType,
-      });
-
-      // Delete created user
-      cy.request({
-        method: 'DELETE',
-        url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    });
-  });
-
-  beforeEach(() => {
-    // Login with the created user
-    cy.login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
-
-    cy.url().should('eq', `${BASE_URL}/my-data`);
-  });
-
-  it('All permissible actions on search index details page should work properly', () => {
-    visitEntityDetailsPage({
-      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
-      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
-    });
-
-    // Edit domain option should not be available
-    cy.get(
-      `[data-testid="entity-page-header"] [data-testid="add-domain"]`
-    ).should('not.exist');
-
-    // Manage button should not be visible on service page
-    cy.get(
-      '[data-testid="asset-header-btn-group"] [data-testid="manage-button"]'
-    ).should('not.exist');
-
-    performCommonOperations();
-
-    cy.logout();
-  });
-});
+  }
+);
 
 describe('SearchIndexDetails page should work properly for data steward role', () => {
   let data = {};

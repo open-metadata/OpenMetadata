@@ -54,7 +54,7 @@ const permanentDeleteModal = (entity) => {
     .click();
 };
 
-describe('Classification Page', () => {
+describe('Classification Page', { tags: 'Governance' }, () => {
   beforeEach(() => {
     cy.login();
     interceptURL(
