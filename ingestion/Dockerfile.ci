@@ -108,7 +108,7 @@ RUN if [[ $(uname -m) != "aarch64" ]]; \
  fi
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
-RUN uv pip pip install "python-daemon>=3.0.0"
+RUN uv pip install "python-daemon>=3.0.0"
 
 # remove all airflow providers except for docker and cncf kubernetes
 RUN uv pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf" | xargs pip uninstall -y
