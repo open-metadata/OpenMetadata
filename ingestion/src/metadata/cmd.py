@@ -528,3 +528,8 @@ def metadata(args=None):
         run_openmetadata_dag_config_migration(
             contains_args.get("dir_path"), contains_args.get("keep_backups")
         )
+
+if __name__ == '__main__':
+    args=['--debug', 'ingest', '-c', '/Users/ilanzaitoun/PycharmProjects/OpenMetadata/ingestion/src/metadata/examples/workflows/airbyte_rivery_adj.yaml']
+    metadata(args=args)
+    # /Users/ilanzaitoun/PycharmProjects/OpenMetadata/ingestion/src/metadata/cmd.py

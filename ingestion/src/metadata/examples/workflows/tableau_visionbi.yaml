@@ -1,0 +1,39 @@
+source:
+  type: tableau
+  serviceName: Tableau_Server
+  serviceConnection:
+    config:
+      type: Tableau
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      authType:
+        personalAccessTokenName: "collate-io"
+        personalAccessTokenSecret: "Hy1NeYumR5qI6OesaCENmg==:EyXPb3XmuMlOVouAl7qoQNNetlU1ZhWF"
+      env: tableau_prod
+      hostPort: https://dub01.online.tableau.com/
+      siteName: vbisite
+      apiVersion: 3.21
+      paginationLimit: 10
+
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+      projectFilterPattern: {}
+      dbServiceNames:
+        - aaa
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: https://visionbi.getcollate.io/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiI1NDM1MTZmNi1jNDRiLTQ5ZWItOWI5OC04MmMyMWU0MWIzODciLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnZXRjb2xsYXRlLmlvIiwic3ViIjoiaWxhbiIsImVtYWlsIjoiaWxhbkB2aXNpb24uYmkiLCJpc0JvdCI6ZmFsc2UsInRva2VuVHlwZSI6IlBFUlNPTkFMX0FDQ0VTUyIsImlhdCI6MTcwNzM4OTgzOCwiZXhwIjoxNzE1MTY1ODM4fQ.JwzHlIlmJE4MNI3-WGnkcAh49BU3dmuWkEv7HabZIhkqx5g9R5mg84V1X6PKWtWOAIXLnrysVagwtwm9T7G6K-BkcI8c11HS0ozJt0FjQKfpQ61wXokK5qq4Wgzn_1d0NmGdC07nxkGwt0X3t2FHb_udoOhljARg0_9VpaTQhKHqYyCTkqDGFeYc1Z0OZxs300ffB-FU9YGOEOc9IW2w6M5KvhRO1SFIBs0wgitUiqSTD3yj4HZfE5n1OPy_YS3jhnj57KC0PQRK-zm7r08C4xYUXHAp9uARlTJIwMbhSEJxTD3vNJxwK9fX0hHXTrotq3zfBHPbdnKBCf49SSBicA"
+  loggerLevel: DEBUG

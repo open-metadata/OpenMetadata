@@ -71,6 +71,7 @@ import {
   REDASH,
   REDPANDA,
   REDSHIFT,
+  RIVERY,
   SAGEMAKER,
   SALESFORCE,
   SAP_HANA,
@@ -307,6 +308,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.Airflow:
         return AIRFLOW;
+
+      case PipelineServiceType.Rivery:
+        return RIVERY;
 
       case PipelineServiceType.Airbyte:
         return AIRBYTE;
