@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
@@ -55,7 +56,7 @@ class NoSQLSampler(SamplerInterface):
         elif self.profile_sample_type == ProfileSampleType.ROWS:
             limit = self.profile_sample
         else:
-            limit = None
+            limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit
 
     @staticmethod

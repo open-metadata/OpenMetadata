@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import TableConfig
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.test_utils import accumulate_errors
 from metadata.utils.time_utils import get_end_of_day_timestamp_mill
@@ -201,11 +202,11 @@ class NoSQLProfiler(TestCase):
         assert [c.__root__ for c in sample_data.sampleData.columns] == [
             "_id",
             "name",
-            "city",
             "age",
+            "city",
             "nested",
         ]
-        assert len(sample_data.sampleData.rows) == len(TEST_DATA)
+        assert len(sample_data.sampleData.rows) == SAMPLE_DATA_DEFAULT_COUNT
 
     def test_custom_query(self):
         workflow_config = deepcopy(self.ingestion_config)
