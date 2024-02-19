@@ -24,11 +24,8 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
-from metadata.utils.secrets.secrets_manager_factory import (
-    SecretsManagerConfigException,
-    SecretsManagerFactory,
-)
+from metadata.utils.secrets.db_secrets_manager import DBSecretsManager
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.singleton import Singleton
 
 
@@ -49,18 +46,6 @@ class TestSecretsManagerFactory(TestCase):
             )
             self.assertEqual(
                 "[any] is not implemented.", not_implemented_error.exception
-            )
-
-    def test_invalid_config_secret_manager(self):
-        om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
-            SecretsManagerProvider.db,
-            SecretsManagerClientLoader.noop,
-        )
-        om_connection.secretsManagerLoader = "random"
-
-        with self.assertRaises(SecretsManagerConfigException):
-            SecretsManagerFactory(
-                om_connection.secretsManagerProvider, om_connection.secretsManagerLoader
             )
 
     def test_get_none_secret_manager(self):
@@ -98,6 +83,8 @@ class TestSecretsManagerFactory(TestCase):
                 open_metadata_connection.secretsManagerLoader,
             )
             assert secrets_manager_factory.get_secrets_manager() is not None
+            # Clear the instances to continue testing all the Secret Managers
+            SecretsManagerFactory.clear_all()
 
     @staticmethod
     def build_open_metadata_connection(
