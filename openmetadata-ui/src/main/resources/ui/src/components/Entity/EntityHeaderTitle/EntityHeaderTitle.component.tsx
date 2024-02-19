@@ -51,8 +51,8 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
-      <Col>{icon}</Col>
-      <Col className={deleted || badge ? 'w-max-full-140' : ''}>
+      <Col flex="48px">{icon}</Col>
+      <Col className={deleted || badge ? 'w-max-full-140' : ''} flex="auto">
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
@@ -86,7 +86,7 @@ const EntityHeaderTitle = ({
         />
       )}
       {deleted && (
-        <Col className="text-xs">
+        <Col className="text-xs" flex="100px">
           <span className="deleted-badge-button" data-testid="deleted-badge">
             <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
             {t('label.deleted')}

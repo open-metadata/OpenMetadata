@@ -60,7 +60,7 @@ const user = {
   newStewardPassword: `StewUser@${uuid()}`,
 };
 
-describe('User with different Roles', () => {
+describe('User with different Roles', { tags: 'Settings' }, () => {
   it('Update own admin details', () => {
     cy.login();
     updateDetails({

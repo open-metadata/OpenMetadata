@@ -39,7 +39,7 @@ const RECENTLY_VIEW_ENTITIES = [
   //   VISIT_ENTITIES_DATA.storedProcedure,
 ];
 
-describe('Recently viwed data assets', () => {
+describe('Recently viwed data assets', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {

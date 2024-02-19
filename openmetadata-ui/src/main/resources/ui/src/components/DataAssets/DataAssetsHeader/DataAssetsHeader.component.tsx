@@ -323,7 +323,7 @@ export const DataAssetsHeader = ({
     <>
       <Row gutter={[8, 12]}>
         {/* Heading Left side */}
-        <Col className="self-center" span={18}>
+        <Col className="self-center" span={17}>
           <Row gutter={[16, 12]}>
             <Col span={24}>
               <TitleBreadcrumb
@@ -401,7 +401,7 @@ export const DataAssetsHeader = ({
           </Row>
         </Col>
         {/* Heading Right side */}
-        <Col span={6}>
+        <Col span={7}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
               <ButtonGroup data-testid="asset-header-btn-group" size="small">
