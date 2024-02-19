@@ -57,7 +57,10 @@ const getEntityValue = (value: EntityReference[] | undefined) => {
   return undefined;
 };
 
-export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
+export const getMovedTeamData = (
+  team: Team,
+  parents?: string[]
+): CreateTeam => {
   const userDetails = omit(cloneDeep(team), [
     'id',
     'fullyQualifiedName',
@@ -84,7 +87,7 @@ export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
       userDetails.teamType === TeamType.Group
         ? undefined
         : getEntityValue(children),
-    parents: parents,
+    parents,
     policies: getEntityValue(policies),
     users: getEntityValue(users),
   } as CreateTeam;
@@ -126,3 +129,21 @@ export const getTeamOptionsFromType = (parentType: TeamType) => {
       return [TeamType.Group];
   }
 };
+
+/**
+ * Restricting the drop of team based on the team type
+ * Group: Can't have any child team
+ * Division: Can have only Department and Group
+ * Department: Can have only Group
+ */
+
+export const isDropRestricted = (
+  dragTeamType?: TeamType,
+  dropTeamType?: TeamType
+) =>
+  dropTeamType === TeamType.Group ||
+  (dropTeamType === TeamType.Division &&
+    dragTeamType === TeamType.BusinessUnit) ||
+  (dropTeamType === TeamType.Department &&
+    dragTeamType === TeamType.BusinessUnit) ||
+  (dropTeamType === TeamType.Department && dragTeamType === TeamType.Division);

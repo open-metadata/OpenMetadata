@@ -30,7 +30,7 @@ export interface TeamHierarchyProps {
 
 export interface MovedTeamProps {
   from: Team;
-  to: Team;
+  to?: Team;
 }
 
 export interface TableExpandableDataProps {
