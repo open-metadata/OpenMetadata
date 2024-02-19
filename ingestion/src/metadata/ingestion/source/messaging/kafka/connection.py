@@ -41,6 +41,11 @@ class InvalidKafkaCreds(Exception):
     """
 
 
+class SchemaRegistryException(Exception):
+    """
+    Class to indicate invalid schema registry not initialized
+    """
+
 TIMEOUT_SECONDS = 10
 
 
@@ -134,9 +139,18 @@ def test_connection(
                 "Please validate credentials and check if you are using correct security protocol"
             )
 
+    def schema_registry_test():
+        if client.schema_registry_client:
+            client.schema_registry_client.get_subjects()
+        else:
+            raise SchemaRegistryException(
+                "Schema Registry not initialized, please provide schema registry "
+                "credentials in case you want topic schema and sample data to be ingested"
+            )
+
     test_fn = {
         "GetTopics": custom_executor,
-        "CheckSchemaRegistry": client.schema_registry_client.get_subjects,
+        "CheckSchemaRegistry": schema_registry_test,
     }
 
     test_connection_steps(
