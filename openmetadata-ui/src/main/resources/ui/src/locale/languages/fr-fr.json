@@ -1403,7 +1403,7 @@
     "entity-size-in-between": "{{entity}} taille doit être de {{min}} et {{max}}",
     "entity-size-must-be-between-2-and-64": "{{entity}} taille doit être comprise entre 2 et 64",
     "entity-transfer-message": "Cliquer sur Confirmer si vous souhaitez déplacer <0>{{from}}</0> {{entity}} sous <0>{{to}}</0> {{entity}}.",
-    "error-team-transfer-message": "Vous ne pouvez pas déplacer cette équipe car le type d'équipe Groupe ne peut pas eêtre changé. Merci de créer une nouvelle équipe avec le type préférentiel.",
+    "error-team-transfer-message": "You cannot move to this team as Team Type {{dragTeam}} can't be {{dropTeam}} children",
     "error-while-fetching-access-token": "Erreur pendant la récupération du jeton d'accès.",
     "explore-our-guide-here": "explore our guide here.",
     "export-entity-help": "Download all your {{entity}} as a CSV file, and share with your team.",

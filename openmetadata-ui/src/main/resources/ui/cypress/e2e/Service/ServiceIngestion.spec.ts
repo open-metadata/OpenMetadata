@@ -21,6 +21,7 @@ import RedshiftWithDBTIngestionClass from '../../common/Services/RedshiftWithDBT
 import S3IngestionClass from '../../common/Services/S3IngestionClass';
 import SnowflakeIngestionClass from '../../common/Services/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../common/Services/SupersetIngestionClass';
+import { goToServiceListingPage } from '../../common/Utils/Services';
 
 const services = [
   new S3IngestionClass(),
