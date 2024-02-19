@@ -25,7 +25,7 @@ import {
 } from '../../common/CustomizeLandingPageUtils';
 import { PERSONA_DETAILS } from '../../constants/EntityConstant';
 
-describe('Customize Landing Page Flow', () => {
+describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
   let testData = {};
   before(() => {
     cy.login();

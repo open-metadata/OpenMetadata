@@ -20,7 +20,7 @@ import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { service } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
-describe('Services page should work properly', () => {
+describe('Services page should work properly', { tags: 'Integration' }, () => {
   beforeEach(() => {
     interceptURL(
       'GET',

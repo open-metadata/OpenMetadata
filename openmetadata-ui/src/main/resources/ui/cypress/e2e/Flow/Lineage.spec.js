@@ -186,7 +186,7 @@ const addColumnLineage = (fromNode, toNode) => {
   );
 };
 
-describe('Lineage verification', { tags: 'Lineage' }, () => {
+describe('Lineage verification', { tags: 'DataAssets' }, () => {
   beforeEach(() => {
     cy.login();
   });

@@ -55,7 +55,7 @@ import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 const TRIGGER_NAME_1 = 'Container';
 const TRIGGER_NAME_2 = 'Pipeline';
 
-describe('Observability Alert Flow', () => {
+describe('Observability Alert Flow', { tags: 'Settings' }, () => {
   let data = {};
 
   before(() => {
