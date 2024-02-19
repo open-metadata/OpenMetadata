@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="cypress" />
-
 import {
   BASE_URL,
   CUSTOM_PROPERTY_INVALID_NAMES,

@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="Cypress" />
-
 import {
   addTeam,
   descriptionBox,

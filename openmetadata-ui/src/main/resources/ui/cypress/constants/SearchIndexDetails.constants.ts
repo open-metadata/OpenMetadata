@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="cypress" />
-
 import { uuid } from '../common/common';
-import { SEARCH_SERVICE } from '../constants/EntityConstant';
+import { SEARCH_SERVICE } from './EntityConstant';
 
 export const TIER = 'Tier1';
 export const TAG_1 = {

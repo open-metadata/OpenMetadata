@@ -25,9 +25,6 @@ import {
 } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="cypress" />
-
 // Update list if we support this for other entities too
 const RECENTLY_VIEW_ENTITIES = [
   VISIT_ENTITIES_DATA.table,

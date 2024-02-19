@@ -27,9 +27,6 @@ import {
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="Cypress" />
-
 const TABLE_CUSTOM_METRIC = {
   name: `tableCustomMetric-${uuid()}`,
   expression: `SELECT * FROM ${DATABASE_SERVICE.entity.name}`,

@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// eslint-disable-next-line spaced-comment
-/// <reference types="Cypress" />
+
 import {
   customFormatDateTime,
   getCurrentMillis,

@@ -19,9 +19,6 @@ import {
   verifyResponseStatusCode,
 } from './common';
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="cypress" />
-
 export const deleteAlertSteps = (name) => {
   cy.get('table').should('contain', name).click();
   cy.get(`[data-testid="alert-delete-${name}"]`).click();

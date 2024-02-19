@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// eslint-disable-next-line spaced-comment
-/// <reference types="Cypress" />
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitClassificationPage } from '../../common/TagUtils';

@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="cypress" />
-
 import { DATA_ASSETS, uuid } from './constants';
 import { SERVICE_CATEGORIES } from './service.constants';
 
