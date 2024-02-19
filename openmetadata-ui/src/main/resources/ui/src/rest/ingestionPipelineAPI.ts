@@ -115,12 +115,13 @@ export const deleteIngestionPipelineById = (
 };
 
 export const updateIngestionPipeline = async (
-  data: CreateIngestionPipeline
+  id: string,
+  data: Operation[]
 ) => {
-  const response = await APIClient.put<
-    CreateIngestionPipeline,
+  const response = await APIClient.patch<
+    Operation[],
     AxiosResponse<IngestionPipeline>
-  >(`/services/ingestionPipelines`, data);
+  >(`/services/ingestionPipelines/${id}`, data);
 
   return response.data;
 };
