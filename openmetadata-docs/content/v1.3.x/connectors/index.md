@@ -34,6 +34,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 - [Athena](/connectors/database/athena)
 - [AzureSQL](/connectors/database/azuresql)
 - [BigQuery](/connectors/database/bigquery)
+- [BigTable](/connectors/database/bigtable)
 - [Clickhouse](/connectors/database/clickhouse)
 - [Couchbase](/connectors/database/couchbase)
 - [Data lake](/connectors/database/datalake)

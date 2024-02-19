@@ -442,6 +442,12 @@ site_menu:
     url: /connectors/database/bigquery/yaml
   - category: Connectors / Database / BigQuery / Roles
     url: /connectors/database/bigquery/roles
+  - category: Connectors / Database / BigTable
+    url: /connectors/database/bigtable
+  - category: Connectors / Database / BigTable / Run Externally
+    url: /connectors/database/bigtable/yaml
+  - category: Connectors / Database / BigTable / Roles
+    url: /connectors/database/bigtable/roles    
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
