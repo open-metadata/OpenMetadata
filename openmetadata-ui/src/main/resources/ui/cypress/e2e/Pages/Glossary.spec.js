@@ -16,7 +16,6 @@
 
 import {
   descriptionBox,
-  dragAndDropElement,
   interceptURL,
   login,
   signupAndLogin,
@@ -26,6 +25,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
+import { dragAndDropElement } from '../../common/Utils/DragAndDrop';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { confirmationDragAndDropGlossary } from '../../common/Utils/Glossary';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';

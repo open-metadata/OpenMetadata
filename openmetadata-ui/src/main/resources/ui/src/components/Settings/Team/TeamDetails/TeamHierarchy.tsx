@@ -272,17 +272,15 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={onDragConfirmationModalClose}
         onOk={handleChangeTeam}>
-        <Typography.Text data-testid="transfer-message">
-          <Transi18next
-            i18nKey="message.entity-transfer-message"
-            renderElement={<strong />}
-            values={{
-              from: movedTeam?.from.name,
-              to: movedTeam?.to?.name ?? getEntityName(currentTeam),
-              entity: t('label.team-lowercase'),
-            }}
-          />
-        </Typography.Text>
+        <Transi18next
+          i18nKey="message.entity-transfer-message"
+          renderElement={<strong />}
+          values={{
+            from: movedTeam?.from.name,
+            to: movedTeam?.to?.name ?? getEntityName(currentTeam),
+            entity: t('label.team-lowercase'),
+          }}
+        />
       </Modal>
     </>
   );

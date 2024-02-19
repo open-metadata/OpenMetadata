@@ -105,7 +105,7 @@ export const confirmationDragAndDropGlossary = (
   interceptURL('PATCH', `/api/v1/glossaryTerms/*`, 'patchGlossaryTerm');
 
   // confirmation message before the transfer
-  cy.get('[data-testid="transfer-message"]').contains(
+  cy.get('[data-testid="confirmation-modal"] .ant-modal-body').contains(
     `Click on Confirm if you’d like to move ${
       isHeader
         ? `${dragElement} under ${dropElement} .`

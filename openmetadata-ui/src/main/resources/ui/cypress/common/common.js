@@ -1123,32 +1123,3 @@ export const visitDatabaseSchemaDetailsPage = ({
     .contains(databaseSchemaName)
     .click();
 };
-
-const dataTransfer = new DataTransfer();
-
-export const dragAndDropElement = (dragElement, dropTarget, isHeader) => {
-  cy.get(`[data-row-key="${Cypress.$.escapeSelector(dragElement)}"]`)
-    .invoke('attr', 'draggable')
-    .should('contain', 'true');
-
-  cy.get(`[data-row-key="${Cypress.$.escapeSelector(dragElement)}"]`).trigger(
-    'dragstart',
-    {
-      dataTransfer,
-    }
-  );
-
-  cy.get(
-    isHeader
-      ? dropTarget
-      : `[data-row-key="${Cypress.$.escapeSelector(dropTarget)}"]`
-  )
-    .trigger('drop', { dataTransfer })
-    .trigger('dragend', { force: true });
-};
-
-export const openDragDropDropdown = (name) => {
-  cy.get(
-    `[data-row-key=${name}] > .whitespace-nowrap > [data-testid="expand-icon"] > svg`
-  ).click();
-};

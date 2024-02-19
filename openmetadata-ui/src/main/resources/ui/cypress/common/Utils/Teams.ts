@@ -31,7 +31,7 @@ export const confirmationDragAndDropTeam = (
   interceptURL('PUT', `/api/v1/teams`, 'putTeam');
 
   // confirmation message before the transfer
-  cy.get('[data-testid="transfer-message"]')
+  cy.get('[data-testid="confirmation-modal"] .ant-modal-body')
     .contains(
       `Click on Confirm if you’d like to move ${dragTeam} team under ${dropTeam} team.`
     )
