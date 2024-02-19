@@ -28,7 +28,7 @@ const CREDENTIALS = {
 const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
 
-describe('Login flow should work properly', () => {
+describe('Login flow should work properly', { tags: 'Settings' }, () => {
   it('Signup and Login with signed up credentials', () => {
     interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     interceptURL('POST', '/api/v1/users/checkEmailInUse', 'createUser');

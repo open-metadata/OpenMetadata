@@ -33,8 +33,8 @@ import {
   TestCaseParameterDefinition,
   TestDataType,
 } from '../../../../generated/tests/testDefinition';
+import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
-import '../../../Database/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {

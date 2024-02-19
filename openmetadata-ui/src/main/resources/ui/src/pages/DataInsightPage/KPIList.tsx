@@ -27,7 +27,7 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../components/common/Table/Table';
-import { EmptyGraphPlaceholder } from '../../components/DataInsightDetail/EmptyGraphPlaceholder';
+import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
   getKpiPath,
   INITIAL_PAGING_VALUE,

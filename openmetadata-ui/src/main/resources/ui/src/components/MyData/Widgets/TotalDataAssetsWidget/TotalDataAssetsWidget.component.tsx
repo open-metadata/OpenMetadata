@@ -49,8 +49,8 @@ import {
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { EmptyGraphPlaceholder } from '../../../DataInsightDetail/EmptyGraphPlaceholder';
-import TotalEntityInsightSummary from '../../../DataInsightDetail/TotalEntityInsightSummary.component';
+import { EmptyGraphPlaceholder } from '../../../DataInsight/EmptyGraphPlaceholder';
+import TotalEntityInsightSummary from '../../../DataInsight/TotalEntityInsightSummary.component';
 import './total-data-assets-widget.less';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
