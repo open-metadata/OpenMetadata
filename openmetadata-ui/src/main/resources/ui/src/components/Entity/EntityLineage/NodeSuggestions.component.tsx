@@ -33,6 +33,7 @@ import { searchData } from '../../../rest/miscAPI';
 import { formatDataResponse } from '../../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
@@ -150,7 +151,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                     {entity.name}
                   </p>
                   <p className="w-max-400 text-sm font-medium truncate">
-                    {entity.displayName}
+                    {getEntityName(entity)}
                   </p>
                 </div>
               </div>
