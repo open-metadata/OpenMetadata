@@ -12,7 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -24,7 +24,7 @@ const mockEntityPermissionByFqn = jest
 const COMMON_API_FIELDS =
   'columns,followers,joins,tags,owner,dataModel,tableConstraints,viewDefinition,domain,dataProducts,votes,extension';
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
@@ -102,23 +102,29 @@ jest.mock('../../components/Lineage/Lineage.component', () => {
   return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
 });
 
-jest.mock('../../components/SampleDataTable/SampleDataTable.component', () => {
-  return jest.fn().mockImplementation(() => <p>testSampleDataTable</p>);
-});
+jest.mock(
+  '../../components/Database/SampleDataTable/SampleDataTable.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testSampleDataTable</p>);
+  }
+);
 
-jest.mock('../../components/SchemaTab/SchemaTab.component', () => {
+jest.mock('../../components/Database/SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaTab</p>);
 });
 
-jest.mock('../../components/TableProfiler/TableProfiler', () => {
-  return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
-});
+jest.mock(
+  '../../components/Database/Profiler/TableProfiler/TableProfiler',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
+  }
+);
 
-jest.mock('../../components/TableQueries/TableQueries', () => {
+jest.mock('../../components/Database/TableQueries/TableQueries', () => {
   return jest.fn().mockImplementation(() => <p>testTableQueries</p>);
 });
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
@@ -158,7 +164,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
-jest.mock('../../components/TourProvider/TourProvider', () => ({
+jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => ({
     isTourOpen: false,
     activeTabForTourDatasetPage: 'schema',
@@ -166,7 +172,7 @@ jest.mock('../../components/TourProvider/TourProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <>testLoader</>);
 });
 

@@ -42,14 +42,17 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test-fqn' }),
 }));
 
-jest.mock('../../components/AddDataQualityTest/AddDataQualityTestV1', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="testv1-container">AddDataQualityTestV1</div>
-    )),
-}));
+jest.mock(
+  '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="testv1-container">AddDataQualityTestV1</div>
+      )),
+  })
+);
 
 describe('AddDataQualityTestPage', () => {
   it('renders Add DataQuality Test Page', async () => {

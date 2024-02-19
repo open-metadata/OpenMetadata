@@ -34,9 +34,9 @@ import {
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../common/Loader/Loader';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../../Loader/Loader';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataProductsTabProps } from './DataProductsTab.interface';

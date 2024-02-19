@@ -17,7 +17,7 @@ import { isEmpty, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Searchbar from '../../../components/common/SearchBarComponent/SearchBar.component';
-import ToggleExpandButton from '../../../components/ToggleExpandButton/ToggleExpandButton';
+import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import {
   getAllRowKeysByKeyName,

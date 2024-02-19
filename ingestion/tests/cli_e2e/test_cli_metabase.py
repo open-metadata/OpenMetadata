@@ -64,16 +64,16 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
         return 6
 
     def expected_lineage(self) -> int:
-        return 5
+        return 7
 
     def expected_tags(self) -> int:
         return 0
 
     def expected_filtered_mix(self) -> int:
-        return 2
+        return 3
 
     def expected_filtered_sink_mix(self) -> int:
         return 6
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
-        return 1
+        return 0

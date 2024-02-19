@@ -41,15 +41,15 @@ import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-proc
 import { ReactComponent as TableIcon } from '../assets/svg/table-colored.svg';
 import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../components/PermissionProvider/PermissionProvider.interface';
 import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
 import { getSettingPath } from './RouterUtils';
