@@ -139,14 +139,19 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 />
                 <div className="flex-1 text-left">
                   {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs text-grey-muted w-max-400 truncate">
+                    <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
                       {getSuggestionLabelHeading(
                         entity.fullyQualifiedName,
                         entity.entityType as string
                       )}
                     </p>
                   )}
-                  <p className="w-max-400 truncate">{entity.name}</p>
+                  <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
+                    {entity.name}
+                  </p>
+                  <p className="w-max-400 text-sm font-medium truncate">
+                    {entity.displayName}
+                  </p>
                 </div>
               </div>
             </>

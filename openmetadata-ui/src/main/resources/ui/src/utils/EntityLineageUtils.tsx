@@ -71,7 +71,6 @@ import {
   getPartialNameFromTableFQN,
 } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
-import { getDecodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
@@ -604,7 +603,7 @@ export const createNodes = (
       className: '',
       data: {
         node,
-        isRootNode: getDecodedFqn(entityFqn) === node.fullyQualifiedName,
+        isRootNode: entityFqn === node.fullyQualifiedName,
       },
       position: {
         x: position.x,
@@ -671,7 +670,7 @@ export const createEdges = (
         edge,
         isColumnLineage: false,
         isPipelineRootNode: !isNil(edge.pipeline)
-          ? getDecodedFqn(entityFqn) === edge.pipeline?.fullyQualifiedName
+          ? entityFqn === edge.pipeline?.fullyQualifiedName
           : false,
       },
     });
