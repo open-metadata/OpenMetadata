@@ -12,28 +12,24 @@
  */
 
 import {
-  deleteCreatedService,
   descriptionBox,
-  goToAddNewServicePage,
   handleIngestionRetry,
   interceptURL,
-  mySqlConnectionInput,
   scheduleIngestion,
-  testServiceCreationAndIngestion,
   toastNotification,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import MysqlIngestionClass from '../../common/Services/MysqlIngestionClass';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
+import { goToServiceListingPage } from '../../common/Utils/Services';
 import {
-  API_SERVICE,
   DATA_ASSETS,
   DATA_QUALITY_SAMPLE_DATA_TABLE,
   DELETE_TERM,
-  ENTITY_SERVICE_TYPE,
   NEW_COLUMN_TEST_CASE,
   NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE,
   NEW_TABLE_TEST_CASE,
@@ -125,6 +121,7 @@ describe(
   'Data Quality and Profiler should work properly',
   { tags: 'Observability' },
   () => {
+    const mySql = new MysqlIngestionClass();
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
@@ -184,21 +181,9 @@ describe(
     });
 
     it('Add and ingest mysql data', () => {
-      goToAddNewServicePage(SERVICE_TYPE.Database);
+      goToServiceListingPage(SERVICE_TYPE.Database);
 
-      const addIngestionInput = () => {
-        cy.get('#root\\/schemaFilterPattern\\/includes')
-          .scrollIntoView()
-          .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
-      };
-
-      testServiceCreationAndIngestion({
-        serviceType,
-        connectionInput: mySqlConnectionInput,
-        addIngestionInput,
-        serviceName,
-        serviceCategory: ENTITY_SERVICE_TYPE.Database,
-      });
+      mySql.createService();
     });
 
     it('Add Profiler ingestion', () => {
@@ -680,11 +665,7 @@ describe(
     });
 
     it('delete created service', () => {
-      deleteCreatedService(
-        SERVICE_TYPE.Database,
-        serviceName,
-        API_SERVICE.databaseServices
-      );
+      mySql.deleteService();
     });
 
     it('Profiler matrix and test case graph should visible', () => {

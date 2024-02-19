@@ -14,7 +14,6 @@
 import {
   descriptionBox,
   interceptURL,
-  login,
   signupAndLogin,
   toastNotification,
   uuid,
@@ -829,7 +828,7 @@ describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
   it('Approval Workflow for Glossary Term', () => {
     cy.logout();
 
-    login(CREDENTIALS.email, CREDENTIALS.password);
+    cy.login(CREDENTIALS.email, CREDENTIALS.password);
     approveGlossaryTermWorkflow({
       glossary: NEW_GLOSSARY,
       glossaryTerm: NEW_GLOSSARY_TERMS.term_1,

@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  interceptURL,
-  login,
-  verifyResponseStatusCode,
-} from '../../common/common';
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { BASE_URL, LOGIN_ERROR_MESSAGE } from '../../constants/constants';
 
 const CREDENTIALS = {
@@ -29,6 +25,17 @@ const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
 
 describe('Login flow should work properly', { tags: 'Settings' }, () => {
+  after(() => {
+    cy.login();
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  });
+
   it('Signup and Login with signed up credentials', () => {
     interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     interceptURL('POST', '/api/v1/users/checkEmailInUse', 'createUser');
@@ -65,7 +72,7 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
 
     // Login with the created user
 
-    login(CREDENTIALS.email, CREDENTIALS.password);
+    cy.login(CREDENTIALS.email, CREDENTIALS.password);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
@@ -84,7 +91,7 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
       .should('be.visible')
       .click({ force: true });
     cy.wait('@getUser').then((response) => {
-      CREDENTIALS.id = response.response.body.id;
+      CREDENTIALS.id = response.response?.body.id;
     });
     cy.get(
       '[data-testid="user-profile"] [data-testid="user-profile-details"]'
@@ -93,14 +100,14 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
 
   it('Signin using invalid credentials', () => {
     // Login with invalid email
-    login(invalidEmail, CREDENTIALS.password);
+    cy.login(invalidEmail, CREDENTIALS.password);
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
       .invoke('text')
       .should('eq', LOGIN_ERROR_MESSAGE);
 
     // Login with invalid password
-    login(CREDENTIALS.email, invalidPassword);
+    cy.login(CREDENTIALS.email, invalidPassword);
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
       .invoke('text')
@@ -124,23 +131,5 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
     cy.get('[id="email"]').should('be.visible').clear().type(CREDENTIALS.email);
     // Click on submit
     cy.get('.ant-btn').contains('Submit').click();
-  });
-});
-
-describe('Cleanup', () => {
-  beforeEach(() => {
-    cy.login();
-  });
-
-  it('delete user', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
   });
 });

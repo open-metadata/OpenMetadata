@@ -13,19 +13,19 @@
 
 import { lowerCase } from 'lodash';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
   descriptionBox,
-  editCreatedProperty,
   interceptURL,
   verifyResponseStatusCode,
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
+  addCustomPropertiesForEntity,
   customPropertiesArray,
   CustomPropertyType,
+  deleteCreatedProperty,
   deleteCustomProperties,
   deleteCustomPropertyForEntity,
+  editCreatedProperty,
   generateCustomProperty,
   setValueForProperty,
   validateValueForProperty,

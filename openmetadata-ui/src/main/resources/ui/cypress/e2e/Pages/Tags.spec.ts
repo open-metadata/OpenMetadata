@@ -188,7 +188,7 @@ describe('Classification Page', { tags: 'Governance' }, () => {
       serviceName: entity.serviceName,
       entity: entity.entity,
     });
-    addNewTagToEntity(entity, NEW_TAG);
+    addNewTagToEntity(NEW_TAG);
   });
 
   it('Assign tag to DatabaseSchema', () => {

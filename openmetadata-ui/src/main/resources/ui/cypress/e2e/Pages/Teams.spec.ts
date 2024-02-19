@@ -16,7 +16,6 @@ import {
   descriptionBox,
   interceptURL,
   toastNotification,
-  updateOwner,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -79,7 +78,25 @@ describe('Teams flow should work properly', () => {
       .contains(TEAM_DETAILS.name)
       .click();
 
-    updateOwner();
+    cy.get('[data-testid="avatar"]').click();
+    cy.get('[data-testid="user-name"]')
+      .should('exist')
+      .invoke('text')
+      .then((text) => {
+        interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
+        // Clicking on edit owner button
+        cy.get('[data-testid="edit-owner"]').click();
+
+        cy.get('.user-team-select-popover').contains('Users').click();
+        cy.get('[data-testid="owner-select-users-search-bar"]').type(text);
+        cy.get('[data-testid="selectable-list"]')
+          .eq(1)
+          .find(`[title="${text.trim()}"]`)
+          .click();
+
+        // Asserting the added name
+        cy.get('[data-testid="owner-link"]').should('contain', text.trim());
+      });
   });
 
   it('Update email of created team', () => {

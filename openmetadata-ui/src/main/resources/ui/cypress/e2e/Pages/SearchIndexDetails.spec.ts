@@ -15,7 +15,6 @@ import {
   addTableFieldTags,
   deleteEntity,
   interceptURL,
-  login,
   removeTableFieldTags,
   updateTableFieldDescription,
   verifyResponseStatusCode,
@@ -78,7 +77,7 @@ describe(
   'SearchIndexDetails page should work properly for data consumer role',
   { tags: 'DataAssets' },
   () => {
-    let data = {};
+    const data = {};
 
     before(() => {
       cy.login();
@@ -159,7 +158,7 @@ describe(
 );
 
 describe('SearchIndexDetails page should work properly for data steward role', () => {
-  let data = {};
+  const data = {};
 
   before(() => {
     cy.login();
@@ -265,7 +264,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
 
   beforeEach(() => {
     // Login with the created user
-    login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
+    cy.login(USER_CREDENTIALS.email, USER_CREDENTIALS.password);
 
     cy.url().should('eq', `${BASE_URL}/my-data`);
   });

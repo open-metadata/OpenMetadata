@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  BASE_URL,
-  CUSTOM_PROPERTY_INVALID_NAMES,
-  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-  DELETE_TERM,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
-} from '../constants/constants';
+import { RouteHandler, WaitOptions } from 'cypress/types/net-stubbing';
+import { BASE_URL, DELETE_TERM, NEW_TAG } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/settings.constant';
 
 export const descriptionBox =
@@ -31,13 +25,13 @@ const RETRIES_COUNT = 4;
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
-export const replaceAllSpacialCharWith_ = (text) => {
+export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
 
-const isDatabaseService = (type) => type === 'database';
+const isDatabaseService = (type: string) => type === 'database';
 
-export const checkServiceFieldSectionHighlighting = (field) => {
+export const checkServiceFieldSectionHighlighting = (field: string) => {
   cy.get(`[data-id="${field}"]`).should(
     'have.attr',
     'data-highlighted',
@@ -45,7 +39,12 @@ export const checkServiceFieldSectionHighlighting = (field) => {
   );
 };
 
-const getTeamType = (currentTeam) => {
+const getTeamType = (
+  currentTeam: string
+): {
+  childTeamType: string;
+  teamTypeOptions: typeof TEAM_TYPES;
+} | null => {
   switch (currentTeam) {
     case 'BusinessUnit':
       return {
@@ -65,10 +64,12 @@ const getTeamType = (currentTeam) => {
         teamTypeOptions: ['Department', 'Group'],
       };
   }
+
+  return null;
 };
 
-const checkTeamTypeOptions = (type) => {
-  for (const teamType of getTeamType(type).teamTypeOptions) {
+const checkTeamTypeOptions = (type: string) => {
+  for (const teamType of getTeamType(type)?.teamTypeOptions) {
     cy.get(`.ant-select-dropdown [title="${teamType}"]`)
       .should('exist')
       .should('be.visible');
@@ -76,15 +77,20 @@ const checkTeamTypeOptions = (type) => {
 };
 
 // intercepting URL with cy.intercept
-export const interceptURL = (method, url, alias, callback) => {
+export const interceptURL = (
+  method: string,
+  url: string,
+  alias: string,
+  callback?: RouteHandler
+) => {
   cy.intercept({ method: method, url: url }, callback).as(alias);
 };
 
 // waiting for response and validating the response status code
 export const verifyResponseStatusCode = (
-  alias,
-  responseCode,
-  option,
+  alias: string,
+  responseCode: number,
+  option?: Partial<WaitOptions>,
   hasMultipleResponseCode = false
 ) => {
   if (hasMultipleResponseCode) {
@@ -102,12 +108,12 @@ export const verifyResponseStatusCode = (
 
 // waiting for multiple response and validating the response status code
 export const verifyMultipleResponseStatusCode = (
-  alias = [],
+  alias: string[] = [],
   responseCode = 200,
-  option
+  option?: Partial<WaitOptions>
 ) => {
   cy.wait(alias, option).then((data) => {
-    data.map((value) => expect(value.response.statusCode).eq(responseCode));
+    data.map((value) => expect(value.response?.statusCode).eq(responseCode));
   });
 };
 
@@ -214,7 +220,10 @@ export const scheduleIngestion = (hasRetryCount = true) => {
   cy.get('.ant-select-item-option-content').contains('Hour').click();
 
   if (hasRetryCount) {
-    cy.get('#retries').scrollIntoView().clear().type(RETRIES_COUNT);
+    cy.get('#retries')
+      .scrollIntoView()
+      .clear()
+      .type(RETRIES_COUNT + '');
   }
 
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
@@ -235,260 +244,8 @@ export const scheduleIngestion = (hasRetryCount = true) => {
 
 // Storing the created service name and the type of service for later use
 
-export const testServiceCreationAndIngestion = ({
-  serviceType,
-  connectionInput,
-  addIngestionInput,
-  viewIngestionInput,
-  serviceName,
-  type = 'database',
-  testIngestionButton = true,
-  serviceCategory,
-  shouldAddIngestion = true,
-  allowTestConnection = true,
-}) => {
-  // Storing the created service name and the type of service
-  // Select Service in step 1
-  cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
-  cy.get('[data-testid="next-button"]').should('exist').click();
-
-  // Enter service name in step 2
-
-  // validation should work
-  cy.get('[data-testid="next-button"]').should('exist').click();
-
-  cy.get('#name_help').should('be.visible').contains('Name is required');
-
-  // invalid name validation should work
-  cy.get('[data-testid="service-name"]')
-    .should('exist')
-    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
-  cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
-
-  cy.get('[data-testid="service-name"]')
-    .should('exist')
-    .clear()
-    .type(serviceName);
-  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
-  interceptURL(
-    'GET',
-    'api/v1/services/ingestionPipelines/*',
-    'ingestionPipelineStatus'
-  );
-  // intercept the service requirement md file fetch request
-  interceptURL(
-    'GET',
-    `en-US/${serviceCategory}/${serviceType}.md`,
-    'getServiceRequirements'
-  );
-  cy.get('[data-testid="next-button"]').should('exist').click();
-  verifyResponseStatusCode('@ingestionPipelineStatus', 200);
-  verifyResponseStatusCode('@ipApi', 204);
-
-  // Connection Details in step 3
-  cy.get('[data-testid="add-new-service-container"]')
-    .parent()
-    .parent()
-    .scrollTo('top', {
-      ensureScrollable: false,
-    });
-  cy.contains('Connection Details').scrollIntoView().should('be.visible');
-
-  // Requirement panel should be visible and fetch the requirements md file
-  cy.get('[data-testid="service-requirements"]').should('be.visible');
-  verifyResponseStatusCode('@getServiceRequirements', [200, 304], {}, true);
-
-  connectionInput();
-
-  // Test the connection
-  interceptURL(
-    'GET',
-    '/api/v1/services/testConnectionDefinitions/name/*',
-    'testConnectionStepDefinition'
-  );
-
-  interceptURL('POST', '/api/v1/automations/workflows', 'createWorkflow');
-
-  interceptURL(
-    'POST',
-    '/api/v1/automations/workflows/trigger/*',
-    'triggerWorkflow'
-  );
-
-  interceptURL('GET', '/api/v1/automations/workflows/*', 'getWorkflow');
-
-  if (allowTestConnection) {
-    cy.get('[data-testid="test-connection-btn"]').should('exist').click();
-
-    verifyResponseStatusCode('@testConnectionStepDefinition', 200);
-
-    verifyResponseStatusCode('@createWorkflow', 201);
-    // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
-    verifyResponseStatusCode('@triggerWorkflow', 200, {
-      responseTimeout: 120000,
-    });
-    cy.get('[data-testid="test-connection-modal"]').should('exist');
-    cy.get('.ant-modal-footer > .ant-btn-primary')
-      .should('exist')
-      .contains('OK')
-      .click();
-    verifyResponseStatusCode('@getWorkflow', 200);
-    cy.get('[data-testid="messag-text"]').then(($message) => {
-      if ($message.text().includes('partially successful')) {
-        cy.contains('Test connection partially successful').should('exist');
-      } else {
-        cy.contains('Connection test was successful').should('exist');
-      }
-    });
-  }
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines/status',
-    'getIngestionPipelineStatus'
-  );
-  cy.get('[data-testid="submit-btn"]').should('exist').click();
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-  // check success
-  cy.get('[data-testid="success-line"]').should('be.visible');
-  cy.contains(`"${serviceName}"`).should('be.visible');
-  cy.contains('has been created successfully').should('be.visible');
-
-  if (shouldAddIngestion) {
-    cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
-
-    // Add ingestion page
-    cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
-
-    if (isDatabaseService(type)) {
-      // Set mark-deleted slider to off to disable it.
-      cy.get('#root\\/markDeletedTables').click();
-    }
-
-    addIngestionInput && addIngestionInput();
-
-    cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
-
-    if (viewIngestionInput) {
-      // Go back and data should persist
-      cy.get('[data-testid="back-button"]').scrollIntoView().click();
-
-      viewIngestionInput();
-
-      // Go Next
-      cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
-    }
-
-    scheduleIngestion();
-
-    cy.contains(`${replaceAllSpacialCharWith_(serviceName)}_metadata`).should(
-      'be.visible'
-    );
-
-    // wait for ingestion to run
-    cy.clock();
-    cy.wait(1000);
-
-    interceptURL(
-      'GET',
-      '/api/v1/services/ingestionPipelines?*',
-      'ingestionPipelines'
-    );
-    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
-
-    cy.get('[data-testid="view-service-button"]').click();
-    verifyResponseStatusCode('@serviceDetails', 200);
-    verifyResponseStatusCode('@ingestionPipelines', 200);
-    handleIngestionRetry(type, testIngestionButton);
-  }
-};
-
-export const deleteCreatedService = (
-  typeOfService,
-  serviceName,
-  apiService,
-  serviceCategory
-) => {
-  // Click on settings page
-  // Services page
-  interceptURL('GET', '/api/v1/services/*', 'getServices');
-
-  cy.settingClick(typeOfService);
-
-  verifyResponseStatusCode('@getServices', 200);
-
-  interceptURL(
-    'GET',
-    'api/v1/search/query?q=*&from=0&size=15&index=*',
-    'searchService'
-  );
-  cy.get('[data-testid="searchbar"]').type(serviceName);
-
-  verifyResponseStatusCode('@searchService', 200);
-
-  // click on created service
-  cy.get(`[data-testid="service-name-${serviceName}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
-
-  cy.get(`[data-testid="entity-header-display-name"]`)
-    .should('exist')
-    .should('be.visible')
-    .invoke('text')
-    .then((text) => {
-      expect(text).to.equal(serviceName);
-    });
-
-  verifyResponseStatusCode('@getServices', 200);
-
-  // Clicking on permanent delete radio button and checking the service name
-  cy.get('[data-testid="manage-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-  cy.get('[data-testid="delete-button-title"]').click();
-
-  // Clicking on permanent delete radio button and checking the service name
-  cy.get('[data-testid="hard-delete-option"]').contains(serviceName).click();
-
-  cy.get('[data-testid="confirmation-text-input"]')
-    .should('be.visible')
-    .type(DELETE_TERM);
-  interceptURL('DELETE', `/api/v1/services/${apiService}/*`, 'deleteService');
-  interceptURL(
-    'GET',
-    '/api/v1/services/*/name/*?fields=owner',
-    'serviceDetails'
-  );
-
-  cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-  verifyResponseStatusCode('@deleteService', 200);
-
-  // Closing the toast notification
-  toastNotification(`"${serviceName}" deleted successfully!`);
-
-  cy.get(`[data-testid="service-name-${serviceName}"]`).should('not.exist');
-};
-
-export const goToAddNewServicePage = (service_type) => {
-  // Services page
-  interceptURL('GET', '/api/v1/services/*', 'getServiceList');
-  cy.settingClick(service_type);
-  verifyResponseStatusCode('@getServiceList', 200);
-
-  cy.get('[data-testid="add-service-button"]').should('be.visible').click();
-
-  // Add new service page
-  cy.url().should('include', '/add-service');
-  cy.get('[data-testid="header"]').should('be.visible');
-  cy.contains('Add New Service').should('be.visible');
-  cy.get('[data-testid="service-category"]').should('be.visible');
-};
-
 // add new tag to entity and its table
-export const addNewTagToEntity = (entityObj, term) => {
+export const addNewTagToEntity = (term: typeof NEW_TAG) => {
   const { name, fqn } = term;
 
   cy.get(
@@ -521,7 +278,7 @@ export const addNewTagToEntity = (entityObj, term) => {
   }
 };
 
-export const toastNotification = (msg, closeToast = true) => {
+export const toastNotification = (msg: string, closeToast = true) => {
   cy.get('.Toastify__toast-body').should('contain.text', msg);
   cy.wait(200);
   if (closeToast) {
@@ -529,183 +286,7 @@ export const toastNotification = (msg, closeToast = true) => {
   }
 };
 
-export const addCustomPropertiesForEntity = (
-  propertyName,
-  customPropertyData,
-  customType,
-  value,
-  entityObj
-) => {
-  // Add Custom property for selected entity
-  cy.get('[data-testid="add-field-button"]').click();
-
-  // validation should work
-  cy.get('[data-testid="create-button"]').scrollIntoView().click();
-
-  cy.get('#name_help').should('contain', 'Name is required');
-  cy.get('#propertyType_help').should('contain', 'Property Type is required');
-
-  cy.get('#description_help').should('contain', 'Description is required');
-
-  // capital case validation
-  cy.get('[data-testid="name"]')
-    .scrollIntoView()
-    .type(CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE);
-  cy.get('[role="alert"]').should(
-    'contain',
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  // with underscore validation
-  cy.get('[data-testid="name"]')
-    .clear()
-    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE);
-  cy.get('[role="alert"]').should(
-    'contain',
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  // with space validation
-  cy.get('[data-testid="name"]')
-    .clear()
-    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE);
-  cy.get('[role="alert"]').should(
-    'contain',
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  // with dots validation
-  cy.get('[data-testid="name"]')
-    .clear()
-    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS);
-  cy.get('[role="alert"]').should(
-    'contain',
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
-
-  // should allow name in another languages
-  cy.get('[data-testid="name"]').clear().type('汝らヴェディア');
-  // should not throw the validation error
-  cy.get('#name_help').should('not.exist');
-
-  cy.get('[data-testid="name"]').clear().type(propertyName);
-
-  cy.get('[data-testid="propertyType"]').click();
-  cy.get(`[title="${customType}"]`).click();
-
-  cy.get(descriptionBox).clear().type(customPropertyData.description);
-
-  // Check if the property got added
-  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
-    'customProperties'
-  );
-  cy.get('[data-testid="create-button"]').scrollIntoView().click();
-
-  cy.wait('@customProperties');
-  cy.get('.ant-table-row').should('contain', propertyName);
-
-  // Navigating to home page
-  cy.clickOnLogo();
-};
-
-export const editCreatedProperty = (propertyName) => {
-  // Fetching for edit button
-  cy.get(`[data-row-key="${propertyName}"]`)
-    .find('[data-testid="edit-button"]')
-    .as('editButton');
-
-  cy.get('@editButton').click();
-
-  cy.get(descriptionBox).clear().type('This is new description');
-
-  interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
-
-  cy.get('[data-testid="save"]').click();
-
-  cy.wait('@checkPatchForDescription', { timeout: 15000 });
-
-  cy.get('.ant-modal-wrap').should('not.exist');
-
-  // Fetching for updated descriptions for the created custom property
-  cy.get(`[data-row-key="${propertyName}"]`)
-    .find('[data-testid="viewer-container"]')
-    .should('contain', 'This is new description');
-};
-
-export const deleteCreatedProperty = (propertyName) => {
-  // Fetching for delete button
-  cy.get(`[data-row-key="${propertyName}"]`)
-    .scrollIntoView()
-    .find('[data-testid="delete-button"]')
-    .click();
-
-  // Checking property name is present on the delete pop-up
-  cy.get('[data-testid="body-text"]').should('contain', propertyName);
-
-  cy.get('[data-testid="save-button"]').should('be.visible').click();
-};
-
-export const updateOwner = () => {
-  cy.get('[data-testid="avatar"]').click();
-  cy.get('[data-testid="user-name"]')
-    .should('exist')
-    .invoke('text')
-    .then((text) => {
-      interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
-      // Clicking on edit owner button
-      cy.get('[data-testid="edit-owner"]').click();
-
-      cy.get('.user-team-select-popover').contains('Users').click();
-      cy.get('[data-testid="owner-select-users-search-bar"]').type(text);
-      cy.get('[data-testid="selectable-list"]')
-        .eq(1)
-        .find(`[title="${text.trim()}"]`)
-        .click();
-
-      // Asserting the added name
-      cy.get('[data-testid="owner-link"]').should('contain', text.trim());
-    });
-};
-
-export const mySqlConnectionInput = () => {
-  cy.get('#root\\/username').type(Cypress.env('mysqlUsername'));
-  checkServiceFieldSectionHighlighting('username');
-  cy.get('#root\\/authType\\/password').type(Cypress.env('mysqlPassword'));
-  checkServiceFieldSectionHighlighting('password');
-  cy.get('#root\\/hostPort').type(Cypress.env('mysqlHostPort'));
-  checkServiceFieldSectionHighlighting('hostPort');
-  cy.get('#root\\/databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
-  checkServiceFieldSectionHighlighting('databaseSchema');
-};
-
-export const login = (username, password) => {
-  cy.visit('/');
-  interceptURL('POST', '/api/v1/users/login', 'loginUser');
-  cy.get('[id="email"]').should('be.visible').clear().type(username);
-  cy.get('[id="password"]').should('be.visible').clear().type(password);
-
-  // Don't want to show any popup in the tests
-  cy.setCookie(`STAR_OMD_USER_${username.split('@')[0]}`, 'true');
-
-  // Get version and set cookie to hide version banner
-  cy.request({
-    method: 'GET',
-    url: `api/v1/system/version`,
-  }).then((res) => {
-    const version = res.body.version;
-    const versionCookie = `VERSION_${version
-      .split('-')[0]
-      .replaceAll('.', '_')}`;
-
-    cy.setCookie(versionCookie, 'true');
-    window.localStorage.setItem('loggedInUsers', username.split('@')[0]);
-  });
-
-  cy.get('.ant-btn').contains('Login').should('be.visible').click();
-  cy.wait('@loginUser');
-};
-
-export const selectTeamHierarchy = (index) => {
+export const selectTeamHierarchy = (index: number) => {
   if (index > 0) {
     cy.get('[data-testid="team-type"]')
       .invoke('text')
@@ -901,8 +482,8 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
     cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
 
     // Login with the created user
-    login(email, password);
-    // cy.goToHomePage(true);
+    cy.login(email, password);
+
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
@@ -922,54 +503,6 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
     cy.get(
       '[data-testid="user-profile"] [data-testid="user-profile-details"]'
     ).should('contain', `${firstName}${lastName}`);
-  });
-};
-
-export const addTags = (classificationName, tagName, entity) => {
-  cy.get(
-    '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
-  ).click();
-
-  cy.get('[data-testid="tag-selector"] #tagsForm_tags').type(tagName);
-
-  cy.get(`[data-testid="tag-${classificationName}.${tagName}"]`).click();
-
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchTag');
-
-  cy.get('[data-testid="saveAssociatedTag"]').click();
-
-  verifyResponseStatusCode('@patchTag', 200);
-
-  cy.get(
-    `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="tag-${classificationName}.${tagName}"]`
-  )
-    .scrollIntoView()
-    .should('be.visible');
-};
-
-export const removeTags = (classificationName, tagName, entity) => {
-  cy.get(
-    '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="edit-button"]'
-  ).click();
-
-  cy.get(
-    `[data-testid="selected-tag-${classificationName}.${tagName}"] [data-testid="remove-tags"]`
-  ).click();
-
-  interceptURL('PATCH', `/api/v1/${entity}/*`, `patchTag`);
-
-  cy.get('[data-testid="saveAssociatedTag"]').click();
-
-  verifyResponseStatusCode(`@patchTag`, 200);
-
-  cy.get(
-    '[data-testid="entity-right-panel"] [data-testid="tags-container"]'
-  ).then(($body) => {
-    const manageButton = $body.find(
-      `[data-testid="tag-${classificationName}.${tagName}"]`
-    );
-
-    expect(manageButton.length).to.equal(0);
   });
 };
 
@@ -1029,20 +562,6 @@ export const removeTableFieldTags = (
 
     expect(manageButton.length).to.equal(0);
   });
-};
-
-export const updateDescription = (description, entity) => {
-  cy.get(
-    '[data-testid="asset-description-container"] [data-testid="edit-description"]'
-  ).click();
-
-  cy.get(descriptionBox).should('be.visible').click().clear().type(description);
-
-  interceptURL('PATCH', `/api/v1/${entity}/*`, 'updateDescription');
-
-  cy.get('[data-testid="save"]').click();
-
-  verifyResponseStatusCode('@updateDescription', 200);
 };
 
 export const updateTableFieldDescription = (
