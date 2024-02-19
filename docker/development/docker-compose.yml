@@ -255,7 +255,7 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-      mysqsql:l:
+      mysqsql:
         condition: service_healthy
     networks:
       - local_app_net
