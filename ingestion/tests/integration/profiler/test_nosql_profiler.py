@@ -99,7 +99,18 @@ def random_row():
     }
 
 
-TEST_DATA = [random_row() for _ in range(NUM_ROWS)]
+TEST_DATA = [random_row() for _ in range(NUM_ROWS)] + [
+    {
+        "name": "John",
+        "age": 60,
+        "city": "New York",
+    },
+    {
+        "name": "Jane",
+        "age": 20,
+        "city": "New York",
+    },
+]
 
 
 class NoSQLProfiler(TestCase):
@@ -177,23 +188,52 @@ class NoSQLProfiler(TestCase):
 
         assert status == 0
 
-        expectations = {TEST_COLLECTION: len(TEST_DATA), EMPTY_COLLECTION: 0}
+        cases = [
+            {
+                "collection": EMPTY_COLLECTION,
+                "expected": {
+                    "rowCount": 0,
+                    "columns": [],
+                },
+            },
+            {
+                "collection": TEST_COLLECTION,
+                "expected": {
+                    "rowCount": len(TEST_DATA),
+                    "columns": [
+                        ColumnProfile(
+                            name="age",
+                            timestamp=datetime.now().timestamp(),
+                            max=60,
+                            min=20,
+                        ),
+                    ],
+                },
+            },
+        ]
 
-        for collection, expected_row_count in expectations.items():
+        for tc in cases:
+            collection = tc["collection"]
+            expected = tc["expected"]
             collection_profile = self.metadata.get_profile_data(
                 f"{SERVICE_NAME}.default.{TEST_DATABASE}.{collection}",
                 datetime_to_ts(datetime.now() - timedelta(seconds=10)),
                 get_end_of_day_timestamp_mill(),
             )
             assert collection_profile.entities
-            assert collection_profile.entities[-1].rowCount == expected_row_count
+            assert collection_profile.entities[-1].rowCount == expected["rowCount"]
             column_profile = self.metadata.get_profile_data(
-                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}.age",
+                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{collection}.age",
                 datetime_to_ts(datetime.now() - timedelta(seconds=10)),
                 get_end_of_day_timestamp_mill(),
                 profile_type=ColumnProfile,
             )
-            assert len(column_profile.entities) == 0
+            assert len(column_profile.entities) == len(expected["columns"])
+            if len(expected["columns"]) > 0:
+                for c1, c2 in zip(column_profile.entities, expected["columns"]):
+                    assert c1.name == c2.name
+                    assert c1.max == c2.max
+                    assert c1.min == c2.min
 
         table = self.metadata.get_by_name(
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"

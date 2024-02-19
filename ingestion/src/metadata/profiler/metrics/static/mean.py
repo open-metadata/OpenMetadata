@@ -12,16 +12,21 @@
 """
 AVG Metric definition
 """
+from functools import partial
+
 # pylint: disable=duplicate-code
 
 
-from typing import List, cast
+from typing import List, cast, Optional, Callable
 
+from metadata.generated.schema.entity.data.table import Table
+
+from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.profiler.metrics.core import CACHE, StaticMetric, _label, T
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -95,10 +100,10 @@ class Mean(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return func.avg(column(self.col.name, self.col.type))
+            return func.mean(column(self.col.name, self.col.type))
 
         if is_concatenable(self.col.type):
-            return func.avg(LenFn(column(self.col.name, self.col.type)))
+            return func.mean(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MEAN"
@@ -142,3 +147,9 @@ class Mean(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
         return None
+
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+        """nosql function"""
+        if is_quantifiable(self.col.type):
+            return partial(adaptor.mean, column=self.col)
+        return lambda table: None

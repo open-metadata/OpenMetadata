@@ -12,9 +12,10 @@
 NoSQL adaptor for the NoSQL profiler.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Union, Optional
 
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class NoSQLAdaptor(ABC):
@@ -32,3 +33,20 @@ class NoSQLAdaptor(ABC):
         self, table: Table, columns: List[Column], query: any, limit: int
     ) -> List[Dict[str, any]]:
         raise NotImplementedError
+
+    def get_aggregates(
+        self, table: Table, column: SQALikeColumn, aggregate_functions: List[any]
+    ) -> Dict[str, Union[int, float]]:
+        raise NotImplementedError
+
+    def sum(self, table: Table, column: Column) -> any:
+        return None
+
+    def mean(self, table: Table, column: Column) -> any:
+        return None
+
+    def max(self, table: Table, column: Column) -> any:
+        return None
+
+    def min(self, table: Table, column: Column) -> any:
+        return None
