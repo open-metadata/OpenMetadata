@@ -67,6 +67,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_tag_label
@@ -422,6 +423,7 @@ class DatabaseServiceSource(
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
+    @calculate_execution_time()
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
@@ -456,6 +458,7 @@ class DatabaseServiceSource(
         )
         return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
+    @calculate_execution_time()
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
         Mark the table record as scanned and update the database_source_state
@@ -509,6 +512,7 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
         """
         Method to process the table owners

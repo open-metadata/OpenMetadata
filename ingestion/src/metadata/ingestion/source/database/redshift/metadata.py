@@ -81,6 +81,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
@@ -216,6 +217,7 @@ class RedshiftSource(
             logger.warning(err)
         return None
 
+    @calculate_execution_time()
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, TablePartition]:

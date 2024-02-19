@@ -62,7 +62,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator, calculate_execution_time
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -219,6 +219,7 @@ class CommonDbSourceService(
         )
 
     @staticmethod
+    @calculate_execution_time()
     def get_table_description(
         schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
@@ -339,6 +340,7 @@ class CommonDbSourceService(
             )
             logger.debug(traceback.format_exc())
 
+    @calculate_execution_time()
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
@@ -406,7 +408,7 @@ class CommonDbSourceService(
         """Not Implemented"""
         yield from []
 
-    @calculate_execution_time_generator(store=False)
+    @calculate_execution_time_generator()
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -548,6 +550,7 @@ class CommonDbSourceService(
 
         return foreign_constraints
 
+    @calculate_execution_time()
     def update_table_constraints(
         self, table_constraints, foreign_columns
     ) -> List[TableConstraint]:
