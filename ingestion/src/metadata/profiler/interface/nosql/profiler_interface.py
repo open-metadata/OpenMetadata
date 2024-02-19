@@ -83,11 +83,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
             not_none = [agg for agg in aggs if agg is not None]
             if not not_none:
                 return {}
-            row = runner.get_aggregates(
-                self.table,
-                column,
-                not_none
-            )
+            row = runner.get_aggregates(self.table, column, not_none)
             return dict(row)
         except Exception as exc:
             logger.debug(

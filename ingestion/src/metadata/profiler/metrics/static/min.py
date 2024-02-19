@@ -13,19 +13,15 @@
 Min Metric definition
 """
 from functools import partial
-from typing import Optional, Callable
-
-from metadata.generated.schema.entity.data.table import Table
-
-from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-
-# pylint: disable=duplicate-code
+from typing import Callable, Optional
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.metrics.core import CACHE, StaticMetric, _label, T
+from metadata.generated.schema.entity.data.table import Table
+from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -34,6 +30,8 @@ from metadata.profiler.orm.registry import (
     is_date_time,
     is_quantifiable,
 )
+
+# pylint: disable=duplicate-code
 
 
 class MinFn(GenericFunction):

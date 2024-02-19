@@ -13,20 +13,15 @@
 AVG Metric definition
 """
 from functools import partial
+from typing import Callable, List, Optional, cast
 
-# pylint: disable=duplicate-code
-
-
-from typing import List, cast, Optional, Callable
-
-from metadata.generated.schema.entity.data.table import Table
-
-from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.metrics.core import CACHE, StaticMetric, _label, T
+from metadata.generated.schema.entity.data.table import Table
+from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -36,6 +31,9 @@ from metadata.profiler.orm.registry import (
     is_quantifiable,
 )
 from metadata.utils.logger import profiler_logger
+
+# pylint: disable=duplicate-code
+
 
 logger = profiler_logger()
 
