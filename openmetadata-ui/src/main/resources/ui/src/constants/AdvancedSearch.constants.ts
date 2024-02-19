@@ -88,6 +88,10 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
     label: t('label.chart'),
     key: 'charts.displayName.keyword',
   },
+  {
+    label: t('label.project'),
+    key: 'project',
+  },
 ];
 
 export const DASHBOARD_DATA_MODEL_TYPE = [
