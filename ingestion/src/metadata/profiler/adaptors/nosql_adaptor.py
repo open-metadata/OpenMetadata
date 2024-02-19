@@ -23,6 +23,7 @@ class NoSQLAdaptor(ABC):
     NoSQL adaptor for the NoSQL profiler. This class implememts the required methods for retreiving data from a NoSQL
     database.
     """
+
     @abstractmethod
     def item_count(self, table: Table) -> int:
         raise NotImplementedError
