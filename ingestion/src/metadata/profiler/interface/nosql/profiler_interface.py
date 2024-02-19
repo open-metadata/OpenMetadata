@@ -80,10 +80,10 @@ class NoSQLProfilerInterface(ProfilerInterface):
     ) -> Dict[str, any]:
         try:
             aggs = [metric(column).nosql_fn(runner)(self.table) for metric in metrics]
-            not_none = [agg for agg in aggs if agg is not None]
-            if not not_none:
+            filtered = [agg for agg in aggs if agg is not None]
+            if not filtered:
                 return {}
-            row = runner.get_aggregates(self.table, column, not_none)
+            row = runner.get_aggregates(self.table, column, filtered)
             return dict(row)
         except Exception as exc:
             logger.debug(
