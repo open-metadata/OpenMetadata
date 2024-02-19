@@ -41,7 +41,7 @@ secrets_manager_client_loader = enum_register()
 
 # pylint: disable=import-outside-toplevel
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.noop.value)
-def _(_: SecretsManagerProvider) -> None:
+def _() -> None:
     return None
 
 
