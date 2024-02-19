@@ -21,7 +21,9 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
+import { dragAndDropElement } from '../../common/Utils/DragAndDrop';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { confirmationDragAndDropGlossary } from '../../common/Utils/Glossary';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
@@ -1217,6 +1219,50 @@ describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
       columnName: COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
       termFQN: terms[0].fullyQualifiedName,
     });
+  });
+
+  it('Drag and Drop should work properly for glossary term', () => {
+    selectActiveGlossary(NEW_GLOSSARY.name);
+
+    dragAndDropElement(
+      NEW_GLOSSARY_TERMS.term_2.fullyQualifiedName,
+      NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName
+    );
+
+    confirmationDragAndDropGlossary(
+      NEW_GLOSSARY_TERMS.term_2.name,
+      NEW_GLOSSARY_TERMS.term_1.name
+    );
+
+    // verify the term is moved under the parent term
+    cy.get(
+      `.ant-table-row-level-1[data-row-key="${Cypress.$.escapeSelector(
+        NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName
+      )}.${NEW_GLOSSARY_TERMS.term_2.name}"]`
+    ).should('be.visible');
+  });
+
+  it('Drag and Drop should work properly for glossary term at table level', () => {
+    selectActiveGlossary(NEW_GLOSSARY.name);
+
+    dragAndDropElement(
+      `${NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName}.${NEW_GLOSSARY_TERMS.term_2.name}`,
+      '.ant-table-thead > tr',
+      true
+    );
+
+    confirmationDragAndDropGlossary(
+      NEW_GLOSSARY_TERMS.term_2.name,
+      NEW_GLOSSARY.name,
+      true
+    );
+
+    // verify the term is moved under the parent term
+    cy.get(
+      `.ant-table-row-level-0[data-row-key="${Cypress.$.escapeSelector(
+        NEW_GLOSSARY_TERMS.term_2.fullyQualifiedName
+      )}"]`
+    ).should('be.visible');
   });
 
   it('Delete glossary term should work properly', () => {

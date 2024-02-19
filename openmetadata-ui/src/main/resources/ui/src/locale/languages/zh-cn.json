@@ -1403,7 +1403,7 @@
     "entity-size-in-between": "{{entity}}大小须介于{{min}}和{{max}}之间",
     "entity-size-must-be-between-2-and-64": "{{entity}}大小必须介于2和64之间",
     "entity-transfer-message": "如果您想将<0>{{from}}</0> {{entity}} 移动到<0>{{to}}</0> {{entity}}中，请单击确认",
-    "error-team-transfer-message": "由于团队类型的组不能有子级，因此您无法移动到此团队",
+    "error-team-transfer-message": "You cannot move to this team as Team Type {{dragTeam}} can't be {{dropTeam}} children",
     "error-while-fetching-access-token": "获取访问令牌时出现错误",
     "explore-our-guide-here": "explore our guide here.",
     "export-entity-help": "以 CSV 文件格式导出下载所有{{entity}}，并可与团队共享。",

@@ -19,6 +19,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { deleteTeamPermanently } from '../../common/Utils/Teams';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -408,55 +409,6 @@ describe('Teams flow should work properly', () => {
   it('Permanently deleting a team without soft deleting should work properly', () => {
     // Add a new team
     addTeam(HARD_DELETE_TEAM_DETAILS);
-
-    interceptURL(
-      'GET',
-      `/api/v1/teams/name/${HARD_DELETE_TEAM_DETAILS.name}*`,
-      'getSelectedTeam'
-    );
-    // Click on created team
-    cy.get(`[data-row-key="${HARD_DELETE_TEAM_DETAILS.name}"]`)
-      .contains(HARD_DELETE_TEAM_DETAILS.name)
-      .click();
-
-    verifyResponseStatusCode('@getSelectedTeam', 200);
-    cy.get(
-      '[data-testid="team-detail-header"] [data-testid="manage-button"]'
-    ).click();
-
-    cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-
-    cy.get('[data-testid="delete-button-title"]').click();
-
-    cy.get('[data-testid="confirm-button"]')
-      .should('exist')
-      .should('be.disabled');
-
-    // Check if soft delete option is present
-    cy.get('[data-testid="soft-delete-option"]').should(
-      'contain',
-      HARD_DELETE_TEAM_DETAILS.name
-    );
-
-    // Click on permanent delete option
-    cy.get('[data-testid="hard-delete-option"]')
-      .should('contain', HARD_DELETE_TEAM_DETAILS.name)
-      .click();
-
-    cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
-
-    interceptURL('DELETE', '/api/v1/teams/*', 'deleteTeam');
-    cy.get('[data-testid="confirm-button"]').click();
-
-    verifyResponseStatusCode('@deleteTeam', 200);
-
-    // Verify the toast message
-    toastNotification(
-      `"${HARD_DELETE_TEAM_DETAILS.name}" deleted successfully!`
-    );
-
-    // Validating the deleted team
-
-    cy.get('table').should('not.contain', HARD_DELETE_TEAM_DETAILS.name);
+    deleteTeamPermanently(HARD_DELETE_TEAM_DETAILS.name);
   });
 });
