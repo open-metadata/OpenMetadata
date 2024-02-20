@@ -46,6 +46,7 @@ class SchemaRegistryException(Exception):
     Class to indicate invalid schema registry not initialized
     """
 
+
 TIMEOUT_SECONDS = 10
 
 
