@@ -39,6 +39,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../../utils/TeamUtils', () => ({
   getMovedTeamData: jest.fn().mockReturnValue([]),
+  isDropRestricted: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../../rest/teamsAPI', () => ({
