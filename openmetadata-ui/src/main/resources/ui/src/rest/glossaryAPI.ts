@@ -53,14 +53,6 @@ export const addGlossaries = async (data: CreateGlossary) => {
   return response.data;
 };
 
-export const updateGlossaries = (
-  data: CreateGlossary
-): Promise<AxiosResponse> => {
-  const url = '/glossaries';
-
-  return APIClient.put(url, data);
-};
-
 export const patchGlossaries = async (id: string, patch: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
     `/glossaries/${id}`,
