@@ -19,7 +19,7 @@ import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
   DataType,
-  FieldName as PartitionIntervalTypes,
+  PartitionIntervalTypes,
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';

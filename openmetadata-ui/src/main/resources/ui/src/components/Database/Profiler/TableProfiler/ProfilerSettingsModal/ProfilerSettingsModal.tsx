@@ -53,7 +53,7 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { CSMode } from '../../../../../enums/codemirror.enum';
 import {
-  FieldName as PartitionIntervalTypes,
+  PartitionIntervalTypes,
   ProfileSampleType,
   TableProfilerConfig,
 } from '../../../../../generated/entity/data/table';

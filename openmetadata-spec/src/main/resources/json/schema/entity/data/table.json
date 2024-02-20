@@ -246,7 +246,6 @@
           "type": "string"
         },
         "intervalType": {
-          "type": "string",
           "$ref": "#/definitions/partitionIntervalTypes"
         },
         "interval": {
@@ -688,7 +687,6 @@
           "type": "string"
         },
         "partitionIntervalType": {
-          "description": "type of partition interval",
           "$ref": "#/definitions/partitionIntervalTypes"
         },
         "partitionInterval": {
