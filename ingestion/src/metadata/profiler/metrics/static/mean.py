@@ -98,10 +98,10 @@ class Mean(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return func.mean(column(self.col.name, self.col.type))
+            return func.avg(column(self.col.name, self.col.type))
 
         if is_concatenable(self.col.type):
-            return func.mean(LenFn(column(self.col.name, self.col.type)))
+            return func.avg(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MEAN"
