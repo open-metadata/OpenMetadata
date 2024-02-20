@@ -68,7 +68,7 @@ const revokeToken = () => {
   cy.get('[data-testid="save-edit"]').should('exist').should('be.visible');
 };
 
-describe('Bots Page should work properly', () => {
+describe('Bots Page should work properly', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
     interceptURL(
@@ -105,7 +105,7 @@ describe('Bots Page should work properly', () => {
     cy.get(descriptionBox).type(description);
     // Click on save button
     cy.wait(1000);
-    interceptURL('PUT', '/api/v1/bots', 'createBot');
+    interceptURL('post', '/api/v1/bots', 'createBot');
     cy.get('[data-testid="save-user"]')
       .scrollIntoView()
       .should('be.visible')

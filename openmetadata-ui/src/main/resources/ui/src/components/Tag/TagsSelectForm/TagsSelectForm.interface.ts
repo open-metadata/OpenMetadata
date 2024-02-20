@@ -12,9 +12,9 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
 import { Paging } from '../../../generated/type/paging';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 
 export type TagsSelectFormProps = {
   placeholder: string;

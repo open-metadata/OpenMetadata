@@ -190,10 +190,15 @@ services:
 
       #secretsManagerConfiguration
       SECRET_MANAGER: ${SECRET_MANAGER:-db}
-      #parameters:
+      # AWS:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}
       OM_SM_ACCESS_KEY: ${OM_SM_ACCESS_KEY:-""}
+      # Azure:
+      OM_SM_VAULT_NAME: ${OM_SM_VAULT_NAME:-""}
+      OM_SM_CLIENT_ID: ${OM_SM_CLIENT_ID:-""}
+      OM_SM_CLIENT_SECRET: ${OM_SM_CLIENT_SECRET:-""}
+      OM_SM_TENANT_ID: ${OM_SM_TENANT_ID:-""}
 
       #email configuration:
       OM_EMAIL_ENTITY: ${OM_EMAIL_ENTITY:-"OpenMetadata"}

@@ -35,6 +35,7 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
@@ -173,6 +174,8 @@ source:
 {% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/data-profiler.md" variables={connector: "doris"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## Lineage
 

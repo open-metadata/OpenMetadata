@@ -16,8 +16,8 @@ import { AxiosError } from 'axios';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import Loader from '../../Loader/Loader';
 import './modal-with-markdown-editor.less';
 import {
   EditorContentRef,

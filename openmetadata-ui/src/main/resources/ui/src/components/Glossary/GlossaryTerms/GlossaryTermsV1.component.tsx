@@ -44,9 +44,9 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import TabsLabel from '../../TabsLabel/TabsLabel.component';
+import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';

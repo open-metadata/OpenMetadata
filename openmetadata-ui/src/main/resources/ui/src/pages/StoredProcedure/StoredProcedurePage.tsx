@@ -25,27 +25,27 @@ import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../components/Lineage/Lineage.component';
-import LineageProvider from '../../components/LineageProvider/LineageProvider';
-import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
   getStoredProcedureDetailPath,
   getVersionPath,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';

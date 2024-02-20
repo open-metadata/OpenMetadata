@@ -295,7 +295,7 @@ const cleanUp = () => {
   });
 };
 
-describe('My Data page', () => {
+describe('My Data page', { tags: 'DataAssets' }, () => {
   before(prepareData);
   after(cleanUp);
 

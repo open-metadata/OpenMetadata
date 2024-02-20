@@ -1,8 +1,13 @@
 package org.openmetadata.service.apps.scheduler;
 
+import static com.cronutils.model.CronType.UNIX;
 import static org.openmetadata.service.apps.AbstractNativeApplication.getAppRuntime;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
+import com.cronutils.mapper.CronMapper;
+import com.cronutils.model.Cron;
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.parser.CronParser;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -42,6 +47,9 @@ public class AppScheduler {
   private static final ConcurrentHashMap<UUID, JobDetail> appJobsKeyMap = new ConcurrentHashMap<>();
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchClient;
+  private static final @Getter CronMapper cronMapper = CronMapper.fromUnixToQuartz();
+  private static final @Getter CronParser cronParser =
+      new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
 
   private AppScheduler(CollectionDAO dao, SearchRepository searchClient) throws SchedulerException {
     this.collectionDAO = dao;
@@ -142,7 +150,8 @@ public class AppScheduler {
         return CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 0, 0);
       case CUSTOM:
         if (!CommonUtil.nullOrEmpty(scheduleInfo.getCronExpression())) {
-          return CronScheduleBuilder.cronSchedule(scheduleInfo.getCronExpression());
+          Cron unixCron = getCronParser().parse(scheduleInfo.getCronExpression());
+          return CronScheduleBuilder.cronSchedule(getCronMapper().map(unixCron).asString());
         } else {
           throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
         }

@@ -33,7 +33,7 @@ import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';

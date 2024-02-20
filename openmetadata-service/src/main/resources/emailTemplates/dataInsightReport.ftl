@@ -1,608 +1,637 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<!doctype html>
+<html>
   <head>
-    <!--[if gte mso 9]>
-		<xml>
-			<o:OfficeDocumentSettings>
-				<o:AllowPNG/>
-				<o:PixelsPerInch>96</o:PixelsPerInch>
-			</o:OfficeDocumentSettings>
-		</xml>
-		<![endif]-->
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta name="x-apple-disable-message-reformatting">
-    <title></title>
-    <style>
-      html {
-        -webkit-text-size-adjust: none;
-        -ms-text-size-adjust: none
-      }
-
-      @media only screen and (max-device-width:600px),
-      only screen and (max-width:600px) {
-        .mob_100 {
-          width: 100% !important;
-          max-width: 100% !important
-        }
-
-        .mob_full {
-          width: auto !important;
-          display: block !important;
-          padding: 0 10px !important
-        }
-
-        .mob_center {
-          text-align: center !important
-        }
-
-        .mob_center_bl {
-          margin-left: auto;
-          margin-right: auto
-        }
-
-        .mob_hidden {
-          display: none !important
-        }
-
-        .only_mob {
-          display: block !important
-        }
-      }
-
-      @media only screen and (max-width:600px) {
-        .mob_100 {
-          width: 100% !important;
-          max-width: 100% !important
-        }
-
-        .mob_100 img,
-        .mob_100 table {
-          max-width: 100% !important
-        }
-
-        .mob_full {
-          width: auto !important;
-          display: block !important;
-          padding: 0 10px !important
-        }
-
-        .mob_center {
-          text-align: center !important
-        }
-
-        .mob_center_bl {
-          margin-left: auto;
-          margin-right: auto
-        }
-
-        .mob_hidden {
-          display: none !important
-        }
-
-        .only_mob {
-          display: block !important
-        }
-      }
-
-      .creative {
-        width: 100% !important;
-        max-width: 100% !important
-      }
-
-      .mail_preheader {
-        display: none !important
-      }
-
-      form input,
-      form textarea {
-        font-family: Arial, sans-serif;
-        width: 100%;
-        box-sizing: border-box;
-        font-size: 13px;
-        color: #000000;
-        outline: none;
-        padding: 0px 15px;
-      }
-
-      form textarea {
-        resize: vertical;
-        line-height: normal;
-        padding: 10px 15px;
-      }
-
-      form button {
-        border: 0px none;
-        cursor: pointer;
-      }
-    </style>
-    <style>
-      @media only screen and (max-width:480px) {
-        u+.body .full-wrap {
-          width: 100% !important;
-          width: 100vw !important
-        }
-      }
-    </style>
-    <style>
-      @-ms-viewport {
-        width: device-width
-      }
-    </style>
-    <!--[if (gte mso 9)|(IE)]>
-					<style type="text/css">table {border-collapse: collapse !important;}.outf14{font-size:14px !important;}    .not_for_outlook{mso-hide: all !important;display: none !important;font-size:0;max-height:0;line-height: 0;mso-hide: all;}.outpadding{padding-left: 0 !important;padding-right: 0 !important;}</style>
-					<![endif]-->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Update</title>
   </head>
-  <body class="body" style="padding:0;margin:0">
-    <div class="full-wrap">
-      <table width="100%" border="0" cellspacing="0" cellpadding="0" class="full-wrap">
-        <tr>
-          <td align="center" bgcolor="#f5f5f5" style="line-height: normal; hyphens: none;">
-            <div>
-              <!--[if !mso]>
-										<!-->
-              <div class="mail_preheader" style="font-size: 0px; color: transparent; opacity: 0;">
-                <span style="font-family: Arial, Helvetica, sans-serif; font-size: 0px; color: transparent; line-height: 0px;"></span>
-              </div>
-              <!--
-	
-										
-										<![endif]-->
-            </div>
-            <div>
-              <!--[if (gte mso 9)|(IE)]>
-										<table width="700" border="0" cellspacing="0" cellpadding="0" style="width: 700px;">
-											<tr>
-												<td>
-													<![endif]-->
-              <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 700px;">
-                <tr>
-                  <td align="center" valign="top" height="759" bgcolor="#ffffff" style="padding: 10px; height: 759px;">
-                    <table border="0" cellspacing="0" cellpadding="0" width="590" style="width: 590px;">
-                      <div>
-                        <img src="https://i.imgur.com/ARPP9s5.png" width="1000" alt="" border="0" style="display: block; max-width: 1000px; width: 100%;" class="w1000px">
-                      </div>
-                    </table>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px;">
+  <body>
+    <table cellpadding="0" cellspacing="0" border="0" align="center" width="100%" bgcolor="#f4f5fb" style="padding:0px;margin:0px">
+      <tbody>
+        <tr style="padding:0px;margin:0px">
+          <td align="center" valign="top" style="padding:0px;margin:0px;font-family:poppins,Helvetica,Arial,sans-serif;font-weight:normal;font-size:16px;line-height:24px;color:rgb(96,101,123);border-collapse:collapse">
+            <table cellpadding="0" cellspacing="0" border="0" align="center" width="600" bgcolor="#f4f5fb" style="padding:0px;margin:0px auto">
+              <tbody bgcolor="white">
+                <tr style="padding:0px;margin:0px">
+                  <td valign="top" style="padding:0px;margin:0px;font-family:poppins,Helvetica,Arial,sans-serif;font-weight:normal;font-size:16px;line-height:24px;color:rgb(96,101,123);border-collapse:collapse">
+                    <table cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" width="600" style="padding: 0px 30px; border-bottom: 1px solid #f8f8f8;">
+                      <tbody>
                         <tr>
-                          <td align="center" valign="top" style="border-radius: 10px;">
-                            <div>
-                              <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                                <tr>
-                                  <td align="left" valign="top">
-                                    <div style="line-height: 38px;">
-                                      <span style="font-family: Inter, sans-serif; font-weight: bold; font-size: 20px; color: #1a2229;">OpenMetadata Data Insights Report</span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              </table>
-                            </div>
-                            <div style="height: 8px; line-height: 8px; font-size: 6px;">&nbsp;</div>
-                            <div>
-                              <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                                <tr>
-                                  <td align="left" valign="top">
-                                    <div style="line-height: 17px;">
-                                      <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">These weekly reports are intended to give you a single pane view of how your data is evolving. Reachout to us if you need anything else or have any questions.</span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              </table>
-                            </div>
-                          </td>
+                          <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
                         </tr>
-                      </table>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
-                    <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="610" border="0" cellspacing="0" cellpadding="0" style="width: 610px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 610px;">
                         <tr>
-                          <td align="center" valign="top" height="142" style="height: 142px;">
-                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                              <tr>
-                                <td align="center" valign="top" style="font-size: 0px;">
-                                  <div style="display: inline-block; vertical-align: top; width: 100%; max-width: 305px;">
-                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
-                                      <tr>
-                                        <td align="left" valign="top" class="outf14" style="font-size: large;">
-                                          <div>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																<table width="305" border="0" cellspacing="0" cellpadding="0" style="width: 305px;">
-																																	<tr>
-																																		<td>
-																																			<![endif]-->
-                                            <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 305px;">
-                                              <tr>
-                                                <td align="left" valign="top" style="padding: 10px 5px;">
-                                                  <div>
-                                                    <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                                                      <tr>
-                                                        <td align="left" valign="top" bgcolor="#f3f6fb" style="padding: 18px; border-radius: 10px;">
-                                                          <div style="line-height: 24px;">
-                                                            <span style="font-family: Inter, sans-serif; font-weight: bold; font-size: 20px; color: #1a2229;">Total Data Assets</span>
-                                                          </div>
-                                                          <div style="height: 16px; line-height: 16px; font-size: 14px;">&nbsp;</div>
-                                                          <div style="line-height: 17px;">
-                                                            <span style="font-family: Inter, sans-serif; font-weight: bold; font-size: 28px; color: #7147e8;">${totalAssetObj.totalDataAssets}</span>
-                                                          </div>
-                                                          <div style="height: 16px; line-height: 16px; font-size: 14px;">&nbsp;</div>
-                                                          <div style="line-height: 17px;">
-                                                            <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">
-                                                              <span style="color:darkgreen">${totalAssetObj.percentChangeTotalAssets}</span> [${totalAssetObj.numberOfDaysChange} Days Change] </span>
-                                                          </div>
-                                                        </td>
-                                                      </tr>
-                                                    </table>
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            </table>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																		</td>
-																																	</tr>
-																																</table>
-																																<![endif]-->
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    </table>
-                                  </div>
-                                  <!--[if (gte mso 9)|(IE)]>
-																										</td>
-																										<td valign="top" width="305" style="width: 305px">
-																											<![endif]-->
-                                  <div style="display: inline-block; vertical-align: top; width: 100%; max-width: 305px;">
-                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
-                                      <tr>
-                                        <td align="left" valign="top" class="outf14" style="font-size: large;">
-                                          <div>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																<table width="305" border="0" cellspacing="0" cellpadding="0" style="width: 305px;">
-																																	<tr>
-																																		<td>
-																																			<![endif]-->
-                                            <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 305px;">
-                                              <tr>
-                                                <td align="left" valign="top" style="padding: 10px 5px;">
-                                                  <div>
-                                                    <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                                                      <tr>
-                                                        <td align="left" valign="top" bgcolor="#f3f6fb" style="padding: 0px; border-radius: 10px;">
-                                                          <div style="padding: 20px">
-                                                            <div style="line-height: 24px;">
-                                                              <span style="font-family: Inter, sans-serif; font-weight: bold; font-size: 20px; color: #1a2229;">Completed Desciption</span>
-                                                            </div>
-                                                            <div style="height: 10px; line-height: 16px; font-size: 14px;">&nbsp;</div>
-                                                            <div style="line-height: 17px;">
-                                                              <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">
-                                                                <span style="text-align: left">Current: ${descriptionObj.percentCompleted}% </sapn> | <span style="text-align: right">Target KPI: ${descriptionObj.targetKpi}% </sapn>
-                                                                  </span>
-                                                            </div>
-                                                          </div>
-                                                          <div style="line-height: 17px;"></div>
-                                                          <div style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;background: #E9EAEF; padding: 10px 20px;border-bottom-left-radius: 10px; border-bottom-right-radius:10px;">
-                                                            <span style="font-size: 14px; color:#666; text-align: left">
-                                                              <span style="color: darkgreen;">${descriptionObj.percentChange}%</span> [${descriptionObj.numberOfDaysChange} Days Change] </sapn>
-                                                          </div>
-                                                        </td>
-                                                      </tr>
-                                                    </table>
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            </table>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																		</td>
-																																	</tr>
-																																</table>
-																																<![endif]-->
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    </table>
-                                  </div>
-                                  <div style="display: inline-block; vertical-align: top; width: 100%; max-width: 305px;">
-                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
-                                      <tr>
-                                        <td align="left" valign="top" class="outf14" style="font-size: large; padding: 10px 5px;">
-                                          <div>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																<table width="305" border="0" cellspacing="0" cellpadding="0" style="width: 305px;">
-																																	<tr>
-																																		<td>
-																																			<![endif]-->
-                                            <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 305px;">
-                                              <tr>
-                                                <td align="left" valign="top">
-                                                  <div>
-                                                    <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                                                      <tr>
-                                                        <td align="left" valign="top" bgcolor="#f3f6fb" style="border-radius: 10px;">
-                                                          <div style="padding: 20px">
-                                                            <div style="line-height: 24px;">
-                                                              <span style="font-family: Inter, sans-serif; font-weight: bold; font-size: 20px; color: #1a2229;">Assigned Ownership</span>
-                                                            </div>
-                                                            <div style="height: 10px; line-height: 16px; font-size: 14px;">&nbsp;</div>
-                                                            <div style="line-height: 17px;">
-                                                              <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">
-                                                                <span style="text-align: left">Current: ${ownershipObj.percentCompleted}% </sapn> | <span style="text-align: right">Target KPI: ${ownershipObj.targetKpi}% </sapn>
-                                                                  </span>
-                                                            </div>
-                                                          </div>
-                                                          <div style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;background: #E9EAEF; padding: 10px 20px;border-bottom-left-radius: 10px; border-bottom-right-radius:10px;">
-                                                            <span style="font-size: 14px; color:#666; text-align: left">
-                                                              <span style="color: darkgreen;">${ownershipObj.percentChange}%</span> [${ownershipObj.numberOfDaysChange} Days Change] </sapn>
-                                                          </div>
-                                                        </td>
-                                                      </tr>
-                                                    </table>
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            </table>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																		</td>
-																																	</tr>
-																																</table>
-																																<![endif]-->
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    </table>
-                                  </div>
-                                  <!--[if (gte mso 9)|(IE)]>
-																										</td>
-																										<td valign="top" width="305" style="width: 305px">
-																											<![endif]-->
-                                  <div style="display: inline-block; vertical-align: top; width: 100%; max-width: 305px;">
-                                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
-                                      <tr>
-                                        <td align="left" valign="top" class="outf14" style="font-size: large;">
-                                          <div>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																<table width="305" border="0" cellspacing="0" cellpadding="0" style="width: 305px;">
-																																	<tr>
-																																		<td>
-																																			<![endif]-->
-                                            <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 305px;">
-                                              <tr>
-                                                <td align="left" valign="top" style="padding: 10px 5px;">
-                                                  <div>
-                                                    <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                                                      <tr>
-                                                        <td align="left" valign="top" bgcolor="#f3f6fb" style="border-radius: 10px;">
-                                                          <div style="padding: 20px">
-                                                            <div style="line-height: 24px;">
-                                                              <span style="font-family: Inter, sans-serif; font-weight: bold; font-size: 20px; color: #1a2229;">Assigned Tier</span>
-                                                            </div>
-                                                            <div style="height: 10px; line-height: 16px; font-size: 14px;">&nbsp;</div>
-                                                            <div style="line-height: 17px;">
-                                                              <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">
-                                                                <span style="text-align: left">Current: ${tierObj.percentCompleted}% </sapn>
-                                                                </span>
-                                                            </div>
-                                                          </div>
-                                                          <div style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;background: #E9EAEF; padding: 10px 20px;border-bottom-left-radius: 10px; border-bottom-right-radius:10px;">
-                                                            <span style="font-size: 14px; color:#666; text-align: left">
-                                                              <span style="color: darkgreen;">${tierObj.percentChange}%</span> [${tierObj.numberOfDaysChange} Days Change] </span>
-                                                          </div>
-                                                        </td>
-                                                      </tr>
-                                                    </table>
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            </table>
-                                            <!--[if (gte mso 9)|(IE)]>
-																																		</td>
-																																	</tr>
-																																</table>
-																																<![endif]-->
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    </table>
-                                  </div>
-                                </td>
-                              </tr>
+                          <td align="center" bgcolor="#ffffff">
+                            <table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" align="center">
+                              <tbody>
+                                <tr>
+                                  <td align="left" valign="top" style="text-align:left"><a href="#" target="_blank" data-saferedirecturl="#"><img src="https://i.imgur.com/NfITGha.png" width="150px" height="" /></a></td>
+                                  <td align="right" valign="center" style="font-family:poppins,Helvetica,arial,sans-serif;font-size:14px;line-height:21px;color:rgb(40,180,115);text-align: right"><img alt="" src="https://i.imgur.com/UXUftVC.png" width="150" height="auto" /></td>
+                                </tr>
+                              </tbody>
                             </table>
                           </td>
                         </tr>
-                      </table>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px;">
                         <tr>
-                          <td align="center" valign="middle">
-                            <div>
-                              <table border="0" cellspacing="0" cellpadding="0" width="100%">
+                          <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" width="100%">
+                      <tbody>
+                        <tr>
+                          <td bgcolor="#ffffff" height="30" style="line-height:30px;font-size:30px">&nbsp;</td>
+                        </tr>
+                        <tr>
+                          <td align="center" style="color:rgb(109,117,141);font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:400">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                              <tbody>
                                 <tr>
-                                  <td align="center" valign="middle" height="1" bgcolor="#1a2229" style="height: 1px;"></td>
+                                  <td width="100%" align="center" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:400;text-align:center">${startDate} - ${endDate}</td>
                                 </tr>
-                              </table>
-                            </div>
+                              </tbody>
+                            </table>
                           </td>
                         </tr>
-                      </table>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
-                    <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px;">
                         <tr>
-                          <td align="center" valign="middle">
-                            <div style="line-height: 17px;">
-                              <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">${totalAssetObj.completeMessage}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      </table>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
-                    <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px;">
-                        <tr>
-                          <td align="center" valign="middle">
-                            <div>
-                              <table border="0" cellspacing="0" cellpadding="0" width="100%">
+                          <td align="center">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
                                 <tr>
-                                  <td align="center" valign="middle" height="1" bgcolor="#1a2229" style="height: 1px;"></td>
+                                  <td bgcolor="#ffffff" height="5" style="line-height:5px;font-size:5px">&nbsp;</td>
                                 </tr>
-                              </table>
-                            </div>
+                                <tr>
+                                  <td width="480" align="center" style="color:#292929;font-family:poppins,Helvetica,Arial,sans-serif;font-size:25px;line-height:150%;font-weight:600">Your Weekly Update</td>
+                                </tr>
+                                <tr>
+                                  <td bgcolor="#ffffff" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td width="480" align="center" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:150%;font-weight:400">Our weekly reports are designed to give you a clear and complete view of how your data is changing over time.</td>
+                                </tr>
+                                <tr>
+                                  <td align="center" valign="top">
+                                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                      <tbody>
+                                        <tr>
+                                          <td height="10" style="line-height:10px;font-size:10px;height:10px">&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                          <td align="center" valign="top">
+                                            <table width="100%" border="0" cellspacing="0" cellpadding="10" role="presentation">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="center">
+                                                    <table border="0" cellspacing="0" cellpadding="0" role="presentation">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td bgcolor="#11A683" style="border-radius:5px;background-color:#7147E8"><a style="font-size:14px;font-family:poppins,Helvetica,Arial,sans-serif;font-weight:400;line-height:32px;color:#ffffff;text-align:center;text-decoration:none;display:block;background-color:#7147E8;padding:8px 32px;border-radius:5px" href="${viewReportUrl}" title="" target="_blank" data-saferedirecturl="#">View Details</a></td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
                           </td>
                         </tr>
-                      </table>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
-                    <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px;">
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#f8f8f8">
+                      <tbody>
                         <tr>
-                          <td align="left" valign="top">
-                            <div style="line-height: 17px;">
-                              <span style="font-family: Inter, sans-serif; font-size: 14px;">${descriptionObj.completeMessage}</span>
-                            </div>
+                          <td align="center" valign="top">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                              <tbody>
+                                <tr>
+                                  <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td align="center">
+                                    <table cellpadding="0" cellspacing="0" border="0">
+                                      <tbody>
+                                        <tr>
+                                          <td>
+                                            <table cellpadding="0" cellspacing="0" border="0">
+                                              <tbody>
+                                                <tr>
+                                                  <td valign="middle" align="center" width="400" height="45">
+                                                    <table cellpadding="0" cellspacing="0" border="0">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                                        </tr>
+                                                        <tr>
+                                                          <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                                        </tr>
+                                                        <tr>
+                                                          <td valign="top" style="color:#292929;font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:normal;font-weight:600;text-align: center;">Total Data Assets</td>
+                                                        </tr>
+                                                        <tr>
+                                                          <td colspan="3" style="line-height:18px;font-size:14px; text-align: center; color:#757575">${totalAssetObj.completeMessage}</td>
+                                                        </tr>
+                                                        <tr>
+                                                          <td colspan="3" style="color:#361A8F;font-family:poppins,Helvetica,Arial,sans-serif;font-size:30px;line-height:150%;font-weight:400; text-align: center"><strong>${totalAssetObj.totalDataAssets}</strong></td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td bgcolor="#f8f8f8" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                              </tbody>
+                            </table>
                           </td>
                         </tr>
-                      </table>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
-                    <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px;">
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
                         <tr>
-                          <td align="left" valign="top">
-                            <div style="line-height: 17px;">
-                              <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">${ownershipObj.completeMessage}</span>
-                            </div>
-                          </td>
+                          <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
                         </tr>
-                      </table>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
-                    <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                    <div>
-                      <!--[if (gte mso 9)|(IE)]>
-																		<table width="600" border="0" cellspacing="0" cellpadding="0" style="width: 600px;">
-																			<tr>
-																				<td>
-																					<![endif]-->
-                      <table border="0" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px;">
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
                         <tr>
-                          <td align="left" valign="top">
-                            <div style="line-height: 17px;">
-                              <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">${tierObj.completeMessage}.</span>
-                            </div>
+                          <td valign="middle" align="left" bgcolor="#FFFFFF" width="342">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:bold;">
+                                    <table cellpadding="0" cellspacing="0" border="0" width="95%">
+                                      <tbody>
+                                        <tr>
+                                          <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;"> Completed Description</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:normal">${descriptionObj.completeMessage}</td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <#if descriptionObj.kpiAvailable> 
+                                  <tr>
+                                    <td width="30"></td>
+                                    <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"><span style="color:#292929; font-weight: 600">Target KPI:</span> ${descriptionObj.targetKpi}% | <span style="color:#292929 ; font-weight: 600">Current KPI:</span> ${descriptionObj.percentCompleted}%</td>
+                                  </tr>
+                                </#if>  
+                              </tbody>
+                            </table>
+                          </td>
+                          <td valign="middle" align="right" bgcolor="#f8f8f8" width="208" height="210">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td align="right" style="color:#292929;font-family:poppins,Helvetica,Arial,sans-serif;font-size:32px;line-height:normal;font-weight:bold">${descriptionObj.percentCompleted}</td>
+                                </tr>
+                                <tr>
+                                  <td align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">Completed Description</td>
+                                </tr>
+                                <tr>
+                                  <td align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td valign="bottom" width="160" align="right" style="color:rgb(253,253,253);font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">
+                                    <table cellpadding="0" cellspacing="0" border="0">
+                                      <tbody>
+                                        <tr>
+                                          <td align="right" valign="bottom" bgcolor="#f8f8f8" width="100%" height="40">
+                                            <table cellspacing="0" cellpadding="0" border="0" align="right">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="right" valign="bottom">
+                                                    <table cellpadding="0" cellspacing="0" border="0" align="right">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td width="2"></td>
+                                                          <#list descriptionObj.dateMap?keys as key>
+                                                            <td valign="bottom">
+                                                              <table cellspacing="0" cellpadding="0" border="0" width="10" align="left">
+                                                                <tbody>
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#48CA9E" height="0" style="line-height:0px;font-size:0px">&nbsp;</td>
+                                                                  </tr>
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#48CA9E" height="${descriptionObj.dateMap[key]}" style="line-height:${descriptionObj.dateMap[key]}px;font-size:40px; border-radius: 50px">&nbsp;</td>
+                                                                  </tr>
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                            <td width="30"></td>
+                                                          </#list>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                                <tr>
+                                                  <td width="100%" bgcolor="#757575" height="1" style="line-height:1px;font-size:1px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td width="160" align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td width="5"></td>
+                                                  <#list descriptionObj.dateMap?keys as key>
+                                                    <td valign="bottom" align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:8px;line-height:150%;font-weight:normal;text-transform:uppercase;letter-spacing:0.3px" aria-label="DescriptionGraph ${key}">${key}</td>
+                                                    <td width="30"></td>
+                                                  </#list>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                  <td width="15"></td>
+                                  <td width="15"></td>
+                                </tr>
+                                <tr>
+                                  <td colspan="3" bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                </tr>
+                              </tbody>
+                            </table>
                           </td>
                         </tr>
-                      </table>
-                      <#if tierObj.tierMap?size gt 0>
-                        <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                        <table width="90%" style="border: 1px solid #e2e2e2; font-family: Poppins, sans-serif;">
-                          <tr style="border: 1px solid #cccccc;">
-                            <td style="padding: 10px;margin: 10px; font-size: 18px; font-weight: bold;border: 1px solid #cccccc;" align="center">Tier Type</td>
-                            <td style="padding: 10px;margin: 10px; font-size: 18px; font-weight: bold;border: 1px solid #cccccc;" align="center">Percentage</td>
-                          </tr>
-                          <#list tierObj.tierMap?keys as key>
-                            <tr style="border: 1px solid #cccccc;">
-                              <td style="padding: 10px;margin: 10px;border: 1px solid #cccccc;" align="center">${key}</td>
-                              <td style="padding: 10px;margin: 10px;border: 1px solid #cccccc;" align="center">
-                                <span style="padding: 5px; background: #F3F4F8; border-radius: 5px">${tierObj.tierMap[key]} <span>
-                              </td>
-                            </tr>
-                          </#list>
-                        </table>
-                      </#if>
-                      <div style="height: 20px; line-height: 20px; font-size: 18px;">&nbsp;</div>
-                      <a target="_blank" href="${viewReportUrl}" style="background-color: #7147e8;font-size: 16px;font-weight: normal;line-height: 45px;width: 345px;color: #ffffff;border-radius: 4px;display: inline-block;font-family: Poppins, sans-serif;text-align: center;text-decoration: none;-webkit-text-size-adjust: none;">View Detailed Report in OpenMetadata</a>
-                      <!--[if (gte mso 9)|(IE)]>
-																				</td>
-																			</tr>
-																		</table>
-																		<![endif]-->
-                    </div>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        <tr>
+                          <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        <tr>
+                          <td valign="middle" align="left" bgcolor="#FFFFFF" width="342">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:bold;">
+                                    <table cellpadding="0" cellspacing="0" border="0" width="95%">
+                                      <tbody>
+                                        <tr>
+                                          <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;"> Assigned Ownership</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:rgb(131,132,135);font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:normal">${ownershipObj.completeMessage}</td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <#if ownershipObj.kpiAvailable> 
+                                  <tr>
+                                    <td width="30"></td>
+                                    <td colspan="2" bgcolor="#FFFFFF" height="20" style="font-size:12px; color:#757575"><span style="color:#292929; font-weight: 600">Target KPI:</span> ${ownershipObj.targetKpi}% | <span style="color:#292929 ; font-weight: 600">Current KPI:</span> ${ownershipObj.percentCompleted}%</td>
+                                  </tr>
+                                </#if>
+                              </tbody>
+                            </table>
+                          </td>
+                          <td valign="middle" align="right" bgcolor="#f8f8f8" width="208" height="210">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td align="right" style="color:#292929;font-family:poppins,Helvetica,Arial,sans-serif;font-size:32px;line-height:normal;font-weight:bold">${ownershipObj.percentCompleted}</td>
+                                </tr>
+                                <tr>
+                                  <td align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">Assigned Ownership</td>
+                                </tr>
+                                <tr>
+                                  <td align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td valign="bottom" width="160" align="right" style="color:rgb(253,253,253);font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">
+                                    <table cellpadding="0" cellspacing="0" border="0">
+                                      <tbody>
+                                        <tr>
+                                          <td align="right" valign="bottom" bgcolor="#f8f8f8" width="100%" height="40">
+                                            <table cellspacing="0" cellpadding="0" border="0" align="right">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="right" valign="bottom">
+                                                    <table cellpadding="0" cellspacing="0" border="0" align="right">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td width="2"></td>
+                                                          <#list ownershipObj.dateMap?keys as key>
+                                                            <td valign="bottom">
+                                                              <table cellspacing="0" cellpadding="0" border="0" width="10" align="left">
+                                                                <tbody>
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#48CA9E" height="0" style="line-height:0px;font-size:0px">&nbsp;</td>
+                                                                  </tr>
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#FF7C50" height="${ownershipObj.dateMap[key]}" style="line-height:${ownershipObj.dateMap[key]}px;font-size:40px; border-radius: 50px">&nbsp;</td>
+                                                                  </tr>
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                            <td width="30"></td>
+                                                          </#list>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                                <tr>
+                                                  <td width="100%" bgcolor="#757575" height="1" style="line-height:1px;font-size:1px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td width="160" align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td width="5"></td>
+                                                  <#list ownershipObj.dateMap?keys as key>
+                                                    <td valign="bottom" align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:8px;line-height:150%;font-weight:normal;text-transform:uppercase;letter-spacing:0.3px" aria-label="OwnershipGraph ${key}">${key}</td>
+                                                    <td width="30"></td>
+                                                  </#list>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                  <td width="15"></td>
+                                  <td width="15"></td>
+                                </tr>
+                                <tr>
+                                  <td colspan="3" bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        <tr>
+                          <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        <tr>
+                          <td valign="middle" align="left" bgcolor="#FFFFFF" width="342">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:bold;">
+                                    <table cellpadding="0" cellspacing="0" border="0" width="95%">
+                                      <tbody>
+                                        <tr>
+                                          <td align="left" style="color:rgb(46,53,67);font-family:poppins,Helvetica,Arial,sans-serif;font-size:20px;line-height:150%;font-weight:600;">Assigned Tier</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td width="30"></td>
+                                  <td align="left" style="color:rgb(131,132,135);font-family:poppins,Helvetica,Arial,sans-serif;font-size:14px;line-height:150%;font-weight:normal">${tierObj.completeMessage}</td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" bgcolor="#FFFFFF" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                          <td valign="middle" align="right" bgcolor="#f8f8f8" width="208" height="210">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td align="right" style="color:#292929;font-family:poppins,Helvetica,Arial,sans-serif;font-size:32px;line-height:normal;font-weight:bold">${tierObj.percentCompleted}</td>
+                                </tr>
+                                <tr>
+                                  <td align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">Assigned Tier</td>
+                                </tr>
+                                <tr>
+                                  <td align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                  <td valign="bottom" width="160" align="right" style="color:rgb(253,253,253);font-family:poppins,Helvetica,Arial,sans-serif;font-size:15px;line-height:normal;font-weight:normal">
+                                    <table cellpadding="0" cellspacing="0" border="0">
+                                      <tbody>
+                                        <tr>
+                                          <td align="right" valign="bottom" bgcolor="#f8f8f8" width="100%" height="40">
+                                            <table cellspacing="0" cellpadding="0" border="0" align="right">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="right" valign="bottom">
+                                                    <table cellpadding="0" cellspacing="0" border="0" align="right">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td width="2"></td>
+                                                          <#list tierObj.dateMap?keys as key>
+                                                            <td valign="bottom">
+                                                              <table cellspacing="0" cellpadding="0" border="0" width="10" align="left">
+                                                                <tbody>                                                         
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#f8f8f8" height="0" style="line-height:0px;font-size:0px">&nbsp;</td>
+                                                                  </tr>
+                                                                  <tr>
+                                                                    <td valign="bottom" bgcolor="#FFAB2A" height="${tierObj.dateMap[key]}" style="line-height:${tierObj.dateMap[key]}px;font-size:40px; border-radius: 50px">&nbsp;</td>
+                                                                  </tr>
+                                                                </tbody>
+                                                              </table>
+                                                            </td>
+                                                            <td width="30"></td>
+                                                          </#list>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                                <tr>
+                                                  <td width="100%" bgcolor="#757575" height="1" style="line-height:1px;font-size:1px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td width="160" align="right" valign="bottom">
+                                            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td width="5"></td>
+                                                  <#list ownershipObj.dateMap?keys as key>
+                                                    <td valign="bottom" align="right" style="color:#757575;font-family:poppins,Helvetica,Arial,sans-serif;font-size:8px;line-height:150%;font-weight:normal;text-transform:uppercase;letter-spacing:0.3px" aria-label="TierGraph ${key}">${key}</td>
+                                                    <td width="30"></td>
+                                                  </#list>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                  <td width="15"></td>
+                                  <td width="15"></td>
+                                </tr>
+                                <tr>
+                                  <td colspan="3" bgcolor="#f8f8f8" height="10" style="line-height:10px;font-size:10px">&nbsp;</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        <tr>
+                          <td bgcolor="#ffffff" height="20" style="line-height:20px;font-size:20px">&nbsp;</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        <tr>
+                          <td align="center" bgcolor="#FFFFFF">
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%"></table>
+                            <table align="center" width="100%" cellpadding="0" cellspacing="0" border="0">
+                              <tbody>
+                                <tr>
+                                  <td align="center">
+                                    <table width="560" cellpadding="0" cellspacing="0" border="0" align="center">
+                                      <tbody>
+                                        <tr>
+                                          <td align="left" height="28" valign="top" style="font-size:1px;line-height:1px">&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                          <td align="center" valign="top" style="font-family:poppins,Helvetica,arial,sans-serif;font-size:13px;line-height:20px;color:rgb(153,153,153)">© 2024 Collate, All Rights Reserved</td>
+                                        </tr>
+                                        <tr>
+                                          <td align="left" height="20" valign="top" style="font-size:1px;line-height:1px">&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                          <td align="center">
+                                            <table width="200" cellpadding="0" cellspacing="0" border="0" align="center">
+                                              <tbody>
+                                                <tr>
+                                                  <td align="center" width="20"><a href="https://twitter.com/open_metadata" target="_blank" data-saferedirecturl="#"><img src="https://i.imgur.com/W16fhn9.png" width="30" height="30" /></a></td>
+                                                  <td align="center" width="20"><a href="https://www.youtube.com/c/OpenMetadataChannel" style="text-decoration:none" target="_blank" data-saferedirecturl="#"><img src="https://i.imgur.com/Yt3HXzq.png" width="30" height="30" /></a></td>
+                                                  <td align="center" width="20"><a href="https://www.linkedin.com/company/collateinc/mycompany/" style="text-decoration:none" target="_blank" data-saferedirecturl="#"><img src="https://i.imgur.com/UurF46X.png" width="30" height="30" /></a></td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td align="left" height="20" valign="top" style="font-size:1px;line-height:1px">&nbsp;</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
-              </table>
-              <!--[if (gte mso 9)|(IE)]>
-													</td>
-												</tr>
-											</table>
-											<![endif]-->
-            </div>
+              </tbody>
+            </table>
           </td>
         </tr>
-      </table>
-    </div>
+      </tbody>
+    </table>
   </body>
 </html>

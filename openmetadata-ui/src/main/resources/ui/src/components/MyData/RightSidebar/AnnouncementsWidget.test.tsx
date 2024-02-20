@@ -58,7 +58,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../Loader/Loader', () =>
+jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 

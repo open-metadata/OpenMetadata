@@ -1,4 +1,35 @@
 # E2E Labels when source files are changes
-e2eLineage:
-  - 'openmetadata-ui/**/*lineage*'
-  - 'openmetadata-ui/**/*Lineage*'
+"e2e:Settings":
+  - "openmetadata-ui/**/*setting*"
+
+"e2e:DataAssets":
+  - "openmetadata-ui/**/*database*"
+  - "openmetadata-ui/**/*table*"
+  - "openmetadata-ui/**/*topic*"
+  - "openmetadata-ui/**/*dashboard*"
+  - "openmetadata-ui/**/*pipeline*"
+  - "openmetadata-ui/**/*mlmodel*"
+  - "openmetadata-ui/**/*container*"
+  - "openmetadata-ui/**/*serachindex*"
+  - "openmetadata-ui/**/*task*"
+  - "openmetadata-ui/**/*search*"
+  - "openmetadata-ui/**/*mydata*"
+  - "openmetadata-ui/**/*explore*"
+
+"e2e:Governance":
+  - "openmetadata-ui/**/*glossary*"
+  - "openmetadata-ui/**/*tag*"
+  - "openmetadata-ui/**/*domain*"
+
+"e2e:Observability":
+  - "openmetadata-ui/**/*alert*"
+  - "openmetadata-ui/**/*incidentmanager*"
+  - "openmetadata-ui/**/*metric*"
+  - "openmetadata-ui/**/*dataquality*"
+  - "openmetadata-ui/**/*datainsight*"
+  - "openmetadata-ui/**/*observability*"
+
+"e2e:Integration":
+  - "openmetadata-ui/**/*integration*"
+  - "openmetadata-ui/**/*ingestion*"
+  - "openmetadata-ui/**/*service*"
