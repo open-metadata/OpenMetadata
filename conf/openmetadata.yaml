@@ -312,12 +312,18 @@ fernetConfiguration:
 secretsManagerConfiguration:
   secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws", "managed-aws-ssm"
   prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
-  tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource, e.g., in AWS. Format is `[key1:value1,key2:value2,...]`
+  tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
   parameters:
+    ## For AWS
     region: ${OM_SM_REGION:-""}
     accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
     secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
+    ## For Azure Key Vault
+    clientId: ${OM_SM_CLIENT_ID:-""}
+    clientSecret: ${OM_SM_CLIENT_SECRET:-""}
+    tenantId: ${OM_SM_TENANT_ID:-""}
+    vaultName: ${OM_SM_VAULT_NAME:-""}
 
 health:
   delayedShutdownHandlerEnabled: true
