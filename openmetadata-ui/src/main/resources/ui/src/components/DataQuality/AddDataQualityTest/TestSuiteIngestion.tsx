@@ -13,7 +13,8 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { camelCase, isEmpty } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { camelCase, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -151,38 +152,24 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const onUpdateIngestionPipeline = async (repeatFrequency: string) => {
-    const {
-      airflowConfig,
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
-    } = ingestionPipeline as IngestionPipeline;
+    if (isUndefined(ingestionPipeline)) {
+      return;
+    }
 
     const updatedPipelineData = {
+      ...ingestionPipeline,
       airflowConfig: {
-        ...airflowConfig,
+        ...ingestionPipeline?.airflowConfig,
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
       },
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
     };
-
+    const jsonPatch = compare(ingestionPipeline, updatedPipelineData);
     try {
       const response = await updateIngestionPipeline(
-        updatedPipelineData as CreateIngestionPipeline
+        ingestionPipeline?.id ?? '',
+        jsonPatch
       );
       handleIngestionDeploy(response.id);
     } catch (error) {

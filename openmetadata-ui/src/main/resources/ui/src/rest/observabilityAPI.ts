@@ -114,11 +114,3 @@ export const getResourceFunctions = async () => {
 
   return response.data;
 };
-
-export const triggerEventById = async (id: string) => {
-  const response = await axiosClient.put<EventSubscription>(
-    `${BASE_URL}/trigger/${id}`
-  );
-
-  return response.data;
-};
