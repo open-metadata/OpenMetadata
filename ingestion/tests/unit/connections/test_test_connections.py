@@ -15,7 +15,6 @@ def assert_execute(engine, expected_query):
 
 
 def create_mock_connect(mock):
-
     @contextmanager
     def mock_connect(*_, **__):
         yield mock
