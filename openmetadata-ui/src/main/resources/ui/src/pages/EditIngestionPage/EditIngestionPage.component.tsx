@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -34,7 +35,6 @@ import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   IngestionPipeline,
   PipelineType,
@@ -180,55 +180,33 @@ const EditIngestionPage = () => {
     });
   };
 
-  const onEditIngestionSave = (data: IngestionPipeline) => {
+  const onEditIngestionSave = async (data: IngestionPipeline) => {
     if (!ingestionData.deployed) {
       setIngestionProgress(INGESTION_PROGRESS_START_VAL);
     }
-    const {
-      airflowConfig,
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
-    } = data;
-    const updateData = {
-      airflowConfig,
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
-    };
 
-    return new Promise<void>((resolve, reject) => {
-      return updateIngestionPipeline(updateData as CreateIngestionPipeline)
-        .then((res) => {
-          if (res) {
-            onIngestionDeploy();
-            resolve();
-          } else {
-            throw t('server.entity-updating-error', {
-              entity: t('label.ingestion-workflow-lowercase'),
-            });
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-updating-error', {
-              entity: t('label.ingestion-workflow-lowercase'),
-            })
-          );
-          reject();
+    const jsonPatch = compare(ingestionData, data);
+
+    try {
+      const res = await updateIngestionPipeline(
+        ingestionData.id ?? '',
+        jsonPatch
+      );
+      if (res) {
+        onIngestionDeploy();
+      } else {
+        throw t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
         });
-    });
+      }
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
+        })
+      );
+    }
   };
 
   const goToSettingsPage = () => {

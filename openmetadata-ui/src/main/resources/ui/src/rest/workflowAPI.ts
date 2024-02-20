@@ -38,15 +38,6 @@ export const addWorkflow = async (data: CreateWorkflow) => {
   return response.data;
 };
 
-export const updateWorkflow = async (data: CreateWorkflow) => {
-  const response = await APIClient.put<CreateWorkflow, AxiosResponse<Workflow>>(
-    `automations/workflows`,
-    data
-  );
-
-  return response.data;
-};
-
 /**
  *
  * @param workflowId workflow to run

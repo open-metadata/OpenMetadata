@@ -117,19 +117,6 @@ export const postService = async (
   return response.data;
 };
 
-export const updateService = async (
-  serviceCat: string,
-  _id: string,
-  options: ServicesUpdateRequest
-) => {
-  const response = await APIClient.put<
-    ServicesUpdateRequest,
-    AxiosResponse<ServicesType>
-  >(`/services/${serviceCat}`, options);
-
-  return response.data;
-};
-
 export const patchService = async (
   serviceCat: string,
   id: string,

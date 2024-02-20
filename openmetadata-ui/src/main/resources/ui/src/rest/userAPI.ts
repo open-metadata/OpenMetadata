@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -122,6 +122,15 @@ export const updateUser = (
   data: User | CreateUser
 ): Promise<AxiosResponse<User>> => {
   return APIClient.put('/users', data);
+};
+
+export const restoreUser = async (id: string) => {
+  const response = await APIClient.put<RestoreRequestType, AxiosResponse<User>>(
+    `/users/restore`,
+    { id }
+  );
+
+  return response.data;
 };
 
 export const getUserCounts = (): Promise<AxiosResponse<unknown>> => {

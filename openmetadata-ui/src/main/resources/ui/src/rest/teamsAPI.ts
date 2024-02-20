@@ -80,15 +80,6 @@ export const deleteTeam = async (id: string) => {
   return response.data;
 };
 
-export const updateTeam = async (data: CreateTeam) => {
-  const response = await APIClient.put<CreateTeam, AxiosResponse<Team>>(
-    '/teams',
-    data
-  );
-
-  return response.data;
-};
-
 export const restoreTeam = async (id: string) => {
   const response = await APIClient.put<RestoreRequestType, AxiosResponse<Team>>(
     '/teams/restore',

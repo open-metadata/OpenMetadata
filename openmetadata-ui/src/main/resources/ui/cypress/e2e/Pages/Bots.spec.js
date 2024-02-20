@@ -105,7 +105,7 @@ describe('Bots Page should work properly', { tags: 'Settings' }, () => {
     cy.get(descriptionBox).type(description);
     // Click on save button
     cy.wait(1000);
-    interceptURL('PUT', '/api/v1/bots', 'createBot');
+    interceptURL('post', '/api/v1/bots', 'createBot');
     cy.get('[data-testid="save-user"]')
       .scrollIntoView()
       .should('be.visible')

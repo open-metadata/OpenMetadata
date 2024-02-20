@@ -46,13 +46,12 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchData } from '../../rest/miscAPI';
-import { getUsers, updateUser, UsersQueryParams } from '../../rest/userAPI';
+import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -277,19 +276,9 @@ const UserListPageV1 = () => {
       return;
     }
     setIsLoading(true);
-    const updatedUserData: CreateUser = {
-      description: selectedUser.description,
-      displayName: selectedUser.displayName,
-      email: selectedUser.email,
-      isAdmin: selectedUser.isAdmin,
-      name: selectedUser.name,
-      profile: selectedUser.profile,
-      roles: selectedUser.roles?.map((role) => role.id),
-      teams: selectedUser.teams?.map((team) => team.id),
-    };
 
     try {
-      const { data } = await updateUser(updatedUserData);
+      const data = await restoreUser(selectedUser.id);
       if (data) {
         handleSearch('');
         showSuccessToast(
