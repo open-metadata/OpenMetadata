@@ -64,6 +64,7 @@ class Dialects(Enum):
     Hive = "hive"
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
+    Ibmi = "ibmi"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"
