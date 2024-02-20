@@ -530,6 +530,8 @@ def metadata(args=None):
         )
 
 if __name__ == '__main__':
+    # args=['--debug', 'ingest', '-c', '/Users/ilanzaitoun/PycharmProjects/OpenMetadata/ingestion/src/metadata/examples/workflows/a_rivery_example.yaml']
     args=['--debug', 'ingest', '-c', '/Users/ilanzaitoun/PycharmProjects/OpenMetadata/ingestion/src/metadata/examples/workflows/airbyte_rivery_adj.yaml']
     metadata(args=args)
     # /Users/ilanzaitoun/PycharmProjects/OpenMetadata/ingestion/src/metadata/cmd.py
+    

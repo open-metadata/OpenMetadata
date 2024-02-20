@@ -12,7 +12,6 @@
  */
 
 import Form, { IChangeEvent } from '@rjsf/core';
-import validator from '@rjsf/validator-ajv8';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isNil } from 'lodash';
 import { LoadingState } from 'Models';
@@ -183,21 +182,33 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         serviceCategory={serviceCategory}
         status={status}
         uiSchema={connSch.uiSchema}
-        validator={validator}
+        validator={{
+          isValid: () => true,
+          validateFormData: () => ({
+            errors: [],
+            errorSchema: {},
+          }),
+          rawValidation: () => ({
+            errors: [],
+          }),
+        }}
         onCancel={onCancel}
         onFocus={onFocus}
-        onSubmit={handleSave}>
+        onSubmit={handleSave}
+      >
         {isEmpty(connSch.schema) && (
           <div
             className="text-grey-muted text-center"
-            data-testid="no-config-available">
+            data-testid="no-config-available"
+          >
             {t('message.no-config-available')}
           </div>
         )}
         {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
           <div
             className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
-            data-testid="ip-address">
+            data-testid="ip-address"
+          >
             <div className="self-center">
               {t('message.airflow-host-ip-address', { hostIp })}
             </div>
