@@ -218,7 +218,7 @@ MOCK_OWNER = EntityReference(
 
 MOCK_USER = [
     User(
-        id=uuid.uuid4(),
+        id="70064aef-f085-4658-a11a-b5f46568e988",
         name="aaron_johnson0",
         email="aaron_johnson0@gmail.com",
         href="http://localhost:8585/api/v1/users/d96eccb9-9a9b-40ad-9585-0a8a71665c51",
@@ -474,7 +474,9 @@ class DbtUnitTest(TestCase):
         result = self.dbt_source_obj.get_dbt_owner(
             manifest_node=manifest_node, catalog_node=None
         )
-        self.assertEqual("aaron_johnson0", result.fullyQualifiedName)
+        self.assertEqual(
+            "70064aef-f085-4658-a11a-b5f46568e988", result.id.__root__.__str__()
+        )
 
     def execute_test(self, mock_manifest, expected_records, expected_data_models):
         dbt_files, dbt_objects = self.get_dbt_object_files(mock_manifest)
