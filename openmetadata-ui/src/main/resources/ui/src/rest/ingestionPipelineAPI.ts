@@ -126,15 +126,6 @@ export const updateIngestionPipeline = async (
   return response.data;
 };
 
-export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
-  const response = await APIClient.patch<
-    Operation[],
-    AxiosResponse<IngestionPipeline>
-  >(`/services/ingestionPipelines/${id}`, data);
-
-  return response.data;
-};
-
 export const getAirflowStatus = async () => {
   const response = await APIClient.get<PipelineServiceClientResponse>(
     '/services/ingestionPipelines/status'
