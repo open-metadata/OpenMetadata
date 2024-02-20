@@ -2,7 +2,6 @@ from contextlib import contextmanager
 from unittest.mock import Mock
 
 import pytest
-import sqlalchemy
 from sqlalchemy import create_engine
 
 from metadata.ingestion.connections.test_connections import test_connection_engine_step
