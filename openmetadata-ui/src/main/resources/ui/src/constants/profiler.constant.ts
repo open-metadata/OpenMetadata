@@ -19,7 +19,7 @@ import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
   DataType,
-  PartitionIntervalType,
+  FieldName as PartitionIntervalTypes,
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';
@@ -346,13 +346,14 @@ export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
 ];
 
 export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
-  [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
-  [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
-  [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
-  [PartitionIntervalType.ColumnValue]: [DataType.Varchar, DataType.String],
+  [PartitionIntervalTypes.IngestionTime]:
+    SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalTypes.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalTypes.IntegerRange]: [DataType.Int, DataType.Bigint],
+  [PartitionIntervalTypes.ColumnValue]: [DataType.Varchar, DataType.String],
 };
 
-export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(
+export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalTypes).map(
   (value) => ({
     value,
     label: value,
@@ -392,8 +393,8 @@ export const PROFILER_MODAL_LABEL_STYLE = {
 };
 
 export const TIME_BASED_PARTITION = [
-  PartitionIntervalType.IngestionTime,
-  PartitionIntervalType.TimeUnit,
+  PartitionIntervalTypes.IngestionTime,
+  PartitionIntervalTypes.TimeUnit,
 ];
 
 export const TEST_CASE_TYPE_OPTION = [

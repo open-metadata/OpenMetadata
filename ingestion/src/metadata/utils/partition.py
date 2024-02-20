@@ -11,10 +11,11 @@
 
 """Partition utility"""
 
-from typing import Optional
+from typing import List, Optional
 
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionIntervalTypes,
+    PartitionColumnDetails,
     PartitionIntervalUnit,
     PartitionProfilerConfig,
     Table,
@@ -44,47 +45,53 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
         and entity.serviceType == DatabaseServiceType.BigQuery
     ):
         if hasattr(entity, "tablePartition") and entity.tablePartition:
-            if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
+            column_partitions: Optional[List[PartitionColumnDetails]] = entity.tablePartition.columns
+            if not column_partitions:
+                raise TypeError("table partition missing. Skipping table")
+
+            partiton = column_partitions[0]
+
+            if partiton.intervalType == PartitionIntervalTypes.TIME_UNIT:
                 return PartitionProfilerConfig(
                     enablePartitioning=True,
-                    partitionColumnName=entity.tablePartition.columns[0],
+                    partitionColumnName=partiton.columnName,
                     partitionIntervalUnit=PartitionIntervalUnit.DAY
-                    if entity.tablePartition.interval != "HOUR"
-                    else entity.tablePartition.interval,
+                    if partiton.interval != "HOUR"
+                    else partiton.interval,
                     partitionInterval=1,
-                    partitionIntervalType=entity.tablePartition.intervalType.value,
+                    partitionIntervalType=partiton.intervalType.value,
                     partitionValues=None,
                     partitionIntegerRangeStart=None,
                     partitionIntegerRangeEnd=None,
                 )
-            if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
+            if partiton.intervalType == PartitionIntervalTypes.INGESTION_TIME:
                 return PartitionProfilerConfig(
                     enablePartitioning=True,
                     partitionColumnName="_PARTITIONDATE"
-                    if entity.tablePartition.interval == "DAY"
+                    if partiton.interval == "DAY"
                     else "_PARTITIONTIME",
                     partitionIntervalUnit=PartitionIntervalUnit.DAY
-                    if entity.tablePartition.interval != "HOUR"
-                    else entity.tablePartition.interval,
+                    if partiton.interval != "HOUR"
+                    else partiton.interval,
                     partitionInterval=1,
-                    partitionIntervalType=entity.tablePartition.intervalType.value,
+                    partitionIntervalType=partiton.intervalType.value,
                     partitionValues=None,
                     partitionIntegerRangeStart=None,
                     partitionIntegerRangeEnd=None,
                 )
-            if entity.tablePartition.intervalType == IntervalType.INTEGER_RANGE:
+            if partiton.intervalType == PartitionIntervalTypes.INTEGER_RANGE:
                 return PartitionProfilerConfig(
                     enablePartitioning=True,
-                    partitionColumnName=entity.tablePartition.columns[0],
+                    partitionColumnName=partiton.columnName,
                     partitionIntervalUnit=None,
                     partitionInterval=None,
-                    partitionIntervalType=entity.tablePartition.intervalType.value,
+                    partitionIntervalType=partiton.intervalType.value,
                     partitionValues=None,
                     partitionIntegerRangeStart=1,
                     partitionIntegerRangeEnd=10000,
                 )
             raise TypeError(
-                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
+                f"Unsupported partition type {partiton.intervalType}. Skipping table"
             )
 
     return None

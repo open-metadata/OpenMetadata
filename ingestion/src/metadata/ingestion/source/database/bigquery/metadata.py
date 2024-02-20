@@ -33,9 +33,10 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
+    PartitionColumnDetails,
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -495,7 +496,7 @@ class BigquerySource(
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
         """
@@ -504,30 +505,36 @@ class BigquerySource(
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
                 table_partition = TablePartition(
-                    interval=str(table.time_partitioning.type_),
-                    intervalType=IntervalType.TIME_UNIT.value,
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=table.time_partitioning.field,
+                            interval=str(table.time_partitioning.type_),
+                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                        )
+                    ]
                 )
-                table_partition.columns = [table.time_partitioning.field]
                 return True, table_partition
-
             return True, TablePartition(
-                interval=str(table.time_partitioning.type_),
-                intervalType=IntervalType.INGESTION_TIME.value,
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=None,
+                        interval=str(table.time_partitioning.type_),
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME,   
+                    )
+                ]
             )
         if table.range_partitioning:
-            table_partition = TablePartition(
-                intervalType=IntervalType.INTEGER_RANGE.value,
+            table_partition = PartitionColumnDetails(
+                columnName=None,
+                intervalType=PartitionIntervalTypes.INTEGER_RANGE,
+                interval=None,
             )
             if hasattr(table.range_partitioning, "range_") and hasattr(
                 table.range_partitioning.range_, "interval"
             ):
                 table_partition.interval = table.range_partitioning.range_.interval
-            if (
-                hasattr(table.range_partitioning, "field")
-                and table.range_partitioning.field
-            ):
-                table_partition.columns = [table.range_partitioning.field]
-            return True, table_partition
+            table_partition.columnName = table.range_partitioning.field
+            return True, TablePartition(columns=[table_partition])
         return False, None
 
     def clean_raw_data_type(self, raw_data_type):

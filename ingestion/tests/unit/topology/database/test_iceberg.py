@@ -43,6 +43,7 @@ from pyiceberg.types import (
     TimeType,
     UUIDType,
 )
+from metadata.generated.schema.entity.data.table import PartitionIntervalTypes
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -55,6 +56,7 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     TablePartition,
     TableType,
+    PartitionColumnDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
@@ -792,7 +794,10 @@ class IcebergUnitTest(TestCase):
             columns=[
                 MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()
             ],
-            tablePartition=TablePartition(columns=["binary"]),
+            tablePartition=TablePartition(columns=[
+                PartitionColumnDetails(columnName="binary", intervalType=PartitionIntervalTypes.COLUMN_VALUE, interval=None)
+                ]
+            ),
             databaseSchema=fq_database_schema,
         )
 

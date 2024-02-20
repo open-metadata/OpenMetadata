@@ -51,7 +51,7 @@ mock_redshift_config = {
 
 RAW_DIST_STYLE = ["KEY(eventid)", "EVEN", "ALL"]
 
-EXPECTED_PARTITION_COLUMNS = [["eventid"], None, None]
+EXPECTED_PARTITION_COLUMNS = ["eventid", None, None]
 
 
 class RedshiftUnitTest(TestCase):
@@ -69,7 +69,8 @@ class RedshiftUnitTest(TestCase):
 
     def test_partition_parse_columns(self):
         for i in range(len(RAW_DIST_STYLE)):
-            assert (
-                self.redshift_source._get_partition_key(RAW_DIST_STYLE[i])
-                == EXPECTED_PARTITION_COLUMNS[i]
-            )
+            with self.subTest(i=i):
+                self.assertEqual(
+                    self.redshift_source._get_partition_key(RAW_DIST_STYLE[i]),
+                    EXPECTED_PARTITION_COLUMNS[i],
+                )

@@ -21,6 +21,7 @@ import java.util.Locale;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableType;
@@ -74,8 +75,8 @@ public final class DatabaseUtil {
     }
     List<String> columnNames = new ArrayList<>();
     columns.forEach(c -> columnNames.add(c.getName()));
-    for (String columnName : tablePartition.getColumns()) {
-      if (!columnNames.contains(columnName)) {
+    for (PartitionColumnDetails partitionColumnDetails : tablePartition.getColumns()) {
+      if (!columnNames.contains(partitionColumnDetails.getColumnName())) {
         throw new IllegalArgumentException("Invalid column name found in table partition");
       }
     }

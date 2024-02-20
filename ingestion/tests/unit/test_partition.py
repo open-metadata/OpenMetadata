@@ -14,10 +14,10 @@
 from typing import Optional
 
 from pydantic import BaseModel
+from metadata.generated.schema.entity.data.table import PartitionColumnDetails
 
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
-    PartitionIntervalType,
+    PartitionIntervalTypes,
     PartitionIntervalUnit,
     PartitionProfilerConfig,
     TablePartition,
@@ -66,13 +66,19 @@ def test_get_partition_details():
 
     assert partition.enablePartitioning == True
     assert partition.partitionColumnName == "order_date"
-    assert partition.partitionIntervalType == PartitionIntervalType.TIME_UNIT
+    assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
     assert partition.partitionInterval == 5
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.YEAR
 
     table_entity = MockTable(
         tablePartition=TablePartition(
-            columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="HOUR"
+            columns=[
+                PartitionColumnDetails(
+                    columnName="e",
+                    intervalType=PartitionIntervalTypes.INGESTION_TIME,
+                    interval="HOUR",
+                )
+            ]
         ),
         tableProfilerConfig=None,
     )
@@ -81,21 +87,25 @@ def test_get_partition_details():
 
     assert partition.enablePartitioning == True
     assert partition.partitionColumnName == "_PARTITIONTIME"
-    assert partition.partitionIntervalType == PartitionIntervalType.INGESTION_TIME
+    assert partition.partitionIntervalType == PartitionIntervalTypes.INGESTION_TIME
     assert partition.partitionInterval == 1
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.HOUR
 
     table_entity = MockTable(
         tablePartition=TablePartition(
-            columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="DAY"
+            columns=[
+                PartitionColumnDetails(
+                    columnName="e", intervalType=PartitionIntervalTypes.INGESTION_TIME, interval="DAY"
+                )
+            ]
         ),
         tableProfilerConfig=None,
     )
 
     partition = get_partition_details(table_entity)
 
-    assert partition.enablePartitioning == True
+    assert partition.enablePartitioning is True
     assert partition.partitionColumnName == "_PARTITIONDATE"
-    assert partition.partitionIntervalType == PartitionIntervalType.INGESTION_TIME
+    assert partition.partitionIntervalType == PartitionIntervalTypes.INGESTION_TIME
     assert partition.partitionInterval == 1
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY
