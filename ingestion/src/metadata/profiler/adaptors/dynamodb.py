@@ -19,7 +19,7 @@ from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 if TYPE_CHECKING:
     from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
 else:
-    DynamoDBServiceResource = None
+    DynamoDBServiceResource = None  # pylint: disable=invalid-name
 
 
 class DynamoDB(NoSQLAdaptor):
