@@ -31,6 +31,7 @@ import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
+import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
@@ -237,6 +238,8 @@ public class AppScheduler {
       } else {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");
       }
+    } catch (ObjectAlreadyExistsException ex) {
+      throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
     }
