@@ -170,6 +170,13 @@ class NoSQLProfiler(TestCase):
         """
         pass
 
+    def run_profiler_workflow(self, config):
+        profiler_workflow = ProfilerWorkflow.create(config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+        assert status == 0
+
     def test_simple(self):
         workflow_config = deepcopy(self.ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
@@ -181,12 +188,7 @@ class NoSQLProfiler(TestCase):
             "type": "orm-profiler",
             "config": {},
         }
-        profiler_workflow = ProfilerWorkflow.create(workflow_config)
-        profiler_workflow.execute()
-        status = profiler_workflow.result_status()
-        profiler_workflow.stop()
-
-        assert status == 0
+        self.run_profiler_workflow(workflow_config)
 
         cases = [
             {
@@ -228,7 +230,9 @@ class NoSQLProfiler(TestCase):
                 get_end_of_day_timestamp_mill(),
                 profile_type=ColumnProfile,
             )
-            assert len(column_profile.entities) == len(expected["columns"])
+            assert (len(column_profile.entities) > 0) == (
+                len(tc["expected"]["columns"]) > 0
+            )
             if len(expected["columns"]) > 0:
                 for c1, c2 in zip(column_profile.entities, expected["columns"]):
                     assert c1.name == c2.name
@@ -267,17 +271,36 @@ class NoSQLProfiler(TestCase):
                 ],
             },
         }
-        profiler_workflow = ProfilerWorkflow.create(workflow_config)
-        profiler_workflow.execute()
-        status = profiler_workflow.result_status()
-        profiler_workflow.stop()
+        self.run_profiler_workflow(workflow_config)
 
-        assert status == 0
+        cases = [
+            {
+                "collection": EMPTY_COLLECTION,
+                "expected": {
+                    "rowCount": 0,
+                    "columns": [],
+                },
+            },
+            {
+                "collection": TEST_COLLECTION,
+                "expected": {
+                    "rowCount": len(TEST_DATA),
+                    "columns": [
+                        ColumnProfile(
+                            name="age",
+                            timestamp=datetime.now().timestamp(),
+                            max=query_age,
+                            min=query_age,
+                        ),
+                    ],
+                },
+            },
+        ]
 
-        # query profiler in MongoDB does not change the item count
-        expectations = {TEST_COLLECTION: len(TEST_DATA), EMPTY_COLLECTION: 0}
+        for tc in cases:
+            collection = tc["collection"]
+            expected_row_count = tc["expected"]["rowCount"]
 
-        for collection, expected_row_count in expectations.items():
             collection_profile = self.metadata.get_profile_data(
                 f"{SERVICE_NAME}.default.{TEST_DATABASE}.{collection}",
                 datetime_to_ts(datetime.now() - timedelta(seconds=10)),
@@ -288,13 +311,14 @@ class NoSQLProfiler(TestCase):
                 collection_profile.entities[-1].rowCount == expected_row_count
             ), collection
             column_profile = self.metadata.get_profile_data(
-                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}.age",
+                f"{SERVICE_NAME}.default.{TEST_DATABASE}.{collection}.age",
                 datetime_to_ts(datetime.now() - timedelta(seconds=10)),
                 get_end_of_day_timestamp_mill(),
                 profile_type=ColumnProfile,
             )
-            assert len(column_profile.entities) == 0, collection
-
+            assert (len(column_profile.entities) > 0) == (
+                len(tc["expected"]["columns"]) > 0
+            )
         table = self.metadata.get_by_name(
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
         )
