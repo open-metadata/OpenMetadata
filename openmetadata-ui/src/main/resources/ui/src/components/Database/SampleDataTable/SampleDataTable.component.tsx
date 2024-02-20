@@ -94,18 +94,19 @@ const SampleDataTable = ({
         name: column,
         dataType: matchedColumn?.dataType ?? '',
         title: (
-          <Space direction="vertical" size={0}>
+          <div className="d-flex flex-column">
             <Typography.Text> {column}</Typography.Text>
             {matchedColumn?.dataType && (
               <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
               )})`}</Typography.Text>
             )}
-          </Space>
+          </div>
         ),
         dataIndex: column,
         key: column,
         accessor: column,
+        width: 210,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
@@ -264,7 +265,7 @@ const SampleDataTable = ({
         dataSource={sampleData?.rows}
         pagination={false}
         rowKey="name"
-        scroll={{ x: true }}
+        scroll={{ y: 'calc(100vh - 160px)' }}
         size="small"
       />
 
