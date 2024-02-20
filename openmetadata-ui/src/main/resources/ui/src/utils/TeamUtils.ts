@@ -83,3 +83,21 @@ export const getTeamOptionsFromType = (parentType: TeamType) => {
       return [TeamType.Group];
   }
 };
+
+/**
+ * Restricting the drop of team based on the team type
+ * Group: Can't have any child team
+ * Division: Can have only Department and Group
+ * Department: Can have only Group
+ */
+
+export const isDropRestricted = (
+  dragTeamType?: TeamType,
+  dropTeamType?: TeamType
+) =>
+  dropTeamType === TeamType.Group ||
+  (dropTeamType === TeamType.Division &&
+    dragTeamType === TeamType.BusinessUnit) ||
+  (dropTeamType === TeamType.Department &&
+    dragTeamType === TeamType.BusinessUnit) ||
+  (dropTeamType === TeamType.Department && dragTeamType === TeamType.Division);

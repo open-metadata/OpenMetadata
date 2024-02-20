@@ -12,11 +12,12 @@
  */
 
 import { Modal, Skeleton, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType, TableProps } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -27,7 +28,6 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
-import { TeamType } from '../../../../generated/api/teams/createTeam';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
@@ -35,6 +35,7 @@ import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
+import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -53,6 +54,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
   const [movedTeam, setMovedTeam] = useState<MovedTeamProps>();
+  const [isTableHovered, setIsTableHovered] = useState(false);
 
   const columns: ColumnsType<Team> = useMemo(() => {
     return [
@@ -143,14 +145,27 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     ];
   }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand]);
 
+  const handleTableHover = useCallback(
+    (value: boolean) => setIsTableHovered(value),
+    []
+  );
+
   const handleMoveRow = useCallback(
-    async (dragRecord: Team, dropRecord: Team) => {
-      if (dragRecord.id === dropRecord.id) {
+    async (dragRecord: Team, dropRecord?: Team) => {
+      if (dragRecord.id === dropRecord?.id) {
         return;
       }
 
-      if (dropRecord.teamType === TeamType.Group) {
-        showErrorToast(t('message.error-team-transfer-message'));
+      if (
+        !isUndefined(dropRecord) &&
+        isDropRestricted(dragRecord.teamType, dropRecord?.teamType)
+      ) {
+        showErrorToast(
+          t('message.error-team-transfer-message', {
+            dragTeam: dragRecord.teamType,
+            dropTeam: dropRecord.teamType,
+          })
+        );
 
         return;
       }
@@ -167,13 +182,14 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     if (movedTeam) {
       setIsTableLoading(true);
       try {
+        const dropTeam = movedTeam.to?.id;
         const data = await getTeamByName(movedTeam.from.name, {
           fields: 'users, defaultRoles, policies, owner, parents, children',
           include: Include.All,
         });
         const updatedData = {
           ...data,
-          parents: [{ id: movedTeam.to.id, type: 'team' }],
+          parents: dropTeam ? [{ id: dropTeam, type: 'team' }] : undefined,
         };
         const jsonPatch = compare(data, updatedData);
         await patchTeamDetail(data.id, jsonPatch);
@@ -184,12 +200,29 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       } finally {
         setIsTableLoading(false);
         setIsModalOpen(false);
+        setIsTableHovered(false);
       }
     }
   };
 
   const onTableRow = (record: Team, index?: number) =>
-    ({ index, handleMoveRow, record } as DraggableBodyRowProps<Team>);
+    ({
+      index,
+      handleMoveRow,
+      handleTableHover,
+      record,
+    } as DraggableBodyRowProps<Team>);
+
+  const onTableHeader: TableProps<Team>['onHeaderRow'] = () =>
+    ({
+      handleMoveRow,
+      handleTableHover,
+    } as DraggableBodyRowProps<Team>);
+
+  const onDragConfirmationModalClose = useCallback(() => {
+    setIsModalOpen(false);
+    setIsTableHovered(false);
+  }, []);
 
   const expandableConfig: ExpandableConfig<Team> = useMemo(
     () => ({
@@ -208,7 +241,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       <DndProvider backend={HTML5Backend}>
         <Table
           bordered
-          className="teams-list-table"
+          className={classNames('teams-list-table drop-over-background', {
+            'drop-over-table': isTableHovered,
+          })}
           columns={columns}
           components={TABLE_CONSTANTS}
           data-testid="team-hierarchy-table"
@@ -221,6 +256,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           pagination={false}
           rowKey="name"
           size="small"
+          onHeaderRow={onTableHeader}
           onRow={onTableRow}
         />
       </DndProvider>
@@ -235,14 +271,14 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         okText={t('label.confirm')}
         open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={onDragConfirmationModalClose}
         onOk={handleChangeTeam}>
         <Transi18next
           i18nKey="message.entity-transfer-message"
           renderElement={<strong />}
           values={{
-            from: movedTeam?.from?.name,
-            to: movedTeam?.to?.name,
+            from: movedTeam?.from.name,
+            to: movedTeam?.to?.name ?? getEntityName(currentTeam),
             entity: t('label.team-lowercase'),
           }}
         />
