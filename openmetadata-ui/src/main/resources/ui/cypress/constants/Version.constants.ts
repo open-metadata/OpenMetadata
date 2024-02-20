@@ -12,6 +12,7 @@
  */
 
 import { uuid } from '../common/common';
+import { EntityType } from './Entity.interface';
 import { SERVICE_CATEGORIES } from './service.constants';
 import { GlobalSettingOptions } from './settings.constant';
 
@@ -29,7 +30,18 @@ const SEARCH_INDEX_NAME = `cypress_version_search_index-${uuid()}`;
 const STORED_PROCEDURE_NAME = `cypress_version_stored_procedure-${uuid()}`;
 const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
 
-const TABLE_DETAILS_FOR_VERSION_TEST = {
+type TableColumn = Record<string, string | number>;
+type TableColumnWithChildren =
+  | Record<string, string | number>
+  | {
+      children?: TableColumn[];
+    };
+
+const TABLE_DETAILS_FOR_VERSION_TEST: {
+  name: string;
+  columns: TableColumnWithChildren[];
+  databaseSchema: string;
+} = {
   name: TABLE_NAME,
   columns: [
     {
@@ -728,11 +740,28 @@ export const DATA_MODEL_PATCH_PAYLOAD = [
   },
 ];
 
-export const ENTITY_DETAILS_FOR_VERSION_TEST = {
+export const ENTITY_DETAILS_FOR_VERSION_TEST: Record<
+  string,
+  {
+    name: string;
+    serviceName: string;
+    entity: EntityType;
+    entityCreationDetails: typeof TABLE_DETAILS_FOR_VERSION_TEST;
+    entityPatchPayload: typeof TABLE_PATCH_PAYLOAD;
+    isChildrenExist: boolean;
+    childFieldNameToCheck?: string;
+    columnDisplayNameToUpdate?: string;
+    childSelector: string;
+    entityAddedDescription: string;
+    updatedTagEntityChildName?: string;
+    entityChildRemovedDescription?: string;
+    entityChildAddedDescription?: string;
+  }
+> = {
   Table: {
     name: TABLE_NAME,
     serviceName: 'sample_data',
-    entity: 'tables',
+    entity: EntityType.Table,
     entityCreationDetails: TABLE_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: TABLE_PATCH_PAYLOAD,
     isChildrenExist: true,
@@ -747,7 +776,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   Topic: {
     name: TOPIC_NAME,
     serviceName: 'sample_kafka',
-    entity: 'topics',
+    entity: EntityType.Topic,
     entityCreationDetails: TOPIC_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: TOPIC_PATCH_PAYLOAD,
     isChildrenExist: true,
@@ -761,7 +790,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   Dashboard: {
     name: DASHBOARD_NAME,
     serviceName: 'sample_superset',
-    entity: 'dashboards',
+    entity: EntityType.Dashboard,
     entityCreationDetails: DASHBOARD_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: DASHBOARD_PATCH_PAYLOAD,
     isChildrenExist: false,
@@ -770,7 +799,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   Pipeline: {
     name: PIPELINE_NAME,
     serviceName: 'sample_airflow',
-    entity: 'pipelines',
+    entity: EntityType.Pipeline,
     entityCreationDetails: PIPELINE_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: PIPELINE_PATCH_PAYLOAD,
     isChildrenExist: true,
@@ -784,7 +813,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   'ML Model': {
     name: ML_MODEL_NAME,
     serviceName: 'mlflow_svc',
-    entity: 'mlmodels',
+    entity: EntityType.Pipeline,
     entityCreationDetails: ML_MODEL_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: ML_MODEL_PATCH_PAYLOAD,
     isChildrenExist: true,
@@ -797,7 +826,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   Container: {
     name: CONTAINER_NAME,
     serviceName: 's3_storage_sample',
-    entity: 'containers',
+    entity: EntityType.Container,
     entityCreationDetails: CONTAINER_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: CONTAINER_PATCH_PAYLOAD,
     isChildrenExist: true,
@@ -811,7 +840,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   'Search Index': {
     name: SEARCH_INDEX_NAME,
     serviceName: 'elasticsearch_sample',
-    entity: 'searchIndexes',
+    entity: EntityType.SeachIndex,
     entityCreationDetails: SEARCH_INDEX_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: SEARCH_INDEX_PATCH_PAYLOAD,
     isChildrenExist: true,
@@ -826,7 +855,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   //   'Stored Procedure': {
   //     name: STORED_PROCEDURE_NAME,
   //     serviceName: 'sample_data',
-  //     entity: 'storedProcedures',
+  //     entity: EntityType.StoreProcedure,
   //     entityCreationDetails: STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST,
   //     entityPatchPayload: STORED_PROCEDURE_PATCH_PAYLOAD,
   //     isChildrenExist: false,
@@ -840,7 +869,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
 
 export const DATA_MODEL_DETAILS = {
   name: DATA_MODEL_NAME,
-  entity: 'containers',
+  entity: EntityType.Container,
   entityAddedDescription: `Description for ${DATA_MODEL_NAME}`,
   updatedTagEntityChildName: 'column_1',
   entityChildRemovedDescription: 'Description for column column_2',

@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  addOwner,
-  goToAdvanceSearch,
-  removeOwner,
-} from '../../common/advancedSearch';
 import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { goToAdvanceSearch } from '../../common/Utils/AdvancedSearch';
+import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
 import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
@@ -26,12 +24,25 @@ const ownerName = 'Aaron Johnson';
 describe(`Advanced search quick filters should work properly for assets`, () => {
   before(() => {
     cy.login();
-    addOwner({ ownerName, ...SEARCH_ENTITY_TABLE.table_1 });
+
+    visitEntityDetailsPage({
+      term: SEARCH_ENTITY_TABLE.table_1.term,
+      entity: SEARCH_ENTITY_TABLE.table_1.entity,
+      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+    });
+
+    addOwner(ownerName);
   });
 
   after(() => {
     cy.login();
-    removeOwner();
+    visitEntityDetailsPage({
+      term: SEARCH_ENTITY_TABLE.table_1.term,
+      entity: SEARCH_ENTITY_TABLE.table_1.entity,
+      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+    });
+
+    removeOwner(ownerName);
   });
 
   beforeEach(() => {

@@ -28,7 +28,7 @@ import {
   TIER,
 } from '../../constants/Version.constants';
 
-let domainId;
+let domainId: string;
 
 describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
   before(() => {
@@ -63,8 +63,8 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
       describe(`${entityType} version page should work properly`, () => {
         const successMessageEntityName =
           entityType === 'ML Model' ? 'Mlmodel' : entityType;
-        let entityId;
-        let entityFQN;
+        let entityId: string;
+        let entityFQN: string;
 
         before(() => {
           cy.login();
@@ -153,12 +153,12 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
               .should('be.visible');
 
             cy.get(`[data-testid="diff-removed"]`)
-              .contains(entityDetails.entityChildRemovedDescription)
+              .contains(entityDetails.entityChildRemovedDescription as string)
               .scrollIntoView()
               .should('be.visible');
 
             cy.get(`[data-testid="diff-added"]`)
-              .contains(entityDetails.entityChildAddedDescription)
+              .contains(entityDetails.entityChildAddedDescription as string)
               .scrollIntoView()
               .should('be.visible');
           }
@@ -182,7 +182,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
             cy.get('#displayName')
               .clear()
-              .type(entityDetails.columnDisplayNameToUpdate);
+              .type(entityDetails.columnDisplayNameToUpdate as string);
 
             interceptURL('PATCH', `/api/v1/tables/*`, `updateColumnName`);
 

@@ -12,14 +12,13 @@
  */
 
 import {
-  addTeam,
   descriptionBox,
   interceptURL,
   toastNotification,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { deleteTeamPermanently } from '../../common/Utils/Teams';
+import { addTeam, deleteTeamPermanently } from '../../common/Utils/Teams';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 

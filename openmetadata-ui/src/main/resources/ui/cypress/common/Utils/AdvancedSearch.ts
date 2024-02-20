@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-import { SEARCH_ENTITY_TABLE } from '../constants/constants';
-import { SidebarItem } from '../constants/Entity.interface';
+import { SidebarItem } from '../../constants/Entity.interface';
 import {
   DATABASE_DETAILS,
   DATABASE_SERVICE_DETAILS,
   SCHEMA_DETAILS,
   TABLE_DETAILS,
-} from '../constants/EntityConstant';
-import { USER_CREDENTIALS } from '../constants/SearchIndexDetails.constants';
-import { interceptURL, uuid, verifyResponseStatusCode } from './common';
-import { createEntityTable } from './EntityUtils';
-import { visitEntityDetailsPage } from './Utils/Entity';
+} from '../../constants/EntityConstant';
+import { USER_CREDENTIALS } from '../../constants/SearchIndexDetails.constants';
+import { interceptURL, uuid, verifyResponseStatusCode } from '../common';
+import { createEntityTable } from '../EntityUtils';
+import { visitEntityDetailsPage } from './Entity';
 
 export const ADVANCE_SEARCH_TABLES = {
   table1: TABLE_DETAILS,
@@ -189,10 +188,10 @@ export const OPERATOR = {
 };
 
 export const searchForField = (
-  condition,
-  fieldId,
-  searchCriteria,
-  index,
+  condition: string,
+  fieldId: string,
+  searchCriteria: string,
+  index: number,
   isLocalSearch = false
 ) => {
   if (!isLocalSearch) {
@@ -248,12 +247,12 @@ export const goToAdvanceSearch = () => {
 };
 
 export const checkmustPaths = (
-  condition,
-  field,
-  searchCriteria,
-  index,
-  responseSearch,
-  isLocalSearch
+  condition: string,
+  field: string,
+  searchCriteria: string,
+  index: number,
+  responseSearch: string,
+  isLocalSearch: boolean
 ) => {
   goToAdvanceSearch();
 
@@ -307,95 +306,6 @@ export const checkmust_notPaths = (
     expect(request.url).to.contain(encodeURI(searchCriteria));
     expect(resBody).to.not.include(`${responseSearch}`);
   });
-};
-
-export const removeOwner = () => {
-  visitEntityDetailsPage({
-    term: SEARCH_ENTITY_TABLE.table_1.term,
-    serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
-    entity: SEARCH_ENTITY_TABLE.table_1.entity,
-  });
-  interceptURL(
-    'PATCH',
-    `/api/v1/${SEARCH_ENTITY_TABLE.table_1.entity}/*`,
-    'patchOwner'
-  );
-  cy.get('[data-testid="edit-owner"]').click();
-  cy.get('[data-testid="remove-owner"]').click();
-  verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
-};
-
-export const addOwner = ({ ownerName, term, serviceName, entity }) => {
-  visitEntityDetailsPage({
-    term,
-    serviceName,
-    entity,
-  });
-
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=**%20AND%20teamType:Group&from=0&size=25&index=team_search_index&sort_field=displayName.keyword&sort_order=asc',
-    'waitForTeams'
-  );
-
-  cy.get('[data-testid="edit-owner"]').click();
-
-  verifyResponseStatusCode('@waitForTeams', 200);
-  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
-
-  cy.get('.ant-tabs [id*=tab-users]').click();
-  verifyResponseStatusCode('@getUsers', 200);
-
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*${encodeURI(ownerName)}*`,
-    'searchOwner'
-  );
-
-  cy.get('[data-testid="owner-select-users-search-bar"]').type(ownerName);
-
-  verifyResponseStatusCode('@searchOwner', 200);
-
-  interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
-
-  // Selecting the user
-  cy.get(`[title="${ownerName}"]`)
-    .should('exist')
-    .scrollIntoView()
-    .and('be.visible')
-    .click();
-
-  verifyResponseStatusCode('@tablePatch', 200);
-
-  cy.get('[data-testid="owner-link"]')
-    .scrollIntoView()
-    .invoke('text')
-    .then((text) => {
-      expect(text).equal(ownerName);
-    });
-};
-
-export const addTier = ({ term, serviceName, entity }) => {
-  visitEntityDetailsPage({
-    term,
-    serviceName,
-    entity,
-  });
-
-  cy.get('[data-testid="edit-tier"]')
-    .scrollIntoView()
-    .should('exist')
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="select-tier-button"]')
-    .first()
-    .should('exist')
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="tier-dropdown"]').should('contain', 'Tier1');
 };
 
 export const addTag = ({ tag, term, serviceName, entity }) => {
@@ -689,7 +599,7 @@ export const checkAddRuleWithOperator = (
   });
 };
 
-export const advanceSearchPreRequests = (token) => {
+export const advanceSearchPreRequests = (token: string) => {
   // Create Table hierarchy
 
   createEntityTable({

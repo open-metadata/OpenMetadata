@@ -21,15 +21,9 @@ export const uuid = () => Cypress._.random(0, 1e6);
 export const RETRY_TIMES = 4;
 export const BASE_WAIT_TIME = 20000;
 
-const RETRIES_COUNT = 4;
-
-const TEAM_TYPES = ['Department', 'Division', 'Group'];
-
 export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
-
-const isDatabaseService = (type: string) => type === 'database';
 
 export const checkServiceFieldSectionHighlighting = (field: string) => {
   cy.get(`[data-id="${field}"]`).should(
@@ -37,43 +31,6 @@ export const checkServiceFieldSectionHighlighting = (field: string) => {
     'data-highlighted',
     'true'
   );
-};
-
-const getTeamType = (
-  currentTeam: string
-): {
-  childTeamType: string;
-  teamTypeOptions: typeof TEAM_TYPES;
-} | null => {
-  switch (currentTeam) {
-    case 'BusinessUnit':
-      return {
-        childTeamType: 'Division',
-        teamTypeOptions: TEAM_TYPES,
-      };
-
-    case 'Division':
-      return {
-        childTeamType: 'Department',
-        teamTypeOptions: TEAM_TYPES,
-      };
-
-    case 'Department':
-      return {
-        childTeamType: 'Group',
-        teamTypeOptions: ['Department', 'Group'],
-      };
-  }
-
-  return null;
-};
-
-const checkTeamTypeOptions = (type: string) => {
-  for (const teamType of getTeamType(type)?.teamTypeOptions) {
-    cy.get(`.ant-select-dropdown [title="${teamType}"]`)
-      .should('exist')
-      .should('be.visible');
-  }
 };
 
 // intercepting URL with cy.intercept
@@ -115,131 +72,6 @@ export const verifyMultipleResponseStatusCode = (
   cy.wait(alias, option).then((data) => {
     data.map((value) => expect(value.response?.statusCode).eq(responseCode));
   });
-};
-
-export const handleIngestionRetry = (
-  type,
-  testIngestionButton,
-  count = 0,
-  ingestionType = 'metadata'
-) => {
-  let timer = BASE_WAIT_TIME;
-  const rowIndex = ingestionType === 'metadata' ? 1 : 2;
-
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines?*',
-    'ingestionPipelines'
-  );
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
-    'pipelineStatuses'
-  );
-  interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
-  interceptURL('GET', '/api/v1/permissions?limit=100', 'allPermissions');
-
-  // ingestions page
-  let retryCount = count;
-  const testIngestionsTab = () => {
-    // click on the tab only for the first time
-    if (retryCount === 0) {
-      cy.get('[data-testid="ingestions"]').should('exist').and('be.visible');
-      cy.get('[data-testid="ingestions"] >> [data-testid="count"]').should(
-        'have.text',
-        rowIndex
-      );
-      cy.get('[data-testid="ingestions"]').click();
-
-      if (ingestionType === 'metadata') {
-        verifyResponseStatusCode('@pipelineStatuses', 200, {
-          responseTimeout: 50000,
-        });
-      }
-    }
-  };
-  const checkSuccessState = () => {
-    testIngestionsTab();
-
-    if (retryCount !== 0) {
-      cy.wait('@allPermissions').then(() => {
-        cy.wait('@serviceDetails').then(() => {
-          verifyResponseStatusCode('@ingestionPipelines', 200);
-          verifyResponseStatusCode('@pipelineStatuses', 200, {
-            responseTimeout: 50000,
-          });
-        });
-      });
-    }
-
-    retryCount++;
-
-    cy.get(`[data-row-key*="${ingestionType}"]`)
-      .find('[data-testid="pipeline-status"]')
-      .as('checkRun');
-    // the latest run should be success
-    cy.get('@checkRun').then(($ingestionStatus) => {
-      const text = $ingestionStatus.text();
-      if (
-        text !== 'Success' &&
-        text !== 'Failed' &&
-        retryCount <= RETRY_TIMES
-      ) {
-        // retry after waiting with log1 method [20s,40s,80s,160s,320s]
-        cy.wait(timer);
-        timer *= 2;
-        cy.reload();
-        checkSuccessState();
-      } else {
-        cy.get('@checkRun').should('contain', 'Success');
-      }
-    });
-  };
-
-  checkSuccessState();
-};
-
-export const scheduleIngestion = (hasRetryCount = true) => {
-  interceptURL(
-    'POST',
-    '/api/v1/services/ingestionPipelines',
-    'createIngestionPipelines'
-  );
-  interceptURL(
-    'POST',
-    '/api/v1/services/ingestionPipelines/deploy/*',
-    'deployPipeline'
-  );
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines/status',
-    'getIngestionPipelineStatus'
-  );
-  // Schedule & Deploy
-  cy.get('[data-testid="cron-type"]').should('be.visible').click();
-  cy.get('.ant-select-item-option-content').contains('Hour').click();
-
-  if (hasRetryCount) {
-    cy.get('#retries')
-      .scrollIntoView()
-      .clear()
-      .type(RETRIES_COUNT + '');
-  }
-
-  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
-
-  verifyResponseStatusCode('@createIngestionPipelines', 201);
-  verifyResponseStatusCode('@deployPipeline', 200, {
-    responseTimeout: 50000,
-  });
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-  // check success
-  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
-    'be.visible'
-  );
-  cy.contains('has been created and deployed successfully').should(
-    'be.visible'
-  );
 };
 
 // Storing the created service name and the type of service for later use
@@ -286,71 +118,11 @@ export const toastNotification = (msg: string, closeToast = true) => {
   }
 };
 
-export const selectTeamHierarchy = (index: number) => {
-  if (index > 0) {
-    cy.get('[data-testid="team-type"]')
-      .invoke('text')
-      .then((text) => {
-        cy.log(text);
-        checkTeamTypeOptions(text);
-        cy.log('check type', text);
-        cy.get(
-          `.ant-select-dropdown [title="${getTeamType(text).childTeamType}"]`
-        ).click();
-      });
-  } else {
-    checkTeamTypeOptions('BusinessUnit');
-
-    cy.get(`.ant-select-dropdown [title='BusinessUnit']`)
-      .should('exist')
-      .should('be.visible')
-      .click();
-  }
-};
-
-export const addTeam = (teamDetails, index, isHierarchy) => {
-  interceptURL('GET', '/api/v1/teams*', 'addTeam');
-  // Fetching the add button and clicking on it
-  if (index > 0) {
-    cy.get('[data-testid="add-placeholder-button"]').click();
-  } else {
-    cy.get('[data-testid="add-team"]').click();
-  }
-
-  verifyResponseStatusCode('@addTeam', 200);
-
-  // Entering team details
-  cy.get('[data-testid="name"]').type(teamDetails.name);
-
-  cy.get('[data-testid="display-name"]').type(teamDetails.name);
-
-  cy.get('[data-testid="email"]').type(teamDetails.email);
-
-  cy.get('[data-testid="team-selector"]').click();
-
-  if (isHierarchy) {
-    selectTeamHierarchy(index);
-  } else {
-    cy.get(`.ant-select-dropdown [title="${teamDetails.teamType}"]`).click();
-  }
-
-  cy.get(descriptionBox).type(teamDetails.description);
-
-  interceptURL('POST', '/api/v1/teams', 'saveTeam');
-  interceptURL('GET', '/api/v1/team*', 'createTeam');
-
-  // Saving the created team
-  cy.get('[form="add-team-form"]').scrollIntoView().click();
-
-  verifyResponseStatusCode('@saveTeam', 201);
-  verifyResponseStatusCode('@createTeam', 200);
-};
-
 export const deleteEntity = (
-  entityName,
-  serviceName,
-  entity,
-  successMessageEntityName,
+  entityName: string,
+  serviceName: string,
+  entity: string,
+  successMessageEntityName: string,
   deletionType = 'hard'
 ) => {
   cy.get('[data-testid="manage-button"]').click();
@@ -377,9 +149,9 @@ export const deleteEntity = (
 };
 
 export const visitServiceDetailsPage = (
-  settingsMenuId,
-  serviceCategory,
-  serviceName,
+  settingsMenuId: string,
+  serviceCategory: string,
+  serviceName: string,
   isServiceDeleted = false
 ) => {
   interceptURL(
@@ -410,7 +182,10 @@ export const visitServiceDetailsPage = (
   verifyResponseStatusCode('@getServiceDetails', 200);
 };
 
-export const visitDataModelPage = (dataModelFQN, dataModelName) => {
+export const visitDataModelPage = (
+  dataModelFQN: string,
+  dataModelName: string
+) => {
   interceptURL('GET', '/api/v1/services/dashboardServices*', 'getServices');
   cy.settingClick(GlobalSettingOptions.DASHBOARDS);
   verifyResponseStatusCode('@getServices', 200);
@@ -448,7 +223,12 @@ export const visitDataModelPage = (dataModelFQN, dataModelName) => {
   verifyResponseStatusCode('@getDataModelDetails', 200);
 };
 
-export const signupAndLogin = (email, password, firstName, lastName) => {
+export const signupAndLogin = (
+  email: string,
+  password: string,
+  firstName: string,
+  lastName: string
+) => {
   return new Cypress.Promise((resolve) => {
     let createdUserId = '';
     interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
@@ -497,7 +277,7 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
 
     cy.get('[data-testid="user-name"]').click({ force: true });
     cy.wait('@getUserPage').then((response) => {
-      createdUserId = response.response.body.id;
+      createdUserId = response.response?.body.id;
       resolve(createdUserId); // Resolve the promise with the createdUserId
     });
     cy.get(
@@ -507,10 +287,10 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
 };
 
 export const addTableFieldTags = (
-  dataRowKey,
-  classificationName,
-  tagName,
-  entity
+  dataRowKey: string,
+  classificationName: string,
+  tagName: string,
+  entity: string
 ) => {
   cy.get(
     `[data-row-key="${dataRowKey}"] [data-testid="tags-container"] [data-testid="add-tag"]`
@@ -536,10 +316,10 @@ export const addTableFieldTags = (
 };
 
 export const removeTableFieldTags = (
-  dataRowKey,
-  classificationName,
-  tagName,
-  entity
+  dataRowKey: string,
+  classificationName: string,
+  tagName: string,
+  entity: string
 ) => {
   cy.get(
     `[data-row-key="${dataRowKey}"] [data-testid="tags-container"] [data-testid="edit-button"]`
@@ -565,9 +345,9 @@ export const removeTableFieldTags = (
 };
 
 export const updateTableFieldDescription = (
-  dataRowKey,
-  description,
-  entity
+  dataRowKey: string,
+  description: string,
+  entity: string
 ) => {
   cy.get(
     `[data-row-key="${dataRowKey}"] [data-testid="description"] [data-testid="edit-button"]`
@@ -589,6 +369,13 @@ export const visitDatabaseDetailsPage = ({
   databaseRowKey,
   databaseName,
   isDeleted = false,
+}: {
+  settingsMenuId: string;
+  serviceCategory: string;
+  serviceName: string;
+  databaseRowKey: string;
+  databaseName: string;
+  isDeleted?: boolean;
 }) => {
   visitServiceDetailsPage(
     settingsMenuId,
@@ -615,6 +402,15 @@ export const visitDatabaseSchemaDetailsPage = ({
   databaseSchemaRowKey,
   databaseSchemaName,
   isDeleted = false,
+}: {
+  settingsMenuId: string;
+  serviceCategory: string;
+  serviceName: string;
+  databaseRowKey: string;
+  databaseName: string;
+  databaseSchemaRowKey: string;
+  databaseSchemaName: string;
+  isDeleted?: boolean;
 }) => {
   visitDatabaseDetailsPage({
     settingsMenuId,

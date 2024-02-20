@@ -13,9 +13,7 @@
 
 import {
   descriptionBox,
-  handleIngestionRetry,
   interceptURL,
-  scheduleIngestion,
   toastNotification,
   uuid,
   verifyResponseStatusCode,
@@ -24,6 +22,10 @@ import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import MysqlIngestionClass from '../../common/Services/MysqlIngestionClass';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import {
+  handleIngestionRetry,
+  scheduleIngestion,
+} from '../../common/Utils/Ingestion';
 import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
 import { goToServiceListingPage } from '../../common/Utils/Services';
 import {
@@ -243,7 +245,7 @@ describe(
           .should('be.visible')
           .click();
 
-        handleIngestionRetry('database', true, 0, 'profiler');
+        handleIngestionRetry(0, 'profiler');
       });
     });
 

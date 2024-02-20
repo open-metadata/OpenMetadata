@@ -12,11 +12,11 @@
  */
 
 import {
-  addTeam,
   interceptURL,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { addTeam } from '../../common/Utils/Teams';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const buTeamName = `bu-${uuid()}`;

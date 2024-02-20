@@ -19,7 +19,7 @@ import {
   verifyResponseStatusCode,
 } from './common';
 
-export const deleteAlertSteps = (name) => {
+export const deleteAlertSteps = (name: string) => {
   cy.get('table').should('contain', name).click();
   cy.get(`[data-testid="alert-delete-${name}"]`).click();
   cy.get('.ant-modal-header').should(
@@ -35,8 +35,8 @@ export const deleteAlertSteps = (name) => {
 };
 
 export const addOwnerFilter = (
-  filterNumber,
-  ownerName,
+  filterNumber: string,
+  ownerName: string,
   exclude = false,
   selectId = 'Owner'
 ) => {
@@ -64,8 +64,8 @@ export const addOwnerFilter = (
 };
 
 export const addEntityFQNFilter = (
-  filterNumber,
-  entityFQN,
+  filterNumber: string,
+  entityFQN: string,
   exclude = false,
   selectId = 'Entity FQN'
 ) => {
@@ -93,8 +93,8 @@ export const addEntityFQNFilter = (
 };
 
 export const addEventTypeFilter = (
-  filterNumber,
-  eventType,
+  filterNumber: string,
+  eventType: string,
   exclude = false
 ) => {
   // Select event type filter
@@ -125,8 +125,8 @@ export const addEventTypeFilter = (
 };
 
 export const addUpdaterNameFilter = (
-  filterNumber,
-  updaterName,
+  filterNumber: string,
+  updaterName: string,
   exclude = false
 ) => {
   // Select updater name filter
@@ -155,7 +155,11 @@ export const addUpdaterNameFilter = (
   }
 };
 
-export const addDomainFilter = (filterNumber, domainName, exclude = false) => {
+export const addDomainFilter = (
+  filterNumber: string,
+  domainName: string,
+  exclude = false
+) => {
   // Select domain filter
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
@@ -177,7 +181,7 @@ export const addDomainFilter = (filterNumber, domainName, exclude = false) => {
   }
 };
 
-export const addGMEFilter = (filterNumber, exclude = false) => {
+export const addGMEFilter = (filterNumber: string, exclude = false) => {
   // Select general metadata events filter
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
@@ -195,11 +199,11 @@ export const addGMEFilter = (filterNumber, exclude = false) => {
 };
 
 export const addInternalDestination = (
-  destinationNumber,
-  category,
-  type,
-  typeId,
-  searchText
+  destinationNumber: string,
+  category: string,
+  type: string,
+  typeId: string,
+  searchText: string
 ) => {
   // Select destination category
   cy.get(`[data-testid="destination-category-select-${destinationNumber}"]`)
@@ -256,7 +260,11 @@ export const addInternalDestination = (
   );
 };
 
-export const addExternalDestination = (destinationNumber, category, input) => {
+export const addExternalDestination = (
+  destinationNumber: string,
+  category: string,
+  input: string
+) => {
   // Select destination category
   cy.get(`[data-testid="destination-category-select-${destinationNumber}"]`)
     .scrollIntoView()

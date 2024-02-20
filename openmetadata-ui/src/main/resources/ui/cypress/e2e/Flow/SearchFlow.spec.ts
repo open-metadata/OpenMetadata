@@ -13,6 +13,7 @@
 
 // The spec is related to advance search feature
 
+import { hardDeleteService } from '../../common/EntityUtils';
 import {
   advanceSearchPreRequests,
   ADVANCE_SEARCH_DATABASE_SERVICE,
@@ -24,8 +25,7 @@ import {
   CONDITIONS_MUST_NOT,
   FIELDS,
   OPERATOR,
-} from '../../common/advancedSearch';
-import { hardDeleteService } from '../../common/EntityUtils';
+} from '../../common/Utils/AdvancedSearch';
 import { USER_CREDENTIALS } from '../../constants/SearchIndexDetails.constants';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
@@ -162,7 +162,7 @@ describe('Advance search', () => {
 
       it(`Verify Add group functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.contains.name} and ${CONDITIONS_MUST_NOT.notContains.name} `, () => {
         Object.values(FIELDS).forEach((field) => {
-          let val = field.searchCriteriaSecondGroup;
+          const val = field.searchCriteriaSecondGroup;
 
           checkAddGroupWithOperator(
             CONDITIONS_MUST.contains.name,
@@ -247,7 +247,7 @@ describe('Advance search', () => {
 
       it(`Verify Add Rule functionality for All with ${operator.name} operator & condition ${CONDITIONS_MUST.contains.name} and ${CONDITIONS_MUST_NOT.notContains.name} `, () => {
         Object.values(FIELDS).forEach((field) => {
-          let val = field.searchCriteriaSecondGroup;
+          const val = field.searchCriteriaSecondGroup;
           checkAddRuleWithOperator(
             CONDITIONS_MUST.contains.name,
             CONDITIONS_MUST_NOT.notContains.name,

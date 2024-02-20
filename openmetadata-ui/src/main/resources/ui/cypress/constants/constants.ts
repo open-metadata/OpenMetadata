@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityType } from './Entity.interface';
 import { GlobalSettingOptions } from './settings.constant';
 
 export const uuid = () => Cypress._.random(0, 1e6);
@@ -72,14 +73,14 @@ export const SEARCH_ENTITY_TABLE = {
   table_1: {
     term: 'raw_customer',
     displayName: 'raw_customer',
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
   table_2: {
     term: 'fact_session',
     displayName: 'fact_session',
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
     serviceName: 'sample_data',
     schemaName: 'shopify',
     entityType: 'Table',
@@ -87,7 +88,7 @@ export const SEARCH_ENTITY_TABLE = {
   table_3: {
     term: 'raw_product_catalog',
     displayName: 'raw_product_catalog',
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
     serviceName: 'sample_data',
     schemaName: 'shopify',
     entityType: 'Table',
@@ -95,14 +96,14 @@ export const SEARCH_ENTITY_TABLE = {
   table_4: {
     term: 'dim_address',
     displayName: 'dim_address',
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
   table_5: {
     term: 'dim.api/client',
     displayName: 'dim.api/client',
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
@@ -112,13 +113,13 @@ export const SEARCH_ENTITY_TOPIC = {
   topic_1: {
     term: 'shop_products',
     displayName: 'shop_products',
-    entity: DATA_ASSETS.topics,
+    entity: EntityType.Topic,
     serviceName: 'sample_kafka',
     entityType: 'Topic',
   },
   topic_2: {
     term: 'orders',
-    entity: DATA_ASSETS.topics,
+    entity: EntityType.Topic,
     serviceName: 'sample_kafka',
     entityType: 'Topic',
   },
@@ -128,13 +129,13 @@ export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
     term: 'Slack Dashboard',
     displayName: 'Slack Dashboard',
-    entity: DATA_ASSETS.dashboards,
+    entity: EntityType.Dashboard,
     serviceName: 'sample_superset',
     entityType: 'Dashboard',
   },
   dashboard_2: {
     term: 'Unicode Test',
-    entity: DATA_ASSETS.dashboards,
+    entity: EntityType.Dashboard,
     serviceName: 'sample_superset',
     entityType: 'Dashboard',
   },
@@ -144,14 +145,14 @@ export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
     term: 'dim_product_etl',
     displayName: 'dim_product etl',
-    entity: DATA_ASSETS.pipelines,
+    entity: EntityType.Pipeline,
     serviceName: 'sample_airflow',
     entityType: 'Pipeline',
   },
   pipeline_2: {
     term: 'dim_user_etl',
     displayName: 'dim_user etl',
-    entity: DATA_ASSETS.pipelines,
+    entity: EntityType.Pipeline,
     serviceName: 'sample_airflow',
     entityType: 'Pipeline',
   },
@@ -159,13 +160,13 @@ export const SEARCH_ENTITY_PIPELINE = {
 export const SEARCH_ENTITY_MLMODEL = {
   mlmodel_1: {
     term: 'forecast_sales',
-    entity: DATA_ASSETS.mlmodels,
+    entity: EntityType.MlModel,
     serviceName: 'mlflow_svc',
     entityType: 'ML Model',
   },
   mlmodel_2: {
     term: 'eta_predictions',
-    entity: DATA_ASSETS.mlmodels,
+    entity: EntityType.MlModel,
     serviceName: 'mlflow_svc',
     displayName: 'ETA Predictions',
     entityType: 'ML Model',
@@ -175,13 +176,13 @@ export const SEARCH_ENTITY_MLMODEL = {
 export const SEARCH_ENTITY_STORED_PROCEDURE = {
   stored_procedure_1: {
     term: 'update_dim_address_table',
-    entity: DATA_ASSETS.storedProcedures,
+    entity: EntityType.StoreProcedure,
     serviceName: 'sample_data',
     entityType: 'Stored Procedure',
   },
   stored_procedure_2: {
     term: 'update_dim_address_table',
-    entity: DATA_ASSETS.storedProcedures,
+    entity: EntityType.StoreProcedure,
     serviceName: 'sample_data',
     displayName: 'update_dim_address_table',
     entityType: 'Stored Procedure',
@@ -191,13 +192,13 @@ export const SEARCH_ENTITY_STORED_PROCEDURE = {
 export const SEARCH_ENTITY_DATA_MODEL = {
   data_model_1: {
     term: 'operations_view',
-    entity: DATA_ASSETS.dataModel,
+    entity: EntityType.DataModel,
     serviceName: 'sample_looker',
     entityType: 'Data Model',
   },
   data_model_2: {
     term: 'orders_view',
-    entity: DATA_ASSETS.dataModel,
+    entity: EntityType.DataModel,
     serviceName: 'sample_looker',
     displayName: 'Orders View',
     entityType: 'Data Model',
@@ -207,15 +208,15 @@ export const SEARCH_ENTITY_DATA_MODEL = {
 export const DELETE_ENTITY = {
   table: {
     term: 'dim.shop',
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
   topic: {
     term: 'shop_updates',
-    entity: DATA_ASSETS.topics,
+    entity: EntityType.Topic,
     serviceName: 'sample_kafka',
-    entityType: 'Table',
+    entityType: 'Topic',
   },
 };
 
