@@ -16,6 +16,7 @@ import { ColumnsType, TableProps } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -29,15 +30,12 @@ import {
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
-import { getTeamByName, updateTeam } from '../../../../rest/teamsAPI';
+import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
-import {
-  getMovedTeamData,
-  isDropRestricted,
-} from '../../../../utils/TeamUtils';
+import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -189,9 +187,12 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           fields: 'users, defaultRoles, policies, owner, parents, children',
           include: Include.All,
         });
-        await updateTeam(
-          getMovedTeamData(data, dropTeam ? [dropTeam] : undefined)
-        );
+        const updatedData = {
+          ...data,
+          parents: dropTeam ? [{ id: dropTeam, type: 'team' }] : undefined,
+        };
+        const jsonPatch = compare(data, updatedData);
+        await patchTeamDetail(data.id, jsonPatch);
         onTeamExpand(true, currentTeam?.name);
         showSuccessToast(t('message.team-moved-success'));
       } catch (error) {

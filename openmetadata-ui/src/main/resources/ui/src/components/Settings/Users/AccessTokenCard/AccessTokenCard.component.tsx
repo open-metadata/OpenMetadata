@@ -24,7 +24,6 @@ import {
   AuthenticationMechanism,
   AuthType,
 } from '../../../../generated/entity/teams/user';
-import { createBotWithPut } from '../../../../rest/botsAPI';
 import {
   createUserWithPut,
   getAuthMechanismForBotUser,
@@ -130,15 +129,7 @@ const AccessTokenCard: FC<MockProps> = ({
         });
 
         if (response) {
-          if (botData) {
-            await createBotWithPut({
-              name: botData.name,
-              description: botData.description,
-              displayName: botData.displayName,
-              botUser: response.name,
-            });
-            fetchAuthMechanismForBot();
-          }
+          fetchAuthMechanismForBot();
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
