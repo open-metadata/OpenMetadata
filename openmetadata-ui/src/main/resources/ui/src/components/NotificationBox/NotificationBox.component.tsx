@@ -50,7 +50,6 @@ const NotificationBox = ({
   const { currentUser } = useAuthContext();
   const [notifications, setNotifications] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const [viewAllPath, setViewAllPath] = useState<string>(
     getUserPath(
       currentUser?.name as string,
@@ -191,7 +190,7 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="notification-box">
+    <div className="notification-box" data-testid="notification-box">
       <Typography.Title
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
