@@ -11,9 +11,9 @@
 """
 MongoDB adaptor for the NoSQL profiler.
 """
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 
 if TYPE_CHECKING:
@@ -28,6 +28,13 @@ class DynamoDB(NoSQLAdaptor):
     def __init__(self, client: DynamoDBServiceResource):
         self.client = client
 
-    def get_row_count(self, table: Table) -> int:
+    def item_count(self, table: Table) -> int:
         table = self.client.Table(table.name.__root__)
         return table.item_count
+
+    def scan(
+        self, table: Table, columns: List[Column], limit: int
+    ) -> List[Dict[str, any]]:
+        table = self.client.Table(table.name.__root__)
+        response = table.scan(Limit=limit)
+        return response["Items"]
