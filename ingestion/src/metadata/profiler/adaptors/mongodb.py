@@ -12,10 +12,10 @@
 MongoDB adaptor for the NoSQL profiler.
 """
 import json
-from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Union
 
+from pydantic import BaseModel, Field
 from pymongo import MongoClient
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
@@ -33,16 +33,15 @@ class AggregationFunction(Enum):
     MIN = "$min"
 
 
-class Executable:
+class Executable(BaseModel):
     def to_executable(self, client: MongoClient) -> Union[CommandCursor, Cursor]:
         raise NotImplementedError
 
 
-@dataclass
 class Query(Executable):
     database: str
     collection: str
-    filter: dict = field(default_factory=dict)
+    filter: dict = Field(default_factory=dict)
     limit: Optional[int] = None
 
     def to_executable(self, client: MongoClient) -> Cursor:
@@ -54,7 +53,6 @@ class Query(Executable):
         return query
 
 
-@dataclass
 class Aggregation(Executable):
     database: str
     collection: str
