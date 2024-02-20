@@ -190,7 +190,7 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="notification-box" data-testid="notification-box">
+    <div className="notification-box">
       <Typography.Title
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"

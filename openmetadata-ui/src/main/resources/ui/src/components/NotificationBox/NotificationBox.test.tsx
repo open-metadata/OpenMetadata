@@ -109,12 +109,10 @@ describe('Test NotificationBox Component', () => {
     await act(async () => {
       render(<NotificationBox {...mockProps} />);
     });
-    const notificationBox = await screen.findByTestId('notification-box');
     const notificationHeading = await screen.findByTestId(
       'notification-heading'
     );
 
-    expect(notificationBox).toBeInTheDocument();
     expect(notificationHeading).toHaveTextContent('label.notification-plural');
   });
 
