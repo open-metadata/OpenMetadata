@@ -12,7 +12,6 @@ from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run
 from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -216,15 +215,13 @@ MOCK_OWNER = EntityReference(
     ),
 )
 
-MOCK_USER = [
-    User(
-        id=uuid.uuid4(),
-        name="aaron_johnson0",
-        email="aaron_johnson0@gmail.com",
-        href="http://localhost:8585/api/v1/users/d96eccb9-9a9b-40ad-9585-0a8a71665c51",
-        fullyQualifiedName="aaron_johnson0",
-    )
-]
+MOCK_USER = EntityReference(
+    id="70064aef-f085-4658-a11a-b5f46568e980",
+    name="aaron_johnson0",
+    type="user",
+    href="http://localhost:8585/api/v1/users/d96eccb9-9a9b-40ad-9585-0a8a71665c51",
+    fullyQualifiedName="aaron_johnson0",
+)
 
 
 MOCK_TABLE_ENTITIES = [
@@ -459,12 +456,14 @@ class DbtUnitTest(TestCase):
         result = get_dbt_raw_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
-    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
-    def test_dbt_owner(self, es_search_from_fqn):
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_dbt_owner(self, get_reference_by_name):
         """
         This test requires having the sample data properly indexed
         """
-        es_search_from_fqn.return_value = MOCK_USER
+        get_reference_by_name.return_value = MOCK_USER
         _, dbt_objects = self.get_dbt_object_files(
             mock_manifest=MOCK_SAMPLE_MANIFEST_V8
         )
@@ -474,7 +473,9 @@ class DbtUnitTest(TestCase):
         result = self.dbt_source_obj.get_dbt_owner(
             manifest_node=manifest_node, catalog_node=None
         )
-        self.assertEqual("aaron_johnson0", result.fullyQualifiedName)
+        self.assertEqual(
+            "70064aef-f085-4658-a11a-b5f46568e980", result.id.__root__.__str__()
+        )
 
     def execute_test(self, mock_manifest, expected_records, expected_data_models):
         dbt_files, dbt_objects = self.get_dbt_object_files(mock_manifest)
