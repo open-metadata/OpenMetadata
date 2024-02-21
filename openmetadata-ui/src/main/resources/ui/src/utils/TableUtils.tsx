@@ -515,7 +515,9 @@ export const prepareConstraintIcon = ({
   );
 };
 
-export const getAllRowKeysByKeyName = <T extends Field | SearchIndexField>(
+export const getAllRowKeysByKeyName = <
+  T extends Column | Field | SearchIndexField
+>(
   data: T[],
   keyName: keyof T
 ) => {
