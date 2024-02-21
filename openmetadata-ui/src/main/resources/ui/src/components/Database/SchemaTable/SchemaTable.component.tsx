@@ -285,7 +285,7 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = ({ displayName }: EntityName) => {
+  const handleEditDisplayName = async ({ displayName }: EntityName) => {
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
@@ -297,9 +297,8 @@ const SchemaTable = ({
         field: 'displayName',
         columns: tableCols,
       });
-      onUpdate(tableCols).then(() => {
-        setEditColumnDisplayName(undefined);
-      });
+      await onUpdate(tableCols);
+      setEditColumnDisplayName(undefined);
     } else {
       setEditColumnDisplayName(undefined);
     }
