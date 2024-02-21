@@ -87,6 +87,18 @@ your SSO and JWTToken auth verification will work.
 
 Once you configure the above settings, restart OpenMetadata server .
 
+{% note %}
+
+<h2>Note on JWKS url Network Reachbility</h2>
+
+Make sure the above JWKS URI - `{your domain}/api/v1/system/config/jwks` is reachable from OpenMetadata Server Instance (VM or Docker Container or Kubernetes Pod). You can run the below command from the OpenMetadata Server to test it's reachility -
+
+```
+wget -O - {your domain}/api/v1/system/config/jwks
+```
+
+{% /note %}
+
 ## Generate Token
 
 Once the above configuration is updated, the server is restarted. Admin can go to Settings -> Bots page.
