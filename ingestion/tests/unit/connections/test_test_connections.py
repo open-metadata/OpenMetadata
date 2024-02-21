@@ -39,14 +39,12 @@ def bigquery(monkeypatch):
             ("sqlite", "SELECT 42"),
             ("mysql", "SELECT 42"),
             ("bigquery", "SELECT SESSION_USER()"),
-            ("ibmi", "SELECT SESSION_USER()"),
+            # TODO this is skipped because installing ibm_db_sa requires going through hoops
+            # ("ibmi", "SELECT 42 FROM SYSIBM.SYSDUMMY1;"),
         ]
     ),
 )
 def test_test_connection_engine_step(dialect, expected_test_fn):
-    # TODO this is skipped noqw because installing ibm_db_sa requires going through hoops
-    if dialect == "ibmi":
-        return
     engine = create_engine(dialect + "://")
     mock_connect = Mock()
     mock_connect.execute = assert_execute(engine, expected_test_fn)
