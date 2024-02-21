@@ -23,6 +23,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.CronScheduleBuilder;
@@ -54,8 +55,6 @@ public class AppScheduler {
     defaultAppScheduleConfig.put("org.quartz.jobStore.misfireThreshold", "60000");
     defaultAppScheduleConfig.put(
         "org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
-    defaultAppScheduleConfig.put(
-        "org.quartz.jobStore.driverDelegateClass", "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
     defaultAppScheduleConfig.put("org.quartz.jobStore.useProperties", "false");
     defaultAppScheduleConfig.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
     defaultAppScheduleConfig.put("org.quartz.jobStore.isClustered", "true");
@@ -118,6 +117,15 @@ public class AppScheduler {
         "org.quartz.dataSource.myDS.user", config.getDataSourceFactory().getUser());
     defaultAppScheduleConfig.put(
         "org.quartz.dataSource.myDS.password", config.getDataSourceFactory().getPassword());
+    if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
+      defaultAppScheduleConfig.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
+    } else {
+      defaultAppScheduleConfig.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate");
+    }
   }
 
   public static AppScheduler getInstance() {
