@@ -4,7 +4,10 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy import create_engine
 
-from metadata.ingestion.connections.test_connections import test_connection_engine_step
+from metadata.ingestion.connections.test_connections import (
+    # renamed to avoid getting picked up as test by pytest
+    test_connection_engine_step as fn_test_connection_engine_step,
+)
 
 
 def assert_execute(engine, expected_query):
@@ -54,4 +57,4 @@ def test_test_connection_engine_step(dialect, expected_test_fn, monkeypatch):
     mock_connect.execute = assert_execute(engine, expected_test_fn)
     if dialect != "sqlite":
         engine.connect = create_mock_connect(mock_connect)
-    test_connection_engine_step(engine)
+    fn_test_connection_engine_step(engine)
