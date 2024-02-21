@@ -93,15 +93,11 @@ describe('TestSummary component', () => {
     expect(
       await screen.findByTestId('test-summary-container')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('params-container')).toBeInTheDocument();
     expect(graphContainer).toBeInTheDocument();
     expect(graph).toBeInTheDocument();
     expect(
       await screen.findByText('DatePickerMenu.component')
     ).toBeInTheDocument();
-    expect(await screen.findAllByTestId('parameter-value')).toHaveLength(
-      mockProps.data.parameterValues?.length || 0
-    );
   });
 
   it('Show no data placeholder when there is no result, other CTA should also visible', async () => {
@@ -120,19 +116,6 @@ describe('TestSummary component', () => {
     expect(graph).not.toBeInTheDocument();
     expect(
       await screen.findByText('ErrorPlaceHolder.component')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('params-container')).toBeInTheDocument();
-
-    expect(await screen.findAllByTestId('parameter-value')).toHaveLength(
-      mockProps.data.parameterValues?.length || 0
-    );
-  });
-
-  it('Schema editor should be visible if sqlExpression is available in params', async () => {
-    render(<TestSummary data={MOCK_SQL_TEST_CASE} />);
-
-    expect(
-      await screen.findByText('SchemaEditor.component')
     ).toBeInTheDocument();
   });
 

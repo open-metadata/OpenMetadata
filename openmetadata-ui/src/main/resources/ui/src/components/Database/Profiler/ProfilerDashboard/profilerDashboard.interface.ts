@@ -18,6 +18,7 @@ import {
   ColumnProfile,
   Table,
 } from '../../../../generated/entity/data/table';
+import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParams } from '../../../../rest/testAPI';
@@ -117,7 +118,6 @@ export interface DataQualityTabProps {
 
 export interface TestSummaryProps {
   data: TestCase;
-  showOnlyGraph?: boolean;
 }
 
 export interface ProfilerLatestValueProps {
@@ -130,3 +130,12 @@ export type TestCaseAction = {
   data: TestCase;
   action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
 };
+
+export type TestCaseChartDataType = {
+  information: { label: string; color: string }[];
+  data: Record<string, string | number | undefined | Thread>[];
+};
+
+export interface LineChartRef {
+  container: HTMLElement;
+}
