@@ -23,9 +23,11 @@ def get_last_run_info() -> Tuple[str, str]:
     while retries < max_retries:
         log_ansi_encoded_string(message="Waiting for DAG Run data...")
         time.sleep(5)
-        runs = requests.get(
+        res = requests.get(
             "http://localhost:8080/api/v1/dags/sample_data/dagRuns", auth=BASIC_AUTH, timeout=REQUESTS_TIMEOUT
-        ).json()
+        )
+        res.raise_for_status()
+        runs = res.json()
         dag_runs = runs.get("dag_runs")
         if dag_runs[0].get("dag_run_id"):
             return dag_runs[0].get("dag_run_id"), "success"

@@ -17,7 +17,7 @@ from typing import Dict, List, Optional, Union
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -29,7 +29,7 @@ class SamplerInterface(ABC):
     def __init__(
         self,
         client,
-        table,
+        table: Table,
         profile_sample_config: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
