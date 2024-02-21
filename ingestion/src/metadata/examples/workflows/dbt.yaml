@@ -5,13 +5,13 @@ source:
     config:
       type: DBT
       # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # # For cloud
-      # dbtConfigSource:
-      #   dbtConfigType: cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      #   dbtCloudJobId: JOB ID
-      #   dbtCloudUrl: https://cloud.getdbt.com
+      # For cloud
+      dbtConfigSource:
+        dbtConfigType: cloud
+        dbtCloudAuthToken: token
+        dbtCloudAccountId: ID
+        dbtCloudJobId: JOB ID
+        dbtCloudUrl: https://cloud.getdbt.com
       # # For Local
       # dbtConfigSource:
       #   dbtConfigType: local
