@@ -96,9 +96,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
 
+  public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super(collectionDAO, searchRepository);
+  }
+
   @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    super.init(app, dao, searchRepository);
+  public void init(App app) {
+    super.init(app);
     // request for reindexing
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
@@ -129,7 +133,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
                 paginatedEntitiesSources.add(source);
               } else {
                 paginatedDataInsightSources.add(
-                    new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
+                    new PaginatedDataInsightSource(
+                        collectionDAO, entityType, jobData.getBatchSize()));
               }
             });
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {

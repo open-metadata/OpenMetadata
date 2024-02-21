@@ -9,7 +9,6 @@ import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_IN
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 
@@ -48,6 +47,7 @@ import org.openmetadata.service.events.scheduled.template.DataInsightDescription
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -64,12 +64,15 @@ import org.quartz.JobExecutionContext;
 public class DataInsightsReportApp extends AbstractNativeApplication {
   private static final String KPI_NOT_SET = "No Kpi Set";
 
+  public DataInsightsReportApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super(collectionDAO, searchRepository);
+  }
+
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    SearchRepository searchRepository =
-        (SearchRepository)
-            jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
-    App app = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    App app =
+        JsonUtils.readOrConvertValue(
+            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     long scheduleTime = currentTime - 604800000L;

@@ -38,23 +38,34 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     AppRunType runType =
         AppRunType.fromValue(
             (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
-    App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    App jobApp =
+        JsonUtils.readOrConvertValue(
+            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
     JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
     long jobStartTime = System.currentTimeMillis();
-    AppRunRecord runRecord =
-        new AppRunRecord()
-            .withAppId(jobApp.getId())
-            .withStartTime(jobStartTime)
-            .withTimestamp(jobStartTime)
-            .withRunType(runType)
-            .withStatus(AppRunRecord.Status.RUNNING)
-            .withScheduleInfo(jobApp.getAppSchedule());
-
+    AppRunRecord runRecord;
+    boolean update = false;
+    if (jobExecutionContext.isRecovering()) {
+      runRecord =
+          JsonUtils.readValue(
+              collectionDAO.appExtensionTimeSeriesDao().getLatestAppRun(jobApp.getId()),
+              AppRunRecord.class);
+      update = true;
+    } else {
+      runRecord =
+          new AppRunRecord()
+              .withAppId(jobApp.getId())
+              .withStartTime(jobStartTime)
+              .withTimestamp(jobStartTime)
+              .withRunType(runType)
+              .withStatus(AppRunRecord.Status.RUNNING)
+              .withScheduleInfo(jobApp.getAppSchedule());
+    }
     // Put the Context in the Job Data Map
-    dataMap.put(SCHEDULED_APP_RUN_EXTENSION, runRecord);
+    dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
 
     // Insert new Record Run
-    pushApplicationStatusUpdates(jobExecutionContext, runRecord, false);
+    pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
 
     this.doJobToBeExecuted(jobExecutionContext);
   }
@@ -66,8 +77,9 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   public void jobWasExecuted(
       JobExecutionContext jobExecutionContext, JobExecutionException jobException) {
     AppRunRecord runRecord =
-        (AppRunRecord)
-            jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION);
+        JsonUtils.readOrConvertValue(
+            jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION),
+            AppRunRecord.class);
     Object jobStats = jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS);
     long endTime = System.currentTimeMillis();
     runRecord.withEndTime(endTime);
@@ -105,14 +117,17 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
   public AppRunRecord getAppRunRecordForJob(JobExecutionContext context) {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
-    return (AppRunRecord) dataMap.get(SCHEDULED_APP_RUN_EXTENSION);
+    return JsonUtils.readOrConvertValue(
+        dataMap.get(SCHEDULED_APP_RUN_EXTENSION), AppRunRecord.class);
   }
 
   public void pushApplicationStatusUpdates(
       JobExecutionContext context, AppRunRecord runRecord, boolean update) {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
     if (dataMap.containsKey(SCHEDULED_APP_RUN_EXTENSION)) {
-      App jobApp = (App) context.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+      App jobApp =
+          JsonUtils.readOrConvertValue(
+              context.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
       updateStatus(jobApp.getId(), runRecord, update);
     }
   }
