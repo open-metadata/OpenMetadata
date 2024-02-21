@@ -21,12 +21,6 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 ### Python Requirements
 
 To run the Kafka ingestion, you will need to install:

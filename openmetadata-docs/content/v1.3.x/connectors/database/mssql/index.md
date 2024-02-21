@@ -45,10 +45,6 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 MSSQL User must grant `SELECT` privilege to fetch the metadata of tables and views.
 
 ```sql

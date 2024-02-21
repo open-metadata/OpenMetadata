@@ -41,12 +41,6 @@ Configure and schedule Vertica metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 ### Permissions
 
 To run the ingestion we need a user with `SELECT` grants on the schemas that you'd like to ingest, as well as to the

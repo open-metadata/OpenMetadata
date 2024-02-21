@@ -21,14 +21,8 @@ Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 OpenMetadata retrieves information about streams and sample data from the streams in the AWS account.
-The user must have following policy set to access the metadata from Kinesis.
+The user must have the following policy set to access the metadata from Kinesis.
 
 ```json
 {

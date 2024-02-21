@@ -24,10 +24,6 @@ Configure and schedule Nifi metadata workflows from the OpenMetadata UI:
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides. 
-{% /inlineCallout %}
-
 ### Metadata
 OpenMetadata supports 2 types of connection for the Nifi connector:
 - **basic authentication**: use username/password to authenticate to Nifi. 

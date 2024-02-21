@@ -25,12 +25,6 @@ Configure and schedule Domo Pipeline metadata and profiler workflows from the Op
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
-
 **Note:** For metadata ingestion, kindly make sure add atleast `data` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 

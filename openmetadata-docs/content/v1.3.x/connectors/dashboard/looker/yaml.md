@@ -26,10 +26,6 @@ Configure and schedule Looker metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 There are two types of metadata we ingest from Looker:
 - Dashboards & Charts
 - LookML Models

@@ -26,9 +26,7 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
+**Note:** We have tested Metabase with Versions `0.42.4` and `0.43.4`.
 
 ## Metadata Ingestion
 

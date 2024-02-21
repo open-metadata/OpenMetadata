@@ -48,10 +48,6 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 ## Unity Catalog
 
 If you are using unity catalog in Databricks, then checkout the [Unity Catalog](/connectors/database/unity-catalog) connector.

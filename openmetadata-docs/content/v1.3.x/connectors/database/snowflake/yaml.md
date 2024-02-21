@@ -44,12 +44,6 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 ### Python Requirements
 
 To run the Snowflake ingestion, you will need to install:

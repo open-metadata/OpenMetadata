@@ -40,12 +40,6 @@ Configure and schedule Druid metadata and profiler workflows from the OpenMetada
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
-## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 ## Metadata Ingestion
 
 {% partial 

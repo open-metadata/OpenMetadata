@@ -41,12 +41,6 @@ Configure and schedule Trino metadata and profiler workflows from the OpenMetada
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 ### Python Requirements
 
 To run the Trino ingestion, you will need to install:
@@ -107,7 +101,7 @@ This is a sample config for Trino:
 {% /codeInfo %}
 {% codeInfo srNumber=4 %}
 
-**catalog**: Trino offers a catalog feature where all the databases are stored. (Providing the Catalog is not mandatory from 0.12.2 or greater versions)
+**catalog**: Trino offers a catalog feature where all the databases are stored.
 
 {% /codeInfo %}
 {% codeInfo srNumber=5 %}

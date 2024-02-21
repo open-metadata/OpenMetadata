@@ -16,14 +16,8 @@ Configure and schedule Sagemaker metadata and profiler workflows from the OpenMe
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 OpenMetadata retrieves information about models and tags associated with the models in the AWS account.
-The user must have following policy set to ingest the metadata from Sagemaker.
+The user must have the following policy set to ingest the metadata from Sagemaker.
 
 ```json
 {

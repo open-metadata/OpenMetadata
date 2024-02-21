@@ -20,12 +20,6 @@ Configure and schedule Atlas metadata and profiler workflows from the OpenMetada
 Before this, you must ingest the database / messaging service you want to get metadata for. 
 For more details click [here](/connectors/metadata/atlas#create-database-service)
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 ### Python Requirements
 
 To run the Atlas ingestion, you will need to install:

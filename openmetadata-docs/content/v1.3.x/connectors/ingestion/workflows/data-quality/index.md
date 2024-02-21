@@ -9,7 +9,7 @@ Learn how you can use OpenMetadata to define Data Quality tests and measure your
 
 ## Requirements
 
-### OpenMetadata (version 0.12 or later)
+### OpenMetadata
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 

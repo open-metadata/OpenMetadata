@@ -41,12 +41,6 @@ Configure and schedule Singlestore metadata and profiler workflows from the Open
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 ### Python Requirements
 
 To run the Singlestore ingestion, you will need to install:

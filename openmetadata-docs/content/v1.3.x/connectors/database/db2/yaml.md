@@ -42,12 +42,6 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 To create a new Db2 user please follow the guidelines mentioned [here](https://www.ibm.com/docs/ko/samfess/8.2.0?topic=schema-creating-users-manually)
 
 Db2 user must have the below permissions to ingest the metadata:
