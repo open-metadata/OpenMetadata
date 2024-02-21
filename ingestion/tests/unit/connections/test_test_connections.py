@@ -5,8 +5,7 @@ import pytest
 from sqlalchemy import create_engine
 
 from metadata.ingestion.connections.test_connections import (
-    # renamed to avoid getting picked up as test by pytest
-    test_connection_engine_step as fn_test_connection_engine_step,
+    test_connection_engine_step as fn_test_connection_engine_step,  # renamed to avoid getting picked up as test by pytest
 )
 
 
