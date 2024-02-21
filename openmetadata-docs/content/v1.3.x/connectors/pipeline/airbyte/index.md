@@ -22,12 +22,6 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airbyte/yaml"} /%}
 
-## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides. 
-{% /inlineCallout %}
-
 ## Metadata Ingestion
 
 {% partial 
