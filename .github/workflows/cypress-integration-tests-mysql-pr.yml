@@ -43,7 +43,6 @@ jobs:
     if: |
       github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
           || ( github.event_name == 'pull_request_target'
-               && contains(github.event.pull_request.labels.*.name, 'e2e')
                && github.event.pull_request.draft == false
              )
     runs-on: ubuntu-latest
