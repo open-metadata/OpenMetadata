@@ -42,13 +42,18 @@ const QueryCardExtraOption = ({
   const { currentUser } = useAuthContext();
   const { t } = useTranslation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [loading, setLoading] = useState<QueryVoteType | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const onDeleteClick = async () => {
+    setIsDeleting(true);
     try {
       await deleteQuery(query.id || '');
       afterDeleteAction();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -106,7 +111,7 @@ const QueryCardExtraOption = ({
     }
   }, [query, currentUser]);
 
-  const handleVoteChange = (type: QueryVoteType) => {
+  const handleVoteChange = async (type: QueryVoteType) => {
     let updatedVoteType;
 
     // current vote is same as selected vote, it means user is removing vote, else up/down voting
@@ -115,8 +120,9 @@ const QueryCardExtraOption = ({
     } else {
       updatedVoteType = type;
     }
-
-    onUpdateVote({ updatedVoteType }, query.id);
+    setLoading(type);
+    await onUpdateVote({ updatedVoteType }, query.id);
+    setLoading(null);
   };
 
   return (
@@ -137,6 +143,7 @@ const QueryCardExtraOption = ({
             <ThumbsUpOutline height={15} width={15} />
           )
         }
+        loading={loading === QueryVoteType.votedUp}
         size="small"
         onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
         {query.votes?.upVotes || 0}
@@ -160,6 +167,7 @@ const QueryCardExtraOption = ({
             />
           )
         }
+        loading={loading === QueryVoteType.votedDown}
         size="small"
         onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
         {query.votes?.downVotes || 0}
@@ -190,6 +198,7 @@ const QueryCardExtraOption = ({
         cancelText={t('label.cancel')}
         confirmText={t('label.delete')}
         header={t('label.delete-entity', { entity: t('label.query') })}
+        isLoading={isDeleting}
         visible={showDeleteModal}
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={onDeleteClick}
