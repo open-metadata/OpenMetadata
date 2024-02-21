@@ -50,7 +50,6 @@ const NotificationBox = ({
   const { currentUser } = useAuthContext();
   const [notifications, setNotifications] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const [viewAllPath, setViewAllPath] = useState<string>(
     getUserPath(
       currentUser?.name as string,
