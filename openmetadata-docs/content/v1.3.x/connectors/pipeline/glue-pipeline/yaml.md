@@ -23,10 +23,6 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
 The Glue connector ingests metadata through AWS [Boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html) Client.
 We will ingest Workflows, its jobs and their run status.
 

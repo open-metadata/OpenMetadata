@@ -24,12 +24,6 @@ Configure and schedule Fivetran metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
-
 To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Business Critical plan is required.
 
 ### Python Requirements
