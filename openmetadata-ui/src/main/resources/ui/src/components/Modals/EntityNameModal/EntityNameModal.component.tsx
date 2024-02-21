@@ -32,14 +32,10 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
 
   const handleSave = async (obj: { name: string; displayName: string }) => {
     setIsLoading(true);
-    try {
-      await form.validateFields();
-      await onSave(obj);
-    } catch (_) {
-      // Nothing here
-    } finally {
-      setIsLoading(true);
-    }
+    await form.validateFields();
+    // Error must be handled by the parent component
+    await onSave(obj);
+    setIsLoading(false);
   };
 
   useEffect(() => {
