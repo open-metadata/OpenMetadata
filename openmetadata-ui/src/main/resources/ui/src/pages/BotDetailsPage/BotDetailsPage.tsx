@@ -124,15 +124,13 @@ const BotDetailsPage = () => {
     }
   };
 
-  const revokeBotsToken = () => {
-    revokeUserToken(botUserData.id)
-      .then((res) => {
-        const data = res;
-        setBotUserData(data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+  const revokeBotsToken = async () => {
+    try {
+      const response = await revokeUserToken(botUserData.id);
+      setBotUserData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   useEffect(() => {

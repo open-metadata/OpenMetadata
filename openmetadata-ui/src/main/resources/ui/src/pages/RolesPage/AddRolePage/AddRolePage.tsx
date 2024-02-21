@@ -56,6 +56,7 @@ const AddRolePage = () => {
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const fetchPolicies = async () => {
     try {
@@ -77,6 +78,7 @@ const AddRolePage = () => {
   };
 
   const handleSubmit = async () => {
+    setIsSaveLoading(true);
     const data = {
       name: trim(name),
       description,
@@ -99,6 +101,8 @@ const AddRolePage = () => {
             })
           : (error as AxiosError)
       );
+    } finally {
+      setIsSaveLoading(false);
     }
   };
 
@@ -197,6 +201,7 @@ const AddRolePage = () => {
                     data-testid="submit-btn"
                     form="role-form"
                     htmlType="submit"
+                    loading={isSaveLoading}
                     type="primary">
                     {t('label.submit')}
                   </Button>
