@@ -27,6 +27,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
@@ -84,15 +85,17 @@ const ManageButton: FC<ManageButtonProps> = ({
     }
   };
 
-  const handleDisplayNameUpdate = (data: EntityName) => {
-    if (onEditDisplayName) {
-      onEditDisplayName(data)
-        .then(() => {
-          setIsDisplayNameEditing(false);
-        })
-        .catch(() => {
-          // do nothing
-        });
+  const handleDisplayNameUpdate = async (data: EntityName) => {
+    if (!onEditDisplayName) {
+      return;
+    }
+
+    try {
+      await onEditDisplayName(data);
+    } catch (error) {
+      showErrorToast(error);
+    } finally {
+      setIsDisplayNameEditing(false);
     }
   };
 

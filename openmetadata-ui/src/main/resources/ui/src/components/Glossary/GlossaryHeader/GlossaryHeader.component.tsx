@@ -54,6 +54,7 @@ import {
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Style } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
@@ -69,13 +70,10 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
-import Voting from '../../Entity/Voting/Voting.component';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
-
-import { useFqn } from '../../../hooks/useFqn';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import Voting from '../../Entity/Voting/Voting.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
@@ -243,8 +241,6 @@ const GlossaryHeader = ({
     onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
-
-  const handleUpdateVote = (data: VotingDataProps) => updateVote?.(data);
 
   const addButtonContent = [
     {
@@ -516,7 +512,7 @@ const GlossaryHeader = ({
                 <Voting
                   voteStatus={voteStatus}
                   votes={selectedData.votes}
-                  onUpdateVote={handleUpdateVote}
+                  onUpdateVote={updateVote}
                 />
               )}
 

@@ -199,22 +199,41 @@ const GlossaryPage = () => {
     }
   };
 
-  const updateVote = async (data: VotingDataProps) => {
-    try {
-      const isGlossaryEntity =
-        Fqn.split(selectedData?.fullyQualifiedName).length <= 1;
+  const updateVote = useCallback(
+    async (data: VotingDataProps) => {
+      try {
+        const isGlossaryEntity =
+          Fqn.split(selectedData?.fullyQualifiedName).length <= 1;
 
-      if (isGlossaryEntity) {
-        await updateGlossaryVotes(selectedData?.id ?? '', data);
-        fetchGlossaryList();
-      } else {
-        await updateGlossaryTermVotes(selectedData?.id ?? '', data);
-        fetchGlossaryTermDetails();
+        if (isGlossaryEntity) {
+          const {
+            entity: { votes },
+          } = await updateGlossaryVotes(selectedData?.id ?? '', data);
+          setSelectedData(
+            (pre) =>
+              pre && {
+                ...pre,
+                votes,
+              }
+          );
+        } else {
+          const {
+            entity: { votes },
+          } = await updateGlossaryTermVotes(selectedData?.id ?? '', data);
+          setSelectedData(
+            (pre) =>
+              pre && {
+                ...pre,
+                votes,
+              }
+          );
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [setSelectedData, selectedData]
+  );
 
   const handleGlossaryDelete = (id: string) => {
     setDeleteStatus(LOADING_STATE.WAITING);

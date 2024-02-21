@@ -85,7 +85,7 @@ const GlossaryDetails = ({
         ...glossary,
         description: updatedHTML,
       };
-      handleGlossaryUpdate(updatedGlossaryDetails);
+      await handleGlossaryUpdate(updatedGlossaryDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -181,7 +181,9 @@ const GlossaryDetails = ({
             permissions={permissions}
             selectedData={glossary}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+            onUpdate={async (data) =>
+              await handleGlossaryUpdate(data as Glossary)
+            }
           />
         </Col>
       </Row>

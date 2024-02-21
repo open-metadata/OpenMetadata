@@ -12,22 +12,25 @@
  */
 
 import { Button, Typography } from 'antd';
-import React from 'react';
+import React, { useState } from 'react';
 import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
-  const handleVoteChange = (type: QueryVoteType) => {
+  const [loading, setLoading] = useState<QueryVoteType | null>(null);
+
+  const handleVoteChange = async (type: QueryVoteType) => {
     let updatedVoteType;
     if (voteStatus === type) {
       updatedVoteType = QueryVoteType.unVoted;
     } else {
       updatedVoteType = type;
     }
-
-    onUpdateVote({ updatedVoteType });
+    setLoading(type);
+    await onUpdateVote({ updatedVoteType });
+    setLoading(null);
   };
 
   return (
@@ -43,6 +46,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
             <ThumbsUpOutline height={15} width={15} />
           )
         }
+        loading={loading === QueryVoteType.votedUp}
         onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
         <Typography.Text className="m-l-xs" data-testid="up-vote-count">
           {votes?.upVotes ?? 0}
@@ -68,6 +72,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
             />
           )
         }
+        loading={loading === QueryVoteType.votedDown}
         onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
         <Typography.Text className="m-l-xs" data-testid="down-vote-count">
           {votes?.downVotes ?? 0}

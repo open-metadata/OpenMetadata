@@ -33,7 +33,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   const { t } = useTranslation();
   const history = useHistory();
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
-
+  const [uploading, setUploading] = useState(false);
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => [
       {
@@ -55,6 +55,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
 
   const handleImportCsv = async (name: string, data: string, dryRun = true) => {
     try {
+      setUploading(true);
       const response = await importGlossaryInCSVFormat(name, data, dryRun);
       setCsvImportResult(response);
 
@@ -63,6 +64,8 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       showErrorToast(error as AxiosError);
 
       return;
+    } finally {
+      setUploading(false);
     }
   };
 
