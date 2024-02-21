@@ -127,8 +127,6 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
     initialAdmins:
       - "user1"
-    botPrincipals:
-      - "<service_application_client_id>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "google"
@@ -150,9 +148,6 @@ openmetadata:
       containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
       initialAdmins:
         - "user1"
-        - "user2"
-      botPrincipals:
-        - "<service_application_client_id>"
       principalDomain: "open-metadata.org"
     authentication:
       provider: "google"

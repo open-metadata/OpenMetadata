@@ -78,14 +78,26 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 ```
 
-add `http://{your domain}:8585/api/v1/system/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
+add `{your domain}/api/v1/system/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
 your SSO and JWTToken auth verification will work. 
 
 ```yaml
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}, http://{your domain}:8585/api/v1/system/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}, {your domain}/api/v1/system/config/jwks]}
 ```
 
 Once you configure the above settings, restart OpenMetadata server .
+
+{% note %}
+
+<h2>Note on JWKS url Network Reachbility</h2>
+
+Make sure the above JWKS URI - `{your domain}/api/v1/system/config/jwks` is reachable from OpenMetadata Server Instance (VM or Docker Container or Kubernetes Pod). You can run the below command from the OpenMetadata Server to test it's reachility -
+
+```
+wget -O - {your domain}/api/v1/system/config/jwks
+```
+
+{% /note %}
 
 ## Generate Token
 
