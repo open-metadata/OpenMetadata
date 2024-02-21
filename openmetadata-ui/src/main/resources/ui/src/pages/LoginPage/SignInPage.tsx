@@ -214,7 +214,7 @@ const SignInPage = () => {
                     data-testid="email"
                     label={
                       isAuthProviderLDAP
-                        ? t('label.email')
+                        ? t('label.username')
                         : t('label.username-or-email')
                     }
                     name="email"
@@ -224,7 +224,7 @@ const SignInPage = () => {
                       autoFocus
                       placeholder={
                         isAuthProviderLDAP
-                          ? t('label.email')
+                          ? t('label.username')
                           : t('label.username-or-email')
                       }
                     />
@@ -268,13 +268,14 @@ const SignInPage = () => {
                     </div>
                   </div>
                 )}
-                <div className="mt-8" onClick={onClickForgotPassword}>
-                  <Typography.Link underline data-testid="forgot-password">
-                    {t('label.forgot-password')}
-                  </Typography.Link>
-                </div>
-
-                {(authConfig?.enableSelfSignup || isAuthProviderLDAP) && (
+                {(!isAuthProviderLDAP) && (
+                  <div className="mt-8" onClick={onClickForgotPassword}>
+                    <Typography.Link underline data-testid="forgot-password">
+                      {t('label.forgot-password')}
+                    </Typography.Link>
+                  </div>
+                )}
+                {(authConfig?.enableSelfSignup) && (!isAuthProviderLDAP) && (
                   <>
                     <Divider className="w-min-0 mt-8 mb-12 justify-center">
                       <Typography.Text className="text-sm" type="secondary">
