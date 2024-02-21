@@ -136,6 +136,7 @@ export const DataAssetsHeader = ({
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
   const icon = useMemo(
     () =>
@@ -292,8 +293,8 @@ export const DataAssetsHeader = ({
     }
   }, [isDataAssetsWithServiceField, dataAsset]);
 
-  const handleVoteChange = (data: VotingDataProps) => {
-    onUpdateVote?.(data, dataAsset.id ?? '');
+  const handleVoteChange = async (data: VotingDataProps) => {
+    await onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
   const handleOpenAnnouncementDrawer = useCallback(
@@ -305,6 +306,11 @@ export const DataAssetsHeader = ({
     () => setIsAnnouncementDrawerOpen(false),
     []
   );
+  const handleFollowingClick = useCallback(async () => {
+    setIsFollowingLoading(true);
+    await onFollowClick?.();
+    setIsFollowingLoading(false);
+  }, [onFollowClick]);
 
   const { editDomainPermission, editOwnerPermission, editTierPermission } =
     useMemo(
@@ -439,7 +445,8 @@ export const DataAssetsHeader = ({
                         component={isFollowing ? StarFilledIcon : StarIcon}
                       />
                     }
-                    onClick={onFollowClick}>
+                    loading={isFollowingLoading}
+                    onClick={handleFollowingClick}>
                     <Typography.Text>{followers}</Typography.Text>
                   </Button>
                 )}
