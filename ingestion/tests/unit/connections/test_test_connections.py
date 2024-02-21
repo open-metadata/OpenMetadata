@@ -27,11 +27,7 @@ def create_mock_connect(mock):
 @pytest.fixture(autouse=True, scope="function")
 def bigquery(monkeypatch):
     monkeypatch.setattr(
-        "google.cloud.bigquery.Client",
-        Mock(),
-    )
-    monkeypatch.setattr(
-        "google.cloud.bigquery.Client.from_service_account_json",
+        "sqlalchemy_bigquery._helpers.create_bigquery_client",
         Mock(),
     )
 
@@ -47,7 +43,7 @@ def bigquery(monkeypatch):
         ]
     ),
 )
-def test_test_connection_engine_step(dialect, expected_test_fn, monkeypatch):
+def test_test_connection_engine_step(dialect, expected_test_fn):
     # TODO this is skipped noqw because installing ibm_db_sa requires going through hoops
     if dialect == "ibmi":
         return
