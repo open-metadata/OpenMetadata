@@ -43,12 +43,6 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 The Athena connector ingests metadata through JDBC connections.
 
 {% note %}

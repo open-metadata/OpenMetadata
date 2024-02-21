@@ -42,12 +42,6 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 ### Python Requirements
 
 To run the MySQL ingestion, you will need to install:
@@ -214,14 +208,14 @@ source:
 ```
 ```yaml {% srNumber=2 %}
       authType: 
-            password: <password>
+        password: <password>
 ```
 ```yaml {% srNumber=3 %}
       authType: 
-            awsConfig:
-                  awsAccessKeyId: access key id
-                  awsSecretAccessKey: access secret key
-                  awsRegion: aws region name
+        awsConfig:
+          awsAccessKeyId: access key id
+          awsSecretAccessKey: access secret key
+          awsRegion: aws region name
 ```
 ```yaml {% srNumber=4 %}
       hostPort: <hostPort>

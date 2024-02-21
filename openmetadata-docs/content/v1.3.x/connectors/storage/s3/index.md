@@ -21,10 +21,6 @@ Configure and schedule S3 metadata workflows from the OpenMetadata UI:
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 We need the following permissions in AWS:
 
 ### S3 Permissions

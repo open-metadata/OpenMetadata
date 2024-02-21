@@ -24,12 +24,6 @@ Configure and schedule Spline metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
-
 The Spline connector support lineage of data source of type `jdbc` or `dbfs` i.e. The spline connector would be able to extract lineage if the data source is either a jdbc connection or the data source is databricks instance.
 
 {% note %}

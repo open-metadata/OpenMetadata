@@ -39,12 +39,6 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 User must have `glue:GetDatabases` and `glue:GetTables` permissions to ingest the basic metadata.
 
 ### Python Requirements
