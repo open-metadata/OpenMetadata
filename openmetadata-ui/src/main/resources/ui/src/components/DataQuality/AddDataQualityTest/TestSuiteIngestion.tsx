@@ -70,6 +70,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const getSuccessMessage = useMemo(() => {
     return (
       <Transi18next
@@ -184,11 +185,13 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 
   const handleIngestionSubmit = useCallback(
     (repeatFrequency: string) => {
+      setIsLoading(true);
       if (ingestionFQN) {
         onUpdateIngestionPipeline(repeatFrequency);
       } else {
         createIngestionPipeline(repeatFrequency);
       }
+      setIsLoading(false);
     },
     [
       ingestionFQN,
@@ -235,6 +238,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
               ingestionPipeline?.airflowConfig.scheduleInterval ||
               getIngestionFrequency(PipelineType.TestSuite)
             }
+            isLoading={isLoading}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />
