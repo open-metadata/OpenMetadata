@@ -12,11 +12,12 @@
 """
 Table Count Metric definition
 """
-# pylint: disable=duplicate-code
-
+from typing import Callable
 
 from sqlalchemy import func
 
+from metadata.generated.schema.entity.data.table import Table
+from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import StaticMetric, _label
 
 
@@ -50,3 +51,7 @@ class RowCount(StaticMetric):
     def df_fn(self, dfs=None):
         """pandas function"""
         return sum(len(df.index) for df in dfs)
+
+    @classmethod
+    def nosql_fn(cls, client: NoSQLAdaptor) -> Callable[[Table], int]:
+        return client.get_row_count
