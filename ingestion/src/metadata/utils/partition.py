@@ -24,6 +24,37 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
+def validate_athena_injected_partitioning(entity: Table) -> None:
+    """Validate Athena partitioning. Injected partition need to be defined
+    in the table profiler config for the profiler to work correctly. We'll throw an
+    error if the partitioning is not defined in the table profiler config.
+
+    Attr:
+        entity (Table): entity table
+    """
+    error_msg = (
+        "Table profiler config is missing for table with injected partitioning. Please define "
+        "the partitioning in the table profiler config for column {column_name}."
+    )
+
+    if (
+        (hasattr(entity, "serviceType") and entity.serviceType != DatabaseServiceType.Athena) or
+        (entity.tablePartition is None or entity.tablePartition.columns is None)
+    ):
+        return
+
+    column_partitions: List[PartitionColumnDetails] = entity.tablePartition.columns
+    for column_partition in column_partitions:
+        if column_partition.intervalType == PartitionIntervalTypes.INJECTED:
+            table_profiler_config = entity.tableProfilerConfig
+            if (table_profiler_config is None or table_profiler_config.partitioning is None):
+                raise RuntimeError(error_msg.format(column_name=column_partition.columnName))
+
+            partitioning_config = table_profiler_config.partitioning
+            if partitioning_config.partitionColumnName != column_partition.columnName:
+                raise RuntimeError(error_msg.format(column_name=column_partition.columnName))
+
+
 
 def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
     """Build PartitionProfilerConfig object from entity
@@ -38,7 +69,14 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
         and hasattr(entity.tableProfilerConfig, "partitioning")
         and entity.tableProfilerConfig.partitioning
     ):
+        validate_athena_injected_partitioning(entity)
         return entity.tableProfilerConfig.partitioning
+
+    if (
+        hasattr(entity, "serviceType")
+        and entity.serviceType == DatabaseServiceType.Athena
+    ):
+        validate_athena_injected_partitioning(entity)
 
     if (
         hasattr(entity, "serviceType")
