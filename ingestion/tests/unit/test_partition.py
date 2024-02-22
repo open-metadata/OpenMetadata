@@ -14,9 +14,9 @@
 from typing import Optional
 
 from pydantic import BaseModel
-from metadata.generated.schema.entity.data.table import PartitionColumnDetails
 
 from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
     PartitionIntervalTypes,
     PartitionIntervalUnit,
     PartitionProfilerConfig,
@@ -95,7 +95,9 @@ def test_get_partition_details():
         tablePartition=TablePartition(
             columns=[
                 PartitionColumnDetails(
-                    columnName="e", intervalType=PartitionIntervalTypes.INGESTION_TIME, interval="DAY"
+                    columnName="e",
+                    intervalType=PartitionIntervalTypes.INGESTION_TIME,
+                    interval="DAY",
                 )
             ]
         ),

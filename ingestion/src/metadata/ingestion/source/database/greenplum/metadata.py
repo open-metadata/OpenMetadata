@@ -21,8 +21,8 @@ from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalTypes,
     PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -197,16 +197,17 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
         if result:
             partition_details = TablePartition(
-                columns= [
+                columns=[
                     PartitionColumnDetails(
                         columnName=row.column_name,
                         intervalType=INTERVAL_TYPE_MAP.get(
                             result[0].partition_strategy,
-                            PartitionIntervalTypes.COLUMN_VALUE
+                            PartitionIntervalTypes.COLUMN_VALUE,
                         ),
                         interval=None,
                     )
-                    for row in result if row.column_name
+                    for row in result
+                    if row.column_name
                 ]
             )
             return True, partition_details

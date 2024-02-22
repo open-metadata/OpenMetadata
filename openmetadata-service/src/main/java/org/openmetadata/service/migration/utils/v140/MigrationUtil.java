@@ -3,12 +3,14 @@ package org.openmetadata.service.migration.utils.v140;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObject;
+import javax.json.JsonString;
+import javax.json.JsonValue;
 import lombok.extern.slf4j.Slf4j;
-
 import org.jdbi.v3.core.Handle;
-
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.PartitionColumnDetails;
@@ -19,24 +21,15 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
 import org.postgresql.util.PGobject;
 
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonValue;
-
 @Slf4j
 public class MigrationUtil {
   private static final String MYSQL_QUERY_TABLES_WITH_PARTITION =
-    "SELECT json " +
-    "FROM table_entity " +
-    "WHERE JSON_EXTRACT(json, '$.tablePartition') IS NOT NULL";
+      "SELECT json "
+          + "FROM table_entity "
+          + "WHERE JSON_EXTRACT(json, '$.tablePartition') IS NOT NULL";
 
-  private static final String POSTGRES_QUERY_TABLES_WITH_PARTITION = 
-    "SELECT json " +
-    "FROM table_entity " +
-    "WHERE json->'tablePartition' IS NOT NULL";
+  private static final String POSTGRES_QUERY_TABLES_WITH_PARTITION =
+      "SELECT json " + "FROM table_entity " + "WHERE json->'tablePartition' IS NOT NULL";
 
   private MigrationUtil() {
     /* Cannot create object  util class*/
@@ -45,32 +38,33 @@ public class MigrationUtil {
   public static void migrateTablePartition(Handle handle, CollectionDAO collectionDAO) {
     try {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        handle.createQuery(MYSQL_QUERY_TABLES_WITH_PARTITION)
-                .mapToMap()
-                .forEach(
-                        row -> {
-                          String jsonRow;
-                          jsonRow = (String) row.get("json");
-                          handleTablePartitionMigration(jsonRow, collectionDAO);
-                        }
-                );
+        handle
+            .createQuery(MYSQL_QUERY_TABLES_WITH_PARTITION)
+            .mapToMap()
+            .forEach(
+                row -> {
+                  String jsonRow;
+                  jsonRow = (String) row.get("json");
+                  handleTablePartitionMigration(jsonRow, collectionDAO);
+                });
         return;
       }
 
-      handle.createQuery(POSTGRES_QUERY_TABLES_WITH_PARTITION)
-              .mapToMap()
-              .forEach(
-                      row -> {
-                        String jsonRow;
-                        PGobject pgObject = (PGobject) row.get("json");
-                        jsonRow = pgObject.getValue();
-                        handleTablePartitionMigration(jsonRow, collectionDAO);
-                      }
-              );
+      handle
+          .createQuery(POSTGRES_QUERY_TABLES_WITH_PARTITION)
+          .mapToMap()
+          .forEach(
+              row -> {
+                String jsonRow;
+                PGobject pgObject = (PGobject) row.get("json");
+                jsonRow = pgObject.getValue();
+                handleTablePartitionMigration(jsonRow, collectionDAO);
+              });
     } catch (Exception ex) {
       LOG.warn("Error running the query migration ", ex);
     }
   }
+
   private static void handleTablePartitionMigration(String jsonRow, CollectionDAO collectionDAO) {
     JsonObject jsonObj = JsonUtils.readJson(jsonRow).asJsonObject();
 
@@ -94,20 +88,25 @@ public class MigrationUtil {
 
     List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<PartitionColumnDetails>();
 
-    if ((partitionColumns == null || partitionColumns.isEmpty()) && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
-      // BigQuery tables have pseudo columns for partitioning that were not being set in the partitionColumns entity
+    if ((partitionColumns == null || partitionColumns.isEmpty())
+        && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
+      // BigQuery tables have pseudo columns for partitioning that were not being set in the
+      // partitionColumns entity
       String interval = tablePartition.getString("interval");
       if (interval != null) {
-          JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
-          switch (interval) {
-            case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
-            case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
-          }
-        };
+        JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+        switch (interval) {
+          case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
+          case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
+        }
       }
+      ;
+    }
 
     if (partitionColumns == null || partitionColumns.isEmpty()) {
-      throw new RuntimeException("tablePartition is not null but not column partition was defined for table " + table.getId());
+      throw new RuntimeException(
+          "tablePartition is not null but not column partition was defined for table "
+              + table.getId());
     }
 
     for (JsonValue column : partitionColumns) {
@@ -121,10 +120,7 @@ public class MigrationUtil {
       partitionColumnDetails.add(partitionColumnDetail);
     }
 
-    table.withTablePartition(
-      new TablePartition()
-      .withColumns(partitionColumnDetails)
-    );
+    table.withTablePartition(new TablePartition().withColumns(partitionColumnDetails));
 
     collectionDAO.tableDAO().update(table);
   }

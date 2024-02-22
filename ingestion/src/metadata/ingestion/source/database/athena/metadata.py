@@ -12,8 +12,8 @@
 """Athena source module"""
 
 import traceback
-from typing import Iterable, Tuple, List, Dict, Optional
 from copy import deepcopy
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import types
@@ -23,10 +23,10 @@ from sqlalchemy.engine.reflection import Inspector
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
+    PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
     TablePartition,
-    PartitionColumnDetails,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
@@ -60,9 +60,14 @@ ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ATHENA_INTERVAL_TYPE_MAP = {
-    **dict.fromkeys(["enum","string", "VARCHAR"],PartitionIntervalTypes.COLUMN_VALUE),
-    **dict.fromkeys(["integer","bigint", "INTEGER", "BIGINT"],PartitionIntervalTypes.INTEGER_RANGE),
-    **dict.fromkeys(["date","timestamp", "DATE", "DATETIME", "TIMESTAMP"],PartitionIntervalTypes.TIME_UNIT),
+    **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
+    **dict.fromkeys(
+        ["integer", "bigint", "INTEGER", "BIGINT"], PartitionIntervalTypes.INTEGER_RANGE
+    ),
+    **dict.fromkeys(
+        ["date", "timestamp", "DATE", "DATETIME", "TIMESTAMP"],
+        PartitionIntervalTypes.TIME_UNIT,
+    ),
     "injected": PartitionIntervalTypes.INJECTED,
 }
 
@@ -131,7 +136,10 @@ def _get_column_type(self, type_):
         col_type = types.NullType
     return col_type(*args)
 
-def _get_projection_details(columns: List[Dict], projection_parameters: Dict) -> List[Dict]:
+
+def _get_projection_details(
+    columns: List[Dict], projection_parameters: Dict
+) -> List[Dict]:
     """Get the projection details for the columns
 
     Args:
@@ -143,7 +151,9 @@ def _get_projection_details(columns: List[Dict], projection_parameters: Dict) ->
 
     columns = deepcopy(columns)
     for col in columns:
-        projection_details = next(({k:v} for k, v in projection_parameters.items() if k == col["name"]), None)
+        projection_details = next(
+            ({k: v} for k, v in projection_parameters.items() if k == col["name"]), None
+        )
         if projection_details:
             col["projection_type"] = projection_details[col["name"]]
 
@@ -177,7 +187,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         # Return projected partition information to set partition type in `get_table_partition_details`
         # projected partition fields are stored in the form of `projection.<field_name>.type` as a table parameter
         projection_parameters = {
-            key_.split(".")[1]: value_ for key_, value_ in metadata.parameters.items()
+            key_.split(".")[1]: value_
+            for key_, value_ in metadata.parameters.items()
             if key_.startswith("projection") and key_.endswith("type")
         }
         columns = _get_projection_details(columns, projection_parameters)
@@ -263,7 +274,7 @@ class AthenaSource(CommonDbSourceService):
         Args:
             table_name (str): name of the table
             schema_name (str): name of the schema
-            inspector (Inspector): 
+            inspector (Inspector):
 
 
         Returns:
@@ -279,7 +290,7 @@ class AthenaSource(CommonDbSourceService):
                         columnName=col["name"],
                         intervalType=ATHENA_INTERVAL_TYPE_MAP.get(
                             col.get("projection_type", str(col["type"])),
-                            PartitionIntervalTypes.COLUMN_VALUE
+                            PartitionIntervalTypes.COLUMN_VALUE,
                         ),
                         interval=None,
                     )

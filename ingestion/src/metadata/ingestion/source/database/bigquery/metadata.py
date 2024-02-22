@@ -33,10 +33,10 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
     PartitionIntervalTypes,
     TablePartition,
     TableType,
-    PartitionColumnDetails,
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -517,9 +517,11 @@ class BigquerySource(
             return True, TablePartition(
                 columns=[
                     PartitionColumnDetails(
-                        columnName="_PARTITIONTIME" if table.time_partitioning.type_ == "HOUR" else "_PARTITIONDATE",
+                        columnName="_PARTITIONTIME"
+                        if table.time_partitioning.type_ == "HOUR"
+                        else "_PARTITIONDATE",
                         interval=str(table.time_partitioning.type_),
-                        intervalType=PartitionIntervalTypes.INGESTION_TIME,   
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME,
                     )
                 ]
             )

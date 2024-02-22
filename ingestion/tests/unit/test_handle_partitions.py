@@ -20,7 +20,10 @@ from google.cloud.bigquery.table import Table
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import PartitionIntervalTypes, PartitionColumnDetails
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -138,12 +141,17 @@ class BigqueryUnitTest(TestCase):
             inspector=self.inspector,
         )
 
-        assert partition.columns == [PartitionColumnDetails(
-            columnName='test_column',
-            intervalType=PartitionIntervalTypes.TIME_UNIT,
-            interval='DAY'
-        )]
-        assert partition.columns[0].intervalType.value == PartitionIntervalTypes.TIME_UNIT.value
+        assert partition.columns == [
+            PartitionColumnDetails(
+                columnName="test_column",
+                intervalType=PartitionIntervalTypes.TIME_UNIT,
+                interval="DAY",
+            )
+        ]
+        assert (
+            partition.columns[0].intervalType.value
+            == PartitionIntervalTypes.TIME_UNIT.value
+        )
         assert partition.columns[0].interval == "DAY"
         assert bool_resp
 
@@ -158,7 +166,10 @@ class BigqueryUnitTest(TestCase):
         )
 
         self.assertIsInstance(partition.columns, list)
-        assert partition.columns[0].intervalType.value == PartitionIntervalTypes.INGESTION_TIME.value
+        assert (
+            partition.columns[0].intervalType.value
+            == PartitionIntervalTypes.INGESTION_TIME.value
+        )
         assert partition.columns[0].interval == "HOUR"
         assert bool_resp
 
@@ -174,7 +185,10 @@ class BigqueryUnitTest(TestCase):
         )
 
         self.assertIsInstance(partition.columns, list)
-        assert partition.columns[0].intervalType.value == PartitionIntervalTypes.INTEGER_RANGE.value
+        assert (
+            partition.columns[0].intervalType.value
+            == PartitionIntervalTypes.INTEGER_RANGE.value
+        )
         assert partition.columns[0].interval == 10
         assert bool_resp
 

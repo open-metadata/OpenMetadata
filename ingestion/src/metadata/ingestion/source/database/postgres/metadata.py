@@ -21,8 +21,8 @@ from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalTypes,
     PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -215,7 +215,8 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                         ),
                         interval=None,
                     )
-                    for row in result if row.column_name
+                    for row in result
+                    if row.column_name
                 ]
             )
             return True, partition_details

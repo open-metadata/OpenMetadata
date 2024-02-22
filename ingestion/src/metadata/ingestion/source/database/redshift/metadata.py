@@ -32,8 +32,8 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 )
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
-    PartitionIntervalTypes,
     PartitionColumnDetails,
+    PartitionIntervalTypes,
     TableConstraint,
     TablePartition,
     TableType,

@@ -20,7 +20,12 @@ import pyiceberg.partitioning
 import pyiceberg.table
 import pyiceberg.types
 
-from metadata.generated.schema.entity.data.table import Column, Constraint, DataType, PartitionIntervalTypes
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    DataType,
+    PartitionIntervalTypes,
+)
 
 
 def namespace_to_str(namespace: tuple[str]) -> str:
@@ -49,24 +54,41 @@ def get_column_from_partition(
     """Returns the Column Name belonging to a partition."""
     # A Partition in Iceberg has a Source Column to which a Transformation is applied.
     # We need to return the Source Column name.
-    return next((column.name for column in columns if column.field_id == partition.source_id), None)
+    return next(
+        (column.name for column in columns if column.field_id == partition.source_id),
+        None,
+    )
+
 
 def get_column_partition_type(
     columns: Tuple[pyiceberg.types.NestedField, ...],
     partition: pyiceberg.partitioning.PartitionField,
-) -> Optional[PartitionIntervalTypes] :
+) -> Optional[PartitionIntervalTypes]:
     """Get the partition type for a given partition column."""
     iceberg_interval_type_map = {
         "INT": PartitionIntervalTypes.INTEGER_RANGE,
-        **dict.fromkeys(["TIME","DATE", "TIMESTAMP", "TIMESTAMPTZ"],PartitionIntervalTypes.TIME_UNIT)
+        **dict.fromkeys(
+            ["TIME", "DATE", "TIMESTAMP", "TIMESTAMPTZ"],
+            PartitionIntervalTypes.TIME_UNIT,
+        ),
     }
 
-    data_type = str(next((column.field_type for column in columns if column.field_id == partition.source_id), ""))
+    data_type = str(
+        next(
+            (
+                column.field_type
+                for column in columns
+                if column.field_id == partition.source_id
+            ),
+            "",
+        )
+    )
     if not data_type.isalpha():
         return None
 
-    return iceberg_interval_type_map.get(data_type.upper(), PartitionIntervalTypes.COLUMN_VALUE)
-
+    return iceberg_interval_type_map.get(
+        data_type.upper(), PartitionIntervalTypes.COLUMN_VALUE
+    )
 
 
 def get_owner_from_table(

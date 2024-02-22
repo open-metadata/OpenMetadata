@@ -60,11 +60,15 @@ class IcebergTable(BaseModel):
             tablePartition=TablePartition(
                 columns=[
                     PartitionColumnDetails(
-                        columnName=get_column_from_partition(iceberg_columns, partition),
-                        intervalType=get_column_partition_type(iceberg_columns, partition),
+                        columnName=get_column_from_partition(
+                            iceberg_columns, partition
+                        ),
+                        intervalType=get_column_partition_type(
+                            iceberg_columns, partition
+                        ),
                         interval=None,
                     )
                     for partition in table.spec().fields
                 ]
-            )
+            ),
         )

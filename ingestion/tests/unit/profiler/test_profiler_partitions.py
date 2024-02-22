@@ -185,7 +185,9 @@ class ProfilerPartitionUnitTest(TestCase):
             tablePartition=TablePartition(
                 columns=[
                     PartitionColumnDetails(
-                        columnName="e", intervalType=PartitionIntervalTypes.INGESTION_TIME.value, interval="DAY"
+                        columnName="e",
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME.value,
+                        interval="DAY",
                     )
                 ]
             ),
@@ -223,7 +225,9 @@ class ProfilerPartitionUnitTest(TestCase):
             tablePartition=TablePartition(
                 columns=[
                     PartitionColumnDetails(
-                        columnName="e", intervalType=PartitionIntervalTypes.INGESTION_TIME.value, interval="HOUR"
+                        columnName="e",
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME.value,
+                        interval="HOUR",
                     )
                 ]
             ),

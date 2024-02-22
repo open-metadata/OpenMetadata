@@ -14,8 +14,8 @@
 from typing import List, Optional
 
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalTypes,
     PartitionColumnDetails,
+    PartitionIntervalTypes,
     PartitionIntervalUnit,
     PartitionProfilerConfig,
     Table,
@@ -45,7 +45,9 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
         and entity.serviceType == DatabaseServiceType.BigQuery
     ):
         if hasattr(entity, "tablePartition") and entity.tablePartition:
-            column_partitions: Optional[List[PartitionColumnDetails]] = entity.tablePartition.columns
+            column_partitions: Optional[
+                List[PartitionColumnDetails]
+            ] = entity.tablePartition.columns
             if not column_partitions:
                 raise TypeError("table partition missing. Skipping table")
 

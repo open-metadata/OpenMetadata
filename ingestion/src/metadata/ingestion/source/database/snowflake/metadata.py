@@ -28,8 +28,8 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalTypes,
     PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -333,7 +333,7 @@ class SnowflakeSource(
                     )
                     for column in self.__fix_partition_column_case(
                         table_name, schema_name, inspector, partition_columns
-                    )   
+                    )
                 ]
             )
             return True, partition_details
