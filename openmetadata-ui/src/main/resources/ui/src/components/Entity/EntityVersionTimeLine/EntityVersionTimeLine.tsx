@@ -31,7 +31,7 @@ import {
   EntityVersionTimelineProps,
 } from './EntityVersionTimeline.interface';
 
-const VersionButton = ({
+export const VersionButton = ({
   version,
   onVersionSelect,
   selected,
@@ -50,6 +50,7 @@ const VersionButton = ({
     permission: true,
     name: updatedBy,
   });
+
   const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
 
   return (
