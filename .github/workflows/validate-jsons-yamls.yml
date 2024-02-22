@@ -16,6 +16,10 @@ name: Validate JSON/YAML
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
+    paths:
+      - "**.json"
+      - "**.yaml"
+      - "**.yml"
 
 permissions:
   contents: read
