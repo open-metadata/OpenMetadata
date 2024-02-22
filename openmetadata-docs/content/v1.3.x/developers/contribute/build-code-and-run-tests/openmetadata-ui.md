@@ -10,7 +10,7 @@ This guide will help you run OpenMetadata UI locally in dev mode.
 Before proceeding, ensure that you have installed the node and yarn with the versions given below.
 
 ```shell
-"node": ">=10.0.0",
+"node": ">=18.19.0",
 "yarn": "^1.22.0"
 ```
 

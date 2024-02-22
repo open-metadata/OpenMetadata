@@ -96,3 +96,25 @@ export const removeGlossaryTerm = (
     '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
   ).should('be.visible');
 };
+
+export const confirmationDragAndDropGlossary = (
+  dragElement: string,
+  dropElement: string,
+  isHeader?: boolean
+) => {
+  interceptURL('PATCH', `/api/v1/glossaryTerms/*`, 'patchGlossaryTerm');
+
+  // confirmation message before the transfer
+  cy.get('[data-testid="confirmation-modal"] .ant-modal-body').contains(
+    `Click on Confirm if you’d like to move ${
+      isHeader
+        ? `${dragElement} under ${dropElement} .`
+        : `${dragElement} term under ${dropElement} term.`
+    }`
+  );
+
+  // click on submit modal button to confirm the transfer
+  cy.get('.ant-modal-footer > .ant-btn-primary').click();
+
+  verifyResponseStatusCode('@patchGlossaryTerm', 200);
+};

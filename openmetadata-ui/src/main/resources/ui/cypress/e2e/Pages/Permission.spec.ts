@@ -322,7 +322,7 @@ const updatePolicy = (
   cy.reload();
 };
 
-describe('Permissions', () => {
+describe('Permissions', { tags: 'Settings' }, () => {
   before(preRequisite);
   after(cleanUp);
 

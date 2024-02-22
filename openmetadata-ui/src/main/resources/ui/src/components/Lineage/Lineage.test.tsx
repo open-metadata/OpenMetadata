@@ -82,7 +82,7 @@ let entityLineage: EntityLineageReponse | undefined = {
   ],
 };
 
-jest.mock('../LineageProvider/LineageProvider', () => ({
+jest.mock('../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
     tracedColumns: [],

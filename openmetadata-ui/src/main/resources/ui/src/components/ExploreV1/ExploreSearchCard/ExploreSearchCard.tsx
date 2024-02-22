@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -30,8 +31,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
-import { useTourProvider } from '../../TourProvider/TourProvider';
+import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 

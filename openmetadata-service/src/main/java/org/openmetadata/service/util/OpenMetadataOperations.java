@@ -238,7 +238,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean recreateIndexes) {
     try {
       parseConfig();
-      AppScheduler.initialize(collectionDAO, searchRepository);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
       App searchIndexApp =
           new App()
               .withId(UUID.randomUUID())

@@ -28,7 +28,7 @@ import SignInPage from '../../../pages/LoginPage/SignInPage';
 import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
 import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import { useAuthContext } from '../AuthProviders/AuthProvider';
 import {
   AuthenticatorRef,
