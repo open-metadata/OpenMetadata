@@ -313,6 +313,7 @@ test = {
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
+    "testcontainers==3.7.1",
 }
 
 e2e_test = {
