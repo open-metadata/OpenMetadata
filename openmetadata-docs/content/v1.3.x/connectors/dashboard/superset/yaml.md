@@ -26,10 +26,6 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 The ingestion also works with Superset 2.0.0 🎉
 
 **Note:**

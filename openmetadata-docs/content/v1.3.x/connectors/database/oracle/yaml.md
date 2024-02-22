@@ -44,12 +44,6 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 **Note**: To retrieve metadata from an Oracle database, the python-oracledb library can be utilized, which provides support for versions 12c, 18c, 19c, and 21c.
 
 To ingest metadata from oracle user must have `CREATE SESSION` privilege for the user.
