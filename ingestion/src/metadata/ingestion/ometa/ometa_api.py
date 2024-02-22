@@ -418,7 +418,7 @@ class OpenMetadata(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
     ) -> Iterable[T]:
