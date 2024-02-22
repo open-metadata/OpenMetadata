@@ -143,6 +143,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
+
+      // Initialize installed applications
+      for (App app : repository.listAll()) {
+        ApplicationHandler.runAppInit(app, dao, searchRepository);
+      }
     } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
     }

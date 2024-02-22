@@ -37,7 +37,7 @@ public class ApplicationHandler {
     runMethodFromApplication(app, daoCollection, searchRepository, "configure");
   }
 
-  private static Object runAppInit(
+  public static Object runAppInit(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository)
       throws ClassNotFoundException,
           NoSuchMethodException,
@@ -53,6 +53,8 @@ public class ApplicationHandler {
     Method initMethod = resource.getClass().getMethod("init", App.class);
     initMethod.invoke(resource, app);
 
+    instances.put(app.getClassName(), resource);
+
     return resource;
   }
 
@@ -64,7 +66,6 @@ public class ApplicationHandler {
       Object resource = getAppInstance(app.getClassName());
       if (resource == null) {
         resource = runAppInit(app, daoCollection, searchRepository);
-        instances.put(app.getClassName(), resource);
       }
 
       // Call method on demand
