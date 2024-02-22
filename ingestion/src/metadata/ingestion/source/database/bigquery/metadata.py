@@ -517,7 +517,7 @@ class BigquerySource(
             return True, TablePartition(
                 columns=[
                     PartitionColumnDetails(
-                        columnName=None,
+                        columnName="_PARTITIONTIME" if table.time_partitioning.type_ == "HOUR" else "_PARTITIONDATE",
                         interval=str(table.time_partitioning.type_),
                         intervalType=PartitionIntervalTypes.INGESTION_TIME,   
                     )
@@ -525,7 +525,7 @@ class BigquerySource(
             )
         if table.range_partitioning:
             table_partition = PartitionColumnDetails(
-                columnName=None,
+                columnName=table.range_partitioning.field,
                 intervalType=PartitionIntervalTypes.INTEGER_RANGE,
                 interval=None,
             )

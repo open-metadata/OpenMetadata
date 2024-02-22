@@ -75,6 +75,9 @@ public final class DatabaseUtil {
     }
     List<String> columnNames = new ArrayList<>();
     columns.forEach(c -> columnNames.add(c.getName()));
+    // Add BigQuery partition pseudo columns
+    columnNames.add("_PARTITIONDATE");
+    columnNames.add("_PARTITIONTIME");
     for (PartitionColumnDetails partitionColumnDetails : tablePartition.getColumns()) {
       if (!columnNames.contains(partitionColumnDetails.getColumnName())) {
         throw new IllegalArgumentException("Invalid column name found in table partition");
