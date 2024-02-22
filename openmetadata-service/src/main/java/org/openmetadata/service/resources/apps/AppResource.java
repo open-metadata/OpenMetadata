@@ -146,6 +146,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
       // Initialize installed applications
       for (App app : repository.listAll()) {
+        setAppRuntimeProperties(app);
         ApplicationHandler.runAppInit(app, dao, searchRepository);
       }
     } catch (Exception ex) {
