@@ -117,7 +117,11 @@
           "default": 1,
           "title": "Safety Margin Days"
         }
-      }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ]
     }
   },
   "additionalProperties": false

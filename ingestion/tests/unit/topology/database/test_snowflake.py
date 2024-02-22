@@ -60,7 +60,9 @@ SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
     **{
         "source": {
             **SNOWFLAKE_CONFIGURATION["source"],
-            "sourceConfig": {"config": {"type": "DatabaseMetadata", "incremental": {"enabled": True}}},
+            "sourceConfig": {
+                "config": {"type": "DatabaseMetadata", "incremental": {"enabled": True}}
+            },
         }
     },
 }
@@ -173,7 +175,9 @@ class SnowflakeUnitTest(TestCase):
         self.assertTrue(self.sources["incremental"].incremental.enabled)
 
         milliseconds_in_one_day = 24 * 60 * 60 * 1000
-        safety_margin_days = self.sources["incremental"].source_config.incremental.safetyMarginDays
+        safety_margin_days = self.sources[
+            "incremental"
+        ].source_config.incremental.safetyMarginDays
 
         self.assertEqual(
             self.sources["incremental"].incremental.start_timestamp,

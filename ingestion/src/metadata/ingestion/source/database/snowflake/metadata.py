@@ -54,13 +54,13 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
+)
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.incremental_metadata_extraction import (
-    IncrementalConfig,
-)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -141,7 +141,13 @@ class SnowflakeSource(
     Database metadata from Snowflake Source
     """
 
-    def __init__(self, config, metadata, pipeline_name, incremental_configuration: IncrementalConfig):
+    def __init__(
+        self,
+        config,
+        metadata,
+        pipeline_name,
+        incremental_configuration: IncrementalConfig,
+    ):
         super().__init__(config, metadata)
         self.partition_details = {}
         self.schema_desc_map = {}

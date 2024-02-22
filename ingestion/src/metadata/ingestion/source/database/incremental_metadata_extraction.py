@@ -1,4 +1,3 @@
-
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -18,10 +17,12 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import Incremental
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
     PipelineStatus,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    Incremental,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
@@ -65,8 +66,7 @@ class IncrementalConfigCreator:
 
         # We multiply the value by 1000 because our backend uses epoch_milliseconds instead of epoch_seconds.
         start = int(
-            (now - timedelta(days=self.incremental.lookbackDays)).timestamp()
-            * 1000
+            (now - timedelta(days=self.incremental.lookbackDays)).timestamp() * 1000
         )
         end = int(now.timestamp() * 1000)
 
@@ -110,7 +110,10 @@ class IncrementalConfigCreator:
         If no previous successful runs are found within the time period it will disable the incremental ingestion.
         """
         try:
-            if not (self.incremental and self.pipeline_name) or not self.incremental.enabled:
+            if (
+                not (self.incremental and self.pipeline_name)
+                or not self.incremental.enabled
+            ):
                 return IncrementalConfig(enabled=False)
 
             pipeline_statuses = self._get_pipeline_statuses()
