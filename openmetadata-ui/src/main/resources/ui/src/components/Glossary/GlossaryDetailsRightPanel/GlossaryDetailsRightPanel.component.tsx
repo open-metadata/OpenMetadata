@@ -58,7 +58,7 @@ type Props = {
   onUpdate: (data: GlossaryTerm | Glossary) => void | Promise<void>;
   onThreadLinkSelect: (value: string) => void;
   entityType: EntityType;
-  refreshGlossaryTerms: () => void;
+  refreshGlossaryTerms?: () => void;
 };
 
 const GlossaryDetailsRightPanel = ({
@@ -115,7 +115,7 @@ const GlossaryDetailsRightPanel = ({
       owner: newOwner,
     };
     await onUpdate(updatedData);
-    refreshGlossaryTerms();
+    refreshGlossaryTerms?.();
   };
 
   const getOwner = useCallback(

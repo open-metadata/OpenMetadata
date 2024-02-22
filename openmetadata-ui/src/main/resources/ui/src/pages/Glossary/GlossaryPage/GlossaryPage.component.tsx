@@ -235,36 +235,36 @@ const GlossaryPage = () => {
     [setSelectedData, selectedData]
   );
 
-  const handleGlossaryDelete = (id: string) => {
+  const handleGlossaryDelete = async (id: string) => {
     setDeleteStatus(LOADING_STATE.WAITING);
-    deleteGlossary(id)
-      .then(() => {
-        setDeleteStatus(LOADING_STATE.SUCCESS);
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary'),
-          })
-        );
-        setIsLoading(true);
-        // check if the glossary available
-        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
-        const glossaryPath =
-          updatedGlossaries.length > 0
-            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
-            : getGlossaryPath();
+    try {
+      await deleteGlossary(id);
+      setDeleteStatus(LOADING_STATE.SUCCESS);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.glossary'),
+        })
+      );
+      setIsLoading(true);
+      // check if the glossary available
+      const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+      const glossaryPath =
+        updatedGlossaries.length > 0
+          ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+          : getGlossaryPath();
 
-        history.push(glossaryPath);
-        fetchGlossaryList();
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.delete-entity-error', {
-            entity: t('label.glossary'),
-          })
-        );
-      })
-      .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
+      history.push(glossaryPath);
+      fetchGlossaryList();
+    } catch (error) {
+      showErrorToast(
+        error,
+        t('server.delete-entity-error', {
+          entity: t('label.glossary'),
+        })
+      );
+    } finally {
+      setDeleteStatus(LOADING_STATE.INITIAL);
+    }
   };
 
   const handleGlossaryTermUpdate = useCallback(

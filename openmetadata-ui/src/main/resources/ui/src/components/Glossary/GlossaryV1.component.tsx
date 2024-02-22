@@ -175,12 +175,12 @@ const GlossaryV1 = ({
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const { id } = selectedData;
     if (isGlossaryActive) {
-      onGlossaryDelete(id);
+      await onGlossaryDelete(id);
     } else {
-      onGlossaryTermDelete(id);
+      await onGlossaryTermDelete(id);
     }
     setIsDelete(false);
   };
