@@ -39,10 +39,8 @@ concurrency:
 jobs:
   cypress-ci-mysql:
     if: |
-      github.event_name == 'workflow_dispatch' 
-          || ( github.event_name == 'pull_request_target'
-               && github.event.pull_request.draft == false
-             )
+      github.event_name == 'workflow_dispatch' || 
+      ( github.event_name == 'pull_request_target'&& github.event.pull_request.draft == false )
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -54,8 +52,7 @@ jobs:
         id: cypress-project-id
         run: |
           echo "CYPRESS_PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
-	        echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
-
+          echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
