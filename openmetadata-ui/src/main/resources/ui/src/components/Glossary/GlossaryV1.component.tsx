@@ -322,7 +322,7 @@ const GlossaryV1 = ({
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
     } else {
-      handleGlossaryTermAdd(formData);
+      await handleGlossaryTermAdd(formData);
     }
   };
 

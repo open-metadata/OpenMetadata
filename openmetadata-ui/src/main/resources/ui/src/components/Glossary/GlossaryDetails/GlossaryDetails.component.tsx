@@ -179,11 +179,10 @@ const GlossaryDetails = ({
             entityType={EntityType.GLOSSARY_TERM}
             isVersionView={isVersionView}
             permissions={permissions}
+            refreshGlossaryTerms={refreshGlossaryTerms}
             selectedData={glossary}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={async (data) =>
-              await handleGlossaryUpdate(data as Glossary)
-            }
+            onUpdate={handleGlossaryUpdate}
           />
         </Col>
       </Row>
@@ -264,7 +263,7 @@ const GlossaryDetails = ({
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
-          onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+          onUpdate={handleGlossaryUpdate}
         />
       </Col>
       <Col span={24}>

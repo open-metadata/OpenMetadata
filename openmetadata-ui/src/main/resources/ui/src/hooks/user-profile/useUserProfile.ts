@@ -12,6 +12,7 @@
  */
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
+import IconTeams from '../../assets/svg/teams-grey.svg';
 import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
@@ -55,6 +56,8 @@ export const useUserProfile = ({
 
   const fetchProfileIfRequired = useCallback(async () => {
     if (isTeam || userProfilePics[name]) {
+      isTeam && setProfilePic(IconTeams);
+
       return;
     }
 

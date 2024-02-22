@@ -213,7 +213,7 @@ const GlossaryHeader = ({
     setIsDelete(false);
   };
 
-  const onNameSave = (obj: { name: string; displayName: string }) => {
+  const onNameSave = async (obj: { name: string; displayName: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
 
@@ -223,7 +223,7 @@ const GlossaryHeader = ({
       displayName: displayName?.trim(),
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsNameEditing(false);
   };
 
