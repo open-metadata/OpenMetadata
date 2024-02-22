@@ -47,6 +47,7 @@ class MockRedshiftTable(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+
 class MockAthenaTable(BaseModel):
     tablePartition: Optional[TablePartition]
     tableProfilerConfig: Optional[TableProfilerConfig]
@@ -69,7 +70,7 @@ def test_get_partition_details():
                 partitionValues=None,
             )
         )
-    ) # type: ignore
+    )  # type: ignore
 
     partition = get_partition_details(table_entity)
 
@@ -138,22 +139,21 @@ def test_athena_injected_partition():
     )
 
     with pytest.raises(
-            RuntimeError,
-            match="Table profiler config is missing for table with injected partitioning. Please define the partitioning in the table profiler config for column e"
-        ):
+        RuntimeError,
+        match="Table profiler config is missing for table with injected partitioning. Please define the partitioning in the table profiler config for column e",
+    ):
         # As athena table has injected partitioning, it should raise an error
         # since we have not provided any partitioning details for the injected partition
         get_partition_details(entity)
 
-
     profiler_config = TableProfilerConfig(
-            partitioning=PartitionProfilerConfig(
-                enablePartitioning=True,
-                partitionColumnName="e",
-                partitionIntervalType="COLUMN-VALUE",
-                partitionValues=["red"],
-            )
+        partitioning=PartitionProfilerConfig(
+            enablePartitioning=True,
+            partitionColumnName="e",
+            partitionIntervalType="COLUMN-VALUE",
+            partitionValues=["red"],
         )
+    )
 
     entity.tableProfilerConfig = profiler_config
 
