@@ -122,7 +122,7 @@ class ProfilerResponse(ConfigModel):
 
 
 class ThreadPoolMetrics(ConfigModel):
-    """thread pool metric"""
+    """A container for all metrics to be computed on the same thread."""
 
     metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
     metric_type: MetricTypes
