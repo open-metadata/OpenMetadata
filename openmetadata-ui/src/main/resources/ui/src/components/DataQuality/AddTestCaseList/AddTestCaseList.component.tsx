@@ -13,7 +13,13 @@
 import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import React, {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
@@ -154,21 +160,20 @@ export const AddTestCaseList = ({
     fetchTestCases({ searchText: searchTerm });
   }, [searchTerm]);
 
-  return (
-    <Row gutter={[0, 16]}>
-      <Col span={24}>
-        <Searchbar
-          removeMargin
-          showClearSearch
-          showLoadingStatus
-          placeholder={t('label.search-entity', {
-            entity: t('label.test-case-plural'),
-          })}
-          searchValue={searchTerm}
-          onSearch={handleSearch}
-        />
-      </Col>
-      {!isEmpty(items) ? (
+  const renderList = useMemo(() => {
+    if (!isLoading && isEmpty(items)) {
+      return (
+        <Col span={24}>
+          <Space align="center" className="w-full" direction="vertical">
+            <ErrorPlaceHolder
+              className="mt-0-important"
+              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+            />
+          </Space>
+        </Col>
+      );
+    } else {
+      return (
         <Col span={24}>
           <List loading={{ spinning: false, indicator: <Loader /> }}>
             <VirtualList
@@ -232,16 +237,25 @@ export const AddTestCaseList = ({
             </VirtualList>
           </List>
         </Col>
-      ) : (
-        <Col span={24}>
-          <Space align="center" className="w-full" direction="vertical">
-            <ErrorPlaceHolder
-              className="mt-0-important"
-              type={ERROR_PLACEHOLDER_TYPE.FILTER}
-            />
-          </Space>
-        </Col>
-      )}
+      );
+    }
+  }, [items, selectedItems, isLoading]);
+
+  return (
+    <Row gutter={[0, 16]}>
+      <Col span={24}>
+        <Searchbar
+          removeMargin
+          showClearSearch
+          showLoadingStatus
+          placeholder={t('label.search-entity', {
+            entity: t('label.test-case-plural'),
+          })}
+          searchValue={searchTerm}
+          onSearch={handleSearch}
+        />
+      </Col>
+      {renderList}
       <Col className="d-flex justify-end items-center p-y-xss" span={24}>
         <Button data-testid="cancel" type="link" onClick={onCancel}>
           {cancelText ?? t('label.cancel')}
