@@ -145,9 +145,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
 
       // Initialize installed applications
-      for (App app : repository.listAll()) {
-        setAppRuntimeProperties(app);
-        ApplicationHandler.runAppInit(app, dao, searchRepository);
+      for (App installedApp : repository.listAll()) {
+        App appWithBot = getAppForInit(installedApp.getName());
+        if (appWithBot == null) {
+          LOG.error(String.format("Failed to init app [%s]. GET should return the installed app", installedApp.getName()));
+        } else {
+          setAppRuntimeProperties(appWithBot);
+          ApplicationHandler.runAppInit(appWithBot, dao, searchRepository);
+          LOG.info(String.format("Initialized installed app [%s]", installedApp.getName()));
+        }
       }
     } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
