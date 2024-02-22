@@ -18,6 +18,9 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -27,7 +30,6 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
     Source,
 )
-from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -126,11 +128,11 @@ class OpenlineageSource(PipelineServiceSource):
             except FQNNotFoundException:
                 return None
 
-    def _get_entity_fqn_from_om(self, entity_type: Union[type(Table), type(DatabaseSchema)], **kwargs) -> Optional[str]:
+    def _get_entity_fqn_from_om(
+        self, entity_type: Union[type(Table), type(DatabaseSchema)], **kwargs
+    ) -> Optional[str]:
         fully_qualified_name = fqn.build(
-            metadata=self.metadata,
-            entity_type=entity_type,
-            **kwargs
+            metadata=self.metadata, entity_type=entity_type, **kwargs
         )
         if fully_qualified_name:
             entity: Union[Table, DatabaseSchema] = self.metadata.get_by_name(
@@ -139,6 +141,8 @@ class OpenlineageSource(PipelineServiceSource):
             if entity:
                 result = entity.fullyQualifiedName.__root__
                 return result
+
+        return None
 
     def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
         """
@@ -224,7 +228,7 @@ class OpenlineageSource(PipelineServiceSource):
 
     @classmethod
     def _filter_event_by_type(
-            cls, event: OpenLineageEvent, event_type: EventType
+        cls, event: OpenLineageEvent, event_type: EventType
     ) -> Optional[Dict]:
         """
         returns event if it's of particular event_type.
@@ -333,11 +337,11 @@ class OpenlineageSource(PipelineServiceSource):
 
     @classmethod
     def _create_output_lineage_dict(
-            cls, lineage_info: List[Tuple[str, str, str, str]]
+        cls, lineage_info: List[Tuple[str, str, str, str]]
     ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
         result = defaultdict(lambda: defaultdict(list))
         for (output_table, input_table, output_column), group in groupby(
-                lineage_info, lambda x: x[:3]
+            lineage_info, lambda x: x[:3]
         ):
             input_columns = [input_col for _, _, _, input_col in group]
 
@@ -348,7 +352,7 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     def _get_column_lineage(
-            self, inputs: List, outputs: List
+        self, inputs: List, outputs: List
     ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
         _result: List = []
 
@@ -359,10 +363,10 @@ class OpenlineageSource(PipelineServiceSource):
                 OpenlineageSource._get_table_details(table)
             )
             for field_name, field_spec in (
-                    table.get("facets", {})
-                            .get("columnLineage", {})
-                            .get("fields", {})
-                            .items()
+                table.get("facets", {})
+                .get("columnLineage", {})
+                .get("fields", {})
+                .items()
             ):
                 for input_field in field_spec.get("inputFields", []):
                     input_table_ol_name = OpenlineageSource._get_ol_table_name(
@@ -381,7 +385,7 @@ class OpenlineageSource(PipelineServiceSource):
         return OpenlineageSource._create_output_lineage_dict(_result)
 
     def yield_pipeline(
-            self, pipeline_details: OpenLineageEvent
+        self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[CreatePipelineRequest]]:
         pipeline_name = self.get_pipeline_name(pipeline_details)
         try:
@@ -405,7 +409,7 @@ class OpenlineageSource(PipelineServiceSource):
             )
 
     def yield_pipeline_lineage_details(
-            self, pipeline_details: OpenLineageEvent
+        self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[AddLineageRequest]]:
         inputs, outputs = pipeline_details.inputs, pipeline_details.outputs
 
@@ -486,8 +490,8 @@ class OpenlineageSource(PipelineServiceSource):
                     logger.debug("no new messages")
                     empty_msg_cnt += 1
                     if (
-                            empty_msg_cnt * pool_timeout
-                            > self.service_connection.sessionTimeout
+                        empty_msg_cnt * pool_timeout
+                        > self.service_connection.sessionTimeout
                     ):
                         # There is no new messages, timeout is passed
                         session_active = False
@@ -518,7 +522,7 @@ class OpenlineageSource(PipelineServiceSource):
         return OpenlineageSource._render_pipeline_name(pipeline_details)
 
     def yield_pipeline_status(
-            self, pipeline_details: OpenLineageEvent
+        self, pipeline_details: OpenLineageEvent
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         pass
 
