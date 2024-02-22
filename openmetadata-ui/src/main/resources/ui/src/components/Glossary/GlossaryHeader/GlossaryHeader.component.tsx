@@ -517,20 +517,29 @@ const GlossaryHeader = ({
               )}
 
               {selectedData && selectedData.version && (
-                <Button
-                  className={classNames('', {
-                    'text-primary border-primary': version,
-                  })}
-                  data-testid="version-button"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={handleVersionClick}>
-                  <Typography.Text
+                <Tooltip
+                  title={t(
+                    `label.${
+                      isVersionView
+                        ? 'exit-version-history'
+                        : 'version-plural-history'
+                    }`
+                  )}>
+                  <Button
                     className={classNames('', {
-                      'text-primary': version,
-                    })}>
-                    {toString(selectedData.version)}
-                  </Typography.Text>
-                </Button>
+                      'text-primary border-primary': version,
+                    })}
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={handleVersionClick}>
+                    <Typography.Text
+                      className={classNames('', {
+                        'text-primary': version,
+                      })}>
+                      {toString(selectedData.version)}
+                    </Typography.Text>
+                  </Button>
+                </Tooltip>
               )}
 
               {!isVersionView && manageButtonContent.length > 0 && (
