@@ -33,6 +33,7 @@ import { searchData } from '../../../rest/miscAPI';
 import { formatDataResponse } from '../../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
@@ -139,14 +140,19 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 />
                 <div className="flex-1 text-left">
                   {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs text-grey-muted w-max-400 truncate">
+                    <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
                       {getSuggestionLabelHeading(
                         entity.fullyQualifiedName,
                         entity.entityType as string
                       )}
                     </p>
                   )}
-                  <p className="w-max-400 truncate">{entity.name}</p>
+                  <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
+                    {entity.name}
+                  </p>
+                  <p className="w-max-400 text-sm font-medium truncate">
+                    {getEntityName(entity)}
+                  </p>
                 </div>
               </div>
             </>

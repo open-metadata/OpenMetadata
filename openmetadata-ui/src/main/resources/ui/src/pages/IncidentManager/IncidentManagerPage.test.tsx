@@ -17,18 +17,21 @@ import IncidentManagerPage from './IncidentManagerPage';
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../../components/DatePickerMenu/DatePickerMenu.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DatePickerMenu.component</div>);
-});
+jest.mock(
+  '../../components/common/DatePickerMenu/DatePickerMenu.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>DatePickerMenu.component</div>);
+  }
+);
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 jest.mock('../TasksPage/shared/Assignees', () => {
   return jest.fn().mockImplementation(() => <div>Assignees.component</div>);
 });
-jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({
+jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
     .mockImplementation(() => <div>AsyncSelect.component</div>),
@@ -37,7 +40,7 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       testCase: {

@@ -14,7 +14,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import React, { useState } from 'react';
-import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import './tag-select-fom.style.less';
 import { TagsSelectFormProps } from './TagsSelectForm.interface';
 

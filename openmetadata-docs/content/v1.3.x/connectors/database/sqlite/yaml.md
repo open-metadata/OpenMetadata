@@ -36,18 +36,13 @@ Configure and schedule SQLite metadata and profiler workflows from the OpenMetad
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 
@@ -180,6 +175,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "sqlite"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## Lineage
 

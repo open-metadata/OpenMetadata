@@ -92,6 +92,8 @@ pii_requirements = {
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
+    VERSIONS["azure-identity"],
+    "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",
@@ -135,7 +137,7 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
-    "backup": {VERSIONS["boto3"], "azure-identity", "azure-storage-blob"},
+    "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "bigquery": {
         "cachetools",
         "google-cloud-datacatalog>=3.6.2",
@@ -311,6 +313,7 @@ test = {
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
+    "testcontainers==3.7.1",
 }
 
 e2e_test = {

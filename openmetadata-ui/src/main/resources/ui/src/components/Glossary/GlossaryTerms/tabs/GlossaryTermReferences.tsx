@@ -19,8 +19,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
@@ -30,6 +28,7 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   GlossaryTerm,
   TermReference,
@@ -41,6 +40,7 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
+import TagButton from '../../../common/TagButton/TagButton.component';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 interface GlossaryTermReferencesProps {

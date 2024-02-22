@@ -35,57 +35,61 @@ const getTeam = (teamName) => {
   };
 };
 
-describe('Add nested teams and test TeamsSelectable', () => {
-  beforeEach(() => {
-    cy.login();
+describe(
+  'Add nested teams and test TeamsSelectable',
+  { tags: 'Settings' },
+  () => {
+    beforeEach(() => {
+      cy.login();
 
-    interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
-    interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
+      interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
+      interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
 
-    cy.settingClick(GlobalSettingOptions.TEAMS);
+      cy.settingClick(GlobalSettingOptions.TEAMS);
 
-    verifyResponseStatusCode('@getOrganization', 200);
-  });
-
-  it('Add teams', () => {
-    verifyResponseStatusCode('@getPermissions', 200);
-    teamNames.forEach((teamName, index) => {
-      addTeam(getTeam(teamName), index, true);
       verifyResponseStatusCode('@getOrganization', 200);
+    });
 
-      // asserting the added values
-      cy.get('table').find('.ant-table-row').contains(teamName).click();
-      verifyResponseStatusCode('@getOrganization', 200);
+    it('Add teams', () => {
       verifyResponseStatusCode('@getPermissions', 200);
-    });
-  });
+      teamNames.forEach((teamName, index) => {
+        addTeam(getTeam(teamName), index, true);
+        verifyResponseStatusCode('@getOrganization', 200);
 
-  it('Check hierarchy in Add User page', () => {
-    // Clicking on users
-    cy.settingClick(GlobalSettingOptions.USERS);
-
-    cy.get('[data-testid="add-user"]').should('be.visible').click();
-
-    // Enter team name
-    cy.get('[data-testid="team-select"] .ant-select-selector')
-      .should('exist')
-      .scrollIntoView()
-      .should('be.visible')
-      .click()
-      .type(buTeamName);
-
-    teamNames.forEach((teamName) => {
-      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
+        // asserting the added values
+        cy.get('table').find('.ant-table-row').contains(teamName).click();
+        verifyResponseStatusCode('@getOrganization', 200);
+        verifyResponseStatusCode('@getPermissions', 200);
+      });
     });
 
-    teamNames.forEach((teamName) => {
+    it('Check hierarchy in Add User page', () => {
+      // Clicking on users
+      cy.settingClick(GlobalSettingOptions.USERS);
+
+      cy.get('[data-testid="add-user"]').should('be.visible').click();
+
+      // Enter team name
       cy.get('[data-testid="team-select"] .ant-select-selector')
         .should('exist')
         .scrollIntoView()
         .should('be.visible')
         .click()
-        .type(teamName);
-      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
+        .type(buTeamName);
+
+      teamNames.forEach((teamName) => {
+        cy.get('.ant-tree-select-dropdown').should('contain', teamName);
+      });
+
+      teamNames.forEach((teamName) => {
+        cy.get('[data-testid="team-select"] .ant-select-selector')
+          .should('exist')
+          .scrollIntoView()
+          .should('be.visible')
+          .click()
+          .type(teamName);
+        cy.get('.ant-tree-select-dropdown').should('contain', teamName);
+      });
     });
-  });
-});
+  }
+);

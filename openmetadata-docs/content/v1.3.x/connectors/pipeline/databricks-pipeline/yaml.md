@@ -24,12 +24,6 @@ Configure and schedule Databricks Pipeline metadata and profiler workflows from 
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
-
 ### Python Requirements
 
 To run the Databricks Pipeline ingestion, you will need to install:
