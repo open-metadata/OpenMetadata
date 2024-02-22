@@ -11,7 +11,12 @@
 """
 MongoDB adaptor for the NoSQL profiler.
 """
-from pymongo import MongoClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pymongo import MongoClient
+else:
+    MongoClient = None
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor

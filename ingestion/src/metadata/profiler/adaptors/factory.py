@@ -11,14 +11,20 @@
 """
 factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
+from enum import Enum
 from typing import Callable, Dict, Type
 
-from pymongo import MongoClient
-
+from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
+    MongoDBType,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.profiler.adaptors.mongodb import MongoDB
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.utils.logger import profiler_logger
 
 NoSQLAdaptorConstructor = Callable[[any], NoSQLAdaptor]
+
+logger = profiler_logger()
 
 
 class NoSQLAdaptorFactory:
@@ -43,25 +49,26 @@ class NoSQLAdaptorFactory:
         """
         self._clients: Dict[str, NoSQLAdaptorConstructor] = {}
 
-    def register(self, source_class: Type, target_class: NoSQLAdaptorConstructor):
+    def register(self, source_connection: Enum, target_class: NoSQLAdaptorConstructor):
         """
         Register a client type with its constructor.
 
         Args:
-            source_class (Type): The class of the source client.
+            source_connection (str): The name of the source client type.
             target_class (NoSQLClientConstructor): The constructor for the target client.
 
         Returns:
             None
         """
-        self._clients[source_class.__name__] = target_class
+        self._clients[source_connection.value.lower()] = target_class
 
-    def construct(self, source_client: any) -> NoSQLAdaptor:
+    def construct(self, source_connection: Enum, connection: any) -> NoSQLAdaptor:
         """
         Create a client instance of the type of the given source client.
 
         Args:
-            source_client (any): The source client instance.
+            source_connection (Type): The class of the source client.
+            connection (any): The source client instance.
 
         Returns:
             NoSQLAdaptor: The created client instance.
@@ -69,11 +76,13 @@ class NoSQLAdaptorFactory:
         Raises:
             ValueError: If the type of the source client is not registered.
         """
-        client_class = self._clients.get(type(source_client).__name__)
+        logger.debug(f"Creating NoSQL client for {source_connection}")
+        client_class = self._clients.get(source_connection.value.lower())
         if not client_class:
-            raise ValueError(f"Unknown NoSQL source: {source_client.__name__}")
-        return client_class(source_client)
+            raise ValueError(f"Unknown NoSQL source: {source_connection}")
+        logger.debug(f"Using NoSQL client constructor: {client_class.__name__}")
+        return client_class(connection)
 
 
 factory = NoSQLAdaptorFactory()
-factory.register(MongoClient, MongoDB)
+factory.register(MongoDBType.MongoDB, MongoDB)

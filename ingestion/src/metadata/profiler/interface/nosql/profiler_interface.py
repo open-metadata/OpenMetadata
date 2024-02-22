@@ -17,6 +17,7 @@ supporting sqlalchemy abstraction layer
 import traceback
 from typing import Dict, List, Optional, Type
 
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -153,7 +154,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
     ):
         """get all profiler metrics"""
         profile_results = {"table": {}, "columns": {}}
-        runner = factory.construct(self.connection)
+        runner = factory.construct(self.service_connection_config.type, self.connection)
         metric_list = [
             self.compute_metrics(runner, metric_func) for metric_func in metric_funcs
         ]
