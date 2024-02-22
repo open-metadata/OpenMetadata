@@ -12,8 +12,8 @@ slug: /connectors/database/unity-catalog/yaml
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="cross" /%} |
+| Data Profiler      | {% icon iconName="check" /%} |
+| Data Quality       | {% icon iconName="check" /%} |
 | Stored Procedures  | {% icon iconName="cross" /%} |
 | Owners             | {% icon iconName="cross" /%} |
 | Tags               | {% icon iconName="cross" /%} |
