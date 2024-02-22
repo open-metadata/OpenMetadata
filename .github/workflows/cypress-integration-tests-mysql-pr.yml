@@ -15,8 +15,6 @@
 name: MySQL PR Cypress Integration Tests
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "30 2 * * 1,3,5"
   pull_request_target:
     types:
       - labeled
@@ -35,13 +33,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: cypress-integration-tests-mysql-${{ github.head_ref || github.run_id }}
+  group: cypress-integration-tests-pr-mysql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   cypress-ci-mysql:
     if: |
-      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' 
           || ( github.event_name == 'pull_request_target'
                && github.event.pull_request.draft == false
              )
@@ -55,13 +53,8 @@ jobs:
       - name: Set Cypress Project Environment variable
         id: cypress-project-id
         run: |
-          if [ "${{ github.event_name }}" == "schedule" ]; then  
-            echo "CYPRESS_PROJECT_ID=${{ secrets.CYPRESS_SCHEDULE_PROJECT_ID }}" >> $GITHUB_OUTPUT
-            echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_SCHEDULE_RECORD_KEY }}" >> $GITHUB_OUTPUT
-          else  
-            echo "CYPRESS_PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
-            echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
-          fi
+          echo "CYPRESS_PROJECT_ID=${{ secrets.CYPRESS_PR_PROJECT_ID }}" >> $GITHUB_OUTPUT
+	        echo "CYPRESS_RECORD_KEY=${{ secrets.CYPRESS_PR_RECORD_KEY }}" >> $GITHUB_OUTPUT
 
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -152,7 +145,7 @@ jobs:
           parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: "http://localhost:8585"
-          group: cypress-ci-psql-oss-${{ github.run_id }}-${{github.run_attempt}}
+          group: cypress-ci-mysql-pr-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
           command: cypress run --config-file=cypress.config.ts --env grepTags='${{ steps.get_cypress_filter.outputs.FILTER }}'
         env:
@@ -202,7 +195,6 @@ jobs:
           CYPRESS_S3_STORAGE_ACCESS_KEY_ID: ${{ secrets.TEST_S3_STORAGE_ACCESS_KEY_ID }}
           CYPRESS_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
           CYPRESS_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
-          GREP_TAGS: "${{ steps.get_cypress_filter.outputs.FILTER }}"
 
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
