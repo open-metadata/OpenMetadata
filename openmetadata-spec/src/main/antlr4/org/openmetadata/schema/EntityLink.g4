@@ -124,6 +124,9 @@ ENTITY_FIELD
     | 'parameterValues'
     | 'retentionPeriod'
     | 'parent'
+    | 'teams'
+    | 'personas'
+    | 'ingestionPipeline'
     ;
 
     

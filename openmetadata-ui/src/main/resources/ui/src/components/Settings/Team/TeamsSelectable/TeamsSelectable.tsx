@@ -13,6 +13,7 @@
 
 import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
+import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
@@ -34,6 +35,7 @@ const TeamsSelectable = ({
 }: TeamsSelectableProps) => {
   const [noTeam, setNoTeam] = useState<boolean>(false);
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const onChange = (newValue: { label: string; value: string }[]) => {
     onSelectionChange &&
@@ -49,16 +51,17 @@ const TeamsSelectable = ({
       );
   };
 
-  const loadOptions = () => {
-    getTeamsHierarchy(filterJoinable)
-      .then((res) => {
-        const teams: TeamHierarchy[] = res.data;
-        setTeams(teams);
-        showTeamsAlert && setNoTeam(teams.length === 0);
-      })
-      .catch((error) => {
-        showErrorToast(error);
-      });
+  const loadOptions = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getTeamsHierarchy(filterJoinable);
+      setTeams(res.data);
+      showTeamsAlert && setNoTeam(teams.length === 0);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -106,6 +109,7 @@ const TeamsSelectable = ({
         treeDefaultExpandAll
         data-testid="team-select"
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+        loading={isLoading}
         maxTagCount={maxValueCount}
         placeholder={placeholder}
         showCheckedStrategy={TreeSelect.SHOW_CHILD}
