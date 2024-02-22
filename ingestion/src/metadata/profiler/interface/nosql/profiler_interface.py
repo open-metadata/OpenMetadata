@@ -27,6 +27,7 @@ from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.sampler.nosql.sampler import NoSQLSampler
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -41,8 +42,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
 
     # pylint: disable=too-many-arguments
 
-    def _get_sampler(self):
-        return None
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sampler = self._get_sampler()
 
     def _compute_table_metrics(
         self,
@@ -119,6 +121,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
             row = self._get_metric_fn[metric_func.metric_type.value](
                 metric_func.metrics,
                 client,
+                column=metric_func.column,
             )
         except Exception as exc:
             name = f"{metric_func.column if metric_func.column is not None else metric_func.table}"
@@ -134,8 +137,23 @@ class NoSQLProfilerInterface(ProfilerInterface):
             column = None
         return row, column, metric_func.metric_type.value
 
-    def fetch_sample_data(self, table, columns: SQALikeColumn) -> TableData:
-        return None
+    def fetch_sample_data(self, table, columns: List[SQALikeColumn]) -> TableData:
+        return self.sampler.fetch_sample_data(columns)
+
+    def _get_sampler(self) -> NoSQLSampler:
+        """Get NoSQL sampler from config"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
+        return sampler_factory_.create(
+            self.service_connection_config.__class__.__name__,
+            table=self.table,
+            client=factory.construct(self.connection),
+            profile_sample_config=self.profile_sample_config,
+            partition_details=self.partition_details,
+            profile_sample_query=self.profile_query,
+        )
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -178,7 +196,10 @@ class NoSQLProfilerInterface(ProfilerInterface):
         return self.table_entity
 
     def get_columns(self) -> List[Optional[SQALikeColumn]]:
-        return []
+        return [
+            SQALikeColumn(name=c.name.__root__, type=c.dataType)
+            for c in self.table.columns
+        ]
 
     def close(self):
         self.connection.close()

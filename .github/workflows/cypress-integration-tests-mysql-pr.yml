@@ -147,7 +147,7 @@ jobs:
           wait-on: "http://localhost:8585"
           group: cypress-ci-mysql-pr-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
-          command: cypress run --config-file=cypress.config.ts --env grepTags='${{ steps.get_cypress_filter.outputs.e2eFilters }}'
+          command: npx cypress run --config-file=cypress.config.ts --env grepTags='${{ steps.get_cypress_filter.outputs.e2eFilters }}'
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ steps.cypress-project-id.outputs.CYPRESS_RECORD_KEY }}
