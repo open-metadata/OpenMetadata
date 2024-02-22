@@ -81,6 +81,11 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
 
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          
       - name: Get Cypress Filter
         id: get_cypress_filter
         env:
@@ -88,11 +93,6 @@ jobs:
         run: |
           gh pr view --json labels --jq '[.labels[].name | select(startswith("e2e:")) | sub("e2e:";"")] | join(" ")' >> labels
           echo "e2eFilters=$(cat labels)" >> $GITHUB_OUTPUT
-
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cache Maven Dependencies
         id: cache-output
