@@ -1,3 +1,4 @@
+
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -9,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Snowflake incremental config module
+Incremental Metadata Extraction related classes
 """
 import traceback
 from datetime import datetime, timedelta
@@ -17,6 +18,7 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import Incremental
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
     PipelineStatus,
@@ -49,26 +51,21 @@ class IncrementalConfigCreator:
 
     def __init__(
         self,
-        incremental: Optional[bool],
+        incremental: Optional[Incremental],
         pipeline_name: Optional[str],
         metadata: OpenMetadata,
-        pipeline_status_look_behind_days: int = 7,
-        safety_margin_days: int = 7,
     ):
         self.incremental = incremental
         self.pipeline_name = pipeline_name
         self.metadata = metadata
 
-        self.pipeline_status_look_behind_days = pipeline_status_look_behind_days
-        self.safety_margin_days = safety_margin_days
-
     def _calculate_pipeline_status_parameters(self) -> Tuple[int, int]:
-        """Calculate the needed 'start' and 'end' parameters based on the 'pipeline_status_look_behind_days'."""
+        """Calculate the needed 'start' and 'end' parameters based on the 'lookbackDays'."""
         now = datetime.now()
 
         # We multiply the value by 1000 because our backend uses epoch_milliseconds instead of epoch_seconds.
         start = int(
-            (now - timedelta(days=self.pipeline_status_look_behind_days)).timestamp()
+            (now - timedelta(days=self.incremental.lookbackDays)).timestamp()
             * 1000
         )
         end = int(now.timestamp() * 1000)
@@ -100,12 +97,12 @@ class IncrementalConfigCreator:
         )
 
     def _add_safety_margin(self, last_success_timestamp: int) -> int:
-        """Add some safety margin to the last successful run timestamp based on the 'safety_margin_days'."""
+        """Add some safety margin to the last successful run timestamp based on the 'safetyMarginDays'."""
         # Hours * Minutes * Seconds * Milliseconds
         milliseconds_in_one_day = 24 * 60 * 60 * 1000
 
         return last_success_timestamp - (
-            self.safety_margin_days * milliseconds_in_one_day
+            self.incremental.safetyMarginDays * milliseconds_in_one_day
         )
 
     def create(self) -> IncrementalConfig:
@@ -113,9 +110,7 @@ class IncrementalConfigCreator:
         If no previous successful runs are found within the time period it will disable the incremental ingestion.
         """
         try:
-            if not self.incremental:
-                return IncrementalConfig(enabled=False)
-            if not self.pipeline_name:
+            if not (self.incremental and self.pipeline_name) or not self.incremental.enabled:
                 return IncrementalConfig(enabled=False)
 
             pipeline_statuses = self._get_pipeline_statuses()

@@ -22,7 +22,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.sql import text
 from sqlalchemy.types import FLOAT
 
-from metadata.ingestion.source.database.snowflake.incremental_config import (
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.snowflake.models import (

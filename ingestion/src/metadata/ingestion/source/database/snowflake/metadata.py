@@ -58,7 +58,7 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.snowflake.incremental_config import (
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.snowflake.models import (
@@ -141,7 +141,7 @@ class SnowflakeSource(
     Database metadata from Snowflake Source
     """
 
-    def __init__(self, config, metadata, pipeline_name):
+    def __init__(self, config, metadata, pipeline_name, incremental_configuration: IncrementalConfig):
         super().__init__(config, metadata)
         self.partition_details = {}
         self.schema_desc_map = {}
@@ -152,9 +152,7 @@ class SnowflakeSource(
         self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
         self.context.deleted_tables = []
         self.pipeline_name = pipeline_name
-        self.incremental = IncrementalConfig.create(
-            self.source_config.incremental, pipeline_name, metadata
-        )
+        self.incremental = incremental_configuration
 
         if self.incremental.enabled:
             date = datetime.fromtimestamp(self.incremental.start_timestamp / 1000)
@@ -173,7 +171,11 @@ class SnowflakeSource(
             raise InvalidSourceException(
                 f"Expected SnowflakeConnection, but got {connection}"
             )
-        return cls(config, metadata, pipeline_name)
+
+        incremental_config = IncrementalConfig.create(
+            config.sourceConfig.config.incremental, pipeline_name, metadata
+        )
+        return cls(config, metadata, pipeline_name, incremental_config)
 
     @property
     def account(self) -> Optional[str]:

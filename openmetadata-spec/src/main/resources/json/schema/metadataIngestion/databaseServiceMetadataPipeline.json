@@ -96,9 +96,28 @@
     },
     "incremental": {
       "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
-      "type": "boolean",
-      "default": "true",
-      "title": "Enable incremental Metadata extraction"
+      "type": "object",
+      "title": "Incremental Metadata Extraction Configuration",
+      "properties": {
+        "enabled": {
+          "description": "If True, enables Metadata Extraction to be incremental",
+          "type": "boolean",
+          "default": true,
+          "title": "Enabled"
+        },
+        "lookbackDays": {
+          "description": "Number os days to search back for a successful pipeline run. The timestamp of the last found successful pipeline run will be used as a base to search for updated entities.",
+          "type": "integer",
+          "default": 7,
+          "title": "Successful Pipeline Run Lookback Days"
+        },
+        "safetyMarginDays": {
+          "description": "Number of days to add to the last successful pipeline run timestamp to search for updated entities.",
+          "type": "integer",
+          "default": 1,
+          "title": "Safety Margin Days"
+        }
+      }
     }
   },
   "additionalProperties": false

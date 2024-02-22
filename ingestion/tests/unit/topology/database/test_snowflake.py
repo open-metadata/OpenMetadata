@@ -40,7 +40,7 @@ SNOWFLAKE_CONFIGURATION = {
                 "account": "account.region_name.cloud_service",
             }
         },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata", "incremental": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -60,7 +60,7 @@ SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
     **{
         "source": {
             **SNOWFLAKE_CONFIGURATION["source"],
-            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+            "sourceConfig": {"config": {"type": "DatabaseMetadata", "incremental": {"enabled": True}}},
         }
     },
 }
@@ -129,7 +129,6 @@ def get_snowflake_sources():
         config = OpenMetadataWorkflowConfig.parse_obj(
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]
         )
-
         sources["not_incremental"] = SnowflakeSource.create(
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]["source"],
             config.workflowConfig.openMetadataServerConfig,
@@ -137,7 +136,7 @@ def get_snowflake_sources():
         )
 
         with patch(
-            "metadata.ingestion.source.database.snowflake.incremental_config.IncrementalConfigCreator._get_pipeline_statuses",
+            "metadata.ingestion.source.database.incremental_metadata_extraction.IncrementalConfigCreator._get_pipeline_statuses",
             return_value=MOCK_PIPELINE_STATUSES,
         ):
             config = OpenMetadataWorkflowConfig.parse_obj(
@@ -174,7 +173,7 @@ class SnowflakeUnitTest(TestCase):
         self.assertTrue(self.sources["incremental"].incremental.enabled)
 
         milliseconds_in_one_day = 24 * 60 * 60 * 1000
-        safety_margin_days = 7
+        safety_margin_days = self.sources["incremental"].source_config.incremental.safetyMarginDays
 
         self.assertEqual(
             self.sources["incremental"].incremental.start_timestamp,
