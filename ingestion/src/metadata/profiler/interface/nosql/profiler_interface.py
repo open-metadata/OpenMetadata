@@ -17,7 +17,6 @@ supporting sqlalchemy abstraction layer
 import traceback
 from typing import Dict, List, Optional, Type
 
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData

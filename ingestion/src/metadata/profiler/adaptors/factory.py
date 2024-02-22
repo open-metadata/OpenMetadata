@@ -12,12 +12,11 @@
 factory for NoSQL adaptors that are used in the NoSQLProfiler.
 """
 from enum import Enum
-from typing import Callable, Dict, Type
+from typing import Callable, Dict
 
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBType,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.profiler.adaptors.mongodb import MongoDB
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.utils.logger import profiler_logger
