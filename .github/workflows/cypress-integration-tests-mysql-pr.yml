@@ -83,6 +83,8 @@ jobs:
 
       - name: Get Cypress Filter
         id: get_cypress_filter
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh pr view --json labels --jq '[.labels[].name | select(startswith("e2e:")) | sub("e2e:";"")] | join(" ")' >> labels
           echo "e2eFilters=$(cat labels)" >> $GITHUB_OUTPUT
