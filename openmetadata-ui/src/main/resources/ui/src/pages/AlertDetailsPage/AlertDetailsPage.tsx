@@ -336,21 +336,31 @@ function AlertDetailsPage({
                             ? getNotificationAlertsEditPath(fqn)
                             : getObservabilityAlertsEditPath(fqn)
                         }>
+                        <Tooltip
+                          title={t('label.edit-entity', {
+                            entity: t('label.alert'),
+                          })}>
+                          <Button
+                            className="flex flex-center"
+                            data-testid="edit-button"
+                            icon={<EditIcon height={16} width={16} />}
+                          />
+                        </Tooltip>
+                      </Link>
+                      <Tooltip
+                        title={t('label.delete-entity', {
+                          entity: t('label.alert'),
+                        })}>
                         <Button
                           className="flex flex-center"
-                          data-testid="edit-button"
-                          icon={<EditIcon height={16} width={16} />}
+                          data-testid="delete-button"
+                          disabled={
+                            alertDetails?.provider === ProviderType.System
+                          }
+                          icon={<DeleteIcon height={16} width={16} />}
+                          onClick={() => setShowDeleteModal(true)}
                         />
-                      </Link>
-                      <Button
-                        className="flex flex-center"
-                        data-testid="delete-button"
-                        disabled={
-                          alertDetails?.provider === ProviderType.System
-                        }
-                        icon={<DeleteIcon height={16} width={16} />}
-                        onClick={() => setShowDeleteModal(true)}
-                      />
+                      </Tooltip>
                     </Space>
                   </Col>
                 </Row>

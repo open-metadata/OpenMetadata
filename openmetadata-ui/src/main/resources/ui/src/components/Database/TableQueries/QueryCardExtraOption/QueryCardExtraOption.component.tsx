@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag } from 'antd';
+import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
 import { isUndefined, split } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -133,45 +133,51 @@ const QueryCardExtraOption = ({
       <Tag className="query-lines" data-testid="query-line">
         {queryLine}
       </Tag>
-      <Button
-        className="vote-button"
-        data-testid="up-vote-btn"
-        icon={
-          voteStatus === QueryVoteType.votedUp ? (
-            <ThumbsUpFilled color="#008376" height={15} width={15} />
-          ) : (
-            <ThumbsUpOutline height={15} width={15} />
-          )
-        }
-        loading={loading === QueryVoteType.votedUp}
-        size="small"
-        onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-        {query.votes?.upVotes || 0}
-      </Button>
-      <Button
-        className="vote-button"
-        data-testid="down-vote-btn"
-        icon={
-          voteStatus === QueryVoteType.votedDown ? (
-            <ThumbsUpFilled
-              className="rotate-inverse"
-              color="#E7B85D"
-              height={15}
-              width={15}
-            />
-          ) : (
-            <ThumbsUpOutline
-              className="rotate-inverse"
-              height={15}
-              width={15}
-            />
-          )
-        }
-        loading={loading === QueryVoteType.votedDown}
-        size="small"
-        onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-        {query.votes?.downVotes || 0}
-      </Button>
+      <Tooltip title={t('label.up-vote')}>
+        <Button
+          className="vote-button"
+          data-testid="up-vote-btn"
+          icon={
+            voteStatus === QueryVoteType.votedUp ? (
+              <ThumbsUpFilled color="#008376" height={15} width={15} />
+            ) : (
+              <ThumbsUpOutline height={15} width={15} />
+            )
+          }
+          loading={loading === QueryVoteType.votedUp}
+          size="small"
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
+          {query.votes?.upVotes || 0}
+        </Button>
+      </Tooltip>
+
+      <Tooltip title={t('label.down-vote')}>
+        <Button
+          className="vote-button"
+          data-testid="down-vote-btn"
+          icon={
+            voteStatus === QueryVoteType.votedDown ? (
+              <ThumbsUpFilled
+                className="rotate-inverse"
+                color="#E7B85D"
+                height={15}
+                width={15}
+              />
+            ) : (
+              <ThumbsUpOutline
+                className="rotate-inverse"
+                height={15}
+                width={15}
+              />
+            )
+          }
+          loading={loading === QueryVoteType.votedDown}
+          size="small"
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
+          {query.votes?.downVotes || 0}
+        </Button>
+      </Tooltip>
+
       <Dropdown
         destroyPopupOnHide
         arrow={{ pointAtCenter: true }}
