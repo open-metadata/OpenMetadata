@@ -21,7 +21,7 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
-from metadata.profiler.adaptors.factory import factory
+from metadata.profiler.adaptors.adaptor_factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
@@ -153,7 +153,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
     ):
         """get all profiler metrics"""
         profile_results = {"table": {}, "columns": {}}
-        runner = factory.construct(self.service_connection_config.type, self.connection)
+        runner = factory.create(
+            self.service_connection_config.__class__.__name__, self.connection
+        )
         metric_list = [
             self.compute_metrics(runner, metric_func) for metric_func in metric_funcs
         ]
