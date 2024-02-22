@@ -274,7 +274,7 @@ public class EmailUtil {
   }
 
   public static void sendMail(Email email, boolean async) {
-    if (mailer != null && getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer()) && mailer != null) {
       mailer.sendMail(email, async);
     } else {
       LOG.error("Mailer is not initialized or Smtp is not Enabled.");
@@ -384,7 +384,11 @@ public class EmailUtil {
   }
 
   public static void testConnection() {
-    mailer.testConnection();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer()) && mailer != null) {
+      mailer.testConnection();
+    } else {
+      LOG.error("Mailer is not initialized or Smtp is not Enabled.");
+    }
   }
 
   private static String getEmailVerificationSubject() {
