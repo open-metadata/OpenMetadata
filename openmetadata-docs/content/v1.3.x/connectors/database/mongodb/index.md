@@ -12,7 +12,7 @@ slug: /connectors/database/mongodb
 | Stage              | BETA                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
+| Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
 | Stored Procedures  | {% icon iconName="cross" /%} |
 | Owners             | {% icon iconName="cross" /%} |
@@ -35,6 +35,7 @@ Configure and schedule MongoDB metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Data Profiler](#data-profiler)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
 
@@ -79,3 +80,18 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 {% partial file="/v1.3/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.3/connectors/database/related.md" /%}
+
+## Data Profiler
+
+{%inlineCallout icon="description" bold="OpenMetadata 1.3.1 or later" href="/deployment"%}
+To deploy OpenMetadata, check the Deployment guides.
+{%/inlineCallout%}
+
+[Profiler deployment](/connectors/ingestion/workflows/profiler)
+
+### Limitations
+
+The MongodDB data profiler current supports only the following features:
+
+1. **Row count**: The number of rows in the collection. Sampling or custom query is not supported.
+2. **Sample data:** If a custom query is defined it will be used for sample data.
