@@ -20,7 +20,7 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
-import { CustomProperty } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';

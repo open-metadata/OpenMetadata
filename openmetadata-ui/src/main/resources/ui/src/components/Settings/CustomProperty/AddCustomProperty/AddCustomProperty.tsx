@@ -32,11 +32,8 @@ import {
 } from '../../../../constants/service-guide.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
-import {
-  Category,
-  CustomProperty,
-  Type,
-} from '../../../../generated/entity/type';
+import { Category, Type } from '../../../../generated/entity/type';
+import { CustomProperty } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
   FieldTypes,

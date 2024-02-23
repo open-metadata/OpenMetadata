@@ -24,11 +24,7 @@ import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  CustomProperty,
-  Type,
-} from '../../../generated/entity/type';
+import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 
 import { getEntityDetailLink, Transi18next } from '../../../utils/CommonUtils';
@@ -38,6 +34,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
