@@ -34,6 +34,7 @@ export const EntityExportModalProvider = ({
   const [form] = Form.useForm();
   const { t } = useTranslation();
   const [exportData, setExportData] = useState<ExportData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleCancel = () => {
     setExportData(null);
@@ -67,12 +68,15 @@ export const EntityExportModalProvider = ({
       return;
     }
     try {
+      setIsLoading(true);
       const data = await exportData.onExport(exportData.name);
 
       handleDownload(data, fileName);
       handleCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -103,6 +107,7 @@ export const EntityExportModalProvider = ({
               form: 'export-form',
               htmlType: 'submit',
               id: 'submit-button',
+              loading: isLoading,
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}

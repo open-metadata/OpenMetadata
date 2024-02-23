@@ -163,8 +163,8 @@ const ApplicationPage = () => {
       </Row>
       <Row className="page-container m-t-lg">
         {isLoading &&
-          [1, 2].map((key) => (
-            <Col key={key} span={12}>
+          [1, 2, 3].map((key) => (
+            <Col key={key} span={8}>
               <Card className="w-400">
                 <Skeleton active paragraph title />
               </Card>

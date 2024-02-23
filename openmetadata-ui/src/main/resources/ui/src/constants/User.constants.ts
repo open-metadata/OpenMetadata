@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import { Bot } from '../../../../generated/entity/bot';
-import { User } from '../../../../generated/entity/teams/user';
+import { TokenType } from '../generated/auth/personalAccessToken';
 
-export type MockProps = {
-  isBot: boolean;
-  botData?: Bot;
-  botUserData?: User;
-  revokeTokenHandlerBot?: () => Promise<void>;
+export const USER_DEFAULT_AUTHENTICATION_MECHANISM = {
+  tokenType: TokenType.PersonalAccessToken,
 };
