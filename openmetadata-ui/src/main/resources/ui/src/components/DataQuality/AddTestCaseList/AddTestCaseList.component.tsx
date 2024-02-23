@@ -175,7 +175,11 @@ export const AddTestCaseList = ({
     } else {
       return (
         <Col span={24}>
-          <List loading={{ spinning: false, indicator: <Loader /> }}>
+          <List
+            loading={{
+              spinning: isLoading,
+              indicator: <Loader />,
+            }}>
             <VirtualList
               data={items}
               height={500}
