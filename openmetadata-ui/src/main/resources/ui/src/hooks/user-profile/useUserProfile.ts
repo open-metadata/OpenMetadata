@@ -86,7 +86,13 @@ export const useUserProfile = ({
       // Error
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
     }
-  }, [updateUserProfilePics, userProfilePics, name, isTeam]);
+  }, [
+    updateUserProfilePics,
+    userProfilePics,
+    name,
+    isTeam,
+    userProfilePicsLoading,
+  ]);
 
   useEffect(() => {
     if (!permission) {
@@ -100,5 +106,11 @@ export const useUserProfile = ({
     fetchProfileIfRequired();
   }, [name, permission, fetchProfileIfRequired]);
 
-  return [profilePic, Boolean(!isTeam && isUndefined(user)), user];
+  return [
+    profilePic,
+    Boolean(
+      !isTeam && isUndefined(user) && userProfilePicsLoading.includes(name)
+    ),
+    user,
+  ];
 };
