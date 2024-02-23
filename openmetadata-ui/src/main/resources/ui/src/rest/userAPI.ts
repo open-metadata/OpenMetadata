@@ -235,7 +235,7 @@ export const updateUserAccessToken = async ({
       JWTTokenExpiry?: string;
       tokenName?: string;
     },
-    AxiosResponse<PersonalAccessToken[]>
+    AxiosResponse<PersonalAccessToken>
   >(`/users/security/token`, {
     JWTTokenExpiry,
     tokenName,
@@ -245,7 +245,7 @@ export const updateUserAccessToken = async ({
 };
 
 export const revokeAccessToken = async (params: string) => {
-  const response = await APIClient.put<PersonalAccessToken>(
+  const response = await APIClient.put<PersonalAccessToken[]>(
     '/users/security/token/revoke?' + params
   );
 

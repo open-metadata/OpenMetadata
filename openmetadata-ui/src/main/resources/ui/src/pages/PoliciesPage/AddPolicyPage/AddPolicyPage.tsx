@@ -68,6 +68,7 @@ const AddPolicyPage = () => {
     condition: '',
     effect: Effect.Allow,
   });
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const handleCancel = () => {
     history.push(policiesPath);
@@ -80,6 +81,8 @@ const AddPolicyPage = () => {
       description,
       rules: [condition ? { ...rest, condition } : rest],
     };
+
+    setIsSaveLoading(true);
 
     try {
       const dataResponse = await addPolicy(data);
@@ -98,6 +101,8 @@ const AddPolicyPage = () => {
             })
           : (error as AxiosError)
       );
+    } finally {
+      setIsSaveLoading(false);
     }
   };
 
@@ -181,6 +186,7 @@ const AddPolicyPage = () => {
                     data-testid="submit-btn"
                     form="policy-form"
                     htmlType="submit"
+                    loading={isSaveLoading}
                     type="primary">
                     {t('label.submit')}
                   </Button>

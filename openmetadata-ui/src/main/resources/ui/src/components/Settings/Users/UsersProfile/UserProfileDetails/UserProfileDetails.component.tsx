@@ -102,9 +102,11 @@ const UserProfileDetails = ({
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setDisplayName(e.target.value);
 
-  const handleDisplayNameSave = useCallback(() => {
+  const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
-      updateUserDetails({ displayName: displayName ?? '' });
+      setIsLoading(true);
+      await updateUserDetails({ displayName: displayName ?? '' });
+      setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
@@ -113,6 +115,7 @@ const UserProfileDetails = ({
     () =>
       isDisplayNameEdit && hasEditPermission ? (
         <InlineEdit
+          isLoading={isLoading}
           onCancel={() => setIsDisplayNameEdit(false)}
           onSave={handleDisplayNameSave}>
           <Input

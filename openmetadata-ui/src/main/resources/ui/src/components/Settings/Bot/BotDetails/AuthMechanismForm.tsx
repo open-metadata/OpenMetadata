@@ -25,7 +25,6 @@ import {
   JWTTokenExpiry,
 } from '../../../../generated/entity/teams/user';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
-import Loader from '../../../common/Loader/Loader';
 
 const { Option } = Select;
 
@@ -140,8 +139,9 @@ const AuthMechanismForm: FC<Props> = ({
             data-testid="save-edit"
             form="update-auth-mechanism-form"
             htmlType="submit"
+            loading={isUpdating}
             type="primary">
-            {isUpdating ? <Loader size="small" /> : t('label.generate')}
+            {t('label.generate')}
           </Button>
         </Space>
       </Form>

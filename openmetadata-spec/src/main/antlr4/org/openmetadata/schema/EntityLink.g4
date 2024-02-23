@@ -121,6 +121,12 @@ ENTITY_FIELD
     | 'tests'
     | 'pipelineStatus'
     | 'dataProducts'
+    | 'parameterValues'
+    | 'retentionPeriod'
+    | 'parent'
+    | 'teams'
+    | 'personas'
+    | 'ingestionPipeline'
     ;
 
     

@@ -32,6 +32,8 @@ import Loader from '../Loader/Loader';
 
 export interface Props extends FormProps {
   okText: string;
+  isLoading?: boolean;
+  hideCancelButton?: boolean;
   cancelText: string;
   serviceCategory: ServiceCategory;
   showFormHeader?: boolean;
@@ -47,6 +49,8 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
       schema,
       okText,
       cancelText,
+      isLoading,
+      hideCancelButton = false,
       showFormHeader = false,
       status = 'initial',
       onCancel,
@@ -112,9 +116,12 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
         <div
           className="m-t-lg d-flex justify-end text-right"
           data-testid="buttons">
-          <Button type="link" onClick={handleCancel}>
-            {cancelText}
-          </Button>
+          {!hideCancelButton && (
+            <Button type="link" onClick={handleCancel}>
+              {cancelText}
+            </Button>
+          )}
+
           {status === 'waiting' ? (
             <Button
               disabled
@@ -134,6 +141,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
               className="font-medium p-x-md p-y-xxs h-auto rounded-6"
               data-testid="submit-btn"
               htmlType="submit"
+              loading={isLoading}
               type="primary">
               {okText}
             </Button>

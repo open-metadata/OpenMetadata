@@ -16,12 +16,14 @@ import Icon, {
   ExclamationCircleFilled,
 } from '@ant-design/icons';
 import { Button, Col, Input, Space, Tooltip, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { hasEditAccess } from '../../../../../utils/CommonUtils';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
@@ -31,6 +33,7 @@ const TeamsHeadingLabel = ({
   entityPermissions,
 }: TeamsHeadingLabelProps) => {
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState(false);
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
   const [heading, setHeading] = useState(
     currentTeam ? currentTeam.displayName : ''
@@ -58,16 +61,30 @@ const TeamsHeadingLabel = ({
   );
 
   const onHeadingSave = async (): Promise<void> => {
-    if (heading && currentTeam) {
+    if (isEmpty(heading)) {
+      return showErrorToast(
+        t('label.field-required', {
+          field: t('label.display-name'),
+        })
+      );
+    }
+    if (currentTeam) {
+      setIsLoading(true);
       const updatedData: Team = {
         ...currentTeam,
         displayName: heading,
       };
 
       await updateTeamHandler(updatedData);
+      setIsLoading(false);
     }
     setIsHeadingEditing(false);
   };
+
+  const handleClose = useCallback(() => {
+    setHeading(currentTeam ? currentTeam.displayName : '');
+    setIsHeadingEditing(false);
+  }, [currentTeam.displayName]);
 
   const teamHeadingRender = useMemo(
     () =>
@@ -87,13 +104,15 @@ const TeamsHeadingLabel = ({
             <Button
               className="rounded-4 text-sm p-xss"
               data-testid="cancelAssociatedTag"
+              disabled={isLoading}
               type="primary"
-              onMouseDown={() => setIsHeadingEditing(false)}>
+              onMouseDown={handleClose}>
               <CloseOutlined />
             </Button>
             <Button
               className="rounded-4 text-sm p-xss"
               data-testid="saveAssociatedTag"
+              loading={isLoading}
               type="primary"
               onMouseDown={onHeadingSave}>
               <CheckOutlined />
@@ -103,13 +122,23 @@ const TeamsHeadingLabel = ({
       ) : (
         <Space align="center">
           <Space align="baseline">
-            <Typography.Title
-              className="m-b-0 w-max-200"
-              data-testid="team-heading"
-              ellipsis={{ tooltip: true }}
-              level={5}>
-              {heading}
-            </Typography.Title>
+            {heading ? (
+              <Typography.Title
+                className="m-b-0 w-max-200"
+                data-testid="team-heading"
+                ellipsis={{ tooltip: true }}
+                level={5}>
+                {heading}
+              </Typography.Title>
+            ) : (
+              <Typography.Text
+                className="m-b-0 text-grey-muted text-sm"
+                data-testid="team-heading">
+                {t('label.no-entity', {
+                  entity: t('label.display-name'),
+                })}
+              </Typography.Text>
+            )}
             {(hasAccess || isCurrentTeamOwner) && !currentTeam.deleted && (
               <Tooltip
                 placement="right"
@@ -141,7 +170,13 @@ const TeamsHeadingLabel = ({
           )}
         </Space>
       ),
-    [heading, isHeadingEditing, hasEditDisplayNamePermission, currentTeam]
+    [
+      heading,
+      isHeadingEditing,
+      hasEditDisplayNamePermission,
+      currentTeam,
+      isLoading,
+    ]
   );
 
   useEffect(() => {

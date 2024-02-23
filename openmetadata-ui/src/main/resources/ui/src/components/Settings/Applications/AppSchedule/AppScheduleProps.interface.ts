@@ -14,7 +14,11 @@ import { App } from '../../../../generated/entity/applications/app';
 
 export interface AppScheduleProps {
   appData: App;
-  onSave: (cron: string) => void;
-  onDemandTrigger: () => void;
-  onDeployTrigger: () => void;
+  loading: {
+    isRunLoading: boolean;
+    isDeployLoading: boolean;
+  };
+  onSave: (cron: string) => Promise<void>;
+  onDemandTrigger: () => Promise<void>;
+  onDeployTrigger: () => Promise<void>;
 }

@@ -19,6 +19,7 @@ import { TestSuiteSchedulerProps } from '../AddDataQualityTest.interface';
 
 const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
   initialData,
+  isLoading,
   buttonProps,
   onCancel,
   onSubmit,
@@ -52,6 +53,7 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
           </Button>
           <Button
             data-testid="deploy-button"
+            loading={isLoading}
             type="primary"
             onClick={() => onSubmit(repeatFrequency || '')}>
             {buttonProps?.okText ?? t('label.submit')}

@@ -33,6 +33,7 @@ import { AppScheduleProps } from './AppScheduleProps.interface';
 
 const AppSchedule = ({
   appData,
+  loading: { isRunLoading, isDeployLoading },
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -42,6 +43,7 @@ const AppSchedule = ({
   const appRunsHistoryRef = useRef<AppRunsHistoryRef>(null);
   const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaveLoading, setIsSaveLoading] = useState(false);
 
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
@@ -82,8 +84,10 @@ const AppSchedule = ({
     setShowModal(false);
   };
 
-  const onDialogSave = (cron: string) => {
-    onSave(cron);
+  const onDialogSave = async (cron: string) => {
+    setIsSaveLoading(true);
+    await onSave(cron);
+    setIsSaveLoading(false);
     setShowModal(false);
   };
 
@@ -179,6 +183,7 @@ const AppSchedule = ({
                 <Button
                   data-testid="deploy-button"
                   disabled={appData.deleted}
+                  loading={isDeployLoading}
                   type="primary"
                   onClick={onDeployTrigger}>
                   {t('label.deploy')}
@@ -196,6 +201,7 @@ const AppSchedule = ({
               <Button
                 data-testid="run-now-button"
                 disabled={appData.deleted}
+                loading={isRunLoading}
                 type="primary"
                 onClick={onAppTrigger}>
                 {t('label.run-now')}
@@ -227,6 +233,7 @@ const AppSchedule = ({
           initialData={
             (appData.appSchedule as AppScheduleClass)?.cronExpression ?? ''
           }
+          isLoading={isSaveLoading}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}
         />

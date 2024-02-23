@@ -351,26 +351,28 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <Row>
-        <Col className="w-full d-flex justify-end">
-          <span>
-            <Switch
-              checked={showDeletedUser}
-              data-testid="show-deleted"
-              onClick={handleShowDeletedUserChange}
+      <PageLayoutV1 pageTitle={t('label.user-plural')}>
+        <Row className="page-container">
+          <Col className="w-full d-flex justify-end">
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedUserChange}
+              />
+              <span className="m-l-xs">{t('label.deleted')}</span>
+            </span>
+          </Col>
+          <Col className="mt-24" span={24}>
+            <ErrorPlaceHolder
+              heading={t('label.user')}
+              permission={isAdminUser}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={handleAddNewUser}
             />
-            <span className="m-l-xs">{t('label.deleted')}</span>
-          </span>
-        </Col>
-        <Col className="mt-24" span={24}>
-          <ErrorPlaceHolder
-            heading={t('label.user')}
-            permission={isAdminUser}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={handleAddNewUser}
-          />
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      </PageLayoutV1>
     ),
     [isAdminUser, showDeletedUser]
   );

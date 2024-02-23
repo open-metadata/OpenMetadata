@@ -43,6 +43,7 @@ export interface TestSuiteIngestionProps {
 
 export interface TestSuiteSchedulerProps {
   initialData?: string;
+  isLoading: boolean;
   onSubmit: (repeatFrequency: string) => void;
   onCancel: () => void;
   buttonProps?: {
