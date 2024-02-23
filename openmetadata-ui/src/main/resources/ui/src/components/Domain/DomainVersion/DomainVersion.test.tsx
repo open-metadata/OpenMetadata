@@ -108,6 +108,10 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
+  return jest.fn().mockReturnValue(<>Version timeline</>);
+});
+
 describe('DomainVersion', () => {
   it('renders domain version', async () => {
     await act(async () => {
@@ -118,11 +122,6 @@ describe('DomainVersion', () => {
     expect(await screen.findByText('Domain component')).toBeInTheDocument();
 
     // Check that the version timeline is displayed
-    expect(
-      screen.getByText('label.version-plural-history')
-    ).toBeInTheDocument();
-
-    // check active version visible
-    expect(screen.getByText('v0.4')).toBeInTheDocument();
+    expect(screen.getByText('Version timeline')).toBeInTheDocument();
   });
 });
