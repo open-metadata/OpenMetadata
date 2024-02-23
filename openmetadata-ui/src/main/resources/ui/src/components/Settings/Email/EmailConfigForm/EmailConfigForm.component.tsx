@@ -19,6 +19,7 @@ import { TRANSPORTATION_STRATEGY_OPTIONS } from '../../../../constants/EmailConf
 import { SMTPSettings } from '../../../../generated/email/smtpSettings';
 
 interface EmailConfigFormProps {
+  isLoading: boolean;
   emailConfigValues?: SMTPSettings;
   onSubmit: (configValues: SMTPSettings) => void;
   onCancel: () => void;
@@ -29,6 +30,7 @@ const { Item } = Form;
 
 function EmailConfigForm({
   emailConfigValues,
+  isLoading,
   onCancel,
   onFocus,
   onSubmit,
@@ -117,7 +119,7 @@ function EmailConfigForm({
           </Button>
         </Col>
         <Col>
-          <Button htmlType="submit" type="primary">
+          <Button htmlType="submit" loading={isLoading} type="primary">
             {t('label.submit')}
           </Button>
         </Col>

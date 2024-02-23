@@ -23,7 +23,7 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
-from metadata.profiler.adaptors.factory import factory
+from metadata.profiler.adaptors.adaptor_factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
@@ -47,9 +47,6 @@ class NoSQLProfilerInterface(ProfilerInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sampler = self._get_sampler()
-
-    def _get_sampler(self):
-        return None
 
     def _compute_table_metrics(
         self,
@@ -168,7 +165,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
         return sampler_factory_.create(
             self.service_connection_config.__class__.__name__,
             table=self.table,
-            client=factory.construct(self.connection),
+            client=factory.create(
+                self.service_connection_config.__class__.__name__, self.connection
+            ),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
@@ -190,7 +189,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
     ):
         """get all profiler metrics"""
         profile_results = {"table": {}, "columns": defaultdict(dict)}
-        runner = factory.construct(self.connection)
+        runner = factory.create(
+            self.service_connection_config.__class__.__name__, self.connection
+        )
         metric_list = [
             self.compute_metrics(runner, metric_func) for metric_func in metric_funcs
         ]

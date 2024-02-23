@@ -269,9 +269,7 @@ const UserPopOverCard: FC<Props> = ({
               : getUserPath(userName ?? '')
           }>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? (
-            <span className="">{displayName ?? userName ?? ''}</span>
-          ) : null}
+          {showUserName ? <span>{displayName ?? userName}</span> : null}
         </Link>
       )}
     </Popover>

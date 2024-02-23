@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../constants/Entity.interface';
+import { interceptURL, verifyResponseStatusCode } from '../common';
 
-import { Bot } from '../../../../generated/entity/bot';
-import { User } from '../../../../generated/entity/teams/user';
-
-export type MockProps = {
-  isBot: boolean;
-  botData?: Bot;
-  botUserData?: User;
-  revokeTokenHandlerBot?: () => Promise<void>;
+export const validateDomain = (domain: string, entityType: EntityType) => {
+  interceptURL('GET', `/api/v1/${entityType}/*/versions/0.2`, 'getVersion');
+  cy.get('[data-testid="version-button"]').should('contain', '0.2').click();
+  verifyResponseStatusCode('@getVersion', 200);
 };

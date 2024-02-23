@@ -13,16 +13,20 @@ MongoDB adaptor for the NoSQL profiler.
 """
 import json
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
-from pymongo import MongoClient
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.utils.sqa_like_column import SQALikeColumn
+
+if TYPE_CHECKING:
+    from pymongo import MongoClient
+else:
+    MongoClient = None  # pylint: disable=invalid-name
 
 
 class AggregationFunction(Enum):
