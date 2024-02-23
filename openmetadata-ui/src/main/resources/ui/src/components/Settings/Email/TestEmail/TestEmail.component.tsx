@@ -12,7 +12,7 @@
  */
 import { Form, FormProps, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { testEmailConnection } from '../../../../rest/settingConfigAPI';
@@ -25,14 +25,17 @@ interface TesEmailProps {
 const TestEmail = ({ onCancel }: TesEmailProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     try {
+      setIsLoading(true);
       const res = await testEmailConnection(values);
       showSuccessToast(res.data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
+      setIsLoading(false);
       onCancel();
     }
   };
@@ -49,6 +52,7 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
         htmlType: 'submit',
         id: 'test-email-form',
         form: 'test-email-form',
+        loading: isLoading,
       }}
       okText={t('label.test')}
       title={t('label.test-email-connection')}

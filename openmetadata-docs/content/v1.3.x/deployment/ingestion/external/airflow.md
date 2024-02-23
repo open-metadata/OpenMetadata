@@ -1,6 +1,6 @@
 ---
 title: Run the ingestion from your Airflow
-slug: /deployment/ingestion/airflow
+slug: /deployment/ingestion/external/airflow
 ---
 
 {% partial file="/v1.3/deployment/external-ingestion.md" /%}

@@ -34,15 +34,17 @@ const UserProfileTeams = ({
 }: UserProfileTeamsProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
 
-  const handleTeamsSave = () => {
-    updateUserDetails({
+  const handleTeamsSave = async () => {
+    setIsLoading(true);
+    await updateUserDetails({
       teams: selectedTeams.map((teamId) => ({ id: teamId.id, type: 'team' })),
     });
 
+    setIsLoading(false);
     setIsTeamsEdit(false);
   };
 
@@ -86,6 +88,7 @@ const UserProfileTeams = ({
       {isTeamsEdit && isAdminUser ? (
         <InlineEdit
           direction="vertical"
+          isLoading={isLoading}
           onCancel={() => setIsTeamsEdit(false)}
           onSave={handleTeamsSave}>
           <TeamsSelectable
