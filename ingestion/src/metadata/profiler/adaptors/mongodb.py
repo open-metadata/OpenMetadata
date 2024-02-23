@@ -13,12 +13,15 @@ MongoDB adaptor for the NoSQL profiler.
 """
 import json
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-
-from pymongo import MongoClient
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+
+if TYPE_CHECKING:
+    from pymongo import MongoClient
+else:
+    MongoClient = None  # pylint: disable=invalid-name
 
 
 @dataclass
