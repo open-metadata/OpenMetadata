@@ -546,6 +546,10 @@ class DatabaseServiceSource(
         test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 ```
 
+## Next Step
+
+With the Code ready to go, we can now proceed to make a small change in the UI to be able to configure the Connector properly from there.
+
 
 {%inlineCallout
   color="violet-70"

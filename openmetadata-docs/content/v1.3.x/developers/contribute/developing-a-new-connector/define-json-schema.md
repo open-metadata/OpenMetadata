@@ -367,6 +367,10 @@ The file will be shortened and parts of it will be replaced with `...` for reada
 
 {% /codePreview %}
 
+## Next Step
+
+Now that you have your Connection defined in the JSON Schema, we can proceed to actually implement the Python Code to perform the Ingestion.
+
 {%inlineCallout
   color="violet-70"
   bold="Develop the Ingesion Code"

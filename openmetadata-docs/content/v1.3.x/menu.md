@@ -1817,10 +1817,10 @@ site_menu:
     url: /developers/contribute/developing-a-new-connector/apply-ui-changes
   - category: Developers / Contribute / Developing a New Connector / 4. Create the Java ClassConverter
     url: /developers/contribute/developing-a-new-connector/create-java-class-converter
-  - category: Developers / Contribute / Developing a New Connector / 5. Update the Documentation
-    url: /developers/contribute/developing-a-new-connector/update-documentation
-  - category: Developers / Contribute / Developing a New Connector / 6. Test it
+  - category: Developers / Contribute / Developing a New Connector / 5. Test it
     url: /developers/contribute/developing-a-new-connector/test-it
+  - category: Developers / Contribute / Developing a New Connector / 6. Update the Documentation
+    url: /developers/contribute/developing-a-new-connector/update-documentation
   - category: Developers / Contribute / UX Style Guide
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks

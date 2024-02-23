@@ -171,6 +171,11 @@ $$
 {% /codeBlock %}
 {% /codePreview %}
 
+## Next Step
+
+It is possible that you need to implement a small piece of Java code to make everything work perfectly depending on the Connection Schema.
+You can learn more about it in the next step.
+
 {%inlineCallout
   color="violet-70"
   bold="Create the Java ClassConverter"

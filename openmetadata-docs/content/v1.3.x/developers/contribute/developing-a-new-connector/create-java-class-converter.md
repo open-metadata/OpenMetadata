@@ -165,10 +165,14 @@ public final class ClassConverterFactory {
 {% /codeBlock %}
 {% /codePreview %}
 
+## Next Step
+
+Now that the code is ready, let's learn how to test it!
+
 {%inlineCallout
   color="violet-70"
-  bold="Update the Documentation"
+  bold="Test It"
   icon="MdArrowForward"
-  href="/developers/contribute/developing-a-new-connector/update-documentation"%}
-  Learn how to create the documentation for your new Connector
+  href="/developers/contribute/developing-a-new-connector/test-it"%}
+  Learn how to test your new connector!
 {%/inlineCallout%}

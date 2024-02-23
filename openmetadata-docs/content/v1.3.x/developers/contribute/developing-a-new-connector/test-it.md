@@ -35,3 +35,15 @@ In order to test the connector using the UI you first need to have the OpenMetad
 The easiest way to do is to check how to do it [here](/developers/contribute/build-code-and-run-tests).
 
 With it up and running you can configure the connector from the UI itself.
+
+## Next Step
+
+Now that it's all working correctly, let's learn how to update the documentation for everyone else that will use the connector!
+
+{%inlineCallout
+  color="violet-70"
+  bold="Update the Documentation"
+  icon="MdArrowForward"
+  href="/developers/contribute/developing-a-new-connector/update-documentation"%}
+  Learn how to create the documentation for your new Connector
+{%/inlineCallout%}

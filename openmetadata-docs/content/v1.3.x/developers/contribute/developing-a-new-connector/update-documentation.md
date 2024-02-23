@@ -36,11 +36,3 @@ You should be able to see the documentation page on `http://localhost:3000`.
 
 Beware that any version that is suffixed with `-SNAPSHOT` is not shown. So in order to check it out you will need to remove the suffic and add it again afterwards.
 {% /note %}
-
-{%inlineCallout
-  color="violet-70"
-  bold="Test It"
-  icon="MdArrowForward"
-  href="/developers/contribute/developing-a-new-connector/test-it"%}
-  Learn how to test your new connector!
-{%/inlineCallout%}

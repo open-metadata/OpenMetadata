@@ -31,8 +31,8 @@ Please follow the instructions [here](/developers/contribute/build-code-and-run-
 2. [Develop the Ingestion Code](/developers/contribute/developing-a-new-connector/develop-ingestion-code)
 3. [Apply UI Changes](/developers/contribute/developing-a-new-connector/apply-ui-changes)
 4. [Create the Java ClassConverter](/developers/contribute/developing-a-new-connector/create-java-class-converter)
-5. [Update the Documentation](/developers/contribute/developing-a-new-connector/update-documentation)
-6. [Test it](/developers/contribute/developing-a-new-connector/test-it)
+5. [Test it](/developers/contribute/developing-a-new-connector/test-it)
+6. [Update the Documentation](/developers/contribute/developing-a-new-connector/update-documentation)
 
 ## References
 
