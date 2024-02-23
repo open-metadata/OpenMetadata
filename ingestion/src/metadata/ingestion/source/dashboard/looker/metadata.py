@@ -661,7 +661,7 @@ class LookerSource(DashboardServiceSource):
             ],
             # Dashboards are created from the UI directly. They are not linked to a project
             # like LookML assets, but rather just organised in folders.
-            project=self._get_dashboard_project(dashboard_details),
+            project=self.get_project_name(dashboard_details),
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service,
             owner=self.get_owner_ref(dashboard_details=dashboard_details),
@@ -669,8 +669,7 @@ class LookerSource(DashboardServiceSource):
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
-    @staticmethod
-    def _get_dashboard_project(dashboard_details: LookerDashboard) -> Optional[str]:
+    def get_project_name(self, dashboard_details: LookerDashboard) -> Optional[str]:
         """
         Get dashboard project if the folder is informed
         """
@@ -680,7 +679,7 @@ class LookerSource(DashboardServiceSource):
             logger.debug(
                 f"Cannot get folder name from dashboard [{dashboard_details.title}] - [{exc}]"
             )
-            return None
+        return None
 
     @staticmethod
     def _clean_table_name(table_name: str) -> str:
