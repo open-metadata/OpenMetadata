@@ -13,6 +13,7 @@
 
 import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
@@ -89,11 +90,11 @@ const ManageButton: FC<ManageButtonProps> = ({
     if (!onEditDisplayName) {
       return;
     }
-
+    setIsDisplayNameEditing(true);
     try {
       await onEditDisplayName(data);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsDisplayNameEditing(false);
     }
