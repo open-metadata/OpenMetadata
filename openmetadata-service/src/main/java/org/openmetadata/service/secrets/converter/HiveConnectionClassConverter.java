@@ -11,32 +11,31 @@
  *  limitations under the License.
  */
 
-
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.service.util.JsonUtils;
 
 /** Converter class to get an `DatalakeConnection` object. */
 public class HiveConnectionClassConverter extends ClassConverter {
 
-    private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-            List.of(MysqlConnection.class, PostgresConnection.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(MysqlConnection.class, PostgresConnection.class);
 
-    public HiveConnectionClassConverter() {
-        super(HiveConnection.class);
-    }
+  public HiveConnectionClassConverter() {
+    super(HiveConnection.class);
+  }
 
-    @Override
-    public Object convert(Object object) {
-        HiveConnection hiveConnection = (HiveConnection) JsonUtils.convertValue(object, this.clazz);
+  @Override
+  public Object convert(Object object) {
+    HiveConnection hiveConnection = (HiveConnection) JsonUtils.convertValue(object, this.clazz);
 
-        tryToConvert(hiveConnection.getMetastoreConnection(), CONFIG_SOURCE_CLASSES)
-                .ifPresent(hiveConnection::setMetastoreConnection);
+    tryToConvert(hiveConnection.getMetastoreConnection(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(hiveConnection::setMetastoreConnection);
 
-        return hiveConnection;
-    }
+    return hiveConnection;
+  }
 }
