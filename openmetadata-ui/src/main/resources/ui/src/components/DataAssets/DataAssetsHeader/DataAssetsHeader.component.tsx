@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -274,7 +274,7 @@ export const DataAssetsHeader = ({
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
-    setCopyTooltip(t('message.copy-to-clipboard'));
+    setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
 
@@ -419,36 +419,46 @@ export const DataAssetsHeader = ({
                   />
                 )}
                 {!excludeEntityService && (
-                  <Button
-                    className="w-16 p-0"
-                    icon={<Icon component={TaskOpenIcon} />}
-                    onClick={handleOpenTaskClick}>
-                    <Typography.Text>{openTaskCount}</Typography.Text>
-                  </Button>
+                  <Tooltip title={t('label.open-task-plural')}>
+                    <Button
+                      className="w-16 p-0"
+                      icon={<Icon component={TaskOpenIcon} />}
+                      onClick={handleOpenTaskClick}>
+                      <Typography.Text>{openTaskCount}</Typography.Text>
+                    </Button>
+                  </Tooltip>
                 )}
 
-                <Button
-                  className="w-16 p-0"
-                  data-testid="version-button"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={onVersionClick}>
-                  <Typography.Text>{version}</Typography.Text>
-                </Button>
-
-                {!excludeEntityService && (
+                <Tooltip title={t('label.version-plural-history')}>
                   <Button
                     className="w-16 p-0"
-                    data-testid="entity-follow-button"
-                    disabled={deleted}
-                    icon={
-                      <Icon
-                        component={isFollowing ? StarFilledIcon : StarIcon}
-                      />
-                    }
-                    loading={isFollowingLoading}
-                    onClick={handleFollowingClick}>
-                    <Typography.Text>{followers}</Typography.Text>
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={onVersionClick}>
+                    <Typography.Text>{version}</Typography.Text>
                   </Button>
+                </Tooltip>
+
+                {!excludeEntityService && (
+                  <Tooltip
+                    title={t('label.field-entity', {
+                      field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                      entity: capitalize(entityType),
+                    })}>
+                    <Button
+                      className="w-16 p-0"
+                      data-testid="entity-follow-button"
+                      disabled={deleted}
+                      icon={
+                        <Icon
+                          component={isFollowing ? StarFilledIcon : StarIcon}
+                        />
+                      }
+                      loading={isFollowingLoading}
+                      onClick={handleFollowingClick}>
+                      <Typography.Text>{followers}</Typography.Text>
+                    </Button>
+                  </Tooltip>
                 )}
 
                 <Tooltip
