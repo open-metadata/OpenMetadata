@@ -42,11 +42,11 @@ const UserProfileRoles = ({
   const { t } = useTranslation();
 
   const { isAdminUser } = useAuth();
-
   const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -87,7 +87,8 @@ const UserProfileRoles = ({
     }
   };
 
-  const handleRolesSave = () => {
+  const handleRolesSave = async () => {
+    setIsLoading(true);
     // filter out the roles , and exclude the admin one
     const updatedRoles = selectedRoles.filter(
       (roleId) => roleId !== toLower(TERM_ADMIN)
@@ -97,7 +98,7 @@ const UserProfileRoles = ({
     const isAdmin = selectedRoles.find(
       (roleId) => roleId === toLower(TERM_ADMIN)
     );
-    updateUserDetails({
+    await updateUserDetails({
       roles: updatedRoles.map((roleId) => {
         const role = roles.find((r) => r.id === roleId);
 
@@ -105,7 +106,7 @@ const UserProfileRoles = ({
       }),
       isAdmin: Boolean(isAdmin),
     });
-
+    setIsLoading(false);
     setIsRolesEdit(false);
   };
 
@@ -166,6 +167,7 @@ const UserProfileRoles = ({
         {isRolesEdit && isAdminUser ? (
           <InlineEdit
             direction="vertical"
+            isLoading={isLoading}
             onCancel={() => setIsRolesEdit(false)}
             onSave={handleRolesSave}>
             <Select

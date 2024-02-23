@@ -57,6 +57,7 @@ const AppInstall = () => {
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
@@ -115,6 +116,7 @@ const AppInstall = () => {
 
   const onSubmit = async (repeatFrequency: string) => {
     try {
+      setIsSavingLoading(true);
       const data: CreateAppRequest = {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
@@ -132,6 +134,8 @@ const AppInstall = () => {
       goToAppPage();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingLoading(false);
     }
   };
 
@@ -187,6 +191,7 @@ const AppInstall = () => {
             <TestSuiteScheduler
               includePeriodOptions={initialOptions}
               initialData={initialValue}
+              isLoading={isSavingLoading}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
@@ -197,7 +202,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, initialOptions]);
+  }, [activeServiceStep, appData, jsonSchema, initialOptions, isSavingLoading]);
 
   useEffect(() => {
     fetchAppDetails();
