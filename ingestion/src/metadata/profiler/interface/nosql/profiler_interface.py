@@ -149,7 +149,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
         return sampler_factory_.create(
             self.service_connection_config.__class__.__name__,
             table=self.table,
-            client=factory.construct(self.connection),
+            client=factory.create(
+                self.service_connection_config.__class__.__name__, self.connection
+            ),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
