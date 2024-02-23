@@ -153,7 +153,7 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["table", "stored_procedure"],
         post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
-        # threads=True,
+        threads=True,
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -178,7 +178,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        threads=True,
+        # threads=True,
     )
     stored_procedure = TopologyNode(
         producer="get_stored_procedures",
@@ -520,7 +520,7 @@ class DatabaseServiceSource(
         try:
             if self.source_config.includeOwners:
                 owner_name = self.inspector.get_table_owner(
-                    connection=self.connection,  # pylint: disable=no-member
+                    connection=self.connection,  # pylint: disable=no-member.fetchall()
                     table_name=table_name,
                     schema=self.context.get().database_schema,
                 )

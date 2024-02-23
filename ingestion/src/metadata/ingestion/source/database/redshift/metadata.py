@@ -81,7 +81,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.utils.execution_time_tracker import calculate_execution_time, calculate_execution_time_generator
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
@@ -140,7 +140,7 @@ class RedshiftSource(
         """
         try:
             self.partition_details.clear()
-            results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+            results = self.connection.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
             for row in results:
                 self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
         except Exception as exe:
@@ -158,7 +158,6 @@ class RedshiftSource(
             sql.text(REDSHIFT_GET_ALL_RELATION_INFO),
             {"schema": schema_name},
         )
-
         return [
             TableNameAndType(
                 name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular)
@@ -176,7 +175,7 @@ class RedshiftSource(
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            self.inspector = inspect(self.engine)
+            # self.inspector = inspect(self.connection)
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
@@ -256,7 +255,7 @@ class RedshiftSource(
     def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
+            results = self.connection.execute(
                 REDSHIFT_GET_STORED_PROCEDURES.format(
                     schema_name=self.context.get().database_schema,
                 )
@@ -265,6 +264,7 @@ class RedshiftSource(
                 stored_procedure = RedshiftStoredProcedure.parse_obj(dict(row))
                 yield stored_procedure
 
+    @calculate_execution_time_generator()
     def yield_stored_procedure(
         self, stored_procedure: RedshiftStoredProcedure
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:

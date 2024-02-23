@@ -51,6 +51,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -65,6 +66,7 @@ from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.execution_time_tracker import calculate_execution_time_generator, calculate_execution_time
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+import threading
 
 logger = ingestion_logger()
 
@@ -103,12 +105,16 @@ class CommonDbSourceService(
         self.service_connection = self.config.serviceConnection.__root__.config
 
         self.engine: Engine = get_connection(self.service_connection)
+        self.session = create_and_bind_thread_safe_session(self.engine)
 
         # Flag the connection for the test connection
         self.connection_obj = self.engine
         self.test_connection()
 
         self._connection = None  # Lazy init as well
+        self._connection_map = {} # Lazy init as well
+        self._inspector = None
+        self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
         self.context.get_global().table_views = []
@@ -127,8 +133,11 @@ class CommonDbSourceService(
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.database = database_name
         self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
-        self._connection = None  # Lazy init as well
+        # self.inspector = inspect(self.engine)
+        # self._connection = None  # Lazy init as well
+        self._connection_map = {} # Lazy init as well
+        self._inspector_map = {}
+        self._inspector = None
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -146,7 +155,7 @@ class CommonDbSourceService(
         )
 
         # By default, set the inspector on the created engine
-        self.inspector = inspect(self.engine)
+        # self.inspector = inspect(self.engine)
         yield database_name
 
     def get_database_description(self, database_name: str) -> Optional[str]:
@@ -161,6 +170,7 @@ class CommonDbSourceService(
         by default there will be no schema description
         """
 
+    @calculate_execution_time_generator()
     def yield_database(
         self, database_name: str
     ) -> Iterable[Either[CreateDatabaseRequest]]:
@@ -192,6 +202,7 @@ class CommonDbSourceService(
         """
         yield from self._get_filtered_schema_names()
 
+    @calculate_execution_time_generator()
     def yield_database_schema(
         self, schema_name: str
     ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
@@ -402,6 +413,7 @@ class CommonDbSourceService(
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
+    @calculate_execution_time_generator()
     def yield_procedure_lineage_and_queries(
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
@@ -501,6 +513,7 @@ class CommonDbSourceService(
                 )
             )
 
+    @calculate_execution_time_generator()
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
@@ -566,19 +579,51 @@ class CommonDbSourceService(
                 table_constraints = foreign_table_constraints
         return table_constraints
 
+
     @property
     def connection(self) -> Connection:
         """
         Return the SQLAlchemy connection
         """
-        if not self._connection:
-            self._connection = self.engine.connect()
 
-        return self._connection
+        # session = self.session()
+        # return session.get_bind()
+
+        # thread_id = threading.get_ident()
+        thread_id = self.context.get_current_thread_id()
+
+        if not self._connection_map.get(thread_id):
+            self._connection_map[thread_id] = self.engine.connect()
+
+        return self._connection_map[thread_id]
+        # if not self._connection:
+        #     self._connection = self.engine.connect()
+        #
+        # return self._connection
+
+
+    @property
+    def inspector(self) -> Inspector:
+        # thread_id = threading.get_ident()
+        # if not self._inspector:
+        #     self._inspector = inspect(self.engine)
+        # return self._inspector
+        # session = self.session()
+        # if not session.info.get("inspector"):
+        #     session.info["inspector"] = inspect(session.get_bind())
+        # return session.info["inspector"]
+        thread_id = self.context.get_current_thread_id()
+        #
+        if not self._inspector_map.get(thread_id):
+            self._inspector_map[thread_id] = inspect(self.connection)
+        #
+        return self._inspector_map[thread_id]
 
     def close(self):
         if self.connection is not None:
             self.connection.close()
+        for connection in self._connection_map.values():
+            connection.close()
         self.engine.dispose()
 
     def fetch_table_tags(

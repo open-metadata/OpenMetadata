@@ -12,6 +12,7 @@
 Mixin to be used by service sources to dynamically
 generate the _run based on their topology.
 """
+import math
 import time
 import traceback
 from collections import defaultdict
@@ -79,40 +80,66 @@ class TopologyRunnerMixin(Generic[C]):
 
         # node_entities = node_producer()
         node_entities = list(node_producer() or [])
-        chunks = [node_entities[i:i+threads] for i in range(0, len(node_entities), threads)]
+        node_entities_length = len(node_entities)
 
-        # has_input = True
-        # pending_results = []
-        #
-        # thread_pool = ThreadPoolExecutor(threads)
+        if node_entities_length == 0:
+            return
+        # elif node_entities_length < 1000:
+        #     yield from self._process_node(node)
+        else:
+            # node_entity = node_entities.pop(0)
+            #
+            # for stage in node.stages:
+            #     yield from self._process_stage(
+            #         stage=stage, node_entity=node_entity, child_nodes=child_nodes
+            #     )
+            #
+            # # Once we are done processing all the stages,
+            # for stage in node.stages:
+            #     if stage.clear_context:
+            #         self.context.get().clear_stage(stage=stage)
+            #
+            # # process all children from the node being run
+            # yield from self.process_nodes(child_nodes)
+            #
+            # chunksize = int(math.ceil(node_entities_length - 1 / threads))
+            # chunks = [node_entities[i:i+chunksize] for i in range(0, node_entities_length - 1, chunksize)]
 
-        thread_pool = ThreadPoolExecutor(max_workers=threads)
+            chunksize = int(math.ceil(node_entities_length / threads))
+            chunks = [node_entities[i:i+chunksize] for i in range(0, node_entities_length , chunksize)]
 
-        futures = [
-            thread_pool.submit(
-                self._multithread_process_entity,
-                node,
-                chunk,
-                child_nodes,
-                self.context.get_current_thread_id()
-            )
-            for chunk in chunks
-        ]
+            # has_input = True
+            # pending_results = []
+            #
+            # thread_pool = ThreadPoolExecutor(threads)
 
-        while True:
-            if self.queue.has_tasks():
-                yield from self.queue.process()
+            thread_pool = ThreadPoolExecutor(max_workers=threads)
 
-            else:
-                if not futures:
-                    break
+            futures = [
+                thread_pool.submit(
+                    self._multithread_process_entity,
+                    node,
+                    chunk,
+                    child_nodes,
+                    self.context.get_current_thread_id()
+                )
+                for chunk in chunks
+            ]
 
-                for i, future in enumerate(futures):
-                    if future.done():
-                        future.result()
-                        futures.pop(i)
+            while True:
+                if self.queue.has_tasks():
+                    yield from self.queue.process()
 
-            time.sleep(0.01)
+                else:
+                    if not futures:
+                        break
+
+                    for i, future in enumerate(futures):
+                        if future.done():
+                            future.result()
+                            futures.pop(i)
+
+                time.sleep(0.01)
 
         # while True:
         #     # While we have free threads and input, we spawn new threads
@@ -191,6 +218,7 @@ class TopologyRunnerMixin(Generic[C]):
         :param nodes: Topology Nodes to process
         :return: recursively build the execution tree
         """
+
         for node in nodes:
             logger.debug(f"Processing node {node}")
 
