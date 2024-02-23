@@ -35,8 +35,8 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      onCancel();
       setIsLoading(false);
+      onCancel();
     }
   };
 

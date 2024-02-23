@@ -399,13 +399,7 @@ const AppDetails = () => {
           ]
         : []),
     ];
-  }, [
-    appData,
-    jsonSchema,
-    loadingState.isRunLoading,
-    loadingState.isSaveLoading,
-    loadingState.isDeployLoading,
-  ]);
+  }, [appData, jsonSchema, loadingState]);
 
   const actionText = useMemo(() => {
     switch (action) {

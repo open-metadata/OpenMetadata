@@ -184,12 +184,12 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const handleIngestionSubmit = useCallback(
-    (repeatFrequency: string) => {
+    async (repeatFrequency: string) => {
       setIsLoading(true);
       if (ingestionFQN) {
-        onUpdateIngestionPipeline(repeatFrequency);
+        await onUpdateIngestionPipeline(repeatFrequency);
       } else {
-        createIngestionPipeline(repeatFrequency);
+        await createIngestionPipeline(repeatFrequency);
       }
       setIsLoading(false);
     },
