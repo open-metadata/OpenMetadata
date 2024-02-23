@@ -6,6 +6,11 @@ workflowConfig:
     authProvider: openmetadata
     securityConfig:
       jwtToken: "{bot_jwt_token}"
+    ## Store the service Connection information
+    storeServiceConnection: true  # false
+    ## Secrets Manager Configuration
+    # secretsManagerProvider: aws, azure or noop
+    # secretsManagerLoader: airflow or env
     ## If SSL, fill the following
     # verifySSL: validate  # or ignore
     # sslConfig:

@@ -1,6 +1,6 @@
 ---
 title: Run the ingestion from GitHub Actions
-slug: /deployment/ingestion/github-actions
+slug: /deployment/ingestion/external/github-actions
 ---
 
 {% partial file="/v1.3/deployment/external-ingestion.md" /%}

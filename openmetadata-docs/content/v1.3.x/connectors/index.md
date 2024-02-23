@@ -25,7 +25,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 {% tile
     title="External Schedulers"
     description="Get more information about running the Ingestion Framework Externally"
-    link="/deployment/ingestion"
+    link="/deployment/ingestion/external"
   / %}
 {% /tilesContainer %}
 

@@ -51,16 +51,18 @@ site_menu:
     url: /deployment/ingestion
   - category: Deployment / Ingestion / OpenMetadata
     url: /deployment/ingestion/openmetadata
-  - category: Deployment / Ingestion / Airflow
-    url: /deployment/ingestion/airflow
-  - category: Deployment / Ingestion / MWAA
-    url: /deployment/ingestion/mwaa
-  - category: Deployment / Ingestion / GCS Composer
-    url: /deployment/ingestion/gcs-composer
-  - category: Deployment / Ingestion / GitHub Actions
-    url: /deployment/ingestion/github-actions
-  - category: Deployment / Ingestion / Credentials
-    url: /deployment/ingestion/credentials
+  - category: Deployment / Ingestion / External Ingestion
+    url: /deployment/ingestion/external
+  - category: Deployment / Ingestion / External / Airflow
+    url: /deployment/ingestion/external/airflow
+  - category: Deployment / Ingestion / External / MWAA
+    url: /deployment/ingestion/external/mwaa
+  - category: Deployment / Ingestion / External / GCS Composer
+    url: /deployment/ingestion/external/gcs-composer
+  - category: Deployment / Ingestion / External / GitHub Actions
+    url: /deployment/ingestion/external/github-actions
+  - category: Deployment / Ingestion / External / Credentials
+    url: /deployment/ingestion/external/credentials
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -165,6 +167,8 @@ site_menu:
     url: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
   - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS SSM Parameter Store
     url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / Azure Key Vault
+    url: /deployment/secrets-manager/supported-implementations/azure-key-vault
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 

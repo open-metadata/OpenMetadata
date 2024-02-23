@@ -1,6 +1,6 @@
 ---
 title: Run the ingestion from AWS MWAA
-slug: /deployment/ingestion/mwaa
+slug: /deployment/ingestion/external/mwaa
 ---
 
 {% partial file="/v1.3/deployment/external-ingestion.md" /%}
