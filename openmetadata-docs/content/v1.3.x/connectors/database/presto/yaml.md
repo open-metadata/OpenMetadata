@@ -34,17 +34,12 @@ Configure and schedule Presto metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 
@@ -96,7 +91,7 @@ This is a sample config for Presto:
 
 {% codeInfo srNumber=4 %}
 
-**catalog**: Presto offers a catalog feature where all the databases are stored. (Providing the Catalog is not mandatory from 0.12.2 or greater versions)
+**catalog**: Presto offers a catalog feature where all the databases are stored.
 
 {% /codeInfo %}
 
@@ -178,6 +173,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "presto"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

@@ -63,7 +63,7 @@ services:
       retries: 10
     volumes:
       - es-data:/usr/share/elasticsearch/data
-
+    
   
   execute-migrate-all:
     build:

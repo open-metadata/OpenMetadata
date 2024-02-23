@@ -15,7 +15,7 @@ Source connection handler
 from dataclasses import dataclass
 from typing import Optional, Union
 
-from confluent_kafka.admin import AdminClient
+from confluent_kafka.admin import AdminClient, KafkaException
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
@@ -33,6 +33,21 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+class InvalidKafkaCreds(Exception):
+    """
+    Class to indicate invalid kafka credentials exception
+    """
+
+
+class SchemaRegistryException(Exception):
+    """
+    Class to indicate invalid schema registry not initialized
+    """
+
+
+TIMEOUT_SECONDS = 10
 
 
 @dataclass
@@ -59,6 +74,14 @@ def get_connection(
             ] = connection.saslPassword.get_secret_value()
         if connection.saslMechanism:
             connection.consumerConfig["sasl.mechanism"] = connection.saslMechanism.value
+
+        if (
+            connection.consumerConfig.get("security.protocol") is None
+            and connection.securityProtocol
+        ):
+            connection.consumerConfig[
+                "security.protocol"
+            ] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:
         connection.schemaRegistryConfig = connection.schemaRegistryConfig or {}
@@ -109,9 +132,27 @@ def test_connection(
     """
 
     def custom_executor():
-        _ = client.admin_client.list_topics().topics
+        try:
+            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
+        except KafkaException as err:
+            raise InvalidKafkaCreds(
+                f"Failed to fetch topics due to: {err}. "
+                "Please validate credentials and check if you are using correct security protocol"
+            )
 
-    test_fn = {"GetTopics": custom_executor}
+    def schema_registry_test():
+        if client.schema_registry_client:
+            client.schema_registry_client.get_subjects()
+        else:
+            raise SchemaRegistryException(
+                "Schema Registry not initialized, please provide schema registry "
+                "credentials in case you want topic schema and sample data to be ingested"
+            )
+
+    test_fn = {
+        "GetTopics": custom_executor,
+        "CheckSchemaRegistry": schema_registry_test,
+    }
 
     test_connection_steps(
         metadata=metadata,

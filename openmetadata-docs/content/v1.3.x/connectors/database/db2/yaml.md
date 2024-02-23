@@ -35,17 +35,12 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 To create a new Db2 user please follow the guidelines mentioned [here](https://www.ibm.com/docs/ko/samfess/8.2.0?topic=schema-creating-users-manually)
 
@@ -197,6 +192,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "db2"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

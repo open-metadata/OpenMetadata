@@ -13,7 +13,7 @@
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { SidebarItem } from '../../constants/Entity.interface';
 
-describe('Explore Page', () => {
+describe('Explore Page', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
   });

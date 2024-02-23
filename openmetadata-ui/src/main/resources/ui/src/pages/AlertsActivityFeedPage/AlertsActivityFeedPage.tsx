@@ -15,8 +15,8 @@ import { Card } from 'antd';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import { AlertDetailsComponent } from '../../components/Settings/Alerts/AlertsDetails/AlertDetails.component';
 import { EventFilterRule } from '../../generated/events/eventFilterRule';
 import {
   EventSubscription,

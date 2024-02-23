@@ -48,6 +48,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
         super().__init__(*args, **kwargs)
         self.sampler = self._get_sampler()
 
+    def _get_sampler(self):
+        return None
+
     def _compute_table_metrics(
         self,
         metrics: List[Type[Metric]],

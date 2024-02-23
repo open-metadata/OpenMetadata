@@ -28,6 +28,7 @@ import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   LeafNodes,
   LineagePos,
@@ -37,12 +38,10 @@ import {
   EntityUnion,
   EntityWithServices,
 } from '../components/Explore/ExplorePage.interface';
-import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   SearchedDataProps,
   SourceType,
 } from '../components/SearchedData/SearchedData.interface';
-import { QueryVoteType } from '../components/TableQueries/TableQueries.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -62,6 +61,7 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';

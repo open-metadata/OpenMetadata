@@ -38,12 +38,6 @@ Configure and schedule Couchbase metadata workflows from the OpenMetadata UI:
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/couchbase/yaml"} /%}
 
-## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 ## Metadata Ingestion
 
 {% partial 

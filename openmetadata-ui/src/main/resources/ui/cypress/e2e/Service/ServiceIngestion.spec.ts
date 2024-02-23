@@ -38,7 +38,7 @@ const services = [
 ];
 
 services.forEach((service) => {
-  describe(`${service.serviceType} Ingestion`, () => {
+  describe(`${service.serviceType} Ingestion`, { tags: 'Integration' }, () => {
     beforeEach(() => {
       cy.login();
       goToServiceListingPage(service.category);

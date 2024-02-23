@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { VotingDataProps } from '../components/Voting/voting.interface';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
@@ -51,14 +51,6 @@ export const addGlossaries = async (data: CreateGlossary) => {
   >(url, data);
 
   return response.data;
-};
-
-export const updateGlossaries = (
-  data: CreateGlossary
-): Promise<AxiosResponse> => {
-  const url = '/glossaries';
-
-  return APIClient.put(url, data);
 };
 
 export const patchGlossaries = async (id: string, patch: Operation[]) => {

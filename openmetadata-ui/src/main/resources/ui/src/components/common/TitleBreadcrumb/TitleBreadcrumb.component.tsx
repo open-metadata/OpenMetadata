@@ -21,7 +21,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import TitleBreadcrumbSkeleton from '../../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
+import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps } from './TitleBreadcrumb.interface';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({

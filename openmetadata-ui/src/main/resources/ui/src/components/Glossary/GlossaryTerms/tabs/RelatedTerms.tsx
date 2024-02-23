@@ -20,9 +20,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
 import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
@@ -30,6 +28,7 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
@@ -48,6 +47,7 @@ import {
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getEntityReferenceFromGlossary } from '../../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import TagButton from '../../../common/TagButton/TagButton.component';
 
 interface RelatedTermsProps {
   isVersionView?: boolean;

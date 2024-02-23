@@ -30,11 +30,9 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { useTourProvider } from '../../../components/TourProvider/TourProvider';
-import Voting from '../../../components/Voting/Voting.component';
-import { VotingDataProps } from '../../../components/Voting/voting.interface';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
@@ -58,7 +56,9 @@ import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/Anno
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import RetentionPeriod from '../../RetentionPeriod/RetentionPeriod.component';
+import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
+import Voting from '../../Entity/Voting/Voting.component';
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -322,7 +322,7 @@ export const DataAssetsHeader = ({
     <>
       <Row gutter={[8, 12]}>
         {/* Heading Left side */}
-        <Col className="self-center" span={18}>
+        <Col className="self-center" span={17}>
           <Row gutter={[16, 12]}>
             <Col span={24}>
               <TitleBreadcrumb
@@ -400,7 +400,7 @@ export const DataAssetsHeader = ({
           </Row>
         </Col>
         {/* Heading Right side */}
-        <Col span={6}>
+        <Col span={7}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
               <ButtonGroup data-testid="asset-header-btn-group" size="small">

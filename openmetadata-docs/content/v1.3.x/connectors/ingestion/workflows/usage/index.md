@@ -72,7 +72,7 @@ Here you can enter the Usage Ingestion details:
 
 **Query Log Duration**
 
-Specify the duration in days for which the profiler should capture usage data from the query logs. For example, if you specify 2 as the value for the duration, the data profiler will capture usage information for 48 hours prior to when the ingestion workflow is run.
+Specify the duration in days for which the usage should capture usage data from the query logs. For example, if you specify 2 as the value for the duration, the data usage will capture usage information for 48 hours prior to when the ingestion workflow is run.
 
 **Stage File Location**
 
@@ -93,4 +93,10 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
   caption="View Service Ingestion pipelines"
  /%}
 
+## YAML Configuration
 
+In the [connectors](/connectors) section we showcase how to run the metadata ingestion from a JSON/YAML file using the Airflow SDK or the CLI via metadata ingest. Running a usage workflow is also possible using a JSON/YAML configuration file.
+
+This is a good option if you wish to execute your workflow via the Airflow SDK or using the CLI; if you use the CLI a usage workflow can be triggered with the command `metadata usage -c FILENAME.yaml`. The `serviceConnection` config will be specific to your connector (you can find more information in the [connectors](/connectors) section), though the sourceConfig for the usage will be similar across all connectors.
+
+{% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "bigquery"} /%}

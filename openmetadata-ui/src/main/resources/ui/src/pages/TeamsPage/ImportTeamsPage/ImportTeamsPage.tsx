@@ -19,16 +19,16 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { EntityImport } from '../../../components/common/EntityImport/EntityImport.component';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../../components/Loader/Loader';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { TeamImportResult } from '../../../components/Settings/Team/TeamImportResult/TeamImportResult.component';
+import { UserImportResult } from '../../../components/Settings/Team/UserImportResult/UserImportResult.component';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { TeamImportResult } from '../../../components/Team/TeamImportResult/TeamImportResult.component';
-import { UserImportResult } from '../../../components/Team/UserImportResult/UserImportResult.component';
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
