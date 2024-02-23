@@ -273,7 +273,6 @@ eventMonitoringConfiguration:
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
-    - "org.openmetadata.service.events.ChangeEventHandler"
     - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
 pipelineServiceClientConfiguration:

@@ -113,7 +113,7 @@
     "displayName": "General Metadata Events",
     "description" : "Event Filtering By General MetadataEvents",
     "effect" : "include",
-    "condition": "matchAnyFieldChange({'description', 'tags'})",
+    "condition": "matchAnyFieldChange({'owner', 'description', 'tags'})",
     "inputType": "none"
   }
 ]

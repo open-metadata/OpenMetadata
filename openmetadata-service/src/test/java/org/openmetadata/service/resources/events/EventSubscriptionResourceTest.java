@@ -134,7 +134,7 @@ public class EventSubscriptionResourceTest
     while (iterations < 10) {
       Awaitility.await().atLeast(Duration.ofMillis(100L)).untilTrue(new AtomicBoolean(true));
       iterations++;
-      assertEquals(1, details.getEvents().size()); // Event counter remains the same
+      assertEquals(2, details.getEvents().size()); // Event counter remains the same
     }
 
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);

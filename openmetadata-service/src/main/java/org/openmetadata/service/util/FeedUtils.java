@@ -35,18 +35,17 @@ public final class FeedUtils {
   private FeedUtils() {}
 
   public static List<Thread> getThreadWithMessage(
-      MessageDecorator<?> messageDecorator, ChangeEvent changeEvent, String loggedInUserName) {
+      MessageDecorator<?> messageDecorator, ChangeEvent changeEvent) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return Collections.emptyList(); // Response has no entity to produce change event from
     }
 
     // Change Event is of Thread or Data Assets
     if (changeEvent.getEntityType().equals(Entity.THREAD)) {
-      // TODO:
+      // Thread type create from FeedRepository
       return Collections.emptyList();
-      // return List.of(AlertsRuleEvaluator.getThread(changeEvent));
     } else if (Entity.getEntityList().contains(changeEvent.getEntityType())) {
-      return populateMessageForDataAssets(messageDecorator, changeEvent, loggedInUserName);
+      return populateMessageForDataAssets(messageDecorator, changeEvent);
     } else {
       LOG.error(
           "Invalid Entity Type: {}, Currently Change Events are expected as Thread or Data Assets",
@@ -55,13 +54,8 @@ public final class FeedUtils {
     }
   }
 
-  private static List<Thread> populateMessageForThread(
-      ChangeEvent changeEvent, String loggedInUserName) {
-    return null;
-  }
-
   private static List<Thread> populateMessageForDataAssets(
-      MessageDecorator<?> messageDecorator, ChangeEvent changeEvent, String loggedInUserName) {
+      MessageDecorator<?> messageDecorator, ChangeEvent changeEvent) {
     String message;
     EntityInterface entityInterface = getEntity(changeEvent);
     MessageParser.EntityLink about =
@@ -74,30 +68,33 @@ public final class FeedUtils {
             String.format(
                 "Created **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
-        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+        yield List.of(getThread(about.getLinkString(), message, changeEvent.getUserName()));
       }
       case ENTITY_UPDATED -> getThreadWithMessage(
-          messageDecorator, entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
+          messageDecorator,
+          entityInterface,
+          changeEvent.getChangeDescription(),
+          entityInterface.getUpdatedBy());
       case ENTITY_SOFT_DELETED -> {
         message =
             String.format(
                 "Soft deleted **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
-        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+        yield List.of(getThread(about.getLinkString(), message, changeEvent.getUserName()));
       }
       case ENTITY_DELETED -> {
         message =
             String.format(
                 "Permanently Deleted **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
-        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+        yield List.of(getThread(about.getLinkString(), message, changeEvent.getUserName()));
       }
       case LOGICAL_TEST_CASE_ADDED -> {
         message =
             String.format(
                 "Added Logical Test Cases to **%s**: `%s`",
                 changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
-        yield List.of(getThread(about.getLinkString(), message, loggedInUserName));
+        yield List.of(getThread(about.getLinkString(), message, changeEvent.getUserName()));
       }
       default -> {
         if (entityInterface.getChangeDescription() == null) {
@@ -107,7 +104,7 @@ public final class FeedUtils {
             messageDecorator,
             entityInterface,
             entityInterface.getChangeDescription(),
-            loggedInUserName);
+            changeEvent.getUserName());
       }
     };
   }
