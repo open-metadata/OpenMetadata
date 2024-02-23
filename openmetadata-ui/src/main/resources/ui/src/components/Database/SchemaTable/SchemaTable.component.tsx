@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -359,7 +360,9 @@ const SchemaTable = ({
                     background: 'transparent',
                   }}
                   onClick={() => handleEditDisplayNameClick(record)}>
-                  <IconEdit />
+                  <IconEdit
+                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  />
                 </Button>
               )}
             </div>
