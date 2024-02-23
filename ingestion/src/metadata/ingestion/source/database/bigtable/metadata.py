@@ -158,10 +158,10 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             records = [{"row_key": b"row_key"}]
             # In order to get a "good" sample of data, we try to distribute the sampling
             # across multiple column families.
-            for cf in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
+            for column_family in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
                 records.extend(
                     self._get_records_for_column_family(
-                        table, cf, SAMPLES_PER_COLUMN_FAMILY
+                        table, column_family, SAMPLES_PER_COLUMN_FAMILY
                     )
                 )
                 if len(records) >= GLOBAL_SAMPLE_SIZE:
