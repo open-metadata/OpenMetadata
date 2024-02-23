@@ -199,7 +199,10 @@ const Description: FC<DescriptionProps> = ({
 
   return (
     <div className={`schema-description relative ${className}`}>
-      <Space align="end" className="description-inner-main-container" size={4}>
+      <Space
+        align="center"
+        className="description-inner-main-container"
+        size={4}>
         <div className="relative">
           <div
             className="description h-full relative overflow-y-scroll"
