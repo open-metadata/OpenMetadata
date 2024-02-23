@@ -3,7 +3,13 @@ title: Atlas
 slug: /connectors/metadata/atlas
 ---
 
-# Atlas
+{% connectorDetailsHeader
+name="Atlas"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/atlas/yaml"} /%}
 

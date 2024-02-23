@@ -3,12 +3,13 @@ title: S3
 slug: /connectors/storage/s3
 ---
 
-# S3
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="S3"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=[]
+/ %}
 
 This page contains the setup guide and reference information for the S3 connector.
 

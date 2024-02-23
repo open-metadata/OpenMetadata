@@ -3,17 +3,13 @@ title: Metabase
 slug: /connectors/dashboard/metabase
 ---
 
-# Metabase
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="check" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Metabase"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Projects"]
+  unavailableFeatures=["Owners", "Tags", "Datamodels"]
+/ %}
 
 In this section, we provide guides and references to use the Metabase connector.
 
