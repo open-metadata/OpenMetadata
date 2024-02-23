@@ -85,6 +85,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
           
       - name: Get Cypress Filter
         id: get_cypress_filter
@@ -141,13 +142,13 @@ jobs:
         timeout-minutes: 120
         with:
           install-command: yarn --frozen-lockfile --silent --ignore-scripts
-          record: true
-          parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: "http://localhost:8585"
-          group: cypress-ci-mysql-pr-oss-${{ github.run_id }}-${{github.run_attempt}}
-          browser: chrome
-          command: npx cypress run --config-file=cypress.config.ts --env grepTags='${{ steps.get_cypress_filter.outputs.e2eFilters }}'
+          command: |
+            npx cypress run --config-file=cypress.config.ts \
+             --env grepTags='${{ steps.get_cypress_filter.outputs.e2eFilters }}',grepFilterSpecs=true \
+             --group cypress-ci-mysql-pr-oss-${{ github.run_id }}-${{github.run_attempt}} \
+             --parallel --record --browser chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ steps.cypress-project-id.outputs.CYPRESS_RECORD_KEY }}
