@@ -167,6 +167,18 @@ public class SubscriptionUtil {
       }
     }
 
+    for (Post post : thread.getPosts()) {
+      users.add(Entity.getEntityByName(USER, post.getFrom(), "", Include.NON_DELETED));
+      List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(post.getMessage());
+      for (MessageParser.EntityLink link : mentions) {
+        if (USER.equals(link.getEntityType())) {
+          users.add(Entity.getEntity(link, "", Include.NON_DELETED));
+        } else if (TEAM.equals(link.getEntityType())) {
+          teams.add(Entity.getEntity(link, "", Include.NON_DELETED));
+        }
+      }
+    }
+
     // Users
     receiversList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
 
