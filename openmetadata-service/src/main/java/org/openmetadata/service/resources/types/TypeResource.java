@@ -413,7 +413,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "addProperty",
-      summary = "Add or update a Property to an entity",
+      summary = "Add or update a Property to an entity type.",
       description =
           "Add or update a property to an entity type. "
               + "Properties can only be added to entity type and not property type.",
