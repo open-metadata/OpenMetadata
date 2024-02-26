@@ -393,7 +393,9 @@ const SchemaTable = ({
               accessor: 'name',
               width: 120,
               render: (columnName: string) =>
-                tablePartitioned?.columns?.includes(columnName)
+                tablePartitioned?.columns?.find(
+                  (column) => columnName === column.columnName
+                )
                   ? t('label.partitioned')
                   : t('label.non-partitioned'),
             },
