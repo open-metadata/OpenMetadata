@@ -117,7 +117,12 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadataConnection):
+    def create(
+        cls,
+        config_dict,
+        metadata: OpenMetadataConnection,
+        pipeline_name: Optional[str] = None,
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GreenplumConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GreenplumConnection):

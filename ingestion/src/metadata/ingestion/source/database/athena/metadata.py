@@ -12,7 +12,7 @@
 """Athena source module"""
 
 import traceback
-from typing import Iterable, Tuple
+from typing import Iterable, Optional, Tuple
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import types
@@ -192,7 +192,9 @@ class AthenaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AthenaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AthenaConnection):
