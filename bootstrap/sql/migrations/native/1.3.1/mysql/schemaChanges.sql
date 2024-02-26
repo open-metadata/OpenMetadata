@@ -122,3 +122,7 @@ CREATE TABLE IF NOT EXISTS QRTZ_LOCKS (
 SCHED_NAME VARCHAR(120) NOT NULL,
 LOCK_NAME VARCHAR(40) NOT NULL,
 PRIMARY KEY (SCHED_NAME,LOCK_NAME));
+
+-- Remove unsupported ingestion pipeline type
+DELETE FROM ingestion_pipeline_entity
+WHERE LOWER(JSON_EXTRACT(json, '$.pipelineType') = 'elasticsearchreindex');
