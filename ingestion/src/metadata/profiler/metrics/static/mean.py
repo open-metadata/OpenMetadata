@@ -12,16 +12,16 @@
 """
 AVG Metric definition
 """
-# pylint: disable=duplicate-code
-
-
-from typing import List, cast
+from functools import partial
+from typing import Callable, List, Optional, cast
 
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.generated.schema.entity.data.table import Table
+from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -31,6 +31,9 @@ from metadata.profiler.orm.registry import (
     is_quantifiable,
 )
 from metadata.utils.logger import profiler_logger
+
+# pylint: disable=duplicate-code
+
 
 logger = profiler_logger()
 
@@ -142,3 +145,9 @@ class Mean(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
         return None
+
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+        """nosql function"""
+        if is_quantifiable(self.col.type):
+            return partial(adaptor.mean, column=self.col)
+        return lambda table: None
