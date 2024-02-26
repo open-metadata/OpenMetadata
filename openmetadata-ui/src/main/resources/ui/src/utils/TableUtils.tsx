@@ -295,7 +295,7 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.TAG:
     case 'tagCategory':
       return <ClassificationIcon />;
-    case SearchIndex.GLOSSARY:
+    case SearchIndex.GLOSSARY_TERM:
     case EntityType.GLOSSARY:
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:

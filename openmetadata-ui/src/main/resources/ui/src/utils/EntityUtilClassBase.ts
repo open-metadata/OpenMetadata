@@ -62,8 +62,9 @@ class EntityUtilClassBase {
         return getDatabaseSchemaDetailsPath(fullyQualifiedName);
 
       case EntityType.GLOSSARY:
-      case EntityType.GLOSSARY_TERM:
       case SearchIndex.GLOSSARY:
+      case EntityType.GLOSSARY_TERM:
+      case SearchIndex.GLOSSARY_TERM:
         return getGlossaryPath(fullyQualifiedName);
 
       case EntityType.DATABASE_SERVICE:

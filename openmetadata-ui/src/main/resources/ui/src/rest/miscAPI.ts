@@ -104,7 +104,7 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.CONTAINER,
       SearchIndex.STORED_PROCEDURE,
       SearchIndex.DASHBOARD_DATA_MODEL,
-      SearchIndex.GLOSSARY,
+      SearchIndex.GLOSSARY_TERM,
       SearchIndex.TAG,
       SearchIndex.SEARCH_INDEX,
     ],
@@ -197,7 +197,7 @@ export const getTeamsByQuery = async (params: {
 export const getTagSuggestions = (term: string) => {
   const params = {
     q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
+    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY_TERM}`,
   };
 
   return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {

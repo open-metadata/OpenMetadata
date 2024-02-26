@@ -33,10 +33,11 @@ import { getGlossaryPath } from './RouterUtils';
  */
 export const fetchGlossaryTerms = (): Promise<GlossaryTerm[]> => {
   return new Promise<GlossaryTerm[]>((resolve, reject) => {
-    searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY)
+    searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY_TERM)
       .then((res) => {
         const data = formatSearchGlossaryTermResponse(
-          (res?.data as SearchResponse<SearchIndex.GLOSSARY>)?.hits?.hits || []
+          (res?.data as SearchResponse<SearchIndex.GLOSSARY_TERM>)?.hits
+            ?.hits || []
         );
         resolve(data);
       })

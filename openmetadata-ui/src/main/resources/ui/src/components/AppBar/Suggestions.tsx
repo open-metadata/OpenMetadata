@@ -120,7 +120,9 @@ const Suggestions = ({
     setDataModelSuggestions(
       filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
     );
-    setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
+    setGlossarySuggestions(
+      filterOptionsByIndex(options, SearchIndex.GLOSSARY_TERM)
+    );
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
@@ -180,7 +182,7 @@ const Suggestions = ({
           },
           {
             suggestions: glossarySuggestions,
-            searchIndex: SearchIndex.GLOSSARY,
+            searchIndex: SearchIndex.GLOSSARY_TERM,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {

@@ -320,7 +320,7 @@ export const fetchGlossaryList = async (
     pageNumber: page,
     pageSize: 10,
     queryFilter: {},
-    searchIndex: SearchIndex.GLOSSARY,
+    searchIndex: SearchIndex.GLOSSARY_TERM,
   });
 
   const hits = glossaryResponse.hits.hits;
