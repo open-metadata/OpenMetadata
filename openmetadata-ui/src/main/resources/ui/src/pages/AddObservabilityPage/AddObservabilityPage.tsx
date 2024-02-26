@@ -44,8 +44,8 @@ import './add-observability-page.less';
 import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
 import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormActionItem from './ObservabilityFormActionItem/ObservabilityFormActionItem';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 
 function AddObservabilityPage() {
   const { t } = useTranslation();
@@ -264,7 +264,7 @@ function AddObservabilityPage() {
                     )}
                     {shouldShowActionsSection && (
                       <Col span={24}>
-                        <ObservabilityFormActionItem
+                        <ObservabilityFormTriggerItem
                           supportedActions={supportedActions}
                         />
                       </Col>

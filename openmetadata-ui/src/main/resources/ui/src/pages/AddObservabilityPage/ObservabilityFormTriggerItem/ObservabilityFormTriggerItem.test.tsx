@@ -15,7 +15,7 @@ import { Form, FormInstance } from 'antd';
 import React from 'react';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
-import ObservabilityFormActionItem from './ObservabilityFormActionItem';
+import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem';
 
 jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getConditionalField: jest
@@ -33,7 +33,7 @@ const mockSupportedActions = MOCK_FILTER_RESOURCES.reduce(
   [] as EventFilterRule[]
 );
 
-describe('ObservabilityFormActionItem', () => {
+describe('ObservabilityFormTriggerItem', () => {
   it('should renders without crashing', () => {
     const setFieldValue = jest.fn();
     const getFieldValue = jest.fn();
@@ -49,7 +49,7 @@ describe('ObservabilityFormActionItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormActionItem supportedActions={mockSupportedActions} />
+      <ObservabilityFormTriggerItem supportedActions={mockSupportedActions} />
     );
 
     expect(screen.getByText('label.trigger')).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('ObservabilityFormActionItem', () => {
     useWatchMock.mockImplementation(() => []);
 
     render(
-      <ObservabilityFormActionItem supportedActions={mockSupportedActions} />
+      <ObservabilityFormTriggerItem supportedActions={mockSupportedActions} />
     );
 
     const addButton = screen.getByTestId('add-actions');
@@ -99,7 +99,7 @@ describe('ObservabilityFormActionItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormActionItem supportedActions={mockSupportedActions} />
+      <ObservabilityFormTriggerItem supportedActions={mockSupportedActions} />
     );
 
     const addButton = screen.getByTestId('add-actions');

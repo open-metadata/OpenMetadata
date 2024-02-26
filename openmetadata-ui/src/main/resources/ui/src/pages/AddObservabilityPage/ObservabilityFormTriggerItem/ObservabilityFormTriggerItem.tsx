@@ -25,11 +25,11 @@ import {
   getConditionalField,
   getSupportedFilterOptions,
 } from '../../../utils/Alerts/AlertsUtil';
-import { ObservabilityFormActionItemProps } from './ObservabilityFormActionItem.interface';
+import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
-function ObservabilityFormActionItem({
+function ObservabilityFormTriggerItem({
   supportedActions,
-}: Readonly<ObservabilityFormActionItemProps>) {
+}: Readonly<ObservabilityFormTriggerItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
 
@@ -185,4 +185,4 @@ function ObservabilityFormActionItem({
   );
 }
 
-export default ObservabilityFormActionItem;
+export default ObservabilityFormTriggerItem;

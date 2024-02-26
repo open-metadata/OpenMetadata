@@ -13,6 +13,6 @@
 
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
 
-export interface ObservabilityFormActionItemProps {
+export interface ObservabilityFormTriggerItemProps {
   supportedActions?: EventFilterRule[];
 }
