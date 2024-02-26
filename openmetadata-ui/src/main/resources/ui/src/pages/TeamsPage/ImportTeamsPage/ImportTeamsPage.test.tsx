@@ -93,6 +93,13 @@ jest.mock(
     }),
   })
 );
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => {
+    return <div>{children}</div>;
+  });
+});
+
 const mockParams = {
   fqn: 'Organization',
 };

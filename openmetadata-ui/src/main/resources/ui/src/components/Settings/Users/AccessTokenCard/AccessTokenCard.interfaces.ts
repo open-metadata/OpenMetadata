@@ -18,5 +18,5 @@ export type MockProps = {
   isBot: boolean;
   botData?: Bot;
   botUserData?: User;
-  revokeTokenHandlerBot?: () => void;
+  revokeTokenHandlerBot?: () => Promise<void>;
 };

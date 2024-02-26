@@ -3,8 +3,15 @@ title: Alation
 slug: /connectors/metadata/alation
 ---
 
-# Alation (Collate Only)
-Alation connector is supported to run only externally and not via OpenMetadata UI.
+{% connectorDetailsHeader
+name="Alation"
+stage="PROD"
+platform="Collate"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
+
+The Alation connector is supported to run only externally and not via OpenMetadata UI.
 Check the following docs to run the Ingestion Framework in any orchestrator externally.
 
 {% tilesContainer %}

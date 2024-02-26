@@ -3,17 +3,13 @@ title: Run the Looker Connector Externally
 slug: /connectors/dashboard/looker/yaml
 ---
 
-# Run the Looker Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Looker"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels", "Lineage"]
+  unavailableFeatures=["Tags", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Looker connector.
 
