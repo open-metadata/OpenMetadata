@@ -76,11 +76,12 @@ export const EntityImport = ({
 
         setCsvImportResult(response);
         setCsvFileResult(result);
-        setUploading(false);
         setActiveStep(2);
       }
     } catch (error) {
       setCsvImportResult(undefined);
+    } finally {
+      setUploading(false);
     }
   };
 
