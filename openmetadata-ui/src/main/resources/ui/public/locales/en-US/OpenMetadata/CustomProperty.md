@@ -19,3 +19,9 @@ $$section
 
 Describe your custom property to provide more information to your team.
 $$
+
+$$section
+### Custom Property Config $(id="customPropertyConfig")
+
+Config to define constraints around CustomProperty.
+$$

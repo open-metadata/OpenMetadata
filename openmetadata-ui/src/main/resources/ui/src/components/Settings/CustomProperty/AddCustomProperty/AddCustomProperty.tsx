@@ -52,6 +52,7 @@ import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
+  const [form] = Form.useForm();
   const { entityType } = useParams<{ entityType: EntityType }>();
   const history = useHistory();
 
@@ -60,6 +61,8 @@ const AddCustomProperty = () => {
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
+
+  const watchedPropertyType = Form.useWatch('propertyType', form);
 
   const slashedBreadcrumb = useMemo(
     () => [
@@ -96,6 +99,10 @@ const AddCustomProperty = () => {
     }));
   }, [propertyTypes]);
 
+  const isEnumType =
+    propertyTypeOptions.find((option) => option.value === watchedPropertyType)
+      ?.key === 'enum';
+
   const fetchPropertyType = async () => {
     try {
       const response = await getTypeListByCategory(Category.Field);
@@ -127,7 +134,14 @@ const AddCustomProperty = () => {
      * In CustomProperty the propertyType is type of entity reference, however from the form we
      * get propertyType as string
      */
-    data: Exclude<CustomProperty, 'propertyType'> & { propertyType: string }
+    /**
+     * In CustomProperty the customPropertyConfig is type of CustomPropertyConfig, however from the
+     * form we get customPropertyConfig as string[]
+     */
+    data: Exclude<CustomProperty, 'propertyType' | 'customPropertyConfig'> & {
+      propertyType: string;
+      customPropertyConfig: string[];
+    }
   ) => {
     if (isUndefined(typeDetail)) {
       return;
@@ -141,6 +155,12 @@ const AddCustomProperty = () => {
           id: data.propertyType,
           type: 'type',
         },
+        // Only add customPropertyConfig if it is an enum type
+        ...(isEnumType
+          ? {
+              customPropertyConfig: { config: data.customPropertyConfig },
+            }
+          : {}),
       });
       history.goBack();
     } catch (error) {
@@ -191,18 +211,32 @@ const AddCustomProperty = () => {
         })}`,
       },
     },
-    {
-      name: 'description',
-      required: true,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-      },
-    },
   ];
+
+  const descriptionField: FieldProp = {
+    name: 'description',
+    required: true,
+    label: t('label.description'),
+    id: 'root/description',
+    type: FieldTypes.DESCRIPTION,
+    props: {
+      'data-testid': 'description',
+      initialValue: '',
+    },
+  };
+
+  const customPropertyConfigTypeValueField: FieldProp = {
+    name: 'config',
+    required: true,
+    label: t('label.config'),
+    id: 'root/customPropertyConfig',
+    type: FieldTypes.SELECT,
+    props: {
+      'data-testid': 'customPropertyConfig',
+      mode: 'tags',
+      placeholder: 'Config',
+    },
+  };
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
@@ -210,10 +244,15 @@ const AddCustomProperty = () => {
       <Form
         className="m-t-md"
         data-testid="custom-property-form"
+        form={form}
         layout="vertical"
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
         {generateFormFields(formFields)}
+        {isEnumType && (
+          <>{generateFormFields([customPropertyConfigTypeValueField])}</>
+        )}
+        {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>
             <Button
