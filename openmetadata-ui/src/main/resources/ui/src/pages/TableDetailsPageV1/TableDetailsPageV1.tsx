@@ -65,6 +65,7 @@ import { JoinedWith, Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
@@ -912,6 +913,14 @@ const TableDetailsPageV1 = () => {
       fetchQueryCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
+
+  useSub(
+    'updateDetails',
+    (_) => {
+      // handle table update here
+    },
+    [tableDetails]
+  );
 
   const onThreadPanelClose = () => {
     setThreadLink('');
