@@ -3,17 +3,13 @@ title: Run the Superset Connector Externally
 slug: /connectors/dashboard/superset/yaml
 ---
 
-# Run the Superset Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Superset"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels"]
+unavailableFeatures=["Tags", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Superset connector.
 
@@ -25,10 +21,6 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 The ingestion also works with Superset 2.0.0 🎉
 

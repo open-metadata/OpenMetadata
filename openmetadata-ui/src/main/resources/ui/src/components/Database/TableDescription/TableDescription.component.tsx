@@ -15,7 +15,7 @@ import { Button, Space } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
@@ -61,7 +61,7 @@ const TableDescription = ({
                 background: 'transparent',
               }}
               onClick={onClick}>
-              <EditIcon />
+              <EditIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
             </Button>
           )}
 

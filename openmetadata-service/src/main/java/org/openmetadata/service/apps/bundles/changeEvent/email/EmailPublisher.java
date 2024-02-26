@@ -14,15 +14,12 @@
 package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
-import static org.openmetadata.service.util.SubscriptionUtil.buildReceiversListFromActions;
+import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForAlert;
 
-import java.util.HashSet;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -58,7 +55,8 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      Set<String> receivers = buildReceiversList(event);
+      Set<String> receivers =
+          getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
       EmailMessage emailMessage = emailDecorator.buildOutgoingMessage(event);
       for (String email : receivers) {
         EmailUtil.sendChangeEventMail(email, emailMessage);
@@ -76,18 +74,6 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public boolean getEnabled() {
     return subscriptionDestination.getEnabled();
-  }
-
-  private Set<String> buildReceiversList(ChangeEvent changeEvent) {
-    EntityInterface entityInterface = getEntity(changeEvent);
-    return new HashSet<>(
-        buildReceiversListFromActions(
-            emailAlertConfig,
-            subscriptionDestination.getCategory(),
-            EMAIL,
-            daoCollection,
-            entityInterface.getId(),
-            changeEvent.getEntityType()));
   }
 
   public void close() {

@@ -3,29 +3,13 @@ title: Run the SAP Hana Connector Externally
 slug: /connectors/database/sap-hana/yaml
 ---
 
-# Run the SAP Hana Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | BETA                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="SAP Hana"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
+unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the SAP Hana connector.
 
