@@ -3,15 +3,13 @@ title: Run the Airflow Connector Externally
 slug: /connectors/pipeline/airflow/yaml
 ---
 
-# Run the Airflow Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="check" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Airflow"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Owners"]
+unavailableFeatures=["Tags"]
+/ %}
 
 In this section, we provide guides and references to use the Airbyte connector.
 
