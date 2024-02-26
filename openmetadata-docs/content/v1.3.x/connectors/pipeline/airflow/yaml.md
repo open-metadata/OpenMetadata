@@ -24,12 +24,6 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
-
 ### Python Requirements
 
 To run the Airflow ingestion, you will need to install:
@@ -38,8 +32,7 @@ To run the Airflow ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[airflow]"
 ```
 
-Note that this installs the same Airflow version that we ship in the Ingestion Container, which is
-Airflow `2.3.3` from Release `0.12`.
+Note that this installs the same Airflow version that we ship in the Ingestion Container.
 
 The ingestion using Airflow version 2.3.3 as a source package has been tested against Airflow 2.3.3 and Airflow 2.2.5.
 
@@ -140,13 +133,15 @@ source:
       connection:
         type: Mysql
         username: airflow_user
-        password: airflow_pass
+        authType:
+          password: airflow_pass
         databaseSchema: airflow_db
         hostPort: localhost:3306
         # #
         # type: Postgres
         # username: airflow_user
-        # password: airflow_pass
+        # authType:
+        #   password: airflow_pass
         # database: airflow_db
         # hostPort: localhost:3306
         # #

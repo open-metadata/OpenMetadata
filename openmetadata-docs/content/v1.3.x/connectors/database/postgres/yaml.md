@@ -44,12 +44,6 @@ Configure and schedule Postgres metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 **Note:** Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
 
 ### Usage and Lineage considerations

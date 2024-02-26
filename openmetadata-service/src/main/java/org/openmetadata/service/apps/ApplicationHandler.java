@@ -36,14 +36,13 @@ public class ApplicationHandler {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
-      Object resource = clz.getConstructor().newInstance();
+      Object resource =
+          clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
+              .newInstance(daoCollection, searchRepository);
 
       // Call init Method
-      Method initMethod =
-          resource
-              .getClass()
-              .getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
-      initMethod.invoke(resource, app, daoCollection, searchRepository);
+      Method initMethod = resource.getClass().getMethod("init", App.class);
+      initMethod.invoke(resource, app);
 
       // Call method on demand
       Method scheduleMethod = resource.getClass().getMethod(methodName);

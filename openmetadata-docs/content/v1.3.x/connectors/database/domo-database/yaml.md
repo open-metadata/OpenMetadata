@@ -41,12 +41,6 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 **Note:**
 
 For metadata ingestion, kindly make sure add atleast `data` scopes to the clientId provided.

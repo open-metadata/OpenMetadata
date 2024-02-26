@@ -128,7 +128,7 @@ export const restoreUser = (username: string, editedUserName: string) => {
     'contain',
     `Are you sure you want to restore ${editedUserName}?`
   );
-  interceptURL('PUT', '/api/v1/users', 'restoreUser');
+  interceptURL('PUT', '/api/v1/users/restore', 'restoreUser');
   cy.get('.ant-modal-footer > .ant-btn-primary').click();
   verifyResponseStatusCode('@restoreUser', 200);
   toastNotification('User restored successfully');

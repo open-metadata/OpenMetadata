@@ -19,7 +19,6 @@ import {
   deleteTag,
   getClassificationByName,
   getTags,
-  updateClassification,
   updateTag,
 } from './tagAPI';
 
@@ -91,19 +90,6 @@ describe('API functions should work properly', () => {
     expect(result).toEqual({
       url: `post_request/tags`,
       data: mockPostData,
-    });
-  });
-
-  it('updateClassification function should work properly', async () => {
-    const mockUpdateData = {
-      name: 'testCategory',
-      description: 'newDescription',
-    };
-    const result = await updateClassification(mockUpdateData);
-
-    expect(result).toEqual({
-      url: `put_request/classifications`,
-      data: mockUpdateData,
     });
   });
 

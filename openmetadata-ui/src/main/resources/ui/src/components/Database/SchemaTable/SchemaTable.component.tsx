@@ -53,6 +53,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getAllRowKeysByKeyName,
   getFilterIcon,
   getTableExpandableConfig,
   makeData,
@@ -119,6 +120,12 @@ const SchemaTable = ({
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
+  );
+
+  const nestedTableFqnKeys = useMemo(
+    () =>
+      getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName'),
+    [tableColumns]
   );
 
   useEffect(() => {
@@ -459,10 +466,8 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    setExpandedRowKeys(() =>
-      data.map((value) => value?.fullyQualifiedName ?? '')
-    );
-  }, [data]);
+    setExpandedRowKeys(nestedTableFqnKeys);
+  }, [searchText]);
 
   return (
     <>
