@@ -3,30 +3,13 @@ title: Run the BigQuery Connector Externally
 slug: /connectors/database/bigquery/yaml
 ---
 
-# Run the BigQuery Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | Policy Tags                  |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="BigQuery"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures"]
+unavailableFeatures=["Owners"]
+/ %}
 
 In this section, we provide guides and references to use the BigQuery connector.
 
@@ -43,12 +26,6 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 

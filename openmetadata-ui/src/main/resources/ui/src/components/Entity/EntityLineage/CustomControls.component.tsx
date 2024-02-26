@@ -12,7 +12,7 @@
  */
 
 import { RightOutlined, SettingOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Select, Space } from 'antd';
+import { Button, Col, Dropdown, Row, Select, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, {
@@ -260,48 +260,55 @@ const CustomControls: FC<ControlProps> = ({
             </Button>
 
             {handleFullScreenViewClick && (
-              <Button
-                className="custom-control-fit-screen-button"
-                data-testid="full-screen"
-                icon={
-                  <span className="anticon">
-                    <FullScreen color={PRIMERY_COLOR} height={16} width={16} />
-                  </span>
-                }
-                title={t('label.full-screen')}
-                onClick={handleFullScreenViewClick}
-              />
+              <Tooltip title={t('label.fit-to-screen')}>
+                <Button
+                  className="custom-control-fit-screen-button"
+                  data-testid="full-screen"
+                  icon={
+                    <span className="anticon">
+                      <FullScreen
+                        color={PRIMERY_COLOR}
+                        height={16}
+                        width={16}
+                      />
+                    </span>
+                  }
+                  onClick={handleFullScreenViewClick}
+                />
+              </Tooltip>
             )}
             {onExitFullScreenViewClick && (
-              <Button
-                className=" custom-control-fit-screen-button"
-                data-testid="exit-full-screen"
-                icon={
-                  <span className="anticon">
-                    <ExitFullScreen
-                      color={PRIMERY_COLOR}
-                      height={16}
-                      width={16}
-                    />
-                  </span>
-                }
-                title={t('label.exit-fit-to-screen')}
-                onClick={onExitFullScreenViewClick}
-              />
+              <Tooltip title={t('label.exit-fit-to-screen')}>
+                <Button
+                  className=" custom-control-fit-screen-button"
+                  data-testid="exit-full-screen"
+                  icon={
+                    <span className="anticon">
+                      <ExitFullScreen
+                        color={PRIMERY_COLOR}
+                        height={16}
+                        width={16}
+                      />
+                    </span>
+                  }
+                  onClick={onExitFullScreenViewClick}
+                />
+              </Tooltip>
             )}
 
-            <Button
-              className=" custom-control-fit-screen-button"
-              data-testid="lineage-config"
-              disabled={isEditMode}
-              icon={
-                <SettingOutlined
-                  style={{ fontSize: '16px', color: PRIMERY_COLOR }}
-                />
-              }
-              title={t('label.setting-plural')}
-              onClick={() => setDialogVisible(true)}
-            />
+            <Tooltip title={t('label.setting-plural')}>
+              <Button
+                className=" custom-control-fit-screen-button"
+                data-testid="lineage-config"
+                disabled={isEditMode}
+                icon={
+                  <SettingOutlined
+                    style={{ fontSize: '16px', color: PRIMERY_COLOR }}
+                  />
+                }
+                onClick={() => setDialogVisible(true)}
+              />
+            </Tooltip>
 
             {!deleted && (
               <Button

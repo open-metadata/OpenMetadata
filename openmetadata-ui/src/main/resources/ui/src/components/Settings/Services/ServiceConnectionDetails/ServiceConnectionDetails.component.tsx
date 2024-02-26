@@ -195,6 +195,7 @@ const ServiceConnectionDetails = ({
                 <Input
                   readOnly
                   className="w-full border-none"
+                  data-testid="input-field"
                   type={format !== 'password' ? 'text' : 'password'}
                   value={value}
                 />

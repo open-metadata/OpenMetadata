@@ -100,8 +100,8 @@ const DomainSelectableList = ({
   };
 
   const handleUpdate = useCallback(
-    (domains: EntityReference[]) => {
-      (onUpdate as (users: EntityReference) => void)(domains[0]);
+    async (domains: EntityReference[]) => {
+      await onUpdate(domains[0]);
       setPopupVisible(false);
     },
     [onUpdate]
