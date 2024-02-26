@@ -226,7 +226,7 @@ const AddCustomProperty = () => {
   };
 
   const customPropertyConfigTypeValueField: FieldProp = {
-    name: 'config',
+    name: 'customPropertyConfig',
     required: true,
     label: t('label.config'),
     id: 'root/customPropertyConfig',
