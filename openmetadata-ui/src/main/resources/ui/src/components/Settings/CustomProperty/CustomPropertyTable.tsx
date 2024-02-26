@@ -12,7 +12,7 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
+import { isArray, isEmpty, isUndefined } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -26,8 +26,10 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../common/Table/Table';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
+import EditCustomPropertyModal, {
+  FormData,
+} from './EditCustomPropertyModal/EditCustomPropertyModal';
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
@@ -61,10 +63,16 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     }
   }, [isButtonLoading]);
 
-  const handlePropertyUpdate = async (updatedDescription: string) => {
+  const handlePropertyUpdate = async (data: FormData) => {
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
-        return { ...property, description: updatedDescription };
+        return {
+          ...property,
+          description: data.description,
+          ...(data.customPropertyConfig
+            ? { customPropertyConfig: { config: data.customPropertyConfig } }
+            : {}),
+        };
       } else {
         return property;
       }
@@ -96,6 +104,24 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         dataIndex: 'propertyType',
         key: 'propertyType',
         render: (text) => getEntityName(text),
+      },
+      {
+        title: t('label.config'),
+        dataIndex: 'customPropertyConfig',
+        key: 'customPropertyConfig',
+        render: (data: CustomProperty['customPropertyConfig']) => {
+          if (isUndefined(data)) {
+            return t('label.no-entity', { entity: t('label.config') });
+          }
+
+          const config = data.config;
+
+          if (isArray(config)) {
+            return <Typography.Text>{JSON.stringify(config)}</Typography.Text>;
+          }
+
+          return <Typography.Text>{config}</Typography.Text>;
+        },
       },
       {
         title: t('label.description'),
@@ -190,19 +216,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         onCancel={resetSelectedProperty}
         onConfirm={handlePropertyDelete}
       />
-      <ModalWithMarkdownEditor
-        header={t('label.edit-entity-name', {
-          entityType: t('label.property'),
-          entityName: selectedProperty.name,
-        })}
-        placeholder={t('label.enter-field-description', {
-          field: t('label.property'),
-        })}
-        value={selectedProperty.description || ''}
-        visible={updateCheck}
-        onCancel={resetSelectedProperty}
-        onSave={handlePropertyUpdate}
-      />
+      {updateCheck && (
+        <EditCustomPropertyModal
+          customProperty={selectedProperty}
+          visible={updateCheck}
+          onCancel={resetSelectedProperty}
+          onSave={handlePropertyUpdate}
+        />
+      )}
     </Fragment>
   );
 };
