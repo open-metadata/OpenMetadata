@@ -24,7 +24,13 @@ import {
   Typography,
 } from 'antd';
 import { isEmpty, isNil, map } from 'lodash';
-import React, { ReactElement, useCallback, useMemo, useState } from 'react';
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DESTINATION_DROPDOWN_TABS,
@@ -81,12 +87,20 @@ function DestinationFormItem({
     [filteredOptions]
   );
 
-  const handleTabChange = useCallback((key) => {
-    setActiveTab(key);
-    setDestinationOptions(
-      DESTINATION_SOURCE_ITEMS[key as keyof typeof DESTINATION_SOURCE_ITEMS]
-    );
-  }, []);
+  const handleTabChange = useCallback(
+    (key) => {
+      const newOptions =
+        DESTINATION_SOURCE_ITEMS[key as keyof typeof DESTINATION_SOURCE_ITEMS];
+      const filteredOptions = newOptions.filter((option) =>
+        selectedTrigger === 'task'
+          ? true
+          : option.value !== SubscriptionCategory.Assignees
+      );
+      setActiveTab(key);
+      setDestinationOptions(filteredOptions);
+    },
+    [selectedTrigger]
+  );
 
   const getTabItems = useCallback(
     (children: ReactElement) =>
@@ -127,8 +141,13 @@ function DestinationFormItem({
     if (isOpen) {
       return;
     }
+    const filteredOptions = DESTINATION_SOURCE_ITEMS.internal.filter((option) =>
+      selectedTrigger === 'task'
+        ? true
+        : option.value !== SubscriptionCategory.Assignees
+    );
     setActiveTab(DESTINATION_DROPDOWN_TABS.internal);
-    setDestinationOptions(DESTINATION_SOURCE_ITEMS.internal);
+    setDestinationOptions(filteredOptions);
   };
 
   const getHiddenDestinationFields = (
@@ -157,6 +176,16 @@ function DestinationFormItem({
       )}
     </>
   );
+
+  useEffect(() => {
+    setDestinationOptions(
+      DESTINATION_SOURCE_ITEMS.internal.filter((option) =>
+        selectedTrigger === 'task'
+          ? true
+          : option.value !== SubscriptionCategory.Assignees
+      )
+    );
+  }, [selectedTrigger]);
 
   return (
     <Card className="alert-form-item-container">
