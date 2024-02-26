@@ -451,7 +451,7 @@ site_menu:
   - category: Connectors / Database / BigTable / Run Externally
     url: /connectors/database/bigtable/yaml
   - category: Connectors / Database / BigTable / Roles
-    url: /connectors/database/bigtable/roles    
+    url: /connectors/database/bigtable/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
@@ -1807,6 +1807,20 @@ site_menu:
     url: /developers/contribute/build-code-and-run-tests/openmetadata-ui
   - category: Developers / Contribute / Build the Code and Run Tests / Cypress Integration Tests
     url: /developers/contribute/build-code-and-run-tests/cypress-integration-tests
+  - category: Developers / Contribute / Developing a New Connector
+    url: /developers/contribute/developing-a-new-connector
+  - category: Developers / Contribute / Developing a New Connector / 1. Define the JSON Schema
+    url: /developers/contribute/developing-a-new-connector/define-json-schema
+  - category: Developers / Contribute / Developing a New Connector / 2. Develop the Ingestion Code
+    url: /developers/contribute/developing-a-new-connector/develop-ingestion-code
+  - category: Developers / Contribute / Developing a New Connector / 3. Apply UI Changes
+    url: /developers/contribute/developing-a-new-connector/apply-ui-changes
+  - category: Developers / Contribute / Developing a New Connector / 4. Create the Java ClassConverter
+    url: /developers/contribute/developing-a-new-connector/create-java-class-converter
+  - category: Developers / Contribute / Developing a New Connector / 5. Test it
+    url: /developers/contribute/developing-a-new-connector/test-it
+  - category: Developers / Contribute / Developing a New Connector / 6. Update the Documentation
+    url: /developers/contribute/developing-a-new-connector/update-documentation
   - category: Developers / Contribute / UX Style Guide
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
