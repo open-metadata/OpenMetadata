@@ -3,17 +3,13 @@ title: Run the Redash Connector Externally
 slug: /connectors/dashboard/redash/yaml
 ---
 
-# Run the Redash Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="check" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Redash"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Tags"]
+  unavailableFeatures=["Datamodels", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Redash connector.
 

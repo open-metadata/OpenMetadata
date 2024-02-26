@@ -3,30 +3,13 @@ title: Run the BigQuery Connector Externally
 slug: /connectors/database/bigtable/yaml
 ---
 
-# Run the BigTable Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | BETA                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="cross" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | Policy Tags                  |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%} |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="BigTable"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the BigTable connector.
 

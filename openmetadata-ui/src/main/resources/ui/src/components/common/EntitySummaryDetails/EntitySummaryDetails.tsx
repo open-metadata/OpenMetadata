@@ -49,7 +49,7 @@ export interface GetInfoElementsProps {
   updateOwner?: (value: Table['owner']) => void;
   tier?: TagLabel;
   currentTier?: string;
-  updateTier?: (value?: Tag) => void;
+  updateTier?: (value?: Tag) => Promise<void>;
   currentOwner?: Dashboard['owner'];
   deleted?: boolean;
   allowTeamOwner?: boolean;

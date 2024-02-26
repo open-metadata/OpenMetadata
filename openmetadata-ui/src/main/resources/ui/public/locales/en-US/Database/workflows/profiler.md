@@ -11,11 +11,11 @@ $$section
 
 Database filter patterns to control whether to include database as part of metadata ingestion.
 
-**Include**: Explicitly include databases by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all databases with names matching one or more of the supplied regular expressions. All other databases will be excluded.
+**Include**: Explicitly include databases by adding a list of regular expressions to the `Include` field. OpenMetadata will include all databases with names matching one or more of the supplied regular expressions. All other databases will be excluded.
 
 For example, to include only those databases whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude databases by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all databases with names matching one or more of the supplied regular expressions. All other databases will be included.
+**Exclude**: Explicitly exclude databases by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all databases with names matching one or more of the supplied regular expressions. All other databases will be included.
 
 For example, to exclude all databases with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 
@@ -27,11 +27,11 @@ $$section
 
 Schema filter patterns are used to control whether to include schemas as part of metadata ingestion.
 
-**Include**: Explicitly include schemas by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
+**Include**: Explicitly include schemas by adding a list of regular expressions to the `Include` field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
 For example, to include only those schemas whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude schemas by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
+**Exclude**: Explicitly exclude schemas by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
 For example, to exclude all schemas with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
@@ -43,11 +43,11 @@ $$section
 
 Table filter patterns are used to control whether to include tables as part of metadata ingestion.
 
-**Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
+**Include**: Explicitly include tables by adding a list of regular expressions to the `Include` field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
 
 For example, to include only those tables whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
+**Exclude**: Explicitly exclude tables by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
 
 For example, to exclude all tables with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 

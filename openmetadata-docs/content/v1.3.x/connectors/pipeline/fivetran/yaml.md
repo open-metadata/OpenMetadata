@@ -3,15 +3,13 @@ title: Run the Fivetran Connector Externally
 slug: /connectors/pipeline/fivetran/yaml
 ---
 
-# Run the Fivetran Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Fivetran"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+unavailableFeatures=["Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the Fivetran connector.
 
