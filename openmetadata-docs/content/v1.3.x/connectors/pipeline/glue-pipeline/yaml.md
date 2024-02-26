@@ -3,15 +3,13 @@ title: Run the Glue Pipeline Connector Externally
 slug: /connectors/pipeline/glue-pipeline/yaml
 ---
 
-# Run the Glue Pipeline Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Glue"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status"]
+unavailableFeatures=["Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Glue connector.
 

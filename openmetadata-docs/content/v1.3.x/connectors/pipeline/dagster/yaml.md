@@ -3,15 +3,13 @@ title: Run the Dagster Connector Externally
 slug: /connectors/pipeline/dagster/yaml
 ---
 
-# Run the Dagster Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="check" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Dagster"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
+unavailableFeatures=["Owners", "Lineage"]
+/ %}
 
 
 In this section, we provide guides and references to use the Dagster connector.
