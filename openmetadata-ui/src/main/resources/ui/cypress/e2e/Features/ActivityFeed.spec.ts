@@ -19,11 +19,11 @@ import {
 } from '../../common/EntityUtils';
 import { createDescriptionTask } from '../../common/TaskUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
-import { DATA_ASSETS } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
-const reactOnFeed = (feedSelector, reaction) => {
+const reactOnFeed = (feedSelector: string, reaction: string) => {
   cy.get(feedSelector).within(() => {
     cy.get('[data-testid="feed-actions"]').invoke('show');
     cy.get('[data-testid="feed-actions"]').within(() => {
@@ -85,7 +85,7 @@ describe('Activity feed', () => {
     const value = {
       term: table1.name,
       displayName: table1.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       serviceName: DATABASE_SERVICE.service.name,
       entityType: 'Table',
     };
@@ -371,7 +371,7 @@ describe('Activity feed', () => {
     const value = {
       term: table2.name,
       displayName: table2.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       serviceName: DATABASE_SERVICE.service.name,
       entityType: 'Table',
     };

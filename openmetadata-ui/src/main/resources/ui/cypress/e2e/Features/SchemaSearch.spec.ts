@@ -16,7 +16,7 @@ import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
-let serviceId;
+let serviceId: string;
 const serviceName = 'cypress_mysql_schema_test';
 
 describe('Schema search', { tags: 'DataAssets' }, () => {

@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { addTeam, interceptURL, toastNotification } from '../../common/common';
+import { interceptURL, toastNotification } from '../../common/common';
 import {
   dragAndDropElement,
   openDragDropDropdown,
 } from '../../common/Utils/DragAndDrop';
 import {
+  addTeam,
   commonTeamDetails,
   confirmationDragAndDropTeam,
   deleteTeamPermanently,

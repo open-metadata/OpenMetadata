@@ -151,7 +151,23 @@ export const selectTeamHierarchy = (index: number) => {
   }
 };
 
-export const addTeam = (teamDetails, index, isHierarchy) => {
+export const addTeam = (
+  teamDetails: {
+    name: string;
+    displayName?: string;
+    teamType: string;
+    description: string;
+    ownername?: string;
+    email: string;
+    updatedName?: string;
+    username?: string;
+    userId?: string;
+    assetname?: string;
+    updatedEmail?: string;
+  },
+  index?: number,
+  isHierarchy = false
+) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   // Fetching the add button and clicking on it
   if (index > 0) {

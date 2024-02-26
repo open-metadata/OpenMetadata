@@ -12,6 +12,7 @@
  */
 
 import { DATA_ASSETS, uuid } from './constants';
+import { EntityType } from './Entity.interface';
 import { SERVICE_CATEGORIES } from './service.constants';
 
 const DATABASE_SERVICE_NAME = `cy-database-service-${uuid()}`;
@@ -381,7 +382,7 @@ export const VISIT_ENTITIES_DATA = {
   table: {
     term: DATABASE_SERVICE.entity.name,
     displayName: DATABASE_SERVICE.entity.name,
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
     serviceName: DATABASE_SERVICE.service.name,
     schemaName: DATABASE_SERVICE.schema.name,
     entityType: 'Table',
@@ -389,41 +390,41 @@ export const VISIT_ENTITIES_DATA = {
   topic: {
     term: MESSAGING_SERVICE.entity.name,
     displayName: MESSAGING_SERVICE.entity.name,
-    entity: DATA_ASSETS.topics,
+    entity: EntityType.Topic,
     serviceName: MESSAGING_SERVICE.service.name,
     entityType: 'Topic',
   },
   dashboard: {
     term: DASHBOARD_SERVICE.entity.name,
     displayName: DASHBOARD_SERVICE.entity.name,
-    entity: DATA_ASSETS.dashboards,
+    entity: EntityType.Dashboard,
     serviceName: DASHBOARD_SERVICE.service.name,
     entityType: 'Dashboard',
   },
   pipeline: {
     term: PIPELINE_SERVICE.entity.name,
     displayName: PIPELINE_SERVICE.entity.name,
-    entity: DATA_ASSETS.pipelines,
+    entity: EntityType.Pipeline,
     serviceName: PIPELINE_SERVICE.service.name,
     entityType: 'Pipeline',
   },
   mlmodel: {
     term: ML_MODEL_SERVICE.entity.name,
     displayName: ML_MODEL_SERVICE.entity.name,
-    entity: DATA_ASSETS.mlmodels,
+    entity: EntityType.Pipeline,
     serviceName: ML_MODEL_SERVICE.service.name,
     entityType: 'ML Model',
   },
   storedProcedure: {
     term: STORED_PROCEDURE_DETAILS.name,
     displayName: STORED_PROCEDURE_DETAILS.name,
-    entity: DATA_ASSETS.storedProcedures,
+    entity: EntityType.storedProcedure,
     serviceName: DATABASE_SERVICE_DETAILS.name,
     entityType: 'Stored Procedure',
   },
   dataModel: {
     term: DASHBOARD_DATA_MODEL_DETAILS.name,
-    entity: DATA_ASSETS.dataModel,
+    entity: EntityType.DataModel,
     serviceName: DASHBOARD_DATA_MODEL_DETAILS.service,
     displayName: DASHBOARD_DATA_MODEL_DETAILS.name,
     entityType: 'Data Model',
@@ -431,7 +432,7 @@ export const VISIT_ENTITIES_DATA = {
   container: {
     term: STORAGE_SERVICE.entity.name,
     displayName: STORAGE_SERVICE.entity.name,
-    entity: 'containers',
+    entity: EntityType.Container,
     serviceName: STORAGE_SERVICE.service.name,
   },
 };

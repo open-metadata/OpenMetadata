@@ -18,12 +18,12 @@ import {
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import {
-  DATA_ASSETS,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   uuid,
 } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
@@ -63,13 +63,25 @@ const validateForm = (isColumnMetric = false) => {
   cy.get('#name').clear();
 };
 
+type CustomMetricDetails = {
+  term: string;
+  serviceName: string;
+  entity: EntityType.Table;
+  isColumnMetric?: boolean;
+  metric: {
+    name: string;
+    column?: string;
+    expression: string;
+  };
+};
+
 const createCustomMetric = ({
   term,
   serviceName,
   entity,
   isColumnMetric = false,
   metric,
-}) => {
+}: CustomMetricDetails) => {
   interceptURL('PUT', '/api/v1/tables/*/customMetric', 'createCustomMetric');
   interceptURL(
     'GET',
@@ -122,7 +134,8 @@ const createCustomMetric = ({
     cy.get('#columnName').click();
     cy.get(`[title="${metric.column}"]`).click();
   }
-  cy.get('.CodeMirror-scroll').click().type(metric.expression);
+  metric.expression &&
+    cy.get('.CodeMirror-scroll').click().type(metric.expression);
   cy.get('[data-testid="submit-button"]').click();
   verifyResponseStatusCode('@createCustomMetric', 200);
   toastNotification(`${metric.name} created successfully.`);
@@ -145,7 +158,7 @@ const editCustomMetric = ({
   entity,
   isColumnMetric = false,
   metric,
-}) => {
+}: CustomMetricDetails) => {
   interceptURL(
     'GET',
     '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
@@ -163,7 +176,8 @@ const editCustomMetric = ({
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Column Profile')
       .click();
-    cy.get('[data-row-key="user_id"]').contains(metric.column).click();
+    metric.column &&
+      cy.get('[data-row-key="user_id"]').contains(metric.column).click();
   }
   cy.get(`[data-testid="${metric.name}-custom-metrics"]`)
     .scrollIntoView()
@@ -192,7 +206,7 @@ const deleteCustomMetric = ({
   entity,
   metric,
   isColumnMetric = false,
-}) => {
+}: CustomMetricDetails) => {
   interceptURL(
     'GET',
     '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all',
@@ -216,7 +230,8 @@ const deleteCustomMetric = ({
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Column Profile')
       .click();
-    cy.get('[data-row-key="user_id"]').contains(metric.column).click();
+    metric.column &&
+      cy.get('[data-row-key="user_id"]').contains(metric.column).click();
   }
   cy.get(`[data-testid="${metric.name}-custom-metrics"]`)
     .scrollIntoView()
@@ -265,7 +280,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
     createCustomMetric({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       metric: TABLE_CUSTOM_METRIC,
     });
   });
@@ -274,7 +289,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
     editCustomMetric({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       metric: TABLE_CUSTOM_METRIC,
     });
   });
@@ -283,7 +298,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
     deleteCustomMetric({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       metric: TABLE_CUSTOM_METRIC,
     });
   });
@@ -292,7 +307,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
     createCustomMetric({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       metric: COLUMN_CUSTOM_METRIC,
       isColumnMetric: true,
     });
@@ -302,7 +317,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
     editCustomMetric({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       metric: COLUMN_CUSTOM_METRIC,
       isColumnMetric: true,
     });
@@ -312,7 +327,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
     deleteCustomMetric({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
-      entity: DATA_ASSETS.tables,
+      entity: EntityType.Table,
       metric: COLUMN_CUSTOM_METRIC,
       isColumnMetric: true,
     });

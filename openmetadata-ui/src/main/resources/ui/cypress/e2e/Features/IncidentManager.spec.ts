@@ -16,7 +16,7 @@ import {
   deleteEntityViaREST,
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
-import { DATA_ASSETS, uuid } from '../../constants/constants';
+import { uuid } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 const TABLE_NAME = DATABASE_SERVICE.entity.name;
@@ -41,7 +41,7 @@ const goToProfilerTab = () => {
   visitEntityDetailsPage({
     term: TABLE_NAME,
     serviceName: DATABASE_SERVICE.service.name,
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
@@ -71,7 +71,7 @@ const verifySuccessStatus = (time = 20000) => {
   });
 };
 
-const acknowledgeTask = (testCase) => {
+const acknowledgeTask = (testCase: string) => {
   goToProfilerTab();
 
   cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -130,7 +130,7 @@ const triggerTestCasePipeline = () => {
   verifySuccessStatus();
 };
 
-const assignIncident = (testCaseName) => {
+const assignIncident = (testCaseName: string) => {
   cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
   cy.get(`[data-testid="test-case-${testCaseName}"]`).should('be.visible');
   cy.get(`[data-testid="${testCaseName}-status"]`)

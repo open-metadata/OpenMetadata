@@ -24,7 +24,7 @@ import {
 import { PERSONA_DETAILS } from '../../constants/EntityConstant';
 
 describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
-  let testData = {};
+  const testData = {};
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {

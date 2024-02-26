@@ -24,7 +24,8 @@ const divTeamName = `div-${uuid()}`;
 const depTeamName = `dep-${uuid()}`;
 const grpTeamName = `grp-${uuid()}`;
 const teamNames = [buTeamName, divTeamName, depTeamName, grpTeamName];
-const getTeam = (teamName) => {
+
+const getTeam = (teamName: string) => {
   return {
     name: teamName,
     displayName: teamName,

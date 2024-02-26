@@ -22,7 +22,7 @@ import {
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
-import { DATA_ASSETS } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   DATABASE_SERVICE,
   DATABASE_SERVICE_DETAILS,
@@ -32,7 +32,7 @@ import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 const queryTable = {
   term: DATABASE_SERVICE.entity.name,
   displayName: DATABASE_SERVICE.entity.name,
-  entity: DATA_ASSETS.tables,
+  entity: EntityType.Table,
   serviceName: DATABASE_SERVICE.service.name,
   entityType: 'Table',
 };

@@ -21,76 +21,80 @@ import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 import { SidebarItem } from '../../constants/Entity.interface';
 const ownerName = 'Aaron Johnson';
 
-describe(`Advanced search quick filters should work properly for assets`, () => {
-  before(() => {
-    cy.login();
+describe(
+  `Advanced search quick filters should work properly for assets`,
+  { tags: 'DataAssets' },
+  () => {
+    before(() => {
+      cy.login();
 
-    visitEntityDetailsPage({
-      term: SEARCH_ENTITY_TABLE.table_1.term,
-      entity: SEARCH_ENTITY_TABLE.table_1.entity,
-      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+      visitEntityDetailsPage({
+        term: SEARCH_ENTITY_TABLE.table_1.term,
+        entity: SEARCH_ENTITY_TABLE.table_1.entity,
+        serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+      });
+
+      addOwner(ownerName);
     });
 
-    addOwner(ownerName);
-  });
+    after(() => {
+      cy.login();
+      visitEntityDetailsPage({
+        term: SEARCH_ENTITY_TABLE.table_1.term,
+        entity: SEARCH_ENTITY_TABLE.table_1.entity,
+        serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+      });
 
-  after(() => {
-    cy.login();
-    visitEntityDetailsPage({
-      term: SEARCH_ENTITY_TABLE.table_1.term,
-      entity: SEARCH_ENTITY_TABLE.table_1.entity,
-      serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
+      removeOwner(ownerName);
     });
 
-    removeOwner(ownerName);
-  });
+    beforeEach(() => {
+      cy.login();
+    });
 
-  beforeEach(() => {
-    cy.login();
-  });
+    it(`should show the quick filters for respective assets`, () => {
+      // Navigate to explore page
+      cy.sidebarClick(SidebarItem.EXPLORE);
+      QUICK_FILTERS_BY_ASSETS.map((asset) => {
+        cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
-  it(`should show the quick filters for respective assets`, () => {
-    // Navigate to explore page
-    cy.sidebarClick(SidebarItem.EXPLORE);
-    QUICK_FILTERS_BY_ASSETS.map((asset) => {
+        asset.filters.map((filter) => {
+          cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
+            .scrollIntoView()
+            .should('be.visible');
+        });
+      });
+    });
+
+    it('search dropdown should work properly for tables', () => {
+      // Table
+      const asset = QUICK_FILTERS_BY_ASSETS[0];
+
+      // Navigate to explore page
+      cy.sidebarClick(SidebarItem.EXPLORE);
       cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
-      asset.filters.map((filter) => {
-        cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
-          .scrollIntoView()
-          .should('be.visible');
-      });
+      asset.filters
+        .filter((item) => item.select)
+        .map((filter) => {
+          cy.get(`[data-testid="search-dropdown-${filter.label}"]`).click();
+          searchAndClickOnOption(asset, filter, true);
+
+          const querySearchURL = `/api/v1/search/query?*index=${
+            asset.searchIndex
+          }*query_filter=*should*${filter.key}*${encodeURI(
+            Cypress._.toLower(filter.selectOption1).replace(' ', '+')
+          )}*`;
+
+          interceptURL('GET', querySearchURL, 'querySearchAPI');
+
+          cy.get('[data-testid="update-btn"]').click();
+
+          verifyResponseStatusCode('@querySearchAPI', 200);
+        });
     });
-  });
-
-  it('search dropdown should work properly for tables', () => {
-    // Table
-    const asset = QUICK_FILTERS_BY_ASSETS[0];
-
-    // Navigate to explore page
-    cy.sidebarClick(SidebarItem.EXPLORE);
-    cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
-
-    asset.filters
-      .filter((item) => item.select)
-      .map((filter) => {
-        cy.get(`[data-testid="search-dropdown-${filter.label}"]`).click();
-        searchAndClickOnOption(asset, filter, true);
-
-        const querySearchURL = `/api/v1/search/query?*index=${
-          asset.searchIndex
-        }*query_filter=*should*${filter.key}*${encodeURI(
-          Cypress._.toLower(filter.selectOption1).replace(' ', '+')
-        )}*`;
-
-        interceptURL('GET', querySearchURL, 'querySearchAPI');
-
-        cy.get('[data-testid="update-btn"]').click();
-
-        verifyResponseStatusCode('@querySearchAPI', 200);
-      });
-  });
-});
+  }
+);
 
 const testIsNullAndIsNotNullFilters = (operatorTitle, queryFilter, alias) => {
   goToAdvanceSearch();

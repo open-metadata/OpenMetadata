@@ -21,7 +21,17 @@ const owner = 'admin';
 const assignee = 'adam.matthews2';
 const secondAssignee = 'aaron_johnson0';
 
-export const verifyTaskDetails = (regexPattern) => {
+export type TaskDetails = {
+  assignee: string;
+  term: string;
+  displayName?: string;
+  entity?: string;
+  serviceName?: string;
+  entityType?: string;
+  schemaName?: string;
+};
+
+export const verifyTaskDetails = (regexPattern: RegExp) => {
   cy.get('#task-panel').should('be.visible');
   cy.get('[data-testid="task-title"]')
     .invoke('text')
@@ -61,7 +71,10 @@ export const editAssignee = () => {
   cy.get(`[data-testid="${assignee}"]`).should('be.visible');
 };
 
-export const createDescriptionTask = (value, assigneeDisabled) => {
+export const createDescriptionTask = (
+  value: TaskDetails,
+  assigneeDisabled?: boolean
+) => {
   interceptURL('POST', 'api/v1/feed', 'createTask');
 
   cy.get('#title').should(
@@ -98,7 +111,7 @@ export const createDescriptionTask = (value, assigneeDisabled) => {
   toastNotification('Task created successfully.');
 };
 
-export const createAndUpdateDescriptionTask = (value) => {
+export const createAndUpdateDescriptionTask = (value: TaskDetails) => {
   createDescriptionTask(value);
 
   // verify the task details
