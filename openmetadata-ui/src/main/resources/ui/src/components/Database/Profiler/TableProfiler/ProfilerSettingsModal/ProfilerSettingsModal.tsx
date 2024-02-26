@@ -770,7 +770,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     </Col>
                   </>
                 ) : null}
-                {PartitionIntervalType.IntegerRange ===
+                {PartitionIntervalTypes.IntegerRange ===
                 partitionIntervalType ? (
                   <>
                     <Col span={12}>
@@ -844,7 +844,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   </>
                 ) : null}
 
-                {PartitionIntervalType.ColumnValue === partitionIntervalType ? (
+                {PartitionIntervalTypes.ColumnValue ===
+                partitionIntervalType ? (
                   <Col span={24}>
                     <List name="partitionValues">
                       {(fields, { add, remove }) => (
