@@ -381,13 +381,20 @@ export const DataAssetsHeader = ({
                     )}
 
                     {editTierPermission && (
-                      <Button
-                        className="flex-center p-0"
-                        data-testid="edit-tier"
-                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                        size="small"
-                        type="text"
-                      />
+                      <Tooltip
+                        title={t('label.edit-entity', {
+                          entity: t('label.tier'),
+                        })}>
+                        <Button
+                          className="flex-center p-0"
+                          data-testid="edit-tier"
+                          icon={
+                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                          }
+                          size="small"
+                          type="text"
+                        />
+                      </Tooltip>
                     )}
                   </Space>
                 </TierCard>
