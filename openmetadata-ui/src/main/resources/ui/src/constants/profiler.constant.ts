@@ -353,12 +353,12 @@ export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
   [PartitionIntervalTypes.ColumnValue]: [DataType.Varchar, DataType.String],
 } as Record<PartitionIntervalTypes, DataType[]>;
 
-export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalTypes).map(
-  (value) => ({
-    value,
-    label: value,
-  })
-);
+export const INTERVAL_TYPE_OPTIONS = Object.keys(
+  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL
+).map((value) => ({
+  value,
+  label: value,
+}));
 export const INTERVAL_UNIT_OPTIONS = Object.values(PartitionIntervalUnit).map(
   (value) => ({
     value,

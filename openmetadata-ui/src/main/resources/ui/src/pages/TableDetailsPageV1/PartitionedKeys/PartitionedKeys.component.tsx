@@ -60,7 +60,7 @@ export const PartitionedKeys = ({ tablePartition }: PartitionedKeysProps) => {
   return (
     <>
       <Typography.Text className="right-panel-label">
-        {t('label.table-partitioned')}
+        {t('label.table-partition-plural')}
       </Typography.Text>
       <Table
         bordered

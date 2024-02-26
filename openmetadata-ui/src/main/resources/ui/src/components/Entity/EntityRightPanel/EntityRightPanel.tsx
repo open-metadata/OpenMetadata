@@ -107,9 +107,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {KnowledgeArticles && (
           <KnowledgeArticles entityId={entityId} entityType={entityType} />
         )}
-        {tablePartition ? (
-          <PartitionedKeys tablePartition={tablePartition} />
-        ) : null}
         {customProperties && (
           <CustomPropertyTable
             isRenderedInRightPanel
@@ -120,6 +117,9 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             maxDataCap={5}
           />
         )}
+        {tablePartition ? (
+          <PartitionedKeys tablePartition={tablePartition} />
+        ) : null}
       </Space>
       {afterSlot}
     </>
