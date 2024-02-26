@@ -48,8 +48,8 @@ class BigQueryTable(BaseModel):
 class BigQueryTableMap(BaseModel):
     table_map: Dict[TableName, BigQueryTable]
 
-    def deleted(self) -> List[TableName]:
+    def get_deleted(self) -> List[TableName]:
         return [name for name, table in self.table_map.items() if table.deleted]
 
-    def contains(self, table_name: TableName) -> bool:
-        return table_name in self.table_map
+    def get_not_deleted(self) -> List[TableName]:
+        return [name for name, table in self.table_map.items() if not table.deleted]

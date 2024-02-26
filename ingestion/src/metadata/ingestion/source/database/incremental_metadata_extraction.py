@@ -36,6 +36,12 @@ class IncrementalConfig(BaseModel):
     enabled: bool
     start_timestamp: Optional[int] = None
 
+    @property
+    def start_datetime_utc(self) -> Optional[datetime]:
+        if self.start_timestamp:
+            return datetime.utcfromtimestamp(self.start_timestamp / 1000)
+        return None
+
     @classmethod
     def create(
         cls,

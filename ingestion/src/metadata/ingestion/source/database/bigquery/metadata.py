@@ -13,6 +13,7 @@ Bigquery source module
 """
 import os
 import traceback
+from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
@@ -34,8 +35,13 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
+)
+from metadata.ingestion.api.delete import delete_entity_by_name
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -60,6 +66,9 @@ from metadata.ingestion.source.database.bigquery.helper import (
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
+)
+from metadata.ingestion.source.database.bigquery.incremental_table_processor import (
+    BigQueryIncrementalTableProcessor
 )
 from metadata.ingestion.source.database.bigquery.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -210,7 +219,7 @@ class BigquerySource(
     Database metadata from Bigquery Source
     """
 
-    def __init__(self, config, metadata):
+    def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
         # Check if the engine is established before setting project IDs
         # This ensures that we don't try to set project IDs when there is no engine
         # as per service connection config, which would result in an error.
@@ -227,6 +236,18 @@ class BigquerySource(
         self.test_connection = self._test_connection
         self.test_connection()
 
+        self.context.deleted_tables = []
+        self.incremental = incremental_configuration
+        self.incremental_table_processor: Optional[BigQueryIncrementalTableProcessor] = None
+
+        self.incremental.start_timestamp = 1708965980000
+
+        if self.incremental.enabled:
+            logger.info(
+                "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
+                self.incremental.start_datetime_utc,
+            )
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -237,7 +258,10 @@ class BigquerySource(
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        return cls(config, metadata)
+        incremental_config = IncrementalConfig.create(
+            config.sourceConfig.config.incremental, pipeline_name, metadata
+        )
+        return cls(config, metadata, incremental_config)
 
     @staticmethod
     def set_project_id() -> List[str]:
@@ -267,18 +291,94 @@ class BigquerySource(
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
+        table_names_and_types = self.engine.execute(
+            BIGQUERY_TABLE_AND_TYPE.format(
+                project_id=self.client.project, schema_name=schema_name
+            )
+        ) or []
+
+        if self.incremental.enabled:
+            self.incremental_table_processor.set_changed_tables_map(
+                project=self.client.project,
+                dataset=schema_name,
+                start_date=self.incremental.start_datetime_utc
+            )
+
+            self.context.deleted_tables.extend(
+                [
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=schema_name,
+                        table_name=table_name
+                    )
+                    for table_name in self.incremental_table_processor.get_deleted()
+                ]
+            )
+
+            table_names_and_types = [
+                (table_name, table_type)
+                for table_name, table_type in table_names_and_types
+                if table_name in self.incremental_table_processor.get_not_deleted()
+            ]
 
         return [
             TableNameAndType(
                 name=table_name,
                 type_=_bigquery_table_types.get(table_type, TableType.Regular),
             )
-            for table_name, table_type in self.engine.execute(
-                BIGQUERY_TABLE_AND_TYPE.format(
-                    project_id=self.client.project, schema_name=schema_name
-                )
-            )
-            or []
+            for table_name, table_type in table_names_and_types
+        ]
+
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the view
+        name and type. By default, use the inspector method
+        to get the names and pass the View type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., material views,...
+        """
+
+        view_names = self.inspector.get_view_names(schema_name) or []
+
+        if self.incremental.enabled:
+            # NOTE: This is commented since it's already done within `query_table_names_and_types`
+            # that gets called before. We should find a better way of guaranteeing this
+
+            # self.incremental_table_processor.set_changed_tables_map(
+            #     project=self.client.project,
+            #     dataset=schema_name,
+            #     start_date=self.incremental.start_datetime_utc
+            # )
+            #
+            # self.context.deleted_tables.extend(
+            #     [
+            #         fqn.build(
+            #             metadata=self.metadata,
+            #             entity_type=Table,
+            #             service_name=self.context.database_service,
+            #             database_name=self.context.database,
+            #             schema_name=schema_name,
+            #             table_name=table_name
+            #         )
+            #         for table_name in self.incremental_table_processor.get_deleted()
+            #     ]
+            # )
+
+            view_names = [
+                view_name
+                for view_name in view_names
+                if view_name in self.incremental_table_processor.get_not_deleted()
+            ]
+
+        return [
+            TableNameAndType(name=view_name, type_=TableType.View)
+            for view_name in view_names
         ]
 
     def yield_tag(
@@ -471,6 +571,8 @@ class BigquerySource(
             else:
                 try:
                     self.set_inspector(database_name=project_id)
+                    if self.incremental.enabled:
+                        self.incremental_table_processor = BigQueryIncrementalTableProcessor.from_project(project_id)
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -674,3 +776,26 @@ class BigquerySource(
         )
 
         return queries_dict
+
+    def mark_tables_as_deleted(self):
+        """
+        Use the current inspector to mark tables as deleted
+        """
+        if self.incremental.enabled:
+            if not self.context.__dict__.get("database"):
+                raise ValueError(
+                    "No Database found in the context. We cannot run the table deletion."
+                )
+
+            if self.source_config.markDeletedTables:
+                logger.info(
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                )
+                yield from delete_entity_by_name(
+                    self.metadata,
+                    entity_type=Table,
+                    entity_names=self.context.deleted_tables,
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                )
+        else:
+            yield from super().mark_tables_as_deleted()

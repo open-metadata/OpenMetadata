@@ -1,13 +1,28 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Bigquery Incremental Table processing logic
+"""
+from typing import List, Optional
 from datetime import datetime
 import google.cloud.logging
 from google.cloud.logging_v2.entries import LogEntry
-from metadata.ingestion.source.database.bigquery.models import BigQueryTable, BigQueryTableMap
+from metadata.ingestion.source.database.bigquery.models import BigQueryTable, BigQueryTableMap, TableName
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING
 
 
 class BigQueryIncrementalTableProcessor:
     def __init__(self, client: google.cloud.logging.Client):
         self._client = client
+        self._changed_tables_map: Optional[BigQueryTableMap] = None
 
     @classmethod
     def from_project(cls, project: str) -> "BigQueryIncrementalTableProcessor":
@@ -19,11 +34,18 @@ class BigQueryIncrementalTableProcessor:
             return True
         return False
 
-    def get_changed_tables(self, project: str, dataset: str, start_date: datetime) -> BigQueryTableMap:
+    def set_changed_tables_map(self, project: str, dataset: str, start_date: datetime):
+        if self._changed_tables_map:
+            return
+
         table_map = {}
 
         resource_names = [f"projects/{project}"]
-        filters = BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING.format(project=project, dataset=dataset, start_date=start_date)
+        filters = BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING.format(
+            project=project,
+            dataset=dataset,
+            start_date=start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
 
         entries = self._client.list_entries(
             resource_names=resource_names,
@@ -42,4 +64,14 @@ class BigQueryIncrementalTableProcessor:
                     timestamp=timestamp,
                     deleted=deleted
                 )
-        return BigQueryTableMap(table_map=table_map)
+        self._changed_tables_map = BigQueryTableMap(table_map=table_map)
+
+    def get_deleted(self) -> List[TableName]:
+        if self._changed_tables_map:
+            return self._changed_tables_map.get_deleted()
+        return []
+
+    def get_not_deleted(self) -> List[TableName]:
+        if self._changed_tables_map:
+            return self._changed_tables_map.get_not_deleted()
+        return []
