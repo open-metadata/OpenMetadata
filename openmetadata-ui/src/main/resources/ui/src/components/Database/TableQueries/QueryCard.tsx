@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -200,19 +200,25 @@ const QueryCard: FC<QueryCardProp> = ({
               data-testid="query-entity-expand-button"
               icon={
                 isExpanded ? (
-                  <ExitFullScreen height={16} width={16} />
+                  <Tooltip title={t('label.exit-fit-to-screen')}>
+                    <ExitFullScreen height={16} width={16} />
+                  </Tooltip>
                 ) : (
-                  <FullScreen height={16} width={16} />
+                  <Tooltip title={t('label.fit-to-screen')}>
+                    <FullScreen height={16} width={16} />
+                  </Tooltip>
                 )
               }
               onClick={handleExpandClick}
             />
-            <Button
-              className="flex-center bg-white"
-              data-testid="query-entity-copy-button"
-              icon={<CopyIcon height={16} width={16} />}
-              onClick={onCopyToClipBoard}
-            />
+            <Tooltip title={t('message.copy-to-clipboard')}>
+              <Button
+                className="flex-center bg-white"
+                data-testid="query-entity-copy-button"
+                icon={<CopyIcon height={16} width={16} />}
+                onClick={onCopyToClipBoard}
+              />
+            </Tooltip>
           </Space>
 
           <div

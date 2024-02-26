@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
@@ -308,15 +308,16 @@ const TagsContainerV2 = ({
   const editTagButton = useMemo(
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
-        <EditIcon
-          className="hover-cell-icon cursor-pointer align-middle"
+        <Button
+          className="hover-cell-icon cursor-pointer align-middle p-0"
           data-testid="edit-button"
-          height={14}
-          name={t('label.edit')}
-          style={{ color: DE_ACTIVE_COLOR }}
-          width={14}
-          onClick={handleAddClick}
-        />
+          style={{
+            color: DE_ACTIVE_COLOR,
+          }}
+          type="text"
+          onClick={handleAddClick}>
+          <EditIcon />
+        </Button>
       ) : null,
     [permission, tags, tagType, handleAddClick]
   );
