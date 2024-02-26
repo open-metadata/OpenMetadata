@@ -52,12 +52,12 @@ function ObservabilityFormActionItem({
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Typography.Text className="font-medium">
-            {t('label.action-plural')}
+            {t('label.trigger')}
           </Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">
-            {t('message.alerts-action-description')}
+            {t('message.alerts-trigger-description')}
           </Typography.Text>
         </Col>
         <Col span={24}>

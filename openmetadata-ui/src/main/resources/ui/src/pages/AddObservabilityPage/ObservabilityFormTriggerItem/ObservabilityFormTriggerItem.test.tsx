@@ -45,9 +45,9 @@ describe('ObservabilityFormTriggerItem', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByText('label.trigger')).toBeInTheDocument();
+    expect(screen.getByText('label.source')).toBeInTheDocument();
     expect(
-      screen.getByText('message.alerts-trigger-description')
+      screen.getByText('message.alerts-source-description')
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('add-trigger-button')).toBeInTheDocument();

@@ -52,9 +52,9 @@ describe('ObservabilityFormActionItem', () => {
       <ObservabilityFormActionItem supportedActions={mockSupportedActions} />
     );
 
-    expect(screen.getByText('label.action-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.trigger')).toBeInTheDocument();
     expect(
-      screen.getByText('message.alerts-action-description')
+      screen.getByText('message.alerts-trigger-description')
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('actions-list')).toBeInTheDocument();

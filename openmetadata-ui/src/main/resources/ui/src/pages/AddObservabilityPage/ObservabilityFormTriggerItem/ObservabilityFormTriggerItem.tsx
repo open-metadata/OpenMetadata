@@ -104,12 +104,12 @@ function ObservabilityFormTriggerItem({
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Typography.Text className="font-medium">
-            {t('label.trigger')}
+            {t('label.source')}
           </Typography.Text>
         </Col>
         <Col span={24}>
           <Typography.Text className="text-xs text-grey-muted">
-            {t('message.alerts-trigger-description')}
+            {t('message.alerts-source-description')}
           </Typography.Text>
         </Col>
         <Col className="trigger-input-container" ref={newRef} span={24}>
