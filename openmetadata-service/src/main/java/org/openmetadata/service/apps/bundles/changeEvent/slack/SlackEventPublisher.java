@@ -15,7 +15,7 @@ package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
+import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import java.util.List;
@@ -68,7 +68,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
     try {
       SlackMessage slackMessage = slackMessageFormatter.buildOutgoingMessage(event);
       List<Invocation.Builder> targets =
-          getTargetsForWebhook(
+          getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), SLACK, client, event);
       if (target != null) {
         targets.add(target);
