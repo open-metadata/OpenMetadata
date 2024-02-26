@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../common/Loader/Loader';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import './modal-with-markdown-editor.less';
 import {
@@ -70,9 +69,10 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
           <Button
             data-testid="save"
             key="saveButton"
+            loading={isLoading}
             type="primary"
             onClick={handleSaveData}>
-            {isLoading ? <Loader size="small" type="white" /> : t('label.save')}
+            {t('label.save')}
           </Button>,
         ]}
         maskClosable={false}

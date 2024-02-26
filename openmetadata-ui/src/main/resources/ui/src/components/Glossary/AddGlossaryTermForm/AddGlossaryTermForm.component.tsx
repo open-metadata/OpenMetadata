@@ -39,10 +39,7 @@ import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 const AddGlossaryTermForm = ({
   editMode,
   onSave,
-  onCancel,
-  isLoading,
   glossaryTerm,
-  isFormInModal = false,
   formRef: form,
 }: AddGlossaryTermFormProps) => {
   const { currentUser } = useAuthContext();
@@ -53,7 +50,7 @@ const AddGlossaryTermForm = ({
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
 
-  const handleSave: FormProps['onFinish'] = (formObj) => {
+  const handleSave: FormProps['onFinish'] = async (formObj) => {
     const {
       name,
       displayName = '',
@@ -106,7 +103,7 @@ const AddGlossaryTermForm = ({
       style: isEmpty(style) ? undefined : style,
     };
 
-    onSave(data);
+    await onSave(data);
   };
 
   useEffect(() => {
@@ -456,29 +453,6 @@ const AddGlossaryTermForm = ({
             </Space>
           )}
         </div>
-
-        {!isFormInModal && (
-          <Form.Item>
-            <Space
-              className="w-full justify-end"
-              data-testid="cta-buttons"
-              size={16}>
-              <Button
-                data-testid="cancel-glossary-term"
-                type="link"
-                onClick={onCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="save-glossary-term"
-                htmlType="submit"
-                loading={isLoading}
-                type="primary">
-                {t('label.save')}
-              </Button>
-            </Space>
-          </Form.Item>
-        )}
       </Form>
     </>
   );

@@ -135,15 +135,20 @@ const DescriptionV1 = ({
         )}
         {taskActionButton}
         {showCommentsIcon && (
-          <Icon
-            component={CommentIcon}
-            data-testid="description-thread"
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={20}
-            onClick={() => {
-              onThreadLinkSelect?.(entityLink);
-            }}
-          />
+          <Tooltip
+            title={t('label.list-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <Icon
+              component={CommentIcon}
+              data-testid="description-thread"
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={20}
+              onClick={() => {
+                onThreadLinkSelect?.(entityLink);
+              }}
+            />
+          </Tooltip>
         )}
       </Space>
     ),

@@ -18,6 +18,7 @@ import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -170,6 +171,7 @@ export const PropertyValue: FC<Props> = ({
               <Icon
                 component={EditIconComponent}
                 data-testid="edit-icon"
+                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                 onClick={onShowInput}
               />
             )}

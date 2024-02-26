@@ -16,7 +16,11 @@ import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -61,7 +65,7 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
         {onSubmit && hasEditPermission && (
           <Button
             data-testid="edit-description-icon"
-            icon={<EditIcon />}
+            icon={<EditIcon {...ICON_DIMENSION} color={DE_ACTIVE_COLOR} />}
             type="text"
             onClick={onEditSeverity}
           />

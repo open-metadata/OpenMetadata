@@ -434,6 +434,7 @@ const TagsPage = () => {
       const patchData = compare(editTag, updatedData);
       try {
         await patchTag(editTag.id ?? '', patchData);
+        classificationDetailsRef.current?.refreshClassificationTags();
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT

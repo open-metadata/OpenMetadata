@@ -24,7 +24,7 @@ import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.int
 
 interface Props {
   glossaryTermFQN?: string;
-  onSave: (value: GlossaryTermForm) => void;
+  onSave: (value: GlossaryTermForm) => void | Promise<void>;
   onCancel: () => void;
   visible: boolean;
   editMode: boolean;
@@ -40,7 +40,7 @@ const GlossaryTermModal: FC<Props> = ({
   const { t } = useTranslation();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(true);
-
+  const [saving, setSaving] = useState(false);
   const [glossaryTerm, setGlossaryTerm] = useState<GlossaryTerm>();
 
   const dialogTitle = useMemo(() => {
@@ -61,6 +61,15 @@ const GlossaryTermModal: FC<Props> = ({
       setIsLoading(false);
     }
   }, [glossaryTermFQN]);
+
+  const handleSave = async (values: GlossaryTermForm) => {
+    setSaving(true);
+    try {
+      await onSave(values);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (editMode) {
@@ -86,8 +95,9 @@ const GlossaryTermModal: FC<Props> = ({
         <Button
           data-testid="save-glossary-term"
           key="save-btn"
+          loading={saving}
           type="primary"
-          onClick={() => form.submit()}>
+          onClick={form.submit}>
           {t('label.save')}
         </Button>,
       ]}
@@ -101,13 +111,11 @@ const GlossaryTermModal: FC<Props> = ({
         <Loader />
       ) : (
         <AddGlossaryTermForm
-          isFormInModal
-          isLoading
           editMode={editMode}
           formRef={form}
           glossaryTerm={glossaryTerm}
           onCancel={onCancel}
-          onSave={onSave}
+          onSave={handleSave}
         />
       )}
     </Modal>

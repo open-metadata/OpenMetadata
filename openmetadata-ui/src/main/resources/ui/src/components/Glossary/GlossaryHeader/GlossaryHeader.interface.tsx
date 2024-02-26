@@ -21,7 +21,7 @@ export interface GlossaryHeaderProps {
   permissions: OperationPermission;
   selectedData: Glossary | GlossaryTerm;
   isGlossary: boolean;
-  onUpdate: (data: GlossaryTerm | Glossary) => void;
+  onUpdate: (data: GlossaryTerm | Glossary) => void | Promise<void>;
   onDelete: (id: string) => void;
   onAssetAdd?: () => void;
   updateVote?: (data: VotingDataProps) => Promise<void>;

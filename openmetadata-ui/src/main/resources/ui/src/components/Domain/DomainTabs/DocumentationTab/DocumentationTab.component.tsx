@@ -128,12 +128,12 @@ const DocumentationTab = ({
     }
   };
 
-  const handleUpdatedOwner = (newOwner: Domain['owner']) => {
+  const handleUpdatedOwner = async (newOwner: Domain['owner']) => {
     const updatedData = {
       ...domain,
       owner: newOwner,
     };
-    onUpdate(updatedData as Domain | DataProduct);
+    await onUpdate(updatedData as Domain | DataProduct);
   };
 
   const handleExpertsUpdate = (data: Array<EntityReference>) => {

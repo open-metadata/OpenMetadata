@@ -449,13 +449,22 @@ const ClassificationDetails = forwardRef(
                 )}
 
                 <ButtonGroup size="small">
-                  <Button
-                    className="w-16 p-0"
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={versionHandler}>
-                    <Typography.Text>{currentVersion}</Typography.Text>
-                  </Button>
+                  <Tooltip
+                    title={t(
+                      `label.${
+                        isVersionView
+                          ? 'exit-version-history'
+                          : 'version-plural-history'
+                      }`
+                    )}>
+                    <Button
+                      className="w-16 p-0"
+                      data-testid="version-button"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={versionHandler}>
+                      <Typography.Text>{currentVersion}</Typography.Text>
+                    </Button>
+                  </Tooltip>
                   {showManageButton && (
                     <ManageButton
                       isRecursiveDelete

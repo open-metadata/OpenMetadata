@@ -170,7 +170,7 @@ const GlossaryTermsV1 = ({
             permissions={permissions}
             selectedData={glossaryTerm}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
+            onUpdate={async (data) => await onTermUpdate(data as GlossaryTerm)}
           />
         ),
       },

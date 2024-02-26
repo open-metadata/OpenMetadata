@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -285,7 +286,7 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = ({ displayName }: EntityName) => {
+  const handleEditDisplayName = async ({ displayName }: EntityName) => {
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
@@ -297,9 +298,8 @@ const SchemaTable = ({
         field: 'displayName',
         columns: tableCols,
       });
-      onUpdate(tableCols).then(() => {
-        setEditColumnDisplayName(undefined);
-      });
+      await onUpdate(tableCols);
+      setEditColumnDisplayName(undefined);
     } else {
       setEditColumnDisplayName(undefined);
     }
@@ -360,7 +360,9 @@ const SchemaTable = ({
                     background: 'transparent',
                   }}
                   onClick={() => handleEditDisplayNameClick(record)}>
-                  <IconEdit />
+                  <IconEdit
+                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  />
                 </Button>
               )}
             </div>

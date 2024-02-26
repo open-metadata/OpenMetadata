@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Divider, Row, Space, Typography } from 'antd';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -161,13 +161,15 @@ function DataAssetsVersionHeader({
       <Col span={3}>
         <Row justify="end">
           <Col>
-            <Button
-              className="w-16 p-0"
-              data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
-              onClick={onVersionClick}>
-              <Typography.Text>{version}</Typography.Text>
-            </Button>
+            <Tooltip title={t('label.exit-version-history')}>
+              <Button
+                className="w-16 p-0"
+                data-testid="version-button"
+                icon={<Icon component={VersionIcon} />}
+                onClick={onVersionClick}>
+                <Typography.Text>{version}</Typography.Text>
+              </Button>
+            </Tooltip>
           </Col>
         </Row>
       </Col>

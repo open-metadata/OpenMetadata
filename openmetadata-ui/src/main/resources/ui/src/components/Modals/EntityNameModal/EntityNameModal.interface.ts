@@ -16,7 +16,7 @@ export interface EntityNameModalProps {
   visible: boolean;
   allowRename?: boolean;
   onCancel: () => void;
-  onSave: (obj: EntityName) => void;
+  onSave: (obj: EntityName) => void | Promise<void>;
   entity: Partial<EntityName>;
   title: string;
 }

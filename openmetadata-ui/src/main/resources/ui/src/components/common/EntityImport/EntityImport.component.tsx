@@ -54,7 +54,7 @@ export const EntityImport = ({
   const [csvFileResult, setCsvFileResult] = useState<string>('');
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
   const [activeStep, setActiveStep] = useState<number>(1);
-
+  const [uploading, setUploading] = useState(false);
   const { isFailure, isAborted } = useMemo(() => {
     const status = csvImportResult?.status;
 
@@ -71,6 +71,7 @@ export const EntityImport = ({
     try {
       const result = e.target?.result as string;
       if (result) {
+        setUploading(true);
         const response = await onImport(entityName, result);
 
         setCsvImportResult(response);
@@ -79,6 +80,8 @@ export const EntityImport = ({
       }
     } catch (error) {
       setCsvImportResult(undefined);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -131,35 +134,39 @@ export const EntityImport = ({
         <>
           {activeStep === 1 && (
             <Col data-testid="upload-file-container" span={24}>
-              <Dragger
-                accept=".csv"
-                beforeUpload={(file) => {
-                  setFileName(file.name);
-                }}
-                className="file-dragger-wrapper p-lg bg-white"
-                customRequest={handleUpload}
-                data-testid="upload-file-widget"
-                multiple={false}
-                showUploadList={false}>
-                <Space
-                  align="center"
-                  className="w-full justify-center"
-                  direction="vertical"
-                  size={42}>
-                  <ImportIcon height={86} width={86} />
-                  <Typography.Text className="font-medium text-md">
-                    <Transi18next
-                      i18nKey="message.drag-and-drop-or-browse-csv-files-here"
-                      renderElement={
-                        <span className="text-primary browse-text" />
-                      }
-                      values={{
-                        text: t('label.browse'),
-                      }}
-                    />
-                  </Typography.Text>
-                </Space>
-              </Dragger>
+              {uploading ? (
+                <Loader />
+              ) : (
+                <Dragger
+                  accept=".csv"
+                  beforeUpload={(file) => {
+                    setFileName(file.name);
+                  }}
+                  className="file-dragger-wrapper p-lg bg-white"
+                  customRequest={handleUpload}
+                  data-testid="upload-file-widget"
+                  multiple={false}
+                  showUploadList={false}>
+                  <Space
+                    align="center"
+                    className="w-full justify-center"
+                    direction="vertical"
+                    size={42}>
+                    <ImportIcon height={86} width={86} />
+                    <Typography.Text className="font-medium text-md">
+                      <Transi18next
+                        i18nKey="message.drag-and-drop-or-browse-csv-files-here"
+                        renderElement={
+                          <span className="text-primary browse-text" />
+                        }
+                        values={{
+                          text: t('label.browse'),
+                        }}
+                      />
+                    </Typography.Text>
+                  </Space>
+                </Dragger>
+              )}
               <Affix className="bg-white p-md import-preview-footer">
                 <Space className="justify-end w-full p-r-md">
                   <Button

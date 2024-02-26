@@ -13,13 +13,8 @@
 import { Divider, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  NO_DATA_PLACEHOLDER,
-} from '../constants/constants';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
@@ -40,24 +35,7 @@ export const getOwner = (
   owner?: EntityReference
 ) => {
   if (owner) {
-    return (
-      <>
-        <ProfilePicture
-          displayName={getEntityName(owner)}
-          name={owner?.name ?? ''}
-          textClass="text-xs"
-          width="20"
-        />
-        <Link
-          to={
-            owner.type === 'team'
-              ? getTeamAndUserDetailsPath(owner.name ?? '')
-              : getUserPath(owner.name ?? '')
-          }>
-          {ownerDisplayName}
-        </Link>
-      </>
-    );
+    return <OwnerLabel owner={owner} ownerDisplayName={ownerDisplayName} />;
   }
   if (!hasPermission) {
     return <div>{NO_DATA_PLACEHOLDER}</div>;

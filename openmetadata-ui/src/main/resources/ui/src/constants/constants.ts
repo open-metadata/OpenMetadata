@@ -820,6 +820,7 @@ export const ERROR_MESSAGE = {
 export const ICON_DIMENSION = {
   with: 14,
   height: 14,
+  fontSize: 14,
 };
 
 export const COMMON_ICON_STYLES: CSSProperties = {

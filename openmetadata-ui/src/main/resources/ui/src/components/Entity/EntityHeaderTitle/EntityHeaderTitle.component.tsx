@@ -52,7 +52,7 @@ const EntityHeaderTitle = ({
       gutter={12}
       wrap={false}>
       <Col flex="48px">{icon}</Col>
-      <Col className={deleted || badge ? 'w-max-full-140' : ''} flex="auto">
+      <Col className={deleted || badge ? 'w-max-full-140' : ''}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text

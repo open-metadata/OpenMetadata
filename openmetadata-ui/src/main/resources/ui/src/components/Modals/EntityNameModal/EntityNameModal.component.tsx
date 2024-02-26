@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { EntityNameModalProps } from './EntityNameModal.interface';
@@ -28,14 +28,14 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<{ name: string; displayName: string }>();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSave = async (obj: { name: string; displayName: string }) => {
-    try {
-      await form.validateFields();
-      onSave(obj);
-    } catch (_) {
-      // Nothing here
-    }
+    setIsLoading(true);
+    await form.validateFields();
+    // Error must be handled by the parent component
+    await onSave(obj);
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -53,6 +53,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
         <Button
           data-testid="save-button"
           key="save-btn"
+          loading={isLoading}
           type="primary"
           onClick={() => form.submit()}>
           {t('label.save')}

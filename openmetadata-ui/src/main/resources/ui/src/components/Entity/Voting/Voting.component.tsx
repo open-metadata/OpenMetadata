@@ -11,68 +11,79 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
-import React from 'react';
+import { Button, Tooltip, Typography } from 'antd';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
-  const handleVoteChange = (type: QueryVoteType) => {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState<QueryVoteType | null>(null);
+
+  const handleVoteChange = async (type: QueryVoteType) => {
     let updatedVoteType;
     if (voteStatus === type) {
       updatedVoteType = QueryVoteType.unVoted;
     } else {
       updatedVoteType = type;
     }
-
-    onUpdateVote({ updatedVoteType });
+    setLoading(type);
+    await onUpdateVote({ updatedVoteType });
+    setLoading(null);
   };
 
   return (
     <>
-      <Button
-        className="w-16 p-0 flex-center"
-        data-testid="up-vote-btn"
-        disabled={disabled}
-        icon={
-          voteStatus === QueryVoteType.votedUp ? (
-            <ThumbsUpFilled color="#008376" height={15} width={15} />
-          ) : (
-            <ThumbsUpOutline height={15} width={15} />
-          )
-        }
-        onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-        <Typography.Text className="m-l-xs" data-testid="up-vote-count">
-          {votes?.upVotes ?? 0}
-        </Typography.Text>
-      </Button>
-      <Button
-        className="w-16 p-0 flex-center"
-        data-testid="down-vote-btn"
-        disabled={disabled}
-        icon={
-          voteStatus === QueryVoteType.votedDown ? (
-            <ThumbsUpFilled
-              className="rotate-inverse"
-              color="#E7B85D"
-              height={15}
-              width={15}
-            />
-          ) : (
-            <ThumbsUpOutline
-              className="rotate-inverse"
-              height={15}
-              width={15}
-            />
-          )
-        }
-        onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-        <Typography.Text className="m-l-xs" data-testid="down-vote-count">
-          {votes?.downVotes ?? 0}
-        </Typography.Text>
-      </Button>
+      <Tooltip title={t('label.up-vote')}>
+        <Button
+          className="w-16 p-0 flex-center"
+          data-testid="up-vote-btn"
+          disabled={disabled}
+          icon={
+            voteStatus === QueryVoteType.votedUp ? (
+              <ThumbsUpFilled color="#008376" height={15} width={15} />
+            ) : (
+              <ThumbsUpOutline height={15} width={15} />
+            )
+          }
+          loading={loading === QueryVoteType.votedUp}
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
+          <Typography.Text className="m-l-xs" data-testid="up-vote-count">
+            {votes?.upVotes ?? 0}
+          </Typography.Text>
+        </Button>
+      </Tooltip>
+      <Tooltip title={t('label.down-vote')}>
+        <Button
+          className="w-16 p-0 flex-center"
+          data-testid="down-vote-btn"
+          disabled={disabled}
+          icon={
+            voteStatus === QueryVoteType.votedDown ? (
+              <ThumbsUpFilled
+                className="rotate-inverse"
+                color="#E7B85D"
+                height={15}
+                width={15}
+              />
+            ) : (
+              <ThumbsUpOutline
+                className="rotate-inverse"
+                height={15}
+                width={15}
+              />
+            )
+          }
+          loading={loading === QueryVoteType.votedDown}
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
+          <Typography.Text className="m-l-xs" data-testid="down-vote-count">
+            {votes?.downVotes ?? 0}
+          </Typography.Text>
+        </Button>
+      </Tooltip>
     </>
   );
 };

@@ -21,6 +21,7 @@ import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
+import { ChangeEvent } from '../generated/type/changeEvent';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
@@ -198,7 +199,7 @@ export const updateGlossaryVotes = async (
 ) => {
   const response = await APIClient.put<
     VotingDataProps,
-    AxiosResponse<Glossary>
+    AxiosResponse<ChangeEvent>
   >(`/glossaries/${id}/vote`, data);
 
   return response.data;
@@ -210,7 +211,7 @@ export const updateGlossaryTermVotes = async (
 ) => {
   const response = await APIClient.put<
     VotingDataProps,
-    AxiosResponse<GlossaryTerm>
+    AxiosResponse<ChangeEvent>
   >(`/glossaryTerms/${id}/vote`, data);
 
   return response.data;

@@ -136,8 +136,8 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const handleUpdate = (updateItems: EntityReference[]) => {
-    onUpdate(
+  const handleUpdate = async (updateItems: EntityReference[]) => {
+    await onUpdate(
       isEmpty(updateItems)
         ? undefined
         : {
@@ -147,6 +147,7 @@ export const UserTeamSelectableList = ({
             displayName: updateItems[0].displayName,
           }
     );
+
     setPopupVisible(false);
   };
 
