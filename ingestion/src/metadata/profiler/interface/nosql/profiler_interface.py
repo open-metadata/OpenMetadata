@@ -15,13 +15,15 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 import traceback
+from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Type
 
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
-from metadata.profiler.adaptors.factory import factory
+from metadata.profiler.adaptors.adaptor_factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
@@ -71,12 +73,26 @@ class NoSQLProfilerInterface(ProfilerInterface):
     def _compute_static_metrics(
         self,
         metrics: List[Metrics],
-        runner: List,
-        column,
+        runner: NoSQLAdaptor,
+        column: SQALikeColumn,
         *args,
         **kwargs,
-    ):
-        return None
+    ) -> Dict[str, any]:
+        try:
+            aggs = [metric(column).nosql_fn(runner)(self.table) for metric in metrics]
+            filtered = [agg for agg in aggs if agg is not None]
+            if not filtered:
+                return {}
+            row = runner.get_aggregates(self.table, column, filtered)
+            return dict(row)
+        except Exception as exc:
+            logger.debug(
+                f"{traceback.format_exc()}\n"
+                f"Error trying to compute metrics for {self.table.fullyQualifiedName}: {exc}"
+            )
+            raise RuntimeError(
+                f"Error trying to compute metris for {self.table.fullyQualifiedName}: {exc}"
+            )
 
     def _compute_query_metrics(
         self,
@@ -149,7 +165,9 @@ class NoSQLProfilerInterface(ProfilerInterface):
         return sampler_factory_.create(
             self.service_connection_config.__class__.__name__,
             table=self.table,
-            client=factory.construct(self.connection),
+            client=factory.create(
+                self.service_connection_config.__class__.__name__, self.connection
+            ),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
@@ -170,8 +188,10 @@ class NoSQLProfilerInterface(ProfilerInterface):
         metric_funcs: List[ThreadPoolMetrics],
     ):
         """get all profiler metrics"""
-        profile_results = {"table": {}, "columns": {}}
-        runner = factory.construct(self.connection)
+        profile_results = {"table": {}, "columns": defaultdict(dict)}
+        runner = factory.create(
+            self.service_connection_config.__class__.__name__, self.connection
+        )
         metric_list = [
             self.compute_metrics(runner, metric_func) for metric_func in metric_funcs
         ]
@@ -185,7 +205,15 @@ class NoSQLProfilerInterface(ProfilerInterface):
                 elif metric_type == MetricTypes.Custom.value and column is None:
                     profile_results["table"].update(profile)
                 else:
-                    pass
+                    profile_results["columns"][column].update(
+                        {
+                            "name": column,
+                            "timestamp": int(
+                                datetime.now(tz=timezone.utc).timestamp() * 1000
+                            ),
+                            **profile,
+                        }
+                    )
         return profile_results
 
     @property
