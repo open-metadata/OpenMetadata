@@ -49,6 +49,7 @@ function EditEmailConfigPage() {
   const history = useHistory();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
 
   const slashedBreadcrumb = useMemo(
@@ -107,7 +108,7 @@ function EditEmailConfigPage() {
   const updateEmailConfigValues = useCallback(
     async (configValues: SMTPSettings) => {
       try {
-        setLoading(true);
+        setIsSaveLoading(true);
         const settingsConfigData: Settings = {
           config_type: SettingType.EmailConfiguration,
           config_value: configValues,
@@ -128,7 +129,7 @@ function EditEmailConfigPage() {
           })
         );
       } finally {
-        setLoading(false);
+        setIsSaveLoading(false);
       }
     },
     []
@@ -151,6 +152,7 @@ function EditEmailConfigPage() {
         ) : (
           <EmailConfigForm
             emailConfigValues={emailConfigValues}
+            isLoading={isSaveLoading}
             onCancel={handleRedirectionToSettingsPage}
             onFocus={handleFieldFocus}
             onSubmit={updateEmailConfigValues}

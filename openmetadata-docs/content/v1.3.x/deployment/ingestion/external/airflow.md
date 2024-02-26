@@ -1,6 +1,6 @@
 ---
 title: Run the ingestion from your Airflow
-slug: /deployment/ingestion/airflow
+slug: /deployment/ingestion/external/airflow
 ---
 
 {% partial file="/v1.3/deployment/external-ingestion.md" /%}
@@ -250,7 +250,7 @@ with DAG(
     ingest_task = PythonVirtualenvOperator(
         task_id="ingest_using_recipe",
         requirements=[
-            'openmetadata-ingestion[mysql]>=1.3.0',  # Specify any additional Python package dependencies
+            'openmetadata-ingestion[mysql]~=1.3.0',  # Specify any additional Python package dependencies
         ],
         system_site_packages=False,  # Set to True if you want to include system site-packages in the virtual environment
         python_version="3.9",  # Remove if necessary

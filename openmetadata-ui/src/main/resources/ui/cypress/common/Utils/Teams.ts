@@ -31,7 +31,7 @@ export const confirmationDragAndDropTeam = (
   dragTeam: string,
   dropTeam: string
 ) => {
-  interceptURL('PUT', `/api/v1/teams`, 'putTeam');
+  interceptURL('PATCH', `/api/v1/teams/*`, 'patchTeam');
 
   // confirmation message before the transfer
   cy.get('[data-testid="confirmation-modal"] .ant-modal-body')
@@ -43,7 +43,7 @@ export const confirmationDragAndDropTeam = (
   // click on submit modal button to confirm the transfer
   cy.get('.ant-modal-footer > .ant-btn-primary').click();
 
-  verifyResponseStatusCode('@putTeam', 200);
+  verifyResponseStatusCode('@patchTeam', 200);
 
   toastNotification('Team moved successfully!');
 };

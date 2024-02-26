@@ -13,7 +13,8 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { camelCase, isEmpty } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { camelCase, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -69,6 +70,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const getSuccessMessage = useMemo(() => {
     return (
       <Transi18next
@@ -151,38 +153,24 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const onUpdateIngestionPipeline = async (repeatFrequency: string) => {
-    const {
-      airflowConfig,
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
-    } = ingestionPipeline as IngestionPipeline;
+    if (isUndefined(ingestionPipeline)) {
+      return;
+    }
 
     const updatedPipelineData = {
+      ...ingestionPipeline,
       airflowConfig: {
-        ...airflowConfig,
+        ...ingestionPipeline?.airflowConfig,
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
       },
-      description,
-      displayName,
-      loggerLevel,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig,
     };
-
+    const jsonPatch = compare(ingestionPipeline, updatedPipelineData);
     try {
       const response = await updateIngestionPipeline(
-        updatedPipelineData as CreateIngestionPipeline
+        ingestionPipeline?.id ?? '',
+        jsonPatch
       );
       handleIngestionDeploy(response.id);
     } catch (error) {
@@ -196,12 +184,14 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const handleIngestionSubmit = useCallback(
-    (repeatFrequency: string) => {
+    async (repeatFrequency: string) => {
+      setIsLoading(true);
       if (ingestionFQN) {
-        onUpdateIngestionPipeline(repeatFrequency);
+        await onUpdateIngestionPipeline(repeatFrequency);
       } else {
-        createIngestionPipeline(repeatFrequency);
+        await createIngestionPipeline(repeatFrequency);
       }
+      setIsLoading(false);
     },
     [
       ingestionFQN,
@@ -248,6 +238,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
               ingestionPipeline?.airflowConfig.scheduleInterval ||
               getIngestionFrequency(PipelineType.TestSuite)
             }
+            isLoading={isLoading}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />

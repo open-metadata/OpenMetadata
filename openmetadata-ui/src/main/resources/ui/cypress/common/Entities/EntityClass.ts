@@ -57,6 +57,7 @@ import {
 } from '../Utils/Owner';
 import { assignTags, removeTags, udpateTags } from '../Utils/Tags';
 import { addTier, removeTier, updateTier } from '../Utils/Tier';
+import { validateDomain } from '../Utils/Versions';
 import { downVoteEntity, upVoteEntity } from '../Utils/Voting';
 
 const description =
@@ -366,6 +367,7 @@ class EntityClass {
 
   assignDomain() {
     addDomainToEntity(domainDetails1.displayName);
+    validateDomain(domainDetails1.displayName, this.endPoint);
   }
 
   validateDomainVersionForEntity() {}

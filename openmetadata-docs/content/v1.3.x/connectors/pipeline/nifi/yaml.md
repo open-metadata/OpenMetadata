@@ -24,12 +24,6 @@ Configure and schedule Nifi metadata and profiler workflows from the OpenMetadat
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
-
 ### Python Requirements
 
 To run the Nifi ingestion, you will need to install:

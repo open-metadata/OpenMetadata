@@ -46,13 +46,12 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchData } from '../../rest/miscAPI';
-import { getUsers, updateUser, UsersQueryParams } from '../../rest/userAPI';
+import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -277,19 +276,9 @@ const UserListPageV1 = () => {
       return;
     }
     setIsLoading(true);
-    const updatedUserData: CreateUser = {
-      description: selectedUser.description,
-      displayName: selectedUser.displayName,
-      email: selectedUser.email,
-      isAdmin: selectedUser.isAdmin,
-      name: selectedUser.name,
-      profile: selectedUser.profile,
-      roles: selectedUser.roles?.map((role) => role.id),
-      teams: selectedUser.teams?.map((team) => team.id),
-    };
 
     try {
-      const { data } = await updateUser(updatedUserData);
+      const data = await restoreUser(selectedUser.id);
       if (data) {
         handleSearch('');
         showSuccessToast(
@@ -362,26 +351,28 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <Row>
-        <Col className="w-full d-flex justify-end">
-          <span>
-            <Switch
-              checked={showDeletedUser}
-              data-testid="show-deleted"
-              onClick={handleShowDeletedUserChange}
+      <PageLayoutV1 pageTitle={t('label.user-plural')}>
+        <Row className="page-container">
+          <Col className="w-full d-flex justify-end">
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedUserChange}
+              />
+              <span className="m-l-xs">{t('label.deleted')}</span>
+            </span>
+          </Col>
+          <Col className="mt-24" span={24}>
+            <ErrorPlaceHolder
+              heading={t('label.user')}
+              permission={isAdminUser}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={handleAddNewUser}
             />
-            <span className="m-l-xs">{t('label.deleted')}</span>
-          </span>
-        </Col>
-        <Col className="mt-24" span={24}>
-          <ErrorPlaceHolder
-            heading={t('label.user')}
-            permission={isAdminUser}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={handleAddNewUser}
-          />
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      </PageLayoutV1>
     ),
     [isAdminUser, showDeletedUser]
   );
