@@ -17,7 +17,7 @@ import { act } from 'react-dom/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import { useFqn } from '../../../hooks/useFqn';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
-import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem';
+import AlertFormSourceItem from './AlertFormSourceItem';
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: '' }),
@@ -38,12 +38,11 @@ jest.mock('antd', () => {
   };
 });
 
-describe('ObservabilityFormTriggerItem', () => {
+describe('AlertFormSourceItem', () => {
   it('should renders without crashing', () => {
-    render(
-      <ObservabilityFormTriggerItem filterResources={MOCK_FILTER_RESOURCES} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(screen.getByText('label.source')).toBeInTheDocument();
     expect(
@@ -58,19 +57,17 @@ describe('ObservabilityFormTriggerItem', () => {
       fqn: 'test',
     }));
 
-    render(
-      <ObservabilityFormTriggerItem filterResources={MOCK_FILTER_RESOURCES} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(screen.getByTestId('trigger-select')).toBeInTheDocument();
   });
 
   it('should display select dropdown when clicked on add trigger button', async () => {
-    render(
-      <ObservabilityFormTriggerItem filterResources={MOCK_FILTER_RESOURCES} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
+      wrapper: MemoryRouter,
+    });
     const addButton = screen.getByTestId('add-trigger-button');
     await act(async () => {
       userEvent.click(addButton);

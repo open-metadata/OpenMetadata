@@ -42,10 +42,10 @@ import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './add-observability-page.less';
 import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
+import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormActionItem from './ObservabilityFormActionItem/ObservabilityFormActionItem';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import { default as ObservabilityFormTriggerItem } from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 
 function AddObservabilityPage() {
   const { t } = useTranslation();
@@ -253,9 +253,7 @@ function AddObservabilityPage() {
                       </Form.Item>
                     </Col>
                     <Col span={24}>
-                      <ObservabilityFormTriggerItem
-                        filterResources={filterResources}
-                      />
+                      <AlertFormSourceItem filterResources={filterResources} />
                     </Col>
                     {shouldShowFiltersSection && (
                       <Col span={24}>

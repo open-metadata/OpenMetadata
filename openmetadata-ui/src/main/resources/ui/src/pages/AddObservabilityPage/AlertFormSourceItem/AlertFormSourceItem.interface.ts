@@ -13,6 +13,6 @@
 
 import { FilterResourceDescriptor } from '../../../generated/events/filterResourceDescriptor';
 
-export interface ObservabilityFormTriggerItemProps {
+export interface AlertFormSourceItemProps {
   filterResources: FilterResourceDescriptor[];
 }

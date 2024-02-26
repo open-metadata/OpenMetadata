@@ -34,12 +34,12 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
-import './trigger-item.less';
+import './alert-form-source-item.less';
+import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
-function ObservabilityFormTriggerItem({
+function AlertFormSourceItem({
   filterResources,
-}: Readonly<ObservabilityFormTriggerItemProps>) {
+}: Readonly<AlertFormSourceItemProps>) {
   const { t } = useTranslation();
   const newRef = useRef(null);
   const form = Form.useFormInstance();
@@ -168,4 +168,4 @@ function ObservabilityFormTriggerItem({
   );
 }
 
-export default ObservabilityFormTriggerItem;
+export default AlertFormSourceItem;
