@@ -28,7 +28,7 @@ on:
       - openmetadata-service/**
       - openmetadata-clients/**
       - common/**
-      
+
 permissions:
   contents: read
 
@@ -86,7 +86,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{github.event.pull_request.head.repo.full_name}}
-          
+
       - name: Get Cypress Filter
         id: get_cypress_filter
         env:
@@ -146,7 +146,7 @@ jobs:
           wait-on: "http://localhost:8585"
           command: |
             npx cypress run --config-file=cypress.config.ts \
-             --env grepTags='${{ steps.get_cypress_filter.outputs.e2eFilters }}',grepFilterSpecs=true \
+             --env grepTags="${{ steps.get_cypress_filter.outputs.e2eFilters }}",grepFilterSpecs=true \
              --group cypress-ci-mysql-pr-oss-${{ github.run_id }}-${{github.run_attempt}} \
              --parallel --record --browser chrome
         env:
