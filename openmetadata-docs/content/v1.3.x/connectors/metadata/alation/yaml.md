@@ -3,7 +3,13 @@ title: Run the Alation Connector Externally
 slug: /connectors/metadata/alation/yaml
 ---
 
-# Run the Alation Connector Externally (Collate Only)
+{% connectorDetailsHeader
+name="Alation"
+stage="PROD"
+platform="Collate"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Alation connector.
 

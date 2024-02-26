@@ -3,7 +3,13 @@ title: Run the Amundsen Connector Externally
 slug: /connectors/metadata/amundsen/yaml
 ---
 
-# Run the Amundsen Connector Externally
+{% connectorDetailsHeader
+name="Amundsen"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Amundsen connector.
 

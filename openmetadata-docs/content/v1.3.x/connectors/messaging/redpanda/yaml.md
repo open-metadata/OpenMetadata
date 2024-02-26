@@ -3,12 +3,13 @@ title: Run the Redpanda Connector Externally
 slug: /connectors/messaging/redpanda/yaml
 ---
 
-# Run the Redpanda Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Topics     | {% icon iconName="check" /%} |
-| Sample Data| {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Redpanda"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Topics", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Redpanda connector.
 

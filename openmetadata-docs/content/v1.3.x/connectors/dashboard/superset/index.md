@@ -3,17 +3,13 @@ title: Superset
 slug: /connectors/dashboard/superset
 ---
 
-# Superset
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Superset"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels"]
+  unavailableFeatures=["Tags", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Superset connector.
 

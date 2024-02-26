@@ -3,7 +3,13 @@ title: Run the MLflow Connector Externally
 slug: /connectors/ml-model/mlflow/yaml
 ---
 
-# Run the MLflow Connector Externally
+{% connectorDetailsHeader
+name="Mlflow"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["ML Features", "Hyperparameters", "ML Store"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the MLflow connector.
 

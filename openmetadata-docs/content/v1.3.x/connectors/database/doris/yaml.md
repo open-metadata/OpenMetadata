@@ -3,30 +3,13 @@ title: Run the Doris Connector Externally
 slug: /connectors/database/doris/yaml
 ---
 
-# Run the Doris Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2 |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
-
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Doris"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt"]
+/ %}
 
 In this section, we provide guides and references to use the Doris connector.
 
@@ -38,15 +21,11 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 1.2.x or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
+Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2
 
 ### Python Requirements
 

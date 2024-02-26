@@ -3,14 +3,13 @@ title: Run the S3 Connector Externally
 slug: /connectors/storage/s3/yaml
 ---
 
-# Run the S3 Connector Externally
-
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-
+{% connectorDetailsHeader
+name="S3"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=[]
+/ %}
 
 This page contains the setup guide and reference information for the S3 connector.
 

@@ -3,15 +3,13 @@ title: Run the Nifi Connector Externally
 slug: /connectors/pipeline/nifi/yaml
 ---
 
-# Run the Nifi Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="cross" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Nifi"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines"]
+unavailableFeatures=["Pipeline Status", "Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Nifi connector.
 

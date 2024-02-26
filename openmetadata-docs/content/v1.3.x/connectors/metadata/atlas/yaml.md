@@ -3,7 +3,13 @@ title: Run the Atlas Connector Externally
 slug: /connectors/metadata/atlas/yaml
 ---
 
-# Run the Atlas Connector Externally
+{% connectorDetailsHeader
+name="Atlas"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Atlas connector.
 

@@ -3,17 +3,13 @@ title: Run the Domo Dashboard Connector Externally
 slug: /connectors/dashboard/domo-dashboard/yaml
 ---
 
-# Run the Domo Dashboard Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+  name="Domo"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Owners"]
+  unavailableFeatures=["Tags", "Datamodels", "Projects", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the DomoDashboard connector.
 

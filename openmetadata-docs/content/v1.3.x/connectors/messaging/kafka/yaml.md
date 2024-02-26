@@ -3,12 +3,13 @@ title: Run the Kafka Connector Externally
 slug: /connectors/messaging/kafka/yaml
 ---
 
-# Run the Kafka Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Topics     | {% icon iconName="check" /%} |
-| Sample Data| {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Kafka"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Topics", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Kafka connector.
 

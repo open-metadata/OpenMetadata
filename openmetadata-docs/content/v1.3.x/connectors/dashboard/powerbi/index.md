@@ -3,18 +3,13 @@ title: PowerBI
 slug: /connectors/dashboard/powerbi
 ---
 
-# PowerBI
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="check" /%} |
-| Lineage    | {% icon iconName="check" /%} |
-
+{% connectorDetailsHeader
+  name="PowerBI"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage"]
+  unavailableFeatures=["Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the PowerBI connector.
 

@@ -3,7 +3,13 @@ title: Run the Sagemaker Connector Externally
 slug: /connectors/ml-model/sagemaker/yaml
 ---
 
-# Run the Sagemaker Connector Externally
+{% connectorDetailsHeader
+name="Sagemaker"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["ML Store"]
+unavailableFeatures=["ML Features", "Hyperparameters"]
+/ %}
 
 In this section, we provide guides and references to use the Sagemaker connector.
 
