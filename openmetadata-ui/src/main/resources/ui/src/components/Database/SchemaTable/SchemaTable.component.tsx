@@ -82,7 +82,6 @@ const SchemaTable = ({
   isReadOnly = false,
   onThreadLinkSelect,
   tableConstraints,
-  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
