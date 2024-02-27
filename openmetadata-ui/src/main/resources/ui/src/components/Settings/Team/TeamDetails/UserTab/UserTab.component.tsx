@@ -191,7 +191,7 @@ export const UserTab = ({
             className="w-full justify-center remove-icon"
             size={8}>
             <Tooltip
-              placement="bottomRight"
+              placement="left"
               title={
                 permission.EditAll
                   ? t('label.remove')

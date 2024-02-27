@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Col, Drawer, Row, Space, Typography } from 'antd';
+import { Button, Col, Drawer, Row, Space, Tooltip, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -92,13 +92,18 @@ const TableQueryRightPanel = ({
                     hasPermission={EditAll || EditOwner}
                     owner={query.owner}
                     onUpdate={handleUpdateOwner}>
-                    <Button
-                      className="cursor-pointer flex-center"
-                      data-testid="edit-owner"
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      size="small"
-                      type="text"
-                    />
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.owner-lowercase'),
+                      })}>
+                      <Button
+                        className="cursor-pointer flex-center"
+                        data-testid="edit-owner"
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                        size="small"
+                        type="text"
+                      />
+                    </Tooltip>
                   </UserTeamSelectableList>
                 )}
               </Space>
@@ -134,14 +139,19 @@ const TableQueryRightPanel = ({
                 </Typography.Text>
 
                 {(EditDescription || EditAll) && (
-                  <Button
-                    className="flex-center p-0"
-                    data-testid="edit-description-btn"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditDescription(true)}
-                  />
+                  <Tooltip
+                    title={t('label.edit-entity', {
+                      entity: t('label.description'),
+                    })}>
+                    <Button
+                      className="flex-center p-0"
+                      data-testid="edit-description-btn"
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                      size="small"
+                      type="text"
+                      onClick={() => setIsEditDescription(true)}
+                    />
+                  </Tooltip>
                 )}
               </Space>
               <Description

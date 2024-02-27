@@ -552,13 +552,18 @@ const AssetsTabs = forwardRef(
                       overlayStyle={{ width: '350px' }}
                       placement="bottomRight"
                       trigger={['click']}>
-                      <Button
-                        className={classNames('flex-center px-1.5')}
-                        data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                        title="Manage"
-                        type="text">
-                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                      </Button>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.asset'),
+                        })}>
+                        <Button
+                          className={classNames('flex-center px-1.5')}
+                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
+                          type="text">
+                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                        </Button>
+                      </Tooltip>
                     </Dropdown>
                   ) : null
                 }
