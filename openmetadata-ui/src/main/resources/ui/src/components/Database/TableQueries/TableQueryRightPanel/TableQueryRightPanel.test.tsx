@@ -60,12 +60,10 @@ describe('TableQueryRightPanel component test', () => {
     render(<TableQueryRightPanel {...mockProps} />, {
       wrapper: MemoryRouter,
     });
-    const owner = await screen.findByTestId('owner-name-container');
+    const owner = await screen.findByTestId('owner-link');
 
     expect(owner).toBeInTheDocument();
-    expect(owner.textContent).toEqual(
-      'testProfilePicture' + MOCK_QUERIES[0].owner?.displayName
-    );
+    expect(owner.textContent).toEqual(MOCK_QUERIES[0].owner?.displayName);
     expect(
       await screen.findByTestId('edit-description-btn')
     ).toBeInTheDocument();
