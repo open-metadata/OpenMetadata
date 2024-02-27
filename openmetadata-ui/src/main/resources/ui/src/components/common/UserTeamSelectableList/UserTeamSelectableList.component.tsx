@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
 import { isEmpty, noop, toString } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -189,6 +189,8 @@ export const UserTeamSelectableList = ({
     }
   };
 
+  const openPopover = useCallback(() => setPopupVisible(true), []);
+
   useEffect(() => {
     fetchCount();
   }, [popupVisible]);
@@ -269,16 +271,19 @@ export const UserTeamSelectableList = ({
       {children ??
         (hasPermission && (
           <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.owner'),
-            })}>
+            title={
+              !popupVisible &&
+              t('label.edit-entity', {
+                entity: t('label.owner'),
+              })
+            }>
             <Button
               className="flex-center p-0"
               data-testid="edit-owner"
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
               size="small"
               type="text"
-              onClick={() => setPopupVisible(true)}
+              onClick={openPopover}
             />
           </Tooltip>
         ))}
