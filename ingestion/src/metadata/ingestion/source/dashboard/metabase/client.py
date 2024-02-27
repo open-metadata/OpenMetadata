@@ -124,6 +124,8 @@ class MetabaseClient:
         try:
             resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")
             if resp_dashboard:
+                # Small hack needed to support Metabase versions older than 0.48
+                # https://www.metabase.com/releases/metabase-48#fyi--breaking-changes
                 if "ordered_cards" in resp_dashboard:
                     resp_dashboard["dashcards"] = resp_dashboard["ordered_cards"]
                 return MetabaseDashboardDetails(**resp_dashboard)
