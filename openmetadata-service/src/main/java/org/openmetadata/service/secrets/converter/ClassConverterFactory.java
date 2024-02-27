@@ -47,6 +47,7 @@ public final class ClassConverterFactory {
             Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
             Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
+            Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
             Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
