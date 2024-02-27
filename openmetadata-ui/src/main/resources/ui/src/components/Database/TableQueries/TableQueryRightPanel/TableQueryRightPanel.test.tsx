@@ -36,7 +36,7 @@ jest.mock(
       .mockImplementation(() => <div>UserTeamSelectableList</div>),
   })
 );
-jest.mock('../../../common/EntityDescription/Description', () => {
+jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 jest.mock('../../../TagsInput/TagsInput.component', () => {
