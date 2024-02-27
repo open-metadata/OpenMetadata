@@ -96,6 +96,7 @@ export const getServiceMainTabColumns = (
         <UserPopOverCard
           showUserName
           data-testid="owner-data"
+          displayName={owner.displayName}
           profileWidth={20}
           type={owner.type as UserTeam}
           userName={owner.name ?? ''}
