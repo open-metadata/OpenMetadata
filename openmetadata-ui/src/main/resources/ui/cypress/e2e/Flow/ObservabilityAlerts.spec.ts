@@ -56,7 +56,21 @@ const SOURCE_NAME_1 = 'Container';
 const SOURCE_NAME_2 = 'Pipeline';
 
 describe('Observability Alert Flow', { tags: 'Settings' }, () => {
-  let data = {};
+  const data = {
+    testCase: {},
+    testSuite: {},
+    pipelineService: {},
+    ingestionPipeline: {},
+    user: {
+      displayName: '',
+    },
+    domain: {
+      name: '',
+    },
+    alertDetails: {
+      id: '',
+    },
+  };
 
   before(() => {
     cy.login();
@@ -245,9 +259,9 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@createAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(201);
+      expect(interception?.response?.statusCode).equal(201);
     });
     toastNotification('Alerts created successfully.');
 
@@ -320,12 +334,12 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@updateAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(200);
+      expect(interception?.response?.statusCode).equal(200);
 
       // Verify the edited alert changes
-      verifyAlertDetails(interception.response.body);
+      verifyAlertDetails(interception?.response?.body);
     });
   });
 
@@ -471,9 +485,9 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
         // Click save
         cy.get('[data-testid="save-button"]').scrollIntoView().click();
         cy.wait('@createAlert').then((interception) => {
-          data.alertDetails = interception.response.body;
+          data.alertDetails = interception?.response?.body;
 
-          expect(interception.response.statusCode).equal(201);
+          expect(interception?.response?.statusCode).equal(201);
         });
         toastNotification('Alerts created successfully.');
 

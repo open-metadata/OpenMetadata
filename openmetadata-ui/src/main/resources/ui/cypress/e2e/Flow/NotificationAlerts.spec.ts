@@ -56,7 +56,17 @@ const SOURCE_NAME_3 = 'task';
 const SOURCE_DISPLAY_NAME_3 = 'Task';
 
 describe('Notification Alert Flow', { tags: 'Settings' }, () => {
-  let data = {};
+  const data = {
+    user: {
+      displayName: '',
+    },
+    domain: {
+      name: '',
+    },
+    alertDetails: {
+      id: '',
+    },
+  };
 
   before(() => {
     cy.login();
@@ -169,9 +179,9 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@createAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(201);
+      expect(interception?.response?.statusCode).equal(201);
     });
     toastNotification('Alerts created successfully.');
 
@@ -250,12 +260,12 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@updateAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(200);
+      expect(interception?.response?.statusCode).equal(200);
 
       // Verify the edited alert changes
-      verifyAlertDetails(interception.response.body);
+      verifyAlertDetails(interception?.response?.body);
     });
   });
 
@@ -319,9 +329,9 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@createAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(201);
+      expect(interception?.response?.statusCode).equal(201);
     });
     toastNotification('Alerts created successfully.');
 
@@ -356,12 +366,12 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@updateAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(200);
+      expect(interception?.response?.statusCode).equal(200);
 
       // Verify the edited alert changes
-      verifyAlertDetails(interception.response.body);
+      verifyAlertDetails(interception?.response?.body);
     });
   });
 
@@ -406,9 +416,9 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@createAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(201);
+      expect(interception?.response?.statusCode).equal(201);
     });
     toastNotification('Alerts created successfully.');
 
