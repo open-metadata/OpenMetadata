@@ -41,7 +41,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { LOADING_STATE } from '../../enums/common.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import {
   CreateTag,
@@ -110,9 +109,6 @@ const TagsPage = () => {
         permissions
       ),
     [permissions]
-  );
-  const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
-    LOADING_STATE.INITIAL
   );
 
   const isClassificationDisabled = useMemo(
@@ -273,7 +269,6 @@ const TagsPage = () => {
 
       if (res) {
         if (currentClassification) {
-          setDeleteStatus(LOADING_STATE.SUCCESS);
           setClassifications((prev) =>
             prev.map((item) => {
               if (
@@ -300,12 +295,11 @@ const TagsPage = () => {
       }
     } catch (err) {
       showErrorToast(
-        err,
+        err as AxiosError,
         t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
       );
     } finally {
       setDeleteTags({ data: undefined, state: false });
-      setDeleteStatus(LOADING_STATE.INITIAL);
     }
   };
 
@@ -314,7 +308,6 @@ const TagsPage = () => {
    */
   const handleConfirmClick = async () => {
     if (deleteTags.data?.id) {
-      setDeleteStatus(LOADING_STATE.WAITING);
       await handleDeleteTag(deleteTags.data.id);
     }
   };
@@ -773,7 +766,6 @@ const TagsPage = () => {
         bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
         entityName={deleteTags.data?.name ?? ''}
         entityType={t('label.classification')}
-        loadingState={deleteStatus}
         visible={deleteTags.state}
         onCancel={handleCancelClassificationDelete}
         onConfirm={handleConfirmClick}

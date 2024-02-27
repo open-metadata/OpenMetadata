@@ -576,7 +576,6 @@ const GlossaryHeader = ({
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
           entityType="Glossary"
-          loadingState="success"
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
