@@ -469,9 +469,8 @@ export const DataAssetsHeader = ({
                 )}
 
                 <Tooltip
-                  open={!isEmpty(copyTooltip)}
-                  placement="bottomRight"
-                  title={copyTooltip}>
+                  placement="topRight"
+                  title={copyTooltip || t('message.copy-to-clipboard')}>
                   <Button
                     icon={<Icon component={ShareIcon} />}
                     onClick={handleShareButtonClick}
