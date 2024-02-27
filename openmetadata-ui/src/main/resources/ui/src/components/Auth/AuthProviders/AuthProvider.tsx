@@ -46,6 +46,7 @@ import {
 } from '../../../constants/constants';
 import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { ClientErrors } from '../../../enums/Axios.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
@@ -426,6 +427,10 @@ export const AuthProvider = ({
     if (isGetRequest && hasActiveDomain) {
       // Filter ES Query
       if (config.url?.includes('/search/query')) {
+        if (config.params?.index === SearchIndex.TAG) {
+          return config;
+        }
+
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
