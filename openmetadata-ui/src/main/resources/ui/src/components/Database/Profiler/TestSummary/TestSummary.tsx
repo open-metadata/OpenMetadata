@@ -329,6 +329,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             allowDataOverflow
             padding={{ top: 8, bottom: 8 }}
             tickFormatter={(value) => axisTickFormatter(value)}
+            type="category"
           />
           <Tooltip
             content={<TestSummaryCustomTooltip />}
