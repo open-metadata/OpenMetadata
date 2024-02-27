@@ -194,17 +194,6 @@ export const getTeamsByQuery = async (params: {
   return response.data;
 };
 
-export const getTagSuggestions = (term: string) => {
-  const params = {
-    q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY_TERM}`,
-  };
-
-  return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {
-    params,
-  });
-};
-
 export const getSearchedUsers = (
   queryString: string,
   from: number,
