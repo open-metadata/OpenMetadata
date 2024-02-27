@@ -31,7 +31,7 @@ TABLES_DUMP_ALL = {
     "field_relationship",
     "tag_usage",
     "openmetadata_settings",
-    "profiler_data_time_series"
+    "profiler_data_time_series",
 }
 
 CUSTOM_TABLES = {"entity_extension_time_series": {"exclude_columns": ["timestamp"]}}
