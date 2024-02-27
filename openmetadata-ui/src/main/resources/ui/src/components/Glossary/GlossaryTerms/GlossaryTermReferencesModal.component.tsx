@@ -22,7 +22,7 @@ interface GlossaryTermReferencesModalProps {
   references: TermReference[];
   isVisible: boolean;
   onClose: () => void;
-  onSave: (values: TermReference[]) => void | Promise<void>;
+  onSave: (values: TermReference[]) => Promise<void>;
 }
 
 const GlossaryTermReferencesModal = ({

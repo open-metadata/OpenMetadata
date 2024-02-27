@@ -109,6 +109,7 @@ const TableQueryRightPanel = ({
                   <UserPopOverCard
                     showUserName
                     className="m-r-xss"
+                    displayName={query.owner.displayName}
                     type={query.owner.type as UserTeam}
                     userName={query.owner.name || ''}
                   />

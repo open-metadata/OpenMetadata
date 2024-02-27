@@ -522,16 +522,16 @@ const TagsPage = () => {
     history.push(getTagPath(category.fullyQualifiedName));
   };
 
-  const handleAddTagSubmit = (data: SubmitProps) => {
+  const handleAddTagSubmit = async (data: SubmitProps) => {
     const updatedData = omit(data, 'color', 'iconURL');
     const style = {
       color: data.color,
       iconURL: data.iconURL,
     };
     if (editTag) {
-      handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
+      await handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
     } else {
-      handleCreatePrimaryTag({ ...updatedData, style });
+      await handleCreatePrimaryTag({ ...updatedData, style });
     }
   };
 
