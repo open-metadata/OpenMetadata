@@ -610,6 +610,7 @@
                   <phase>test</phase>
                   <configuration>
                     <includes>
+                      <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
                     </includes>
                   </configuration>
@@ -649,6 +650,7 @@
                   <phase>test</phase>
                   <configuration>
                     <includes>
+                      <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
                     </includes>
                   </configuration>
