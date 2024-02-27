@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { noop, toString } from 'lodash';
+import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { LOADING_STATE } from '../../../enums/common.enum';
@@ -113,8 +113,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
             isSummaryPanelOpen={false}
             selectedData={selectedData as Glossary}
             updateGlossary={() => Promise.resolve()}
-            onGlossaryDelete={noop}
-            onGlossaryTermDelete={noop}
+            onGlossaryDelete={() => Promise.resolve()}
+            onGlossaryTermDelete={() => Promise.resolve()}
             onGlossaryTermUpdate={() => Promise.resolve()}
           />
         )}

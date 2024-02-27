@@ -455,11 +455,14 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String.format("Failed to get last ingestion logs due to %s", response.body()));
   }
 
-  private URIBuilder buildURI(String path) {
+  public URIBuilder buildURI(String path) {
     try {
       List<String> pathInternal = new ArrayList<>(API_ENDPOINT_SEGMENTS);
       pathInternal.add(path);
-      return new URIBuilder(String.valueOf(serviceURL)).setPathSegments(pathInternal);
+      URIBuilder builder = new URIBuilder(String.valueOf(serviceURL));
+      List<String> segments = new ArrayList<>(builder.getPathSegments());
+      segments.addAll(pathInternal);
+      return builder.setPathSegments(segments);
     } catch (Exception e) {
       throw clientException(String.format("Failed to built request URI for path [%s].", path), e);
     }

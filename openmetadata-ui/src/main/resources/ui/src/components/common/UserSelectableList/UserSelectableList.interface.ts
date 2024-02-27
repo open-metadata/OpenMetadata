@@ -24,10 +24,10 @@ export type UserSelectableListProps =
     } & (
       | {
           multiSelect?: true;
-          onUpdate: (updatedUsers: EntityReference[]) => void;
+          onUpdate: (updatedUsers: EntityReference[]) => Promise<void>;
         }
       | {
           multiSelect: false;
-          onUpdate: (updatedUsers: EntityReference) => void;
+          onUpdate: (updatedUsers: EntityReference) => Promise<void>;
         }
     );
