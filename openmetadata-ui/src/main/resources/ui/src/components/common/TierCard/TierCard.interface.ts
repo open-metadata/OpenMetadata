@@ -24,7 +24,7 @@ export type CardWithListItems = {
 
 export interface TierCardProps {
   currentTier?: string;
-  updateTier?: (value?: Tag) => void;
+  updateTier?: (value?: Tag) => Promise<void>;
   onSave?: (
     owner?: EntityReference,
     tier?: TableDetail['tier'],

@@ -19,7 +19,10 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../../../../enums/codemirror.enum';
@@ -138,7 +141,7 @@ const TestCaseResultTab = ({
               <Icon
                 component={EditIcon}
                 data-testid="edit-parameter-icon"
-                style={{ color: DE_ACTIVE_COLOR }}
+                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                 onClick={() => setIsParameterEdit(true)}
               />
             )}

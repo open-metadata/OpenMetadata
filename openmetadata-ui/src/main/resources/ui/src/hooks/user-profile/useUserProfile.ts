@@ -12,6 +12,7 @@
  */
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
+import IconTeams from '../../assets/svg/teams-grey.svg';
 import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
@@ -55,6 +56,8 @@ export const useUserProfile = ({
 
   const fetchProfileIfRequired = useCallback(async () => {
     if (isTeam || userProfilePics[name]) {
+      isTeam && setProfilePic(IconTeams);
+
       return;
     }
 
@@ -83,7 +86,13 @@ export const useUserProfile = ({
       // Error
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
     }
-  }, [updateUserProfilePics, userProfilePics, name, isTeam]);
+  }, [
+    updateUserProfilePics,
+    userProfilePics,
+    name,
+    isTeam,
+    userProfilePicsLoading,
+  ]);
 
   useEffect(() => {
     if (!permission) {
@@ -97,5 +106,11 @@ export const useUserProfile = ({
     fetchProfileIfRequired();
   }, [name, permission, fetchProfileIfRequired]);
 
-  return [profilePic, Boolean(!isTeam && isUndefined(user)), user];
+  return [
+    profilePic,
+    Boolean(
+      !isTeam && isUndefined(user) && userProfilePicsLoading.includes(name)
+    ),
+    user,
+  ];
 };

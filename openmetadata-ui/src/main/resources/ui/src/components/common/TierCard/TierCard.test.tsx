@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  getByTestId,
-  getByText,
-  render,
-  waitForElementToBeRemoved,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import TierCard from './TierCard';
 
@@ -85,39 +78,43 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewer', () => {
 
 describe('Test TierCard Component', () => {
   it('Component should have card', async () => {
-    const { container } = render(<TierCard {...mockProps} />);
-
-    await expect(getByText(container, 'Loader')).toBeInTheDocument();
+    await act(async () => {
+      render(<TierCard {...mockProps} />);
+    });
 
     expect(mockGetTags).toHaveBeenCalled();
 
-    expect(await findByTestId(container, 'cards')).toBeInTheDocument();
+    expect(await screen.findByTestId('cards')).toBeInTheDocument();
   });
 
   it('should call the mockOnUpdate when click on radio button', async () => {
-    const { container } = render(<TierCard {...mockProps} />);
+    await act(async () => {
+      render(<TierCard {...mockProps} />);
+    });
 
-    await waitForElementToBeRemoved(() => getByText(container, 'Loader'));
-
-    const radioButton = getByTestId(container, 'radio-btn-Tier1');
+    const radioButton = await screen.findByTestId('radio-btn-Tier1');
 
     expect(radioButton).toBeInTheDocument();
 
-    userEvent.click(radioButton);
+    await act(async () => {
+      fireEvent.click(radioButton);
+    });
 
     expect(mockOnUpdate).toHaveBeenCalled();
   });
 
   it('should call the mockOnUpdate when click on Clear button', async () => {
-    const { container } = render(<TierCard {...mockProps} />);
+    await act(async () => {
+      render(<TierCard {...mockProps} />);
+    });
 
-    await waitForElementToBeRemoved(() => getByText(container, 'Loader'));
-
-    const clearTier = getByTestId(container, 'clear-tier');
+    const clearTier = await screen.findByTestId('clear-tier');
 
     expect(clearTier).toBeInTheDocument();
 
-    userEvent.click(clearTier);
+    await act(async () => {
+      fireEvent.click(clearTier);
+    });
 
     expect(mockOnUpdate).toHaveBeenCalled();
   });

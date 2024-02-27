@@ -207,17 +207,21 @@ const IncidentManagerDetailPage = () => {
   };
 
   const handleDisplayNameChange = async (entityName?: EntityName) => {
-    const data = testCaseData.data;
-    if (data) {
-      const updatedTestCase = {
-        ...data,
-        ...entityName,
-      };
-      const jsonPatch = compare(data, updatedTestCase);
+    try {
+      const data = testCaseData.data;
+      if (data) {
+        const updatedTestCase = {
+          ...data,
+          ...entityName,
+        };
+        const jsonPatch = compare(data, updatedTestCase);
 
-      if (jsonPatch.length && data.id) {
-        updateTestCase(data.id, jsonPatch);
+        if (jsonPatch.length && data.id) {
+          await updateTestCase(data.id, jsonPatch);
+        }
       }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
