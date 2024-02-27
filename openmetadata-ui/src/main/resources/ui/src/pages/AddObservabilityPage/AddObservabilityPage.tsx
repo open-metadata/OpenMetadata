@@ -168,7 +168,7 @@ function AddObservabilityPage() {
     [filterResources, selectedTrigger]
   );
 
-  const supportedActions = useMemo(
+  const supportedTriggers = useMemo(
     () =>
       filterResources.find((resource) => resource.name === selectedTrigger)
         ?.supportedActions,
@@ -181,8 +181,8 @@ function AddObservabilityPage() {
   );
 
   const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedActions) : true),
-    [selectedTrigger, supportedActions]
+    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
+    [selectedTrigger, supportedTriggers]
   );
 
   if (fetching) {
@@ -265,7 +265,7 @@ function AddObservabilityPage() {
                     {shouldShowActionsSection && (
                       <Col span={24}>
                         <ObservabilityFormTriggerItem
-                          supportedActions={supportedActions}
+                          supportedTriggers={supportedTriggers}
                         />
                       </Col>
                     )}

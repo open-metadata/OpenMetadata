@@ -24,7 +24,7 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getSupportedFilterOptions: jest.fn().mockReturnValue([]),
 }));
 
-const mockSupportedActions = MOCK_FILTER_RESOURCES.reduce(
+const mockSupportedTriggers = MOCK_FILTER_RESOURCES.reduce(
   (resource, current) => {
     resource.push(...(current.supportedActions ?? []));
 
@@ -49,7 +49,7 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormTriggerItem supportedActions={mockSupportedActions} />
+      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
     );
 
     expect(screen.getByText('label.trigger')).toBeInTheDocument();
@@ -57,11 +57,11 @@ describe('ObservabilityFormTriggerItem', () => {
       screen.getByText('message.alerts-trigger-description')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('actions-list')).toBeInTheDocument();
-    expect(screen.getByTestId('add-actions')).toBeInTheDocument();
+    expect(screen.getByTestId('triggers-list')).toBeInTheDocument();
+    expect(screen.getByTestId('add-trigger')).toBeInTheDocument();
   });
 
-  it('add actions button should be disabled if there is no selected trigger and filters', () => {
+  it('add trigger button should be disabled if there is no selected trigger and filters', () => {
     const setFieldValue = jest.fn();
     const getFieldValue = jest.fn();
     jest.spyOn(Form, 'useFormInstance').mockImplementation(
@@ -76,15 +76,15 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => []);
 
     render(
-      <ObservabilityFormTriggerItem supportedActions={mockSupportedActions} />
+      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
     );
 
-    const addButton = screen.getByTestId('add-actions');
+    const addButton = screen.getByTestId('add-trigger');
 
     expect(addButton).toBeDisabled();
   });
 
-  it('add actions button should not be disabled if there is selected trigger and filters', () => {
+  it('add trigger button should not be disabled if there is selected trigger and filters', () => {
     const setFieldValue = jest.fn();
     const getFieldValue = jest.fn();
     jest.spyOn(Form, 'useFormInstance').mockImplementation(
@@ -99,10 +99,10 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormTriggerItem supportedActions={mockSupportedActions} />
+      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
     );
 
-    const addButton = screen.getByTestId('add-actions');
+    const addButton = screen.getByTestId('add-trigger');
 
     expect(addButton).not.toBeDisabled();
   });

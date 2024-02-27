@@ -233,7 +233,7 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     addOwnerFilter(0, data.user.displayName, false, 'Owner Name');
 
     // Select actions
-    cy.get('[data-testid="add-actions"]').click();
+    cy.get('[data-testid="add-trigger"]').click();
 
     addGetSchemaChangesAction(0);
 
@@ -305,7 +305,7 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     addDomainFilter(2, data.domain.name);
 
     // Add actions
-    cy.get('[data-testid="add-actions"]').click();
+    cy.get('[data-testid="add-trigger"]').click();
 
     addPipelineStatusUpdatesAction(0, 'Successful', true);
 
@@ -401,10 +401,10 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
 
         // Add actions
         alertDetails.actions.forEach((action, actionNumber) => {
-          cy.get('[data-testid="add-actions"]').click();
+          cy.get('[data-testid="add-trigger"]').click();
 
           // Select action
-          cy.get(`[data-testid="action-select-${actionNumber}"]`).click({
+          cy.get(`[data-testid="trigger-select-${actionNumber}"]`).click({
             waitForAnimations: true,
           });
           cy.get(`[data-testid="${action.name}-filter-option"]`)
@@ -439,7 +439,7 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
 
           if (action.exclude) {
             // Change filter effect
-            cy.get(`[data-testid="action-switch-${actionNumber}"]`)
+            cy.get(`[data-testid="trigger-switch-${actionNumber}"]`)
               .scrollIntoView()
               .click();
           }

@@ -28,13 +28,13 @@ import {
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
-  supportedActions,
+  supportedTriggers,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
 
   // Watchers
-  const selectedActions = Form.useWatch<EventFilterRule[]>(
+  const selectedTriggers = Form.useWatch<EventFilterRule[]>(
     ['input', 'actions'],
     form
   );
@@ -43,9 +43,9 @@ function ObservabilityFormTriggerItem({
     [];
 
   // Run time values needed for conditional rendering
-  const actionOptions = useMemo(() => {
-    return getSupportedFilterOptions(selectedActions, supportedActions);
-  }, [selectedActions, supportedActions]);
+  const triggerOptions = useMemo(() => {
+    return getSupportedFilterOptions(selectedTriggers, supportedTriggers);
+  }, [selectedTriggers, supportedTriggers]);
 
   return (
     <Card className="alert-form-item-container">
@@ -63,11 +63,14 @@ function ObservabilityFormTriggerItem({
         <Col span={24}>
           <Form.List name={['input', 'actions']}>
             {(fields, { add, remove }, { errors }) => {
-              const showAddActionButton =
-                fields.length < (supportedActions?.length ?? 1);
+              const showAddTriggerButton =
+                fields.length < (supportedTriggers?.length ?? 1);
 
               return (
-                <Row data-testid="actions-list" gutter={[16, 16]} key="actions">
+                <Row
+                  data-testid="triggers-list"
+                  gutter={[16, 16]}
+                  key="triggers">
                   {fields.map(({ key, name }) => {
                     const effect =
                       form.getFieldValue([
@@ -78,13 +81,13 @@ function ObservabilityFormTriggerItem({
                       ]) ?? Effect.Include;
 
                     const showConditionalFields =
-                      !isNil(supportedActions) &&
-                      !isEmpty(selectedActions) &&
-                      selectedActions[name];
+                      !isNil(supportedTriggers) &&
+                      !isEmpty(selectedTriggers) &&
+                      selectedTriggers[name];
 
                     return (
                       <Col
-                        data-testid={`action-${name}`}
+                        data-testid={`trigger-${name}`}
                         key={`observability-${key}`}
                         span={24}>
                         <div className="flex gap-4">
@@ -92,7 +95,7 @@ function ObservabilityFormTriggerItem({
                             <Row gutter={[8, 8]}>
                               <Col span={12}>
                                 <Form.Item
-                                  key={`action-${key}`}
+                                  key={`trigger-${key}`}
                                   name={[name, 'name']}
                                   rules={[
                                     {
@@ -100,16 +103,16 @@ function ObservabilityFormTriggerItem({
                                       message: t(
                                         'message.field-text-is-required',
                                         {
-                                          fieldText: t('label.action'),
+                                          fieldText: t('label.trigger'),
                                         }
                                       ),
                                     },
                                   ]}>
                                   <Select
-                                    data-testid={`action-select-${name}`}
-                                    options={actionOptions}
+                                    data-testid={`trigger-select-${name}`}
+                                    options={triggerOptions}
                                     placeholder={t('label.select-field', {
-                                      field: t('label.action'),
+                                      field: t('label.trigger'),
                                     })}
                                     onChange={() => {
                                       form.setFieldValue(
@@ -122,16 +125,16 @@ function ObservabilityFormTriggerItem({
                               </Col>
                               {showConditionalFields &&
                                 getConditionalField(
-                                  selectedActions[name].name ?? '',
+                                  selectedTriggers[name].name ?? '',
                                   name,
                                   selectedTrigger,
-                                  supportedActions
+                                  supportedTriggers
                                 )}
                             </Row>
                           </div>
                           <div>
                             <Button
-                              data-testid={`remove-action-rule-${name}`}
+                              data-testid={`remove-trigger-${name}`}
                               icon={<CloseOutlined />}
                               onClick={() => remove(name)}
                             />
@@ -149,16 +152,16 @@ function ObservabilityFormTriggerItem({
                           }>
                           <Switch
                             checked={effect === Effect.Include}
-                            data-testid={`action-switch-${name}`}
+                            data-testid={`trigger-switch-${name}`}
                           />
                         </Form.Item>
                       </Col>
                     );
                   })}
-                  {showAddActionButton && (
+                  {showAddTriggerButton && (
                     <Col span={24}>
                       <Button
-                        data-testid="add-actions"
+                        data-testid="add-trigger"
                         disabled={
                           isEmpty(selectedTrigger) || isNil(selectedTrigger)
                         }
@@ -169,7 +172,7 @@ function ObservabilityFormTriggerItem({
                           })
                         }>
                         {t('label.add-entity', {
-                          entity: t('label.action'),
+                          entity: t('label.trigger'),
                         })}
                       </Button>
                     </Col>
