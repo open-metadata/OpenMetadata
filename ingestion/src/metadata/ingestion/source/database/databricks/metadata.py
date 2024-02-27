@@ -13,7 +13,7 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple, Union
 
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
@@ -66,6 +66,7 @@ logger = ingestion_logger()
 
 DATABRICKS_TAG = "DATABRICK TAG"
 DATABRICKS_TAG_CLASSIFICATION = "DATABRICK TAG CLASSIFICATION"
+DEFAULT_TAG_VALUE = "NONE"
 
 
 class STRUCT(String):
@@ -268,6 +269,10 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         super().__init__(config, metadata)
         self.is_older_version = False
         self._init_version()
+        self.catalog_tags = {}
+        self.schema_tags = {}
+        self.table_tags = {}
+        self.column_tags = {}
 
     def _init_version(self):
         try:
@@ -314,10 +319,103 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         else:
             yield DEFAULT_DATABASE
 
+    def _clear_tag_cache(self) -> None:
+        """
+        Method to clean any existing tags available in memory
+        """
+        self.catalog_tags.clear()
+        self.table_tags.clear()
+        self.schema_tags.clear()
+        self.column_tags.clear()
+
+    def _add_to_tag_cache(
+        self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str]
+    ):
+        if tag_dict.get(key):
+            tag_dict.get(key).append(value)
+        else:
+            tag_dict[key] = [value]
+
+    def populate_tags_cache(self, database_name: str) -> None:
+        """
+        Method to fetch all the tags and populate the relevant caches
+        """
+        self._clear_tag_cache()
+        if self.source_config.includeTags is False:
+            return
+        try:
+            tags = self.connection.execute(
+                DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)
+            )
+
+            for tag in tags:
+                self._add_to_tag_cache(
+                    self.catalog_tags,
+                    tag.catalog_name,
+                    # tag value is an optional field, if tag value is not available use default tag value
+                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                )
+        except Exception as exc:
+            logger.debug(f"Failed to fetch catalog tags due to - {exc}")
+
+        try:
+            tags = self.connection.execute(
+                DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name)
+            )
+            for tag in tags:
+                self._add_to_tag_cache(
+                    self.schema_tags,
+                    (tag.catalog_name, tag.schema_name),
+                    # tag value is an optional field, if tag value is not available use default tag value
+                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                )
+        except Exception as exc:
+            logger.debug(f"Failed to fetch schema tags due to - {exc}")
+
+        try:
+            tags = self.connection.execute(
+                DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name)
+            )
+            for tag in tags:
+                self._add_to_tag_cache(
+                    self.table_tags,
+                    (tag.catalog_name, tag.schema_name, tag.table_name),
+                    # tag value is an optional field, if tag value is not available use default tag value
+                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                )
+        except Exception as exc:
+            logger.debug(f"Failed to fetch table tags due to - {exc}")
+
+        try:
+            tags = self.connection.execute(
+                DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name)
+            )
+            for tag in tags:
+                tag_table_id = (tag.catalog_name, tag.schema_name, tag.table_name)
+                if self.column_tags.get(tag_table_id):
+                    self._add_to_tag_cache(
+                        self.column_tags.get(tag_table_id),
+                        tag.column_name,
+                        # tag value is an optional field, if tag value is not available use default tag value
+                        (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                    )
+                else:
+                    self.column_tags[tag_table_id] = {
+                        tag.column_name: [
+                            (
+                                tag.tag_name,
+                                tag.tag_value or DEFAULT_TAG_VALUE,
+                            )
+                        ]
+                    }
+        except Exception as exc:
+            logger.debug(f"Failed to fetch column tags due to - {exc}")
+
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
         if configured_catalog:
             self.set_inspector(database_name=configured_catalog)
+            self.populate_tags_cache(database_name=configured_catalog)
             yield configured_catalog
         else:
             for new_catalog in self.get_database_names_raw():
@@ -337,6 +435,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                     continue
                 try:
                     self.set_inspector(database_name=new_catalog)
+                    self.populate_tags_cache(database_name=new_catalog)
                     yield new_catalog
                 except Exception as exc:
                     logger.error(traceback.format_exc())
@@ -361,10 +460,8 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         Method to yield database tags
         """
         try:
-            tags = self.connection.execute(
-                DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)
-            )
-            for tag in tags:
+            catalog_tags = self.catalog_tags.get(database_name, [])
+            for tag_name, tag_value in catalog_tags:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
@@ -372,8 +469,8 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                         service_name=self.context.database_service,
                         database_name=database_name,
                     ),
-                    tags=[tag.tag_value],
-                    classification_name=tag.tag_name,
+                    tags=[tag_value],
+                    classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
                 )
@@ -394,12 +491,8 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         Method to yield schema tags
         """
         try:
-            tags = self.connection.execute(
-                DATABRICKS_GET_SCHEMA_TAGS.format(
-                    database_name=self.context.database, schema_name=schema_name
-                )
-            )
-            for tag in tags:
+            schema_tags = self.schema_tags.get((self.context.database, schema_name), [])
+            for tag_name, tag_value in schema_tags:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
@@ -408,8 +501,8 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                         database_name=self.context.database,
                         schema_name=schema_name,
                     ),
-                    tags=[tag.tag_value],
-                    classification_name=tag.tag_name,
+                    tags=[tag_value],
+                    classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
                 )
@@ -428,14 +521,10 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type
         try:
-            table_tags = self.connection.execute(
-                DATABRICKS_GET_TABLE_TAGS.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
-                    table_name=table_name,
-                )
+            table_tags = self.table_tags.get(
+                (self.context.database, self.context.database_schema, table_name), []
             )
-            for tag in table_tags:
+            for tag_name, tag_value in table_tags:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
                         self.metadata,
@@ -445,35 +534,32 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                         schema_name=self.context.database_schema,
                         table_name=table_name,
                     ),
-                    tags=[tag.tag_value],
-                    classification_name=tag.tag_name,
+                    tags=[tag_value],
+                    classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
                 )
 
-            column_tags = self.connection.execute(
-                DATABRICKS_GET_COLUMN_TAGS.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
-                    table_name=table_name,
-                )
+            column_tags = self.column_tags.get(
+                (self.context.database, self.context.database_schema, table_name), {}
             )
-            for tag in column_tags:
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn.build(
-                        self.metadata,
-                        Column,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
-                        table_name=table_name,
-                        column_name=tag.column_name,
-                    ),
-                    tags=[tag.tag_value],
-                    classification_name=tag.tag_name,
-                    tag_description=DATABRICKS_TAG,
-                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                )
+            for column_name, tags in column_tags.items():
+                for tag_name, tag_value in tags or []:
+                    yield from get_ometa_tag_and_classification(
+                        tag_fqn=fqn.build(
+                            self.metadata,
+                            Column,
+                            service_name=self.context.database_service,
+                            database_name=self.context.database,
+                            schema_name=self.context.database_schema,
+                            table_name=table_name,
+                            column_name=column_name,
+                        ),
+                        tags=[tag_value],
+                        classification_name=tag_name,
+                        tag_description=DATABRICKS_TAG,
+                        classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    )
 
         except Exception as exc:
             yield Either(

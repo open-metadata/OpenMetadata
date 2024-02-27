@@ -7,9 +7,13 @@ slug: /connectors/database/databricks/yaml
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures"]
-unavailableFeatures=["Owners"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags"]
+unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
+
+{% note %}
+As per the [documentation](https://docs.databricks.com/en/data-governance/unity-catalog/tags.html#manage-tags-with-sql-commands) here, note that we only support metadata `tag` extraction for databricks version 13.3 version and higher.
+{% /note %}
 
 In this section, we provide guides and references to use the Databricks connector.
 
