@@ -159,7 +159,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  }, [tableFqn]);
+  }, [tableFqn, viewUsagePermission]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {

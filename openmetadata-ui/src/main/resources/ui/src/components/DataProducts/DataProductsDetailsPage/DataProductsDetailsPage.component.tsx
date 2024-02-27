@@ -332,7 +332,7 @@ const DataProductsDetailsPage = ({
     }
   };
 
-  const onStyleSave = (data: Style) => {
+  const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
@@ -343,7 +343,7 @@ const DataProductsDetailsPage = ({
       style,
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
 

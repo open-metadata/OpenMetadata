@@ -201,7 +201,7 @@ const IncidentManagerDetailPage = () => {
       const jsonPatch = compare(data, updatedTestCase);
 
       if (jsonPatch.length && data.id) {
-        updateTestCase(data.id, jsonPatch);
+        await updateTestCase(data.id, jsonPatch);
       }
     }
   };

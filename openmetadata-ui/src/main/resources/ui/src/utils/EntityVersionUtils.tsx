@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import {
   ArrayChange,
   Change,
@@ -31,15 +31,11 @@ import {
 } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
-import { Link } from 'react-router-dom';
-import { ReactComponent as IconTeamsGrey } from '../assets/svg/teams-grey.svg';
 import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { getTeamAndUserDetailsPath, getUserPath } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
@@ -521,33 +517,6 @@ export function getEntityTagDiff<
 
   return entityList ?? [];
 }
-
-export const getOwnerInfo = (owner: EntityReference, ownerLabel: ReactNode) => {
-  const isTeamType = owner.type === 'team';
-
-  return (
-    <Space className="m-r-xss" size={4}>
-      {isTeamType ? (
-        <IconTeamsGrey height={18} width={18} />
-      ) : (
-        <ProfilePicture
-          displayName={getEntityName(owner)}
-          name={owner.name ?? ''}
-          textClass="text-xs"
-          width="20"
-        />
-      )}
-      <Link
-        to={
-          isTeamType
-            ? getTeamAndUserDetailsPath(owner.name ?? '')
-            : getUserPath(owner.name ?? '')
-        }>
-        {ownerLabel}
-      </Link>
-    </Space>
-  );
-};
 
 export const getEntityReferenceDiffFromFieldName = (
   fieldName: string,

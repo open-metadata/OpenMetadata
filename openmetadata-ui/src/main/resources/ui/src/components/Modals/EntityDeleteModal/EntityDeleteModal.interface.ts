@@ -14,7 +14,7 @@
 import { HTMLAttributes } from 'react';
 
 export interface EntityDeleteModalProp extends HTMLAttributes<HTMLDivElement> {
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
   onCancel: () => void;
   entityName: string;
   entityType: string;

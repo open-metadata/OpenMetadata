@@ -13,6 +13,7 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
+import { DefaultOptionType } from 'antd/lib/select';
 import React, { useState } from 'react';
 import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import './tag-select-fom.style.less';
@@ -30,15 +31,20 @@ const TagSelectForm = ({
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
 
+  const handleSave = async (data: {
+    tags: DefaultOptionType | DefaultOptionType[];
+  }) => {
+    setIsSubmitLoading(true);
+    await onSubmit(data.tags);
+    setIsSubmitLoading(false);
+  };
+
   return (
     <Form
       form={form}
       initialValues={{ tags: defaultValue }}
       name="tagsForm"
-      onFinish={(data) => {
-        setIsSubmitLoading(true);
-        onSubmit(data.tags);
-      }}>
+      onFinish={handleSave}>
       <Row gutter={[0, 8]}>
         <Col className="gutter-row d-flex justify-end" span={24}>
           <Space align="center">

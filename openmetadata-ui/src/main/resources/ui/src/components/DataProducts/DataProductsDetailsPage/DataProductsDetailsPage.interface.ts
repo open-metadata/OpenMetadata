@@ -16,7 +16,7 @@ export interface DataProductsDetailsPageProps {
   dataProduct: DataProduct;
   isVersionsView?: boolean;
   onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }
 
 export enum DataProductTabs {

@@ -136,7 +136,7 @@ const DocumentationTab = ({
     await onUpdate(updatedData as Domain | DataProduct);
   };
 
-  const handleExpertsUpdate = (data: Array<EntityReference>) => {
+  const handleExpertsUpdate = async (data: Array<EntityReference>) => {
     if (!isEqual(data, domain.experts)) {
       let updatedDomain = cloneDeep(domain);
       const oldExperts = data.filter((d) => includes(domain.experts, d));
@@ -152,7 +152,7 @@ const DocumentationTab = ({
         ...updatedDomain,
         experts: [...oldExperts, ...newExperts],
       };
-      onUpdate(updatedDomain);
+      await onUpdate(updatedDomain);
     }
   };
 

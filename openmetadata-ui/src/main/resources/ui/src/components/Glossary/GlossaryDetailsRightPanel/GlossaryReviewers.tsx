@@ -32,6 +32,7 @@ import {
   getDiffByFieldName,
   getRemovedDiffElement,
 } from '../../../utils/EntityVersionUtils';
+import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 
 interface GlossaryReviewersProps {
@@ -70,6 +71,7 @@ function GlossaryReviewers({
         <Space className="m-r-xss" key={reviewer.id} size={4}>
           <ProfilePicture
             displayName={getEntityName(reviewer)}
+            isTeam={reviewer.type === UserTeam.Team}
             name={reviewer.name ?? ''}
             textClass="text-xs"
             width="20"

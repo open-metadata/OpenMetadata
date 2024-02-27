@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
+import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -92,12 +93,14 @@ export const getServiceMainTabColumns = (
     key: 'owner',
     render: (owner: ServicePageData['owner']) =>
       !isUndefined(owner) ? (
-        <Space data-testid="owner-data">
-          <ProfilePicture name={owner.name ?? ''} width="24" />
-          <Typography.Text data-testid={`${owner.name}-owner-name`}>
-            {getEntityName(owner)}
-          </Typography.Text>
-        </Space>
+        <UserPopOverCard
+          showUserName
+          data-testid="owner-data"
+          displayName={owner.displayName}
+          profileWidth={20}
+          type={owner.type as UserTeam}
+          userName={owner.name ?? ''}
+        />
       ) : (
         <Typography.Text data-testid="no-owner-text">--</Typography.Text>
       ),
