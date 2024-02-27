@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -30,7 +30,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -48,10 +48,7 @@ import {
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getEntityVersionByField,
-  getMutuallyExclusiveDiff,
-} from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -65,7 +62,6 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../common/Table/Table';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
@@ -238,18 +234,6 @@ const ClassificationDetails = forwardRef(
       isClassificationDisabled,
     ]);
 
-    const handleUpdateMutuallyExclusive = async (value: boolean) => {
-      if (
-        !isUndefined(currentClassification) &&
-        !isUndefined(handleUpdateClassification)
-      ) {
-        handleUpdateClassification({
-          ...currentClassification,
-          mutuallyExclusive: value,
-        });
-      }
-    };
-
     const editDescriptionPermission = useMemo(
       () =>
         !isVersionView &&
@@ -388,16 +372,6 @@ const ClassificationDetails = forwardRef(
         : currentClassification?.description;
     }, [currentClassification, changeDescription]);
 
-    const mutuallyExclusive = useMemo(() => {
-      return isVersionView
-        ? getMutuallyExclusiveDiff(
-            changeDescription,
-            EntityField.MUTUALLY_EXCLUSIVE,
-            toString(currentClassification?.mutuallyExclusive)
-          )
-        : '';
-    }, [currentClassification, changeDescription]);
-
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
         fetchClassificationChildren(currentClassification.fullyQualifiedName);
@@ -418,7 +392,19 @@ const ClassificationDetails = forwardRef(
           <Row data-testid="header" wrap={false}>
             <Col flex="auto">
               <EntityHeaderTitle
-                badge={headerBadge}
+                badge={
+                  <div className="d-flex gap-1">
+                    {headerBadge}
+                    {currentClassification?.mutuallyExclusive && (
+                      <div data-testid="mutually-exclusive-container">
+                        <AppBadge
+                          bgColor={PRIMERY_COLOR}
+                          label={t('label.mutually-exclusive')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                }
                 className={classNames({
                   'opacity-60': isClassificationDisabled,
                 })}
@@ -506,37 +492,6 @@ const ClassificationDetails = forwardRef(
             onDescriptionEdit={handleEditDescriptionClick}
             onDescriptionUpdate={handleUpdateDescription}
           />
-        </div>
-
-        <div
-          className="m-b-md m-t-xs d-flex justify-end"
-          data-testid="mutually-exclusive-container">
-          <Space align="center" size="small">
-            <Typography.Text
-              className="text-grey-muted"
-              data-testid="mutually-exclusive-classification-label">
-              {t('label.mutually-exclusive')}
-            </Typography.Text>
-
-            {isVersionView ? (
-              <>
-                <Typography.Text>:</Typography.Text>
-                <RichTextEditorPreviewer
-                  className={classNames('font-medium', {
-                    'opacity-60': isClassificationDisabled,
-                  })}
-                  markdown={mutuallyExclusive}
-                />
-              </>
-            ) : (
-              <Switch
-                checked={currentClassification?.mutuallyExclusive}
-                data-testid="mutually-exclusive-classification-button"
-                disabled={isClassificationDisabled}
-                onChange={handleUpdateMutuallyExclusive}
-              />
-            )}
-          </Space>
         </div>
 
         <Space className="w-full m-b-md" direction="vertical" size="large">
