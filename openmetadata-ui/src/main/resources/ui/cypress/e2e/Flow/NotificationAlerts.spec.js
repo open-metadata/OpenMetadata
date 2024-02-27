@@ -48,10 +48,10 @@ import {
   USER_DETAILS,
 } from '../../constants/EntityConstant';
 
-const TRIGGER_NAME_1 = 'all';
-const TRIGGER_DISPLAY_NAME_1 = 'All';
-const TRIGGER_NAME_2 = 'dashboard';
-const TRIGGER_DISPLAY_NAME_2 = 'Dashboard';
+const SOURCE_NAME_1 = 'all';
+const SOURCE_DISPLAY_NAME_1 = 'All';
+const SOURCE_NAME_2 = 'dashboard';
+const SOURCE_DISPLAY_NAME_2 = 'Dashboard';
 
 describe('Notification Alert Flow', { tags: 'Settings' }, () => {
   let data = {};
@@ -140,18 +140,18 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
 
-    // Select all trigger
-    cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+    // Select all source
+    cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
 
     cy.get(
-      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+      `[data-testid="drop-down-menu"] [data-testid="${SOURCE_NAME_1}-option"]`
     )
-      .contains(TRIGGER_DISPLAY_NAME_1)
+      .contains(SOURCE_DISPLAY_NAME_1)
       .click();
 
-    cy.get('[data-testid="trigger-select"]').should(
+    cy.get('[data-testid="source-select"]').should(
       'contain',
-      TRIGGER_DISPLAY_NAME_1
+      SOURCE_DISPLAY_NAME_1
     );
 
     // Select filters
@@ -205,13 +205,13 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Update description
     cy.get(descriptionBox).click().clear().type(ALERT_UPDATED_DESCRIPTION);
 
-    // Update trigger
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-    cy.get(`[data-testid="${TRIGGER_NAME_2}-option"]`)
-      .contains(TRIGGER_DISPLAY_NAME_2)
+    // Update source
+    cy.get('[data-testid="source-select"]').scrollIntoView().click();
+    cy.get(`[data-testid="${SOURCE_NAME_2}-option"]`)
+      .contains(SOURCE_DISPLAY_NAME_2)
       .click();
 
-    // Filters should reset after trigger change
+    // Filters should reset after source change
     cy.get('[data-testid="filter-select-0"]').should('not.exist');
 
     // Add multiple filters
@@ -272,18 +272,18 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
 
-    // Select all trigger
-    cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+    // Select all source
+    cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
 
     cy.get(
-      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+      `[data-testid="drop-down-menu"] [data-testid="${SOURCE_NAME_1}-option"]`
     )
-      .contains(TRIGGER_DISPLAY_NAME_1)
+      .contains(SOURCE_DISPLAY_NAME_1)
       .click();
 
-    cy.get('[data-testid="trigger-select"]').should(
+    cy.get('[data-testid="source-select"]').should(
       'contain',
-      TRIGGER_DISPLAY_NAME_1
+      SOURCE_DISPLAY_NAME_1
     );
 
     // Add multiple filters

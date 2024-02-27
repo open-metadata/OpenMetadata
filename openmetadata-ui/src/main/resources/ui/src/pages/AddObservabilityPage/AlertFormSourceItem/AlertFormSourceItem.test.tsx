@@ -49,7 +49,7 @@ describe('AlertFormSourceItem', () => {
       screen.getByText('message.alerts-source-description')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('add-trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId('add-source-button')).toBeInTheDocument();
   });
 
   it('should render the trigger select when fqn is provided', () => {
@@ -61,14 +61,14 @@ describe('AlertFormSourceItem', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.getByTestId('trigger-select')).toBeInTheDocument();
+    expect(screen.getByTestId('source-select')).toBeInTheDocument();
   });
 
   it('should display select dropdown when clicked on add trigger button', async () => {
     render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
       wrapper: MemoryRouter,
     });
-    const addButton = screen.getByTestId('add-trigger-button');
+    const addButton = screen.getByTestId('add-source-button');
     await act(async () => {
       userEvent.click(addButton);
     });

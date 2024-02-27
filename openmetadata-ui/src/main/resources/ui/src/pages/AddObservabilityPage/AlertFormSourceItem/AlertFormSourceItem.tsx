@@ -65,7 +65,7 @@ function AlertFormSourceItem({
     [filterResources]
   );
 
-  const handleTriggerChange = (value: string) => {
+  const handleSourceChange = (value: string) => {
     form.setFieldValue('input', {});
     setSelectedResource([value]);
     form.setFieldValue('resources', [value]);
@@ -75,7 +75,7 @@ function AlertFormSourceItem({
     return (
       <Card
         bodyStyle={{ padding: 0 }}
-        className="trigger-dropdown-card"
+        className="source-dropdown-card"
         data-testid="drop-down-menu">
         <Typography.Text className="p-l-md text-grey-muted">
           {t('label.data-asset-plural')}
@@ -112,7 +112,7 @@ function AlertFormSourceItem({
             {t('message.alerts-source-description')}
           </Typography.Text>
         </Col>
-        <Col className="trigger-input-container" ref={newRef} span={24}>
+        <Col className="source-input-container" ref={newRef} span={24}>
           <Form.Item
             required
             initialValue={
@@ -135,13 +135,13 @@ function AlertFormSourceItem({
             {isEditMode || fqn ? (
               <Select
                 className="w-full"
-                data-testid="trigger-select"
+                data-testid="source-select"
                 options={resourcesOptions}
                 placeholder={t('label.select-field', {
                   field: t('label.data-asset-plural'),
                 })}
                 value={selectedResource[0]}
-                onChange={handleTriggerChange}
+                onChange={handleSourceChange}
               />
             ) : (
               <Dropdown
@@ -154,9 +154,9 @@ function AlertFormSourceItem({
                 }}
                 placement="bottomRight"
                 trigger={['click']}>
-                <Button data-testid="add-trigger-button" type="primary">
+                <Button data-testid="add-source-button" type="primary">
                   {t('label.add-entity', {
-                    entity: t('label.trigger'),
+                    entity: t('label.source'),
                   })}
                 </Button>
               </Dropdown>
