@@ -409,10 +409,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updateResultSummaries(testCase, isDeleted, resultSummaries, resultSummary);
 
       // Update test case result summary attribute for the test suite
-      TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-      TestSuite original = TestSuiteRepository.copyTestSuite(testSuite); // we'll need the original state to update the test suite
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      TestSuite original =
+          TestSuiteRepository.copyTestSuite(
+              testSuite); // we'll need the original state to update the test suite
       testSuite.setTestCaseResultSummary(resultSummaries);
-      EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater = testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+      EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+          testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
       testSuiteUpdater.update();
     }
   }
@@ -651,10 +655,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
     resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(testCaseFqn));
 
-    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite original = TestSuiteRepository.copyTestSuite(testSuite);  // we'll need the original state to update the test suite
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite original =
+        TestSuiteRepository.copyTestSuite(
+            testSuite); // we'll need the original state to update the test suite
     testSuite.setTestCaseResultSummary(resultSummaries);
-    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater = testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+        testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
     testSuiteUpdater.update();
   }
 

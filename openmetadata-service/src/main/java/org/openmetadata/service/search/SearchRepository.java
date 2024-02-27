@@ -670,7 +670,7 @@ public class SearchRepository {
   }
 
   public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
-          throws IOException {
+      throws IOException {
     return searchClient.aggregate(query, index, aggregationJson);
   }
 

@@ -122,12 +122,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
     // Initialize the test summary with 0 values
-    TestSummary testSummary = new TestSummary()
-            .withAborted(0)
-            .withFailed(0)
-            .withSuccess(0)
-            .withQueued(0)
-            .withTotal(0);
+    TestSummary testSummary =
+        new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
     JsonObject summary = aggregation.getJsonObject("nested#testCaseResultSummary");
     testSummary.setTotal(summary.getJsonNumber("doc_count").intValue());
 
@@ -156,7 +152,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public TestSummary getTestSummary(UUID testSuiteId) throws IOException {
-    String aggregationQuery = """
+    String aggregationQuery =
+        """
             {
               "aggregations": {
                 "test_case_results": {
@@ -177,10 +174,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     JsonObject aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
     TestSummary testSummary;
     if (testSuiteId == null) {
-      JsonObject testCaseResultSummary = searchRepository.aggregate(null, TEST_SUITE, aggregationJson);
+      JsonObject testCaseResultSummary =
+          searchRepository.aggregate(null, TEST_SUITE, aggregationJson);
       testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
     } else {
-      String query = """
+      String query =
+          """
             {
               "query": {
                 "bool": {
@@ -190,9 +189,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
                 }
               }
             }
-        """.formatted(testSuiteId);
+        """
+              .formatted(testSuiteId);
       // don't want to get it from the cache as test results summary may be stale
-      JsonObject testCaseResultSummary = searchRepository.aggregate(query, TEST_SUITE, aggregationJson);
+      JsonObject testCaseResultSummary =
+          searchRepository.aggregate(query, TEST_SUITE, aggregationJson);
       testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
     }
     return testSummary;
@@ -265,22 +266,22 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   public static TestSuite copyTestSuite(TestSuite testSuite) {
     return new TestSuite()
-            .withConnection(testSuite.getConnection())
-            .withDescription(testSuite.getDescription())
-            .withChangeDescription(testSuite.getChangeDescription())
-            .withDeleted(testSuite.getDeleted())
-            .withDisplayName(testSuite.getDisplayName())
-            .withFullyQualifiedName(testSuite.getFullyQualifiedName())
-            .withHref(testSuite.getHref())
-            .withId(testSuite.getId())
-            .withName(testSuite.getName())
-            .withExecutable(testSuite.getExecutable())
-            .withExecutableEntityReference(testSuite.getExecutableEntityReference())
-            .withServiceType(testSuite.getServiceType())
-            .withOwner(testSuite.getOwner())
-            .withUpdatedBy(testSuite.getUpdatedBy())
-            .withUpdatedAt(testSuite.getUpdatedAt())
-            .withVersion(testSuite.getVersion());
+        .withConnection(testSuite.getConnection())
+        .withDescription(testSuite.getDescription())
+        .withChangeDescription(testSuite.getChangeDescription())
+        .withDeleted(testSuite.getDeleted())
+        .withDisplayName(testSuite.getDisplayName())
+        .withFullyQualifiedName(testSuite.getFullyQualifiedName())
+        .withHref(testSuite.getHref())
+        .withId(testSuite.getId())
+        .withName(testSuite.getName())
+        .withExecutable(testSuite.getExecutable())
+        .withExecutableEntityReference(testSuite.getExecutableEntityReference())
+        .withServiceType(testSuite.getServiceType())
+        .withOwner(testSuite.getOwner())
+        .withUpdatedBy(testSuite.getUpdatedBy())
+        .withUpdatedAt(testSuite.getUpdatedAt())
+        .withVersion(testSuite.getVersion());
   }
 
   public class TestSuiteUpdater extends EntityUpdater {
@@ -293,10 +294,13 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     public void entitySpecificUpdate() {
       List<EntityReference> origTests = listOrEmpty(original.getTests());
       List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
-      List<ResultSummary> origTestCaseResultSummary = listOrEmpty(original.getTestCaseResultSummary());
-      List<ResultSummary> updatedTestCaseResultSummary = listOrEmpty(updated.getTestCaseResultSummary());
+      List<ResultSummary> origTestCaseResultSummary =
+          listOrEmpty(original.getTestCaseResultSummary());
+      List<ResultSummary> updatedTestCaseResultSummary =
+          listOrEmpty(updated.getTestCaseResultSummary());
       recordChange(UPDATE_FIELDS, origTests, updatedTests);
-      recordChange("testCaseResultSummary", origTestCaseResultSummary, updatedTestCaseResultSummary);
+      recordChange(
+          "testCaseResultSummary", origTestCaseResultSummary, updatedTestCaseResultSummary);
     }
   }
 }

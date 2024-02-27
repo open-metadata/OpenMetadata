@@ -735,23 +735,23 @@ public class OpenSearchClient implements SearchClient {
     List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
     for (String key : aggregations.keySet()) {
       JsonObject aggregation = aggregations.getJsonObject(key);
-      for ( String aggregationType : aggregation.keySet()) {
+      for (String aggregationType : aggregation.keySet()) {
         switch (aggregationType) {
           case "terms":
             JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
-            TermsAggregationBuilder termsAggregationBuilder = AggregationBuilders.terms(key)
-                    .field(termAggregation.getString("field"));
+            TermsAggregationBuilder termsAggregationBuilder =
+                AggregationBuilders.terms(key).field(termAggregation.getString("field"));
             aggregationBuilders.add(termsAggregationBuilder);
             break;
           case "nested":
             JsonObject nestedAggregation = aggregation.getJsonObject("nested");
-            AggregationBuilder nestedAggregationBuilder = AggregationBuilders.nested(
-                    nestedAggregation.getString("path"),
-                    nestedAggregation.getString("path")
-            );
+            AggregationBuilder nestedAggregationBuilder =
+                AggregationBuilders.nested(
+                    nestedAggregation.getString("path"), nestedAggregation.getString("path"));
             JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
 
-            List<AggregationBuilder> nestedAggregationBuilders = buildAggregation(nestedAggregations);
+            List<AggregationBuilder> nestedAggregationBuilders =
+                buildAggregation(nestedAggregations);
             for (AggregationBuilder nestedAggregationBuilder1 : nestedAggregationBuilders) {
               nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
             }
@@ -766,30 +766,29 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException {
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
     JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
     if (aggregations == null) {
       return null;
     }
 
     List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregations);
-    os.org.opensearch.action.search.SearchRequest searchRequest = new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index)
-    );
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (query != null) {
       XContentParser queryParser =
-              XContentType.JSON
-                      .xContent()
-                      .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+          XContentType.JSON
+              .xContent()
+              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
       QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
     }
 
-    searchSourceBuilder
-            .size(0)
-            .timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
     for (AggregationBuilder aggregation : aggregationBuilder) {
       searchSourceBuilder.aggregation(aggregation);

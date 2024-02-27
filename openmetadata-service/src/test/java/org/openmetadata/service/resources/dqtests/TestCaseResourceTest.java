@@ -460,11 +460,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase1.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
-    TestSuite testSuite = testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       // test we get the right summary for the executable test suite
       TestSummary executableTestSummary =
-              getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
+          getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
       assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
     }
 
@@ -472,34 +473,36 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       TestSummary logicalTestSummary =
-              getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+          getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
       assertEquals(1, logicalTestSummary.getTotal());
     }
     testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
-      TestSummary logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+      TestSummary logicalTestSummary =
+          getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
       assertEquals(2, logicalTestSummary.getTotal());
     }
     deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
     testSuite =
-            testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
 
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       TestSummary executableTestSummary =
-              getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
+          getTestSummary(ADMIN_AUTH_HEADERS, testCase.getTestSuite().getId().toString());
       assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
-      TestSummary logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+      TestSummary logicalTestSummary =
+          getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
       assertEquals(2, logicalTestSummary.getTotal());
     }
     // check the deletion of the test case from the executable test suite
     // cascaded to the logical test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
-
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
-      TestSummary logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
+      TestSummary logicalTestSummary =
+          getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
       // check the deletion of the test case from the logical test suite is reflected in the summary
       assertEquals(1, logicalTestSummary.getTotal());
     }
