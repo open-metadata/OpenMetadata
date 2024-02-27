@@ -81,6 +81,8 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void setFullyQualifiedName(Container container) {
+    container.setParent(
+        container.getParent() != null ? container.getParent() : getParent(container));
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
           FullyQualifiedName.add(
