@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { PropertyValue } from './PropertyValue';
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
@@ -42,16 +43,18 @@ const mockUpdate = jest.fn();
 
 const mockData = {
   extension: { yNumber: 87 },
-  propertyName: 'yNumber',
-  propertyType: {
-    id: '73f1e4a4-4c62-4399-9d6d-4a3906851483',
-    type: 'type',
-    name: 'integer',
-    fullyQualifiedName: 'integer',
-    description: '"An integer type."',
-    displayName: 'integer',
-    href: 'http://localhost:8585/api/v1/metadata/types/73f1e4a4-4c62-4399-9d6d-4a3906851483',
-  },
+  property: {
+    propertyName: 'yNumber',
+    propertyType: {
+      id: '73f1e4a4-4c62-4399-9d6d-4a3906851483',
+      type: 'type',
+      name: 'integer',
+      fullyQualifiedName: 'integer',
+      description: '"An integer type."',
+      displayName: 'integer',
+      href: 'http://localhost:8585/api/v1/metadata/types/73f1e4a4-4c62-4399-9d6d-4a3906851483',
+    },
+  } as unknown as CustomProperty,
   onExtensionUpdate: mockUpdate,
   hasEditPermissions: true,
 };
@@ -81,12 +84,15 @@ describe('Test PropertyValue Component', () => {
 
   it('Should render richtext previewer component for markdown type', async () => {
     const extension = { yNumber: 'markdown value' };
-    const propertyType = { ...mockData.propertyType, name: 'markdown' };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'markdown',
+    };
     render(
       <PropertyValue
         {...mockData}
         extension={extension}
-        propertyType={propertyType}
+        property={{ ...mockData.property, propertyType: propertyType }}
       />
     );
 

@@ -12,25 +12,25 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, toNumber } from 'lodash';
+import { isUndefined, startCase, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/type/entityReference';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import InlineEdit from '../InlineEdit/InlineEdit.component';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
   versionDataKeys?: string[];
   isVersionView?: boolean;
-  propertyName: string;
-  propertyType: EntityReference;
+  property: CustomProperty;
   extension: Table['extension'];
   onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
   hasEditPermissions: boolean;
@@ -39,16 +39,20 @@ interface Props {
 export const PropertyValue: FC<Props> = ({
   isVersionView,
   versionDataKeys,
-  propertyName,
   extension,
-  propertyType,
   onExtensionUpdate,
   hasEditPermissions,
+  property,
 }) => {
+  const propertyName = property.name;
+  const propertyType = property.propertyType;
+
   const value = extension?.[propertyName];
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [enumValue, setEnumValue] = useState<string>(value ?? '');
 
   const onShowInput = () => {
     setShowInput(true);
@@ -105,6 +109,29 @@ export const PropertyValue: FC<Props> = ({
             onSave={onInputSave}
           />
         );
+      case 'enum': {
+        const config = property.customPropertyConfig?.config as string[];
+        const options = config?.map((option) => ({
+          label: startCase(option),
+          value: option,
+        }));
+
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            onCancel={onHideInput}
+            onSave={() => onInputSave(enumValue)}>
+            <Select
+              data-testid="enum-select"
+              defaultValue={enumValue}
+              disabled={isLoading}
+              options={options}
+              style={{ width: '250px' }}
+              onChange={(updatedValue: string) => setEnumValue(updatedValue)}
+            />
+          </InlineEdit>
+        );
+      }
 
       default:
         return null;

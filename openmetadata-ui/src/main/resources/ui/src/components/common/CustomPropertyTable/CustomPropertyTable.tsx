@@ -169,8 +169,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             extension={extensionObject.extensionObject}
             hasEditPermissions={hasEditAccess}
             isVersionView={isVersionView}
-            propertyName={record.name}
-            propertyType={record.propertyType}
+            property={record}
             versionDataKeys={extensionObject.addedKeysList}
             onExtensionUpdate={onExtensionUpdate}
           />
