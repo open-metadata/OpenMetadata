@@ -53,12 +53,14 @@ interface Props {
   showActions?: boolean;
   showCommentsIcon?: boolean;
   reduceDescription?: boolean;
+  className?: string;
 }
 const DescriptionV1 = ({
   hasEditAccess,
   onDescriptionEdit,
   description = '',
   isEdit,
+  className,
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
@@ -164,7 +166,7 @@ const DescriptionV1 = ({
 
   const content = (
     <Space
-      className="schema-description d-flex"
+      className={`schema-description d-flex ${className}`}
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>

@@ -57,7 +57,7 @@ import {
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
-import Description from '../../common/EntityDescription/Description';
+import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
@@ -480,14 +480,16 @@ const ClassificationDetails = forwardRef(
         )}
 
         <div className="m-b-sm m-t-xs" data-testid="description-container">
-          <Description
+          <DescriptionV1
             className={classNames({
-              'opacity-60': isClassificationDisabled,
+              'opacity-60': !isClassificationDisabled,
             })}
             description={description}
             entityName={getEntityName(currentClassification)}
+            entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}
             isEdit={isEditClassification}
+            showCommentsIcon={false}
             onCancel={handleCancelEditDescription}
             onDescriptionEdit={handleEditDescriptionClick}
             onDescriptionUpdate={handleUpdateDescription}
