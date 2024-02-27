@@ -161,8 +161,6 @@ class OpenlineageSource(PipelineServiceSource):
                 schema_name=table_details.schema,
                 database_name=None,
             )
-            if result:
-                return result
         if not result:
             raise FQNNotFoundException(
                 f"Table FQN not found for table: {table_details} within services: {services}"
@@ -315,8 +313,6 @@ class OpenlineageSource(PipelineServiceSource):
                 )
 
                 return Either(right=request)
-        else:
-            pass
 
         return None
 
