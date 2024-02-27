@@ -77,6 +77,7 @@ const RelatedTerms = ({
     if (!isArray(selectedData)) {
       return;
     }
+
     const newOptions = uniqWith(
       options,
       (arrVal, othVal) => arrVal.id === othVal.id

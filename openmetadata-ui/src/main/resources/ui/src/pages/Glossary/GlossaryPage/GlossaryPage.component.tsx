@@ -293,35 +293,36 @@ const GlossaryPage = () => {
     [selectedData]
   );
 
-  const handleGlossaryTermDelete = (id: string) => {
-    setDeleteStatus(LOADING_STATE.WAITING);
-    deleteGlossaryTerm(id)
-      .then(() => {
-        setDeleteStatus(LOADING_STATE.SUCCESS);
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary-term'),
-          })
-        );
-        let fqn;
-        if (glossaryFqn) {
-          const fqnArr = Fqn.split(glossaryFqn);
-          fqnArr.pop();
-          fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
-        }
-        setIsLoading(true);
-        history.push(getGlossaryPath(fqn));
-        fetchGlossaryList();
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.delete-entity-error', {
-            entity: t('label.glossary-term'),
-          })
-        );
-      })
-      .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
+  const handleGlossaryTermDelete = async (id: string) => {
+    try {
+      setDeleteStatus(LOADING_STATE.WAITING);
+      await deleteGlossaryTerm(id);
+
+      setDeleteStatus(LOADING_STATE.SUCCESS);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.glossary-term'),
+        })
+      );
+      let fqn;
+      if (glossaryFqn) {
+        const fqnArr = Fqn.split(glossaryFqn);
+        fqnArr.pop();
+        fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
+      }
+      setIsLoading(true);
+      history.push(getGlossaryPath(fqn));
+      fetchGlossaryList();
+    } catch (err) {
+      showErrorToast(
+        err,
+        t('server.delete-entity-error', {
+          entity: t('label.glossary-term'),
+        })
+      );
+    } finally {
+      setDeleteStatus(LOADING_STATE.INITIAL);
+    }
   };
 
   const handleAssetClick = useCallback(

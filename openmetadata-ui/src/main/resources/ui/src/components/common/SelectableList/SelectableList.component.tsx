@@ -260,7 +260,10 @@ export const SelectableList = ({
         />
       }
       itemLayout="vertical"
-      loading={{ spinning: fetching || updating, indicator: <Loader /> }}
+      loading={{
+        spinning: fetching || updating,
+        indicator: <Loader size="small" />,
+      }}
       locale={{
         emptyText: emptyPlaceholderText ?? t('message.no-data-available'),
       }}

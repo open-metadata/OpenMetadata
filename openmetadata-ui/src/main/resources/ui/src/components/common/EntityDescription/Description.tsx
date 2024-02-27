@@ -38,6 +38,10 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import { DescriptionProps } from './Description.interface';
 
+/**
+ * @deprecated will be removed
+ * Use DescriptionV1 instead
+ */
 const Description: FC<DescriptionProps> = ({
   className,
   header,

@@ -12,7 +12,6 @@
  */
 import { Button, Popover, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -46,7 +45,7 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
-  onUpdate = noop,
+  onUpdate,
   children,
   popoverProps,
   multiSelect = false,
@@ -96,11 +95,11 @@ export const PersonaSelectableList = ({
   };
 
   const handleUpdate = useCallback(
-    (users: EntityReference[]) => {
+    async (users: EntityReference[]) => {
       if (multiSelect) {
-        (onUpdate as (users: EntityReference[]) => void)(users);
+        await (onUpdate as (users: EntityReference[]) => Promise<void>)(users);
       } else {
-        (onUpdate as (users: EntityReference) => void)(users[0]);
+        await (onUpdate as (users: EntityReference) => Promise<void>)(users[0]);
       }
 
       setPopupVisible(false);
