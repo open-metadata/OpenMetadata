@@ -234,7 +234,7 @@ const AddCustomProperty = () => {
     props: {
       'data-testid': 'customPropertyConfig',
       mode: 'tags',
-      placeholder: 'Config',
+      placeholder: t('label.enum-value-plural'),
     },
     rules: [
       {

@@ -72,7 +72,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     props: {
       'data-testid': 'customPropertyConfig',
       mode: 'tags',
-      placeholder: 'Config',
+      placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
         const updatedValues = uniq([
           ...value,
