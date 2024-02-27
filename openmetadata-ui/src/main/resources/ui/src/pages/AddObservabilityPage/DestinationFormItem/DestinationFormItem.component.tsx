@@ -41,6 +41,7 @@ import { CreateEventSubscription } from '../../../generated/events/api/createEve
 import { SubscriptionCategory } from '../../../generated/events/eventSubscription';
 import {
   getDestinationConfigField,
+  getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
   listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtil';
@@ -89,15 +90,10 @@ function DestinationFormItem({
 
   const handleTabChange = useCallback(
     (key) => {
-      const newOptions =
-        DESTINATION_SOURCE_ITEMS[key as keyof typeof DESTINATION_SOURCE_ITEMS];
-      const filteredOptions = newOptions.filter((option) =>
-        selectedTrigger === 'task'
-          ? true
-          : option.value !== SubscriptionCategory.Assignees
-      );
       setActiveTab(key);
-      setDestinationOptions(filteredOptions);
+      setDestinationOptions(
+        getFilteredDestinationOptions(key, selectedTrigger)
+      );
     },
     [selectedTrigger]
   );
@@ -141,13 +137,13 @@ function DestinationFormItem({
     if (isOpen) {
       return;
     }
-    const filteredOptions = DESTINATION_SOURCE_ITEMS.internal.filter((option) =>
-      selectedTrigger === 'task'
-        ? true
-        : option.value !== SubscriptionCategory.Assignees
-    );
     setActiveTab(DESTINATION_DROPDOWN_TABS.internal);
-    setDestinationOptions(filteredOptions);
+    setDestinationOptions(
+      getFilteredDestinationOptions(
+        DESTINATION_DROPDOWN_TABS.internal,
+        selectedTrigger
+      )
+    );
   };
 
   const getHiddenDestinationFields = (
@@ -179,10 +175,9 @@ function DestinationFormItem({
 
   useEffect(() => {
     setDestinationOptions(
-      DESTINATION_SOURCE_ITEMS.internal.filter((option) =>
-        selectedTrigger === 'task'
-          ? true
-          : option.value !== SubscriptionCategory.Assignees
+      getFilteredDestinationOptions(
+        DESTINATION_DROPDOWN_TABS.internal,
+        selectedTrigger
       )
     );
   }, [selectedTrigger]);
