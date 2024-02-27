@@ -52,6 +52,8 @@ const SOURCE_NAME_1 = 'all';
 const SOURCE_DISPLAY_NAME_1 = 'All';
 const SOURCE_NAME_2 = 'dashboard';
 const SOURCE_DISPLAY_NAME_2 = 'Dashboard';
+const SOURCE_NAME_3 = 'task';
+const SOURCE_DISPLAY_NAME_3 = 'Task';
 
 describe('Notification Alert Flow', { tags: 'Settings' }, () => {
   let data = {};
@@ -364,6 +366,58 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
   });
 
   it('Delete alert with multiple filters', () => {
+    deleteAlertSteps(ALERT_NAME);
+  });
+
+  it('Create alert for task source', () => {
+    verifyResponseStatusCode('@alertsPage', 200);
+
+    cy.get('[data-testid="create-notification"]').click();
+
+    // Enter alert name
+    cy.get('#name').type(ALERT_NAME);
+
+    // Enter description
+    cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
+
+    // Select all source
+    cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
+
+    cy.get(
+      `[data-testid="drop-down-menu"] [data-testid="${SOURCE_NAME_3}-option"]`
+    )
+      .contains(SOURCE_DISPLAY_NAME_3)
+      .click();
+
+    cy.get('[data-testid="source-select"]').should(
+      'contain',
+      SOURCE_DISPLAY_NAME_3
+    );
+
+    // Select Destination
+    cy.get('[data-testid="add-destination-button"]').scrollIntoView().click();
+
+    addInternalDestination(0, 'Owners', 'Email');
+
+    cy.get('[data-testid="add-destination-button"]').scrollIntoView().click();
+
+    addInternalDestination(1, 'Assignees', 'Email');
+
+    // Click save
+    cy.get('[data-testid="save-button"]').scrollIntoView().click();
+    cy.wait('@createAlert').then((interception) => {
+      data.alertDetails = interception.response.body;
+
+      expect(interception.response.statusCode).equal(201);
+    });
+    toastNotification('Alerts created successfully.');
+
+    // Check if the alert details page is visible
+    verifyResponseStatusCode('@alertDetails', 200);
+    cy.get('[data-testid="alert-details-container"]').should('exist');
+  });
+
+  it('Delete alert for task source', () => {
     deleteAlertSteps(ALERT_NAME);
   });
 });
