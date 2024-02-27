@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Row,
+  Space,
+  Tag as AntdTag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -48,10 +56,7 @@ import {
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getEntityVersionByField,
-  getMutuallyExclusiveDiff,
-} from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -65,7 +70,6 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../common/Table/Table';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
@@ -238,18 +242,6 @@ const ClassificationDetails = forwardRef(
       isClassificationDisabled,
     ]);
 
-    const handleUpdateMutuallyExclusive = async (value: boolean) => {
-      if (
-        !isUndefined(currentClassification) &&
-        !isUndefined(handleUpdateClassification)
-      ) {
-        handleUpdateClassification({
-          ...currentClassification,
-          mutuallyExclusive: value,
-        });
-      }
-    };
-
     const editDescriptionPermission = useMemo(
       () =>
         !isVersionView &&
@@ -388,16 +380,6 @@ const ClassificationDetails = forwardRef(
         : currentClassification?.description;
     }, [currentClassification, changeDescription]);
 
-    const mutuallyExclusive = useMemo(() => {
-      return isVersionView
-        ? getMutuallyExclusiveDiff(
-            changeDescription,
-            EntityField.MUTUALLY_EXCLUSIVE,
-            toString(currentClassification?.mutuallyExclusive)
-          )
-        : '';
-    }, [currentClassification, changeDescription]);
-
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
         fetchClassificationChildren(currentClassification.fullyQualifiedName);
@@ -512,29 +494,8 @@ const ClassificationDetails = forwardRef(
           className="m-b-md m-t-xs d-flex justify-end"
           data-testid="mutually-exclusive-container">
           <Space align="center" size="small">
-            <Typography.Text
-              className="text-grey-muted"
-              data-testid="mutually-exclusive-classification-label">
-              {t('label.mutually-exclusive')}
-            </Typography.Text>
-
-            {isVersionView ? (
-              <>
-                <Typography.Text>:</Typography.Text>
-                <RichTextEditorPreviewer
-                  className={classNames('font-medium', {
-                    'opacity-60': isClassificationDisabled,
-                  })}
-                  markdown={mutuallyExclusive}
-                />
-              </>
-            ) : (
-              <Switch
-                checked={currentClassification?.mutuallyExclusive}
-                data-testid="mutually-exclusive-classification-button"
-                disabled={isClassificationDisabled}
-                onChange={handleUpdateMutuallyExclusive}
-              />
+            {currentClassification?.mutuallyExclusive && (
+              <AntdTag>{t('label.mutually-exclusive')}</AntdTag>
             )}
           </Space>
         </div>
