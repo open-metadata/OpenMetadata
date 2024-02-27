@@ -22,8 +22,10 @@ import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { UserTeam } from '../../../common/AssigneeList/AssigneeList.interface';
 import Description from '../../../common/EntityDescription/Description';
 import Loader from '../../../common/Loader/Loader';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsInput from '../../../TagsInput/TagsInput.component';
@@ -104,18 +106,12 @@ const TableQueryRightPanel = ({
               </Space>
               <div data-testid="owner-name-container">
                 {query.owner && getEntityName(query.owner) ? (
-                  <Space className="m-r-xss" size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(query.owner)}
-                      name={query.owner?.name || ''}
-                      width="20"
-                    />
-                    <Link
-                      data-testid="owner-link"
-                      to={getUserPath(query.owner.name ?? '')}>
-                      {getEntityName(query.owner)}
-                    </Link>
-                  </Space>
+                  <UserPopOverCard
+                    showUserName
+                    className="m-r-xss"
+                    type={query.owner.type as UserTeam}
+                    userName={query.owner.name || ''}
+                  />
                 ) : (
                   <span className="text-grey-muted">
                     {t('label.no-entity', {

@@ -267,56 +267,55 @@ const TagsPage = () => {
    * @param categoryName - tag category name
    * @param tagId -  tag id
    */
-  const handleDeleteTag = (tagId: string) => {
-    deleteTag(tagId)
-      .then((res) => {
-        if (res) {
-          if (currentClassification) {
-            setDeleteStatus(LOADING_STATE.SUCCESS);
-            setClassifications((prev) =>
-              prev.map((item) => {
-                if (
-                  item.fullyQualifiedName ===
-                  currentClassification.fullyQualifiedName
-                ) {
-                  return {
-                    ...item,
-                    termCount: (item.termCount ?? 0) - 1,
-                  };
-                }
+  const handleDeleteTag = async (tagId: string) => {
+    try {
+      const res = await deleteTag(tagId);
 
-                return item;
-              })
-            );
-          }
-          classificationDetailsRef.current?.refreshClassificationTags();
-        } else {
-          showErrorToast(
-            t('server.delete-entity-error', {
-              entity: t('label.tag-lowercase'),
+      if (res) {
+        if (currentClassification) {
+          setDeleteStatus(LOADING_STATE.SUCCESS);
+          setClassifications((prev) =>
+            prev.map((item) => {
+              if (
+                item.fullyQualifiedName ===
+                currentClassification.fullyQualifiedName
+              ) {
+                return {
+                  ...item,
+                  termCount: (item.termCount ?? 0) - 1,
+                };
+              }
+
+              return item;
             })
           );
         }
-      })
-      .catch((err: AxiosError) => {
+        classificationDetailsRef.current?.refreshClassificationTags();
+      } else {
         showErrorToast(
-          err,
-          t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+          t('server.delete-entity-error', {
+            entity: t('label.tag-lowercase'),
+          })
         );
-      })
-      .finally(() => {
-        setDeleteTags({ data: undefined, state: false });
-        setDeleteStatus(LOADING_STATE.INITIAL);
-      });
+      }
+    } catch (err) {
+      showErrorToast(
+        err,
+        t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+      );
+    } finally {
+      setDeleteTags({ data: undefined, state: false });
+      setDeleteStatus(LOADING_STATE.INITIAL);
+    }
   };
 
   /**
    * It redirects to respective function call based on tag/Classification
    */
-  const handleConfirmClick = () => {
+  const handleConfirmClick = async () => {
     if (deleteTags.data?.id) {
       setDeleteStatus(LOADING_STATE.WAITING);
-      handleDeleteTag(deleteTags.data.id);
+      await handleDeleteTag(deleteTags.data.id);
     }
   };
 
