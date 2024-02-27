@@ -47,7 +47,7 @@ interface GlossaryTermReferencesProps {
   isVersionView?: boolean;
   glossaryTerm: GlossaryTerm;
   permissions: OperationPermission;
-  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
+  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
 }
 
 const GlossaryTermReferences = ({
@@ -74,7 +74,7 @@ const GlossaryTermReferences = ({
           references: updatedRef,
         };
 
-        onGlossaryTermUpdate(updatedGlossaryTerm);
+        await onGlossaryTermUpdate(updatedGlossaryTerm);
         if (updateState) {
           setReferences(updatedRef);
         }
@@ -83,10 +83,6 @@ const GlossaryTermReferences = ({
     } catch (error) {
       // Added catch block to prevent uncaught promise
     }
-  };
-
-  const onReferenceModalSave = (values: TermReference[]) => {
-    handleReferencesSave(values);
   };
 
   useEffect(() => {
@@ -246,9 +242,7 @@ const GlossaryTermReferences = ({
         onClose={() => {
           setIsViewMode(true);
         }}
-        onSave={(values: TermReference[]) => {
-          onReferenceModalSave(values);
-        }}
+        onSave={handleReferencesSave}
       />
     </div>
   );

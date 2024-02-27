@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Form, Input, Modal, Row } from 'antd';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
@@ -22,7 +22,7 @@ interface GlossaryTermReferencesModalProps {
   references: TermReference[];
   isVisible: boolean;
   onClose: () => void;
-  onSave: (values: TermReference[]) => void;
+  onSave: (values: TermReference[]) => Promise<void>;
 }
 
 const GlossaryTermReferencesModal = ({
@@ -33,13 +33,17 @@ const GlossaryTermReferencesModal = ({
 }: GlossaryTermReferencesModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<{ references: TermReference[] }>();
+  const [saving, setSaving] = useState<boolean>(false);
 
   const handleSubmit = async (obj: { references: TermReference[] }) => {
     try {
+      setSaving(true);
       await form.validateFields();
-      onSave(obj.references);
+      await onSave(obj.references);
     } catch (_) {
       // Nothing here
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -69,8 +73,9 @@ const GlossaryTermReferencesModal = ({
         <Button
           data-testid="save-btn"
           key="save-btn"
+          loading={saving}
           type="primary"
-          onClick={() => form.submit()}>
+          onClick={form.submit}>
           {t('label.save')}
         </Button>,
       ]}
