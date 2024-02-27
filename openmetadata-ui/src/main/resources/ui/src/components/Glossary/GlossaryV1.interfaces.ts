@@ -23,8 +23,8 @@ export type GlossaryV1Props = {
   isGlossaryActive: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
   onGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
-  onGlossaryDelete: (id: string) => void | Promise<void>;
-  onGlossaryTermDelete: (id: string) => void | Promise<void>;
+  onGlossaryDelete: (id: string) => Promise<void>;
+  onGlossaryTermDelete: (id: string) => Promise<void>;
   isVersionsView: boolean;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
