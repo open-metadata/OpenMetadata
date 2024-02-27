@@ -65,8 +65,8 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
 
   const customPropertyConfigField: FieldProp = {
     name: 'customPropertyConfig',
-    required: true,
-    label: t('label.config'),
+    required: false,
+    label: t('label.enum-value-plural'),
     id: 'root/customPropertyConfig',
     type: FieldTypes.SELECT,
     props: {
@@ -81,6 +81,14 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
     },
+    rules: [
+      {
+        required: true,
+        message: t('label.field-required', {
+          field: t('label.enum-value-plural'),
+        }),
+      },
+    ],
   };
 
   return (

@@ -414,6 +414,7 @@
     "entity-service": "Service de {{entity}}",
     "entity-type-plural": "{{entity}} Types",
     "entity-version-detail-plural": "Détails des Versions de {{entity}}",
+    "enum-value-plural": "Enum Values",
     "error": "Error",
     "error-plural": "Errors",
     "event-publisher-plural": "Publicateurs d'Événements",

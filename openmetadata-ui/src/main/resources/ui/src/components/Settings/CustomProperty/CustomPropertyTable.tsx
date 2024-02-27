@@ -111,7 +111,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         key: 'customPropertyConfig',
         render: (data: CustomProperty['customPropertyConfig']) => {
           if (isUndefined(data)) {
-            return t('label.no-entity', { entity: t('label.config') });
+            return <span>--</span>;
           }
 
           const config = data.config;

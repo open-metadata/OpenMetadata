@@ -227,8 +227,8 @@ const AddCustomProperty = () => {
 
   const customPropertyConfigTypeValueField: FieldProp = {
     name: 'customPropertyConfig',
-    required: true,
-    label: t('label.config'),
+    required: false,
+    label: t('label.enum-value-plural'),
     id: 'root/customPropertyConfig',
     type: FieldTypes.SELECT,
     props: {
@@ -236,6 +236,14 @@ const AddCustomProperty = () => {
       mode: 'tags',
       placeholder: 'Config',
     },
+    rules: [
+      {
+        required: true,
+        message: t('label.field-required', {
+          field: t('label.enum-value-plural'),
+        }),
+      },
+    ],
   };
 
   const firstPanelChildren = (
