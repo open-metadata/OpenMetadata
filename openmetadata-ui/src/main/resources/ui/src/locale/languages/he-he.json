@@ -1256,7 +1256,7 @@
     "alerts-destination-description": "שלח הודעות ל-Slack, MS Teams, אימייל או השתמש ב-webhooks.",
     "alerts-filter-description": "ציין את אירועי השינוי כדי להגביל את תחום התראותיך.",
     "alerts-source-description": "Specify the source that will activate the alert.",
-    "alerts-trigger-description": "הפעל לכל נכסי הנתונים או ישות ספציפית.",
+    "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "כל התרשימים ממופים עם KPIs קיימים.",
     "already-a-user": "כבר משתמש?",
     "and-followed-owned-by-name": "והצוות שאתה עוקב אחריהם שייכים ל-{{userName}}",

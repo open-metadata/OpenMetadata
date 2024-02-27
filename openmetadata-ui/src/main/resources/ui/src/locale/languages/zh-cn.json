@@ -1256,7 +1256,7 @@
     "alerts-destination-description": "向 Slack、MS Teams、Email 发送通知，或使用 Webhooks",
     "alerts-filter-description": "指定具体的变更事件，以缩小提醒范围",
     "alerts-source-description": "Specify the source that will activate the alert.",
-    "alerts-trigger-description": "为所有数据资产或特定实体设置的触发器",
+    "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "所有图表都与现有的 KPI 映射",
     "already-a-user": "已经是用户了吗？",
     "and-followed-owned-by-name": "并关注由{{userName}}拥有的团队",

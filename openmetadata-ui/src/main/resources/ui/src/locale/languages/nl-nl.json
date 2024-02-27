@@ -1256,7 +1256,7 @@
     "alerts-destination-description": "Stuur meldingen naar Slack, MS Teams, e-mail, of gebruik Webhooks.",
     "alerts-filter-description": "Specificeer de wijzigingsevents om het bereik van uw alerts te beperken.",
     "alerts-source-description": "Specify the source that will activate the alert.",
-    "alerts-trigger-description": "Trigger voor alle data-assets of een specifieke entiteit.",
+    "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "Alle charts zijn gekoppeld aan bestaande KPI's.",
     "already-a-user": "Al een gebruiker?",
     "and-followed-owned-by-name": "en het team dat je volgt is eigendom van {{userName}}",

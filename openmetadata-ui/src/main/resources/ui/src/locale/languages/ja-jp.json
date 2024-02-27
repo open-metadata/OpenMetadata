@@ -1256,7 +1256,7 @@
     "alerts-destination-description": "Slack、 MS Teams、 Email、 あるいは Webhooks を使って通知を送る。",
     "alerts-filter-description": "変更イベントを指定して、アラートの範囲を絞ります。",
     "alerts-source-description": "Specify the source that will activate the alert.",
-    "alerts-trigger-description": "全てのデータアセットあるいは特定のエンティティに対してトリガーを設定します。",
+    "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "全てのチャートはKPIに対応づけられています。",
     "already-a-user": "既にユーザでしょうか？",
     "and-followed-owned-by-name": "and the team you are following is owned by {{userName}}",

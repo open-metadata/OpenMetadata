@@ -1256,7 +1256,7 @@
     "alerts-destination-description": "Envoyer des notifications à Slack, MS Teams, Email, ou utiliser des Webhooks.",
     "alerts-filter-description": "Spécifier les événements de modification pour réduire la portée de vos alertes.",
     "alerts-source-description": "Specify the source that will activate the alert.",
-    "alerts-trigger-description": "Déclencher pour tous les actifs de données ou une entité spécifique.",
+    "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
     "all-charts-are-mapped": "Tous les graphiques sont associés avec un KPI.",
     "already-a-user": "Déjà Utilisateur?",
     "and-followed-owned-by-name": "et l'équipe suivante appartient à {{userName}}",
