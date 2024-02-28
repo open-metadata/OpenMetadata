@@ -1064,7 +1064,7 @@
     "table-entity-text": "טבלה {{entityText}}",
     "table-lowercase": "טבלה",
     "table-lowercase-plural": "טבלאות נתונים",
-    "table-partitioned": "טבלה מחולקת",
+    "table-partition-plural": "Table Partitions",
     "table-plural": "טבלאות נתונים",
     "table-profile": "פרופיל טבלה",
     "table-tests-summary": "סיכום בדיקות טבלה",
