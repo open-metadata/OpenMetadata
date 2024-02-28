@@ -21,7 +21,8 @@ from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -66,9 +67,9 @@ logger = ingestion_logger()
 
 
 INTERVAL_TYPE_MAP = {
-    "list": IntervalType.COLUMN_VALUE.value,
-    "hash": IntervalType.COLUMN_VALUE.value,
-    "range": IntervalType.TIME_UNIT.value,
+    "list": PartitionIntervalTypes.COLUMN_VALUE,
+    "hash": PartitionIntervalTypes.COLUMN_VALUE,
+    "range": PartitionIntervalTypes.TIME_UNIT,
 }
 
 RELKIND_MAP = {
@@ -187,18 +188,27 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         result = self.engine.execute(
             GREENPLUM_PARTITION_DETAILS.format(
                 table_name=table_name, schema_name=schema_name
             )
         ).all()
+
         if result:
             partition_details = TablePartition(
-                intervalType=INTERVAL_TYPE_MAP.get(
-                    result[0].partition_strategy, IntervalType.COLUMN_VALUE.value
-                ),
-                columns=[row.column_name for row in result if row.column_name],
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=row.column_name,
+                        intervalType=INTERVAL_TYPE_MAP.get(
+                            result[0].partition_strategy,
+                            PartitionIntervalTypes.COLUMN_VALUE,
+                        ),
+                        interval=None,
+                    )
+                    for row in result
+                    if row.column_name
+                ]
             )
             return True, partition_details
         return False, None

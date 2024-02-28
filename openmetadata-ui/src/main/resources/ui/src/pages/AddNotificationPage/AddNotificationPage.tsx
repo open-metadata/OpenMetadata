@@ -46,9 +46,9 @@ import {
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabilityPage.interface';
+import AlertFormSourceItem from '../AddObservabilityPage/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from '../AddObservabilityPage/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './add-alerts-page.styles.less';
 
 const AddNotificationPage = () => {
@@ -251,7 +251,7 @@ const AddNotificationPage = () => {
                         </Form.Item>
                       </Col>
                       <Col span={24}>
-                        <ObservabilityFormTriggerItem
+                        <AlertFormSourceItem
                           filterResources={entityFunctions}
                         />
                       </Col>

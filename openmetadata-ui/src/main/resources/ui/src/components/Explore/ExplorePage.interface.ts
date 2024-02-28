@@ -56,7 +56,7 @@ export type ExploreSearchIndex =
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
-  | SearchIndex.GLOSSARY
+  | SearchIndex.GLOSSARY_TERM
   | SearchIndex.TAG
   | SearchIndex.SEARCH_INDEX
   | SearchIndex.STORED_PROCEDURE

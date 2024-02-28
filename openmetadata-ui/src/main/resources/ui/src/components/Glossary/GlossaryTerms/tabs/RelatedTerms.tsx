@@ -77,6 +77,7 @@ const RelatedTerms = ({
     if (!isArray(selectedData)) {
       return;
     }
+
     const newOptions = uniqWith(
       options,
       (arrVal, othVal) => arrVal.id === othVal.id
@@ -122,7 +123,7 @@ const RelatedTerms = ({
       '',
       '',
       '',
-      SearchIndex.GLOSSARY
+      SearchIndex.GLOSSARY_TERM
     );
 
     const termResult = formatSearchGlossaryTermResponse(

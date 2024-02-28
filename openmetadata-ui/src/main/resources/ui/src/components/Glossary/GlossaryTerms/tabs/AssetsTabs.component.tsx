@@ -22,7 +22,6 @@ import {
   notification,
   Row,
   Skeleton,
-  Space,
   Tooltip,
   Typography,
 } from 'antd';
@@ -42,6 +41,7 @@ import React, {
 } from 'react';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import {
   AssetsFilterOptions,
@@ -75,7 +75,7 @@ import {
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
-import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -313,30 +313,6 @@ const AssetsTabs = forwardRef(
 
       setActiveEntity(data);
     }, [type, entityFqn]);
-
-    const tabs = useMemo(() => {
-      return AssetsFilterOptions.map((option) => {
-        return {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                {option.label}
-              </Space>
-
-              <span>
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter.includes(option.value)
-                )}
-              </span>
-            </div>
-          ),
-          key: option.value,
-          value: option.value,
-        };
-      });
-    }, [activeFilter, itemCount]);
 
     const items: ItemType[] = [
       {
@@ -654,7 +630,6 @@ const AssetsTabs = forwardRef(
       openKeys,
       visible,
       currentPage,
-      tabs,
       itemCount,
       onOpenChange,
       handleAssetButtonVisibleChange,
@@ -845,9 +820,8 @@ const AssetsTabs = forwardRef(
                     }}
                     trigger={['click']}>
                     <Button
-                      icon={<PlusOutlined />}
-                      size="small"
-                      type="primary"
+                      className="flex-center"
+                      icon={<FilterIcon height={16} />}
                     />
                   </Dropdown>
                   <div className="flex-1">
