@@ -82,7 +82,6 @@ const SchemaTable = ({
   isReadOnly = false,
   onThreadLinkSelect,
   tableConstraints,
-  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
@@ -392,21 +391,6 @@ const SchemaTable = ({
         width: 320,
         render: renderDescription,
       },
-      ...(tablePartitioned
-        ? [
-            {
-              title: t('label.partitioned'),
-              dataIndex: 'name',
-              key: 'name',
-              accessor: 'name',
-              width: 120,
-              render: (columnName: string) =>
-                tablePartitioned?.columns?.includes(columnName)
-                  ? t('label.partitioned')
-                  : t('label.non-partitioned'),
-            },
-          ]
-        : []),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
