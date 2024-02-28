@@ -282,7 +282,11 @@ const RelatedTerms = ({
         {permissions.EditAll && selectedOption.length > 0 && (
           <Tooltip
             title={
-              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              permissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.related-term-plural'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               className="cursor-pointer flex-center m-l-xss"

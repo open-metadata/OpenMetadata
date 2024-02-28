@@ -204,7 +204,13 @@ const PoliciesListPage = () => {
           return (
             <Tooltip
               placement="left"
-              title={!deletePolicyPermission && NO_PERMISSION_FOR_ACTION}>
+              title={
+                deletePolicyPermission
+                  ? t('label.delete-entity', {
+                      entity: t('label.policy'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
                 disabled={!deletePolicyPermission}

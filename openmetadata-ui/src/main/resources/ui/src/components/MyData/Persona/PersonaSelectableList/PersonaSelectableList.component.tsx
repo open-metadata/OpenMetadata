@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space, Typography } from 'antd';
+import { Button, Popover, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -135,13 +135,18 @@ export const PersonaSelectableList = ({
       onOpenChange={setPopupVisible}
       {...popoverProps}>
       {children ?? (
-        <Button
-          className="p-0 flex-center"
-          data-testid="add-user"
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-          size="small"
-          type="text"
-        />
+        <Tooltip
+          title={t('label.edit-entity', {
+            entity: t('label.persona'),
+          })}>
+          <Button
+            className="p-0 flex-center"
+            data-testid="edit-persona"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            size="small"
+            type="text"
+          />
+        </Tooltip>
       )}
     </Popover>
   );

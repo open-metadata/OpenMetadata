@@ -555,7 +555,13 @@ const GlossaryHeader = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: isGlossary
+                        ? t('label.glossary')
+                        : t('label.glossary-term'),
+                    })}>
                     <Button
                       className="glossary-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
