@@ -123,7 +123,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
 
   const versions = useMemo(
     () =>
-      versionList.versions.map((v, i) => {
+      versionList.versions?.map((v, i) => {
         const currV = JSON.parse(v);
 
         const majorVersionChecks = () => {

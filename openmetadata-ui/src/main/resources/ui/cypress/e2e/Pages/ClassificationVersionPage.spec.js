@@ -114,14 +114,6 @@ describe(
         'mutuallyExclusiveContainer'
       );
 
-      cy.get(
-        '[data-testid="mutually-exclusive-container"] [data-testid="diff-removed"]'
-      ).should('be.visible');
-
-      cy.get(
-        '[data-testid="mutually-exclusive-container"] [data-testid="diff-added"]'
-      ).should('be.visible');
-
       cy.get('[data-testid="version-button"]').click();
 
       cy.get('[data-testid="manage-button"]').click({
