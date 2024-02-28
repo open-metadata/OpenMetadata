@@ -3,7 +3,13 @@ title: Run the Elasticsearch Connector Externally
 slug: /connectors/search/elasticsearch/yaml
 ---
 
-# Run the Elasticsearch Connector Externally
+{% connectorDetailsHeader
+name="Elasticsearch"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Search Indexes", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Elasticsearch connector.
 
@@ -15,6 +21,10 @@ Configure and schedule Elasticsearch metadata and profiler workflows from the Op
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
+
+We support Elasticsearch 7.0 and above.
+
+We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html). To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
 
 ### Python Requirements
 

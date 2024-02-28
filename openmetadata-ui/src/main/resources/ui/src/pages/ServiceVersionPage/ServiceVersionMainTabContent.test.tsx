@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
   Database,
@@ -32,7 +33,7 @@ const mockParams = {
 };
 
 jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
@@ -147,7 +148,9 @@ const props: ServiceVersionMainTabContentProps = {
 
 describe('ServiceVersionMainTabContent tests', () => {
   it('Component should render properly provided proper data', () => {
-    render(<ServiceVersionMainTabContent {...props} />);
+    render(<ServiceVersionMainTabContent {...props} />, {
+      wrapper: MemoryRouter,
+    });
 
     const entityTable = screen.getByTestId('service-children-table');
     const entityName = screen.getByText('ecommerce_db');
@@ -168,7 +171,9 @@ describe('ServiceVersionMainTabContent tests', () => {
   });
 
   it('Loader should be displayed if isServiceLoading is true', async () => {
-    render(<ServiceVersionMainTabContent {...props} isServiceLoading />);
+    render(<ServiceVersionMainTabContent {...props} isServiceLoading />, {
+      wrapper: MemoryRouter,
+    });
 
     const loader = await screen.findByTestId('skeleton-table');
 

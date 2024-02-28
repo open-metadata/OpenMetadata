@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -81,7 +82,6 @@ const SchemaTable = ({
   isReadOnly = false,
   onThreadLinkSelect,
   tableConstraints,
-  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
@@ -285,7 +285,7 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = ({ displayName }: EntityName) => {
+  const handleEditDisplayName = async ({ displayName }: EntityName) => {
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
@@ -297,9 +297,8 @@ const SchemaTable = ({
         field: 'displayName',
         columns: tableCols,
       });
-      onUpdate(tableCols).then(() => {
-        setEditColumnDisplayName(undefined);
-      });
+      await onUpdate(tableCols);
+      setEditColumnDisplayName(undefined);
     } else {
       setEditColumnDisplayName(undefined);
     }
@@ -360,7 +359,9 @@ const SchemaTable = ({
                     background: 'transparent',
                   }}
                   onClick={() => handleEditDisplayNameClick(record)}>
-                  <IconEdit />
+                  <IconEdit
+                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  />
                 </Button>
               )}
             </div>
@@ -384,21 +385,6 @@ const SchemaTable = ({
         width: 320,
         render: renderDescription,
       },
-      ...(tablePartitioned
-        ? [
-            {
-              title: t('label.partitioned'),
-              dataIndex: 'name',
-              key: 'name',
-              accessor: 'name',
-              width: 120,
-              render: (columnName: string) =>
-                tablePartitioned?.columns?.includes(columnName)
-                  ? t('label.partitioned')
-                  : t('label.non-partitioned'),
-            },
-          ]
-        : []),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',

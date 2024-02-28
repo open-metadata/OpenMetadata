@@ -3,12 +3,13 @@ title: Run the Kinesis Connector Externally
 slug: /connectors/messaging/kinesis/yaml
 ---
 
-# Run the Kinesis Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Topics     | {% icon iconName="check" /%} |
-| Sample Data| {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Kinesis"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Topics", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Kinesis connector.
 

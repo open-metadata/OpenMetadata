@@ -3,15 +3,13 @@ title: Run the Spline Connector Externally
 slug: /connectors/pipeline/spline/yaml
 ---
 
-# Run the Spline Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Spline"
+stage="BETA"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status"]
+unavailableFeatures=["Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Spline connector.
 

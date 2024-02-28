@@ -14,9 +14,10 @@ Validator for table column name to match set test case
 """
 
 
-from typing import Optional
+from typing import List, cast
 
 from sqlalchemy import inspect
+from sqlalchemy.sql.base import ColumnCollection
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -34,11 +35,15 @@ class TableColumnToMatchSetValidator(
 ):
     """Validator for table column name to match set test case"""
 
-    def _run_results(self) -> Optional[int]:
+    def _run_results(self) -> List[str]:
         """compute result of the test case"""
         names = inspect(self.runner.table).c
         if not names:
             raise ValueError(
                 f"Column names for test case {self.test_case.name} returned None"
             )
+        names = cast(
+            ColumnCollection, names
+        )  # satisfy type checker for names.keys() access
+        names = list(names.keys())
         return names

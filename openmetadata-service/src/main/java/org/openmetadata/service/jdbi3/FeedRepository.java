@@ -965,12 +965,9 @@ public class FeedRepository {
   }
 
   private String getUserTeamJsonMysql(UUID userId, List<String> teamIds) {
-    // Build a string like this for the tasks filter
-    // [{"id":"9e78b924-b75c-4141-9845-1b3eb81fdc1b","type":"team"},{"id":"fe21e1ba-ce00-49fa-8b62-3c9a6669a11b","type":"user"}]
     List<String> result = new ArrayList<>();
-    JSONObject json = getUserTeamJson(userId, "user");
-    result.add(json.toString());
-    teamIds.forEach(id -> result.add(getUserTeamJson(id, "team").toString()));
+    result.add("\"" + userId.toString() + "\"");
+    teamIds.forEach(id -> result.add("\"" + id + "\""));
     return result.toString();
   }
 

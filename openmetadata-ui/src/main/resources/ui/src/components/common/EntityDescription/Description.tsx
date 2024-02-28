@@ -38,6 +38,10 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import { DescriptionProps } from './Description.interface';
 
+/**
+ * @deprecated will be removed
+ * Use DescriptionV1 instead
+ */
 const Description: FC<DescriptionProps> = ({
   className,
   header,
@@ -199,29 +203,27 @@ const Description: FC<DescriptionProps> = ({
 
   return (
     <div className={`schema-description relative ${className}`}>
-      <Space align="end" className="description-inner-main-container" size={4}>
-        <div className="relative">
-          <div
-            className="description h-full relative overflow-y-scroll"
-            data-testid="description"
-            id="center">
-            {description?.trim() ? (
-              <RichTextEditorPreviewer
-                className={reduceDescription ? 'max-two-lines' : ''}
-                enableSeeMoreVariant={!removeBlur}
-                markdown={description}
-              />
-            ) : (
-              <span className="text-grey-muted p-y-xs">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </div>
+      <div className="description-inner-main-container d-flex items-end">
+        <div
+          className="description h-full relative overflow-y-scroll m-r-xss"
+          data-testid="description"
+          id="center">
+          {description?.trim() ? (
+            <RichTextEditorPreviewer
+              className={reduceDescription ? 'max-two-lines' : ''}
+              enableSeeMoreVariant={!removeBlur}
+              markdown={description}
+            />
+          ) : (
+            <span className="text-grey-muted p-y-xs">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
+          )}
         </div>
         <DescriptionActions />
-      </Space>
+      </div>
       <ModalWithMarkdownEditor
         header={header || t('label.edit-description-for', { entityName })}
         placeholder={t('label.enter-entity', {

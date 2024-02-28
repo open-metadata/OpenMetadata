@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import { TokenType } from '../generated/auth/personalAccessToken';
 
-export interface ObservabilityFormActionItemProps {
-  supportedActions?: EventFilterRule[];
-}
+export const USER_DEFAULT_AUTHENTICATION_MECHANISM = {
+  tokenType: TokenType.PersonalAccessToken,
+};

@@ -28,12 +28,12 @@ on:
       - openmetadata-service/**
       - openmetadata-clients/**
       - common/**
-      
+
 permissions:
   contents: read
 
 concurrency:
-  group: cypress-integration-tests-pr-mysql-${{ github.head_ref || github.run_id }}
+  group: cypress-ci-pr-mysql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        parallel-machine: [1, 2, 3, 4]
+        parallel-machine: [1, 2]
     environment: test
     steps:
       - name: Set Cypress Project Environment variable
@@ -84,15 +84,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          
-      - name: Get Cypress Filter
-        id: get_cypress_filter
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get Cypress e2e Labels
+        id: getCypresse2eLabels
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr view --json labels --jq '[.labels[].name | select(startswith("e2e:")) | sub("e2e:";"")] | join(" ")' >> labels
-          echo "e2eFilters=$(cat labels)" >> $GITHUB_OUTPUT
+          gh pr view ${{ github.event.number }} --json labels --jq '[.labels[].name | select(startswith("e2e:")) | sub("e2e:";"")] | join(" ")' >> labels
+          echo "e2eLabels=$(cat labels)" >> $GITHUB_OUTPUT
 
       - name: Cache Maven Dependencies
         id: cache-output
@@ -141,13 +141,13 @@ jobs:
         timeout-minutes: 120
         with:
           install-command: yarn --frozen-lockfile --silent --ignore-scripts
-          record: true
-          parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: "http://localhost:8585"
-          group: cypress-ci-mysql-pr-oss-${{ github.run_id }}-${{github.run_attempt}}
-          browser: chrome
-          command: npx cypress run --config-file=cypress.config.ts --env grepTags='${{ steps.get_cypress_filter.outputs.e2eFilters }}'
+          command: |
+            npx cypress run --config-file=cypress.config.ts \
+             --env grepTags="${{ steps.getCypresse2eLabels.outputs.e2eLabels }}",grepFilterSpecs=true \
+             --group cypress-ci-mysql-pr-${{ github.run_id }}-${{github.run_attempt}} \
+             --parallel --record --browser chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ steps.cypress-project-id.outputs.CYPRESS_RECORD_KEY }}
