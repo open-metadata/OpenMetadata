@@ -195,7 +195,7 @@ const QueryCardExtraOption = ({
           })}>
           <Button
             className="flex-center button-size"
-            data-testid="more-option-btn"
+            data-testid="query-btn"
             icon={<IconDropdown />}
             size="small"
             type="text"

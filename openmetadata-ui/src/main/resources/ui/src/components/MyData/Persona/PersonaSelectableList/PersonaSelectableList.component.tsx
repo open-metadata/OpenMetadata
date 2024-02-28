@@ -141,7 +141,7 @@ export const PersonaSelectableList = ({
           })}>
           <Button
             className="p-0 flex-center"
-            data-testid="add-user"
+            data-testid="edit-persona"
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
             size="small"
             type="text"
