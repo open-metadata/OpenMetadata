@@ -135,7 +135,7 @@ export const PropertyValue: FC<Props> = ({
             <Form
               id="enum-form"
               initialValues={{
-                enumValues: isArray(value) ? value : [value],
+                enumValues: (isArray(value) ? value : [value]).filter(Boolean),
               }}
               layout="vertical"
               onFinish={(values: { enumValues: string | string[] }) =>

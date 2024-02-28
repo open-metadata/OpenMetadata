@@ -110,11 +110,13 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   const initialValues = useMemo(() => {
     const isEnumType = customProperty.propertyType.name === 'enum';
     if (isEnumType) {
+      const enumConfig = customProperty.customPropertyConfig
+        ?.config as EnumConfig;
+
       return {
         description: customProperty.description,
-        customPropertyConfig:
-          (customProperty.customPropertyConfig?.config as EnumConfig)?.values ??
-          [],
+        customPropertyConfig: enumConfig?.values ?? [],
+        multiSelect: Boolean(enumConfig?.multiSelect),
       };
     }
 
