@@ -207,28 +207,46 @@
       "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
+    "partitionIntervalTypes": {
+      "javaType": "org.openmetadata.schema.type.PartitionIntervalTypes",
+      "description": "type of partition interval",
+      "type": "string",
+      "enum": [
+        "TIME-UNIT",
+        "INTEGER-RANGE",
+        "INGESTION-TIME",
+        "COLUMN-VALUE",
+        "INJECTED",
+        "ENUM",
+        "OTHER"
+      ]
+    },
     "tablePartition": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.TablePartition",
       "description": "This schema defines the partition column of a table and format the partition is created.",
       "properties": {
         "columns": {
-          "description": "List of column names corresponding to the partition.",
+          "description": "List of column partitions with their type and interval.",
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/partitionColumnDetails"
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "partitionColumnDetails": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.PartitionColumnDetails",
+      "description": "This schema defines the partition column of a table and format the partition is created.",
+      "properties": {
+        "columnName": {
+          "description": "List of column names corresponding to the partition.",
+          "type": "string"
         },
         "intervalType": {
-          "type": "string",
-          "description": "type of partition interval, example time-unit, integer-range",
-          "enum": [
-            "TIME-UNIT",
-            "INTEGER-RANGE",
-            "INGESTION-TIME",
-            "COLUMN-VALUE",
-            "OTHER"
-          ]
+          "$ref": "#/definitions/partitionIntervalTypes"
         },
         "interval": {
           "type": "string",
@@ -669,14 +687,7 @@
           "type": "string"
         },
         "partitionIntervalType": {
-          "description": "type of partition interval",
-          "type": "string",
-          "enum": [
-            "TIME-UNIT",
-            "INTEGER-RANGE",
-            "INGESTION-TIME",
-            "COLUMN-VALUE"
-          ]
+          "$ref": "#/definitions/partitionIntervalTypes"
         },
         "partitionInterval": {
           "description": "The interval to use for the partitioning",

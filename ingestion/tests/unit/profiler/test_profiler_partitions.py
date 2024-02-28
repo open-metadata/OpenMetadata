@@ -18,8 +18,8 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
-    PartitionIntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     PartitionIntervalUnit,
     PartitionProfilerConfig,
     Table,
@@ -142,7 +142,13 @@ class ProfilerPartitionUnitTest(TestCase):
     def test_partition_details_time_unit(self):
         table_entity = MockTable(
             tablePartition=TablePartition(
-                columns=["e"], intervalType=IntervalType.TIME_UNIT, interval="DAY"
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="e",
+                        intervalType=PartitionIntervalTypes.TIME_UNIT,
+                        interval="DAY",
+                    )
+                ]
             ),
             tableProfilerConfig=None,
         )
@@ -177,7 +183,13 @@ class ProfilerPartitionUnitTest(TestCase):
     def test_partition_details_ingestion_time_date(self):
         table_entity = MockTable(
             tablePartition=TablePartition(
-                columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="DAY"
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="e",
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME.value,
+                        interval="DAY",
+                    )
+                ]
             ),
             tableProfilerConfig=None,
         )
@@ -211,7 +223,13 @@ class ProfilerPartitionUnitTest(TestCase):
     def test_partition_details_ingestion_time_hour(self):
         table_entity = MockTable(
             tablePartition=TablePartition(
-                columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="HOUR"
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="e",
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME.value,
+                        interval="HOUR",
+                    )
+                ]
             ),
             tableProfilerConfig=None,
         )
@@ -246,15 +264,19 @@ class ProfilerPartitionUnitTest(TestCase):
     def test_partition_non_bq_table_profiler_partition_config(self):
         table_entity = MockRedshiftTable(
             tablePartition=TablePartition(
-                columns=["datetime"],
-                intervalType=IntervalType.TIME_UNIT,
-                interval="DAY",
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="datetime",
+                        intervalType=PartitionIntervalTypes.TIME_UNIT.value,
+                        interval="DAY",
+                    )
+                ]
             ),
             tableProfilerConfig=TableProfilerConfig(
                 partitioning=PartitionProfilerConfig(
                     enablePartitioning=True,
                     partitionColumnName="foo",
-                    partitionIntervalType=PartitionIntervalType.TIME_UNIT,
+                    partitionIntervalType=PartitionIntervalTypes.TIME_UNIT,
                     partitionIntervalUnit="DAY",
                     partitionInterval=1,
                 )  # type: ignore
@@ -266,7 +288,7 @@ class ProfilerPartitionUnitTest(TestCase):
         if resp:
             assert resp.enablePartitioning
             assert resp.partitionColumnName == "foo"
-            assert resp.partitionIntervalType == PartitionIntervalType.TIME_UNIT
+            assert resp.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
             assert resp.partitionIntervalUnit == PartitionIntervalUnit.DAY
             assert resp.partitionInterval == 1
         else:
@@ -275,9 +297,13 @@ class ProfilerPartitionUnitTest(TestCase):
     def test_partition_non_bq_table_no_profiler_partition_config(self):
         table_entity = MockRedshiftTable(
             tablePartition=TablePartition(
-                columns=["datetime"],
-                intervalType=IntervalType.TIME_UNIT,
-                interval="DAY",
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="datetime",
+                        intervalType=PartitionIntervalTypes.TIME_UNIT.value,
+                        interval="DAY",
+                    )
+                ]
             ),
             tableProfilerConfig=None,
         )

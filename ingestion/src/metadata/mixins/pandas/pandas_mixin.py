@@ -21,7 +21,7 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
     TableRowInsertedCountToBeBetweenValidator,
 )
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
 )
@@ -47,7 +47,7 @@ class PandasInterfaceMixin:
         partition_field = self.table_partition_config.partitionColumnName
         if (
             self.table_partition_config.partitionIntervalType
-            == PartitionIntervalType.COLUMN_VALUE
+            == PartitionIntervalTypes.COLUMN_VALUE
         ):
             return [
                 df[
@@ -59,7 +59,7 @@ class PandasInterfaceMixin:
             ]
         if (
             self.table_partition_config.partitionIntervalType
-            == PartitionIntervalType.INTEGER_RANGE
+            == PartitionIntervalTypes.INTEGER_RANGE
         ):
             return [
                 df[

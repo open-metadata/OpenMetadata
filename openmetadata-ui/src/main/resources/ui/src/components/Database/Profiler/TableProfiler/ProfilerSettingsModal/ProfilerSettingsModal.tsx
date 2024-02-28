@@ -52,8 +52,8 @@ import {
   TIME_BASED_PARTITION,
 } from '../../../../../constants/profiler.constant';
 import { CSMode } from '../../../../../enums/codemirror.enum';
-import { PartitionIntervalType } from '../../../../../generated/api/data/createTable';
 import {
+  PartitionIntervalTypes,
   ProfileSampleType,
   TableProfilerConfig,
 } from '../../../../../generated/entity/data/table';
@@ -299,7 +299,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           ? {
               ...partitionData,
               partitionValues:
-                partitionIntervalType === PartitionIntervalType.ColumnValue
+                partitionIntervalType === PartitionIntervalTypes.ColumnValue
                   ? partitionData?.partitionValues?.filter(
                       (value) => !isEmpty(value)
                     )
@@ -770,7 +770,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     </Col>
                   </>
                 ) : null}
-                {PartitionIntervalType.IntegerRange ===
+                {PartitionIntervalTypes.IntegerRange ===
                 partitionIntervalType ? (
                   <>
                     <Col span={12}>
@@ -844,7 +844,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   </>
                 ) : null}
 
-                {PartitionIntervalType.ColumnValue === partitionIntervalType ? (
+                {PartitionIntervalTypes.ColumnValue ===
+                partitionIntervalType ? (
                   <Col span={24}>
                     <List name="partitionValues">
                       {(fields, { add, remove }) => (

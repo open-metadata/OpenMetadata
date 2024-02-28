@@ -53,6 +53,8 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
     DataType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -792,7 +794,15 @@ class IcebergUnitTest(TestCase):
             columns=[
                 MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()
             ],
-            tablePartition=TablePartition(columns=["binary"]),
+            tablePartition=TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="binary",
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                ]
+            ),
             databaseSchema=fq_database_schema,
         )
 

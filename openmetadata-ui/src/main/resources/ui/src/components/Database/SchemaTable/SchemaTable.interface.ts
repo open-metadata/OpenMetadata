@@ -26,7 +26,6 @@ export interface SchemaTableProps {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   tableConstraints: Table['tableConstraints'];
-  tablePartitioned: Table['tablePartition'];
   searchText?: string;
   isReadOnly?: boolean;
   entityFqn: string;
