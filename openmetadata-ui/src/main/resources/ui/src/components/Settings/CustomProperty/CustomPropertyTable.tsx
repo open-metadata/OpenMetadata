@@ -118,7 +118,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         key: 'actions',
         render: (_, record) => (
           <Space align="center" size={14}>
-            <Tooltip title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
+            <Tooltip
+              title={
+                hasAccess
+                  ? t('label.edit-entity', {
+                      entity: t('label.property'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 className="cursor-pointer p-0"
                 data-testid="edit-button"
@@ -132,7 +139,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <IconEdit name={t('label.edit')} width={16} />
               </Button>
             </Tooltip>
-            <Tooltip title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
+            <Tooltip
+              title={
+                hasAccess
+                  ? t('label.delete-entity', {
+                      entity: t('label.property'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 className="cursor-pointer p-0"
                 data-testid="delete-button"

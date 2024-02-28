@@ -194,7 +194,9 @@ const GlossaryTermReferences = ({
               <Tooltip
                 title={
                   permissions.EditAll
-                    ? t('label.edit')
+                    ? t('label.edit-entity', {
+                        entity: t('label.reference-plural'),
+                      })
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button

@@ -184,7 +184,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
 
-    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-testid="query-btn"]').click();
     cy.get('[data-menu-id*="edit-query"]').click();
     cy.get('.CodeMirror-line')
       .click()
@@ -218,7 +218,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="query-entity-expand-button"]').click();
     verifyResponseStatusCode('@getQueryById', 200);
 
-    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-testid="query-btn"]').click();
     cy.get('.ant-dropdown').should('be.visible');
     cy.get('[data-menu-id*="delete-query"]').click();
     cy.get('[data-testid="save-button"]').click();
