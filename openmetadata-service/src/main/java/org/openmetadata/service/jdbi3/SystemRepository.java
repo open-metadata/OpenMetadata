@@ -60,6 +60,22 @@ public class SystemRepository {
 
   private static final String INDEX_NAME = "table_search_index";
 
+  private enum ValidationStepDescription {
+    DATABASE("Validate that we can properly run a query against the configured database."),
+    SEARCH("Validate that the search client is available."),
+    PIPELINE_SERVICE_CLIENT("Validate that the pipeline service client is available."),
+    JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
+    MIGRATION("Validate that all the necessary migrations have been properly executed.");
+
+    public final String key;
+
+    ValidationStepDescription(String param) {
+      this.key = param;
+    }
+  }
+
+  private static final String INDEX_NAME = "table_search_index";
+
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
     Entity.setSystemRepository(this);
