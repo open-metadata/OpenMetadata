@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, startCase } from 'lodash';
+import { isUndefined, map, omit, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -37,6 +37,7 @@ import { CustomProperty } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
   FieldTypes,
+  FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import {
   addPropertyToEntity,
@@ -141,6 +142,7 @@ const AddCustomProperty = () => {
     data: Exclude<CustomProperty, 'propertyType' | 'customPropertyConfig'> & {
       propertyType: string;
       customPropertyConfig: string[];
+      multiSelect?: boolean;
     }
   ) => {
     if (isUndefined(typeDetail)) {
@@ -150,7 +152,7 @@ const AddCustomProperty = () => {
     try {
       setIsCreating(true);
       await addPropertyToEntity(typeDetail?.id ?? '', {
-        ...data,
+        ...omit(data, 'multiSelect'),
         propertyType: {
           id: data.propertyType,
           type: 'type',
@@ -158,7 +160,12 @@ const AddCustomProperty = () => {
         // Only add customPropertyConfig if it is an enum type
         ...(isEnumType
           ? {
-              customPropertyConfig: { config: data.customPropertyConfig },
+              customPropertyConfig: {
+                config: {
+                  multiSelect: Boolean(data?.multiSelect),
+                  values: data.customPropertyConfig,
+                },
+              },
             }
           : {}),
       });
@@ -246,6 +253,18 @@ const AddCustomProperty = () => {
     ],
   };
 
+  const multiSelectField: FieldProp = {
+    name: 'multiSelect',
+    label: t('label.multi-select'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      'data-testid': 'multiSelect',
+    },
+    id: 'root/multiSelect',
+    formItemLayout: FormItemLayout.HORIZONTAL,
+  };
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -258,7 +277,12 @@ const AddCustomProperty = () => {
         onFocus={handleFieldFocus}>
         {generateFormFields(formFields)}
         {isEnumType && (
-          <>{generateFormFields([customPropertyConfigTypeValueField])}</>
+          <>
+            {generateFormFields([
+              customPropertyConfigTypeValueField,
+              multiSelectField,
+            ])}
+          </>
         )}
         {generateFormFields([descriptionField])}
         <Row justify="end">

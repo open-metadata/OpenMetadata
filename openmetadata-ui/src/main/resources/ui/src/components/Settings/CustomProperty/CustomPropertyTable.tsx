@@ -12,7 +12,7 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isArray, isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -70,7 +70,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           ...property,
           description: data.description,
           ...(data.customPropertyConfig
-            ? { customPropertyConfig: { config: data.customPropertyConfig } }
+            ? {
+                customPropertyConfig: {
+                  config: {
+                    multiSelect: Boolean(data?.multiSelect),
+                    values: data.customPropertyConfig,
+                  },
+                },
+              }
             : {}),
         };
       } else {
@@ -116,8 +123,12 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           const config = data.config;
 
-          if (isArray(config)) {
-            return <Typography.Text>{JSON.stringify(config)}</Typography.Text>;
+          if (!isString(config)) {
+            return (
+              <Typography.Text>
+                {JSON.stringify(config?.values ?? [])}
+              </Typography.Text>
+            );
           }
 
           return <Typography.Text>{config}</Typography.Text>;

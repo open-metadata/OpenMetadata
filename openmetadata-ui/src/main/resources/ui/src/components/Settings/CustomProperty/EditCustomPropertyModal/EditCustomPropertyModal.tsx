@@ -12,18 +12,23 @@
  */
 import { Form, Modal, Typography } from 'antd';
 import { isUndefined, uniq } from 'lodash';
-import React, { FC, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CustomProperty } from '../../../../generated/type/customProperty';
+import {
+  CustomProperty,
+  EnumConfig,
+} from '../../../../generated/type/customProperty';
 import {
   FieldProp,
   FieldTypes,
+  FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
 
 export interface FormData {
   description: string;
   customPropertyConfig: string[];
+  multiSelect?: boolean;
 }
 
 interface EditCustomPropertyModalProps {
@@ -74,10 +79,9 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
-        const updatedValues = uniq([
-          ...value,
-          ...(customProperty.customPropertyConfig?.config ?? []),
-        ]);
+        const enumConfig = customProperty.customPropertyConfig
+          ?.config as EnumConfig;
+        const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
     },
@@ -90,6 +94,35 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       },
     ],
   };
+
+  const multiSelectField: FieldProp = {
+    name: 'multiSelect',
+    label: t('label.multi-select'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      'data-testid': 'multiSelect',
+    },
+    id: 'root/multiSelect',
+    formItemLayout: FormItemLayout.HORIZONTAL,
+  };
+
+  const initialValues = useMemo(() => {
+    const isEnumType = customProperty.propertyType.name === 'enum';
+    if (isEnumType) {
+      return {
+        description: customProperty.description,
+        customPropertyConfig:
+          (customProperty.customPropertyConfig?.config as EnumConfig)?.values ??
+          [],
+      };
+    }
+
+    return {
+      description: customProperty.description,
+      customPropertyConfig: customProperty.customPropertyConfig?.config,
+    };
+  }, [customProperty]);
 
   return (
     <Modal
@@ -119,10 +152,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       <Form
         form={form}
         id="edit-custom-property-form"
-        initialValues={{
-          description: customProperty.description,
-          customPropertyConfig: customProperty.customPropertyConfig?.config,
-        }}
+        initialValues={initialValues}
         layout="vertical"
         onFinish={handleSubmit}>
         {generateFormFields(formFields)}
@@ -136,6 +166,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
                 'message.updating-existing-not-possible-can-add-new-values'
               )}`}
             </Typography.Text>
+            {generateFormFields([multiSelectField])}
           </>
         )}
       </Form>
