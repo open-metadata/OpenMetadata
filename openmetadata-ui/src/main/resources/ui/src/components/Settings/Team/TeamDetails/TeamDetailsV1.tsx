@@ -1138,13 +1138,18 @@ const TeamDetailsV1 = ({
                           {t('label.description')}
                         </Typography.Text>
                         {editDescriptionPermission && (
-                          <EditIcon
-                            className="cursor-pointer align-middle"
-                            color={DE_ACTIVE_COLOR}
-                            data-testid="edit-description"
-                            {...ICON_DIMENSION}
-                            onClick={() => descriptionHandler(true)}
-                          />
+                          <Tooltip
+                            title={t('label.edit-entity', {
+                              entity: t('label.description'),
+                            })}>
+                            <EditIcon
+                              className="cursor-pointer align-middle"
+                              color={DE_ACTIVE_COLOR}
+                              data-testid="edit-description"
+                              {...ICON_DIMENSION}
+                              onClick={() => descriptionHandler(true)}
+                            />
+                          </Tooltip>
                         )}
                       </Space>
                     }>

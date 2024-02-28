@@ -126,7 +126,7 @@ describe('PersonaDetailsPage', () => {
     expect(
       await screen.findByText('DescriptionV1.component')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('add-user-button')).toBeInTheDocument();
+    expect(await screen.findByTestId('add-persona-button')).toBeInTheDocument();
   });
 
   it('NoDataPlaceholder', async () => {

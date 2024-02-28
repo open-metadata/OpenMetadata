@@ -152,7 +152,13 @@ const DomainSelectableList = ({
       {children ?? (
         <Tooltip
           placement="topRight"
-          title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
+          title={
+            hasPermission
+              ? t('label.edit-entity', {
+                  entity: t('label.domain'),
+                })
+              : NO_PERMISSION_FOR_ACTION
+          }>
           <Button
             className="p-0 flex-center"
             data-testid="add-domain"

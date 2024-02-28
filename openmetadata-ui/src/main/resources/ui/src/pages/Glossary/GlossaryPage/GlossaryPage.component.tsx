@@ -257,7 +257,7 @@ const GlossaryPage = () => {
       fetchGlossaryList();
     } catch (error) {
       showErrorToast(
-        error,
+        error as AxiosError,
         t('server.delete-entity-error', {
           entity: t('label.glossary'),
         })

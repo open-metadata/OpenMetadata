@@ -40,14 +40,18 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
   return (
     <Tooltip
       destroyTooltipOnHide
-      open={hasCopied}
       placement={position}
       title={
-        <span className="text-xs font-medium" data-testid="copy-success">
-          {t('message.copied-to-clipboard')}
-        </span>
-      }
-      trigger="click">
+        hasCopied ? (
+          <span className="text-xs font-medium" data-testid="copy-success">
+            {t('message.copied-to-clipboard')}
+          </span>
+        ) : (
+          <span className="text-xs font-medium" data-testid="copy-tooltip">
+            {t('message.copy-to-clipboard')}
+          </span>
+        )
+      }>
       <Button
         className="h-8 m-l-md relative"
         data-testid="copy-secret"

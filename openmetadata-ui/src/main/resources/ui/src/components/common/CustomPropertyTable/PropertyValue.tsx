@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
@@ -168,12 +168,16 @@ export const PropertyValue: FC<Props> = ({
           <div className="d-flex gap-2 items-center">
             {getValueElement()}
             {hasEditPermissions && (
-              <Icon
-                component={EditIconComponent}
-                data-testid="edit-icon"
-                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                onClick={onShowInput}
-              />
+              <Tooltip
+                placement="left"
+                title={t('label.edit-entity', { entity: propertyName })}>
+                <Icon
+                  component={EditIconComponent}
+                  data-testid="edit-icon"
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  onClick={onShowInput}
+                />
+              </Tooltip>
             )}
           </div>
         </Fragment>

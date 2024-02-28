@@ -189,13 +189,18 @@ const QueryCardExtraOption = ({
         }}
         placement="bottomRight"
         trigger={['click']}>
-        <Button
-          className="flex-center button-size"
-          data-testid="more-option-btn"
-          icon={<IconDropdown />}
-          size="small"
-          type="text"
-        />
+        <Tooltip
+          title={t('label.manage-entity', {
+            entity: t('label.query'),
+          })}>
+          <Button
+            className="flex-center button-size"
+            data-testid="query-btn"
+            icon={<IconDropdown />}
+            size="small"
+            type="text"
+          />
+        </Tooltip>
       </Dropdown>
       <ConfirmationModal
         bodyText={t('message.delete-entity-permanently', {

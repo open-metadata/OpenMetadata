@@ -23,6 +23,7 @@ import {
   Row,
   Space,
   Tabs,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -283,15 +284,21 @@ const PoliciesDetailPage = () => {
           }
           placement="bottomRight"
           trigger={['click']}>
-          <Button
-            data-testid={`manage-button-${rule.name}`}
-            icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-            size="small"
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          />
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: t('label.rule'),
+            })}>
+            <Button
+              data-testid={`manage-button-${rule.name}`}
+              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
+              size="small"
+              type="text"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            />
+          </Tooltip>
         </Dropdown>
       );
     },

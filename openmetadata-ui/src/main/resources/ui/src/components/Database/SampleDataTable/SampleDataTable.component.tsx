@@ -246,7 +246,11 @@ const SampleDataTable = ({
             placement="bottomRight"
             trigger={['click']}
             onOpenChange={setShowActions}>
-            <Tooltip placement="right">
+            <Tooltip
+              placement="topLeft"
+              title={t('label.manage-entity', {
+                entity: t('label.sample-data'),
+              })}>
               <Button
                 className="flex-center px-1.5"
                 data-testid="sample-data-manage-button"

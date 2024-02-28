@@ -311,23 +311,29 @@ const CustomControls: FC<ControlProps> = ({
             </Tooltip>
 
             {!deleted && (
-              <Button
-                className={classNames(
-                  'custom-control-edit-button rounded-full',
-                  {
-                    active: isEditMode,
+              <Tooltip
+                placement="topRight"
+                title={t('label.edit-entity', {
+                  entity: t('label.lineage'),
+                })}>
+                <Button
+                  className={classNames(
+                    'custom-control-edit-button rounded-full',
+                    {
+                      active: isEditMode,
+                    }
+                  )}
+                  data-testid="edit-lineage"
+                  disabled={!hasEditAccess}
+                  icon={getLoadingStatusValue(editIcon, loading, status)}
+                  title={
+                    hasEditAccess
+                      ? t('label.edit-entity', { entity: t('label.lineage') })
+                      : NO_PERMISSION_FOR_ACTION
                   }
-                )}
-                data-testid="edit-lineage"
-                disabled={!hasEditAccess}
-                icon={getLoadingStatusValue(editIcon, loading, status)}
-                title={
-                  hasEditAccess
-                    ? t('label.edit-entity', { entity: t('label.lineage') })
-                    : NO_PERMISSION_FOR_ACTION
-                }
-                onClick={onLineageEditClick}
-              />
+                  onClick={onLineageEditClick}
+                />
+              </Tooltip>
             )}
           </Space>
         </Col>

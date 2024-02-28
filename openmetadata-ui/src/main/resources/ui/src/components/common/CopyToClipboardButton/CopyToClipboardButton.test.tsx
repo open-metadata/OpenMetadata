@@ -46,22 +46,18 @@ describe('Test CopyToClipboardButton Component', () => {
     expect(callBack).toHaveBeenCalled();
   });
 
-  it('Should show success message and hide after timeout', async () => {
+  it('Should show success message on clipboard click', async () => {
     jest.useFakeTimers();
-    await act(async () => {
-      render(<CopyToClipboardButton copyText={value} />);
-    });
+    render(<CopyToClipboardButton copyText={value} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('copy-secret'));
     });
 
+    fireEvent.mouseOver(screen.getByTestId('copy-secret'));
+    jest.advanceTimersByTime(1000);
+
     expect(screen.getByTestId('copy-success')).toBeInTheDocument();
-
-    jest.advanceTimersByTime(1500);
-
-    // success message should not be in the dom after timeout
-    expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
   });
 
   it('Should have copied text in clipboard', async () => {

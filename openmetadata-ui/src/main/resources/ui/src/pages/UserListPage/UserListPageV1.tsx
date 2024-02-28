@@ -313,9 +313,18 @@ const UserListPageV1 = () => {
             className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
-              <Tooltip placement="bottom" title={t('label.restore')}>
+              <Tooltip
+                placement={isAdminUser ? 'bottom' : 'left'}
+                title={
+                  isAdminUser
+                    ? t('label.restore-entity', {
+                        entity: t('label.user'),
+                      })
+                    : ADMIN_ONLY_ACTION
+                }>
                 <Button
                   data-testid={`restore-user-btn-${record.name}`}
+                  disabled={!isAdminUser}
                   icon={<IconRestore name={t('label.restore')} width="16px" />}
                   type="text"
                   onClick={() => {
@@ -325,7 +334,15 @@ const UserListPageV1 = () => {
                 />
               </Tooltip>
             )}
-            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
+            <Tooltip
+              placement={isAdminUser ? 'bottom' : 'left'}
+              title={
+                isAdminUser
+                  ? t('label.delete-entity', {
+                      entity: t('label.user'),
+                    })
+                  : ADMIN_ONLY_ACTION
+              }>
               <Button
                 disabled={!isAdminUser}
                 icon={

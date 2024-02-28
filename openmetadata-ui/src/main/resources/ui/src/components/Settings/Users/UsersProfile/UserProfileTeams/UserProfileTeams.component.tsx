@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Space, Tooltip, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -75,13 +75,18 @@ const UserProfileTeams = ({
           </Typography.Text>
 
           {!isTeamsEdit && isAdminUser && (
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-teams-button"
-              {...ICON_DIMENSION}
-              onClick={() => setIsTeamsEdit(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.team-plural'),
+              })}>
+              <EditIcon
+                className="cursor-pointer align-middle"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-teams-button"
+                {...ICON_DIMENSION}
+                onClick={() => setIsTeamsEdit(true)}
+              />
+            </Tooltip>
           )}
         </Space>
       }>

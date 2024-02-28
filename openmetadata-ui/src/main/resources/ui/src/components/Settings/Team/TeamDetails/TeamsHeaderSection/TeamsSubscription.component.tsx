@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select, Space, Typography } from 'antd';
+import { Form, Input, Modal, Select, Space, Tooltip, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -76,13 +76,18 @@ const TeamsSubscription = ({
               data-testid="subscription-no-data">
               {t('label.none')}
             </Typography.Text>
-            <EditIcon
-              className="cursor-pointer"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-team-subscription"
-              width={14}
-              onClick={() => setEditSubscription(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.subscription'),
+              })}>
+              <EditIcon
+                className="cursor-pointer"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-team-subscription"
+                width={14}
+                onClick={() => setEditSubscription(true)}
+              />
+            </Tooltip>
           </div>
         );
       }
@@ -136,13 +141,18 @@ const TeamsSubscription = ({
       {subscriptionRenderElement}
 
       {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
-        <EditIcon
-          className="cursor-pointer align-middle"
-          color={DE_ACTIVE_COLOR}
-          data-testid="edit-team-subscription"
-          {...ICON_DIMENSION}
-          onClick={() => setEditSubscription(true)}
-        />
+        <Tooltip
+          title={t('label.edit-entity', {
+            entity: t('label.subscription'),
+          })}>
+          <EditIcon
+            className="cursor-pointer align-middle"
+            color={DE_ACTIVE_COLOR}
+            data-testid="edit-team-subscription"
+            {...ICON_DIMENSION}
+            onClick={() => setEditSubscription(true)}
+          />
+        </Tooltip>
       )}
 
       {editSubscription && (

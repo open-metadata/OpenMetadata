@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Select, Space, Typography } from 'antd';
+import { Card, Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -153,13 +153,18 @@ const UserProfileRoles = ({
             {t('label.role-plural')}
           </Typography.Text>
           {!isRolesEdit && isAdminUser && (
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-roles-button"
-              {...ICON_DIMENSION}
-              onClick={() => setIsRolesEdit(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.role-plural'),
+              })}>
+              <EditIcon
+                className="cursor-pointer align-middle"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-roles-button"
+                {...ICON_DIMENSION}
+                onClick={() => setIsRolesEdit(true)}
+              />
+            </Tooltip>
           )}
         </Space>
       }>

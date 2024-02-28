@@ -453,7 +453,11 @@ const AppDetails = () => {
               placement="bottomRight"
               trigger={['click']}
               onOpenChange={setShowActions}>
-              <Tooltip placement="right">
+              <Tooltip
+                placement="topRight"
+                title={t('label.manage-entity', {
+                  entity: t('label.application'),
+                })}>
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
