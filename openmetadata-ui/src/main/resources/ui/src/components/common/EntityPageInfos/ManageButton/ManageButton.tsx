@@ -15,7 +15,7 @@ import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { capitalize, isUndefined } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
@@ -271,13 +271,18 @@ const ManageButton: FC<ManageButtonProps> = ({
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
           trigger={['click']}>
-          <Button
-            className={classNames('flex-center px-1.5', buttonClassName)}
-            data-testid="manage-button"
-            title="Manage"
-            type="default">
-            <IconDropdown className="anticon self-center manage-dropdown-icon" />
-          </Button>
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: capitalize(entityType),
+            })}>
+            <Button
+              className={classNames('flex-center px-1.5', buttonClassName)}
+              data-testid="manage-button"
+              type="default">
+              <IconDropdown className="anticon self-center manage-dropdown-icon" />
+            </Button>
+          </Tooltip>
         </Dropdown>
       ) : (
         <></>
