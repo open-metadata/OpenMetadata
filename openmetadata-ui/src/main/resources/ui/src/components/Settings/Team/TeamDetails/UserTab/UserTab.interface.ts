@@ -17,6 +17,6 @@ import { EntityReference } from '../../../../../generated/type/entityReference';
 export interface UserTabProps {
   permission: OperationPermission;
   currentTeam: Team;
-  onAddUser: (data: EntityReference[]) => void;
+  onAddUser: (data: EntityReference[]) => Promise<void>;
   onRemoveUser: (id: string) => Promise<void>;
 }

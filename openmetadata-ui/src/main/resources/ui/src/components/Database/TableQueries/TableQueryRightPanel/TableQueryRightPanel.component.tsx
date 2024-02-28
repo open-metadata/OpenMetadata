@@ -25,6 +25,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsInput from '../../../TagsInput/TagsInput.component';
@@ -103,28 +104,7 @@ const TableQueryRightPanel = ({
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <div data-testid="owner-name-container">
-                {query.owner && getEntityName(query.owner) ? (
-                  <Space className="m-r-xss" size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(query.owner)}
-                      name={query.owner?.name || ''}
-                      width="20"
-                    />
-                    <Link
-                      data-testid="owner-link"
-                      to={getUserPath(query.owner.name ?? '')}>
-                      {getEntityName(query.owner)}
-                    </Link>
-                  </Space>
-                ) : (
-                  <span className="text-grey-muted">
-                    {t('label.no-entity', {
-                      entity: t('label.owner-lowercase'),
-                    })}
-                  </span>
-                )}
-              </div>
+              <OwnerLabel hasPermission={false} owner={query.owner} />
             </Space>
           </Col>
           <Col span={24}>

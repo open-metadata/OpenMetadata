@@ -114,9 +114,6 @@ describe('TableQueryRightPanel component test', () => {
     });
     const owner = await screen.findByTestId('owner-link');
 
-    expect(
-      await screen.findByTestId('owner-name-container')
-    ).toBeInTheDocument();
     expect(owner).toBeInTheDocument();
     expect(owner.textContent).toEqual(MOCK_QUERIES[0].owner?.displayName);
     expect(
