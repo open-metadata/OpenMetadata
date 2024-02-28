@@ -21,7 +21,7 @@ from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
@@ -224,7 +224,7 @@ class SQASampler(SamplerInterface):
 
         if (
             self._partition_details.partitionIntervalType
-            == PartitionIntervalType.COLUMN_VALUE
+            == PartitionIntervalTypes.COLUMN_VALUE
         ):
             return aliased(
                 self.table,
@@ -242,7 +242,7 @@ class SQASampler(SamplerInterface):
 
         if (
             self._partition_details.partitionIntervalType
-            == PartitionIntervalType.INTEGER_RANGE
+            == PartitionIntervalTypes.INTEGER_RANGE
         ):
             return aliased(
                 self.table,
