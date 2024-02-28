@@ -4,10 +4,10 @@ slug: /connectors/ml-model/mlflow
 ---
 
 {% connectorDetailsHeader
-name="Mlflow"
+name="MLflow"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures="ML Store"]
+availableFeatures=["ML Store"]
 unavailableFeatures=[]
 / %}
 
