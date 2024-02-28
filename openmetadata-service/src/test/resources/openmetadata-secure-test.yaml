@@ -106,6 +106,7 @@ migrationConfiguration:
   flywayPath: "../bootstrap/sql/migrations/flyway"
   nativePath: "../bootstrap/sql/migrations/native"
   extensionPath: ""
+  migrationValidationClass: "org.openmetadata.service.migration.OpenMetadataMigrationValidation"
 
 #elasticsearch:
 #  host: localhost

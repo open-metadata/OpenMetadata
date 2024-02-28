@@ -80,9 +80,11 @@ import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.Migration;
+import org.openmetadata.service.migration.MigrationValidationFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
@@ -150,6 +152,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
     new SearchRepository(catalogConfig.getElasticSearchConfiguration());
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationFactory.createMigrationValidationClient(
+        catalogConfig.getMigrationConfiguration(), jdbi.onDemand(MigrationDAO.class));
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
 

@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -299,6 +300,19 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // The bot user count should not be considered.
     Assertions.assertEquals(beforeUserCount, afterUserCount);
+  }
+
+  @Test
+  void validate_test() throws HttpResponseException {
+    ValidationResponse response = getValidation();
+
+    // Check migrations are OK
+    Assertions.assertEquals(Boolean.TRUE, response.getMigrations().getPassed());
+  }
+
+  private static ValidationResponse getValidation() throws HttpResponseException {
+    WebTarget target = getResource("system/validate");
+    return TestUtils.get(target, ValidationResponse.class, ADMIN_AUTH_HEADERS);
   }
 
   private static EntitiesCount getEntitiesCount() throws HttpResponseException {
