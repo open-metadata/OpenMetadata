@@ -40,6 +40,7 @@ def _(element, compiler, **kw):
 
 
 @compiles(SumFn, Dialects.BigQuery)
+@compiles(SumFn, Dialects.Postgres)
 def _(element, compiler, **kw):
     """Handle case where column type is INTEGER but SUM returns a NUMBER"""
     proc = compiler.process(element.clauses, **kw)
