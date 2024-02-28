@@ -12,23 +12,11 @@
 NoSQL adaptor for the NoSQL profiler.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, List
 
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Table
 
 
 class NoSQLAdaptor(ABC):
     @abstractmethod
-    def item_count(self, table: Table) -> int:
-        raise NotImplementedError
-
-    @abstractmethod
-    def scan(
-        self, table: Table, columns: List[Column], limit: int
-    ) -> List[Dict[str, any]]:
-        pass
-
-    def query(
-        self, table: Table, columns: List[Column], query: any, limit: int
-    ) -> List[Dict[str, any]]:
+    def get_row_count(self, table: Table) -> int:
         raise NotImplementedError
