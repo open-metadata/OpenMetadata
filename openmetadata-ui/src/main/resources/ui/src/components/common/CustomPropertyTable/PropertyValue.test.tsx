@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { CustomProperty } from '../../../generated/type/customProperty';
 import { PropertyValue } from './PropertyValue';
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
@@ -36,7 +35,9 @@ jest.mock(
 jest.mock('./PropertyInput', () => ({
   PropertyInput: jest
     .fn()
-    .mockReturnValue(<div data-testid="PropertyInput">PropertyInput</div>),
+    .mockImplementation(({ children }) => (
+      <div data-testid="PropertyInput">{children}</div>
+    )),
 }));
 
 const mockUpdate = jest.fn();
@@ -44,7 +45,7 @@ const mockUpdate = jest.fn();
 const mockData = {
   extension: { yNumber: 87 },
   property: {
-    propertyName: 'yNumber',
+    name: 'yNumber',
     propertyType: {
       id: '73f1e4a4-4c62-4399-9d6d-4a3906851483',
       type: 'type',
@@ -54,7 +55,8 @@ const mockData = {
       displayName: 'integer',
       href: 'http://localhost:8585/api/v1/metadata/types/73f1e4a4-4c62-4399-9d6d-4a3906851483',
     },
-  } as unknown as CustomProperty,
+    description: 'A number property.',
+  },
   onExtensionUpdate: mockUpdate,
   hasEditPermissions: true,
 };
@@ -69,7 +71,9 @@ describe('Test PropertyValue Component', () => {
     expect(valueElement).toBeInTheDocument();
     expect(iconElement).toBeInTheDocument();
 
-    fireEvent.click(iconElement);
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
 
     expect(await screen.findByTestId('PropertyInput')).toBeInTheDocument();
   });
@@ -102,8 +106,33 @@ describe('Test PropertyValue Component', () => {
     expect(valueElement).toBeInTheDocument();
     expect(iconElement).toBeInTheDocument();
 
-    fireEvent.click(iconElement);
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
 
     expect(await screen.findByTestId('EditorModal')).toBeInTheDocument();
+  });
+
+  it('Should render select component for enum type', async () => {
+    const extension = { yNumber: 'enumValue' };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'enum',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    const iconElement = await screen.findByTestId('edit-icon');
+
+    await act(async () => {
+      fireEvent.click(iconElement);
+    });
+
+    expect(await screen.findByTestId('enum-select')).toBeInTheDocument();
   });
 });
