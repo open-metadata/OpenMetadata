@@ -125,9 +125,15 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           if (!isString(config)) {
             return (
-              <Typography.Text>
-                {JSON.stringify(config?.values ?? [])}
-              </Typography.Text>
+              <Space direction="vertical" size={4}>
+                <Typography.Text>
+                  {JSON.stringify(config?.values ?? [])}
+                </Typography.Text>
+                <Typography.Text>
+                  {t('label.multi-select')}:{' '}
+                  {config?.multiSelect ? t('label.yes') : t('label.no')}
+                </Typography.Text>
+              </Space>
             );
           }
 

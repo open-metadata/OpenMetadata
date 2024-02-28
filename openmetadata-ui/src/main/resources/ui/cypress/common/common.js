@@ -596,6 +596,16 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="propertyType"]').click();
   cy.get(`[title="${customType}"]`).click();
 
+  if (customType === 'Enum') {
+    value.values.forEach((val) => {
+      cy.get('#root\\/customPropertyConfig').type(`${val}{enter}`);
+    });
+
+    if (value.multiSelect) {
+      cy.get('#root\\/multiSelect').scrollIntoView().click();
+    }
+  }
+
   cy.get(descriptionBox).clear().type(customPropertyData.description);
 
   // Check if the property got added
@@ -623,7 +633,7 @@ export const editCreatedProperty = (propertyName) => {
 
   interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
 
-  cy.get('[data-testid="save"]').click();
+  cy.get('button[type="submit"]').scrollIntoView().click();
 
   cy.wait('@checkPatchForDescription', { timeout: 15000 });
 
