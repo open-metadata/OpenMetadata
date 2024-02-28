@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import (
     Column,
+    PartitionColumnDetails,
     TablePartition,
     TableType,
 )
@@ -27,6 +28,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.iceberg.helper import (
     IcebergColumnParser,
     get_column_from_partition,
+    get_column_partition_type,
 )
 
 
@@ -57,10 +59,16 @@ class IcebergTable(BaseModel):
             columns=[IcebergColumnParser.parse(column) for column in iceberg_columns],
             tablePartition=TablePartition(
                 columns=[
-                    get_column_from_partition(iceberg_columns, partition)
+                    PartitionColumnDetails(
+                        columnName=get_column_from_partition(
+                            iceberg_columns, partition
+                        ),
+                        intervalType=get_column_partition_type(
+                            iceberg_columns, partition
+                        ),
+                        interval=None,
+                    )
                     for partition in table.spec().fields
-                ],
-                intervalType=None,
-                interval=None,
+                ]
             ),
         )
