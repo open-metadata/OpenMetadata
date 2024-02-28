@@ -30,9 +30,6 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
-    MongoDBConnection,
-)
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
@@ -46,7 +43,6 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
     UnityCatalogConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.profiler.interface.nosql.profiler_interface import NoSQLProfilerInterface
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
@@ -122,7 +118,6 @@ profilers = {
     UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
     DatabricksConnection.__name__: DatabricksProfilerInterface,
     Db2Connection.__name__: DB2ProfilerInterface,
-    MongoDBConnection.__name__: NoSQLProfilerInterface,
 }
 
 profiler_interface_factory.register_many(profilers)

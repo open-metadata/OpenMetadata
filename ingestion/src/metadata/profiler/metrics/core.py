@@ -18,13 +18,10 @@ Metric Core definitions
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
+from typing import Any, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta, Session
-
-from metadata.generated.schema.entity.data.table import Table
-from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 
 # When creating complex metrics, use inherit_cache = CACHE
 CACHE = True
@@ -88,9 +85,6 @@ def add_props(**kwargs):
         return _new_cls
 
     return inner
-
-
-T = TypeVar("T")
 
 
 class Metric(ABC):
@@ -158,13 +152,6 @@ class Metric(ABC):
         variance, where it will be a float
         """
         return self.col.type.python_type if self.col else None
-
-    def nosql_fn(self, client: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
-        """
-        Return the function to be used for NoSQL clients to calculate the metric.
-        By default, returns a "do nothing" function that returns None.
-        """
-        return lambda table: None
 
 
 TMetric = TypeVar("TMetric", bound=Metric)

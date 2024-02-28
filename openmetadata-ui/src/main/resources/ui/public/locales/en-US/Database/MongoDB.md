@@ -1,4 +1,4 @@
-# MongoDB
+# Hive
 In this section, we provide guides and references to use the MongoDB connector. You can view the full documentation for MongoDB [here](https://docs.open-metadata.org/connectors/database/mongo).
 
 ## Requirements

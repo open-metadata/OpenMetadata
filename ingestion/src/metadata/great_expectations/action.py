@@ -107,7 +107,7 @@ class OpenMetadataValidationAction(ValidationAction):
         self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
 
-    def _run(  # pylint: disable=unused-argument,arguments-renamed
+    def _run(  # pylint: disable=unused-argument
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
         validation_result_suite_identifier: Union[
@@ -124,6 +124,7 @@ class OpenMetadataValidationAction(ValidationAction):
             validation_result_suite: result suite returned when checkpoint is ran
             validation_result_suite_identifier: type of result suite
             data_asset:
+            payload:
             expectation_suite_identifier: type of expectation suite
             checkpoint_identifier: identifier for the checkpoint
         """
