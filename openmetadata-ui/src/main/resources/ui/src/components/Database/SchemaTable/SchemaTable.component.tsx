@@ -350,20 +350,26 @@ const SchemaTable = ({
               ) : null}
               {(tablePermissions?.EditAll ||
                 tablePermissions?.EditDisplayName) && (
-                <Button
-                  className="cursor-pointer hover-cell-icon w-fit-content"
-                  data-testid="edit-displayName-button"
-                  style={{
-                    color: DE_ACTIVE_COLOR,
-                    padding: 0,
-                    border: 'none',
-                    background: 'transparent',
-                  }}
-                  onClick={() => handleEditDisplayNameClick(record)}>
-                  <IconEdit
-                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                  />
-                </Button>
+                <Tooltip
+                  placement="right"
+                  title={t('label.edit-entity', {
+                    entity: t('label.display-name'),
+                  })}>
+                  <Button
+                    className="cursor-pointer hover-cell-icon w-fit-content"
+                    data-testid="edit-displayName-button"
+                    style={{
+                      color: DE_ACTIVE_COLOR,
+                      padding: 0,
+                      border: 'none',
+                      background: 'transparent',
+                    }}
+                    onClick={() => handleEditDisplayNameClick(record)}>
+                    <IconEdit
+                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                    />
+                  </Button>
+                </Tooltip>
               )}
             </div>
           );
