@@ -53,7 +53,7 @@ export const AssetsFilterOptions: Array<{
   {
     label: i18n.t('label.glossary-plural'),
     key: EntityType.GLOSSARY_TERM,
-    value: SearchIndex.GLOSSARY,
+    value: SearchIndex.GLOSSARY_TERM,
   },
   {
     label: i18n.t('label.stored-procedure-plural'),

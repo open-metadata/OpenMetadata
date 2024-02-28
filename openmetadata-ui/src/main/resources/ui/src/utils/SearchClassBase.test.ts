@@ -40,7 +40,7 @@ describe('SearchClassBase', () => {
     );
     expect(searchIndexMapping[EntityType.TAG]).toEqual(SearchIndex.TAG);
     expect(searchIndexMapping[EntityType.GLOSSARY_TERM]).toEqual(
-      SearchIndex.GLOSSARY
+      SearchIndex.GLOSSARY_TERM
     );
     expect(searchIndexMapping[EntityType.STORED_PROCEDURE]).toEqual(
       SearchIndex.STORED_PROCEDURE

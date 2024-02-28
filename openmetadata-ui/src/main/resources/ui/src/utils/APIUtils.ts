@@ -34,7 +34,7 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.CONTAINER
   | SearchIndex.STORED_PROCEDURE
   | SearchIndex.DASHBOARD_DATA_MODEL
-  | SearchIndex.GLOSSARY
+  | SearchIndex.GLOSSARY_TERM
   | SearchIndex.TAG
   | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
@@ -168,7 +168,7 @@ export const formatDataProductResponse = (
 };
 
 export const formatSearchGlossaryTermResponse = (
-  hits: SearchResponse<SearchIndex.GLOSSARY>['hits']['hits']
+  hits: SearchResponse<SearchIndex.GLOSSARY_TERM>['hits']['hits']
 ): GlossaryTerm[] => {
   return hits.map((d) => ({
     name: d._source.name,

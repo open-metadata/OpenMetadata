@@ -119,7 +119,7 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconMlModal;
 
       break;
-    case SearchIndex.GLOSSARY:
+    case SearchIndex.GLOSSARY_TERM:
       label = i18next.t('label.glossary-term-plural');
       GroupIcon = IconTable;
 
@@ -264,7 +264,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
     [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
     [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
-    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY_TERM,
+    [SearchIndex.GLOSSARY_TERM]: EntityType.GLOSSARY_TERM,
     [SearchIndex.TAG]: EntityType.TAG,
     [SearchIndex.DATABASE]: EntityType.DATABASE,
     [SearchIndex.DOMAIN]: EntityType.DOMAIN,

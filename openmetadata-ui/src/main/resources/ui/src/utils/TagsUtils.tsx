@@ -16,7 +16,7 @@ import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
 import { omit } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
@@ -39,7 +39,6 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
-import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -78,24 +77,6 @@ export const getClassifications = async (
   } catch (error) {
     return Promise.reject({ data: (error as AxiosError).response });
   }
-};
-
-/**
- * This method returns all the tags present in the system
- * @returns tags: Tag[]
- */
-export const getAllTagsForOptions = async () => {
-  let tags: Tag[] = [];
-  try {
-    const { data } = await getTags({ limit: 1000 });
-
-    tags = data;
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(error);
-  }
-
-  return tags;
 };
 
 /**
@@ -169,37 +150,6 @@ export const getTagDisplay = (tag: string) => {
   }
 
   return tag;
-};
-
-export const fetchTagsAndGlossaryTerms = async () => {
-  const responses = await Promise.allSettled([
-    getAllTagsForOptions(),
-    fetchGlossaryTerms(),
-  ]);
-
-  let tagsAndTerms: TagOption[] = [];
-  if (responses[0].status === SettledStatus.FULFILLED && responses[0].value) {
-    tagsAndTerms = responses[0].value.map((tag) => {
-      return {
-        fqn: tag.fullyQualifiedName ?? tag.name,
-        source: 'Classification',
-      };
-    });
-  }
-  if (
-    responses[1].status === SettledStatus.FULFILLED &&
-    responses[1].value &&
-    responses[1].value.length > 0
-  ) {
-    const glossaryTerms: TagOption[] = getGlossaryTermlist(
-      responses[1].value
-    ).map((tag) => {
-      return { fqn: tag, source: 'Glossary' };
-    });
-    tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-  }
-
-  return tagsAndTerms;
 };
 
 export const getTagTooltip = (fqn: string, description?: string) => (
@@ -320,7 +270,7 @@ export const fetchGlossaryList = async (
     pageNumber: page,
     pageSize: 10,
     queryFilter: {},
-    searchIndex: SearchIndex.GLOSSARY,
+    searchIndex: SearchIndex.GLOSSARY_TERM,
   });
 
   const hits = glossaryResponse.hits.hits;

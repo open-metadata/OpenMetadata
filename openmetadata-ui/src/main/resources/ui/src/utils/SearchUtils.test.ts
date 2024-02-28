@@ -33,7 +33,7 @@ describe('getEntityTypeFromSearchIndex', () => {
     [SearchIndex.ML_MODEL_SERVICE, EntityType.MLMODEL_SERVICE],
     [SearchIndex.STORAGE_SERVICE, EntityType.STORAGE_SERVICE],
     [SearchIndex.SEARCH_SERVICE, EntityType.SEARCH_SERVICE],
-    [SearchIndex.GLOSSARY, EntityType.GLOSSARY_TERM],
+    [SearchIndex.GLOSSARY_TERM, EntityType.GLOSSARY_TERM],
     [SearchIndex.TAG, EntityType.TAG],
     [SearchIndex.DATABASE, EntityType.DATABASE],
     [SearchIndex.DOMAIN, EntityType.DOMAIN],

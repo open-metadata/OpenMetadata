@@ -11,38 +11,13 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
-import {
-  FQN_SEPARATOR_CHAR,
-  WILD_CARD_CHAR,
-} from '../constants/char.constants';
-import { SearchIndex } from '../enums/search.enum';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
-import { SearchResponse } from '../interface/search.interface';
-import { searchData } from '../rest/miscAPI';
-import { formatSearchGlossaryTermResponse } from './APIUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
-
-/**
- * To get all glossary terms
- * @returns promise of list of formatted glossary terms
- */
-export const fetchGlossaryTerms = (): Promise<GlossaryTerm[]> => {
-  return new Promise<GlossaryTerm[]>((resolve, reject) => {
-    searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY)
-      .then((res) => {
-        const data = formatSearchGlossaryTermResponse(
-          (res?.data as SearchResponse<SearchIndex.GLOSSARY>)?.hits?.hits || []
-        );
-        resolve(data);
-      })
-      .catch((error: AxiosError) => reject(error.response));
-  });
-};
 
 /**
  * To get list of fqns from list of glossary terms

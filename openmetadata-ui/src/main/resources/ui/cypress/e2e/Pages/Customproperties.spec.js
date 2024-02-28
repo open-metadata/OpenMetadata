@@ -481,7 +481,9 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         `/api/v1/metadata/types/name/glossaryTerm*`,
         'getEntity'
       );
-      cy.get('[data-testid="glossaries-tab"]').click();
+      cy.get(
+        `[data-testid=${Cypress.$.escapeSelector('glossary terms-tab')}]`
+      ).click();
 
       cy.get('[data-testid="advance-search-button"]').click();
       verifyResponseStatusCode('@getEntity', 200);

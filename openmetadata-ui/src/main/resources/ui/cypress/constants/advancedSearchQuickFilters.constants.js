@@ -185,7 +185,7 @@ export const QUICK_FILTERS_BY_ASSETS = [
     label: 'Glossaries',
     searchIndex: 'glossary_search_index',
     filters: GLOSSARY_DROPDOWN_ITEMS,
-    tab: 'glossaries-tab',
+    tab: 'glossary terms-tab',
     entity: DATA_ASSETS.glossaryTerms,
   },
   {
