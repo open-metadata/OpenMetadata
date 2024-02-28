@@ -561,6 +561,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     selectedPipeline,
     currDeployId,
     currTriggerId,
+    isConfirmationModalOpen,
   ]);
 
   const errorPlaceholder = useMemo(
