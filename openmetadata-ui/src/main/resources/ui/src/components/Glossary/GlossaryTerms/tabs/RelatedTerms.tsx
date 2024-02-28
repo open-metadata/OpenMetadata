@@ -123,7 +123,7 @@ const RelatedTerms = ({
       '',
       '',
       '',
-      SearchIndex.GLOSSARY
+      SearchIndex.GLOSSARY_TERM
     );
 
     const termResult = formatSearchGlossaryTermResponse(
