@@ -30,6 +30,7 @@ const EntityDeleteModal = ({
   bodyText,
 }: EntityDeleteModalProp) => {
   const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
@@ -41,6 +42,12 @@ const EntityDeleteModal = ({
     () => loadingState === LOADING_STATE.WAITING,
     [loadingState]
   );
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onConfirm();
+    setSaving(false);
+  };
 
   // To remove the entered text in the modal input after modal closed
   useEffect(() => {
@@ -67,9 +74,9 @@ const EntityDeleteModal = ({
           <Button
             data-testid={isLoadingWaiting ? 'loading-button' : 'confirm-button'}
             disabled={!isNameMatching}
-            loading={isLoadingWaiting}
+            loading={saving}
             type="primary"
-            onClick={onConfirm}>
+            onClick={handleSave}>
             {t('label.confirm')}
           </Button>
         </div>
