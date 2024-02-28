@@ -42,7 +42,8 @@ def validate_athena_injected_partitioning(
     error_msg = (
         "Table profiler config is missing for table with injected partitioning. Please define "
         "the partitioning in the table profiler config for column {column_name}. "
-        "For more information, visit https://docs.open-metadata.org/v1.3.x/connectors/ingestion/workflows/profiler#profiler-options "
+        "For more information, visit "
+        "https://docs.open-metadata.org/v1.3.x/connectors/ingestion/workflows/profiler#profiler-options "
     )
 
     column_partitions: Optional[List[PartitionColumnDetails]] = table_partitions.columns
