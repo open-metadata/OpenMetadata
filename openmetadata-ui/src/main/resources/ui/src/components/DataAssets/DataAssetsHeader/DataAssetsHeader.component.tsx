@@ -76,7 +76,7 @@ export const ExtraInfoLabel = ({
   value: string | number;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider className="self-center" type="vertical" />
     <Typography.Text className="self-center text-xs whitespace-nowrap">
       {!isEmpty(label) && (
         <span className="text-grey-muted">{`${label}: `}</span>
@@ -96,7 +96,7 @@ export const ExtraInfoLink = ({
   href: string;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider className="self-center" type="vertical" />
     <div className="d-flex items-center text-xs">
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
@@ -346,7 +346,7 @@ export const DataAssetsHeader = ({
               />
             </Col>
             <Col span={24}>
-              <div className="d-flex no-wrap">
+              <div className="d-flex flex-wrap gap-2">
                 {showDomain && (
                   <>
                     <DomainLabel
@@ -357,7 +357,7 @@ export const DataAssetsHeader = ({
                       entityType={entityType}
                       hasPermission={editDomainPermission}
                     />
-                    <Divider className="self-center m-x-sm" type="vertical" />
+                    <Divider className="self-center" type="vertical" />
                   </>
                 )}
                 <OwnerLabel
@@ -365,7 +365,7 @@ export const DataAssetsHeader = ({
                   owner={dataAsset?.owner}
                   onUpdate={onOwnerUpdate}
                 />
-                <Divider className="self-center m-x-sm" type="vertical" />
+                <Divider className="self-center" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space data-testid="header-tier-container">
                     {tier ? (

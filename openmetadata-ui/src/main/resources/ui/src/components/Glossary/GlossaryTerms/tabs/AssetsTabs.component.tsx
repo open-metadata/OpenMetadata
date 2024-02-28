@@ -413,7 +413,11 @@ const AssetsTabs = forwardRef(
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
-      } else if (noDataPlaceholder || searchValue || !permissions.Create) {
+      } else if (
+        isObject(noDataPlaceholder) ||
+        searchValue ||
+        !permissions.Create
+      ) {
         return (
           <ErrorPlaceHolder>
             {isObject(noDataPlaceholder) && (
@@ -429,9 +433,10 @@ const AssetsTabs = forwardRef(
             icon={<AddPlaceHolderIcon className="h-32 w-32" />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                entity: t('label.asset'),
-              })}
+              {noDataPlaceholder ??
+                t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                  entity: t('label.asset'),
+                })}
             </Typography.Paragraph>
             <Typography.Paragraph>
               <Transi18next
