@@ -97,12 +97,6 @@ jest.mock('../../../TagsInput/TagsInput.component', () => {
 jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('../../../../utils/TagsUtils', () => ({
-  fetchTagsAndGlossaryTerms: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: [] })),
-}));
-
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <>testProfilePicture</>);
 });

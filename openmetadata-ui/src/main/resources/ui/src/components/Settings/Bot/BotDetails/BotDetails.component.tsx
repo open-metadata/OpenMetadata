@@ -12,7 +12,16 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Space, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -158,13 +167,18 @@ const BotDetails: FC<BotsDetailProps> = ({
                           </Typography.Text>
                         )}
                         {(displayNamePermission || editAllPermission) && (
-                          <Button
-                            className="p-0"
-                            data-testid="edit-displayName"
-                            icon={<EditIcon width={16} />}
-                            type="text"
-                            onClick={() => setIsDisplayNameEdit(true)}
-                          />
+                          <Tooltip
+                            title={t('label.edit-entity', {
+                              entity: t('label.display-name'),
+                            })}>
+                            <Button
+                              className="p-0"
+                              data-testid="edit-displayName"
+                              icon={<EditIcon width={16} />}
+                              type="text"
+                              onClick={() => setIsDisplayNameEdit(true)}
+                            />
+                          </Tooltip>
                         )}
                       </Space>
                     )}

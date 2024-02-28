@@ -128,12 +128,17 @@ const DescriptionV1 = ({
     () => (
       <Space size={12}>
         {!isReadOnly && hasEditAccess && (
-          <Icon
-            component={EditIcon}
-            data-testid="edit-description"
-            style={{ color: DE_ACTIVE_COLOR }}
-            onClick={onDescriptionEdit}
-          />
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.description'),
+            })}>
+            <Icon
+              component={EditIcon}
+              data-testid="edit-description"
+              style={{ color: DE_ACTIVE_COLOR }}
+              onClick={onDescriptionEdit}
+            />
+          </Tooltip>
         )}
         {taskActionButton}
         {showCommentsIcon && (
