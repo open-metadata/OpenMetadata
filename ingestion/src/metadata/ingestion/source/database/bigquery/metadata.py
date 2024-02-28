@@ -251,7 +251,9 @@ class BigquerySource(
             test_connection_fn(
                 self.metadata, inspector_details.engine, self.service_connection
             )
-            if os.environ[GOOGLE_CREDENTIALS]:
+            # GOOGLE_CREDENTIALS may not have been set,
+            # to avoid key error, we use `get` for dict
+            if os.environ.get(GOOGLE_CREDENTIALS):
                 self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
 
     def query_table_names_and_types(
@@ -442,7 +444,8 @@ class BigquerySource(
         inspector_details = get_inspector_details(
             database_name=database_name, service_connection=self.service_connection
         )
-        self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
+        if os.environ.get(GOOGLE_CREDENTIALS):
+            self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
