@@ -6,11 +6,22 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.type.CustomProperty",
   "definitions": {
-    "enumValues": {
+    "enumConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.EnumConfig",
+      "title": "EnumConfig",
       "description": "Applies to Enum type, this config is used to define list of enum values",
-      "type": "array",
-      "items": {
-        "type": "string"
+      "properties": {
+        "multiSelect": {
+          "type": "boolean",
+          "default": false
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "format": {
@@ -30,7 +41,7 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "#/definitions/enumValues"
+              "$ref": "#/definitions/enumConfig"
             },
             {
               "$ref": "#/definitions/format"
