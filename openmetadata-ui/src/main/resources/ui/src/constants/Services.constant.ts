@@ -381,6 +381,7 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
+  DatabaseServiceType.BigTable,
   DatabaseServiceType.SAS,
   DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
