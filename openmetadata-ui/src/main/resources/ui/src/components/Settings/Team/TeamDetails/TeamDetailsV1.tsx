@@ -739,6 +739,7 @@ const TeamDetailsV1 = ({
         isSummaryPanelOpen
         assetCount={assetsCount}
         isEntityDeleted={isTeamDeleted}
+        noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => history.push(ROUTES.EXPLORE)}
