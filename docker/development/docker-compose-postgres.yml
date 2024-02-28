@@ -49,6 +49,7 @@ services:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
       - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=OpenMetadata_password123!!!
     networks:
       - local_app_net
     expose:
@@ -361,7 +362,7 @@ services:
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
       ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-http}
       ELASTICSEARCH_USER: ${ELASTICSEARCH_USER:-""}
-      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-"OpenMetadata_password123!!!"}
       SEARCH_TYPE: ${SEARCH_TYPE:- "opensearch"}
       ELASTICSEARCH_TRUST_STORE_PATH: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
       ELASTICSEARCH_TRUST_STORE_PASSWORD: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
