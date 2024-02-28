@@ -615,6 +615,7 @@
     "lineage-ingestion": "Lineage Ingestion",
     "lineage-lowercase": "lineage",
     "lineage-node-lowercase": "lineage node",
+    "lineage-source": "Source of Lineage",
     "list": "List",
     "list-entity": "List {{entity}}",
     "live": "Live",
