@@ -1,29 +1,11 @@
 {
   "$id": "https://open-metadata.org/schema/type/customProperty.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AuditLog",
+  "title": "CustomProperty",
   "description": "This schema defines the custom property to an entity to extend it.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.type.CustomProperty",
   "definitions": {
-    "enumConfig": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.EnumConfig",
-      "title": "EnumConfig",
-      "description": "Applies to Enum type, this config is used to define list of enum values",
-      "properties": {
-        "multiSelect": {
-          "type": "boolean",
-          "default": false
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "format": {
       "description": "Applies to date interval, date, time format.",
       "type": "string"
@@ -41,7 +23,7 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "#/definitions/enumConfig"
+              "$ref": "../type/customProperties/enumConfig.json"
             },
             {
               "$ref": "#/definitions/format"
@@ -51,7 +33,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "propertyType": {
       "description": "Reference to a property type. Only property types are allowed and entity types are not allowed as custom properties to extend an existing entity",

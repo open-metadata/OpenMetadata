@@ -32,9 +32,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.customproperties.EnumConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -117,6 +119,7 @@ public class TypeRepository extends EntityRepository<Type> {
     property.setPropertyType(
         Entity.getEntityReferenceById(
             Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
+    validateProperty(property);
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException(
           "Only entity types can be extended and field types can't be extended");
@@ -159,6 +162,25 @@ public class TypeRepository extends EntityRepository<Type> {
     }
     customProperties.sort(EntityUtil.compareCustomProperty);
     return customProperties;
+  }
+
+  private void validateProperty(CustomProperty customProperty) {
+    switch (customProperty.getPropertyType().getName()) {
+      case "enum" -> {
+        CustomPropertyConfig config = customProperty.getCustomPropertyConfig();
+        if (config != null) {
+          EnumConfig enumConfig = JsonUtils.convertValue(config.getConfig(), EnumConfig.class);
+          if (enumConfig == null
+              || (enumConfig.getValues() != null && enumConfig.getValues().isEmpty())) {
+            throw new IllegalArgumentException(
+                "Enum Custom Property Type must have EnumConfig populated with values.");
+          }
+        } else {
+          throw new IllegalArgumentException("Enum Custom Property Type must have EnumConfig.");
+        }
+      }
+      case "int", "string" -> {}
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
