@@ -12,19 +12,14 @@
 """
 SUM Metric definition
 """
-from functools import partial
-from typing import Callable, Optional
+# pylint: disable=duplicate-code
 
 from sqlalchemy import column
 
-from metadata.generated.schema.entity.data.table import Table
-from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-from metadata.profiler.metrics.core import StaticMetric, T, _label
+from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
-
-# pylint: disable=duplicate-code
 
 
 class Sum(StaticMetric):
@@ -57,9 +52,3 @@ class Sum(StaticMetric):
         if is_quantifiable(self.col.type):
             return sum(df[self.col.name].sum() for df in dfs)
         return None
-
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
-        """nosql function"""
-        if is_quantifiable(self.col.type):
-            return partial(adaptor.sum, column=self.col)
-        return lambda table: None

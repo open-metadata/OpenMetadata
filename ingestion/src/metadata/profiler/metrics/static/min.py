@@ -12,16 +12,13 @@
 """
 Min Metric definition
 """
-from functools import partial
-from typing import Callable, Optional
+# pylint: disable=duplicate-code
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.generated.schema.entity.data.table import Table
-from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
+from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -30,8 +27,6 @@ from metadata.profiler.orm.registry import (
     is_date_time,
     is_quantifiable,
 )
-
-# pylint: disable=duplicate-code
 
 
 class MinFn(GenericFunction):
@@ -101,9 +96,3 @@ class Min(StaticMetric):
             min_ = min((df[self.col.name].min() for df in dfs))
             return int(min_.timestamp() * 1000)
         return 0
-
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
-        """nosql function"""
-        if is_quantifiable(self.col.type):
-            return partial(adaptor.min, column=self.col)
-        return lambda table: None
