@@ -36,7 +36,7 @@ export interface AssetsTabsProps {
   isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
   queryFilter?: string;
-  noDataPlaceholder?: boolean | AssetNoDataPlaceholderProps;
+  noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
 }
 
 export interface AssetNoDataPlaceholderProps {
