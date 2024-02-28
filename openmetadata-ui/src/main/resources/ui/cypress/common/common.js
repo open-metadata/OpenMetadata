@@ -601,6 +601,8 @@ export const addCustomPropertiesForEntity = (
       cy.get('#root\\/customPropertyConfig').type(`${val}{enter}`);
     });
 
+    cy.clickOutside();
+
     if (value.multiSelect) {
       cy.get('#root\\/multiSelect').scrollIntoView().click();
     }

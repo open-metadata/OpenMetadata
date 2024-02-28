@@ -533,7 +533,7 @@ export const ENTITIES = {
     markdownValue: 'This is markdown value',
     enumConfig: {
       values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
+      multiSelect: true,
     },
     entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
     entityApiType: 'pipelines',
