@@ -615,6 +615,7 @@
     "lineage-ingestion": "כניסת שורשים",
     "lineage-lowercase": "שורשים",
     "lineage-node-lowercase": "צומת שורש",
+    "lineage-source": "Source of Lineage",
     "list": "רשימה",
     "list-entity": "רשימת {{entity}}",
     "live": "שידור חי",

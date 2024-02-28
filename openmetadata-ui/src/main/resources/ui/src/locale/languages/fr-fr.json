@@ -615,6 +615,7 @@
     "lineage-ingestion": "Ingestion de la Traçabilité",
     "lineage-lowercase": "traçabilité",
     "lineage-node-lowercase": "Nœud de Traçabilité",
+    "lineage-source": "Source of Lineage",
     "list": "Liste",
     "list-entity": "Liste de {{entity}}",
     "live": "En Direct",

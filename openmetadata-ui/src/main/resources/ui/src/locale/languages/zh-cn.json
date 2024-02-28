@@ -615,6 +615,7 @@
     "lineage-ingestion": "血缘关系提取",
     "lineage-lowercase": "血缘",
     "lineage-node-lowercase": "血缘关系节点",
+    "lineage-source": "Source of Lineage",
     "list": "列表",
     "list-entity": "列出{{entity}}",
     "live": "实时",

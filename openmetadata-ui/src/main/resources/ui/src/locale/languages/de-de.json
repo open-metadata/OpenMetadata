@@ -615,6 +615,7 @@
     "lineage-ingestion": "Abstammungsinjektion",
     "lineage-lowercase": "Abstammung",
     "lineage-node-lowercase": "Abstammungsknoten",
+    "lineage-source": "Source of Lineage",
     "list": "Liste",
     "list-entity": "{{entity}}-Liste",
     "live": "Live",

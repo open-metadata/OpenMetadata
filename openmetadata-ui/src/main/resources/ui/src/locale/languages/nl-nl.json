@@ -615,6 +615,7 @@
     "lineage-ingestion": "Herkomstingestie",
     "lineage-lowercase": "herkomst",
     "lineage-node-lowercase": "herkomstknooppunt",
+    "lineage-source": "Source of Lineage",
     "list": "Lijst",
     "list-entity": "Lijst {{entity}}",
     "live": "Live",
