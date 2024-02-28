@@ -24,7 +24,13 @@ import {
   Typography,
 } from 'antd';
 import { isEmpty, isNil, map } from 'lodash';
-import React, { ReactElement, useCallback, useMemo, useState } from 'react';
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DESTINATION_DROPDOWN_TABS,
@@ -35,6 +41,7 @@ import { CreateEventSubscription } from '../../../generated/events/api/createEve
 import { SubscriptionCategory } from '../../../generated/events/eventSubscription';
 import {
   getDestinationConfigField,
+  getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
   listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtil';
@@ -81,12 +88,15 @@ function DestinationFormItem({
     [filteredOptions]
   );
 
-  const handleTabChange = useCallback((key) => {
-    setActiveTab(key);
-    setDestinationOptions(
-      DESTINATION_SOURCE_ITEMS[key as keyof typeof DESTINATION_SOURCE_ITEMS]
-    );
-  }, []);
+  const handleTabChange = useCallback(
+    (key) => {
+      setActiveTab(key);
+      setDestinationOptions(
+        getFilteredDestinationOptions(key, selectedTrigger)
+      );
+    },
+    [selectedTrigger]
+  );
 
   const getTabItems = useCallback(
     (children: ReactElement) =>
@@ -128,7 +138,12 @@ function DestinationFormItem({
       return;
     }
     setActiveTab(DESTINATION_DROPDOWN_TABS.internal);
-    setDestinationOptions(DESTINATION_SOURCE_ITEMS.internal);
+    setDestinationOptions(
+      getFilteredDestinationOptions(
+        DESTINATION_DROPDOWN_TABS.internal,
+        selectedTrigger
+      )
+    );
   };
 
   const getHiddenDestinationFields = (
@@ -157,6 +172,15 @@ function DestinationFormItem({
       )}
     </>
   );
+
+  useEffect(() => {
+    setDestinationOptions(
+      getFilteredDestinationOptions(
+        DESTINATION_DROPDOWN_TABS.internal,
+        selectedTrigger
+      )
+    );
+  }, [selectedTrigger]);
 
   return (
     <Card className="alert-form-item-container">
