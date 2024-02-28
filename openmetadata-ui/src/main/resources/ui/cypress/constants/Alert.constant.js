@@ -32,7 +32,7 @@ export const INGESTION_PIPELINE_NAME = `0-cy-ingestion-pipeline-${uuid()}`;
 
 export const OBSERVABILITY_CREATION_DETAILS = {
   table: {
-    triggerDisplayName: 'Table',
+    sourceDisplayName: 'Table',
     filters: [
       {
         name: 'Table Name',
@@ -77,7 +77,7 @@ export const OBSERVABILITY_CREATION_DETAILS = {
     ],
   },
   ingestionPipeline: {
-    triggerDisplayName: 'Ingestion Pipeline',
+    sourceDisplayName: 'Ingestion Pipeline',
     filters: [
       {
         name: 'Ingestion Pipeline Name',
@@ -124,7 +124,7 @@ export const OBSERVABILITY_CREATION_DETAILS = {
     ],
   },
   testCase: {
-    triggerDisplayName: 'Test Case',
+    sourceDisplayName: 'Test Case',
     filters: [
       {
         name: 'Test Case Name',
@@ -188,7 +188,7 @@ export const OBSERVABILITY_CREATION_DETAILS = {
     ],
   },
   testSuite: {
-    triggerDisplayName: 'Test Suite',
+    sourceDisplayName: 'Test Suite',
     filters: [
       {
         name: 'Test Suite Name',

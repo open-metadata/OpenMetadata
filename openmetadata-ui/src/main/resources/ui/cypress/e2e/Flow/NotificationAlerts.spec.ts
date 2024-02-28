@@ -48,13 +48,25 @@ import {
   USER_DETAILS,
 } from '../../constants/EntityConstant';
 
-const TRIGGER_NAME_1 = 'all';
-const TRIGGER_DISPLAY_NAME_1 = 'All';
-const TRIGGER_NAME_2 = 'dashboard';
-const TRIGGER_DISPLAY_NAME_2 = 'Dashboard';
+const SOURCE_NAME_1 = 'all';
+const SOURCE_DISPLAY_NAME_1 = 'All';
+const SOURCE_NAME_2 = 'dashboard';
+const SOURCE_DISPLAY_NAME_2 = 'Dashboard';
+const SOURCE_NAME_3 = 'task';
+const SOURCE_DISPLAY_NAME_3 = 'Task';
 
 describe('Notification Alert Flow', { tags: 'Settings' }, () => {
-  let data = {};
+  const data = {
+    user: {
+      displayName: '',
+    },
+    domain: {
+      name: '',
+    },
+    alertDetails: {
+      id: '',
+    },
+  };
 
   before(() => {
     cy.login();
@@ -140,18 +152,18 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
 
-    // Select all trigger
-    cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+    // Select all source
+    cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
 
     cy.get(
-      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+      `[data-testid="drop-down-menu"] [data-testid="${SOURCE_NAME_1}-option"]`
     )
-      .contains(TRIGGER_DISPLAY_NAME_1)
+      .contains(SOURCE_DISPLAY_NAME_1)
       .click();
 
-    cy.get('[data-testid="trigger-select"]').should(
+    cy.get('[data-testid="source-select"]').should(
       'contain',
-      TRIGGER_DISPLAY_NAME_1
+      SOURCE_DISPLAY_NAME_1
     );
 
     // Select filters
@@ -167,9 +179,9 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@createAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(201);
+      expect(interception?.response?.statusCode).equal(201);
     });
     toastNotification('Alerts created successfully.');
 
@@ -205,13 +217,13 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Update description
     cy.get(descriptionBox).click().clear().type(ALERT_UPDATED_DESCRIPTION);
 
-    // Update trigger
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-    cy.get(`[data-testid="${TRIGGER_NAME_2}-option"]`)
-      .contains(TRIGGER_DISPLAY_NAME_2)
+    // Update source
+    cy.get('[data-testid="source-select"]').scrollIntoView().click();
+    cy.get(`[data-testid="${SOURCE_NAME_2}-option"]`)
+      .contains(SOURCE_DISPLAY_NAME_2)
       .click();
 
-    // Filters should reset after trigger change
+    // Filters should reset after source change
     cy.get('[data-testid="filter-select-0"]').should('not.exist');
 
     // Add multiple filters
@@ -248,12 +260,12 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@updateAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(200);
+      expect(interception?.response?.statusCode).equal(200);
 
       // Verify the edited alert changes
-      verifyAlertDetails(interception.response.body);
+      verifyAlertDetails(interception?.response?.body);
     });
   });
 
@@ -272,18 +284,18 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
 
-    // Select all trigger
-    cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+    // Select all source
+    cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
 
     cy.get(
-      `[data-testid="drop-down-menu"] [data-testid="${TRIGGER_NAME_1}-option"]`
+      `[data-testid="drop-down-menu"] [data-testid="${SOURCE_NAME_1}-option"]`
     )
-      .contains(TRIGGER_DISPLAY_NAME_1)
+      .contains(SOURCE_DISPLAY_NAME_1)
       .click();
 
-    cy.get('[data-testid="trigger-select"]').should(
+    cy.get('[data-testid="source-select"]').should(
       'contain',
-      TRIGGER_DISPLAY_NAME_1
+      SOURCE_DISPLAY_NAME_1
     );
 
     // Add multiple filters
@@ -317,9 +329,9 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@createAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(201);
+      expect(interception?.response?.statusCode).equal(201);
     });
     toastNotification('Alerts created successfully.');
 
@@ -354,16 +366,68 @@ describe('Notification Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@updateAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(200);
+      expect(interception?.response?.statusCode).equal(200);
 
       // Verify the edited alert changes
-      verifyAlertDetails(interception.response.body);
+      verifyAlertDetails(interception?.response?.body);
     });
   });
 
   it('Delete alert with multiple filters', () => {
+    deleteAlertSteps(ALERT_NAME);
+  });
+
+  it('Create alert for task source', () => {
+    verifyResponseStatusCode('@alertsPage', 200);
+
+    cy.get('[data-testid="create-notification"]').click();
+
+    // Enter alert name
+    cy.get('#name').type(ALERT_NAME);
+
+    // Enter description
+    cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
+
+    // Select all source
+    cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
+
+    cy.get(
+      `[data-testid="drop-down-menu"] [data-testid="${SOURCE_NAME_3}-option"]`
+    )
+      .contains(SOURCE_DISPLAY_NAME_3)
+      .click();
+
+    cy.get('[data-testid="source-select"]').should(
+      'contain',
+      SOURCE_DISPLAY_NAME_3
+    );
+
+    // Select Destination
+    cy.get('[data-testid="add-destination-button"]').scrollIntoView().click();
+
+    addInternalDestination(0, 'Owners', 'Email');
+
+    cy.get('[data-testid="add-destination-button"]').scrollIntoView().click();
+
+    addInternalDestination(1, 'Assignees', 'Email');
+
+    // Click save
+    cy.get('[data-testid="save-button"]').scrollIntoView().click();
+    cy.wait('@createAlert').then((interception) => {
+      data.alertDetails = interception?.response?.body;
+
+      expect(interception?.response?.statusCode).equal(201);
+    });
+    toastNotification('Alerts created successfully.');
+
+    // Check if the alert details page is visible
+    verifyResponseStatusCode('@alertDetails', 200);
+    cy.get('[data-testid="alert-details-container"]').should('exist');
+  });
+
+  it('Delete alert for task source', () => {
     deleteAlertSteps(ALERT_NAME);
   });
 });

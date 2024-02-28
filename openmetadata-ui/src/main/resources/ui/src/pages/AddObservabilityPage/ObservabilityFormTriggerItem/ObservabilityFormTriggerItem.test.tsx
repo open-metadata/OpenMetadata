@@ -11,38 +11,45 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { Form, FormInstance } from 'antd';
 import React from 'react';
-import { act } from 'react-dom/test-utils';
-import { MemoryRouter } from 'react-router-dom';
-import { useFqn } from '../../../hooks/useFqn';
+import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
 import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem';
 
-jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: '' }),
+jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
+  getConditionalField: jest
+    .fn()
+    .mockReturnValue(<div data-testid="condition-field" />),
+  getSupportedFilterOptions: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('antd', () => {
-  const antd = jest.requireActual('antd');
+const mockSupportedTriggers = MOCK_FILTER_RESOURCES.reduce(
+  (resource, current) => {
+    resource.push(...(current.supportedActions ?? []));
 
-  return {
-    ...antd,
-    Form: {
-      ...antd.Form,
-      useFormInstance: jest.fn().mockImplementation(() => ({
-        setFieldValue: jest.fn(),
-        getFieldValue: jest.fn(),
-      })),
-    },
-  };
-});
+    return resource;
+  },
+  [] as EventFilterRule[]
+);
 
 describe('ObservabilityFormTriggerItem', () => {
   it('should renders without crashing', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
+
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => ['container']);
+
     render(
-      <ObservabilityFormTriggerItem filterResources={MOCK_FILTER_RESOURCES} />,
-      { wrapper: MemoryRouter }
+      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
     );
 
     expect(screen.getByText('label.trigger')).toBeInTheDocument();
@@ -50,32 +57,53 @@ describe('ObservabilityFormTriggerItem', () => {
       screen.getByText('message.alerts-trigger-description')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('add-trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId('triggers-list')).toBeInTheDocument();
+    expect(screen.getByTestId('add-trigger')).toBeInTheDocument();
   });
 
-  it('should render the trigger select when fqn is provided', () => {
-    (useFqn as jest.Mock).mockImplementationOnce(() => ({
-      fqn: 'test',
-    }));
-
-    render(
-      <ObservabilityFormTriggerItem filterResources={MOCK_FILTER_RESOURCES} />,
-      { wrapper: MemoryRouter }
+  it('add trigger button should be disabled if there is no selected trigger and filters', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
     );
 
-    expect(screen.getByTestId('trigger-select')).toBeInTheDocument();
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => []);
+
+    render(
+      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+    );
+
+    const addButton = screen.getByTestId('add-trigger');
+
+    expect(addButton).toBeDisabled();
   });
 
-  it('should display select dropdown when clicked on add trigger button', async () => {
-    render(
-      <ObservabilityFormTriggerItem filterResources={MOCK_FILTER_RESOURCES} />,
-      { wrapper: MemoryRouter }
+  it('add trigger button should not be disabled if there is selected trigger and filters', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
     );
-    const addButton = screen.getByTestId('add-trigger-button');
-    await act(async () => {
-      userEvent.click(addButton);
-    });
 
-    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => ['container']);
+
+    render(
+      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+    );
+
+    const addButton = screen.getByTestId('add-trigger');
+
+    expect(addButton).not.toBeDisabled();
   });
 });

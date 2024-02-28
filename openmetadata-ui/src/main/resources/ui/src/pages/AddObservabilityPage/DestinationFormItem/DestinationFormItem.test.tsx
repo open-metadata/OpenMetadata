@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
 import React from 'react';
+import { DESTINATION_SOURCE_ITEMS } from '../../../constants/Alerts.constants';
 import DestinationFormItem from './DestinationFormItem.component';
 
 jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
@@ -21,6 +22,9 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
     .mockReturnValue(<div data-testid="destination-field" />),
   getSubscriptionTypeOptions: jest.fn().mockReturnValue([]),
   listLengthValidator: jest.fn().mockImplementation(() => Promise.resolve()),
+  getFilteredDestinationOptions: jest
+    .fn()
+    .mockImplementation((key) => DESTINATION_SOURCE_ITEMS[key]),
 }));
 
 jest.mock('../../../utils/ObservabilityUtils', () => ({

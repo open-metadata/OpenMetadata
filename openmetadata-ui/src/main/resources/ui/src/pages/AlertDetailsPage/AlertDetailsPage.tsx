@@ -399,8 +399,8 @@ function AlertDetailsPage({
                       </span>
                     </div>
                   ),
-                  heading: t('label.trigger'),
-                  subHeading: t('message.alerts-trigger-description'),
+                  heading: t('label.source'),
+                  subHeading: t('message.alerts-source-description'),
                 })}
               </Col>
               {!isEmpty(filters) && !isNil(filters) && (
@@ -416,8 +416,8 @@ function AlertDetailsPage({
                 <Col span={24}>
                   {getObservabilityDetailsItem({
                     details: getFilterDetails(false, actions),
-                    heading: t('label.action-plural'),
-                    subHeading: t('message.alerts-action-description'),
+                    heading: t('label.trigger'),
+                    subHeading: t('message.alerts-trigger-description'),
                   })}
                 </Col>
               )}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import { FilterResourceDescriptor } from '../../../generated/events/filterResourceDescriptor';
 
-export interface ObservabilityFormTriggerItemProps {
-  supportedTriggers?: EventFilterRule[];
+export interface AlertFormSourceItemProps {
+  filterResources: FilterResourceDescriptor[];
 }

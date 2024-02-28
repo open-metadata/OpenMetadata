@@ -11,8 +11,24 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import {
+  SubscriptionCategory,
+  SubscriptionType,
+} from '../generated/events/eventSubscription';
 
-export interface ObservabilityFormActionItemProps {
-  supportedActions?: EventFilterRule[];
-}
+export const mockExternalDestinationOptions = Object.values(
+  SubscriptionType
+).filter((value) => value !== SubscriptionType.ActivityFeed);
+
+export const mockTaskInternalDestinationOptions = [
+  SubscriptionCategory.Owners,
+  SubscriptionCategory.Assignees,
+];
+
+export const mockNonTaskInternalDestinationOptions = Object.values(
+  SubscriptionCategory
+).filter(
+  (value) =>
+    value !== SubscriptionCategory.External &&
+    value !== SubscriptionCategory.Assignees
+);
