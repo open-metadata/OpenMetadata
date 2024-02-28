@@ -444,7 +444,8 @@ class BigquerySource(
         inspector_details = get_inspector_details(
             database_name=database_name, service_connection=self.service_connection
         )
-        self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
+        if os.environ.get(GOOGLE_CREDENTIALS):
+            self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
