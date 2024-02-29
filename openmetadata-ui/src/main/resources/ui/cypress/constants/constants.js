@@ -495,6 +495,10 @@ export const ENTITIES = {
     integerValue: '45',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
     entityObj: SEARCH_ENTITY_TABLE.table_1,
     entityApiType: 'tables',
   },
@@ -504,6 +508,10 @@ export const ENTITIES = {
     integerValue: '23',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
     entityObj: SEARCH_ENTITY_TOPIC.topic_1,
     entityApiType: 'topics',
   },
@@ -523,6 +531,10 @@ export const ENTITIES = {
     integerValue: '78',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: true,
+    },
     entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
     entityApiType: 'pipelines',
   },
