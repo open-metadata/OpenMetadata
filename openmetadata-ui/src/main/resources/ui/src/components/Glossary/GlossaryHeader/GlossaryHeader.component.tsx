@@ -207,9 +207,9 @@ const GlossaryHeader = ({
     history.push(path);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const { id } = selectedData;
-    onDelete(id);
+    await onDelete(id);
     setIsDelete(false);
   };
 
@@ -227,7 +227,7 @@ const GlossaryHeader = ({
     setIsNameEditing(false);
   };
 
-  const onStyleSave = (data: Style) => {
+  const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
@@ -238,7 +238,7 @@ const GlossaryHeader = ({
       style,
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
 
@@ -555,7 +555,13 @@ const GlossaryHeader = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: isGlossary
+                        ? t('label.glossary')
+                        : t('label.glossary-term'),
+                    })}>
                     <Button
                       className="glossary-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
@@ -576,7 +582,6 @@ const GlossaryHeader = ({
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
           entityType="Glossary"
-          loadingState="success"
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}

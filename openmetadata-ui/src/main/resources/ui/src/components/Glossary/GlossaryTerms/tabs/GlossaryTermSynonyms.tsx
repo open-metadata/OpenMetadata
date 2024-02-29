@@ -38,7 +38,7 @@ interface GlossaryTermSynonymsProps {
   isVersionView?: boolean;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
-  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
+  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
 }
 
 const GlossaryTermSynonyms = ({
@@ -49,6 +49,7 @@ const GlossaryTermSynonyms = ({
 }: GlossaryTermSynonymsProps) => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
+  const [saving, setSaving] = useState<boolean>(false);
 
   const getSynonyms = () => (
     <div className="d-flex flex-wrap">
@@ -156,15 +157,16 @@ const GlossaryTermSynonyms = ({
     setIsViewMode(true);
   };
 
-  const handleSynonymsSave = (newSynonyms: string[]) => {
-    if (!isEqual(newSynonyms, glossaryTerm.synonyms)) {
+  const handleSynonymsSave = async () => {
+    if (!isEqual(synonyms, glossaryTerm.synonyms)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
       updatedGlossaryTerm = {
         ...updatedGlossaryTerm,
-        synonyms: newSynonyms,
+        synonyms,
       };
-
-      onGlossaryTermUpdate(updatedGlossaryTerm);
+      setSaving(true);
+      await onGlossaryTermUpdate(updatedGlossaryTerm);
+      setSaving(false);
     }
     setIsViewMode(true);
   };
@@ -184,9 +186,13 @@ const GlossaryTermSynonyms = ({
         </Typography.Text>
         {permissions.EditAll && synonyms.length > 0 && isViewMode && (
           <Tooltip
-            placement="bottomLeft"
+            placement="top"
             title={
-              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              permissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.synonym-plural'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               className="cursor-pointer flex-center m-l-xss"
@@ -217,9 +223,10 @@ const GlossaryTermSynonyms = ({
               className="w-6 p-x-05"
               data-testid="save-synonym-btn"
               icon={<CheckOutlined size={12} />}
+              loading={saving}
               size="small"
               type="primary"
-              onClick={() => handleSynonymsSave(synonyms)}
+              onClick={handleSynonymsSave}
             />
           </Space>
 

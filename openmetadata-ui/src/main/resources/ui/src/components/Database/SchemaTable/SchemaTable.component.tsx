@@ -82,7 +82,6 @@ const SchemaTable = ({
   isReadOnly = false,
   onThreadLinkSelect,
   tableConstraints,
-  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
@@ -350,20 +349,26 @@ const SchemaTable = ({
               ) : null}
               {(tablePermissions?.EditAll ||
                 tablePermissions?.EditDisplayName) && (
-                <Button
-                  className="cursor-pointer hover-cell-icon w-fit-content"
-                  data-testid="edit-displayName-button"
-                  style={{
-                    color: DE_ACTIVE_COLOR,
-                    padding: 0,
-                    border: 'none',
-                    background: 'transparent',
-                  }}
-                  onClick={() => handleEditDisplayNameClick(record)}>
-                  <IconEdit
-                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                  />
-                </Button>
+                <Tooltip
+                  placement="right"
+                  title={t('label.edit-entity', {
+                    entity: t('label.display-name'),
+                  })}>
+                  <Button
+                    className="cursor-pointer hover-cell-icon w-fit-content"
+                    data-testid="edit-displayName-button"
+                    style={{
+                      color: DE_ACTIVE_COLOR,
+                      padding: 0,
+                      border: 'none',
+                      background: 'transparent',
+                    }}
+                    onClick={() => handleEditDisplayNameClick(record)}>
+                    <IconEdit
+                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                    />
+                  </Button>
+                </Tooltip>
               )}
             </div>
           );
@@ -386,21 +391,6 @@ const SchemaTable = ({
         width: 320,
         render: renderDescription,
       },
-      ...(tablePartitioned
-        ? [
-            {
-              title: t('label.partitioned'),
-              dataIndex: 'name',
-              key: 'name',
-              accessor: 'name',
-              width: 120,
-              render: (columnName: string) =>
-                tablePartitioned?.columns?.includes(columnName)
-                  ? t('label.partitioned')
-                  : t('label.non-partitioned'),
-            },
-          ]
-        : []),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',

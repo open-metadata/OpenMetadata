@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Col, Drawer, Row, Space, Typography } from 'antd';
+import { Button, Col, Drawer, Row, Space, Tooltip, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -24,6 +24,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import Description from '../../../common/EntityDescription/Description';
 import Loader from '../../../common/Loader/Loader';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsInput from '../../../TagsInput/TagsInput.component';
@@ -92,38 +93,22 @@ const TableQueryRightPanel = ({
                     hasPermission={EditAll || EditOwner}
                     owner={query.owner}
                     onUpdate={handleUpdateOwner}>
-                    <Button
-                      className="cursor-pointer flex-center"
-                      data-testid="edit-owner"
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      size="small"
-                      type="text"
-                    />
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.owner-lowercase'),
+                      })}>
+                      <Button
+                        className="cursor-pointer flex-center"
+                        data-testid="edit-owner"
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                        size="small"
+                        type="text"
+                      />
+                    </Tooltip>
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <div data-testid="owner-name-container">
-                {query.owner && getEntityName(query.owner) ? (
-                  <Space className="m-r-xss" size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(query.owner)}
-                      name={query.owner?.name || ''}
-                      width="20"
-                    />
-                    <Link
-                      data-testid="owner-link"
-                      to={getUserPath(query.owner.name ?? '')}>
-                      {getEntityName(query.owner)}
-                    </Link>
-                  </Space>
-                ) : (
-                  <span className="text-grey-muted">
-                    {t('label.no-entity', {
-                      entity: t('label.owner-lowercase'),
-                    })}
-                  </span>
-                )}
-              </div>
+              <OwnerLabel hasPermission={false} owner={query.owner} />
             </Space>
           </Col>
           <Col span={24}>
@@ -134,14 +119,19 @@ const TableQueryRightPanel = ({
                 </Typography.Text>
 
                 {(EditDescription || EditAll) && (
-                  <Button
-                    className="flex-center p-0"
-                    data-testid="edit-description-btn"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditDescription(true)}
-                  />
+                  <Tooltip
+                    title={t('label.edit-entity', {
+                      entity: t('label.description'),
+                    })}>
+                    <Button
+                      className="flex-center p-0"
+                      data-testid="edit-description-btn"
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                      size="small"
+                      type="text"
+                      onClick={() => setIsEditDescription(true)}
+                    />
+                  </Tooltip>
                 )}
               </Space>
               <Description
