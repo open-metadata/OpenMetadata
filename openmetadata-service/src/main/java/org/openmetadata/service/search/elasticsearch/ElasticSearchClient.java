@@ -480,11 +480,11 @@ public class ElasticSearchClient implements SearchClient {
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
-        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
-      return searchPipelineLineage(
-          fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, responseMap);
-    }
+    //    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
+    //        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
+    //      return searchPipelineLineage(
+    //          fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, responseMap);
+    //    }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
