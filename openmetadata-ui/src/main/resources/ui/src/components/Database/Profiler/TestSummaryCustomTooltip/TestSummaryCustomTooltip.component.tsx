@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import { entries, isNumber, isString, omit, startCase } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
@@ -40,7 +40,7 @@ const TestSummaryCustomTooltip = (
   ]) => {
     if (key === 'task' && !isString(value) && !isNumber(value)) {
       return value?.task ? (
-        <>
+        <Fragment key={`item-${key}`}>
           <li
             className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
             key="item-incident">
@@ -66,7 +66,7 @@ const TestSummaryCustomTooltip = (
               <OwnerLabel owner={value.task.assignees[0]} />
             </span>
           </li>
-        </>
+        </Fragment>
       ) : null;
     }
 
