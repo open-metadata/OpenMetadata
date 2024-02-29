@@ -485,8 +485,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditConnectionFormPage}
         path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
-      <Route exact component={ServicePage} path={ROUTES.SERVICE} />
-      <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
+      <Route
+        exact
+        component={ServicePage}
+        path={[ROUTES.SERVICE_WITH_TAB, ROUTES.SERVICE]}
+      />
+
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={QueryPage} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
       <Route exact component={AddQueryPage} path={ROUTES.ADD_QUERY} />
@@ -534,13 +538,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={TagsPage}
         hasPermission={tagCategoryPermission}
-        path={ROUTES.TAGS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={TagsPage}
-        hasPermission={tagCategoryPermission}
-        path={ROUTES.TAG_DETAILS}
+        path={[ROUTES.TAGS, ROUTES.TAG_DETAILS]}
       />
       <AdminProtectedRoute
         exact
@@ -563,14 +561,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         exact
         component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION}
+        path={[
+          ROUTES.GLOSSARY_TERMS_VERSION_TAB,
+          ROUTES.GLOSSARY_TERMS_VERSION,
+        ]}
       />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
-      />
-
       <Route
         exact
         component={ServiceVersionPage}
@@ -581,32 +576,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={GlossaryPage}
         hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
-      />
-      <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
-      <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
-      <Route
-        exact
-        component={UserPage}
-        path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
+        path={[
+          ROUTES.GLOSSARY,
+          ROUTES.GLOSSARY_DETAILS,
+          ROUTES.GLOSSARY_DETAILS_WITH_ACTION,
+        ]}
       />
 
       <Route
         exact
         component={UserPage}
-        path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
+        path={[
+          ROUTES.USER_PROFILE_WITH_SUB_TAB,
+          ROUTES.USER_PROFILE_WITH_TAB,
+          ROUTES.USER_PROFILE,
+        ]}
       />
 
       <Route
@@ -628,13 +612,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DataProductsPage}
         hasPermission={dataProductPermission}
-        path={ROUTES.DATA_PRODUCT_DETAILS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DataProductsPage}
-        hasPermission={dataProductPermission}
-        path={ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB}
+        path={[
+          ROUTES.DATA_PRODUCT_DETAILS,
+          ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB,
+        ]}
       />
 
       <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
@@ -648,13 +629,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DomainPage}
         hasPermission={domainPermission}
-        path={ROUTES.DOMAIN_DETAILS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={ROUTES.DOMAIN_DETAILS_WITH_TAB}
+        path={[ROUTES.DOMAIN_DETAILS, ROUTES.DOMAIN_DETAILS_WITH_TAB]}
       />
 
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
@@ -662,13 +637,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={GlossaryPage}
         hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB}
+        path={[
+          ROUTES.GLOSSARY_DETAILS_WITH_TAB,
+          ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB,
+        ]}
       />
       <AdminProtectedRoute
         exact
@@ -757,13 +729,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         exact
         component={TestSuiteIngestionPage}
-        path={ROUTES.TEST_SUITES_ADD_INGESTION}
+        path={[
+          ROUTES.TEST_SUITES_ADD_INGESTION,
+          ROUTES.TEST_SUITES_EDIT_INGESTION,
+        ]}
       />
-      <Route
-        exact
-        component={TestSuiteIngestionPage}
-        path={ROUTES.TEST_SUITES_EDIT_INGESTION}
-      />
+
       <AdminProtectedRoute
         exact
         component={DataQualityPage}
@@ -771,16 +742,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           ResourceEntity.TEST_SUITE,
           permissions
         )}
-        path={ROUTES.DATA_QUALITY_WITH_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DataQualityPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
-          permissions
-        )}
-        path={ROUTES.DATA_QUALITY}
+        path={[ROUTES.DATA_QUALITY_WITH_TAB, ROUTES.DATA_QUALITY]}
       />
 
       <AdminProtectedRoute
@@ -800,17 +762,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           ResourceEntity.TEST_CASE,
           permissions
         )}
-        path={ROUTES.INCIDENT_MANAGER_DETAILS}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={IncidentManagerDetailPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_CASE,
-          permissions
-        )}
-        path={ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB}
+        path={[
+          ROUTES.INCIDENT_MANAGER_DETAILS,
+          ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB,
+        ]}
       />
 
       <AdminProtectedRoute
@@ -828,21 +783,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddObservabilityPage}
-        path={ROUTES.ADD_OBSERVABILITY_ALERTS}
+        path={[
+          ROUTES.ADD_OBSERVABILITY_ALERTS,
+          ROUTES.EDIT_OBSERVABILITY_ALERTS,
+        ]}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={AddObservabilityPage}
-        path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
-      />
-
-      <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route
         exact
         component={DataInsightPage}
-        path={ROUTES.DATA_INSIGHT_WITH_TAB}
+        path={[ROUTES.DATA_INSIGHT_WITH_TAB, ROUTES.DATA_INSIGHT]}
       />
+
       <Route exact component={AddKPIPage} path={ROUTES.ADD_KPI} />
       <Route exact component={EditKPIPage} path={ROUTES.EDIT_KPI} />
       <Route exact component={AddTestSuitePage} path={ROUTES.ADD_TEST_SUITES} />
@@ -876,21 +828,19 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={AddNotificationPage}
         hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.EDIT_NOTIFICATION,
-          true
-        )}
+        path={[
+          getSettingPath(
+            GlobalSettingsMenuCategory.NOTIFICATIONS,
+            GlobalSettingOptions.EDIT_NOTIFICATION,
+            true
+          ),
+          getSettingPath(
+            GlobalSettingsMenuCategory.NOTIFICATIONS,
+            GlobalSettingOptions.ADD_NOTIFICATION
+          ),
+        ]}
       />
-      <AdminProtectedRoute
-        exact
-        component={AddNotificationPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_NOTIFICATION
-        )}
-      />
+
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
