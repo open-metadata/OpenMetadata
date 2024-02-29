@@ -15,7 +15,8 @@ To be used by OpenMetadata class
 """
 from typing import Dict
 
-from metadata.generated.schema.api.data.createCustomProperty import PropertyType
+from metadata.generated.schema.type.customProperty import PropertyType
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     CustomPropertyType,
@@ -54,16 +55,6 @@ class OMetaCustomPropertyMixin:
             f"/metadata/types/name/{entity_type}?category=field"
         )
 
-        # Get the data type of the custom property
-        if not ometa_custom_property.createCustomPropertyRequest.propertyType:
-            custom_property_type = self.get_custom_property_type(
-                data_type=ometa_custom_property.custom_property_type
-            )
-            property_type = PropertyType(id=custom_property_type.id, type="type")
-            ometa_custom_property.createCustomPropertyRequest.propertyType = (
-                property_type
-            )
-
         resp = self.client.put(
             f"/metadata/types/{entity_schema.get('id')}",
             data=ometa_custom_property.createCustomPropertyRequest.json(),
@@ -78,3 +69,12 @@ class OMetaCustomPropertyMixin:
         """
         resp = self.client.get(f"/metadata/types/name/{data_type.value}?category=field")
         return CustomPropertyType(**resp)
+
+    def get_property_type_ref(self, data_type: CustomPropertyDataTypes) -> PropertyType:
+        """
+        Get the PropertyType for custom properties
+        """
+        custom_property_type = self.get_custom_property_type(data_type=data_type)
+        return PropertyType(
+            __root__=EntityReference(id=custom_property_type.id, type="type")
+        )

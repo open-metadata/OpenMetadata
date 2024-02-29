@@ -19,3 +19,15 @@ $$section
 
 Describe your custom property to provide more information to your team.
 $$
+
+$$section
+### Enum Values $(id="customPropertyConfig")
+
+Add the list of values for enum property.
+$$
+
+$$section
+### Multi Select $(id="multiSelect")
+
+Enable multi select of values for enum property.
+$$

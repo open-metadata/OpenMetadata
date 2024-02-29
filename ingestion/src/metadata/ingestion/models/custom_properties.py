@@ -41,7 +41,6 @@ class CustomPropertyDataTypes(Enum):
 
 class OMetaCustomProperties(BaseModel):
     entity_type: Type[T]
-    custom_property_type: Optional[CustomPropertyDataTypes]
     createCustomPropertyRequest: CreateCustomPropertyRequest
 
 

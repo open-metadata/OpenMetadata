@@ -25,26 +25,6 @@
           "name": "Entity"
         }
       ]
-    },
-    "customProperty": {
-      "description": "Type used for adding custom property to an entity to extend it.",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.entity.type.CustomProperty",
-      "properties": {
-        "name": {
-          "description": "Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
-          "$ref": "#/definitions/entityName"
-        },
-        "description": {
-          "$ref": "../type/basic.json#/definitions/markdown"
-        },
-        "propertyType": {
-          "description": "Reference to a property type. Only property types are allowed and entity types are not allowed as custom properties to extend an existing entity",
-          "$ref": "../type/entityReference.json"
-        }
-      },
-      "required": ["name", "description", "propertyType"],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -84,7 +64,7 @@
       "description": "Custom properties added to extend the entity. Only available for entity type",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/customProperty"
+        "$ref": "../type/customProperty.json"
       }
     },
     "version": {

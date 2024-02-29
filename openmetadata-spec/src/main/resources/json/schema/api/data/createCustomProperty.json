@@ -4,23 +4,6 @@
   "title": "CreateCustomPropertyRequest",
   "description": "Create Custom Property Model entity request",
   "type": "object",
-  "definitions": {
-    "propertyType": {
-      "description": "Property Type",
-      "type": "object",
-      "properties": {
-        "type": {
-          "description": "Property type",
-          "type": "string",
-          "default": "type"
-        },
-        "id": {
-          "description": "Unique identifier of this instance.",
-          "$ref": "../../type/basic.json#/definitions/uuid"
-        }
-      }
-    }
-  },
   "properties": {
     "name": {
       "description": "Name that identifies this Custom Property model.",
@@ -31,10 +14,14 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "propertyType": {
-      "description": "Property Type",
-      "$ref": "#/definitions/propertyType"
+      "description": "Property Type.",
+      "$ref": "../../type/customProperty.json#/definitions/propertyType"
+    },
+    "customPropertyConfig": {
+      "description": "Config to define constraints around CustomProperty.",
+      "$ref": "../../type/customProperty.json#/definitions/customPropertyConfig"
     }
   },
-  "required": ["name"],
+  "required": ["name", "propertyType"],
   "additionalProperties": false
 }

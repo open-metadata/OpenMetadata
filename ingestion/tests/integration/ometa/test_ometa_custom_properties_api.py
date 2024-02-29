@@ -144,9 +144,12 @@ class OMetaCustomAttributeTest(TestCase):
         # Create the table size property
         ometa_custom_property_request = OMetaCustomProperties(
             entity_type=Table,
-            custom_property_type=CustomPropertyDataTypes.STRING,
             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                name="TableSize", description="Size of the Table"
+                name="TableSize",
+                description="Size of the Table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.STRING
+                ),
             ),
         )
         self.metadata.create_or_update_custom_property(
@@ -156,9 +159,12 @@ class OMetaCustomAttributeTest(TestCase):
         # Create the DataQuality property for a table
         ometa_custom_property_request = OMetaCustomProperties(
             entity_type=Table,
-            custom_property_type=CustomPropertyDataTypes.MARKDOWN,
             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                name="DataQuality", description="Quality Details of a Table"
+                name="DataQuality",
+                description="Quality Details of a Table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.MARKDOWN
+                ),
             ),
         )
         self.metadata.create_or_update_custom_property(
@@ -168,9 +174,12 @@ class OMetaCustomAttributeTest(TestCase):
         # Create the SchemaCost property for database schema
         ometa_custom_property_request = OMetaCustomProperties(
             entity_type=DatabaseSchema,
-            custom_property_type=CustomPropertyDataTypes.INTEGER,
             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                name="SchemaAge", description="Age in years of a Schema"
+                name="SchemaAge",
+                description="Age in years of a Schema",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.INTEGER
+                ),
             ),
         )
         self.metadata.create_or_update_custom_property(

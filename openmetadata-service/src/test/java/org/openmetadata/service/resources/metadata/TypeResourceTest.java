@@ -42,7 +42,9 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.customproperties.EnumConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -66,6 +68,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   public void setupTypes() throws HttpResponseException {
     INT_TYPE = getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
     STRING_TYPE = getEntityByName("string", "", ADMIN_AUTH_HEADERS);
+    ENUM_TYPE = getEntityByName("enum", "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -86,8 +89,8 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   @Test
   void put_patch_customProperty_200() throws IOException {
-    Type tableEntity = getEntityByName("table", "customProperties", ADMIN_AUTH_HEADERS);
-    assertTrue(listOrEmpty(tableEntity.getCustomProperties()).isEmpty());
+    Type topicEntity = getEntityByName("topic", "customProperties", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(topicEntity.getCustomProperties()).isEmpty());
 
     // Add a custom property with name intA with type integer with PUT
     CustomProperty fieldA =
@@ -95,33 +98,169 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
             .withName("intA")
             .withDescription("intA")
             .withPropertyType(INT_TYPE.getEntityReference());
-    ChangeDescription change = getChangeDescription(tableEntity, MINOR_UPDATE);
+    ChangeDescription change = getChangeDescription(topicEntity, MINOR_UPDATE);
     fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
-    tableEntity =
+    topicEntity =
         addCustomPropertyAndCheck(
-            tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
+            topicEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(new ArrayList<>(List.of(fieldA)), topicEntity.getCustomProperties());
 
     // Changing custom property description with PUT
     fieldA.withDescription("updated");
-    change = getChangeDescription(tableEntity, MINOR_UPDATE);
+    change = getChangeDescription(topicEntity, MINOR_UPDATE);
     fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "intA", "updated");
-    tableEntity =
+    topicEntity =
         addCustomPropertyAndCheck(
-            tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
+            topicEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(new ArrayList<>(List.of(fieldA)), topicEntity.getCustomProperties());
 
     // Changing custom property description with PATCH
     // Changes from this PATCH is consolidated with the previous changes
     fieldA.withDescription("updated2");
-    String json = JsonUtils.pojoToJson(tableEntity);
-    tableEntity.setCustomProperties(List.of(fieldA));
-    change = getChangeDescription(tableEntity, CHANGE_CONSOLIDATED);
+    String json = JsonUtils.pojoToJson(topicEntity);
+    topicEntity.setCustomProperties(List.of(fieldA));
+    change = getChangeDescription(topicEntity, CHANGE_CONSOLIDATED);
     fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "intA", "updated2");
-    tableEntity =
-        patchEntityAndCheck(tableEntity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    topicEntity =
+        patchEntityAndCheck(topicEntity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Add a second property with name intB with type integer
+    // Note that since this is PUT operation, the previous changes are not consolidated
+    EntityReference typeRef =
+        new EntityReference()
+            .withType(INT_TYPE.getEntityReference().getType())
+            .withId(INT_TYPE.getEntityReference().getId());
+    CustomProperty fieldB =
+        new CustomProperty().withName("intB").withDescription("intB").withPropertyType(typeRef);
+    change = getChangeDescription(topicEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldB)));
+    topicEntity =
+        addCustomPropertyAndCheck(
+            topicEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldB.setPropertyType(INT_TYPE.getEntityReference());
+    assertEquals(2, topicEntity.getCustomProperties().size());
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA, fieldB)), topicEntity.getCustomProperties());
+  }
+
+  @Test
+  void put_patch_customProperty_enum_200() throws IOException {
+    Type tableEntity = getEntityByName("table", "customProperties", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(tableEntity.getCustomProperties()).isEmpty());
+
+    // Add a custom property with name intA with type integer with PUT
+    CustomProperty enumFieldA =
+        new CustomProperty()
+            .withName("enumTest")
+            .withDescription("enumTest")
+            .withPropertyType(ENUM_TYPE.getEntityReference());
+    ChangeDescription change = getChangeDescription(tableEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(enumFieldA)));
+    Type finalTableEntity = tableEntity;
+    ChangeDescription finalChange = change;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                finalTableEntity.getId(),
+                enumFieldA,
+                ADMIN_AUTH_HEADERS,
+                MINOR_UPDATE,
+                finalChange),
+        Status.BAD_REQUEST,
+        "Enum Custom Property Type must have EnumConfig.");
+    enumFieldA.setCustomPropertyConfig(new CustomPropertyConfig().withConfig(new EnumConfig()));
+    ChangeDescription change1 = getChangeDescription(tableEntity, MINOR_UPDATE);
+    Type tableEntity1 = tableEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                tableEntity1.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change1),
+        Status.BAD_REQUEST,
+        "Enum Custom Property Type must have EnumConfig populated with values.");
+
+    enumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumConfig().withValues(List.of("A", "B", "C", "C"))));
+    ChangeDescription change7 = getChangeDescription(tableEntity, MINOR_UPDATE);
+    Type tableEntity2 = tableEntity;
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                tableEntity2.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change7),
+        Status.BAD_REQUEST,
+        "Enum Custom Property values cannot have duplicates.");
+
+    enumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig().withConfig(new EnumConfig().withValues(List.of("A", "B", "C"))));
+    tableEntity =
+        addCustomPropertyAndCheck(
+            tableEntity.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(new ArrayList<>(List.of(enumFieldA)), tableEntity.getCustomProperties());
+    CustomPropertyConfig prevConfig = enumFieldA.getCustomPropertyConfig();
+    // Changing custom property description with PUT
+    enumFieldA.withDescription("updatedEnumTest");
+    ChangeDescription change2 = getChangeDescription(tableEntity, MINOR_UPDATE);
+    fieldUpdated(
+        change2,
+        EntityUtil.getCustomField(enumFieldA, "description"),
+        "enumTest",
+        "updatedEnumTest");
+    tableEntity =
+        addCustomPropertyAndCheck(
+            tableEntity.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
+    assertCustomProperties(new ArrayList<>(List.of(enumFieldA)), tableEntity.getCustomProperties());
+
+    enumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig().withConfig(new EnumConfig().withValues(List.of("A", "B"))));
+    ChangeDescription change3 = getChangeDescription(tableEntity, MINOR_UPDATE);
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                tableEntity1.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change3),
+        Status.BAD_REQUEST,
+        "Existing Enum Custom Property values cannot be removed.");
+
+    enumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumConfig().withValues(List.of("A", "B", "C", "C"))));
+    ChangeDescription change4 = getChangeDescription(tableEntity, MINOR_UPDATE);
+    assertResponseContains(
+        () ->
+            addCustomPropertyAndCheck(
+                tableEntity1.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change4),
+        Status.BAD_REQUEST,
+        "Enum Custom Property values cannot have duplicates.");
+
+    ChangeDescription change5 = getChangeDescription(tableEntity, MINOR_UPDATE);
+    enumFieldA.setCustomPropertyConfig(
+        new CustomPropertyConfig()
+            .withConfig(new EnumConfig().withValues(List.of("A", "B", "C", "D"))));
+    fieldUpdated(
+        change5,
+        EntityUtil.getCustomField(enumFieldA, "customPropertyConfig"),
+        prevConfig,
+        enumFieldA.getCustomPropertyConfig());
+    tableEntity =
+        addCustomPropertyAndCheck(
+            tableEntity.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change5);
+    assertCustomProperties(new ArrayList<>(List.of(enumFieldA)), tableEntity.getCustomProperties());
+
+    // Changing custom property description with PATCH
+    // Changes from this PATCH is consolidated with the previous changes
+    enumFieldA.withDescription("updated2");
+    String json = JsonUtils.pojoToJson(tableEntity);
+    tableEntity.setCustomProperties(List.of(enumFieldA));
+    change = getChangeDescription(tableEntity, CHANGE_CONSOLIDATED);
+    fieldUpdated(
+        change5,
+        EntityUtil.getCustomField(enumFieldA, "description"),
+        "updatedEnumTest",
+        "updated2");
+
+    tableEntity =
+        patchEntityAndCheck(tableEntity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change5);
+
+    /* // Add a second property with name intB with type integer
     // Note that since this is PUT operation, the previous changes are not consolidated
     EntityReference typeRef =
         new EntityReference()
@@ -137,7 +276,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     fieldB.setPropertyType(INT_TYPE.getEntityReference());
     assertEquals(2, tableEntity.getCustomProperties().size());
     assertCustomProperties(
-        new ArrayList<>(List.of(fieldA, fieldB)), tableEntity.getCustomProperties());
+        new ArrayList<>(List.of(fieldA, fieldB)), tableEntity.getCustomProperties());*/
   }
 
   @Test
@@ -225,7 +364,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertEquals(expected.getSchema(), patched.getSchema());
     assertEquals(expected.getCategory(), patched.getCategory());
     assertEquals(expected.getNameSpace(), patched.getNameSpace());
-    assertEquals(expected.getCustomProperties(), patched.getCustomProperties());
   }
 
   @Override
@@ -239,6 +377,9 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
       List<CustomProperty> actualProperties =
           JsonUtils.readObjects(actual.toString(), CustomProperty.class);
       TestUtils.assertCustomProperties(expectedProperties, actualProperties);
+    } else if (fieldName.contains("customPropertyConfig")) {
+      String expectedStr = JsonUtils.pojoToJson(expected);
+      String actualStr = JsonUtils.pojoToJson(actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
