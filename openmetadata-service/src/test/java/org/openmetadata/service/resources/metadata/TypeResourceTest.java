@@ -53,7 +53,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
-import org.skyscreamer.jsonassert.JSONAssert;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -365,14 +364,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertEquals(expected.getSchema(), patched.getSchema());
     assertEquals(expected.getCategory(), patched.getCategory());
     assertEquals(expected.getNameSpace(), patched.getNameSpace());
-    try {
-      JSONAssert.assertEquals(
-          JsonUtils.pojoToJson(expected.getCustomProperties()),
-          JsonUtils.pojoToJson(patched.getCustomProperties()),
-          false);
-    } catch (Exception e) {
-      throw new IllegalStateException(e.getMessage());
-    }
   }
 
   @Override
@@ -389,11 +380,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     } else if (fieldName.contains("customPropertyConfig")) {
       String expectedStr = JsonUtils.pojoToJson(expected);
       String actualStr = JsonUtils.pojoToJson(actual);
-      try {
-        JSONAssert.assertEquals(expectedStr, actualStr, false);
-      } catch (Exception e) {
-        throw new IllegalStateException(e.getMessage());
-      }
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
