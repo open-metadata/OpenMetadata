@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-        e2e-test: ['python', 'other']
+      e2e-test: ['python', 'other']
     environment: test
 
     steps:
