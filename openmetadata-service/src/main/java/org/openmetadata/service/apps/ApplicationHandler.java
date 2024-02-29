@@ -82,4 +82,8 @@ public class ApplicationHandler {
       throw new UnhandledServerException("Exception encountered", e);
     }
   }
+
+  public static void removeUninstalledApp(String className) {
+    instances.remove(className);
+  }
 }
