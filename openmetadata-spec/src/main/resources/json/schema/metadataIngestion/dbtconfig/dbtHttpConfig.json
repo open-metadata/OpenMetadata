@@ -6,6 +6,12 @@
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig",
   "type": "object",
   "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": ["http"],
+      "default": "http"
+    },
     "dbtCatalogHttpPath": {
       "title": "DBT Catalog HTTP File Path",
       "description": "DBT catalog http file path to extract dbt models with their column schemas.",
@@ -23,5 +29,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtManifestHttpPath"]
+  "required": ["dbtManifestHttpPath", "dbtConfigType"]
 }
