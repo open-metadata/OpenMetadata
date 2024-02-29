@@ -301,7 +301,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           return (
             <Row align="middle">
               <Tooltip
-                placement="bottomRight"
                 title={
                   testCaseEditPermission
                     ? t('label.edit')
@@ -324,7 +323,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
               {removeFromTestSuite ? (
                 <Tooltip
-                  placement="bottomLeft"
                   title={
                     testCaseDeletePermission
                       ? t('label.remove')
@@ -346,7 +344,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </Tooltip>
               ) : (
                 <Tooltip
-                  placement="bottomLeft"
                   title={
                     testCaseDeletePermission
                       ? t('label.delete')
