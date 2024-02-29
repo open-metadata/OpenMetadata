@@ -24,8 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
+        e2e-test: ['python', 'other']
     environment: test
 
     steps:
@@ -44,7 +43,7 @@ jobs:
         python-version: 3.9
 
     - name: configure aws credentials
-      if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
+      if: matrix.e2e-test == 'other'
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
@@ -90,7 +89,6 @@ jobs:
       id: e2e-test
       continue-on-error: true
       env:
-        E2E_TEST: ${{ matrix.e2e-test }}
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
         E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
         E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
@@ -159,9 +157,9 @@ jobs:
         echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
         echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
         echo "    pass" >> $SITE_CUSTOMIZE_PATH
-        coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
-        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*   
-        coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
+        coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-all.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_*.py
+        coverage combine --data-file=.coverage.all --rcfile=ingestion/pyproject.toml --keep -a .coverage*   
+        coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.all || true
 
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
