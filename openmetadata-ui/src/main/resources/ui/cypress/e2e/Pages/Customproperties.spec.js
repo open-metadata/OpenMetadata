@@ -500,7 +500,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
+        editCreatedProperty(propertyName, 'Enum');
       });
 
       it(`Delete created property for ${entity.name} entity`, () => {

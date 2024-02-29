@@ -125,7 +125,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           if (!isString(config)) {
             return (
-              <Space direction="vertical" size={4}>
+              <Space data-testid="enum-config" direction="vertical" size={4}>
                 <Typography.Text>
                   {JSON.stringify(config?.values ?? [])}
                 </Typography.Text>
