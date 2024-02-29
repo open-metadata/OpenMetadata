@@ -264,7 +264,6 @@ const Ingestion: React.FC<IngestionProps> = ({
       <EntityDeleteModal
         entityName={deleteSelection.name}
         entityType={t('label.ingestion-lowercase')}
-        loadingState={deleteSelection.state}
         visible={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
         onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}

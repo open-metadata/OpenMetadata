@@ -18,7 +18,6 @@ export interface EntityDeleteModalProp extends HTMLAttributes<HTMLDivElement> {
   onCancel: () => void;
   entityName: string;
   entityType: string;
-  loadingState: string;
   bodyText?: string | JSX.Element;
   softDelete?: boolean;
   visible: boolean;

@@ -582,7 +582,6 @@ const DataProductsDetailsPage = ({
         bodyText={getEntityDeleteMessage(dataProduct.name, '')}
         entityName={dataProduct.name}
         entityType="Glossary"
-        loadingState="success"
         visible={isDelete}
         onCancel={() => setIsDelete(false)}
         onConfirm={onDelete}

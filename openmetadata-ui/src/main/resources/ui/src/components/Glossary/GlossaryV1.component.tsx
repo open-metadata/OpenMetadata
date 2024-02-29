@@ -60,7 +60,6 @@ import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const GlossaryV1 = ({
   isGlossaryActive,
-  deleteStatus = 'initial',
   selectedData,
   onGlossaryTermUpdate,
   updateGlossary,
@@ -396,7 +395,6 @@ const GlossaryV1 = ({
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
           entityType="Glossary"
-          loadingState={deleteStatus}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
