@@ -88,7 +88,8 @@
         "webAnalyticUserActivityReportData",
         "domain",
         "storedProcedure",
-        "dataProduct"
+        "dataProduct",
+        "ingestionPipeline"
       ],
       "uniqueItems": true
     },

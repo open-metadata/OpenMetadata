@@ -258,7 +258,7 @@ const AppDetails = () => {
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
+        setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
       }
     }
   };
