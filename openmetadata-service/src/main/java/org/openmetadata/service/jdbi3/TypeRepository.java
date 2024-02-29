@@ -23,6 +23,7 @@ import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
@@ -174,6 +175,11 @@ public class TypeRepository extends EntityRepository<Type> {
               || (enumConfig.getValues() != null && enumConfig.getValues().isEmpty())) {
             throw new IllegalArgumentException(
                 "Enum Custom Property Type must have EnumConfig populated with values.");
+          } else if (enumConfig.getValues() != null
+              && enumConfig.getValues().stream().distinct().count()
+                  != enumConfig.getValues().size()) {
+            throw new IllegalArgumentException(
+                "Enum Custom Property values cannot have duplicates.");
           }
         } else {
           throw new IllegalArgumentException("Enum Custom Property Type must have EnumConfig.");
@@ -221,6 +227,7 @@ public class TypeRepository extends EntityRepository<Type> {
           continue;
         }
         updateCustomPropertyDescription(updated, storedProperty, updateProperty);
+        updateCustomPropertyConfig(updated, storedProperty, updateProperty);
       }
     }
 
@@ -290,6 +297,56 @@ public class TypeRepository extends EntityRepository<Type> {
                 Relationship.HAS.ordinal(),
                 "customProperty",
                 customPropertyJson);
+      }
+    }
+
+    private void updateCustomPropertyConfig(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      String fieldName = getCustomField(origProperty, "customPropertyConfig");
+      if (previous == null || !previous.getVersion().equals(updated.getVersion())) {
+        validatePropertyConfigUpdate(entity, origProperty, updatedProperty);
+      }
+      if (recordChange(
+          fieldName,
+          origProperty.getCustomPropertyConfig(),
+          updatedProperty.getCustomPropertyConfig())) {
+        String customPropertyFQN =
+            getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+        EntityReference propertyType =
+            updatedProperty.getPropertyType(); // Don't store entity reference
+        String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
+        updatedProperty.withPropertyType(propertyType); // Restore entity reference
+        daoCollection
+            .fieldRelationshipDAO()
+            .upsert(
+                customPropertyFQN,
+                updatedProperty.getPropertyType().getName(),
+                customPropertyFQN,
+                updatedProperty.getPropertyType().getName(),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal(),
+                "customProperty",
+                customPropertyJson);
+      }
+    }
+
+    private void validatePropertyConfigUpdate(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      if (origProperty.getPropertyType().getName().equals("enum")) {
+        EnumConfig origConfig =
+            JsonUtils.convertValue(
+                origProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        EnumConfig updatedConfig =
+            JsonUtils.convertValue(
+                updatedProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        HashSet<String> updatedValues = new HashSet<>(updatedConfig.getValues());
+        if (updatedValues.size() != updatedConfig.getValues().size()) {
+          throw new IllegalArgumentException("Enum Custom Property values cannot have duplicates.");
+        } else if (!updatedValues.containsAll(origConfig.getValues())) {
+          throw new IllegalArgumentException(
+              "Existing Enum Custom Property values cannot be removed.");
+        }
       }
     }
   }
