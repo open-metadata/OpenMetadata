@@ -38,6 +38,10 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import { DescriptionProps } from './Description.interface';
 
+/**
+ * @deprecated will be removed
+ * Use DescriptionV1 instead
+ */
 const Description: FC<DescriptionProps> = ({
   className,
   header,
@@ -175,15 +179,19 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <Space align="end" size={0}>
+      <div className="d-flex items-end">
         {hasEditAccess && (
-          <Button
-            className="w-7 h-7 p-0 flex-center"
-            data-testid="edit-description"
-            icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
-            type="text"
-            onClick={handleUpdate}
-          />
+          <Tooltip
+            placement="topRight"
+            title={t('label.edit-entity', { entity: t('label.description') })}>
+            <Button
+              className="w-7 h-7 p-0 flex-center"
+              data-testid="edit-description"
+              icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
+              type="text"
+              onClick={handleUpdate}
+            />
+          </Tooltip>
         )}
         {isTaskSupported(entityType as EntityType) ? (
           <Fragment>
@@ -193,13 +201,13 @@ const Description: FC<DescriptionProps> = ({
         ) : null}
 
         <DescriptionThreadEl descriptionThread={thread} />
-      </Space>
+      </div>
     ) : null;
   };
 
   return (
     <div className={`schema-description relative ${className}`}>
-      <div className="description-inner-main-container d-flex items-end">
+      <div className="description-inner-main-container d-flex items-baseline">
         <div
           className="description h-full relative overflow-y-scroll m-r-xss"
           data-testid="description"

@@ -180,7 +180,7 @@ class MetabaseSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        charts = dashboard_details.ordered_cards
+        charts = dashboard_details.dashcards
         for chart in charts:
             try:
                 chart_details = chart.card
@@ -227,7 +227,7 @@ class MetabaseSource(DashboardServiceSource):
         if not db_service_name:
             return
         chart_list, dashboard_name = (
-            dashboard_details.ordered_cards,
+            dashboard_details.dashcards,
             str(dashboard_details.id),
         )
         for chart in chart_list:

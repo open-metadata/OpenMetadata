@@ -126,24 +126,34 @@ const DescriptionV1 = ({
     () => (
       <Space size={12}>
         {!isReadOnly && hasEditAccess && (
-          <Icon
-            component={EditIcon}
-            data-testid="edit-description"
-            style={{ color: DE_ACTIVE_COLOR }}
-            onClick={onDescriptionEdit}
-          />
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.description'),
+            })}>
+            <Icon
+              component={EditIcon}
+              data-testid="edit-description"
+              style={{ color: DE_ACTIVE_COLOR }}
+              onClick={onDescriptionEdit}
+            />
+          </Tooltip>
         )}
         {taskActionButton}
         {showCommentsIcon && (
-          <Icon
-            component={CommentIcon}
-            data-testid="description-thread"
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={20}
-            onClick={() => {
-              onThreadLinkSelect?.(entityLink);
-            }}
-          />
+          <Tooltip
+            title={t('label.list-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <Icon
+              component={CommentIcon}
+              data-testid="description-thread"
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={20}
+              onClick={() => {
+                onThreadLinkSelect?.(entityLink);
+              }}
+            />
+          </Tooltip>
         )}
       </Space>
     ),

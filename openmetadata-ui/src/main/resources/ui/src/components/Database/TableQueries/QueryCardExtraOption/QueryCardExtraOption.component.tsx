@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag } from 'antd';
+import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
 import { isUndefined, split } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,13 +42,18 @@ const QueryCardExtraOption = ({
   const { currentUser } = useAuthContext();
   const { t } = useTranslation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [loading, setLoading] = useState<QueryVoteType | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const onDeleteClick = async () => {
+    setIsDeleting(true);
     try {
       await deleteQuery(query.id || '');
       afterDeleteAction();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -106,7 +111,7 @@ const QueryCardExtraOption = ({
     }
   }, [query, currentUser]);
 
-  const handleVoteChange = (type: QueryVoteType) => {
+  const handleVoteChange = async (type: QueryVoteType) => {
     let updatedVoteType;
 
     // current vote is same as selected vote, it means user is removing vote, else up/down voting
@@ -115,8 +120,9 @@ const QueryCardExtraOption = ({
     } else {
       updatedVoteType = type;
     }
-
-    onUpdateVote({ updatedVoteType }, query.id);
+    setLoading(type);
+    await onUpdateVote({ updatedVoteType }, query.id);
+    setLoading(null);
   };
 
   return (
@@ -127,43 +133,51 @@ const QueryCardExtraOption = ({
       <Tag className="query-lines" data-testid="query-line">
         {queryLine}
       </Tag>
-      <Button
-        className="vote-button"
-        data-testid="up-vote-btn"
-        icon={
-          voteStatus === QueryVoteType.votedUp ? (
-            <ThumbsUpFilled color="#008376" height={15} width={15} />
-          ) : (
-            <ThumbsUpOutline height={15} width={15} />
-          )
-        }
-        size="small"
-        onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-        {query.votes?.upVotes || 0}
-      </Button>
-      <Button
-        className="vote-button"
-        data-testid="down-vote-btn"
-        icon={
-          voteStatus === QueryVoteType.votedDown ? (
-            <ThumbsUpFilled
-              className="rotate-inverse"
-              color="#E7B85D"
-              height={15}
-              width={15}
-            />
-          ) : (
-            <ThumbsUpOutline
-              className="rotate-inverse"
-              height={15}
-              width={15}
-            />
-          )
-        }
-        size="small"
-        onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-        {query.votes?.downVotes || 0}
-      </Button>
+      <Tooltip title={t('label.up-vote')}>
+        <Button
+          className="vote-button"
+          data-testid="up-vote-btn"
+          icon={
+            voteStatus === QueryVoteType.votedUp ? (
+              <ThumbsUpFilled color="#008376" height={15} width={15} />
+            ) : (
+              <ThumbsUpOutline height={15} width={15} />
+            )
+          }
+          loading={loading === QueryVoteType.votedUp}
+          size="small"
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
+          {query.votes?.upVotes || 0}
+        </Button>
+      </Tooltip>
+
+      <Tooltip title={t('label.down-vote')}>
+        <Button
+          className="vote-button"
+          data-testid="down-vote-btn"
+          icon={
+            voteStatus === QueryVoteType.votedDown ? (
+              <ThumbsUpFilled
+                className="rotate-inverse"
+                color="#E7B85D"
+                height={15}
+                width={15}
+              />
+            ) : (
+              <ThumbsUpOutline
+                className="rotate-inverse"
+                height={15}
+                width={15}
+              />
+            )
+          }
+          loading={loading === QueryVoteType.votedDown}
+          size="small"
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
+          {query.votes?.downVotes || 0}
+        </Button>
+      </Tooltip>
+
       <Dropdown
         destroyPopupOnHide
         arrow={{ pointAtCenter: true }}
@@ -175,13 +189,18 @@ const QueryCardExtraOption = ({
         }}
         placement="bottomRight"
         trigger={['click']}>
-        <Button
-          className="flex-center button-size"
-          data-testid="more-option-btn"
-          icon={<IconDropdown />}
-          size="small"
-          type="text"
-        />
+        <Tooltip
+          title={t('label.manage-entity', {
+            entity: t('label.query'),
+          })}>
+          <Button
+            className="flex-center button-size"
+            data-testid="query-btn"
+            icon={<IconDropdown />}
+            size="small"
+            type="text"
+          />
+        </Tooltip>
       </Dropdown>
       <ConfirmationModal
         bodyText={t('message.delete-entity-permanently', {
@@ -190,6 +209,7 @@ const QueryCardExtraOption = ({
         cancelText={t('label.cancel')}
         confirmText={t('label.delete')}
         header={t('label.delete-entity', { entity: t('label.query') })}
+        isLoading={isDeleting}
         visible={showDeleteModal}
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={onDeleteClick}

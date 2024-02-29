@@ -312,7 +312,7 @@ const DomainDetailsPage = ({
     setIsNameEditing(false);
   };
 
-  const onStyleSave = (data: Style) => {
+  const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
@@ -323,7 +323,7 @@ const DomainDetailsPage = ({
       style,
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
 
@@ -560,20 +560,29 @@ const DomainDetailsPage = ({
 
             <ButtonGroup className="p-l-xs" size="small">
               {domain?.version && (
-                <Button
-                  className={classNames('', {
-                    'text-primary border-primary': version,
-                  })}
-                  data-testid="version-button"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={handleVersionClick}>
-                  <Typography.Text
+                <Tooltip
+                  title={t(
+                    `label.${
+                      isVersionsView
+                        ? 'exit-version-history'
+                        : 'version-plural-history'
+                    }`
+                  )}>
+                  <Button
                     className={classNames('', {
-                      'text-primary': version,
-                    })}>
-                    {toString(domain.version)}
-                  </Typography.Text>
-                </Button>
+                      'text-primary border-primary': version,
+                    })}
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={handleVersionClick}>
+                    <Typography.Text
+                      className={classNames('', {
+                        'text-primary': version,
+                      })}>
+                      {toString(domain.version)}
+                    </Typography.Text>
+                  </Button>
+                </Tooltip>
               )}
 
               {!isVersionsView && manageButtonContent.length > 0 && (
@@ -589,7 +598,11 @@ const DomainDetailsPage = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: t('label.domain'),
+                    })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"

@@ -20,7 +20,7 @@ export const DATA_QUALITY_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality';
 
 export const GLOSSARIES_DOCS =
-  'https://docs.open-metadata.org/features/glossaries';
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/data/glossary';
 
 export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
 
@@ -33,7 +33,8 @@ export const INGESTION_FRAMEWORK_DEPLOYMENT_DOCS =
 export const BOTS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
 
-export const TEAMS_DOCS = 'https://docs.open-metadata.org/features/users';
+export const TEAMS_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata';
 
 export const WEBHOOK_DOCS =
   'https://docs.open-metadata.org/developers/webhooks';

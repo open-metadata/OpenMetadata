@@ -10,20 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import React, { ReactNode, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
   DE_ACTIVE_COLOR,
-  getTeamAndUserDetailsPath,
-  getUserPath,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -44,9 +40,11 @@ import {
   getDiffValue,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TagButton from '../../common/TagButton/TagButton.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -57,9 +55,10 @@ type Props = {
   permissions: OperationPermission;
   selectedData: Glossary | GlossaryTerm;
   isGlossary: boolean;
-  onUpdate: (data: GlossaryTerm | Glossary) => void;
+  onUpdate: (data: GlossaryTerm | Glossary) => void | Promise<void>;
   onThreadLinkSelect: (value: string) => void;
   entityType: EntityType;
+  refreshGlossaryTerms?: () => void;
 };
 
 const GlossaryDetailsRightPanel = ({
@@ -69,6 +68,7 @@ const GlossaryDetailsRightPanel = ({
   onUpdate,
   isVersionView,
   onThreadLinkSelect,
+  refreshGlossaryTerms,
   entityType,
 }: Props) => {
   const hasEditReviewerAccess = useMemo(() => {
@@ -88,11 +88,11 @@ const GlossaryDetailsRightPanel = ({
         tags: updatedTags,
       };
 
-      onUpdate(updatedData);
+      await onUpdate(updatedData);
     }
   };
 
-  const handleReviewerSave = (data: Array<EntityReference>) => {
+  const handleReviewerSave = async (data: Array<EntityReference>) => {
     if (!isEqual(data, selectedData.reviewers)) {
       let updatedGlossary = cloneDeep(selectedData);
       const oldReviewer = data.filter((d) =>
@@ -105,38 +105,29 @@ const GlossaryDetailsRightPanel = ({
         ...updatedGlossary,
         reviewers: [...oldReviewer, ...newReviewer],
       };
-      onUpdate(updatedGlossary);
+      await onUpdate(updatedGlossary);
     }
   };
 
-  const handleUpdatedOwner = (newOwner: Glossary['owner']) => {
+  const handleUpdatedOwner = async (newOwner: Glossary['owner']) => {
     const updatedData = {
       ...selectedData,
       owner: newOwner,
     };
-    onUpdate(updatedData);
+    await onUpdate(updatedData);
+    refreshGlossaryTerms?.();
   };
 
   const getOwner = useCallback(
     (ownerDisplayName: string | ReactNode, owner?: EntityReference) => {
       if (owner) {
         return (
-          <>
-            <ProfilePicture
-              displayName={getEntityName(owner)}
-              name={owner?.name ?? ''}
-              textClass="text-xs"
-              width="20"
-            />
-            <Link
-              to={
-                owner.type === 'team'
-                  ? getTeamAndUserDetailsPath(owner.name ?? '')
-                  : getUserPath(owner.name ?? '')
-              }>
-              {ownerDisplayName}
-            </Link>
-          </>
+          <UserPopOverCard
+            showUserName
+            displayName={ownerDisplayName}
+            type={owner.type as UserTeam}
+            userName={owner.name ?? ''}
+          />
         );
       }
       if (!(permissions.EditOwner || permissions.EditAll)) {
@@ -233,13 +224,18 @@ const GlossaryDetailsRightPanel = ({
                 hasPermission={permissions.EditOwner || permissions.EditAll}
                 owner={selectedData.owner}
                 onUpdate={handleUpdatedOwner}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-owner"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.owner'),
+                  })}>
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-owner"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
               </UserTeamSelectableList>
             )}
         </div>
@@ -281,13 +277,18 @@ const GlossaryDetailsRightPanel = ({
                 popoverProps={{ placement: 'topLeft' }}
                 selectedUsers={selectedData.reviewers ?? []}
                 onUpdate={handleReviewerSave}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-reviewer-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.reviewer-plural'),
+                  })}>
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-reviewer-button"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
               </UserSelectableList>
             )}
         </div>

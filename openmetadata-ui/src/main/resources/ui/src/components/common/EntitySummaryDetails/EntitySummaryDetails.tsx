@@ -15,41 +15,26 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import {
-  isEmpty,
-  isString,
-  isUndefined,
-  lowerCase,
-  noop,
-  toLower,
-} from 'lodash';
+import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as IconInfoSecondary } from '../../../assets/svg/icon-info.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Table } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import TierCard from '../TierCard/TierCard';
-import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
-import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './entity-summary-details.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
-  updateOwner?: (value: Table['owner']) => void;
   tier?: TagLabel;
   currentTier?: string;
-  updateTier?: (value?: Tag) => void;
   currentOwner?: Dashboard['owner'];
   deleted?: boolean;
   allowTeamOwner?: boolean;
@@ -69,34 +54,11 @@ const InfoIcon = ({
   </Tooltip>
 );
 
-const EntitySummaryDetails = ({
-  data,
-  tier,
-  updateOwner,
-  updateTier,
-  currentOwner,
-  deleted = false,
-  allowTeamOwner = true,
-}: GetInfoElementsProps) => {
+const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
   const displayVal = data.placeholderText || data.value;
-
-  const ownerDropdown = allowTeamOwner ? (
-    <UserTeamSelectableList
-      hasPermission={Boolean(updateOwner)}
-      owner={currentOwner}
-      onUpdate={updateOwner ?? noop}
-    />
-  ) : (
-    <UserSelectableList
-      hasPermission={Boolean(updateOwner)}
-      multiSelect={false}
-      selectedUsers={currentOwner ? [currentOwner] : []}
-      onUpdate={updateOwner ?? noop}
-    />
-  );
 
   const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
     useMemo(() => {
@@ -158,7 +120,6 @@ const EntitySummaryDetails = ({
               className="d-flex gap-1 items-center"
               data-testid="owner-link">
               {t('label.no-entity', { entity: t('label.owner') })}
-              {updateOwner && !deleted ? ownerDropdown : null}
             </span>
           );
       }
@@ -169,20 +130,7 @@ const EntitySummaryDetails = ({
       {
         retVal =
           !displayVal || displayVal === '--' ? (
-            <>
-              {t('label.no-entity', { entity: t('label.tier') })}
-              {updateTier && !deleted ? (
-                <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
-                  <span data-testid="edit-tier">
-                    <EditIcon
-                      className="cursor-pointer"
-                      color={DE_ACTIVE_COLOR}
-                      width={14}
-                    />
-                  </span>
-                </TierCard>
-              ) : null}
-            </>
+            <>{t('label.no-entity', { entity: t('label.tier') })}</>
           ) : (
             <></>
           );
@@ -289,8 +237,6 @@ const EntitySummaryDetails = ({
                   }
                 />
               ) : null}
-              {/* Edit icon with dropdown */}
-              {(isOwner || isTier) && (updateOwner ? ownerDropdown : null)}
             </>
           ) : isOwner ? (
             <>
@@ -307,8 +253,6 @@ const EntitySummaryDetails = ({
                   {displayVal}
                 </Button>
               </span>
-              {/* Edit icon with dropdown */}
-              {updateOwner ? ownerDropdown : null}
             </>
           ) : isTier ? (
             <Space
@@ -322,18 +266,6 @@ const EntitySummaryDetails = ({
               direction="horizontal"
               title={displayVal as string}>
               <span data-testid="Tier">{displayVal}</span>
-
-              {updateTier && !deleted ? (
-                <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
-                  <span data-testid="edit-tier">
-                    <EditIcon
-                      className="cursor-pointer"
-                      color={DE_ACTIVE_COLOR}
-                      width={14}
-                    />
-                  </span>
-                </TierCard>
-              ) : null}
             </Space>
           ) : (
             <span>{displayVal}</span>
