@@ -52,4 +52,7 @@ def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
 
 
 class FQNNotFoundException(Exception):
+    """
+    Error raised when, while searching for an entity (Table, DatabaseSchema) there is no match in OM.
+    """
     pass

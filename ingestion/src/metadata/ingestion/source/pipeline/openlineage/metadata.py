@@ -137,22 +137,6 @@ class OpenlineageSource(PipelineServiceSource):
             except FQNNotFoundException:
                 return None
 
-    def _get_entity_fqn_from_om(
-        self, entity_type: Union[type(Table), type(DatabaseSchema)], **kwargs
-    ) -> Optional[str]:
-        fully_qualified_name = fqn.build(
-            metadata=self.metadata, entity_type=entity_type, **kwargs
-        )
-        if fully_qualified_name:
-            entity: Union[Table, DatabaseSchema] = self.metadata.get_by_name(
-                entity=entity_type, fqn=fully_qualified_name
-            )
-            if entity:
-                result = entity.fullyQualifiedName.__root__
-                return result
-
-        return None
-
     def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
         """
         Based on partial schema and table names look for matching table object in open metadata.
@@ -163,12 +147,13 @@ class OpenlineageSource(PipelineServiceSource):
         result = None
         services = self.source_config.dbServiceNames
         for db_service in services:
-            result = self._get_entity_fqn_from_om(
-                Table,
+            result = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
                 service_name=db_service,
-                table_name=table_details.name,
-                schema_name=table_details.schema,
                 database_name=None,
+                schema_name=table_details.schema,
+                table_name=table_details.name,
             )
         if not result:
             raise FQNNotFoundException(
@@ -187,28 +172,15 @@ class OpenlineageSource(PipelineServiceSource):
         services = self.source_config.dbServiceNames
 
         for db_service in services:
-            databases = [
-                x.get("name")
-                for x in self.metadata.client.get(
-                    "/databases",
-                    data={
-                        "service": db_service,
-                        "include": "non-deleted",
-                        "limit": 1000000,
-                    },
-                ).get("data", [])
-            ]
+            result = fqn.build(
+                metadata=self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=db_service,
+                database_name=None,
+            )
 
-            for database in databases:
-                result = self._get_entity_fqn_from_om(
-                    DatabaseSchema,
-                    service_name=db_service,
-                    schema_name=schema,
-                    database_name=database,
-                )
-
-                if result:
-                    return result
+            if result:
+                return result
 
         if not result:
             raise FQNNotFoundException(

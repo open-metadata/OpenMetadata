@@ -110,7 +110,9 @@ del MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT["run"]["facets"]["parent"]["job"]["
 MALFORMED_NESTED_STRUCTURE_EVENT = copy.deepcopy(VALID_EVENT)
 MALFORMED_NESTED_STRUCTURE_EVENT["run"]["facets"]["parent"]["job"] = "Not a dict"
 
-with open(f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json") as ol_file:
+with open(
+    f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json"
+) as ol_file:
     FULL_OL_KAFKA_EVENT = json.load(ol_file)
 
 EXPECTED_OL_EVENT = OpenLineageEvent(
