@@ -23,6 +23,8 @@ const InlineEdit = ({
   direction,
   className,
   isLoading,
+  cancelButtonProps,
+  saveButtonProps,
 }: InlineEditProps) => {
   return (
     <Space
@@ -39,6 +41,7 @@ const InlineEdit = ({
           size="small"
           type="primary"
           onClick={onCancel}
+          {...cancelButtonProps}
         />
         <Button
           data-testid="inline-save-btn"
@@ -47,6 +50,7 @@ const InlineEdit = ({
           size="small"
           type="primary"
           onClick={onSave}
+          {...saveButtonProps}
         />
       </Space>
     </Space>
