@@ -1291,6 +1291,7 @@ export const WHATS_NEW = [
       'Data Insights': `- Data Insights report has been improved.
 - The cost Analysis report has been optimized.`,
       Notifications: `- The format for Slack notifications has been improved.`,
+      'Custom Properties': `- Added enum type support for custom properties.`,
       Connectors: `- Now BigQuery connector supports Primary, Foreign, and Unique Constraints. It fetches the column description for views.
 - Captures the SQL query that powers a Tableau DataModel.
 - Azure Key Vault is supported as a Secrets Manager.
