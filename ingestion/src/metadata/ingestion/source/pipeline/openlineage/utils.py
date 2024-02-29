@@ -55,4 +55,5 @@ class FQNNotFoundException(Exception):
     """
     Error raised when, while searching for an entity (Table, DatabaseSchema) there is no match in OM.
     """
+
     pass
