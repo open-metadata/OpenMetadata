@@ -29,9 +29,9 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
-    Table,
     PartitionColumnDetails,
     PartitionIntervalTypes,
+    Table,
     TablePartition,
     TableType,
 )

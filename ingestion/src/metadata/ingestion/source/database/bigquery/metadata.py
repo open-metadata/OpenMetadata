@@ -13,7 +13,6 @@ Bigquery source module
 """
 import os
 import traceback
-from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
@@ -34,15 +33,11 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
-    Table,
     PartitionColumnDetails,
     PartitionIntervalTypes,
+    Table,
     TablePartition,
     TableType,
-)
-from metadata.ingestion.api.delete import delete_entity_by_name
-from metadata.ingestion.source.database.incremental_metadata_extraction import (
-    IncrementalConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -58,6 +53,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -69,7 +65,7 @@ from metadata.ingestion.source.database.bigquery.helper import (
     get_pk_constraint,
 )
 from metadata.ingestion.source.database.bigquery.incremental_table_processor import (
-    BigQueryIncrementalTableProcessor
+    BigQueryIncrementalTableProcessor,
 )
 from metadata.ingestion.source.database.bigquery.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -86,6 +82,9 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
 )
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
@@ -239,7 +238,9 @@ class BigquerySource(
 
         self.context.deleted_tables = []
         self.incremental = incremental_configuration
-        self.incremental_table_processor: Optional[BigQueryIncrementalTableProcessor] = None
+        self.incremental_table_processor: Optional[
+            BigQueryIncrementalTableProcessor
+        ] = None
 
         if self.incremental.enabled:
             logger.info(
@@ -292,17 +293,20 @@ class BigquerySource(
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
-        table_names_and_types = self.engine.execute(
-            BIGQUERY_TABLE_AND_TYPE.format(
-                project_id=self.client.project, schema_name=schema_name
+        table_names_and_types = (
+            self.engine.execute(
+                BIGQUERY_TABLE_AND_TYPE.format(
+                    project_id=self.client.project, schema_name=schema_name
+                )
             )
-        ) or []
+            or []
+        )
 
         if self.incremental.enabled:
             self.incremental_table_processor.set_changed_tables_map(
                 project=self.client.project,
                 dataset=schema_name,
-                start_date=self.incremental.start_datetime_utc
+                start_date=self.incremental.start_datetime_utc,
             )
 
             self.context.deleted_tables.extend(
@@ -313,7 +317,7 @@ class BigquerySource(
                         service_name=self.context.database_service,
                         database_name=self.context.database,
                         schema_name=schema_name,
-                        table_name=table_name
+                        table_name=table_name,
                     )
                     for table_name in self.incremental_table_processor.get_deleted()
                 ]
@@ -574,7 +578,9 @@ class BigquerySource(
                 try:
                     self.set_inspector(database_name=project_id)
                     if self.incremental.enabled:
-                        self.incremental_table_processor = BigQueryIncrementalTableProcessor.from_project(project_id)
+                        self.incremental_table_processor = (
+                            BigQueryIncrementalTableProcessor.from_project(project_id)
+                        )
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

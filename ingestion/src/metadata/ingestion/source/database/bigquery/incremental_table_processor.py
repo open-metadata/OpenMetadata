@@ -11,12 +11,20 @@
 """
 Bigquery Incremental Table processing logic
 """
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
 import google.cloud.logging
 from google.cloud.logging_v2.entries import LogEntry
-from metadata.ingestion.source.database.bigquery.models import BigQueryTable, BigQueryTableMap, TableName
-from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING
+
+from metadata.ingestion.source.database.bigquery.models import (
+    BigQueryTable,
+    BigQueryTableMap,
+    TableName,
+)
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING,
+)
 
 
 class BigQueryIncrementalTableProcessor:
@@ -44,13 +52,13 @@ class BigQueryIncrementalTableProcessor:
         filters = BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING.format(
             project=project,
             dataset=dataset,
-            start_date=start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            start_date=start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
 
         entries = self._client.list_entries(
             resource_names=resource_names,
             filter_=filters,
-            order_by=google.cloud.logging.DESCENDING
+            order_by=google.cloud.logging.DESCENDING,
         )
 
         for entry in entries:
@@ -60,9 +68,7 @@ class BigQueryIncrementalTableProcessor:
 
             if not table_name in table_map:
                 table_map[table_name] = BigQueryTable(
-                    name=table_name,
-                    timestamp=timestamp,
-                    deleted=deleted
+                    name=table_name, timestamp=timestamp, deleted=deleted
                 )
         self._changed_tables_map = BigQueryTableMap(table_map=table_map)
 
