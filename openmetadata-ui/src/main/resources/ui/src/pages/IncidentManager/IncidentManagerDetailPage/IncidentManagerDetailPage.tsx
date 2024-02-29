@@ -45,7 +45,6 @@ import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 import { TestCaseData } from './IncidentManagerDetailPage.interface';
@@ -60,11 +59,6 @@ const IncidentManagerDetailPage = () => {
     useParams<{ tab: EntityTabs }>();
 
   const { fqn: testCaseFQN } = useFqn();
-
-  const decodedTestCaseFQN = useMemo(
-    () => getDecodedFqn(testCaseFQN),
-    [testCaseFQN]
-  );
 
   const [testCaseData, setTestCaseData] = useState<TestCaseData>({
     data: undefined,
@@ -132,7 +126,7 @@ const IncidentManagerDetailPage = () => {
   const fetchTestCaseData = async () => {
     setTestCaseData((prev) => ({ ...prev, isLoading: true }));
     try {
-      const response = await getTestCaseByFqn(decodedTestCaseFQN, {
+      const response = await getTestCaseByFqn(testCaseFQN, {
         fields: [
           'testSuite',
           'testCaseResult',
@@ -177,7 +171,7 @@ const IncidentManagerDetailPage = () => {
     if (activeKey !== activeTab) {
       history.push(
         getIncidentManagerDetailPagePath(
-          decodedTestCaseFQN,
+          testCaseFQN,
           activeKey as IncidentManagerTabs
         )
       );
@@ -230,17 +224,17 @@ const IncidentManagerDetailPage = () => {
   }, []);
 
   const getEntityFeedCount = useCallback(() => {
-    getFeedCounts(EntityType.TEST_CASE, decodedTestCaseFQN, handleFeedCount);
-  }, [decodedTestCaseFQN]);
+    getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
+  }, [testCaseFQN]);
 
   useEffect(() => {
-    if (hasViewPermission && decodedTestCaseFQN) {
+    if (hasViewPermission && testCaseFQN) {
       fetchTestCaseData();
       getEntityFeedCount();
     } else {
       setTestCaseData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [decodedTestCaseFQN, hasViewPermission]);
+  }, [testCaseFQN, hasViewPermission]);
 
   if (testCaseData.isLoading) {
     return <Loader />;

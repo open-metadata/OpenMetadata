@@ -47,7 +47,6 @@ import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
@@ -65,7 +64,6 @@ export const PopoverContent: React.FC<{
   entityType: string;
   extraInfo?: React.ReactNode;
 }> = ({ entityFQN, entityType, extraInfo }) => {
-  const decodedFqn = getDecodedFqn(entityFQN);
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const { cachedEntityData, updateCachedEntityData } =
@@ -82,7 +80,7 @@ export const PopoverContent: React.FC<{
             displayName: getEntityName(data),
             id: data.id ?? '',
             description: data.description ?? '',
-            fullyQualifiedName: decodedFqn,
+            fullyQualifiedName: entityFQN,
             tags: (data as Table)?.tags,
             entityType: entityType,
             serviceType: (data as Table)?.serviceType,
@@ -101,7 +99,7 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.TEST_CASE:
-        promise = getTestCaseByFqn(decodedFqn, {
+        promise = getTestCaseByFqn(entityFQN, {
           fields: ['owner'],
         });
 
