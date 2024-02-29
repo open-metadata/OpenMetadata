@@ -104,6 +104,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
@@ -1773,4 +1774,13 @@ export const columnSorter = (
   const name2 = getEntityName(col2);
 
   return name1.localeCompare(name2);
+};
+
+/**
+ * Retrieves the column name from an entity link.
+ * @param entityLink The entity link string.
+ * @returns The column name extracted from the entity link.
+ */
+export const getColumnNameFromEntityLink = (entityLink: string) => {
+  return EntityLink.getTableColumnName(entityLink);
 };
