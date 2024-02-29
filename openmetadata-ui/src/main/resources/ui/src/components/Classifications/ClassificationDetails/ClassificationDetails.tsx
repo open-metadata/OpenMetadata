@@ -482,7 +482,7 @@ const ClassificationDetails = forwardRef(
         <div className="m-b-sm m-t-xs" data-testid="description-container">
           <DescriptionV1
             className={classNames({
-              'opacity-60': !isClassificationDisabled,
+              'opacity-60': isClassificationDisabled,
             })}
             description={description}
             entityName={getEntityName(currentClassification)}
