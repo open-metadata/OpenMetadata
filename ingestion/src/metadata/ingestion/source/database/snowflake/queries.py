@@ -45,11 +45,6 @@ SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
 """
 )
 
-# SNOWFLAKE_GET_TABLE_NAMES = """
-# select TABLE_NAME from information_schema.tables
-# where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
-# """
-
 SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}' AND TABLE_TYPE = 'EXTERNAL TABLE'
