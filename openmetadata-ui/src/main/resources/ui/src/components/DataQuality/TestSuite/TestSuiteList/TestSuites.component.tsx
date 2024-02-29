@@ -24,11 +24,11 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getTableTabPath, ROUTES } from '../../../../constants/constants';
+import { getEntityDetailsPath, ROUTES } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityTabs } from '../../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSummary } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite } from '../../../../generated/tests/testCase';
@@ -82,7 +82,8 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             <Link
               data-testid={name}
               to={{
-                pathname: getTableTabPath(
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
                   record.executableEntityReference?.fullyQualifiedName ?? '',
                   EntityTabs.PROFILER
                 ),

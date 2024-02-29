@@ -39,6 +39,7 @@ import {
 } from '../../utils/RouterUtils';
 import DataProductsPage from '../DataProducts/DataProductsPage/DataProductsPage.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
+import { EntityRouter } from './EntityRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
@@ -88,11 +89,6 @@ const MarketPlacePage = withSuspenseFallback(
   React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
 );
 
-const PipelineDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/PipelineDetails/PipelineDetailsPage.component')
-  )
-);
 const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
@@ -110,11 +106,6 @@ const ClassificationVersionPage = withSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/ClassificationVersionPage/ClassificationVersionPage')
-  )
-);
-const TopicDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/TopicDetails/TopicDetailsPage.component')
   )
 );
 const TourPageComponent = withSuspenseFallback(
@@ -182,58 +173,15 @@ const CreateUserPage = withSuspenseFallback(
     () => import('../../pages/CreateUserPage/CreateUserPage.component')
   )
 );
-const DashboardDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/DashboardDetailsPage/DashboardDetailsPage.component')
-  )
-);
-const DatabaseDetails = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/DatabaseDetailsPage/DatabaseDetailsPage')
-  )
-);
-const DatabaseSchemaPageComponent = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
-  )
-);
-
-const DataModelDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/DataModelPage/DataModelPage.component'))
-);
-
-const StoredProcedureDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/StoredProcedure/StoredProcedurePage'))
-);
-
-const TableDetailsPageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TableDetailsPageV1/TableDetailsPageV1'))
-);
 const EditIngestionPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/EditIngestionPage/EditIngestionPage.component')
   )
 );
-const EntityVersionPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/EntityVersionPage/EntityVersionPage.component')
-  )
-);
 const ServiceVersionPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/ServiceVersionPage/ServiceVersionPage'))
 );
-const DatabaseVersionPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/DatabaseVersionPage/DatabaseVersionPage')
-  )
-);
-const DatabaseSchemaVersionPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
-  )
-);
+
 const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
 );
@@ -242,10 +190,6 @@ const GlossaryPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/Glossary/GlossaryPage/GlossaryPage.component')
   )
-);
-
-const MlModelPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/MlModelPage/MlModelPage.component'))
 );
 
 const RequestDescriptionPage = withSuspenseFallback(
@@ -329,16 +273,6 @@ const EditKPIPage = withSuspenseFallback(
 const AddTestSuitePage = withSuspenseFallback(
   React.lazy(
     () => import('../DataQuality/TestSuite/TestSuiteStepper/TestSuiteStepper')
-  )
-);
-
-const ContainerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ContainerPage/ContainerPage'))
-);
-
-const SearchIndexDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
   )
 );
 
@@ -636,164 +570,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlossaryVersionPage}
         path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
       />
-      <Route
-        exact
-        component={DatabaseVersionPage}
-        path={ROUTES.DATABASE_VERSION}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaVersionPage}
-        path={ROUTES.SCHEMA_VERSION}
-      />
-      <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+
       <Route
         exact
         component={ServiceVersionPage}
         path={ROUTES.SERVICE_VERSION}
       />
-      <Route
-        exact
-        component={EntityVersionPage}
-        path={ROUTES.ENTITY_VERSION_WITH_TAB}
-      />
-      <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
-      <Route
-        exact
-        component={DatabaseDetails}
-        path={ROUTES.DATABASE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DatabaseDetails}
-        path={ROUTES.DATABASE_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaPageComponent}
-        path={ROUTES.SCHEMA_DETAILS}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaPageComponent}
-        path={ROUTES.SCHEMA_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaPageComponent}
-        path={ROUTES.SCHEMA_DETAILS_WITH_SUB_TAB}
-      />
-      <Route exact component={TableDetailsPageV1} path={ROUTES.TABLE_DETAILS} />
-      <Route
-        exact
-        component={TableDetailsPageV1}
-        path={ROUTES.TABLE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={TableDetailsPageV1}
-        path={ROUTES.TABLE_DETAILS_WITH_SUB_TAB}
-      />
-      <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
-      <Route
-        exact
-        component={TopicDetailsPage}
-        path={ROUTES.TOPIC_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={TopicDetailsPage}
-        path={ROUTES.TOPIC_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={DashboardDetailsPage}
-        path={ROUTES.DASHBOARD_DETAILS}
-      />
-      <Route
-        exact
-        component={DashboardDetailsPage}
-        path={ROUTES.DASHBOARD_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DashboardDetailsPage}
-        path={ROUTES.DASHBOARD_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={DataModelDetailsPage}
-        path={ROUTES.DATA_MODEL_DETAILS}
-      />
-      <Route
-        exact
-        component={DataModelDetailsPage}
-        path={ROUTES.DATA_MODEL_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DataModelDetailsPage}
-        path={ROUTES.DATA_MODEL_DETAILS_WITH_SUB_TAB}
-      />
 
-      <Route
-        exact
-        component={StoredProcedureDetailsPage}
-        path={ROUTES.STORED_PROCEDURE_DETAILS}
-      />
-      <Route
-        exact
-        component={StoredProcedureDetailsPage}
-        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={StoredProcedureDetailsPage}
-        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB}
-      />
-
-      <Route
-        exact
-        component={PipelineDetailsPage}
-        path={ROUTES.PIPELINE_DETAILS}
-      />
-      <Route
-        exact
-        component={PipelineDetailsPage}
-        path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={PipelineDetailsPage}
-        path={ROUTES.PIPELINE_DETAILS_WITH_SUB_TAB}
-      />
-
-      <Route exact component={ContainerPage} path={ROUTES.CONTAINER_DETAILS} />
-      <Route
-        exact
-        component={ContainerPage}
-        path={ROUTES.CONTAINER_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={ContainerPage}
-        path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={SearchIndexDetailsPage}
-        path={ROUTES.SEARCH_INDEX_DETAILS}
-      />
-      <Route
-        exact
-        component={SearchIndexDetailsPage}
-        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={SearchIndexDetailsPage}
-        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_SUB_TAB}
-      />
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
@@ -820,30 +603,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
       />
 
-      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
-      <Route
-        exact
-        component={MlModelPage}
-        path={ROUTES.MLMODEL_DETAILS_WITH_SUB_TAB}
-      />
-
-      <Route
-        exact
-        component={MlModelPage}
-        path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
-      />
-
       <Route
         exact
         component={UserPage}
         path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
-      />
-
-      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
-      <Route
-        exact
-        component={MlModelPage}
-        path={ROUTES.MLMODEL_DETAILS_WITH_SUB_TAB}
       />
 
       <Route
@@ -1335,6 +1098,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         ]}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
+      <EntityRouter />
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

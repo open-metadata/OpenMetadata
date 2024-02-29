@@ -43,19 +43,10 @@ import {
 } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getContainerDetailPath,
-  getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getDataModelDetailsPath,
+  getEntityDetailsPath,
   getGlossaryTermDetailsPath,
-  getMlModelDetailsPath,
-  getPipelineDetailsPath,
   getServiceDetailsPath,
-  getStoredProcedureDetailPath,
-  getTableDetailsPath,
   getTagsDetailsPath,
-  getTopicDetailsPath,
   NO_DATA,
   ROUTES,
 } from '../constants/constants';
@@ -107,13 +98,11 @@ import {
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
-  getDataProductsDetailsPath,
   getDomainPath,
   getGlossaryPath,
   getIncidentManagerDetailPagePath,
   getSettingPath,
 } from './RouterUtils';
-import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { stringToHTML } from './StringsUtils';
 import {
@@ -258,7 +247,8 @@ const getTableOverview = (tableDetails: Table) => {
     {
       name: i18next.t('label.database'),
       value: database || NO_DATA,
-      url: getDatabaseDetailsPath(
+      url: getEntityDetailsPath(
+        EntityType.DATABASE,
         getPartialNameFromTableFQN(
           fullyQualifiedName ?? '',
           [FqnPart.Service, FqnPart.Database],
@@ -271,7 +261,8 @@ const getTableOverview = (tableDetails: Table) => {
     {
       name: i18next.t('label.schema'),
       value: schema || NO_DATA,
-      url: getDatabaseSchemaDetailsPath(
+      url: getEntityDetailsPath(
+        EntityType.DATABASE_SCHEMA,
         getPartialNameFromTableFQN(
           fullyQualifiedName ?? '',
           [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
@@ -504,7 +495,10 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
     {
       name: i18next.t('label.dashboard'),
       value: getEntityName(dashboard) || NO_DATA,
-      url: getDashboardDetailsPath(dashboard?.fullyQualifiedName as string),
+      url: getEntityDetailsPath(
+        EntityType.DASHBOARD,
+        dashboard?.fullyQualifiedName as string
+      ),
       isLink: true,
       isExternal: false,
       visible: [
@@ -576,7 +570,10 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
         'label.url-uppercase'
       )}`,
       value: stringToHTML(displayName ?? '') || NO_DATA,
-      url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
+      url: getEntityDetailsPath(
+        EntityType.DASHBOARD_DATA_MODEL,
+        fullyQualifiedName ?? ''
+      ),
       isLink: true,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -654,7 +651,8 @@ const getStoredProcedureOverview = (
     {
       name: i18next.t('label.database'),
       value: database || NO_DATA,
-      url: getDatabaseDetailsPath(
+      url: getEntityDetailsPath(
+        EntityType.DATABASE,
         getPartialNameFromTableFQN(
           fullyQualifiedName ?? '',
           [FqnPart.Service, FqnPart.Database],
@@ -667,7 +665,8 @@ const getStoredProcedureOverview = (
     {
       name: i18next.t('label.schema'),
       value: schema || NO_DATA,
-      url: getDatabaseSchemaDetailsPath(
+      url: getEntityDetailsPath(
+        EntityType.DATABASE_SCHEMA,
         getPartialNameFromTableFQN(
           fullyQualifiedName ?? '',
           [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
@@ -785,7 +784,10 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
     {
       name: i18next.t('label.database'),
       value: database.fullyQualifiedName ?? NO_DATA,
-      url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
+      url: getEntityDetailsPath(
+        EntityType.DATABASE,
+        database.fullyQualifiedName ?? ''
+      ),
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -1158,7 +1160,8 @@ export const getFrequentlyJoinedColumns = (
             {index > 0 && <span className="m-r-xss">,</span>}
             <Link
               className="link-text"
-              to={getTableDetailsPath(
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
                 getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
                 getPartialNameFromTableFQN(columnJoin.fullyQualifiedName, [
                   FqnPart.Column,
@@ -1181,7 +1184,8 @@ export const getFrequentlyJoinedColumns = (
                   <Fragment key={columnJoin.fullyQualifiedName}>
                     <a
                       className="link-text d-block p-y-xss"
-                      href={getTableDetailsPath(
+                      href={getEntityDetailsPath(
+                        EntityType.TABLE,
                         getTableFQNFromColumnFQN(
                           columnJoin?.fullyQualifiedName
                         ),
@@ -1258,34 +1262,23 @@ export const getEntityLinkFromType = (
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
-      return getTableDetailsPath(fullyQualifiedName);
+    case EntityType.TOPIC:
+    case EntityType.DASHBOARD:
+    case EntityType.PIPELINE:
+    case EntityType.MLMODEL:
+    case EntityType.CONTAINER:
+    case EntityType.DATABASE:
+    case EntityType.DATABASE_SCHEMA:
+    case EntityType.DATA_PRODUCT:
+    case EntityType.DASHBOARD_DATA_MODEL:
+    case EntityType.STORED_PROCEDURE:
+    case EntityType.SEARCH_INDEX:
+      return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
-    case EntityType.TOPIC:
-      return getTopicDetailsPath(fullyQualifiedName);
-    case EntityType.DASHBOARD:
-      return getDashboardDetailsPath(fullyQualifiedName);
-    case EntityType.PIPELINE:
-      return getPipelineDetailsPath(fullyQualifiedName);
-    case EntityType.MLMODEL:
-      return getMlModelDetailsPath(fullyQualifiedName);
-    case EntityType.CONTAINER:
-      return getContainerDetailPath(fullyQualifiedName);
-    case EntityType.DATABASE:
-      return getDatabaseDetailsPath(fullyQualifiedName);
-    case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
-    case EntityType.DATA_PRODUCT:
-      return getDataProductsDetailsPath(fullyQualifiedName);
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelDetailsPath(fullyQualifiedName);
-    case EntityType.STORED_PROCEDURE:
-      return getStoredProcedureDetailPath(fullyQualifiedName);
-    case EntityType.SEARCH_INDEX:
-      return getSearchIndexTabPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
       return getServiceDetailsPath(
@@ -1352,11 +1345,15 @@ export const getBreadcrumbForTable = (
     },
     {
       name: getEntityName(database),
-      url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
+      url: getEntityDetailsPath(
+        EntityType.DATABASE,
+        database?.fullyQualifiedName ?? ''
+      ),
     },
     {
       name: getEntityName(databaseSchema),
-      url: getDatabaseSchemaDetailsPath(
+      url: getEntityDetailsPath(
+        EntityType.DATABASE_SCHEMA,
         databaseSchema?.fullyQualifiedName ?? ''
       ),
     },
@@ -1552,7 +1549,8 @@ export const getEntityBreadcrumbs = (
         },
         {
           name: getEntityName((entity as DatabaseSchema).database),
-          url: getDatabaseDetailsPath(
+          url: getEntityDetailsPath(
+            EntityType.DATABASE,
             (entity as DatabaseSchema).database?.fullyQualifiedName ?? ''
           ),
         },

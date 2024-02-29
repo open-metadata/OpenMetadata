@@ -10,14 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getPipelineDetailsPath,
-  getTableDetailsPath,
-  getTopicDetailsPath,
-} from '../constants/constants';
+
+import { getEntityDetailsPath } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityUtilClassBase } from './EntityUtilClassBase';
@@ -68,35 +62,35 @@ describe('EntityUtilClassBase', () => {
     const fqn = 'test.topic';
     entityUtil.getEntityLink(SearchIndex.TOPIC, fqn);
 
-    expect(getTopicDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(fqn);
   });
 
   it('should return dashboard details path for dashboard index type', () => {
     const fqn = 'test.dashboard';
     entityUtil.getEntityLink(SearchIndex.DASHBOARD, fqn);
 
-    expect(getDashboardDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(fqn);
   });
 
   it('should return pipeline details path for pipeline index type', () => {
     const fqn = 'test.pipeline';
     entityUtil.getEntityLink(SearchIndex.PIPELINE, fqn);
 
-    expect(getPipelineDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(fqn);
   });
 
   it('Should return database details path for database EntityType', () => {
     const fqn = 'test.database';
     entityUtil.getEntityLink(EntityType.DATABASE, fqn);
 
-    expect(getDatabaseDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(fqn);
   });
 
   it('Should return database schema details path for database EntityType', () => {
     const fqn = 'test.database.schema';
     entityUtil.getEntityLink(EntityType.DATABASE_SCHEMA, fqn);
 
-    expect(getDatabaseSchemaDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(fqn);
   });
 
   it('Should return glossary details path for database EntityType', () => {
@@ -110,13 +104,13 @@ describe('EntityUtilClassBase', () => {
     const fqn = 'test.table';
     entityUtil.getEntityLink(SearchIndex.TABLE, fqn);
 
-    expect(getTableDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(fqn);
   });
 
   it('should return table details path for default case', () => {
     const fqn = 'test.default';
     entityUtil.getEntityLink('default', fqn);
 
-    expect(getTableDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(fqn);
   });
 });

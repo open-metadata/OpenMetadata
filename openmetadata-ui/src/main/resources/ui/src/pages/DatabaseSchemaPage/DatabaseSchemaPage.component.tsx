@@ -44,8 +44,8 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  getDatabaseSchemaDetailsPath,
-  getVersionPathWithTab,
+  getEntityDetailsPath,
+  getVersionPath,
   INITIAL_PAGING_VALUE,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -292,7 +292,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     (activeKey: string) => {
       if (activeKey !== activeTab) {
         history.push({
-          pathname: getDatabaseSchemaDetailsPath(
+          pathname: getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN,
             activeKey
           ),
@@ -449,7 +450,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPathWithTab(
+        getVersionPath(
           EntityType.DATABASE_SCHEMA,
           decodedDatabaseSchemaFQN,
           String(currentVersion),

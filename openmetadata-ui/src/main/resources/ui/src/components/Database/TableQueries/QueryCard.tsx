@@ -24,7 +24,7 @@ import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import {
-  getTableTabPath,
+  getEntityDetailsPath,
   ONE_MINUTE_IN_MILLISECOND,
   PIPE_SYMBOL,
 } from '../../../constants/constants';
@@ -149,7 +149,11 @@ const QueryCard: FC<QueryCardProp> = ({
     if (isExpanded) {
       history.push({
         search: Qs.stringify(searchFilter),
-        pathname: getTableTabPath(datasetFQN, 'table_queries'),
+        pathname: getEntityDetailsPath(
+          EntityType.TABLE,
+          datasetFQN,
+          'table_queries'
+        ),
       });
     } else {
       history.push({

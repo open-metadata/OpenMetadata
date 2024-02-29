@@ -572,24 +572,8 @@ export const getServiceVersionPath = (
   return path;
 };
 
-export const getDatabaseVersionPath = (
-  databaseFqn: string,
-  version: string
-) => {
-  let path = ROUTES.DATABASE_VERSION;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(databaseFqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version);
-
-  return path;
-};
-
-export const getDatabaseSchemaVersionPath = (
-  schemaFqn: string,
-  version: string
-) => {
-  let path = ROUTES.SCHEMA_VERSION;
+export const getEntityVersionPath = (schemaFqn: string, version: string) => {
+  let path = ROUTES.ENTITY_VERSION_DETAILS;
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(schemaFqn))
