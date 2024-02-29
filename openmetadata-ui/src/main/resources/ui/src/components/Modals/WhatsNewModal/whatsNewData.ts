@@ -1293,7 +1293,7 @@ export const WHATS_NEW = [
       Notifications: `- The format for Slack notifications has been improved.`,
       Connectors: `- Now BigQuery connector supports Primary, Foreign, and Unique Constraints. It fetches the column description for views.
 - Captures the SQL query that powers a Tableau DataModel.
-- Azure Key Valult is supported as a Secrets Manager.
+- Azure Key Vault is supported as a Secrets Manager.
 - Fixed an issue with ingestion from Sagemaker, Oracle, LDAP, DB2, dbt, Kafka, Metabase, and Databricks.
 - Fixed Looker projects and optional project filter patterns.
 - Fixed issues with ingestion pipelines.
