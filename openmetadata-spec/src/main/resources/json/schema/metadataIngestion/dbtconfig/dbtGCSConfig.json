@@ -6,6 +6,12 @@
   "description": "DBT Catalog, Manifest and Run Results files in GCS storage. We will search for catalog.json, manifest.json and run_results.json.",
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig",
   "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": ["gcs"],
+      "default": "gcs"
+    },
     "dbtSecurityConfig": {
       "title": "DBT GCS Security Config",
       "$ref": "../../security/credentials/gcpCredentials.json"
@@ -30,5 +36,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtSecurityConfig"]
+  "required": ["dbtSecurityConfig", "dbtConfigType"]
 }

@@ -6,6 +6,12 @@
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig",
   "type": "object",
   "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": ["cloud"],
+      "default": "cloud"
+    },
     "dbtCloudAuthToken": {
       "title": "dbt Cloud Authentication Token",
       "description": "dbt cloud account authentication token",
@@ -36,5 +42,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtCloudAuthToken", "dbtCloudAccountId", "dbtCloudUrl"]
+  "required": ["dbtCloudAuthToken", "dbtCloudAccountId", "dbtCloudUrl", "dbtConfigType"]
 }

@@ -5,6 +5,7 @@ source:
     config:
       type: DBT
       dbtConfigSource:
+        dbtConfigType: "http"
         dbtCatalogHttpPath: $E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH
         dbtManifestHttpPath: $E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH
         dbtRunResultsHttpPath: $E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH

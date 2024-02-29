@@ -82,5 +82,6 @@
       "title": "Database Filter Pattern"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["dbtConfigSource"]
 }

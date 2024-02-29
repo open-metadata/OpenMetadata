@@ -700,3 +700,150 @@ class TestWorkflowParse(TestCase):
             "1 validation error for AthenaConnection\ns3StagingDir\n  invalid or missing URL scheme (type=value_error.url.scheme)",
             str(err.exception),
         )
+
+    def test_parsing_dbt_workflow_ok(self):
+        """
+        Test dbt workflow Config parsing OK
+        """
+
+        config_dict = {
+            "source": {
+                "type": "dbt",
+                "serviceName": "dbt_prod",
+                "sourceConfig": {
+                    "config": {
+                        "type": "DBT",
+                        "dbtConfigSource": {
+                            "dbtConfigType": "local",
+                            "dbtCatalogFilePath": "/path/to/catalog.json",
+                            "dbtManifestFilePath": "/path/to/manifest.json",
+                            "dbtRunResultsFilePath": "/path/to/run_results.json",
+                        },
+                        "dbtUpdateDescriptions": True,
+                        "includeTags": True,
+                        "dbtClassificationName": "dbtTags",
+                        "databaseFilterPattern": {"includes": ["test"]},
+                        "schemaFilterPattern": {
+                            "includes": ["test1"],
+                            "excludes": [".*schema.*"],
+                        },
+                        "tableFilterPattern": {
+                            "includes": ["test3"],
+                            "excludes": [".*table_name.*"],
+                        },
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "loggerLevel": "DEBUG",
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "jwt_token"},
+                },
+            },
+        }
+
+        self.assertIsNotNone(parse_workflow_config_gracefully(config_dict))
+
+    def test_parsing_dbt_workflow_ko(self):
+        """
+        Test dbt workflow Config parsing OK
+        """
+
+        config_dict_type_error_ko = {
+            "source": {
+                "type": "dbt",
+                "serviceName": "dbt_prod",
+                "sourceConfig": {
+                    "config": {
+                        "type": "DBT",
+                        "dbtConfigSource": {
+                            "dbtConfigType": "cloud",
+                            "dbtCloudAuthToken": "token",
+                            "dbtCloudAccountId": "ID",
+                            "dbtCloudJobId": "JOB ID",
+                        },
+                        "dbtUpdateDescriptions": True,
+                        "includeTags": True,
+                        "dbtClassificationName": "dbtTags",
+                        "databaseFilterPattern": {"includes": ["test"]},
+                        "schemaFilterPattern": {
+                            "includes": ["test1"],
+                            "excludes": [".*schema.*"],
+                        },
+                        "tableFilterPattern": {
+                            "includes": ["test3"],
+                            "excludes": [".*table_name.*"],
+                        },
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "loggerLevel": "DEBUG",
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "jwt_token"},
+                },
+            },
+        }
+        with self.assertRaises(ParsingConfigurationError) as err:
+            parse_workflow_config_gracefully(config_dict_type_error_ko)
+        self.assertIn(
+            "We encountered an error parsing the configuration of your DbtCloudConfig.\nYou might need to review your config based on the original cause of this failure:\n\t - Missing parameter 'dbtCloudUrl'",
+            str(err.exception),
+        )
+
+    def test_parsing_dbt_pipeline_ko(self):
+        """
+        Test dbt workflow Config parsing OK
+        """
+
+        config_dict_dbt_pipeline_ko = {
+            "source": {
+                "type": "dbt",
+                "serviceName": "dbt_prod",
+                "sourceConfig": {
+                    "config": {
+                        "type": "DBT",
+                        "dbtConfigSource": {
+                            "dbtConfigType": "cloud",
+                            "dbtCloudAuthToken": "token",
+                            "dbtCloudAccountId": "ID",
+                            "dbtCloudJobId": "JOB ID",
+                            "dbtCloudUrl": "https://clouddbt.com",
+                        },
+                        "dbtUpdateDescription": True,
+                        "includeTags": True,
+                        "dbtClassificationName": "dbtTags",
+                        "databaseFilterPattern": {"includes": ["test"]},
+                        "schemaFilterPattern": {
+                            "includes": ["test1"],
+                            "excludes": [".*schema.*"],
+                        },
+                        "tableFilterPattern": {
+                            "includes": ["test3"],
+                            "excludes": [".*table_name.*"],
+                        },
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "loggerLevel": "DEBUG",
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "jwt_token"},
+                },
+            },
+        }
+        with self.assertRaises(ParsingConfigurationError) as err:
+            parse_workflow_config_gracefully(config_dict_dbt_pipeline_ko)
+        self.assertIn(
+            "We encountered an error parsing the configuration of your DbtPipeline.\nYou might need to review your config based on the original cause of this failure:\n\t - Extra parameter 'dbtUpdateDescription'",
+            str(err.exception),
+        )

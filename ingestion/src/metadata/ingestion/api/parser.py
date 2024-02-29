@@ -69,6 +69,28 @@ from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeli
     DatabaseServiceQueryUsagePipeline,
     DatabaseUsageConfigType,
 )
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
+    DbtAzureConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
+    DbtCloudConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+    DbtGcsConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtHttpConfig import (
+    DbtHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
+    DbtLocalConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
+    DbtS3Config,
+)
+from metadata.generated.schema.metadataIngestion.dbtPipeline import (
+    DbtConfigType,
+    DbtPipeline,
+)
 from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipeline import (
     MessagingMetadataConfigType,
     MessagingServiceMetadataPipeline,
@@ -125,6 +147,16 @@ SOURCE_CONFIG_CLASS_MAP = {
     DatabaseMetadataConfigType.DatabaseMetadata.value: DatabaseServiceMetadataPipeline,
     StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
     SearchMetadataConfigType.SearchMetadata.value: SearchServiceMetadataPipeline,
+    DbtConfigType.DBT.value: DbtPipeline,
+}
+
+DBT_CONFIG_TYPE_MAP = {
+    "cloud": DbtCloudConfig,
+    "local": DbtLocalConfig,
+    "http": DbtHttpConfig,
+    "s3": DbtS3Config,
+    "gcs": DbtGcsConfig,
+    "azure": DbtAzureConfig,
 }
 
 
@@ -171,6 +203,7 @@ def get_source_config_class(
     Type[PipelineServiceMetadataPipeline],
     Type[MlModelServiceMetadataPipeline],
     Type[DatabaseServiceMetadataPipeline],
+    Type[DbtPipeline],
 ]:
     """
     Return the source config type for a source string
@@ -179,7 +212,7 @@ def get_source_config_class(
     """
     source_config_class = SOURCE_CONFIG_CLASS_MAP.get(source_config_type)
 
-    if source_config_type:
+    if source_config_class:
         return source_config_class
 
     raise ValueError(f"Cannot find the service type of {source_config_type}")
@@ -266,6 +299,27 @@ def _unsafe_parse_config(config: dict, cls: Type[T], message: str) -> None:
         raise err
 
 
+def _unsafe_parse_dbt_config(config: dict, cls: Type[T], message: str) -> None:
+    """
+    Given a config dictionary and the class it should match,
+    try to parse it or log the given message
+    """
+    logger.debug(f"Parsing message: [{message}]")
+    try:
+        # Parse the oneOf config types of dbt to check
+        dbt_config_type = config["dbtConfigSource"]["dbtConfigType"]
+        dbt_config_class = DBT_CONFIG_TYPE_MAP.get(dbt_config_type)
+        dbt_config_class.parse_obj(config["dbtConfigSource"])
+
+        # Parse the entire dbtPipeline object
+        cls.parse_obj(config)
+    except ValidationError as err:
+        logger.debug(
+            f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
+        )
+        raise err
+
+
 def _parse_inner_connection(config_dict: dict, source_type: str) -> None:
     """
     Parse the inner connection of the flagged connectors
@@ -291,32 +345,35 @@ def parse_service_connection(config_dict: dict) -> None:
     :param config_dict: JSON configuration
     """
     # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-    source_type = config_dict["source"]["serviceConnection"]["config"].get("type")
-    if source_type is None:
-        raise InvalidWorkflowException("Missing type in the serviceConnection config")
+    if config_dict["source"].get("serviceConnection"):
+        source_type = config_dict["source"]["serviceConnection"]["config"].get("type")
+        if source_type is None:
+            raise InvalidWorkflowException(
+                "Missing type in the serviceConnection config"
+            )
 
-    logger.debug(
-        f"Error parsing the Workflow Configuration for {source_type} ingestion"
-    )
-
-    service_type = get_service_type(source_type)
-    connection_class = get_connection_class(source_type, service_type)
-
-    if source_type in HAS_INNER_CONNECTION:
-        # We will first parse the inner `connection` configuration
-        _parse_inner_connection(
-            config_dict["source"]["serviceConnection"]["config"]["connection"][
-                "config"
-            ]["connection"],
-            source_type,
+        logger.debug(
+            f"Error parsing the Workflow Configuration for {source_type} ingestion"
         )
 
-    # Parse the service connection dictionary with the scoped class
-    _unsafe_parse_config(
-        config=config_dict["source"]["serviceConnection"]["config"],
-        cls=connection_class,
-        message="Error parsing the service connection",
-    )
+        service_type = get_service_type(source_type)
+        connection_class = get_connection_class(source_type, service_type)
+
+        if source_type in HAS_INNER_CONNECTION:
+            # We will first parse the inner `connection` configuration
+            _parse_inner_connection(
+                config_dict["source"]["serviceConnection"]["config"]["connection"][
+                    "config"
+                ]["connection"],
+                source_type,
+            )
+
+        # Parse the service connection dictionary with the scoped class
+        _unsafe_parse_config(
+            config=config_dict["source"]["serviceConnection"]["config"],
+            cls=connection_class,
+            message="Error parsing the service connection",
+        )
 
 
 def parse_source_config(config_dict: dict) -> None:
@@ -333,6 +390,13 @@ def parse_source_config(config_dict: dict) -> None:
         raise InvalidWorkflowException("Missing type in the sourceConfig config")
 
     source_config_class = get_source_config_class(source_config_type)
+
+    if source_config_class == DbtPipeline:
+        _unsafe_parse_dbt_config(
+            config=config_dict["source"]["sourceConfig"]["config"],
+            cls=source_config_class,
+            message="Error parsing the dbt source config",
+        )
 
     _unsafe_parse_config(
         config=config_dict["source"]["sourceConfig"]["config"],

@@ -5,21 +5,28 @@ source:
     config:
       type: DBT
       # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      #   dbtCloudJobId: JOB ID
-      #   dbtCloudUrl: https://cloud.getdbt.com
+      # For cloud
+      dbtConfigSource:
+        dbtConfigType: cloud
+        dbtCloudAuthToken: token
+        dbtCloudAccountId: ID
+        dbtCloudJobId: JOB ID
+        dbtCloudUrl: https://cloud.getdbt.com
       # # For Local
+      # dbtConfigSource:
+      #   dbtConfigType: local
       #   dbtCatalogFilePath: path-to-catalog.json
       #   dbtManifestFilePath: path-to-manifest.json
       #   dbtRunResultsFilePath: path-to-run_results.json
       # # For HTTP
+      # dbtConfigSource:
+      #   dbtConfigType: http
       #   dbtCatalogHttpPath: http://path-to-catalog.json
       #   dbtManifestHttpPath: http://path-to-manifest.json
       #   dbtRunResultsHttpPath: http://path-to-run_results.json
       # # For S3
+      # dbtConfigSource:
+      #   dbtConfigType: s3
       #   dbtSecurityConfig:  # These are modeled after all AWS credentials
       #     awsAccessKeyId: KEY
       #     awsSecretAccessKey: SECRET
@@ -28,6 +35,8 @@ source:
       #     dbtBucketName: bucket_name
       #     dbtObjectPrefix: "main_dir/dbt_files"
       # # For GCS
+      # dbtConfigSource:
+      #   dbtConfigType: gcs
       #   dbtSecurityConfig:  # These are modeled after all GCS credentials
       #     gcpConfig:
       #       type: My Type
@@ -47,6 +56,8 @@ source:
       #     dbtBucketName: bucket_name
       #     dbtObjectPrefix: "main_dir/dbt_files"
       # # For Azure
+      # dbtConfigSource:
+      #   dbtConfigType: azure
       #   dbtSecurityConfig:  # These are modeled after all Azure credentials
       #     clientId: clientId
       #     clientSecret: clientSecret
