@@ -77,6 +77,23 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        sorter: (a, b) => {
+          if (a.executable) {
+            // Sort for executable test suites
+            return (
+              a.executableEntityReference?.fullyQualifiedName?.localeCompare(
+                b.executableEntityReference?.fullyQualifiedName ?? ''
+              ) ?? 0
+            );
+          } else {
+            // Sort for logical test suites
+            return (
+              a.fullyQualifiedName?.localeCompare(b.fullyQualifiedName ?? '') ??
+              0
+            );
+          }
+        },
+        sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
           return record.executable ? (
             <Link

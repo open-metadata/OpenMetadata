@@ -36,8 +36,9 @@ import {
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { getColumnNameFromEntityLink } from '../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
-import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -54,7 +55,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const tableFqn = useMemo(
-    () => getEntityFqnFromEntityLink(testCase?.entityLink ?? ''),
+    () => getEntityFQN(testCase?.entityLink ?? ''),
     [testCase]
   );
   const [selectedDefinition, setSelectedDefinition] =
@@ -191,9 +192,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         displayName: testCase?.displayName,
         params: getParamsValue(definition),
         table: getNameFromFQN(tableFqn),
-        column: getNameFromFQN(
-          getEntityFqnFromEntityLink(testCase?.entityLink, isColumn)
-        ),
+        column: getColumnNameFromEntityLink(testCase?.entityLink),
         computePassedFailedRowCount: testCase?.computePassedFailedRowCount,
       });
       setSelectedDefinition(definition);

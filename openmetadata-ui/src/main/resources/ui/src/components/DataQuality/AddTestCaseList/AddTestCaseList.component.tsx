@@ -32,9 +32,12 @@ import {
 } from '../../../interface/search.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
 import { replacePlus } from '../../../utils/StringsUtils';
-import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
@@ -186,7 +189,7 @@ export const AddTestCaseList = ({
               itemKey="id"
               onScroll={onScroll}>
               {({ _source: test }) => {
-                const tableFqn = getEntityFqnFromEntityLink(test.entityLink);
+                const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
                 const isColumn = test.entityLink.includes('::columns::');
 
@@ -224,13 +227,8 @@ export const AddTestCaseList = ({
                           'label.column'
                         )}:`}</Typography.Text>
                         <Typography.Text className="text-grey-muted text-xs">
-                          {getNameFromFQN(
-                            replacePlus(
-                              getEntityFqnFromEntityLink(
-                                test.entityLink,
-                                isColumn
-                              )
-                            )
+                          {replacePlus(
+                            getColumnNameFromEntityLink(test.entityLink)
                           ) ?? '--'}
                         </Typography.Text>
                       </Space>
