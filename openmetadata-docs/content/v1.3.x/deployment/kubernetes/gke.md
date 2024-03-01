@@ -101,7 +101,7 @@ openmetadata:
 
 {%note noteType="Tip"%}
 
-Make sure to create CloudSQL and ElasticSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+Make sure to create CloudSQL and ElasticSearch credentials as Kubernetes Secrets mentioned [here](quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
 
 Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 
