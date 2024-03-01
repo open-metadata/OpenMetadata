@@ -209,7 +209,7 @@ alt="tour" /%}
 
 ## Cleanup
 
-From the same directory as mentioned in [step 1](#1-create-a-directory-for-openmetadata), run the below command to stop the docker compose services and clean named volumes.
+From the same directory as mentioned in [step 1](#1.-create-a-directory-for-openmetadata), run the below command to stop the docker compose services and clean named volumes.
 
 ```
 docker compose down --volumes

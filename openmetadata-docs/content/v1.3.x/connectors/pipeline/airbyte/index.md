@@ -15,7 +15,6 @@ In this section, we provide guides and references to use the Airbyte connector.
 
 Configure and schedule Airbyte metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airbyte/yaml"} /%}
