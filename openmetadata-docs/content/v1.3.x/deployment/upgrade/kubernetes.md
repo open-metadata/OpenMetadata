@@ -187,9 +187,9 @@ This issue is related to a minor change that affected the MySQL Database Engine 
 
 As a result of the above fixes, anyone who is on OpenMetadata Dependencies Helm Chart Version `0.0.49` and `0.0.50` is affected with the above issue when upgrading for mysql. In order to fix this issue, make sure to follow the below steps -
 
-1. Backup the Database using Metadata Backup CLI as mentioned [here](#backup-your-data)
+1. Backup the Database using Metadata Backup CLI as mentioned [here](/deployment/upgrade/kubernetes#backup-your-data)
 2. Uninstall OpenMetadata Dependencies Helm Chart (`helm uninstall openmetadata-dependencies`)
 3. Remove the unmanaged volume for MySQL Stateful Set Kubernetes Object (`kubectl delete pvc data-mysql-0`)
 4. Install the latest version of [OpenMetadata Dependencies Helm Chart](/deployment/kubernetes)
 5. Restore the Database using Metadata Restore CLI as mentioned [here](/deployment/backup-restore-metadata)
-6. Next, Proceed with upgrade for OpenMetadata Helm Chart as mentioned [here](#upgrade-openmetdata)
+6. Next, Proceed with upgrade for OpenMetadata Helm Chart as mentioned [here](/deployment/upgrade/kubernetes#upgrade-openmetdata)
