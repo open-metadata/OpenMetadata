@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import React, { ReactNode, useCallback, useMemo } from 'react';
@@ -224,13 +224,18 @@ const GlossaryDetailsRightPanel = ({
                 hasPermission={permissions.EditOwner || permissions.EditAll}
                 owner={selectedData.owner}
                 onUpdate={handleUpdatedOwner}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-owner"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.owner'),
+                  })}>
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-owner"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
               </UserTeamSelectableList>
             )}
         </div>
@@ -272,13 +277,18 @@ const GlossaryDetailsRightPanel = ({
                 popoverProps={{ placement: 'topLeft' }}
                 selectedUsers={selectedData.reviewers ?? []}
                 onUpdate={handleReviewerSave}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-reviewer-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.reviewer-plural'),
+                  })}>
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-reviewer-button"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
               </UserSelectableList>
             )}
         </div>

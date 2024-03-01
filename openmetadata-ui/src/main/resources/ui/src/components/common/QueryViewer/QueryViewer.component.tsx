@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Tag } from 'antd';
+import { Button, Card, Space, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { split } from 'lodash';
 import React, { useMemo } from 'react';
@@ -51,12 +51,14 @@ const QueryViewer = ({
           <Tag className="query-lines" data-testid="query-line">
             {queryLine}
           </Tag>
-          <Button
-            className="flex-center button-size bg-white"
-            data-testid="query-entity-copy-button"
-            icon={<CopyIcon height={16} width={16} />}
-            onClick={onCopyToClipBoard}
-          />
+          <Tooltip placement="topRight" title={t('message.copy-to-clipboard')}>
+            <Button
+              className="flex-center button-size bg-white"
+              data-testid="query-entity-copy-button"
+              icon={<CopyIcon height={16} width={16} />}
+              onClick={onCopyToClipBoard}
+            />
+          </Tooltip>
         </Space>
       }
       title={title}>

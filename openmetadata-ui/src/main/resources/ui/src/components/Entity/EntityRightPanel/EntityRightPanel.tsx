@@ -14,9 +14,11 @@ import { Space } from 'antd';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { TablePartition } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import type {
@@ -43,6 +45,7 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
+  tablePartition?: TablePartition;
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
@@ -61,6 +64,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   showDataProductContainer = true,
   viewAllPermission,
   customProperties,
+  tablePartition,
 }: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
@@ -113,6 +117,9 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             maxDataCap={5}
           />
         )}
+        {tablePartition ? (
+          <PartitionedKeys tablePartition={tablePartition} />
+        ) : null}
       </Space>
       {afterSlot}
     </>

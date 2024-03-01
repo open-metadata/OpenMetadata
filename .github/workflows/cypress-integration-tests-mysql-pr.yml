@@ -143,14 +143,15 @@ jobs:
           install-command: yarn --frozen-lockfile --silent --ignore-scripts
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: "http://localhost:8585"
-          command: |
-            npx cypress run --config-file=cypress.config.ts \
-             --env grepTags="${{ steps.getCypresse2eLabels.outputs.e2eLabels }}",grepFilterSpecs=true \
-             --group cypress-ci-mysql-pr-${{ github.run_id }}-${{github.run_attempt}} \
-             --parallel --record --browser chrome
+          record: true
+          parallel: true
+          group: cypress-ci-mysql-pr-${{ github.run_id }}-${{github.run_attempt}}
+          browser: chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ steps.cypress-project-id.outputs.CYPRESS_RECORD_KEY }}
+          CYPRESS_grepTags: ${{ steps.getCypresse2eLabels.outputs.e2eLabels }}
+          CYPRESS_grepFilterSpecs: "true"
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
           CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}

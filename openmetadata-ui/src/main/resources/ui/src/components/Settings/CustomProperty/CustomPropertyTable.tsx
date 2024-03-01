@@ -12,7 +12,7 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
+import { isEmpty, isString, isUndefined } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -20,14 +20,16 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
-import { CustomProperty } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../common/Table/Table';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
+import EditCustomPropertyModal, {
+  FormData,
+} from './EditCustomPropertyModal/EditCustomPropertyModal';
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
@@ -61,10 +63,23 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     }
   }, [isButtonLoading]);
 
-  const handlePropertyUpdate = async (updatedDescription: string) => {
+  const handlePropertyUpdate = async (data: FormData) => {
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
-        return { ...property, description: updatedDescription };
+        return {
+          ...property,
+          description: data.description,
+          ...(data.customPropertyConfig
+            ? {
+                customPropertyConfig: {
+                  config: {
+                    multiSelect: Boolean(data?.multiSelect),
+                    values: data.customPropertyConfig,
+                  },
+                },
+              }
+            : {}),
+        };
       } else {
         return property;
       }
@@ -98,6 +113,34 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         render: (text) => getEntityName(text),
       },
       {
+        title: t('label.config'),
+        dataIndex: 'customPropertyConfig',
+        key: 'customPropertyConfig',
+        render: (data: CustomProperty['customPropertyConfig']) => {
+          if (isUndefined(data)) {
+            return <span>--</span>;
+          }
+
+          const config = data.config;
+
+          if (!isString(config)) {
+            return (
+              <Space data-testid="enum-config" direction="vertical" size={4}>
+                <Typography.Text>
+                  {JSON.stringify(config?.values ?? [])}
+                </Typography.Text>
+                <Typography.Text>
+                  {t('label.multi-select')}:{' '}
+                  {config?.multiSelect ? t('label.yes') : t('label.no')}
+                </Typography.Text>
+              </Space>
+            );
+          }
+
+          return <Typography.Text>{config}</Typography.Text>;
+        },
+      },
+      {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
@@ -118,7 +161,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         key: 'actions',
         render: (_, record) => (
           <Space align="center" size={14}>
-            <Tooltip title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
+            <Tooltip
+              title={
+                hasAccess
+                  ? t('label.edit-entity', {
+                      entity: t('label.property'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 className="cursor-pointer p-0"
                 data-testid="edit-button"
@@ -132,7 +182,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <IconEdit name={t('label.edit')} width={16} />
               </Button>
             </Tooltip>
-            <Tooltip title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
+            <Tooltip
+              title={
+                hasAccess
+                  ? t('label.delete-entity', {
+                      entity: t('label.property'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 className="cursor-pointer p-0"
                 data-testid="delete-button"
@@ -190,19 +247,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         onCancel={resetSelectedProperty}
         onConfirm={handlePropertyDelete}
       />
-      <ModalWithMarkdownEditor
-        header={t('label.edit-entity-name', {
-          entityType: t('label.property'),
-          entityName: selectedProperty.name,
-        })}
-        placeholder={t('label.enter-field-description', {
-          field: t('label.property'),
-        })}
-        value={selectedProperty.description || ''}
-        visible={updateCheck}
-        onCancel={resetSelectedProperty}
-        onSave={handlePropertyUpdate}
-      />
+      {updateCheck && (
+        <EditCustomPropertyModal
+          customProperty={selectedProperty}
+          visible={updateCheck}
+          onCancel={resetSelectedProperty}
+          onSave={handlePropertyUpdate}
+        />
+      )}
     </Fragment>
   );
 };

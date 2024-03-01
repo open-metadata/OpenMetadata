@@ -299,8 +299,8 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.GLOSSARY:
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:
+    case SearchIndex.GLOSSARY_TERM:
       return <IconTerm />;
-
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
     case EntityType.SEARCH_SERVICE:
@@ -407,21 +407,6 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
   } else {
     return tableLink.replace('ENTITY_FQN', fqn);
   }
-};
-
-export const getEntityFqnFromEntityLink = (
-  entityLink: string,
-  includeColumn = false
-) => {
-  const link = entityLink.split('>')[0];
-  const entityLinkData = link.split('::');
-  const tableFqn = entityLinkData[2];
-
-  if (includeColumn) {
-    return `${tableFqn}.${entityLinkData[entityLinkData.length - 1]}`;
-  }
-
-  return tableFqn;
 };
 
 export function getTableExpandableConfig<T>(

@@ -22,7 +22,6 @@ import {
   notification,
   Row,
   Skeleton,
-  Space,
   Tooltip,
   Typography,
 } from 'antd';
@@ -76,7 +75,7 @@ import {
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
-import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -315,30 +314,6 @@ const AssetsTabs = forwardRef(
       setActiveEntity(data);
     }, [type, entityFqn]);
 
-    const tabs = useMemo(() => {
-      return AssetsFilterOptions.map((option) => {
-        return {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                {option.label}
-              </Space>
-
-              <span>
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter.includes(option.value)
-                )}
-              </span>
-            </div>
-          ),
-          key: option.value,
-          value: option.value,
-        };
-      });
-    }, [activeFilter, itemCount]);
-
     const items: ItemType[] = [
       {
         label: (
@@ -438,7 +413,11 @@ const AssetsTabs = forwardRef(
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
-      } else if (noDataPlaceholder || searchValue || !permissions.Create) {
+      } else if (
+        isObject(noDataPlaceholder) ||
+        searchValue ||
+        !permissions.Create
+      ) {
         return (
           <ErrorPlaceHolder>
             {isObject(noDataPlaceholder) && (
@@ -454,9 +433,10 @@ const AssetsTabs = forwardRef(
             icon={<AddPlaceHolderIcon className="h-32 w-32" />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                entity: t('label.asset'),
-              })}
+              {noDataPlaceholder ??
+                t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                  entity: t('label.asset'),
+                })}
             </Typography.Paragraph>
             <Typography.Paragraph>
               <Transi18next
@@ -553,13 +533,18 @@ const AssetsTabs = forwardRef(
                       overlayStyle={{ width: '350px' }}
                       placement="bottomRight"
                       trigger={['click']}>
-                      <Button
-                        className={classNames('flex-center px-1.5')}
-                        data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                        title="Manage"
-                        type="text">
-                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                      </Button>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.asset'),
+                        })}>
+                        <Button
+                          className={classNames('flex-center px-1.5')}
+                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
+                          type="text">
+                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                        </Button>
+                      </Tooltip>
                     </Dropdown>
                   ) : null
                 }
@@ -655,7 +640,6 @@ const AssetsTabs = forwardRef(
       openKeys,
       visible,
       currentPage,
-      tabs,
       itemCount,
       onOpenChange,
       handleAssetButtonVisibleChange,

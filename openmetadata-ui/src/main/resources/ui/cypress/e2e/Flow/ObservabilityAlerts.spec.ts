@@ -52,11 +52,25 @@ import {
 } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
-const TRIGGER_NAME_1 = 'Container';
-const TRIGGER_NAME_2 = 'Pipeline';
+const SOURCE_NAME_1 = 'Container';
+const SOURCE_NAME_2 = 'Pipeline';
 
 describe('Observability Alert Flow', { tags: 'Settings' }, () => {
-  let data = {};
+  const data = {
+    testCase: {},
+    testSuite: {},
+    pipelineService: {},
+    ingestionPipeline: {},
+    user: {
+      displayName: '',
+    },
+    domain: {
+      name: '',
+    },
+    alertDetails: {
+      id: '',
+    },
+  };
 
   before(() => {
     cy.login();
@@ -218,14 +232,14 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     // Enter description
     cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
 
-    // Select all trigger
-    cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+    // Select all source
+    cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
 
     cy.get('[data-testid="drop-down-menu"] [data-testid="container-option"]')
-      .contains(TRIGGER_NAME_1)
+      .contains(SOURCE_NAME_1)
       .click();
 
-    cy.get('[data-testid="trigger-select"]').should('contain', TRIGGER_NAME_1);
+    cy.get('[data-testid="source-select"]').should('contain', SOURCE_NAME_1);
 
     // Select filters
     cy.get('[data-testid="add-filters"]').click();
@@ -233,7 +247,7 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     addOwnerFilter(0, data.user.displayName, false, 'Owner Name');
 
     // Select actions
-    cy.get('[data-testid="add-actions"]').click();
+    cy.get('[data-testid="add-trigger"]').click();
 
     addGetSchemaChangesAction(0);
 
@@ -245,9 +259,9 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@createAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(201);
+      expect(interception?.response?.statusCode).equal(201);
     });
     toastNotification('Alerts created successfully.');
 
@@ -283,11 +297,11 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     // Update description
     cy.get(descriptionBox).click().clear().type(ALERT_UPDATED_DESCRIPTION);
 
-    // Update trigger
-    cy.get('[data-testid="trigger-select"]').scrollIntoView().click();
-    cy.get('[data-testid="pipeline-option"]').contains(TRIGGER_NAME_2).click();
+    // Update source
+    cy.get('[data-testid="source-select"]').scrollIntoView().click();
+    cy.get('[data-testid="pipeline-option"]').contains(SOURCE_NAME_2).click();
 
-    // Filters should reset after trigger change
+    // Filters should reset after source change
     cy.get('[data-testid="filter-select-0"]').should('not.exist');
 
     // Add multiple filters
@@ -305,7 +319,7 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     addDomainFilter(2, data.domain.name);
 
     // Add actions
-    cy.get('[data-testid="add-actions"]').click();
+    cy.get('[data-testid="add-trigger"]').click();
 
     addPipelineStatusUpdatesAction(0, 'Successful', true);
 
@@ -320,12 +334,12 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
     // Click save
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.wait('@updateAlert').then((interception) => {
-      data.alertDetails = interception.response.body;
+      data.alertDetails = interception?.response?.body;
 
-      expect(interception.response.statusCode).equal(200);
+      expect(interception?.response?.statusCode).equal(200);
 
       // Verify the edited alert changes
-      verifyAlertDetails(interception.response.body);
+      verifyAlertDetails(interception?.response?.body);
     });
   });
 
@@ -334,8 +348,8 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
   });
 
   Object.entries(OBSERVABILITY_CREATION_DETAILS).forEach(
-    ([trigger, alertDetails]) => {
-      it(`Alert creation for ${trigger}`, () => {
+    ([source, alertDetails]) => {
+      it(`Alert creation for ${source}`, () => {
         verifyResponseStatusCode('@alertsPage', 200);
 
         cy.get('[data-testid="create-observability"]').click();
@@ -346,18 +360,18 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
         // Enter description
         cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
 
-        // Select trigger
-        cy.get('[data-testid="add-trigger-button"]').scrollIntoView().click();
+        // Select source
+        cy.get('[data-testid="add-source-button"]').scrollIntoView().click();
 
         cy.get(
-          `[data-testid="drop-down-menu"] [data-testid="${trigger}-option"]`
+          `[data-testid="drop-down-menu"] [data-testid="${source}-option"]`
         )
-          .contains(alertDetails.triggerDisplayName)
+          .contains(alertDetails.sourceDisplayName)
           .click();
 
-        cy.get('[data-testid="trigger-select"]').should(
+        cy.get('[data-testid="source-select"]').should(
           'contain',
-          alertDetails.triggerDisplayName
+          alertDetails.sourceDisplayName
         );
 
         // Add filters
@@ -401,10 +415,10 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
 
         // Add actions
         alertDetails.actions.forEach((action, actionNumber) => {
-          cy.get('[data-testid="add-actions"]').click();
+          cy.get('[data-testid="add-trigger"]').click();
 
           // Select action
-          cy.get(`[data-testid="action-select-${actionNumber}"]`).click({
+          cy.get(`[data-testid="trigger-select-${actionNumber}"]`).click({
             waitForAnimations: true,
           });
           cy.get(`[data-testid="${action.name}-filter-option"]`)
@@ -439,7 +453,7 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
 
           if (action.exclude) {
             // Change filter effect
-            cy.get(`[data-testid="action-switch-${actionNumber}"]`)
+            cy.get(`[data-testid="trigger-switch-${actionNumber}"]`)
               .scrollIntoView()
               .click();
           }
@@ -471,9 +485,9 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
         // Click save
         cy.get('[data-testid="save-button"]').scrollIntoView().click();
         cy.wait('@createAlert').then((interception) => {
-          data.alertDetails = interception.response.body;
+          data.alertDetails = interception?.response?.body;
 
-          expect(interception.response.statusCode).equal(201);
+          expect(interception?.response?.statusCode).equal(201);
         });
         toastNotification('Alerts created successfully.');
 
@@ -482,7 +496,7 @@ describe('Observability Alert Flow', { tags: 'Settings' }, () => {
         cy.get('[data-testid="alert-details-container"]').should('exist');
       });
 
-      it(`Verify created ${trigger} alert details and delete alert`, () => {
+      it(`Verify created ${source} alert details and delete alert`, () => {
         const { id: alertId } = data.alertDetails;
         verifyResponseStatusCode('@alertsPage', 200);
 
