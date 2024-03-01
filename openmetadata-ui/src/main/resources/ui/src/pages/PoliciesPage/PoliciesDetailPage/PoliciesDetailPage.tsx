@@ -34,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import Description from '../../../components/common/EntityDescription/Description';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -344,7 +344,7 @@ const PoliciesDetailPage = () => {
                 level={5}>
                 {policyName}
               </Typography.Title>
-              <Description
+              <DescriptionV1
                 hasEditAccess
                 className="m-y-md"
                 description={policy.description || ''}
@@ -352,6 +352,7 @@ const PoliciesDetailPage = () => {
                 entityName={policyName}
                 entityType={EntityType.POLICY}
                 isEdit={editDescription}
+                showCommentsIcon={false}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}

@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router';
@@ -42,6 +43,7 @@ const DescriptionV1 = ({
   onDescriptionEdit,
   description = '',
   isEdit,
+  className,
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
@@ -199,7 +201,7 @@ const DescriptionV1 = ({
 
   const content = (
     <Space
-      className="schema-description d-flex"
+      className={classNames('schema-description d-flex', className)}
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>
