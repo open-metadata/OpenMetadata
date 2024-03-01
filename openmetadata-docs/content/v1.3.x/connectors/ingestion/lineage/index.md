@@ -140,7 +140,7 @@ and [Airbyte](/connectors/pipeline/airbyte).
 
 All of them ingest the lineage information out of the box. The only special case is Airflow, where one needs to
 setup `inlets` and `outlets`. You can find more information about it
-[here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend#adding-lineage).
+[here](/connectors/pipeline/airflow/lineage-backend#adding-lineage).
 
 ## Manual Lineage
 
