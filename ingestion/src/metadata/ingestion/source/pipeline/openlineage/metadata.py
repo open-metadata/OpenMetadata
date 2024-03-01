@@ -177,6 +177,7 @@ class OpenlineageSource(PipelineServiceSource):
                 entity_type=DatabaseSchema,
                 service_name=db_service,
                 database_name=None,
+                schema_name=schema,
                 skip_es_search=False,
             )
 
