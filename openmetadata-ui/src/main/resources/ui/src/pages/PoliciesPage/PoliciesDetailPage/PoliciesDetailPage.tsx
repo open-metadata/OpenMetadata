@@ -23,6 +23,7 @@ import {
   Row,
   Space,
   Tabs,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -33,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import Description from '../../../components/common/EntityDescription/Description';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -283,15 +284,21 @@ const PoliciesDetailPage = () => {
           }
           placement="bottomRight"
           trigger={['click']}>
-          <Button
-            data-testid={`manage-button-${rule.name}`}
-            icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-            size="small"
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          />
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: t('label.rule'),
+            })}>
+            <Button
+              data-testid={`manage-button-${rule.name}`}
+              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
+              size="small"
+              type="text"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            />
+          </Tooltip>
         </Dropdown>
       );
     },
@@ -337,14 +344,15 @@ const PoliciesDetailPage = () => {
                 level={5}>
                 {policyName}
               </Typography.Title>
-              <Description
+              <DescriptionV1
                 hasEditAccess
-                className="m-b-md"
+                className="m-t-md"
                 description={policy.description || ''}
                 entityFqn={policy.fullyQualifiedName}
                 entityName={policyName}
                 entityType={EntityType.POLICY}
                 isEdit={editDescription}
+                showCommentsIcon={false}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}

@@ -596,6 +596,18 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="propertyType"]').click();
   cy.get(`[title="${customType}"]`).click();
 
+  if (customType === 'Enum') {
+    value.values.forEach((val) => {
+      cy.get('#root\\/customPropertyConfig').type(`${val}{enter}`);
+    });
+
+    cy.clickOutside();
+
+    if (value.multiSelect) {
+      cy.get('#root\\/multiSelect').scrollIntoView().click();
+    }
+  }
+
   cy.get(descriptionBox).clear().type(customPropertyData.description);
 
   // Check if the property got added
@@ -611,19 +623,31 @@ export const addCustomPropertiesForEntity = (
   cy.clickOnLogo();
 };
 
-export const editCreatedProperty = (propertyName) => {
+export const editCreatedProperty = (propertyName, type) => {
   // Fetching for edit button
   cy.get(`[data-row-key="${propertyName}"]`)
     .find('[data-testid="edit-button"]')
     .as('editButton');
 
+  if (type === 'Enum') {
+    cy.get(`[data-row-key="${propertyName}"]`)
+      .find('[data-testid="enum-config"]')
+      .should('contain', '["enum1","enum2","enum3"]');
+  }
+
   cy.get('@editButton').click();
 
   cy.get(descriptionBox).clear().type('This is new description');
 
+  if (type === 'Enum') {
+    cy.get('#root\\/customPropertyConfig').type(`updatedValue{enter}`);
+
+    cy.clickOutside();
+  }
+
   interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
 
-  cy.get('[data-testid="save"]').click();
+  cy.get('button[type="submit"]').scrollIntoView().click();
 
   cy.wait('@checkPatchForDescription', { timeout: 15000 });
 
@@ -633,6 +657,12 @@ export const editCreatedProperty = (propertyName) => {
   cy.get(`[data-row-key="${propertyName}"]`)
     .find('[data-testid="viewer-container"]')
     .should('contain', 'This is new description');
+
+  if (type === 'Enum') {
+    cy.get(`[data-row-key="${propertyName}"]`)
+      .find('[data-testid="enum-config"]')
+      .should('contain', '["enum1","enum2","enum3","updatedValue"]');
+  }
 };
 
 export const deleteCreatedProperty = (propertyName) => {

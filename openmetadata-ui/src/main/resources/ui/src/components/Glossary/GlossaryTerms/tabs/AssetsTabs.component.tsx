@@ -413,7 +413,11 @@ const AssetsTabs = forwardRef(
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
-      } else if (noDataPlaceholder || searchValue || !permissions.Create) {
+      } else if (
+        isObject(noDataPlaceholder) ||
+        searchValue ||
+        !permissions.Create
+      ) {
         return (
           <ErrorPlaceHolder>
             {isObject(noDataPlaceholder) && (
@@ -429,9 +433,10 @@ const AssetsTabs = forwardRef(
             icon={<AddPlaceHolderIcon className="h-32 w-32" />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                entity: t('label.asset'),
-              })}
+              {noDataPlaceholder ??
+                t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                  entity: t('label.asset'),
+                })}
             </Typography.Paragraph>
             <Typography.Paragraph>
               <Transi18next
@@ -528,13 +533,18 @@ const AssetsTabs = forwardRef(
                       overlayStyle={{ width: '350px' }}
                       placement="bottomRight"
                       trigger={['click']}>
-                      <Button
-                        className={classNames('flex-center px-1.5')}
-                        data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                        title="Manage"
-                        type="text">
-                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                      </Button>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.asset'),
+                        })}>
+                        <Button
+                          className={classNames('flex-center px-1.5')}
+                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
+                          type="text">
+                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                        </Button>
+                      </Tooltip>
                     </Dropdown>
                   ) : null
                 }
