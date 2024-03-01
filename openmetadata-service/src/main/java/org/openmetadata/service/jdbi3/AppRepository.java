@@ -75,7 +75,7 @@ public class AppRepository extends EntityRepository<App> {
     User botUser;
     Bot bot;
     try {
-      botUser = userRepository.findByName(botName, Include.NON_DELETED);
+      botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
     } catch (EntityNotFoundException ex) {
       // Get Bot Role
       EntityReference roleRef =
