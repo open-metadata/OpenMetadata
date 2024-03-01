@@ -102,15 +102,15 @@ It depends on where and how the Hive / Rest Catalog is setup and where the Icebe
 
 - **Warehouse Location (Optional)**: Custom Warehouse Location. Most Catalogs already have the Warehouse Location defined properly and this shouldn't be needed. In case of a custom implementation you can pass the location here.
 
-
 **For example**: 's3://my-bucket/warehouse/'
 
 - **Ownership Property**: Table property to look for the Owner. It defaults to 'owner'.
 
 The Owner should be the same e-mail set on the OpenMetadata user/group.
 
-**File System**
-- **Local**:
+#### **File System**
+
+- **Local**
 - [**AWS Credentials**](#aws-credentials)
 - [**Azure Credentials**](#azure-credentials)
 
