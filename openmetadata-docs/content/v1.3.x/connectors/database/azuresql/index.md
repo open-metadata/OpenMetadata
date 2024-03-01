@@ -15,15 +15,14 @@ In this section, we provide guides and references to use the AzureSQL connector.
 
 Configure and schedule AzureSQL metadata and profiler workflows from the OpenMetadata UI:
 
-- [AzureSQL](#azuresql)
-  - [Requirements](#requirements)
-  - [Metadata Ingestion](#metadata-ingestion)
-      - [Service Name](#service-name)
-      - [Connection Options](#connection-options)
-      - [Metadata Ingestion Options](#metadata-ingestion-options)
-  - [Troubleshooting](#troubleshooting)
-    - [Workflow Deployment Error](#workflow-deployment-error)
-  - [Related](#related)
+- [Requirements](#requirements)
+- [Metadata Ingestion](#metadata-ingestion)
+    - [Service Name](#service-name)
+    - [Connection Options](#connection-options)
+    - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Troubleshooting](#troubleshooting)
+  - [Workflow Deployment Error](#workflow-deployment-error)
+- [Related](#related)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/azuresql/yaml"} /%}
 
