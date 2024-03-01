@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -11,6 +12,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import es.org.elasticsearch.search.aggregations.AggregationBuilder;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -19,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.json.JsonObject;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
@@ -41,6 +45,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -58,6 +63,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         TestSuiteResource.TestSuiteList.class,
         "dataQuality/testSuites",
         TestSuiteResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {
@@ -494,6 +500,121 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         () -> createEntity(createTestSuite12, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         TestUtils.getEntityNameLengthError(entityClass));
+  }
+
+  @Test
+  void buildElasticsearchAggregationFromJson(TestInfo test) {
+    JsonObject aggregationJson;
+    List<AggregationBuilder> actual;
+    List<AggregationBuilder> expected = new ArrayList<>();
+    String aggregationQuery;
+
+    // Test aggregation with nested aggregation
+    aggregationQuery =
+        """
+            {
+              "aggregations": {
+                "test_case_results": {
+                  "nested": {
+                    "path": "testCaseResultSummary"
+                  },
+                  "aggs": {
+                    "status_counts": {
+                      "terms": {
+                        "field": "testCaseResultSummary.status"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
+    expected.add(
+        AggregationBuilders.nested("testCaseResultSummary", "testCaseResultSummary")
+            .subAggregation(
+                AggregationBuilders.terms("status_counts").field("testCaseResultSummary.status")));
+
+    aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
+    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    assertThat(actual).hasSameElementsAs(expected);
+
+    // Test aggregation with multiple aggregations
+    aggregationQuery =
+        """
+            {
+              "aggregations": {
+                "my-first-agg-name": {
+                  "terms": {
+                    "field": "my-field"
+                  }
+                },
+                "my-second-agg-name": {
+                  "terms": {
+                    "field": "my-other-field"
+                  }
+                }
+              }
+            }
+            """;
+    aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
+
+    expected.clear();
+    expected.addAll(
+        List.of(
+            AggregationBuilders.terms("my-second-agg-name").field("my-other-field"),
+            AggregationBuilders.terms("my-first-agg-name").field("my-field")));
+
+    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    assertThat(actual).hasSameElementsAs(expected);
+
+    // Test aggregation with multiple aggregations including a nested one which has itself multiple
+    // aggregations
+    aggregationQuery =
+        """
+            {
+              "aggregations": {
+                "my-first-agg-name": {
+                  "terms": {
+                    "field": "my-field"
+                  }
+                },
+                "test_case_results": {
+                  "nested": {
+                    "path": "testCaseResultSummary"
+                  },
+                  "aggs": {
+                    "status_counts": {
+                      "terms": {
+                        "field": "testCaseResultSummary.status"
+                      }
+                    },
+                    "other_status_counts": {
+                      "terms": {
+                        "field": "testCaseResultSummary.status"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """;
+    aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
+
+    expected.clear();
+    expected.addAll(
+        List.of(
+            AggregationBuilders.nested("testCaseResultSummary", "testCaseResultSummary")
+                .subAggregation(
+                    AggregationBuilders.terms("status_counts")
+                        .field("testCaseResultSummary.status"))
+                .subAggregation(
+                    AggregationBuilders.terms("other_status_counts")
+                        .field("testCaseResultSummary.status")),
+            AggregationBuilders.terms("my-first-agg-name").field("my-field")));
+
+    actual = ElasticSearchClient.buildAggregation(aggregationJson.getJsonObject("aggregations"));
+    assertThat(actual).hasSameElementsAs(expected);
   }
 
   @Test

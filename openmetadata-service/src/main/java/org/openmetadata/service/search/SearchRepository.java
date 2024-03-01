@@ -669,6 +669,11 @@ public class SearchRepository {
     return searchClient.aggregate(index, fieldName, value, query);
   }
 
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
+    return searchClient.aggregate(query, index, aggregationJson);
+  }
+
   public Response suggest(SearchRequest request) throws IOException {
     return searchClient.suggest(request);
   }

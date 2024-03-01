@@ -105,6 +105,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -702,6 +703,82 @@ public class ElasticSearchClient implements SearchClient {
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
+  }
+
+  /*
+  Build dynamic aggregation from elasticsearch JSON like aggregation query.
+  See TestSuiteResourceTest for example usage (ln. 506) for tested aggregation query.
+
+  @param aggregations - JsonObject containing the aggregation query
+   */
+  public static List<AggregationBuilder> buildAggregation(JsonObject aggregations) {
+    List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
+    for (String key : aggregations.keySet()) {
+      JsonObject aggregation = aggregations.getJsonObject(key);
+      for (String aggregationType : aggregation.keySet()) {
+        switch (aggregationType) {
+          case "terms":
+            JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
+            TermsAggregationBuilder termsAggregationBuilder =
+                AggregationBuilders.terms(key).field(termAggregation.getString("field"));
+            aggregationBuilders.add(termsAggregationBuilder);
+            break;
+          case "nested":
+            JsonObject nestedAggregation = aggregation.getJsonObject("nested");
+            AggregationBuilder nestedAggregationBuilder =
+                AggregationBuilders.nested(
+                    nestedAggregation.getString("path"), nestedAggregation.getString("path"));
+            JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
+
+            List<AggregationBuilder> nestedAggregationBuilders =
+                buildAggregation(nestedAggregations);
+            for (AggregationBuilder nestedAggregationBuilder1 : nestedAggregationBuilders) {
+              nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
+            }
+            aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          default:
+            break;
+        }
+      }
+    }
+    return aggregationBuilders;
+  }
+
+  @Override
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
+    JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
+    if (aggregations == null) {
+      return null;
+    }
+
+    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregations);
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (query != null) {
+      XContentParser queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
+      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
+      searchSourceBuilder.query(boolQueryBuilder);
+    }
+
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    for (AggregationBuilder aggregation : aggregationBuilder) {
+      searchSourceBuilder.aggregation(aggregation);
+    }
+
+    searchRequest.source(searchSourceBuilder);
+
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+    return jsonResponse.getJsonObject("aggregations");
   }
 
   private static ScriptScoreFunctionBuilder boostScore() {
