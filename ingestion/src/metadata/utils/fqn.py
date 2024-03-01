@@ -197,7 +197,7 @@ def _(
     service_name: str,
     database_name: Optional[str],
     schema_name: str,
-    skip_es_search: bool = False,
+    skip_es_search: bool = True,
     fetch_multiple_entities: bool = False,
 ) -> Union[Optional[str], Optional[List[str]]]:
     entity: Optional[Union[DatabaseSchema, List[DatabaseSchema]]] = None
