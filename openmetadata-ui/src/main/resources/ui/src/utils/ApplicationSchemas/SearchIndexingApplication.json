@@ -96,7 +96,7 @@
     "recreateIndex": {
       "title": "Recreate Indexes",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
