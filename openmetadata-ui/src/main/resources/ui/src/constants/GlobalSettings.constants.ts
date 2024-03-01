@@ -67,6 +67,7 @@ export enum GlobalSettingOptions {
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
+  OM_HEALTH = 'om-health',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

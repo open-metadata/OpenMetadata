@@ -242,7 +242,7 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: i18next.t('label.customize-open-metadata'),
+      category: i18next.t('label.preferences'),
       key: GlobalSettingsMenuCategory.OPEN_METADATA,
       icon: OpenMetadataIcon,
       description: i18next.t('message.customize-open-metadata-description'),
@@ -279,6 +279,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           isProtected: Boolean(isAdminUser),
           key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
+          icon: LoginIcon,
+        },
+        {
+          label: i18next.t('label.om-health'),
+          description: i18next.t(
+            'message.page-sub-header-for-om-health-configuration'
+          ),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.OM_HEALTH}`,
           icon: LoginIcon,
         },
       ],
