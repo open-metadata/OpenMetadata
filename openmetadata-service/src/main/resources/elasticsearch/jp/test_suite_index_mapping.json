@@ -82,6 +82,27 @@
       "entityType": {
         "type": "keyword"
       },
+      "testCaseResultSummary": {
+        "type": "nested",
+        "properties": {
+          "status": {
+            "type": "keyword"
+          },
+          "testCaseName": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "timestamp": {
+            "type": "long"
+          }
+        }
+      },
       "suggest": {
         "type": "completion",
         "contexts": [
