@@ -24,7 +24,7 @@ Configure and schedule Atlas metadata and profiler workflows from the OpenMetada
 ## Requirements
 
 Before this, you must ingest the database / messaging service you want to get metadata for. 
-For more details click [here](/connectors/metadata/atlas#create-database-service)
+For more details click [here](/connectors/metadata/atlas#1.-create-database-&-messaging-services)
 
 ### Python Requirements
 

@@ -54,7 +54,7 @@ You can then run the script's statements to restore the data.
 
 {% note %}
 
-Make sure that the migrations have been run correctly (find out how [here](/deployment/bare-metal#4-prepare-the-openmetadata-database-and-indexes)).
+Make sure that the migrations have been run correctly (find out how [here](/deployment/bare-metal#4.-prepare-the-openmetadata-database-and-indexes)).
 
 Also, make sure that the target database does not already have any OpenMetadata data, or if it does, that you are OK
 replacing it with whatever comes from the SQL script.

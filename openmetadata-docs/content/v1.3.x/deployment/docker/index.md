@@ -107,7 +107,7 @@ wget https://github.com/open-metadata/OpenMetadata/releases/download/1.3.0-relea
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
 
-In the previous [step](#2-download-docker-compose-file-from-github-releases), we download the `docker-compose` file.
+In the previous [step](#2.-download-docker-compose-files-from-github-releases), we download the `docker-compose` file.
 
 Identify and update the environment variables in the file to prepare openmetadata configurations.
 

@@ -14,7 +14,6 @@ unavailableFeatures=["Query Usage", "Owners", "Lineage", "Column-level Lineage",
 In this section, we provide guides and references to use the Impala connector.
 
 Configure and schedule Impala metadata and profiler workflows from the OpenMetadata UI:
-- [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
