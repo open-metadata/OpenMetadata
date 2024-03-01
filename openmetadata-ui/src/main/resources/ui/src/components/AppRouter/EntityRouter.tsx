@@ -113,7 +113,10 @@ export const EntityRouter = () => {
       <Route
         exact
         component={EntityVersionPage}
-        path={ROUTES.ENTITY_VERSION_DETAILS}
+        path={[
+          ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
+          ROUTES.ENTITY_VERSION_DETAILS,
+        ]}
       />
       <Route
         component={Component}
