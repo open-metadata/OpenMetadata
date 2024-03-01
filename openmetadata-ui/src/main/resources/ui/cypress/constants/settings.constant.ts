@@ -65,6 +65,7 @@ export enum GlobalSettingOptions {
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
+  OM_HEALTH = 'om-health',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -164,6 +165,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.LOGIN_CONFIGURATION]: [
     GlobalSettingsMenuCategory.OPEN_METADATA,
     `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
+  ],
+  [GlobalSettingOptions.OM_HEALTH]: [
+    GlobalSettingsMenuCategory.OPEN_METADATA,
+    `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.OM_HEALTH}`,
   ],
   [GlobalSettingOptions.GLOSSARY_TERM]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
