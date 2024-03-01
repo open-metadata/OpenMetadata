@@ -19,11 +19,11 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { ListItem } from 'react-awesome-query-builder';
 import Loader from '../../components/common/Loader/Loader';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
-import { PAGE_SIZE } from '../../constants/constants';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -37,7 +37,6 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTags } from '../../rest/tagAPI';
-import { getTeamFilter } from '../../utils/DataInsightUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   DataInsightContextType,
@@ -60,6 +59,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     selectedOptions: [],
     options: [],
   });
+  const [isTeamLoading, setIsTeamLoading] = useState(false);
   const [tierOptions, setTierOptions] = useState<TierStateType>({
     selectedOptions: [],
     options: [],
@@ -120,16 +120,35 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     }));
   };
 
+  const fetchTeamOptions = async (query = WILD_CARD_CHAR) => {
+    const response = await searchQuery({
+      searchIndex: SearchIndex.TEAM,
+      query: query,
+      pageSize: PAGE_SIZE_BASE,
+    });
+    const hits = response.hits.hits;
+    const teamFilterOptions = hits.map((hit) => {
+      const source = hit._source;
+
+      return { key: source.name, label: source.displayName ?? source.name };
+    });
+
+    return teamFilterOptions;
+  };
+
   const handleTeamSearch = async (query: string) => {
     if (fetchTeamSuggestions && !isEmpty(query)) {
+      setIsTeamLoading(true);
       try {
-        const response = await fetchTeamSuggestions(query, PAGE_SIZE);
+        const response = await fetchTeamOptions(query);
         setTeamOptions((prev) => ({
           ...prev,
-          options: getTeamFilter(response.values as ListItem[]),
+          options: response,
         }));
       } catch (_error) {
         // we will not show the toast error message for suggestion API
+      } finally {
+        setIsTeamLoading(false);
       }
     } else {
       setTeamOptions((prev) => ({
@@ -163,31 +182,24 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     if (teamsOptions.defaultOptions.length) {
       setTeamOptions((prev) => ({
         ...prev,
-        options: prev.defaultOptions,
+        options: [...prev.selectedOptions, ...prev.defaultOptions],
       }));
 
       return;
     }
 
     try {
-      const response = await searchQuery({
-        searchIndex: SearchIndex.TEAM,
-        query: '*',
-        pageSize: PAGE_SIZE,
-      });
-      const hits = response.hits.hits;
-      const teamFilterOptions = hits.map((hit) => {
-        const source = hit._source;
-
-        return { key: source.name, label: source.displayName ?? source.name };
-      });
+      setIsTeamLoading(true);
+      const response = await fetchTeamOptions();
       setTeamOptions((prev) => ({
         ...prev,
-        defaultOptions: teamFilterOptions,
-        options: teamFilterOptions,
+        defaultOptions: response,
+        options: response,
       }));
     } catch (_error) {
       // we will not show the toast error message for search API
+    } finally {
+      setIsTeamLoading(false);
     }
   };
 
@@ -247,6 +259,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
         onChange: handleTeamChange,
         onGetInitialOptions: fetchDefaultTeamOptions,
         onSearch: handleTeamSearch,
+        isSuggestionsLoading: isTeamLoading,
       },
       tierFilter: {
         options: tierOptions.options,
@@ -270,6 +283,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
       fetchDefaultTeamOptions,
       handleTeamChange,
       teamsOptions,
+      isTeamLoading,
     ]
   );
 
