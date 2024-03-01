@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import Description from '../../components/common/EntityDescription/Description';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -373,12 +373,14 @@ const TestSuiteDetailsPage = () => {
             />
           </div>
 
-          <Description
+          <DescriptionV1
             className="test-suite-description"
             description={testSuiteDescription}
             entityName={getEntityName(testSuite)}
+            entityType={EntityType.TEST_SUITE}
             hasEditAccess={isAdminUser}
             isEdit={isDescriptionEditable}
+            showCommentsIcon={false}
             onCancel={() => descriptionHandler(false)}
             onDescriptionEdit={() => descriptionHandler(true)}
             onDescriptionUpdate={onDescriptionUpdate}

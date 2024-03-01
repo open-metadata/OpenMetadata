@@ -30,7 +30,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
 }));
 
-jest.mock('../../../components/common/EntityDescription/Description', () =>
+jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
   jest.fn().mockReturnValue(<div data-testid="description">Description</div>)
 );
 

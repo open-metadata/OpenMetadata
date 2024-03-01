@@ -272,7 +272,7 @@ jest.mock('../../components/Modals/FormModal', () => {
     .mockReturnValue(<p data-testid="modal-container">FormModal</p>);
 });
 
-jest.mock('../../components/common/EntityDescription/Description', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 
