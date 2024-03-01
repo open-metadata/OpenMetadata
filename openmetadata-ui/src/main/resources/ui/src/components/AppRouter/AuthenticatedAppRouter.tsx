@@ -28,6 +28,7 @@ import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetric
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
@@ -38,8 +39,8 @@ import {
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
 import DataProductsPage from '../DataProducts/DataProductsPage/DataProductsPage.component';
+import { EntityDetail } from '../Entity/EntityDetails/EntityDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
-import { EntityRouter } from './EntityRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
@@ -1048,7 +1049,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         ]}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
-      <EntityRouter />
+      <Route
+        exact
+        component={EntityVersionPage}
+        path={[
+          ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
+          ROUTES.ENTITY_VERSION_DETAILS,
+        ]}
+      />
+      <Route
+        component={EntityDetail}
+        path={[
+          ROUTES.ENTITY_DETAILS_WITH_SUB_TAB,
+          ROUTES.ENTITY_DETAILS_WITH_TAB,
+          ROUTES.ENTITY_DETAILS,
+        ]}
+      />
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

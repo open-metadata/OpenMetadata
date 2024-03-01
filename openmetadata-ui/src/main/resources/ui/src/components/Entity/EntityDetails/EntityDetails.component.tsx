@@ -11,73 +11,73 @@
  *  limitations under the License.
  */
 import React, { useMemo } from 'react';
-import { Route, useParams } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
-import withSuspenseFallback from './withSuspenseFallback';
+import { useParams } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
 const TableDetailsPageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TableDetailsPageV1/TableDetailsPageV1'))
+  React.lazy(
+    () => import('../../../pages/TableDetailsPageV1/TableDetailsPageV1')
+  )
 );
 
 const PipelineDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/PipelineDetails/PipelineDetailsPage.component')
+    () => import('../../../pages/PipelineDetails/PipelineDetailsPage.component')
   )
 );
 
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/TopicDetails/TopicDetailsPage.component')
+    () => import('../../../pages/TopicDetails/TopicDetailsPage.component')
   )
 );
 
 const DashboardDetailsPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../../pages/DashboardDetailsPage/DashboardDetailsPage.component')
+      import(
+        '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component'
+      )
   )
 );
 const DatabaseDetails = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/DatabaseDetailsPage/DatabaseDetailsPage')
+    () => import('../../../pages/DatabaseDetailsPage/DatabaseDetailsPage')
   )
 );
 const DatabaseSchemaPageComponent = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
+    () =>
+      import('../../../pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
   )
 );
 
 const DataModelDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/DataModelPage/DataModelPage.component'))
-);
-
-const StoredProcedureDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/StoredProcedure/StoredProcedurePage'))
-);
-
-const EntityVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/EntityVersionPage/EntityVersionPage.component')
+    () => import('../../../pages/DataModelPage/DataModelPage.component')
   )
 );
 
 const MlModelPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/MlModelPage/MlModelPage.component'))
+  React.lazy(() => import('../../../pages/MlModelPage/MlModelPage.component'))
 );
 
 const ContainerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ContainerPage/ContainerPage'))
+  React.lazy(() => import('../../../pages/ContainerPage/ContainerPage'))
 );
 
 const SearchIndexDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
+    () => import('../../../pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
   )
 );
 
-export const EntityRouter = () => {
+const StoredProcedureDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../../../pages/StoredProcedure/StoredProcedurePage'))
+);
+
+export const EntityDetail = () => {
   const { entityType } = useParams<{ entityType: EntityType }>();
 
   const Component = useMemo(() => {
@@ -108,24 +108,5 @@ export const EntityRouter = () => {
     }
   }, [entityType]);
 
-  return (
-    <>
-      <Route
-        exact
-        component={EntityVersionPage}
-        path={[
-          ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
-          ROUTES.ENTITY_VERSION_DETAILS,
-        ]}
-      />
-      <Route
-        component={Component}
-        path={[
-          ROUTES.ENTITY_DETAILS_WITH_SUB_TAB,
-          ROUTES.ENTITY_DETAILS_WITH_TAB,
-          ROUTES.ENTITY_DETAILS,
-        ]}
-      />
-    </>
-  );
+  return <Component />;
 };
