@@ -131,7 +131,7 @@ If we also have ingested the Lineage from the different Tables in our platform a
 ## Versioning
 One of the key features of OpenMetadata is the ability to version our Entities. Being able to keep track of schema changes or any community updates and having an alerting system on top can be life-saving.
 
-In the [Solution Design](/main-concepts/high-level-design#example-1---updating-columns-of-a-table), we discussed the versioning example on how a Table reacts to adding or deleting columns in terms of its version. How do we manage versions for our MlModels?
+In the [Solution Design](/main-concepts/high-level-design#example-1-updating-columns-of-a-table), we discussed the versioning example on how a Table reacts to adding or deleting columns in terms of its version. How do we manage versions for our MlModels?
 
 Based on the experimentation nature of the ML field, it does not make sense to receive an alert when playing around with the model features. Therefore, we are using **major** version changes when any of the following properties are updated:
 

@@ -95,7 +95,7 @@ Provide the Google config while creating the [server connection](#establish-open
 To set up Okta as the auth provider, the following details should be provided:
 * Client ID: Provide the client ID for the service application
 * Org URL: It is the same as the ISSUER_URL with v1/token. It is recommended to use a separate authorization server for different applications, rather than using the default authorization server.
-* Private Key: Use the Public/Private Key Pair that was generated while [Creating the Service Application](/deployment/security/okta#step-1-generate-publicprivate-key-pair). When copy-pasting the keys ensure that there are no additional codes and that it is a JSON compatible string.
+* Private Key: Use the Public/Private Key Pair that was generated while [Creating the Service Application](/deployment/security/okta#okta-sso). When copy-pasting the keys ensure that there are no additional codes and that it is a JSON compatible string.
 * Email: Enter the email address
 * Scopes: Add the details of the scope created in the Authorization Server. Enter the name of the default scope created.
 

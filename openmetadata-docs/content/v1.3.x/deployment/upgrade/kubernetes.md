@@ -45,11 +45,11 @@ Verify with the below command to see the latest release available locally.
 ```commandline
 helm search repo open-metadata --versions
 > NAME                                   	CHART VERSION	APP VERSION	DESCRIPTION                                
-open-metadata/openmetadata              1.3.0           1.3.0           A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata              1.3.1           1.3.1           A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata              1.2.8           1.2.5           A Helm chart for OpenMetadata on Kubernetes
 
 ...
-open-metadata/openmetadata-dependencies 1.3.0           1.3.0           Helm Dependencies for OpenMetadata
+open-metadata/openmetadata-dependencies 1.3.1           1.3.1           Helm Dependencies for OpenMetadata
 open-metadata/openmetadata-dependencies 1.2.8           1.2.5           Helm Dependencies for OpenMetadata
 ...
 ```
@@ -187,9 +187,9 @@ This issue is related to a minor change that affected the MySQL Database Engine 
 
 As a result of the above fixes, anyone who is on OpenMetadata Dependencies Helm Chart Version `0.0.49` and `0.0.50` is affected with the above issue when upgrading for mysql. In order to fix this issue, make sure to follow the below steps -
 
-1. Backup the Database using Metadata Backup CLI as mentioned [here](#backup-your-data)
+1. Backup the Database using Metadata Backup CLI as mentioned [here](#backup-your-metadata)
 2. Uninstall OpenMetadata Dependencies Helm Chart (`helm uninstall openmetadata-dependencies`)
 3. Remove the unmanaged volume for MySQL Stateful Set Kubernetes Object (`kubectl delete pvc data-mysql-0`)
 4. Install the latest version of [OpenMetadata Dependencies Helm Chart](/deployment/kubernetes)
 5. Restore the Database using Metadata Restore CLI as mentioned [here](/deployment/backup-restore-metadata)
-6. Next, Proceed with upgrade for OpenMetadata Helm Chart as mentioned [here](#upgrade-openmetdata)
+6. Next, Proceed with upgrade for OpenMetadata Helm Chart as mentioned [here](#step-4-upgrade-openmetadata)
