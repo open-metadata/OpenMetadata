@@ -119,9 +119,9 @@ import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
+import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.pac4j.core.util.CommonHelper;
 import org.pac4j.oidc.client.OidcClient;
-import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -129,6 +129,8 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
+
+  protected Jdbi jdbi;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -153,7 +155,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize HTTP and JDBI timers
     MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
 
-    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setCollectionDAO(collectionDAO);
 
