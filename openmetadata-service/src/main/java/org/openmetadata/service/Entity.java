@@ -579,4 +579,8 @@ public final class Entity {
     }
     throw new BadRequestException("searchrepository not initialized");
   }
+
+  public static <T> T getDao() {
+    return (T) collectionDAO;
+  }
 }
