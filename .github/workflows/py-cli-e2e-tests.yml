@@ -158,7 +158,7 @@ jobs:
         echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
         echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
         echo "    pass" >> $SITE_CUSTOMIZE_PATH
-        coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-all.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_*.py
+        coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-all.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e
         coverage combine --data-file=.coverage.all --rcfile=ingestion/pyproject.toml --keep -a .coverage*   
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.all || true
 
