@@ -425,8 +425,12 @@ class ProfilerInterface(ABC):
         runner,
         *args,
         **kwargs,
-    ):
-        """Get metrics"""
+    ) -> Dict[str, Any]:
+        """Get metrics
+        Return:
+            Dict[str, Any]: dict of metrics tio be merged into the final column profile. Keys need to be compatible with
+            the `metadata.generated.schema.entity.data.table.ColumnProfile` schema.
+        """
         raise NotImplementedError
 
     @abstractmethod

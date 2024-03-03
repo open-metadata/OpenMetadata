@@ -231,3 +231,115 @@ Once this pyspark job get finished you will see a new pipeline service with name
   alt="Spark Pipeline Lineage"
   caption="Spark Pipeline Lineage"
  /%}
+
+## Using Spark Agent with Databricks
+
+Follow the below steps in order to use OpenMetadata Spark Agent with databricks.
+
+### 1. Upload the jar to compute cluster
+
+To use the `OpenMetadata Spark Agent`, you will have to download the latest jar from [here](https://github.com/open-metadata/openmetadata-spark-agent/releases) and upload it to your databricks compute cluster.
+
+To upload the jar you can visit the compute details page and then go to the libraries tab
+
+{% image
+  src="/images/v1.3/connectors/spark/spark-upload-jar.png"
+  alt="Spark Upload Jar"
+  caption="Spark Upload Jar"
+ /%}
+
+Click on the "Install Now" button and choose `dbfs` mode and upload the `OpenMetadata Spark Agent` jar.
+
+{% image
+  src="/images/v1.3/connectors/spark/spark-upload-jar-2.png"
+  alt="Spark Upload Jar"
+  caption="Spark Upload Jar"
+ /%}
+
+Once your jar is uploaded copy the path of the jar for the next steps.
+
+{% image
+  src="/images/v1.3/connectors/spark/spark-uploaded-jar.png"
+  alt="Spark Upload Jar"
+  caption="Spark Upload Jar"
+ /%}
+
+
+### 2. Create Initialization Script
+
+
+Once your jar is uploaded you need to create a initialization script in your workspace.
+
+```
+#!/bin/bash
+
+STAGE_DIR_JAR="<path to jar copied from step 1>"
+
+echo "BEGIN: Upload Spark Listener JARs"
+cp -f $STAGE_DIR_JAR /mnt/driver-daemon/jars || { echo "Error copying Spark Listener library file"; exit 1;}
+echo "END: Upload Spark Listener JARs"
+
+echo "BEGIN: Modify Spark config settings"
+cat << 'EOF' > /databricks/driver/conf/openlineage-spark-driver-defaults.conf
+[driver] {
+  "spark.extraListeners" = "org.openmetadata.spark.agent.OpenMetadataSparkListener"
+}
+EOF
+echo "END: Modify Spark config settings"
+```
+
+Note: The copied path would look like this `dbfs:/FileStore/jars/....` you need to modify it like `/dbfs/FileStore/jars/...` this.
+
+{% image
+  src="/images/v1.3/connectors/spark/prepare-script.png"
+  alt="Prepare Script"
+  caption="Prepare Script"
+ /%}
+
+
+
+### 3. Configure Initialization Script
+
+Once you have created a initialization script, you will need to attach this script to your compute instance, to do that you can go to advanced config > init scripts and add your script path.
+
+{% image
+  src="/images/v1.3/connectors/spark/prepare-script.png"
+  alt="Prepare Script"
+  caption="Prepare Script"
+ /%}
+
+
+{% image
+  src="/images/v1.3/connectors/spark/spark-init-script.png"
+  alt="Spark Init Script"
+  caption="Spark Init Script"
+ /%}
+
+
+### 4. Configure Spark
+
+After configuring the init script, you will need to update the spark config as well.
+
+
+{% image
+  src="/images/v1.3/connectors/spark/spark-config-set.png"
+  alt="Spark Set Config"
+  caption="Spark Set Config"
+ /%}
+
+these are the possible configurations that you can do, please refer the `Configuration` section above to get the detailed information about the same. 
+
+```
+spark.extraListeners org.openmetadata.spark.agent.OpenMetadataSparkListener
+spark.openmetadata.transport.type openmetadata
+spark.openmetadata transport.pipelineSourceUrl http://<your-pipeline-host-port> 
+spark.openmetadata transport.pipelineDescription "your pipeline description" 
+spark.openmetadata.transport.hostPort https://<your-openmetadata-host-port> 
+spark openmetadata transport.pipelineServiceName demo_pipeline 
+spark.openmetadata transport.pipelineName demo_pipeline 
+spark.openmetadata transport.databaseServiceNames db-service-name1,db-service-name2 
+spark.openmetadata.transport.jwtToken <your-jwt-token> 
+spark.openmetadata.transport.timeout 30
+```
+
+After all these steps are completed you can start/restart your compute instance and you are ready to extract the lineage from spark to OpenMetadata.

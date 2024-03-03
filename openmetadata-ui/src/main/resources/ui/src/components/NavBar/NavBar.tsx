@@ -22,6 +22,7 @@ import {
   Row,
   Select,
   Space,
+  Tooltip,
 } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
@@ -47,6 +48,8 @@ import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
+import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
@@ -74,11 +77,9 @@ import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
-import { useGlobalSearchProvider } from '../GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
-import { UserProfileIcon } from '../Users/UserProfileIcon/UserProfileIcon.component';
-import { useWebSocketConnector } from '../WebSocketProvider/WebSocketProvider';
+import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
@@ -401,6 +402,7 @@ const NavBar = ({
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconSearch}
+                        data-testid="search-icon"
                         style={{ fontSize: '16px' }}
                         onClick={(e) => {
                           e.preventDefault();
@@ -495,13 +497,15 @@ const NavBar = ({
             placement="bottomRight"
             trigger={['click']}
             onOpenChange={handleBellClick}>
-            <Badge dot={hasTaskNotification || hasMentionNotification}>
-              <Icon
-                className="align-middle"
-                component={IconBell}
-                style={{ fontSize: '24px' }}
-              />
-            </Badge>
+            <Tooltip placement="top" title={t('label.notification-plural')}>
+              <Badge dot={hasTaskNotification || hasMentionNotification}>
+                <Icon
+                  className="align-middle"
+                  component={IconBell}
+                  style={{ fontSize: '24px' }}
+                />
+              </Badge>
+            </Tooltip>
           </Dropdown>
 
           <Dropdown
@@ -509,11 +513,13 @@ const NavBar = ({
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
             trigger={['click']}>
-            <Icon
-              className="align-middle"
-              component={Help}
-              style={{ fontSize: '24px' }}
-            />
+            <Tooltip placement="top" title={t('label.need-help')}>
+              <Icon
+                className="align-middle"
+                component={Help}
+                style={{ fontSize: '24px' }}
+              />
+            </Tooltip>
           </Dropdown>
 
           <UserProfileIcon />

@@ -13,7 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Category, CustomProperty, Type } from '../generated/entity/type';
+import { Category, Type } from '../generated/entity/type';
+import { CustomProperty } from '../generated/type/customProperty';
 import { Paging } from '../generated/type/paging';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';

@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourPage from './TourPage.component';
 
@@ -23,7 +23,7 @@ const mockUseTourProvider = {
   updateTourPage: jest.fn(),
   updateTourSearch: jest.fn(),
 };
-jest.mock('../../components/TourProvider/TourProvider', () => ({
+jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => mockUseTourProvider),
 }));
 jest.mock('../../components/AppTour/Tour', () => {

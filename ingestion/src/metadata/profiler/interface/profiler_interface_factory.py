@@ -30,6 +30,9 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
+    MongoDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
@@ -43,6 +46,8 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
     UnityCatalogConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.profiler.factory import Factory
+from metadata.profiler.interface.nosql.profiler_interface import NoSQLProfilerInterface
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
@@ -76,27 +81,7 @@ from metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface imp
 )
 
 
-class ProfilerInterfaceFactory:
-    """Creational factory for profiler interface objects"""
-
-    def __init__(self):
-        self._interface_type = {}
-
-    def register(self, interface_type: str, interface_class):
-        """Register a new interface"""
-        self._interface_type[interface_type] = interface_class
-
-    def register_many(self, interface_dict):
-        """
-        Registers multiple profiler interfaces at once.
-
-        Args:
-            interface_dict: A dictionary mapping connection class names (strings) to their
-            corresponding profiler interface classes.
-        """
-        for interface_type, interface_class in interface_dict.items():
-            self.register(interface_type, interface_class)
-
+class ProfilerInterfaceFactory(Factory):
     def create(self, interface_type: str, *args, **kwargs):
         """Create interface object based on interface type"""
         interface_class = self._interface_type.get(interface_type)
@@ -118,6 +103,6 @@ profilers = {
     UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
     DatabricksConnection.__name__: DatabricksProfilerInterface,
     Db2Connection.__name__: DB2ProfilerInterface,
+    MongoDBConnection.__name__: NoSQLProfilerInterface,
 }
-
 profiler_interface_factory.register_many(profilers)

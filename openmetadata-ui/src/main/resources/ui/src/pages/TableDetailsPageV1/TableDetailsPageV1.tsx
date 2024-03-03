@@ -27,31 +27,31 @@ import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import TableProfiler from '../../components/Database/Profiler/TableProfiler/TableProfiler';
+import SampleDataTableComponent from '../../components/Database/SampleDataTable/SampleDataTable.component';
+import SchemaTab from '../../components/Database/SchemaTab/SchemaTab.component';
+import TableQueries from '../../components/Database/TableQueries/TableQueries';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../components/Lineage/Lineage.component';
-import LineageProvider from '../../components/LineageProvider/LineageProvider';
-import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SampleDataTableComponent from '../../components/SampleDataTable/SampleDataTable.component';
-import SchemaTab from '../../components/SchemaTab/SchemaTab.component';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import TableProfiler from '../../components/TableProfiler/TableProfiler';
-import TableQueries from '../../components/TableQueries/TableQueries';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableTabPath, getVersionPath } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
+import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -90,7 +90,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from './PartitionedKeys/PartitionedKeys.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
@@ -159,7 +158,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  }, [tableFqn]);
+  }, [tableFqn, viewUsagePermission]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -524,7 +523,6 @@ const TableDetailsPageV1 = () => {
               isReadOnly={deleted}
               joins={tableDetails?.joins?.columnJoins ?? []}
               tableConstraints={tableDetails?.tableConstraints}
-              tablePartitioned={tableDetails?.tablePartition}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />
@@ -543,11 +541,6 @@ const TableDetailsPageV1 = () => {
                 <TableConstraints
                   constraints={tableDetails?.tableConstraints}
                 />
-                {tableDetails?.tablePartition ? (
-                  <PartitionedKeys
-                    tablePartition={tableDetails.tablePartition}
-                  />
-                ) : null}
               </Space>
             }
             beforeSlot={
@@ -563,6 +556,7 @@ const TableDetailsPageV1 = () => {
             entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}
+            tablePartition={tableDetails?.tablePartition}
             viewAllPermission={viewAllPermission}
             onTagSelectionChange={handleTagSelection}
             onThreadLinkSelect={onThreadLinkSelect}

@@ -18,7 +18,6 @@ import {
   queryByText,
   render,
 } from '@testing-library/react';
-import { LoadingState } from 'Models';
 import React from 'react';
 import {
   mockedGlossaries,
@@ -34,7 +33,7 @@ let params = {
 
 const mockPush = jest.fn();
 
-jest.mock('../PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       Create: true,
@@ -112,7 +111,7 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<span>U</span>)
 );
 
-jest.mock('../../components/FeedEditor/FeedEditor', () => {
+jest.mock('../ActivityFeed/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
@@ -123,7 +122,6 @@ jest.mock('./ImportGlossary/ImportGlossary', () =>
 );
 
 const mockProps: GlossaryV1Props = {
-  deleteStatus: 'initial' as LoadingState,
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
   onGlossaryTermUpdate: jest.fn(),

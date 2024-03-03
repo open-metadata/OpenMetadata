@@ -1,16 +1,9 @@
 package org.openmetadata.service.apps;
 
-import static com.cronutils.model.CronType.QUARTZ;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
-import com.cronutils.mapper.CronMapper;
-import com.cronutils.model.Cron;
-import com.cronutils.model.definition.CronDefinitionBuilder;
-import com.cronutils.parser.CronParser;
 import java.util.List;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -46,22 +39,23 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
 
+@Getter
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
-  private @Getter App app;
+  private App app;
   protected SearchRepository searchRepository;
-  private final @Getter CronMapper cronMapper = CronMapper.fromQuartzToUnix();
-  private final @Getter CronParser cronParser =
-      new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
 
-  @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    this.collectionDAO = dao;
+  public AbstractNativeApplication(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
+  }
+
+  @Override
+  public void init(App app) {
     this.app = app;
   }
 
@@ -149,9 +143,6 @@ public class AbstractNativeApplication implements NativeApplication {
             .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
             .getEntityReference();
 
-    Cron quartzCron =
-        this.getCronParser().parse(this.getApp().getAppSchedule().getCronExpression());
-
     CreateIngestionPipeline createPipelineRequest =
         new CreateIngestionPipeline()
             .withName(this.getApp().getName())
@@ -167,7 +158,7 @@ public class AbstractNativeApplication implements NativeApplication {
                             .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(this.getCronMapper().map(quartzCron).asString()))
+                    .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
             .withService(service);
 
     // Get Pipeline
@@ -206,14 +197,11 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
-    App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
-    CollectionDAO dao =
-        (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
-    SearchRepository searchRepositoryForJob =
-        (SearchRepository)
-            jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
+    App jobApp =
+        JsonUtils.readOrConvertValue(
+            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
     // Initialise the Application
-    this.init(jobApp, dao, searchRepositoryForJob);
+    this.init(jobApp);
 
     // Trigger
     this.startApp(jobExecutionContext);

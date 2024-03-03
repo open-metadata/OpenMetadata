@@ -15,7 +15,7 @@ package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.G_CHAT;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
+import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import java.util.List;
@@ -70,7 +70,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
     try {
       GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingMessage(event);
       List<Invocation.Builder> targets =
-          getTargetsForWebhook(
+          getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
       if (target != null) {
         targets.add(target);

@@ -19,8 +19,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
@@ -30,6 +28,7 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   GlossaryTerm,
   TermReference,
@@ -41,13 +40,14 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
+import TagButton from '../../../common/TagButton/TagButton.component';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 interface GlossaryTermReferencesProps {
   isVersionView?: boolean;
   glossaryTerm: GlossaryTerm;
   permissions: OperationPermission;
-  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
+  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
 }
 
 const GlossaryTermReferences = ({
@@ -74,7 +74,7 @@ const GlossaryTermReferences = ({
           references: updatedRef,
         };
 
-        onGlossaryTermUpdate(updatedGlossaryTerm);
+        await onGlossaryTermUpdate(updatedGlossaryTerm);
         if (updateState) {
           setReferences(updatedRef);
         }
@@ -83,10 +83,6 @@ const GlossaryTermReferences = ({
     } catch (error) {
       // Added catch block to prevent uncaught promise
     }
-  };
-
-  const onReferenceModalSave = (values: TermReference[]) => {
-    handleReferencesSave(values);
   };
 
   useEffect(() => {
@@ -198,7 +194,9 @@ const GlossaryTermReferences = ({
               <Tooltip
                 title={
                   permissions.EditAll
-                    ? t('label.edit')
+                    ? t('label.edit-entity', {
+                        entity: t('label.reference-plural'),
+                      })
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
@@ -246,9 +244,7 @@ const GlossaryTermReferences = ({
         onClose={() => {
           setIsViewMode(true);
         }}
-        onSave={(values: TermReference[]) => {
-          onReferenceModalSave(values);
-        }}
+        onSave={handleReferencesSave}
       />
     </div>
   );

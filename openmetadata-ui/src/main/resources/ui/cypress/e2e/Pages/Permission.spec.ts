@@ -322,7 +322,7 @@ const updatePolicy = (
   cy.reload();
 };
 
-describe('Permissions', () => {
+describe('Permissions', { tags: 'Settings' }, () => {
   before(preRequisite);
   after(cleanUp);
 
@@ -361,7 +361,7 @@ describe('Permissions', () => {
     interceptURL('GET', '/api/v1/queries?*', 'getQueries');
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@getQueries', 200);
-    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-testid="query-btn"]').click();
     cy.get('[data-menu-id*="edit-query"]').click();
     interceptURL('PATCH', '/api/v1/queries/*', 'updateQuery');
     cy.get('.CodeMirror-line').click().type('updated');

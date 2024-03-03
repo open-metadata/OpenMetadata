@@ -41,14 +41,6 @@ export const postKPI = async (data: CreateKpiRequest) => {
 
   return response.data;
 };
-export const putKPI = async (data: CreateKpiRequest) => {
-  const response = await APIClient.put<CreateKpiRequest, AxiosResponse<Kpi>>(
-    '/kpi',
-    data
-  );
-
-  return response.data;
-};
 
 export const patchKPI = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Kpi>>(

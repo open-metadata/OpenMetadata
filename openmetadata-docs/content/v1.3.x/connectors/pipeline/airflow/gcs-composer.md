@@ -135,8 +135,6 @@ we will rely on the `KubernetesPodOperator` to use the underlying k8s cluster of
 Then, the code won't directly run using the hosts' environment, but rather inside a container that we created
 with only the `openmetadata-ingestion` package.
 
-**Note:** This approach only has the `openmetadata/ingestion-base` ready from version 0.12.1 or higher!
-
 ### Requirements
 
 The only thing we need to handle here is getting the URL of the underlying Composer's database. You can follow

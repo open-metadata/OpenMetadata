@@ -13,8 +13,8 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
-import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetails from './GlossaryDetails.component';
 
 jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () => {

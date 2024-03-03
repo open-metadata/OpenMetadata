@@ -74,7 +74,7 @@ jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
 }));
 
 jest.mock(
-  '../../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
+  '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () => {
     return jest.fn().mockImplementation(({ children }) => <>{children}</>);
   }

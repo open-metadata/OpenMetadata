@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,11 +21,10 @@ import { UserSelectableList } from '../../../../components/common/UserSelectable
 import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DomainExperts from '../../../../components/Domain/DomainExperts/DomainExperts.component';
 import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
-import { usePermissionProvider } from '../../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../components/PermissionProvider/PermissionProvider.interface';
-import TagButton from '../../../../components/TagButton/TagButton.component';
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
@@ -44,7 +43,8 @@ import {
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import FormItemLabel from '../../../Form/FormItemLabel';
+import FormItemLabel from '../../../common/Form/FormItemLabel';
+import TagButton from '../../../common/TagButton/TagButton.component';
 import '../../domain.less';
 import {
   DocumentationEntity,
@@ -128,15 +128,15 @@ const DocumentationTab = ({
     }
   };
 
-  const handleUpdatedOwner = (newOwner: Domain['owner']) => {
+  const handleUpdatedOwner = async (newOwner: Domain['owner']) => {
     const updatedData = {
       ...domain,
       owner: newOwner,
     };
-    onUpdate(updatedData as Domain | DataProduct);
+    await onUpdate(updatedData as Domain | DataProduct);
   };
 
-  const handleExpertsUpdate = (data: Array<EntityReference>) => {
+  const handleExpertsUpdate = async (data: Array<EntityReference>) => {
     if (!isEqual(data, domain.experts)) {
       let updatedDomain = cloneDeep(domain);
       const oldExperts = data.filter((d) => includes(domain.experts, d));
@@ -152,7 +152,7 @@ const DocumentationTab = ({
         ...updatedDomain,
         experts: [...oldExperts, ...newExperts],
       };
-      onUpdate(updatedDomain);
+      await onUpdate(updatedDomain);
     }
   };
 
@@ -193,13 +193,18 @@ const DocumentationTab = ({
                   hasPermission
                   owner={domain.owner}
                   onUpdate={handleUpdatedOwner}>
-                  <Button
-                    className="cursor-pointer flex-center m-l-xss"
-                    data-testid="edit-owner"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                  />
+                  <Tooltip
+                    title={t('label.edit-entity', {
+                      entity: t('label.owner'),
+                    })}>
+                    <Button
+                      className="cursor-pointer flex-center m-l-xss"
+                      data-testid="edit-owner"
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                      size="small"
+                      type="text"
+                    />
+                  </Tooltip>
                 </UserTeamSelectableList>
               )}
             </div>
@@ -244,13 +249,18 @@ const DocumentationTab = ({
                     popoverProps={{ placement: 'topLeft' }}
                     selectedUsers={domain.experts ?? []}
                     onUpdate={handleExpertsUpdate}>
-                    <Button
-                      className="cursor-pointer flex-center m-l-xss"
-                      data-testid="edit-expert-button"
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      size="small"
-                      type="text"
-                    />
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.expert-plural'),
+                      })}>
+                      <Button
+                        className="cursor-pointer flex-center m-l-xss"
+                        data-testid="edit-expert-button"
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                        size="small"
+                        type="text"
+                      />
+                    </Tooltip>
                   </UserSelectableList>
                 )}
             </div>
@@ -295,14 +305,19 @@ const DocumentationTab = ({
                 </Typography.Text>
 
                 {editAllPermission && (domain as Domain).domainType && (
-                  <Button
-                    className="cursor-pointer flex-center m-l-xss"
-                    data-testid="edit-domainType-button"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setEditDomainType(true)}
-                  />
+                  <Tooltip
+                    title={t('label.edit-entity', {
+                      entity: t('label.domain-type'),
+                    })}>
+                    <Button
+                      className="cursor-pointer flex-center m-l-xss"
+                      data-testid="edit-domainType-button"
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                      size="small"
+                      type="text"
+                      onClick={() => setEditDomainType(true)}
+                    />
+                  </Tooltip>
                 )}
               </div>
               {!editDomainType && (

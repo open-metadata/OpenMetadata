@@ -119,7 +119,9 @@ const verifyEntities = ({ url }) => {
   tables.forEach((table) => {
     cy.get(
       `[data-testid="table-data-card_${table.databaseSchema}.${table.name}"]`
-    ).should('be.exist');
+    )
+      .scrollIntoView()
+      .should('be.exist');
   });
 };
 
@@ -293,7 +295,7 @@ const cleanUp = () => {
   });
 };
 
-describe('My Data page', () => {
+describe('My Data page', { tags: 'DataAssets' }, () => {
   before(prepareData);
   after(cleanUp);
 

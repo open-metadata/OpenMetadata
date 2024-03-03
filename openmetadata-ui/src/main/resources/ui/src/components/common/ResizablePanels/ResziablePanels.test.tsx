@@ -13,7 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import ResizablePanels from './ResizablePanels';
-jest.mock('../../../components/DocumentTitle/DocumentTitle', () =>
+jest.mock('../DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
 );
 const firstPanel = {

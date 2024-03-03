@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import com.cronutils.model.Cron;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -19,6 +18,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -28,6 +28,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private static final String SERVICE_NAME = "OpenMetadata";
   private static final String SERVICE_TYPE = "Metadata";
   private static final String PIPELINE_DESCRIPTION = "OpenMetadata DataInsight Pipeline";
+
+  public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super(collectionDAO, searchRepository);
+  }
 
   @Override
   public void install() {
@@ -82,8 +86,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
             .getByName(null, SERVICE_NAME, serviceRepository.getFields("id"))
             .getEntityReference();
 
-    Cron quartzCron = getCronParser().parse(getApp().getAppSchedule().getCronExpression());
-
     CreateIngestionPipeline createPipelineRequest =
         new CreateIngestionPipeline()
             .withName(INGESTION_PIPELINE_NAME)
@@ -94,7 +96,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
             .withSourceConfig(new SourceConfig().withConfig(new MetadataToElasticSearchPipeline()))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(getCronMapper().map(quartzCron).asString()))
+                    .withScheduleInterval(getApp().getAppSchedule().getCronExpression()))
             .withService(service);
 
     // Get Pipeline

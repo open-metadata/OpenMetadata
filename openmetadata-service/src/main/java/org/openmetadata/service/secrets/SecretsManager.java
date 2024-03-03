@@ -51,11 +51,16 @@ public abstract class SecretsManager {
   public record SecretsConfig(
       String clusterName, String prefix, List<String> tags, Parameters parameters) {}
 
+  protected record SecretsIdConfig(
+      String separator,
+      Boolean needsStartingSeparator,
+      String cleanSecretReplacer,
+      Pattern secretIdPattern) {}
+
   @Getter private final SecretsConfig secretsConfig;
   @Getter private final SecretsManagerProvider secretsManagerProvider;
+  @Getter private final SecretsIdConfig secretsIdConfig;
   private Fernet fernet;
-  private static final Pattern SECRET_ID_PATTERN = Pattern.compile("[^A-Za-z0-9/_\\-]");
-
   private static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES =
       Set.of(OpenMetadataJWTClientConfig.class, BasicAuthMechanism.class);
 
@@ -64,6 +69,15 @@ public abstract class SecretsManager {
     this.secretsManagerProvider = secretsManagerProvider;
     this.secretsConfig = secretsConfig;
     this.fernet = Fernet.getInstance();
+    this.secretsIdConfig = builSecretsIdConfig();
+  }
+
+  /**
+   * Override this method in any Secrets Manager implementation
+   * that has other requirements
+   */
+  protected SecretsIdConfig builSecretsIdConfig() {
+    return new SecretsIdConfig("/", Boolean.TRUE, "_", Pattern.compile("[^A-Za-z0-9/_\\-]"));
   }
 
   public Object encryptServiceConnectionConfig(
@@ -332,20 +346,27 @@ public abstract class SecretsManager {
     StringBuilder format = new StringBuilder();
     if (addClusterPrefix) {
       if (secretsConfig.prefix != null && !secretsConfig.prefix.isEmpty()) {
-        format.append("/");
+        if (Boolean.TRUE.equals(secretsIdConfig.needsStartingSeparator())) {
+          format.append(secretsIdConfig.separator());
+        }
         format.append(secretsConfig.prefix);
       }
-      format.append("/");
+      if (Boolean.TRUE.equals(secretsIdConfig.needsStartingSeparator)) {
+        format.append(secretsIdConfig.separator());
+      }
       format.append(secretsConfig.clusterName);
     } else {
       format.append("%s");
     }
 
-    // keep only alphanumeric characters and /, since we use / to create the FQN in the secrets
-    // manager
     Object[] cleanIdValues =
         Arrays.stream(secretIdValues)
-            .map(str -> SECRET_ID_PATTERN.matcher(str).replaceAll("_"))
+            .map(
+                str ->
+                    secretsIdConfig
+                        .secretIdPattern
+                        .matcher(str)
+                        .replaceAll(secretsIdConfig.cleanSecretReplacer))
             .toArray();
     // skip first one in case of addClusterPrefix is false to avoid adding extra separator at the
     // beginning
@@ -356,7 +377,7 @@ public abstract class SecretsManager {
               if (isNull(secretIdValue)) {
                 throw new SecretsManagerException("Cannot build a secret id with null values.");
               }
-              format.append("/");
+              format.append(secretsIdConfig.separator);
               format.append("%s");
             });
     return String.format(format.toString(), cleanIdValues).toLowerCase();

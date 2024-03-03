@@ -3,7 +3,13 @@ title: Run the Amundsen Connector Externally
 slug: /connectors/metadata/amundsen/yaml
 ---
 
-# Run the Amundsen Connector Externally
+{% connectorDetailsHeader
+name="Amundsen"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Amundsen connector.
 
@@ -17,12 +23,9 @@ Configure and schedule Amundsen metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-Before this, you must ingest the database / messaging service you want to get metadata for. 
-For more details click [here](/connectors/metadata/amundsen#create-database-service)
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
+Before this, you must create the service you want to get metadata for.  
+You can learn how to do it by folowing the initial part of the Connector documentation for the service.
+You can find the connectors list [here](/connectors).
 
 ### Python Requirements
 

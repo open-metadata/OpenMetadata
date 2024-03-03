@@ -178,7 +178,7 @@ class MetabaseSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        charts = dashboard_details.ordered_cards
+        charts = dashboard_details.dashcards
         for chart in charts:
             try:
                 chart_details = chart.card
@@ -225,7 +225,7 @@ class MetabaseSource(DashboardServiceSource):
         if not db_service_name:
             return
         chart_list, dashboard_name = (
-            dashboard_details.ordered_cards,
+            dashboard_details.dashcards,
             str(dashboard_details.id),
         )
         for chart in chart_list:
@@ -324,8 +324,9 @@ class MetabaseSource(DashboardServiceSource):
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
     ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
+        table_name = table.name or table.display_name
 
-        if table is None or table.display_name is None:
+        if table is None or table_name is None:
             return
 
         database_name = table.db.details.db if table.db and table.db.details else None
@@ -334,7 +335,7 @@ class MetabaseSource(DashboardServiceSource):
             database=database_name,
             service_name=db_service_name,
             database_schema=table.table_schema,
-            table=table.display_name,
+            table=table_name,
         )
 
         to_fqn = fqn.build(

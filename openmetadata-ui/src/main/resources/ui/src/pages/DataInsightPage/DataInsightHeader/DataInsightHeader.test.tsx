@@ -25,19 +25,20 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => ({ tab: 'tab' })),
 }));
 
-jest.mock('../../../components/DataInsightDetail/DataInsightSummary', () =>
+jest.mock('../../../components/DataInsight/DataInsightSummary', () =>
   jest.fn(() => <div>DataInsightSummary</div>)
 );
 
-jest.mock('../../../components/DataInsightDetail/KPIChart', () =>
+jest.mock('../../../components/DataInsight/KPIChart', () =>
   jest.fn(() => <div>KPIChart</div>)
 );
 
-jest.mock('../../../components/DatePickerMenu/DatePickerMenu.component', () =>
-  jest.fn(() => <div>DatePickerMenu</div>)
+jest.mock(
+  '../../../components/common/DatePickerMenu/DatePickerMenu.component',
+  () => jest.fn(() => <div>DatePickerMenu</div>)
 );
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(() => ({
     permissions: {},
   })),
