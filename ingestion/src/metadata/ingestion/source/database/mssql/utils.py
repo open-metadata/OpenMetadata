@@ -181,6 +181,8 @@ def get_columns(
             onclause=sql.and_(
                 extended_properties.c.major_id == sys_columns.c.object_id,
                 extended_properties.c.minor_id == sys_columns.c.column_id,
+                extended_properties.c.class_desc == "OBJECT_OR_COLUMN",
+                extended_properties.c.name == "MS_Description"
             ),
             isouter=True,
         )
