@@ -100,6 +100,7 @@ import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -363,6 +364,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Type INT_TYPE;
   public static Type STRING_TYPE;
+
+  public static Type ENUM_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
@@ -1877,7 +1880,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void checkIndexCreated() throws IOException {
+  protected void checkIndexCreated() throws IOException, JSONException {
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       RestClient client = getSearchClient();
       Request request = new Request("GET", "/_cat/indices");

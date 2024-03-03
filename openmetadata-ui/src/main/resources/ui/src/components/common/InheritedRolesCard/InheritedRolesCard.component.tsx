@@ -29,11 +29,9 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
       className="relative page-layout-v1-left-panel"
       key="inherited-roles-card-component"
       title={
-        <div className="flex">
-          <h6 className="heading mb-0" data-testid="inherited-roles-heading">
-            {t('label.inherited-role-plural')}
-          </h6>
-        </div>
+        <Typography.Text data-testid="inherited-roles-heading">
+          {t('label.inherited-role-plural')}
+        </Typography.Text>
       }>
       <Fragment>
         {isEmpty(userData.inheritedRoles) ? (

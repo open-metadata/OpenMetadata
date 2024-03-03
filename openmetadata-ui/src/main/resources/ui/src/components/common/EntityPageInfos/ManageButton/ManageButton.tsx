@@ -13,8 +13,9 @@
 
 import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { capitalize, isUndefined } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
@@ -27,6 +28,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
@@ -84,15 +86,17 @@ const ManageButton: FC<ManageButtonProps> = ({
     }
   };
 
-  const handleDisplayNameUpdate = (data: EntityName) => {
-    if (onEditDisplayName) {
-      onEditDisplayName(data)
-        .then(() => {
-          setIsDisplayNameEditing(false);
-        })
-        .catch(() => {
-          // do nothing
-        });
+  const handleDisplayNameUpdate = async (data: EntityName) => {
+    if (!onEditDisplayName) {
+      return;
+    }
+    setIsDisplayNameEditing(true);
+    try {
+      await onEditDisplayName(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDisplayNameEditing(false);
     }
   };
 
@@ -267,13 +271,18 @@ const ManageButton: FC<ManageButtonProps> = ({
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
           trigger={['click']}>
-          <Button
-            className={classNames('flex-center px-1.5', buttonClassName)}
-            data-testid="manage-button"
-            title="Manage"
-            type="default">
-            <IconDropdown className="anticon self-center manage-dropdown-icon" />
-          </Button>
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: capitalize(entityType),
+            })}>
+            <Button
+              className={classNames('flex-center px-1.5', buttonClassName)}
+              data-testid="manage-button"
+              type="default">
+              <IconDropdown className="anticon self-center manage-dropdown-icon" />
+            </Button>
+          </Tooltip>
         </Dropdown>
       ) : (
         <></>

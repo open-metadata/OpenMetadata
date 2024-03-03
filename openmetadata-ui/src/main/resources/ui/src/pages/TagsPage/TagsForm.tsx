@@ -12,7 +12,7 @@
  */
 
 import { Form, Modal, Typography } from 'antd';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
@@ -22,7 +22,7 @@ import {
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
-import { RenameFormProps } from './TagsPage.interface';
+import { RenameFormProps, SubmitProps } from './TagsPage.interface';
 
 const TagsForm = ({
   visible,
@@ -40,6 +40,7 @@ const TagsForm = ({
 }: RenameFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     form.setFieldsValue({
@@ -202,6 +203,18 @@ const TagsForm = ({
       : []),
   ];
 
+  const handleSave = async (data: SubmitProps) => {
+    try {
+      setSaving(true);
+      await onSubmit(data);
+      form.setFieldsValue(DEFAULT_FORM_VALUE);
+    } catch {
+      // Parent will handle the error
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal
       centered
@@ -212,7 +225,7 @@ const TagsForm = ({
         form: 'tags',
         type: 'primary',
         htmlType: 'submit',
-        loading: isLoading,
+        loading: isLoading || saving,
       }}
       okText={t('label.save')}
       open={visible}
@@ -232,10 +245,7 @@ const TagsForm = ({
         layout="vertical"
         name="tags"
         validateMessages={VALIDATION_MESSAGES}
-        onFinish={(data) => {
-          onSubmit(data);
-          form.setFieldsValue(DEFAULT_FORM_VALUE);
-        }}>
+        onFinish={handleSave}>
         {generateFormFields(formFields)}
       </Form>
     </Modal>

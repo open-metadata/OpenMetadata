@@ -313,9 +313,18 @@ const UserListPageV1 = () => {
             className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
-              <Tooltip placement="bottom" title={t('label.restore')}>
+              <Tooltip
+                placement={isAdminUser ? 'bottom' : 'left'}
+                title={
+                  isAdminUser
+                    ? t('label.restore-entity', {
+                        entity: t('label.user'),
+                      })
+                    : ADMIN_ONLY_ACTION
+                }>
                 <Button
                   data-testid={`restore-user-btn-${record.name}`}
+                  disabled={!isAdminUser}
                   icon={<IconRestore name={t('label.restore')} width="16px" />}
                   type="text"
                   onClick={() => {
@@ -325,7 +334,15 @@ const UserListPageV1 = () => {
                 />
               </Tooltip>
             )}
-            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
+            <Tooltip
+              placement={isAdminUser ? 'bottom' : 'left'}
+              title={
+                isAdminUser
+                  ? t('label.delete-entity', {
+                      entity: t('label.user'),
+                    })
+                  : ADMIN_ONLY_ACTION
+              }>
               <Button
                 disabled={!isAdminUser}
                 icon={
@@ -351,26 +368,28 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <Row>
-        <Col className="w-full d-flex justify-end">
-          <span>
-            <Switch
-              checked={showDeletedUser}
-              data-testid="show-deleted"
-              onClick={handleShowDeletedUserChange}
+      <PageLayoutV1 pageTitle={t('label.user-plural')}>
+        <Row className="page-container">
+          <Col className="w-full d-flex justify-end">
+            <span>
+              <Switch
+                checked={showDeletedUser}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedUserChange}
+              />
+              <span className="m-l-xs">{t('label.deleted')}</span>
+            </span>
+          </Col>
+          <Col className="mt-24" span={24}>
+            <ErrorPlaceHolder
+              heading={t('label.user')}
+              permission={isAdminUser}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={handleAddNewUser}
             />
-            <span className="m-l-xs">{t('label.deleted')}</span>
-          </span>
-        </Col>
-        <Col className="mt-24" span={24}>
-          <ErrorPlaceHolder
-            heading={t('label.user')}
-            permission={isAdminUser}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={handleAddNewUser}
-          />
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      </PageLayoutV1>
     ),
     [isAdminUser, showDeletedUser]
   );

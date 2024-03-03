@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -26,6 +31,7 @@ import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
 const Severity = ({ severity, onSubmit }: SeverityProps) => {
+  const { t } = useTranslation();
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
   const hasEditPermission = useMemo(() => {
@@ -59,12 +65,17 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
           NO_DATA_PLACEHOLDER
         )}
         {onSubmit && hasEditPermission && (
-          <Button
-            data-testid="edit-description-icon"
-            icon={<EditIcon />}
-            type="text"
-            onClick={onEditSeverity}
-          />
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.severity'),
+            })}>
+            <Button
+              data-testid="edit-severity-icon"
+              icon={<EditIcon {...ICON_DIMENSION} color={DE_ACTIVE_COLOR} />}
+              type="text"
+              onClick={onEditSeverity}
+            />
+          </Tooltip>
         )}
       </Space>
 

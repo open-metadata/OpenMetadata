@@ -25,94 +25,130 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 {% tile
     title="External Schedulers"
     description="Get more information about running the Ingestion Framework Externally"
-    link="/deployment/ingestion"
+    link="/deployment/ingestion/external"
   / %}
 {% /tilesContainer %}
 
 ## Database / DataWarehouse Services
 
-- [Athena](/connectors/database/athena)
-- [AzureSQL](/connectors/database/azuresql)
-- [BigQuery](/connectors/database/bigquery)
-- [BigTable](/connectors/database/bigtable)
-- [Clickhouse](/connectors/database/clickhouse)
-- [Couchbase](/connectors/database/couchbase)
-- [Data lake](/connectors/database/datalake)
-- [Databricks SQL](/connectors/database/databricks)
-- [DB2](/connectors/database/db2)
-- [Delta Lake](/connectors/database/deltalake)
-- [Domo Database](/connectors/database/domo-database)
-- [Druid](/connectors/database/druid)
-- [DynamoDB](/connectors/database/dynamodb)
-- [Glue](/connectors/database/glue)
-- [Greenplum](/connectors/database/greenplum)
-- [Hive](/connectors/database/hive)
-- [Iceberg](/connectors/database/iceberg)
-- [Impala](/connectors/database/impala)
-- [MariaDB](/connectors/database/mariadb)
-- [MongoDB](/connectors/database/mongodb)
-- [MSSQL](/connectors/database/mssql)
-- [MySQL](/connectors/database/mysql)
-- [Oracle](/connectors/database/oracle)
-- [PinotDB](/connectors/database/pinotdb)
-- [Postgres](/connectors/database/postgres)
-- [Presto](/connectors/database/presto)
-- [Redshift](/connectors/database/redshift)
-- [Salesforce](/connectors/database/salesforce)
-- [SAP Hana](/connectors/database/sap-hana)
-- [SAS](/connectors/database/sas)
-- [SingleStore](/connectors/database/singlestore)
-- [Snowflake](/connectors/database/snowflake)
-- [SQLite](/connectors/database/sqlite)
-- [Trino](/connectors/database/trino)
-- [Unity Catalog](/connectors/database/unity-catalog)
-- [Vertica](/connectors/database/vertica)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="Athena" stage="PROD" href="/connectors/database/athena" platform="OpenMetadata" / %}
+{% connectorInfoCard name="AzureSQL" stage="PROD" href="/connectors/database/azuresql" platform="OpenMetadata" / %}
+{% connectorInfoCard name="BigQuery" stage="PROD" href="/connectors/database/bigquery" platform="OpenMetadata" / %}
+{% connectorInfoCard name="BigTable" stage="BETA" href="/connectors/database/bigtable" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Clickhouse" stage="PROD" href="/connectors/database/clickhouse" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Couchbase" stage="BETA" href="/connectors/database/couchbase" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Datalake" stage="PROD" href="/connectors/database/datalake" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/database/databricks" platform="OpenMetadata" / %}
+{% connectorInfoCard name="DB2" stage="PROD" href="/connectors/database/db2" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Delta Lake" stage="PROD" href="/connectors/database/deltalake" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Domo" stage="PROD" href="/connectors/database/domo-database" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Druid" stage="PROD" href="/connectors/database/druid" platform="OpenMetadata" / %}
+{% connectorInfoCard name="DynamoDB" stage="PROD" href="/connectors/database/dynamodb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Glue" stage="PROD" href="/connectors/database/glue" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Greenplum" stage="BETA" href="/connectors/database/greenplum" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Hive" stage="PROD" href="/connectors/database/hive" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Iceberg" stage="BETA" href="/connectors/database/iceberg" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Impala" stage="PROD" href="/connectors/database/impala" platform="OpenMetadata" / %}
+{% connectorInfoCard name="MariaDB" stage="PROD" href="/connectors/database/mariadb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="MongoDB" stage="PROD" href="/connectors/database/mongodb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="MSSQL" stage="PROD" href="/connectors/database/mssql" platform="OpenMetadata" / %}
+{% connectorInfoCard name="MySQL" stage="PROD" href="/connectors/database/mysql" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Oracle" stage="PROD" href="/connectors/database/oracle" platform="OpenMetadata" / %}
+{% connectorInfoCard name="PinotDB" stage="PROD" href="/connectors/database/pinotdb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Postgres" stage="PROD" href="/connectors/database/postgres" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Presto" stage="PROD" href="/connectors/database/presto" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Redshift" stage="PROD" href="/connectors/database/redshift" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Salesforce" stage="PROD" href="/connectors/database/salesforce" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SAP Hana" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SAS" stage="BETA" href="/connectors/database/sas" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SingleStore" stage="PROD" href="/connectors/database/singlestore" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Snowflake" stage="PROD" href="/connectors/database/snowflake" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SQLite" stage="PROD" href="/connectors/database/sqlite" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Trino" stage="PROD" href="/connectors/database/trino" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Unity Catalog" stage="PROD" href="/connectors/database/unity-catalog" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Vertica" stage="PROD" href="/connectors/database/vertica" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}
 
 ## Dashboard Services
 
-- [Domo Dashboard](/connectors/dashboard/domo-dashboard)
-- [Looker](/connectors/dashboard/looker)
-- [Metabase](/connectors/dashboard/metabase)
-- [Mode](/connectors/dashboard/mode)
-- [PowerBI](/connectors/dashboard/powerbi)
-- [Qlik Sense](/connectors/dashboard/qliksense)
-- [QuickSight](/connectors/dashboard/quicksight)
-- [Redash](/connectors/dashboard/redash)
-- [Superset](/connectors/dashboard/superset)
-- [Tableau](/connectors/dashboard/tableau)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="Domo" stage="PROD" href="/connectors/dashboard/domo-dashboard" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Looker" stage="PROD" href="/connectors/dashboard/looker" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Metabase" stage="PROD" href="/connectors/dashboard/metabase" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Mode" stage="PROD" href="/connectors/dashboard/mode" platform="OpenMetadata" / %}
+{% connectorInfoCard name="PowerBI" stage="PROD" href="/connectors/dashboard/powerbi" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Qlik Sense" stage="PROD" href="/connectors/dashboard/qliksense" platform="OpenMetadata" / %}
+{% connectorInfoCard name="QuickSight" stage="PROD" href="/connectors/dashboard/quicksight" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Redash" stage="PROD" href="/connectors/dashboard/redash" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Superset" stage="PROD" href="/connectors/dashboard/superset" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Tableau" stage="PROD" href="/connectors/dashboard/tableau" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}
 
 ## Messaging Services
 
-- [Kafka](/connectors/messaging/kafka)
-- [Kinesis](/connectors/messaging/kinesis)
-- [Redpanda](/connectors/messaging/redpanda)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="Kafka" stage="PROD" href="/connectors/messaging/kafka" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Kinesis" stage="PROD" href="/connectors/messaging/kinesis" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Redpanda" stage="PROD" href="/connectors/messaging/redpanda" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}
 
 ## Pipeline Services
 
-- [Airbyte](/connectors/pipeline/airbyte)
-- [Airflow](/connectors/pipeline/airflow)
-- [Dagster](/connectors/pipeline/dagster)
-- [Databricks Pipeline](/connectors/pipeline/databricks-pipeline)
-- [Domo Pipeline](/connectors/pipeline/domo-pipeline)
-- [Fivetran](/connectors/pipeline/fivetran)
-- [Glue](/connectors/pipeline/glue-pipeline)
-- [NiFi](/connectors/pipeline/nifi)
-- [Spline](/connectors/pipeline/spline)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="Airbyte" stage="PROD" href="/connectors/pipeline/airbyte" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Airflow" stage="PROD" href="/connectors/pipeline/airflow" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Dagster" stage="PROD" href="/connectors/pipeline/dagster" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/pipeline/databricks-pipeline" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Domo" stage="PROD" href="/connectors/pipeline/domo-pipeline" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Fivetran" stage="PROD" href="/connectors/pipeline/fivetran" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Glue" stage="PROD" href="/connectors/pipeline/glue-pipeline" platform="OpenMetadata" / %}
+{% connectorInfoCard name="NiFi" stage="PROD" href="/connectors/pipeline/nifi" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Spline" stage="BETA" href="/connectors/pipeline/spline" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}
+
 
 ## ML Model Services
 
-- [MLflow](/connectors/ml-model/mlflow)
-- [Sagemaker](/connectors/ml-model/sagemaker)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="MLflow" stage="PROD" href="/connectors/ml-model/mlflow" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Sagemaker" stage="PROD" href="/connectors/ml-model/sagemaker" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}
 
 ## Storage Services
 
-- [S3](/connectors/storage/s3)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="S3" stage="PROD" href="/connectors/storage/s3" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}
+
 
 ## Metadata Services
 
-- [Amundsen](/connectors/metadata/amundsen)
-- [Atlas](/connectors/metadata/atlas)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="Amundsen" stage="PROD" href="/connectors/metadata/amundsen" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Atlas" stage="PROD" href="/connectors/metadata/atlas" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Alation" stage="PROD" href="/connectors/metadata/alation" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}
+
 
 ## Search Services
 
-- [Elasticsearch](/connectors/search/elasticsearch)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="Elasticsearch" stage="PROD" href="/connectors/search/elasticsearch" platform="OpenMetadata" / %}
+
+{% /connectorsListContainer %}

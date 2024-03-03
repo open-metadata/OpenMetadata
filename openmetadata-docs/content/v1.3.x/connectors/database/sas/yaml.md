@@ -3,7 +3,13 @@ title: Run the SAS Connector Externally
 slug: /connectors/database/sas/yaml
 ---
 
-# Run the SAS Connector Externally
+{% connectorDetailsHeader
+name="SAS"
+stage="BETA"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the SAS connector.
 

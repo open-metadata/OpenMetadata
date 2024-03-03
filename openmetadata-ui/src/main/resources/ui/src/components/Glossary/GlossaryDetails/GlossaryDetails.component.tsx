@@ -85,7 +85,7 @@ const GlossaryDetails = ({
         ...glossary,
         description: updatedHTML,
       };
-      handleGlossaryUpdate(updatedGlossaryDetails);
+      await handleGlossaryUpdate(updatedGlossaryDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -179,9 +179,10 @@ const GlossaryDetails = ({
             entityType={EntityType.GLOSSARY_TERM}
             isVersionView={isVersionView}
             permissions={permissions}
+            refreshGlossaryTerms={refreshGlossaryTerms}
             selectedData={glossary}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+            onUpdate={handleGlossaryUpdate}
           />
         </Col>
       </Row>
@@ -262,7 +263,7 @@ const GlossaryDetails = ({
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
-          onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+          onUpdate={handleGlossaryUpdate}
         />
       </Col>
       <Col span={24}>

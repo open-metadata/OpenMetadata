@@ -40,11 +40,14 @@ import {
   formatDate,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
-import { getEntityFqnFromEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
@@ -141,6 +144,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'name',
         key: 'name',
         width: 300,
+        sorter: (a, b) => a.name.localeCompare(b.name),
+        sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
           const urlData = {
@@ -166,14 +171,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       ...(showTableColumn
-        ? [
+        ? ([
             {
               title: t('label.table'),
               dataIndex: 'entityLink',
               key: 'table',
               width: 150,
               render: (entityLink: string) => {
-                const tableFqn = getEntityFqnFromEntityLink(entityLink);
+                const tableFqn = getEntityFQN(entityLink);
                 const name = getNameFromFQN(tableFqn);
 
                 return (
@@ -190,8 +195,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   </Link>
                 );
               },
+              sorter: (a, b) => {
+                // Extract table name from entity link
+                const tableAFqn = getEntityFQN(a.entityLink);
+                const tableA = getNameFromFQN(tableAFqn);
+                const tableBFqn = getEntityFQN(b.entityLink);
+                const tableB = getNameFromFQN(tableBFqn);
+
+                return tableA.localeCompare(tableB);
+              },
+              sortDirections: ['ascend', 'descend'],
             },
-          ]
+          ] as ColumnsType<TestCase>)
         : []),
       {
         title: t('label.column'),
@@ -201,8 +216,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
           if (isColumn) {
-            const name = getNameFromFQN(
-              replacePlus(getEntityFqnFromEntityLink(entityLink, isColumn))
+            const name = replacePlus(
+              getColumnNameFromEntityLink(entityLink) ?? ''
             );
 
             return name;
@@ -210,6 +225,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           return '--';
         },
+        sorter: (a, b) => {
+          // Extract column name from entity link if available
+          const columnA = a.entityLink.includes('::columns::')
+            ? replacePlus(getColumnNameFromEntityLink(a.entityLink))
+            : '--';
+
+          const columnB = b.entityLink.includes('::columns::')
+            ? replacePlus(getColumnNameFromEntityLink(b.entityLink))
+            : '--';
+
+          return columnA.localeCompare(columnB);
+        },
+        sortDirections: ['ascend', 'descend'],
       },
       {
         title: t('label.last-run'),
@@ -273,7 +301,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           return (
             <Row align="middle">
               <Tooltip
-                placement="bottomRight"
                 title={
                   testCaseEditPermission
                     ? t('label.edit')
@@ -296,7 +323,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
               {removeFromTestSuite ? (
                 <Tooltip
-                  placement="bottomLeft"
                   title={
                     testCaseDeletePermission
                       ? t('label.remove')
@@ -318,7 +344,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </Tooltip>
               ) : (
                 <Tooltip
-                  placement="bottomLeft"
                   title={
                     testCaseDeletePermission
                       ? t('label.delete')

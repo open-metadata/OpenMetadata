@@ -335,6 +335,12 @@
       <version>2.40</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.25.3</version>
+      <scope>test</scope>
+    </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
     <dependency>
       <groupId>javax.json</groupId>
@@ -610,6 +616,7 @@
                   <phase>test</phase>
                   <configuration>
                     <includes>
+                      <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
                     </includes>
                   </configuration>
@@ -649,6 +656,7 @@
                   <phase>test</phase>
                   <configuration>
                     <includes>
+                      <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
                     </includes>
                   </configuration>
