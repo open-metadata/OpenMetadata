@@ -11,46 +11,92 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Query } from '../../../../generated/entity/data/query';
+import {
+  LabelType,
+  State,
+  TagSource,
+} from '../../../../generated/type/tagLabel';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import TableQueryRightPanel from './TableQueryRightPanel.component';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
 
+const mockQueryUpdate = jest.fn();
 const mockProps: TableQueryRightPanelProps = {
   query: MOCK_QUERIES[0] as Query,
   isLoading: false,
   permission: MOCK_PERMISSIONS,
-  onQueryUpdate: jest.fn(),
+  onQueryUpdate: mockQueryUpdate,
 };
 
+const mockNewOwner = {
+  id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
+  type: 'user',
+  name: 'new_owner',
+  fullyQualifiedName: 'new_owner',
+  displayName: 'New Owner',
+  deleted: false,
+  href: 'http://localhost:8585/api/v1/users/471353cb-f925-4c4e-be6c-14da2c0b00ce',
+};
+
+const mockNewTag = [
+  {
+    description: 'new-description',
+    displayName: 'new-displayName',
+    labelType: LabelType.Derived,
+    name: 'test tag',
+    source: TagSource.Glossary,
+    state: State.Confirmed,
+    tagFQN: 'test tag',
+  },
+];
 jest.mock(
   '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
-    UserTeamSelectableList: jest
-      .fn()
-      .mockImplementation(() => <div>UserTeamSelectableList</div>),
+    UserTeamSelectableList: jest.fn().mockImplementation(({ onUpdate }) => (
+      <div>
+        UserTeamSelectableList
+        <button
+          data-testid="update-button"
+          onClick={() => onUpdate(mockNewOwner)}>
+          onUpdate button
+        </button>
+      </div>
+    )),
   })
 );
-jest.mock('../../../common/EntityDescription/Description', () => {
-  return jest.fn().mockImplementation(() => <div>Description.component</div>);
+jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
+  return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
+    <div>
+      Description.component
+      <button
+        data-testid="update-description-button"
+        onClick={() => onDescriptionUpdate('new description')}
+      />
+    </div>
+  ));
 });
 jest.mock('../../../TagsInput/TagsInput.component', () => {
-  return jest.fn().mockImplementation(() => <div>TagsInput.component</div>);
+  return jest.fn().mockImplementation(({ onTagsUpdate }) => (
+    <div>
+      TagsInput.component
+      <button
+        data-testid="update-tags-button"
+        onClick={() => onTagsUpdate(mockNewTag)}>
+        {' '}
+        Update Tags
+      </button>
+    </div>
+  ));
 });
 jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('../../../../utils/TagsUtils', () => ({
-  fetchTagsAndGlossaryTerms: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: [] })),
-}));
-
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <>testProfilePicture</>);
 });
@@ -62,14 +108,8 @@ describe('TableQueryRightPanel component test', () => {
     });
     const owner = await screen.findByTestId('owner-link');
 
-    expect(
-      await screen.findByTestId('owner-name-container')
-    ).toBeInTheDocument();
     expect(owner).toBeInTheDocument();
     expect(owner.textContent).toEqual(MOCK_QUERIES[0].owner?.displayName);
-    expect(
-      await screen.findByTestId('edit-description-btn')
-    ).toBeInTheDocument();
     expect(
       await screen.findByText('Description.component')
     ).toBeInTheDocument();
@@ -92,23 +132,67 @@ describe('TableQueryRightPanel component test', () => {
     expect(editDescriptionBtn).not.toBeInTheDocument();
   });
 
-  it('If Edit All permission is granted, editing of the Owner, Description, and tags should not be disabled.', async () => {
-    render(<TableQueryRightPanel {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const editDescriptionBtn = await screen.findByTestId(
-      'edit-description-btn'
-    );
-
-    expect(editDescriptionBtn).not.toBeDisabled();
-  });
-
   it('Loader should visible', async () => {
     render(<TableQueryRightPanel {...mockProps} isLoading />, {
       wrapper: MemoryRouter,
     });
 
     expect(await screen.findByText('Loader')).toBeInTheDocument();
+  });
+
+  it('call onupdate owner', async () => {
+    render(<TableQueryRightPanel {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+    const updateButton = await screen.findByTestId('update-button');
+    await act(async () => {
+      fireEvent.click(updateButton);
+    });
+
+    expect(mockQueryUpdate).toHaveBeenCalledWith(
+      {
+        ...MOCK_QUERIES[0],
+        owner: mockNewOwner,
+      },
+      'owner'
+    );
+  });
+
+  it('call description update', async () => {
+    render(<TableQueryRightPanel {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+    const updateDescriptionButton = await screen.findByTestId(
+      'update-description-button'
+    );
+    await act(async () => {
+      fireEvent.click(updateDescriptionButton);
+    });
+
+    expect(mockQueryUpdate).toHaveBeenCalledWith(
+      {
+        ...MOCK_QUERIES[0],
+        description: 'new description',
+      },
+      'description'
+    );
+  });
+
+  it('call tags update', async () => {
+    render(<TableQueryRightPanel {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+    const updateTagsButton = await screen.findByTestId('update-tags-button');
+    await act(async () => {
+      fireEvent.click(updateTagsButton);
+    });
+
+    expect(mockQueryUpdate).toHaveBeenCalledWith(
+      {
+        ...MOCK_QUERIES[0],
+        tags: mockNewTag,
+      },
+      'tags'
+    );
   });
 });

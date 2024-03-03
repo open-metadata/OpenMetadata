@@ -25,7 +25,6 @@ import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
@@ -105,6 +104,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
@@ -173,21 +173,6 @@ export const getEntityTags = (
       return [];
   }
 };
-
-export const getOwnerNameWithProfilePic = (
-  owner: EntityReference | undefined
-) =>
-  owner ? (
-    <div className="flex items-center gap-2">
-      {' '}
-      <ProfilePicture
-        displayName={owner.displayName}
-        name={owner.name ?? ''}
-        width="20"
-      />
-      <span>{getEntityName(owner)}</span>
-    </div>
-  ) : null;
 
 const getUsageData = (usageSummary: UsageDetails | undefined) =>
   !isNil(usageSummary?.weeklyStats?.percentileRank)
@@ -347,11 +332,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -400,11 +381,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -455,11 +432,7 @@ export const getSearchIndexOverview = (
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -493,11 +466,7 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -598,11 +567,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -675,11 +640,7 @@ const getStoredProcedureOverview = (
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -757,11 +718,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -804,11 +761,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -856,11 +809,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -1825,4 +1774,13 @@ export const columnSorter = (
   const name2 = getEntityName(col2);
 
   return name1.localeCompare(name2);
+};
+
+/**
+ * Retrieves the column name from an entity link.
+ * @param entityLink The entity link string.
+ * @returns The column name extracted from the entity link.
+ */
+export const getColumnNameFromEntityLink = (entityLink: string) => {
+  return EntityLink.getTableColumnName(entityLink);
 };

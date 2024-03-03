@@ -189,7 +189,6 @@ const TeamsInfo = ({
             </Typography.Text>
             {hasEditPermission && (
               <Tooltip
-                placement="right"
                 title={
                   hasEditPermission
                     ? t('label.edit-entity', {
@@ -241,23 +240,28 @@ const TeamsInfo = ({
             </Typography.Text>
 
             {hasEditPermission && (
-              <Icon
-                className={classNames('vertical-middle m-l-xs', {
-                  'opacity-50': isGroupType,
-                })}
-                data-testid="edit-team-type-icon"
-                title={
-                  isGroupType
-                    ? t('message.group-team-type-change-message')
-                    : t('label.edit-entity', {
-                        entity: t('label.team-type'),
-                      })
-                }
-                onClick={
-                  isGroupType ? undefined : () => setShowTypeSelector(true)
-                }>
-                <EditIcon />
-              </Icon>
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.team-type'),
+                })}>
+                <Icon
+                  className={classNames('vertical-middle m-l-xs', {
+                    'opacity-50': isGroupType,
+                  })}
+                  data-testid="edit-team-type-icon"
+                  title={
+                    isGroupType
+                      ? t('message.group-team-type-change-message')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
+                  }
+                  onClick={
+                    isGroupType ? undefined : () => setShowTypeSelector(true)
+                  }>
+                  <EditIcon />
+                </Icon>
+              </Tooltip>
             )}
           </>
         )}

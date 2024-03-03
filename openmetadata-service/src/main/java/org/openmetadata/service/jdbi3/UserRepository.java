@@ -63,6 +63,7 @@ import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -506,6 +507,14 @@ public class UserRepository extends EntityRepository<User> {
           String.format("Team %s of user %s is not under %s team hierarchy", userTeam, user, team);
       return String.format(
           "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
+    }
+  }
+
+  @Override
+  protected void postDelete(User entity) {
+    // If the User is bot it's token needs to be invalidated
+    if (Boolean.TRUE.equals(entity.getIsBot())) {
+      BotTokenCache.invalidateToken(entity.getName());
     }
   }
 

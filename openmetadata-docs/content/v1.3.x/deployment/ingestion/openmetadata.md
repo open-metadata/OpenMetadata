@@ -304,8 +304,7 @@ Let's remark the differences between `git-sync` and what we want to achieve by i
 
 Then, should you use `git-sync`?
 
-- If you have an existing Airflow instance, and you want to build and maintain your own ingestion DAGs ([example](https://docs.open-metadata.org/v1.0.0/connectors/database/snowflake/airflow#2.-prepare-the-ingestion-dag)),
-  then you can go for it.
+- If you have an existing Airflow instance, and you want to build and maintain your own ingestion DAGs then you can go for it. Check a DAG example [here](/deployment/ingestion/external/airflow#example).
 - If instead, you want to use the full deployment process from OpenMetadata, `git-sync` would not be the right tool, since the DAGs won't be backed up by Git, but rather created from OpenMetadata. Note that if anything
   would to happen where you might lose the Airflow volumes, etc. You can just redeploy the DAGs from OpenMetadata.
 
