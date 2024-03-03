@@ -214,7 +214,7 @@ const SignInPage = () => {
                     data-testid="email"
                     label={
                       isAuthProviderLDAP
-                        ? t('label.username')
+                        ? t('label.email')
                         : t('label.username-or-email')
                     }
                     name="email"
@@ -224,7 +224,7 @@ const SignInPage = () => {
                       autoFocus
                       placeholder={
                         isAuthProviderLDAP
-                          ? t('label.username')
+                          ? t('label.email')
                           : t('label.username-or-email')
                       }
                     />
