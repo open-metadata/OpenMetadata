@@ -9,7 +9,6 @@ from copy import deepcopy
 import requests
 
 from metadata.ingestion.source.dashboard.periscope.ometa_client import REST, ClientConfig
-from metadata.ingestion.source.dashboard.periscope.connection import PeriscopeConnection
 from metadata.ingestion.source.dashboard.periscope.models import (
     PeriscopeDashboard,
     PeriscopeDashboardList,
@@ -57,7 +56,7 @@ class PeriscopeClient:
 
     def __init__(
         self,
-        config: PeriscopeConnection,
+        config,
     ):
         self.config = config
         headers = self._check_connection()
