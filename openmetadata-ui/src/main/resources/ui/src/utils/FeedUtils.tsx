@@ -164,7 +164,7 @@ export async function suggestions(
       'isBot:false',
       'displayName.keyword',
       'asc',
-      SearchIndex.USER
+      [SearchIndex.USER, SearchIndex.TEAM]
     );
     const hits = data.data.hits.hits;
 

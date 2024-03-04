@@ -86,6 +86,7 @@
         "Admins",
         "Assignees",
         "Owners",
+        "Mentions",
         "Followers",
         "External"
       ]
