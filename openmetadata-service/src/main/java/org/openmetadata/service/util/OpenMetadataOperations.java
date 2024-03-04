@@ -60,6 +60,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -207,6 +208,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       printChangeLog();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
@@ -286,6 +289,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
         deployPipeline(pipeline, pipelineServiceClient, pipelineStatuses);
       }
       printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to deploy pipelines due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "migrate-secrets",
+      description =
+          "Migrate secrets from DB to the configured Secrets Manager. "
+              + "Note that this does not support migrating between external Secrets Managers")
+  public Integer migrateSecrets() {
+    try {
+      LOG.info("Migrating Secrets from DB...");
+      parseConfig();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
