@@ -184,6 +184,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
       searchRepository.createIndexes();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
@@ -210,6 +211,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
@@ -455,7 +457,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
-    Entity.cleanup();
   }
 
   private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {

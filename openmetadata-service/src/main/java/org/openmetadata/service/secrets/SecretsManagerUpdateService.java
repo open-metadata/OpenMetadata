@@ -196,7 +196,6 @@ public class SecretsManagerUpdateService {
       }
       return Optional.empty();
     } catch (EntityNotFoundException e) {
-      LOG.debug(String.format("Can't load repository for entityType [%s]", entityType));
       return Optional.empty();
     }
   }
