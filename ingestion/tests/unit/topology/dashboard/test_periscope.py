@@ -113,7 +113,7 @@ mock_config = {
 class PeriscopeUnitTest(TestCase):
     """
     Implements the necessary methods to extract
-    Domo Dashboard Unit Test
+    Periscope Dashboard Unit Test
     """
 
     @patch(
