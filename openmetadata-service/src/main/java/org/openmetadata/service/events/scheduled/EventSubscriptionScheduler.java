@@ -132,7 +132,7 @@ public class EventSubscriptionScheduler {
   private Trigger trigger(EventSubscription eventSubscription) {
     return TriggerBuilder.newTrigger()
         .withIdentity(eventSubscription.getId().toString(), ALERT_TRIGGER_GROUP)
-        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(3))
+        .withSchedule(SimpleScheduleBuilder.repeatMinutelyForever(1))
         .startNow()
         .build();
   }
