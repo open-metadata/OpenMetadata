@@ -44,11 +44,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Setup Openmetadata Test Environment
-      uses: ./.github/actions/setup-openmetadata-test-environment
-      with:
-        python-version: 3.9
-
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
       uses: aws-actions/configure-aws-credentials@v1
@@ -56,6 +51,12 @@ jobs:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
         role-session-name: github-ci-aws-e2e-tests
         aws-region: ${{ secrets.E2E_AWS_REGION }}
+
+    - name: Setup Openmetadata Test Environment
+      uses: ./.github/actions/setup-openmetadata-test-environment
+      with:
+        python-version: 3.9
+
 
     - name: Run Python Tests & record coverage
       if: matrix.e2e-test == 'python'
