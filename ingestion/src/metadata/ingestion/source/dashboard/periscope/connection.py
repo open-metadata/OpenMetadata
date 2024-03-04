@@ -6,11 +6,47 @@ from typing import Optional
 from pydantic import BaseModel, Extra, Field
 
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.ingestion.source.dashboard.periscope.client import PeriscopeClient
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+
+def get_connection(connection: PeriscopeConnection) -> PeriscopeClient:
+    """
+    Create connection
+    """
+    return PeriscopeClient(connection)
+
+
+def test_connection(
+    metadata: OpenMetadata,
+    client: PeriscopeClient,
+    service_connection: PeriscopeConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
+
+    def custom_executor():
+        return client.get_dashboards_list()
+
+    test_fn = {"GetDashboards": custom_executor}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )
 
 
 class PeriscopeType(Enum):
     Periscope = 'Periscope'
-
 
 class PeriscopeConnection(BaseModel):
     class Config:
