@@ -11,7 +11,7 @@
   ],
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode, or Lightdash",
+      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode, Periscope or Lightdash",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
@@ -22,6 +22,7 @@
         "Metabase",
         "PowerBI",
         "Mode",
+        "Periscope",
         "CustomDashboard",
         "DomoDashboard",
         "QuickSight",
@@ -47,6 +48,9 @@
         },
         {
           "name": "PowerBI"
+        },
+        {
+          "name": "Periscope"
         },
         {
           "name": "Mode"
@@ -102,6 +106,9 @@
             },
             {
               "$ref": "./connections/dashboard/modeConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/periscopeConnection.json"
             },
             {
               "$ref": "./connections/dashboard/customDashboardConnection.json"

@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/periscopeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PeriscopeConnection",
+  "description": "Periscope Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.PeriscopeConnection",
+  "definitions": {
+    "periscopeType": {
+      "description": "Periscope service type",
+      "type": "string",
+      "enum": ["Periscope"],
+      "default": "Periscope"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/periscopeType",
+      "default": "Periscope"
+    },
+    "cookies": {
+      "title": "Cookies",
+      "description": "Cookies to connect to Periscope. This user should have privileges to read all the metadata in Periscope.",
+      "type": "string"
+    },
+    "client_id": {
+      "title": "Client ID",
+      "description": "Client ID",
+      "type": "string"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": ["client_id", "cookies"]
+}
