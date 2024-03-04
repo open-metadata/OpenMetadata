@@ -33,6 +33,7 @@ runs:
       run: |
         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
         unixodbc-dev libevent-dev python3-dev libkrb5-dev
+      shell: bash
     # ------------------------------------------------------------------------------
 
     # ---- Setup Java --------------------------------------------------------------
@@ -55,11 +56,13 @@ runs:
         source env/bin/activate
         sudo make install_antlr_cli
         make install_dev generate
+      shell: bash
 
     - name: Install Python Dependencies
       run: |
         source env/bin/activate
         make install_all install_test
+      shell: bash
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
