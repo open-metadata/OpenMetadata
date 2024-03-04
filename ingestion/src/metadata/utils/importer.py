@@ -199,14 +199,11 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
 
     if connection.type.value.lower().startswith("custom"):
 
-        python_class_parts = connection.sourcePythonClass.rsplit('.', 1)
-        python_module_path = '.'.join(python_class_parts[:-1])
+        python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
+        python_module_path = ".".join(python_class_parts[:-1])
 
         _connection_fn = import_from_module(
-            "{}.{}".format(
-                python_module_path,
-                function_name
-            )
+            "{}.{}".format(python_module_path, function_name)
         )
     else:
         _connection_fn = import_from_module(
