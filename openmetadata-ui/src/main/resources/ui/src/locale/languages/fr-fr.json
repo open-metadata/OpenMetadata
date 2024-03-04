@@ -1047,6 +1047,7 @@
     "successfully-uploaded": "Téléchargé avec succès",
     "suggest": "Suggérer",
     "suggest-entity": "Suggérer {{entity}}",
+    "suggested-description": "Suggested Description",
     "suggested-description-plural": "Suggested Descriptions",
     "suggestion": "Suggestion",
     "suggestion-lowercase-plural": "suggestions",
