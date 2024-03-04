@@ -46,10 +46,7 @@ services:
     container_name: openmetadata_elasticsearch
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
-      - indices.memory.index_buffer_size=50%
-      - indices.memory.min_index_buffer_size=96mb
-      - indices.memory.max_index_buffer_size=512mb
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
       - xpack.security.enabled=false
     networks:
       - local_app_net
