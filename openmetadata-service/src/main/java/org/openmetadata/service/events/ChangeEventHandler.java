@@ -63,6 +63,9 @@ public class ChangeEventHandler implements EventHandler {
           getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
       if (optionalChangeEvent.isPresent()) {
         ChangeEvent changeEvent = optionalChangeEvent.get();
+        if (changeEvent.getEntityType().equals(Entity.QUERY)) {
+          return null;
+        }
         // Always set the Change Event Username as context Principal, the one creating the CE
         changeEvent.setUserName(loggedInUserName);
         LOG.info(
