@@ -28,7 +28,7 @@ import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestCase, TestCaseResult } from '../../../../generated/tests/testCase';
@@ -188,7 +188,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                       pathname: getEntityDetailsPath(
                         EntityType.TABLE,
                         tableFqn,
-                        'profiler'
+                        EntityTabs.PROFILER
                       ),
                       search: QueryString.stringify({
                         activeTab: TableProfilerTab.DATA_QUALITY,

@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityDetailsPath, PAGE_SIZE } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import {
@@ -220,7 +220,7 @@ export const AddTestCaseList = ({
                         to={getEntityDetailsPath(
                           EntityType.TABLE,
                           tableFqn,
-                          'profiler'
+                          EntityTabs.PROFILER
                         )}
                         onClick={(e) => e.stopPropagation()}>
                         {tableName}

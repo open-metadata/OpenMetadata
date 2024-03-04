@@ -346,7 +346,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
       name: i18next.t('label.service'),
       value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
-        service?.name as string,
+        service?.name ?? '',
         ServiceCategory.PIPELINE_SERVICES
       ),
       isLink: true,
@@ -394,7 +394,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       name: i18next.t('label.service'),
       value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
-        service?.name as string,
+        service?.name ?? '',
         ServiceCategory.DASHBOARD_SERVICES
       ),
       isExternal: false,
@@ -437,9 +437,9 @@ export const getSearchIndexOverview = (
     },
     {
       name: i18next.t('label.service'),
-      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service?.name as string,
+        service?.name ?? '',
         ServiceCategory.SEARCH_SERVICES
       ),
       isExternal: false,
@@ -498,7 +498,7 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
       value: getEntityName(dashboard) || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DASHBOARD,
-        dashboard?.fullyQualifiedName as string
+        dashboard?.fullyQualifiedName ?? ''
       ),
       isLink: true,
       isExternal: false,
@@ -583,9 +583,9 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     },
     {
       name: i18next.t('label.service'),
-      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service?.name as string,
+        service?.name ?? '',
         ServiceCategory.DASHBOARD_SERVICES
       ),
       isExternal: false,

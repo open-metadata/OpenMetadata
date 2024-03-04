@@ -33,7 +33,7 @@ import {
   QUERY_LINE_HEIGHT,
 } from '../../../constants/Query.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useFqn } from '../../../hooks/useFqn';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
@@ -152,7 +152,7 @@ const QueryCard: FC<QueryCardProp> = ({
         pathname: getEntityDetailsPath(
           EntityType.TABLE,
           datasetFQN,
-          'table_queries'
+          EntityTabs.TABLE_QUERIES
         ),
       });
     } else {
