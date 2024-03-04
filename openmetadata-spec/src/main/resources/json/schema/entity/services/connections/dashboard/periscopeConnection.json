@@ -25,7 +25,7 @@
       "description": "Cookies to connect to Periscope. This user should have privileges to read all the metadata in Periscope.",
       "type": "string"
     },
-    "client_id": {
+    "client_site_id": {
       "title": "Client ID",
       "description": "Client ID",
       "type": "string"
