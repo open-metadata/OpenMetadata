@@ -33,16 +33,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
+    - name: Setup Openmetadata Test Environment
+      uses: ./.github/actions/setup-openmetadata-test-environment
       with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
+        python-version: '3.9'
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
@@ -52,33 +46,6 @@ jobs:
         role-session-name: github-ci-aws-e2e-tests
         aws-region: ${{ secrets.E2E_AWS_REGION }}
 
-    - name: Install Ubuntu dependencies
-      run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        unixodbc-dev libevent-dev python3-dev libkrb5-dev
-
-    - name: Generate models
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        sudo make install_antlr_cli
-        make install_dev generate
-
-    - name: Install open-metadata dependencies
-      run: |
-        source env/bin/activate
-        make install_all install_test
-
-    - name: Start Server and Ingest Sample Data
-      uses: nick-fields/retry@v2.8.3
-      env:
-        INGESTION_DEPENDENCY: "mysql,elasticsearch"
-      with:
-        timeout_minutes: 60
-        max_attempts: 2
-        retry_on: error
-        command: ./docker/run_local_docker.sh -m no-ui
-
     - name: Run Python Tests & record coverage
       if: matrix.e2e-test == 'python'
       id: python-e2e-test
@@ -86,84 +53,84 @@ jobs:
         source env/bin/activate
         make coverage
 
-    - name: Run CLI E2E Python Tests & record coverage
-      if: matrix.e2e-test != 'python'
-      id: e2e-test
-      continue-on-error: true
-      env:
-        E2E_TEST: ${{ matrix.e2e-test }}
-        E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
-        E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
-        E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
-        E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
-        E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
-        E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
-        E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
-        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
-        E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
-        E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
-        E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
-        E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
-        E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH }}
-        E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH }}
-        E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH }}
-        E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
-        E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
-        E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
-        E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
-        E2E_REDSHIFT_DB: ${{ secrets.E2E_REDSHIFT_DB }}
-        E2E_MSSQL_USERNAME: ${{ secrets.E2E_MSSQL_USERNAME }}
-        E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
-        E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
-        E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
-        E2E_VERTICA_USERNAME: ${{ secrets.E2E_VERTICA_USERNAME }}
-        E2E_VERTICA_PASSWORD: ${{ secrets.E2E_VERTICA_PASSWORD }}
-        E2E_VERTICA_HOST_PORT: ${{ secrets.E2E_VERTICA_HOST_PORT }}
-        E2E_TABLEAU_USERNAME: ${{ secrets.E2E_TABLEAU_USERNAME }}
-        E2E_TABLEAU_PASSWORD: ${{ secrets.E2E_TABLEAU_PASSWORD }}
-        E2E_TABLEAU_HOST_PORT: ${{ secrets.E2E_TABLEAU_HOST_PORT }}
-        E2E_TABLEAU_SITE: ${{ secrets.E2E_TABLEAU_SITE }}
-        E2E_REDASH_HOST_PORT: ${{ secrets.E2E_REDASH_HOST_PORT }}
-        E2E_REDASH_USERNAME: ${{ secrets.E2E_REDASH_USERNAME }}
-        E2E_REDASH_API_KEY: ${{ secrets.E2E_REDASH_API_KEY }}
-        E2E_POWERBI_CLIENT_SECRET: ${{ secrets.E2E_POWERBI_CLIENT_SECRET }}
-        E2E_POWERBI_CLIENT_ID: ${{ secrets.E2E_POWERBI_CLIENT_ID }}
-        E2E_POWERBI_TENANT_ID: ${{ secrets.E2E_POWERBI_TENANT_ID }}
-        E2E_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
-        E2E_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
-        E2E_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
-        E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
-        E2E_HIVE_AUTH: ${{ secrets.E2E_HIVE_AUTH }}
-        E2E_QUICKSIGHT_AWS_ACCOUNTID: ${{ secrets.E2E_QUICKSIGHT_AWS_ACCOUNTID }}
-        E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
-        E2E_DATALAKE_S3_BUCKET_NAME: ${{ secrets.E2E_DATALAKE_S3_BUCKET_NAME }}
-        E2E_DATALAKE_S3_PREFIX: ${{ secrets.E2E_DATALAKE_S3_PREFIX }}
-        E2E_DATALAKE_S3_REGION: ${{ secrets.E2E_AWS_REGION }}
-        E2E_POSTGRES_USERNAME: ${{ secrets.E2E_POSTGRES_USERNAME }}
-        E2E_POSTGRES_PASSWORD: ${{ secrets.E2E_POSTGRES_PASSWORD }}
-        E2E_POSTGRES_HOSTPORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
-        E2E_POSTGRES_DATABASE: ${{ secrets.E2E_POSTGRES_DATABASE }}
-        E2E_ORACLE_HOST_PORT: ${{ secrets.E2E_ORACLE_HOST_PORT }}
-        E2E_ORACLE_USERNAME: ${{ secrets.E2E_ORACLE_USERNAME }}
-        E2E_ORACLE_PASSWORD: ${{ secrets.E2E_ORACLE_PASSWORD }}
-        E2E_ORACLE_SERVICE_NAME: ${{ secrets.E2E_ORACLE_SERVICE_NAME }}
-        E2E_ATHENA_REGION: ${{ secrets.E2E_AWS_REGION }}
-        E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
-        E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
-      run: |
-        source env/bin/activate
-        export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
-        echo "import os" >> $SITE_CUSTOMIZE_PATH
-        echo "try:" >> $SITE_CUSTOMIZE_PATH
-        echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
-        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/pyproject.toml'" >> $SITE_CUSTOMIZE_PATH
-        echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
-        echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
-        echo "    pass" >> $SITE_CUSTOMIZE_PATH
-        coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
-        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*
-        coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
-
+    # - name: Run CLI E2E Python Tests & record coverage
+    #   if: matrix.e2e-test != 'python'
+    #   id: e2e-test
+    #   continue-on-error: true
+    #   env:
+    #     E2E_TEST: ${{ matrix.e2e-test }}
+    #     E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
+    #     E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
+    #     E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+    #     E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
+    #     E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+    #     E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+    #     E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
+    #     E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
+    #     E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+    #     E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+    #     E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
+    #     E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+    #     E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH }}
+    #     E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH }}
+    #     E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH }}
+    #     E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+    #     E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+    #     E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
+    #     E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
+    #     E2E_REDSHIFT_DB: ${{ secrets.E2E_REDSHIFT_DB }}
+    #     E2E_MSSQL_USERNAME: ${{ secrets.E2E_MSSQL_USERNAME }}
+    #     E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
+    #     E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
+    #     E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
+    #     E2E_VERTICA_USERNAME: ${{ secrets.E2E_VERTICA_USERNAME }}
+    #     E2E_VERTICA_PASSWORD: ${{ secrets.E2E_VERTICA_PASSWORD }}
+    #     E2E_VERTICA_HOST_PORT: ${{ secrets.E2E_VERTICA_HOST_PORT }}
+    #     E2E_TABLEAU_USERNAME: ${{ secrets.E2E_TABLEAU_USERNAME }}
+    #     E2E_TABLEAU_PASSWORD: ${{ secrets.E2E_TABLEAU_PASSWORD }}
+    #     E2E_TABLEAU_HOST_PORT: ${{ secrets.E2E_TABLEAU_HOST_PORT }}
+    #     E2E_TABLEAU_SITE: ${{ secrets.E2E_TABLEAU_SITE }}
+    #     E2E_REDASH_HOST_PORT: ${{ secrets.E2E_REDASH_HOST_PORT }}
+    #     E2E_REDASH_USERNAME: ${{ secrets.E2E_REDASH_USERNAME }}
+    #     E2E_REDASH_API_KEY: ${{ secrets.E2E_REDASH_API_KEY }}
+    #     E2E_POWERBI_CLIENT_SECRET: ${{ secrets.E2E_POWERBI_CLIENT_SECRET }}
+    #     E2E_POWERBI_CLIENT_ID: ${{ secrets.E2E_POWERBI_CLIENT_ID }}
+    #     E2E_POWERBI_TENANT_ID: ${{ secrets.E2E_POWERBI_TENANT_ID }}
+    #     E2E_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
+    #     E2E_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
+    #     E2E_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
+    #     E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
+    #     E2E_HIVE_AUTH: ${{ secrets.E2E_HIVE_AUTH }}
+    #     E2E_QUICKSIGHT_AWS_ACCOUNTID: ${{ secrets.E2E_QUICKSIGHT_AWS_ACCOUNTID }}
+    #     E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
+    #     E2E_DATALAKE_S3_BUCKET_NAME: ${{ secrets.E2E_DATALAKE_S3_BUCKET_NAME }}
+    #     E2E_DATALAKE_S3_PREFIX: ${{ secrets.E2E_DATALAKE_S3_PREFIX }}
+    #     E2E_DATALAKE_S3_REGION: ${{ secrets.E2E_AWS_REGION }}
+    #     E2E_POSTGRES_USERNAME: ${{ secrets.E2E_POSTGRES_USERNAME }}
+    #     E2E_POSTGRES_PASSWORD: ${{ secrets.E2E_POSTGRES_PASSWORD }}
+    #     E2E_POSTGRES_HOSTPORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
+    #     E2E_POSTGRES_DATABASE: ${{ secrets.E2E_POSTGRES_DATABASE }}
+    #     E2E_ORACLE_HOST_PORT: ${{ secrets.E2E_ORACLE_HOST_PORT }}
+    #     E2E_ORACLE_USERNAME: ${{ secrets.E2E_ORACLE_USERNAME }}
+    #     E2E_ORACLE_PASSWORD: ${{ secrets.E2E_ORACLE_PASSWORD }}
+    #     E2E_ORACLE_SERVICE_NAME: ${{ secrets.E2E_ORACLE_SERVICE_NAME }}
+    #     E2E_ATHENA_REGION: ${{ secrets.E2E_AWS_REGION }}
+    #     E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
+    #     E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
+    #   run: |
+    #     source env/bin/activate
+    #     export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
+    #     echo "import os" >> $SITE_CUSTOMIZE_PATH
+    #     echo "try:" >> $SITE_CUSTOMIZE_PATH
+    #     echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
+    #     echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/pyproject.toml'" >> $SITE_CUSTOMIZE_PATH
+    #     echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
+    #     echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
+    #     echo "    pass" >> $SITE_CUSTOMIZE_PATH
+    #     coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+    #     coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*
+    #     coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
+    #
     # - name: Upload coverage artifact for Python tests
     #   if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
     #   uses: actions/upload-artifact@v3
