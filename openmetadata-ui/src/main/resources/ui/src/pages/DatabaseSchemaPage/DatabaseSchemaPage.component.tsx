@@ -21,7 +21,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -96,7 +95,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-  const isMounting = useRef(true);
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -169,7 +167,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const viewDatabaseSchemaPermission = useMemo(
     () =>
       databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
-    [databaseSchemaPermission]
+    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
   );
 
   const onThreadLinkSelect = useCallback(
@@ -497,7 +495,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       fetchStoreProcedureCount();
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission, decodedDatabaseSchemaFQN]);
+  }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
@@ -509,11 +507,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     viewDatabaseSchemaPermission,
     deleted,
   ]);
-
-  // always Keep this useEffect at the end...
-  useEffect(() => {
-    isMounting.current = false;
-  }, []);
 
   const {
     editTagsPermission,

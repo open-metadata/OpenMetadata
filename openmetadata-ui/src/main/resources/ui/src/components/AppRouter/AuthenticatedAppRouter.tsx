@@ -1030,6 +1030,23 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
       />
 
+      <Route
+        exact
+        component={EntityVersionPage}
+        path={[
+          ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
+          ROUTES.ENTITY_VERSION_DETAILS,
+        ]}
+      />
+      <Route
+        component={EntityDetail}
+        path={[
+          ROUTES.ENTITY_DETAILS_WITH_SUB_TAB,
+          ROUTES.ENTITY_DETAILS_WITH_TAB,
+          ROUTES.ENTITY_DETAILS,
+        ]}
+      />
+
       <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
@@ -1049,22 +1066,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         ]}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
-      <Route
-        exact
-        component={EntityVersionPage}
-        path={[
-          ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
-          ROUTES.ENTITY_VERSION_DETAILS,
-        ]}
-      />
-      <Route
-        component={EntityDetail}
-        path={[
-          ROUTES.ENTITY_DETAILS_WITH_SUB_TAB,
-          ROUTES.ENTITY_DETAILS_WITH_TAB,
-          ROUTES.ENTITY_DETAILS,
-        ]}
-      />
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

@@ -128,6 +128,7 @@ export const DataAssetsHeader = ({
   afterDomainUpdateAction,
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
+  extraDropdownContent,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
@@ -489,6 +490,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={dataAsset.name}
                   entityType={entityType}
+                  extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
