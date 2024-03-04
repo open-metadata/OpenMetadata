@@ -319,6 +319,10 @@ public interface MessageDecorator<T> {
     }
     message.setHeader(headerMessage);
     message.setMessages(attachmentList);
+
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
+    EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
+    message.setEntityUrl(buildEntityUrl(entityLink.getEntityFQN(), entityInterface));
     return message;
   }
 
