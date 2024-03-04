@@ -23,6 +23,7 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import SuggestionsProvider from './components/Suggestions/SuggestionsProvider/SuggestionsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import ApplicationConfigProvider from './context/ApplicationConfigProvider/ApplicationConfigProvider';
@@ -52,9 +53,11 @@ const App: FC = () => {
                               <GlobalSearchProvider>
                                 <ApplicationsProvider>
                                   <DomainProvider>
-                                    <EntityExportModalProvider>
-                                      <AppRouter />
-                                    </EntityExportModalProvider>
+                                    <SuggestionsProvider>
+                                      <EntityExportModalProvider>
+                                        <AppRouter />
+                                      </EntityExportModalProvider>
+                                    </SuggestionsProvider>
                                   </DomainProvider>
                                 </ApplicationsProvider>
                               </GlobalSearchProvider>

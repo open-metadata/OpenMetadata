@@ -22,7 +22,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
@@ -1024,4 +1024,4 @@ const TableDetailsPageV1 = () => {
   );
 };
 
-export default withActivityFeed(TableDetailsPageV1);
+export default withSuggestions(TableDetailsPageV1);
