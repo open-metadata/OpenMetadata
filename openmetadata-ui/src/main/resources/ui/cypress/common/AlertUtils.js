@@ -127,7 +127,8 @@ export const addEventTypeFilter = (
   }
 };
 
-export const addUpdaterNameFilter = (
+export const addFilterWithUsersListInput = (
+  filterTestId,
   filterNumber,
   updaterName,
   exclude = false
@@ -136,9 +137,7 @@ export const addUpdaterNameFilter = (
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
-  cy.get('[data-testid="Updater Name-filter-option"]')
-    .filter(':visible')
-    .click();
+  cy.get(`[data-testid="${filterTestId}"]`).filter(':visible').click();
 
   // Search and select user
   interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
