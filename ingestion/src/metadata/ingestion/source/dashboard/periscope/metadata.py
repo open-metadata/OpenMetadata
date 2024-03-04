@@ -62,10 +62,10 @@ class PeriscopeSource(DashboardServiceSource):
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: CustomDashboardConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, CustomDashboardConnection):
+        connection: PeriscopeConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PeriscopeConnection):
             raise InvalidSourceException(
-                f"Expected CustomDashboardConnection, but got {connection}"
+                f"Expected PeriscopeConnection, but got {connection}"
             )
         return cls(config, metadata)
 
