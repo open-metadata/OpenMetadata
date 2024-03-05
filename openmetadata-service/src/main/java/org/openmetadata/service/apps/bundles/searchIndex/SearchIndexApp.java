@@ -27,6 +27,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -96,8 +97,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
 
-  public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
-    super(collectionDAO, searchRepository);
+  public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+    super(collectionDAO, searchRepository, omConfig);
   }
 
   @Override

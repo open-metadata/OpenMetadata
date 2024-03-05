@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.test;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -10,8 +11,8 @@ import org.openmetadata.service.search.SearchRepository;
 @SuppressWarnings("unused")
 public class NoOpTestApplication extends AbstractNativeApplication {
 
-  public NoOpTestApplication(CollectionDAO collectionDAO, SearchRepository searchRepository) {
-    super(collectionDAO, searchRepository);
+  public NoOpTestApplication(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+    super(collectionDAO, searchRepository, omConfig);
   }
 
   @Override

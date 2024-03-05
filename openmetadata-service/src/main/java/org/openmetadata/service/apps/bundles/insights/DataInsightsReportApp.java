@@ -42,6 +42,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
@@ -64,8 +65,8 @@ import org.quartz.JobExecutionContext;
 public class DataInsightsReportApp extends AbstractNativeApplication {
   private static final String KPI_NOT_SET = "No Kpi Set";
 
-  public DataInsightsReportApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
-    super(collectionDAO, searchRepository);
+  public DataInsightsReportApp(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+    super(collectionDAO, searchRepository , omConfig);
   }
 
   @Override

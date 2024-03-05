@@ -13,6 +13,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -29,8 +30,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private static final String SERVICE_TYPE = "Metadata";
   private static final String PIPELINE_DESCRIPTION = "OpenMetadata DataInsight Pipeline";
 
-  public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
-    super(collectionDAO, searchRepository);
+  public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+    super(collectionDAO, searchRepository , omConfig);
   }
 
   @Override

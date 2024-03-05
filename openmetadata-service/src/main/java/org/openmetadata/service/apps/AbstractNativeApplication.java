@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -45,13 +46,15 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+  protected OpenMetadataApplicationConfig omConfig;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
 
-  public AbstractNativeApplication(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+  public AbstractNativeApplication(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
+    this.omConfig = omConfig;
   }
 
   @Override

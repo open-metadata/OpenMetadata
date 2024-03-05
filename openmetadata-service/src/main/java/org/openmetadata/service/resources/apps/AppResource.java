@@ -141,7 +141,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         // Schedule
         if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
           setAppRuntimeProperties(app);
-          ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+          ApplicationHandler.installApplication(
+              app, Entity.getCollectionDAO(), searchRepository, config);
         }
       }
 
@@ -155,7 +156,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
                   installedApp.getName()));
         } else {
           setAppRuntimeProperties(appWithBot);
-          ApplicationHandler.runAppInit(appWithBot, dao, searchRepository);
+          ApplicationHandler.runAppInit(
+              appWithBot, dao, searchRepository, openMetadataApplicationConfig);
           LOG.info(String.format("Initialized installed app [%s]", installedApp.getName()));
         }
       }
@@ -583,8 +585,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
-      ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, Entity.getCollectionDAO(), searchRepository, openMetadataApplicationConfig);
+      ApplicationHandler.configureApplication(
+          app, Entity.getCollectionDAO(), searchRepository, openMetadataApplicationConfig);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -624,7 +628,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     setAppRuntimeProperties(updatedApp);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.installApplication(
-          updatedApp, Entity.getCollectionDAO(), searchRepository);
+          updatedApp, Entity.getCollectionDAO(), searchRepository, openMetadataApplicationConfig);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
@@ -659,7 +663,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     AppScheduler.getInstance().deleteScheduledApplication(app);
     setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, Entity.getCollectionDAO(), searchRepository, openMetadataApplicationConfig);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -742,7 +747,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
       App app = (App) response.getEntity();
       setAppRuntimeProperties(app);
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-        ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+        ApplicationHandler.installApplication(
+            app, Entity.getCollectionDAO(), searchRepository, openMetadataApplicationConfig);
       }
       // We don't want to store this information
       unsetAppRuntimeProperties(app);
@@ -778,7 +784,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.installApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, repository.getDaoCollection(), searchRepository, openMetadataApplicationConfig);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -814,7 +821,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // logic
     setAppRuntimeProperties(app);
     try {
-      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.configureApplication(
+          app, repository.getDaoCollection(), searchRepository, openMetadataApplicationConfig);
       return Response.status(Response.Status.OK).entity("App has been configured.").build();
     } catch (RuntimeException e) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -849,7 +857,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     setAppRuntimeProperties(app);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(
-          app, Entity.getCollectionDAO(), searchRepository);
+          app, Entity.getCollectionDAO(), searchRepository, openMetadataApplicationConfig);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -897,7 +905,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     setAppRuntimeProperties(app);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(
+          app, Entity.getCollectionDAO(), searchRepository, openMetadataApplicationConfig);
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
