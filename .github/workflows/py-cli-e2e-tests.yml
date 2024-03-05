@@ -29,7 +29,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # e2e-test: ['bigquery', 'python', 'redshift']
         e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]') }}
     environment: test
 
@@ -146,27 +145,27 @@ jobs:
         coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
         coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
-    #
-    # - name: Upload coverage artifact for Python tests
-    #   if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: coverage-${{ matrix.e2e-test }}
-    #     path: .coverage
-    #
-    # - name: Upload coverage artifact for CLI E2E tests
-    #   if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success'
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: coverage-${{ matrix.e2e-test }}
-    #     path: .coverage.${{ matrix.e2e-test }}
-    #
-    # - name: Upload tests artifact
-    #   if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success'
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: tests-${{ matrix.e2e-test }}
-    #     path: ingestion/junit/test-results-*.xml
+
+    - name: Upload coverage artifact for Python tests
+      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage
+
+    - name: Upload coverage artifact for CLI E2E tests
+      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: .coverage.${{ matrix.e2e-test }}
+
+    - name: Upload tests artifact
+      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success'
+      uses: actions/upload-artifact@v3
+      with:
+        name: tests-${{ matrix.e2e-test }}
+        path: ingestion/junit/test-results-*.xml
 
     - name: Clean Up
       run: |
@@ -174,73 +173,73 @@ jobs:
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
 
-    # - name: Slack on Failure
-    #   if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
-    #   uses: slackapi/slack-github-action@v1.23.0
-    #   with:
-    #     payload: |
-    #       {
-    #         "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
-    #       }
-    #   env:
-    #     SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
-    #     SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    - name: Slack on Failure
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
+      uses: slackapi/slack-github-action@v1.23.0
+      with:
+        payload: |
+          {
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
       if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
       run: |
         exit 1
 
-  # sonar-cloud-coverage-upload:
-  #   runs-on: ubuntu-latest
-  #   needs: py-cli-e2e-tests
-  #
-  #   steps:
-  #
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-  #
-  #     - name: Set up Python 3.9
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: 3.9
-  #
-  #     - name: Install Ubuntu dependencies
-  #       run: |
-  #         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-  #         unixodbc-dev libevent-dev python3-dev libkrb5-dev
-  #
-  #     - name: Install coverage dependencies
-  #       run: |
-  #         python3 -m venv env
-  #         source env/bin/activate
-  #         make install_all install_test
-  #
-  #     - name: Download all artifacts
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         path: artifacts
-  #
-  #     - name: Generate report
-  #       run: |
-  #         for folder in artifacts/coverage-*; do
-  #           cp -rT $folder/ . ;
-  #         done
-  #         mkdir ingestion/junit
-  #         for folder in artifacts/tests-*; do
-  #           cp -rT $folder/ ingestion/junit ;
-  #         done
-  #         source env/bin/activate
-  #         coverage combine --rcfile=ingestion/pyproject.toml --keep -a .coverage*
-  #         coverage xml --rcfile=ingestion/pyproject.toml --data-file=.coverage -o ingestion/coverage.xml
-  #         sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
-  #         sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
-  #       shell: bash
-  #
-  #     - name: Push Results to Sonar
-  #       uses: sonarsource/sonarcloud-github-action@master
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-  #       with:
-  #         projectBaseDir: ingestion/
+  sonar-cloud-coverage-upload:
+    runs-on: ubuntu-latest
+    needs: py-cli-e2e-tests
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          unixodbc-dev libevent-dev python3-dev libkrb5-dev
+
+      - name: Install coverage dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_all install_test
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Generate report
+        run: |
+          for folder in artifacts/coverage-*; do
+            cp -rT $folder/ . ;
+          done
+          mkdir ingestion/junit
+          for folder in artifacts/tests-*; do
+            cp -rT $folder/ ingestion/junit ;
+          done
+          source env/bin/activate
+          coverage combine --rcfile=ingestion/pyproject.toml --keep -a .coverage*
+          coverage xml --rcfile=ingestion/pyproject.toml --data-file=.coverage -o ingestion/coverage.xml
+          sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+          sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
+        shell: bash
+
+      - name: Push Results to Sonar
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
