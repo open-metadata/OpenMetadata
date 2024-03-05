@@ -233,11 +233,12 @@ public class ListFilter {
     String condition4 = "";
     String type = getQueryParam("testCaseType");
     if (type != null) {
-        condition4 = switch (type) {
-             case "table" -> "entityLink NOT LIKE '%::columns::%'";
+      condition4 =
+          switch (type) {
+            case "table" -> "entityLink NOT LIKE '%::columns::%'";
             case "column" -> "entityLink LIKE '%::columns::%'";
             default -> "";
-        };
+          };
     }
 
     return addCondition(cond, condition4);

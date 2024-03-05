@@ -175,17 +175,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include,
-        @Parameter(
-          description = "Filter test case by status",
-            schema = @Schema(type = "string", allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
-            @QueryParam("testCaseStatus")
-            String status,
-        @Parameter(
-                description = "Filter for test case type (e.g. column, table, all",
-                schema = @Schema(type = "string", allowableValues = {"column", "table", "all"}))
-            @QueryParam("testCaseType")
-                @DefaultValue("all")
-            String type) {
+      @Parameter(
+              description = "Filter test case by status",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
+          @QueryParam("testCaseStatus")
+          String status,
+      @Parameter(
+              description = "Filter for test case type (e.g. column, table, all",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"column", "table", "all"}))
+          @QueryParam("testCaseType")
+          @DefaultValue("all")
+          String type) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)

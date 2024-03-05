@@ -472,16 +472,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test we get the right summary for the logical test suite
 
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
-      TestSummary logicalTestSummary =
-          getTestSummary(logicalTestSuite.getId().toString());
+      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(1, logicalTestSummary.getTotal());
     }
     testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
-      TestSummary logicalTestSummary =
-          getTestSummary(logicalTestSuite.getId().toString());
+      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(2, logicalTestSummary.getTotal());
     }
     deleteEntity(testCase1.getId(), ADMIN_AUTH_HEADERS);
@@ -492,8 +490,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       TestSummary executableTestSummary =
           getTestSummary(testCase.getTestSuite().getId().toString());
       assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
-      TestSummary logicalTestSummary =
-          getTestSummary(logicalTestSuite.getId().toString());
+      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(2, logicalTestSummary.getTotal());
     }
     // check the deletion of the test case from the executable test suite
@@ -501,8 +498,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
-      TestSummary logicalTestSummary =
-          getTestSummary(logicalTestSuite.getId().toString());
+      TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       // check the deletion of the test case from the logical test suite is reflected in the summary
       assertEquals(1, logicalTestSummary.getTotal());
     }
@@ -541,22 +537,33 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Owner can see the results
-    Map<String, Object> queryParamsOne = ImmutableMap.of(
-            "limit", 10,
-            "entityLink", sensitiveColumnLink,
-            "orderByLastExecutionDate", false,
-            "fields", "*");
+    Map<String, Object> queryParamsOne =
+        ImmutableMap.of(
+            "limit",
+            10,
+            "entityLink",
+            sensitiveColumnLink,
+            "orderByLastExecutionDate",
+            false,
+            "fields",
+            "*");
     ResultList<TestCase> testCases = getTestCases(queryParamsOne, authHeaders(USER1_REF.getName()));
     assertNotNull(testCases.getData().get(0).getDescription());
     assertListNotEmpty(testCases.getData().get(0).getParameterValues());
 
     // Owner can see the results
-    Map<String, Object> queryParamsTwo = ImmutableMap.of(
-            "limit", 10,
-            "entityLink", sensitiveColumnLink,
-            "orderByLastExecutionDate", false,
-            "fields", "*");
-    ResultList<TestCase> maskedTestCases = getTestCases(queryParamsTwo, authHeaders(USER2_REF.getName()));
+    Map<String, Object> queryParamsTwo =
+        ImmutableMap.of(
+            "limit",
+            10,
+            "entityLink",
+            sensitiveColumnLink,
+            "orderByLastExecutionDate",
+            false,
+            "fields",
+            "*");
+    ResultList<TestCase> maskedTestCases =
+        getTestCases(queryParamsTwo, authHeaders(USER2_REF.getName()));
     assertNull(maskedTestCases.getData().get(0).getDescription());
     assertEquals(0, maskedTestCases.getData().get(0).getParameterValues().size());
   }
@@ -718,8 +725,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseResult.setTestCaseStatus(TestCaseStatus.Failed);
     JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
 
-    patchTestCaseResult(
-        testCase.getFullyQualifiedName(), dateToTimestamp("2021-09-09"), patch);
+    patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2021-09-09"), patch);
 
     ResultList<TestCaseResult> testCaseResultResultListUpdated =
         getTestCaseResults(
@@ -799,7 +805,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertTrue(assertTestCaseIdNotInList(logicalTestSuiteTestCases, logicalTestCaseIdToDelete));
 
     queryParams.put("testSuiteId", executableTestSuite.getId().toString());
-    ResultList<TestCase> executableTestSuiteTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    ResultList<TestCase> executableTestSuiteTestCases =
+        getTestCases(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(testCases.size(), executableTestSuiteTestCases.getData().size());
 
     // Soft Delete a test case from the executable test suite and check that it is deleted from the
@@ -896,7 +903,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         new CreateTestCase()
             .withName(test.getDisplayName())
             .withDescription(test.getDisplayName())
-            .withEntityLink(String.format("<#E::table::%s>", testSuite.getExecutableEntityReference().getFullyQualifiedName()))
+            .withEntityLink(
+                String.format(
+                    "<#E::table::%s>",
+                    testSuite.getExecutableEntityReference().getFullyQualifiedName()))
             .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
     TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -966,8 +976,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
     String original = JsonUtils.pojoToJson(testCaseResult);
     JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
-    patchTestCaseResult(
-        testCase.getFullyQualifiedName(), dateToTimestamp("2023-08-14"), patch);
+    patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2023-08-14"), patch);
 
     // add a new test case result for the 16th and check the state is correctly updated
     testCaseResult =
@@ -1024,7 +1033,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("limit", 10);
     queryParams.put("fields", "*");
     queryParams.put("orderByLastExecutionDate", false);
-    ResultList<TestCase> nonExecutionSortedTestCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    ResultList<TestCase> nonExecutionSortedTestCases =
+        getTestCases(queryParams, ADMIN_AUTH_HEADERS);
 
     TestCase lastTestCaseInList =
         nonExecutionSortedTestCases
@@ -1099,12 +1109,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         ADMIN_AUTH_HEADERS);
 
     // List all entities and use it for checking pagination
-    Map<String, Object>  queryParams = new HashMap<>();
+    Map<String, Object> queryParams = new HashMap<>();
     queryParams.put("limit", 1000000);
     queryParams.put("fields", "*");
     queryParams.put("orderByLastExecutionDate", true);
-    ResultList<TestCase> allEntities =
-        getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    ResultList<TestCase> allEntities = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
 
     paginate(maxEntities, allEntities, null);
 
@@ -1359,8 +1368,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     JsonPatch patch = JsonUtils.getJsonPatch(original, updated);
 
     assertResponse(
-        () ->
-            patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch),
+        () -> patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch),
         BAD_REQUEST,
         "Field testCaseResolutionStatusType is not allowed to be updated");
   }
@@ -1606,42 +1614,47 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void get_listTestCaseWithStatusAndType(TestInfo test) throws HttpResponseException, ParseException, IOException {
+  void get_listTestCaseWithStatusAndType(TestInfo test)
+      throws HttpResponseException, ParseException, IOException {
     TestSuite testSuite = createExecutableTestSuite(test);
 
     int testCaseEntries = 15;
 
     List<TestCase> createdTestCase = new ArrayList<>();
     for (int i = 0; i < testCaseEntries; i++) {
-      if (i%2 == 0) {
+      if (i % 2 == 0) {
         // Create column level test case
-        createdTestCase.add(createEntity(createRequest(test, i + 1)
-                .withEntityLink(TABLE_COLUMN_LINK)
-                .withTestSuite(testSuite.getFullyQualifiedName()), ADMIN_AUTH_HEADERS));
+        createdTestCase.add(
+            createEntity(
+                createRequest(test, i + 1)
+                    .withEntityLink(TABLE_COLUMN_LINK)
+                    .withTestSuite(testSuite.getFullyQualifiedName()),
+                ADMIN_AUTH_HEADERS));
         continue;
       }
-      createdTestCase.add(createEntity(createRequest(test, i + 1)
-              .withTestSuite(testSuite.getFullyQualifiedName()), ADMIN_AUTH_HEADERS));
+      createdTestCase.add(
+          createEntity(
+              createRequest(test, i + 1).withTestSuite(testSuite.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS));
     }
 
     for (int i = 0; i < testCaseEntries; i++) {
       // Even number = Failed (8), Odd number = Success (7), 9 = Aborted (1)
       TestCaseStatus result = null;
-      if (i%2 == 0) {
+      if (i % 2 == 0) {
         result = TestCaseStatus.Failed;
       } else if (i == 9) {
         result = TestCaseStatus.Aborted;
       } else {
         result = TestCaseStatus.Success;
       }
-      TestCaseResult testCaseResult = new TestCaseResult()
+      TestCaseResult testCaseResult =
+          new TestCaseResult()
               .withResult("result")
               .withTestCaseStatus(result)
               .withTimestamp(TestUtils.dateToTimestamp("2024-01-01"));
       putTestCaseResult(
-          createdTestCase.get(i).getFullyQualifiedName(),
-          testCaseResult,
-          ADMIN_AUTH_HEADERS);
+          createdTestCase.get(i).getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
 
     Map<String, Object> queryParams = new HashMap<>();
@@ -1676,7 +1689,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Assert we get 8 table level test cases
     queryParams.put("testCaseType", "table");
     testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(7 , testCases.getData().size());
+    assertEquals(7, testCases.getData().size());
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
@@ -1689,27 +1702,26 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
-            tableResourceTest
-                    .createRequest(test)
-                    .withName(test.getDisplayName())
-                    .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-                    .withOwner(USER1_REF)
-                    .withColumns(
-                            List.of(
-                                    new Column()
-                                            .withName(C1)
-                                            .withDisplayName("c1")
-                                            .withDataType(ColumnDataType.VARCHAR)
-                                            .withDataLength(10)))
-                    .withOwner(USER1_REF);
+        tableResourceTest
+            .createRequest(test)
+            .withName(test.getDisplayName())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withOwner(USER1_REF)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withOwner(USER1_REF);
     Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite =
-            testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
-            testSuiteResourceTest.createExecutableTestSuite(
-                    createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createExecutableTestSuite(
+            createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     return executableTestSuite;
-
   }
 
   private void deleteLogicalTestCase(TestSuite testSuite, UUID testCaseId) throws IOException {
@@ -1742,16 +1754,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCase.class, authHeaders);
   }
 
-  private TestSummary getTestSummary(String testSuiteId)
-      throws IOException {
+  private TestSummary getTestSummary(String testSuiteId) throws IOException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     return testSuiteResourceTest.getTestSummary(ADMIN_AUTH_HEADERS, testSuiteId);
   }
 
   public ResultList<TestCase> getTestCases(
-          Map<String, Object> queryParams,
-          Map<String, String> authHeaders
-  ) throws HttpResponseException {
+      Map<String, Object> queryParams, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection();
     for (Map.Entry<String, Object> entry : queryParams.entrySet()) {
       if (entry.getValue() == null || entry.getValue().toString().isEmpty()) {
@@ -1762,8 +1772,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
   }
 
-  private TestCaseResult patchTestCaseResult(
-      String testCaseFqn, Long timestamp, JsonPatch patch)
+  private TestCaseResult patchTestCaseResult(String testCaseFqn, Long timestamp, JsonPatch patch)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + testCaseFqn + "/testCaseResult/" + timestamp);
     return TestUtils.patch(target, patch, TestCaseResult.class, ADMIN_AUTH_HEADERS);
@@ -1825,8 +1834,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         queryParams.put("fields", "*");
         queryParams.put("testSuiteId", testSuite == null ? "" : testSuite.getId().toString());
         queryParams.put("orderByLastExecutionDate", true);
-        forwardPage =
-            getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+        forwardPage = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
         after = forwardPage.getPaging().getAfter();
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
@@ -1838,7 +1846,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           queryParams.remove("after");
           queryParams.put("before", before);
           backwardPage = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
-//          getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+          //          getTestCases(queryParams, ADMIN_AUTH_HEADERS);
           assertEntityPagination(
               allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
         }
@@ -1851,15 +1859,21 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       pageCount = 0;
       indexInAllTables = totalRecords - limit - forwardPage.getData().size();
       do {
-        Map<String, Object> queryParams = ImmutableMap.of(
-                "limit", limit,
-                "before", before == null ? "" : before,
-                "fields", "*",
-                "testSuiteId", testSuite == null ? "" : testSuite.getId().toString(),
-                "includeAllTests", false,
-                "orderByLastExecutionDate", true);
-        forwardPage =
-            getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+        Map<String, Object> queryParams =
+            ImmutableMap.of(
+                "limit",
+                limit,
+                "before",
+                before == null ? "" : before,
+                "fields",
+                "*",
+                "testSuiteId",
+                testSuite == null ? "" : testSuite.getId().toString(),
+                "includeAllTests",
+                false,
+                "orderByLastExecutionDate",
+                true);
+        forwardPage = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
         pageCount++;
@@ -2007,8 +2021,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
-      UUID testCaseFailureStatusId, JsonPatch patch)
-      throws HttpResponseException {
+      UUID testCaseFailureStatusId, JsonPatch patch) throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
     return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
   }
