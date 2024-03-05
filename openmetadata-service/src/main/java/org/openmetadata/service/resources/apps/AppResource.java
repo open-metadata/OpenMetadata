@@ -618,6 +618,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           JsonPatch patch)
       throws SchedulerException {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    // Remove the previous initialized instance and delete app
+    removeUninstalledApp(app.getClassName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
@@ -656,6 +658,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    // Remove the previous initialized instance and delete app
+    removeUninstalledApp(app.getClassName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
