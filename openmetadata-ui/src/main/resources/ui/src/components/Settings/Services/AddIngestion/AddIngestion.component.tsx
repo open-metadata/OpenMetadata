@@ -26,6 +26,7 @@ import {
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getIngestionFrequency } from '../../../../utils/CommonUtils';
+import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -163,7 +164,8 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: { ...rest },
+        // clean the data to remove empty fields
+        config: { ...cleanWorkFlowData(rest) },
       },
     };
 
@@ -204,8 +206,11 @@ const AddIngestion = ({
           : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
-              {}),
+            // clean the data to remove empty fields
+            ...cleanWorkFlowData(
+              omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
+                {}
+            ),
           },
         },
       };

@@ -22,7 +22,7 @@ import APIClient from './index';
 export const getTypeListByCategory = async (category: Category) => {
   const path = `/metadata/types`;
 
-  const params = { category, limit: '12' };
+  const params = { category, limit: '20' };
 
   const response = await APIClient.get<{ data: Type[]; paging: Paging }>(path, {
     params,
