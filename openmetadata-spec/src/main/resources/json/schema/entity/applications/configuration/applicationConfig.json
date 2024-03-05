@@ -25,10 +25,6 @@
       "oneOf": [
         {
           "$ref": "./private/external/metaPilotAppPrivateConfig.json"
-        },
-        {
-          "type": "object",
-          "additionalProperties": true
         }
       ]
     }
