@@ -14,6 +14,10 @@ on:
   schedule:
     - cron:  '0 0 * * *'
   workflow_dispatch:
+    input:
+      e2e-tests:
+        description: "E2E Tests to run"
+        type: string
 
 permissions:
   id-token: write
@@ -25,21 +29,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
-        e2e-test: ['bigquery', 'python', 'redshift']
+        # e2e-test: ['bigquery', 'python', 'redshift']
+        e2e-test: ${{ fromJSON(inputs.e2e-tests) || ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project'] }}
     environment: test
 
     steps:
-    # - name: Free Disk Space (Ubuntu)
-    #   uses: jlumbroso/free-disk-space@main
-    #   with:
-    #     tool-cache: false
-    #     android: true
-    #     dotnet: true
-    #     haskell: true
-    #     large-packages: false
-    #     swap-storage: true
-    #     docker-images: false
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        swap-storage: true
+        docker-images: false
 
     - name: Checkout
       uses: actions/checkout@v3

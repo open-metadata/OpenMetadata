@@ -9,14 +9,6 @@ inputs:
 runs:
   using: composite
   steps:
-    # ---- Checkout Repository -----------------------------------------------------
-    # - name: Checkout
-    #   uses: actions/checkout@v3
-    #   with:
-    #     ref: ${{ inputs.checkout-ref }}
-    #     fetch-depth: 0
-    # ------------------------------------------------------------------------------
-
     # ---- Install Ubuntu Dependencies ---------------------------------------------
     - name: Install Ubuntu dependencies
       run: |
