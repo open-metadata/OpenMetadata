@@ -103,6 +103,7 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from '../../rest/topicsAPI';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
@@ -185,76 +186,9 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchEntityPermissions = useCallback(async () => {
     setIsLoading(true);
     try {
-      switch (entityType) {
-        case EntityType.TABLE: {
-          await fetchResourcePermission(ResourceEntity.TABLE);
-
-          break;
-        }
-        case EntityType.TOPIC: {
-          await fetchResourcePermission(ResourceEntity.TOPIC);
-
-          break;
-        }
-        case EntityType.DASHBOARD: {
-          await fetchResourcePermission(ResourceEntity.DASHBOARD);
-
-          break;
-        }
-        case EntityType.PIPELINE: {
-          await fetchResourcePermission(ResourceEntity.PIPELINE);
-
-          break;
-        }
-        case EntityType.MLMODEL: {
-          await fetchResourcePermission(ResourceEntity.ML_MODEL);
-
-          break;
-        }
-        case EntityType.CONTAINER: {
-          await fetchResourcePermission(ResourceEntity.CONTAINER);
-
-          break;
-        }
-        case EntityType.SEARCH_INDEX: {
-          await fetchResourcePermission(ResourceEntity.SEARCH_INDEX);
-
-          break;
-        }
-        case EntityType.DASHBOARD_DATA_MODEL: {
-          await fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
-
-          break;
-        }
-        case EntityType.STORED_PROCEDURE: {
-          await fetchResourcePermission(ResourceEntity.STORED_PROCEDURE);
-
-          break;
-        }
-        case EntityType.DATABASE: {
-          await fetchResourcePermission(ResourceEntity.DATABASE);
-
-          break;
-        }
-        case EntityType.DATABASE_SCHEMA: {
-          await fetchResourcePermission(ResourceEntity.DATABASE_SCHEMA);
-
-          break;
-        }
-        case EntityType.GLOSSARY_TERM: {
-          await fetchResourcePermission(ResourceEntity.GLOSSARY_TERM);
-
-          break;
-        }
-        case EntityType.DATA_PRODUCT: {
-          await fetchResourcePermission(ResourceEntity.DATA_PRODUCT);
-
-          break;
-        }
-        default: {
-          break;
-        }
-      }
+      await fetchResourcePermission(
+        entityUtilClassBase.getResourceEntityFromEntityType(entityType)
+      );
     } finally {
       setIsLoading(false);
     }
@@ -699,7 +633,7 @@ const EntityVersionPage: FunctionComponent = () => {
       }
 
       default:
-        return null;
+        return entityUtilClassBase.getEntityDetailComponent(entityType);
     }
   };
 

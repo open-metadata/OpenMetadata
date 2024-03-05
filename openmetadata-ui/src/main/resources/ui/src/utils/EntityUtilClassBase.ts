@@ -19,6 +19,7 @@ import {
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
@@ -203,7 +204,7 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityDetailComponent(entityType: EntityType) {
+  public getEntityDetailComponent(entityType: string) {
     switch (entityType) {
       case EntityType.DATABASE:
         return DatabaseDetailsPage;
@@ -230,6 +231,53 @@ class EntityUtilClassBase {
       case EntityType.TABLE:
       default:
         return TableDetailsPageV1;
+    }
+  }
+
+  public getResourceEntityFromEntityType(entityType: string) {
+    switch (entityType) {
+      case EntityType.TABLE: {
+        return ResourceEntity.TABLE;
+      }
+      case EntityType.TOPIC: {
+        return ResourceEntity.TOPIC;
+      }
+      case EntityType.DASHBOARD: {
+        return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.PIPELINE: {
+        return ResourceEntity.PIPELINE;
+      }
+      case EntityType.MLMODEL: {
+        return ResourceEntity.ML_MODEL;
+      }
+      case EntityType.CONTAINER: {
+        return ResourceEntity.CONTAINER;
+      }
+      case EntityType.SEARCH_INDEX: {
+        return ResourceEntity.SEARCH_INDEX;
+      }
+      case EntityType.DASHBOARD_DATA_MODEL: {
+        return ResourceEntity.DASHBOARD_DATA_MODEL;
+      }
+      case EntityType.STORED_PROCEDURE: {
+        return ResourceEntity.STORED_PROCEDURE;
+      }
+      case EntityType.DATABASE: {
+        return ResourceEntity.DATABASE;
+      }
+      case EntityType.DATABASE_SCHEMA: {
+        return ResourceEntity.DATABASE_SCHEMA;
+      }
+      case EntityType.GLOSSARY_TERM: {
+        return ResourceEntity.GLOSSARY_TERM;
+      }
+      case EntityType.DATA_PRODUCT: {
+        return ResourceEntity.DATA_PRODUCT;
+      }
+      default: {
+        return ResourceEntity.TABLE;
+      }
     }
   }
 }
