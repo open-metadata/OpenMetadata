@@ -766,27 +766,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestSuite logicalTestSuite =
         testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
     // Create an executable test suite
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable tableReq =
-        tableResourceTest
-            .createRequest(test)
-            .withName(test.getDisplayName())
-            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
-            .withColumns(
-                List.of(
-                    new Column()
-                        .withName(C1)
-                        .withDisplayName("c1")
-                        .withDataType(ColumnDataType.VARCHAR)
-                        .withDataLength(10)))
-            .withOwner(USER1_REF);
-    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
-    CreateTestSuite createExecutableTestSuite =
-        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
-    TestSuite executableTestSuite =
-        testSuiteResourceTest.createExecutableTestSuite(
-            createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite executableTestSuite = createExecutableTestSuite(test);
 
     List<TestCase> testCases = new ArrayList<>();
 
@@ -909,35 +889,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   void test_testCaseResultState(TestInfo test) throws IOException, ParseException {
     // Create table for our test
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable tableReq =
-        tableResourceTest
-            .createRequest(test)
-            .withName(test.getDisplayName())
-            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
-            .withColumns(
-                List.of(
-                    new Column()
-                        .withName(C1)
-                        .withDisplayName("c1")
-                        .withDataType(ColumnDataType.VARCHAR)
-                        .withDataLength(10)))
-            .withOwner(USER1_REF);
-    Table testTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
-    // create testSuite
-    CreateTestSuite createExecutableTestSuite =
-        testSuiteResourceTest.createRequest(testTable.getFullyQualifiedName());
-    TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(
-            createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = createExecutableTestSuite(test);
 
     // create testCase
     CreateTestCase createTestCase =
         new CreateTestCase()
             .withName(test.getDisplayName())
             .withDescription(test.getDisplayName())
-            .withEntityLink(String.format("<#E::table::%s>", testTable.getFullyQualifiedName()))
+            .withEntityLink(String.format("<#E::table::%s>", testSuite.getExecutableEntityReference().getFullyQualifiedName()))
             .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
     TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -1646,10 +1605,111 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotNull(severity);
   }
 
+  @Test
+  void get_listTestCaseWithStatusAndType(TestInfo test) throws HttpResponseException, ParseException, IOException {
+    TestSuite testSuite = createExecutableTestSuite(test);
+
+    int testCaseEntries = 15;
+
+    List<TestCase> createdTestCase = new ArrayList<>();
+    for (int i = 0; i < testCaseEntries; i++) {
+      if (i%2 == 0) {
+        // Create column level test case
+        createdTestCase.add(createEntity(createRequest(test, i + 1)
+                .withEntityLink(TABLE_COLUMN_LINK)
+                .withTestSuite(testSuite.getFullyQualifiedName()), ADMIN_AUTH_HEADERS));
+        continue;
+      }
+      createdTestCase.add(createEntity(createRequest(test, i + 1)
+              .withTestSuite(testSuite.getFullyQualifiedName()), ADMIN_AUTH_HEADERS));
+    }
+
+    for (int i = 0; i < testCaseEntries; i++) {
+      // Even number = Failed (8), Odd number = Success (7), 9 = Aborted (1)
+      TestCaseStatus result = null;
+      if (i%2 == 0) {
+        result = TestCaseStatus.Failed;
+      } else if (i == 9) {
+        result = TestCaseStatus.Aborted;
+      } else {
+        result = TestCaseStatus.Success;
+      }
+      TestCaseResult testCaseResult = new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(result)
+              .withTimestamp(TestUtils.dateToTimestamp("2024-01-01"));
+      putTestCaseResult(
+          createdTestCase.get(i).getFullyQualifiedName(),
+          testCaseResult,
+          ADMIN_AUTH_HEADERS);
+    }
+
+    Map<String, Object> queryParams = new HashMap<>();
+    queryParams.put("limit", 100);
+    queryParams.put("testSuiteId", testSuite.getId().toString());
+    // Assert we get all 15 test cases
+    ResultList<TestCase> testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(testCaseEntries, testCases.getData().size());
+
+    // Assert we get 8 failed test cases
+    queryParams.put("testCaseStatus", TestCaseStatus.Failed);
+    testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(8, testCases.getData().size());
+
+    // Assert we get 7 success test cases
+    queryParams.put("testCaseStatus", TestCaseStatus.Success);
+    testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(6, testCases.getData().size());
+
+    // Assert we get 1 aborted test cases
+    queryParams.put("testCaseStatus", TestCaseStatus.Aborted);
+    testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, testCases.getData().size());
+
+    queryParams.remove("testCaseStatus");
+
+    // Assert we get 7 column level test cases
+    queryParams.put("testCaseType", "column");
+    testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(8, testCases.getData().size());
+
+    // Assert we get 8 table level test cases
+    queryParams.put("testCaseType", "table");
+    testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(7 , testCases.getData().size());
+  }
+
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);
     TestUtils.delete(target, authHeaders);
+  }
+
+  private TestSuite createExecutableTestSuite(TestInfo test) throws IOException {
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+            tableResourceTest
+                    .createRequest(test)
+                    .withName(test.getDisplayName())
+                    .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+                    .withOwner(USER1_REF)
+                    .withColumns(
+                            List.of(
+                                    new Column()
+                                            .withName(C1)
+                                            .withDisplayName("c1")
+                                            .withDataType(ColumnDataType.VARCHAR)
+                                            .withDataLength(10)))
+                    .withOwner(USER1_REF);
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    CreateTestSuite createExecutableTestSuite =
+            testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+            testSuiteResourceTest.createExecutableTestSuite(
+                    createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    return executableTestSuite;
+
   }
 
   private void deleteLogicalTestCase(TestSuite testSuite, UUID testCaseId) throws IOException {

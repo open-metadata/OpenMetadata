@@ -206,7 +206,7 @@ public class ListFilter {
       condition1 =
           includeAllTests
               ? String.format(
-                  "entityFQN LIKE '%s%s%%' OR entityFQN = '%s'",
+                  "(entityFQN LIKE '%s%s%%' OR entityFQN = '%s')",
                   escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
               : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN));
     }
@@ -219,7 +219,28 @@ public class ListFilter {
               "id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
               testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
     }
-    return addCondition(condition1, condition2);
+
+    String cond = addCondition(condition1, condition2);
+
+    String condition3 = "";
+    String status = getQueryParam("testCaseStatus");
+    if (status != null) {
+      condition3 = String.format("status = '%s'", status);
+    }
+
+    cond = addCondition(cond, condition3);
+
+    String condition4 = "";
+    String type = getQueryParam("testCaseType");
+    if (type != null) {
+        condition4 = switch (type) {
+             case "table" -> "entityLink NOT LIKE '%::columns::%'";
+            case "column" -> "entityLink LIKE '%::columns::%'";
+            default -> "";
+        };
+    }
+
+    return addCondition(cond, condition4);
   }
 
   private String getTestSuiteTypeCondition(String tableName) {
