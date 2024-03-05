@@ -63,6 +63,7 @@ const SuggestionsAlert = ({
           <div className="d-flex justify-end p-t-xss gap-2">
             <Button
               ghost
+              data-testid="reject-suggestion"
               icon={<CloseOutlined />}
               size="small"
               type="primary"
@@ -71,6 +72,7 @@ const SuggestionsAlert = ({
               }
             />
             <Button
+              data-testid="accept-suggestion"
               icon={<CheckOutlined />}
               size="small"
               type="primary"

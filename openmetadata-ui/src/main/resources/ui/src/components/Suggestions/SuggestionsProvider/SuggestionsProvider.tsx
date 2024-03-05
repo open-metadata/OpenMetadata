@@ -102,7 +102,6 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         await fetchSuggestions(entityFqn);
         if (status === SuggestionAction.Accept) {
           // call component refresh function
-          // refreshEntity.current?.(suggestion);
           publish('updateDetails', suggestion);
         }
       } catch (err) {

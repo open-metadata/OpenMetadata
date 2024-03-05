@@ -14,24 +14,31 @@ import { Button, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
+import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 
 const SuggestionsSlider = () => {
+  const { selectedUserSuggestions } = useSuggestionsContext();
+
   return (
     <div className="d-flex items-center gap-2">
       <Typography.Text className="right-panel-label">
         {t('label.suggested-description-plural')}
       </Typography.Text>
       <AvatarCarousel />
-      <Button size="small" type="primary">
-        <Typography.Text className="text-xs text-white">
-          {t('label.accept-all')}
-        </Typography.Text>
-      </Button>
-      <Button ghost size="small" type="primary">
-        <Typography.Text className="text-xs text-primary">
-          {t('label.reject-all')}
-        </Typography.Text>
-      </Button>
+      {selectedUserSuggestions.length > 0 && (
+        <>
+          <Button size="small" type="primary">
+            <Typography.Text className="text-xs text-white">
+              {t('label.accept-all')}
+            </Typography.Text>
+          </Button>
+          <Button ghost size="small" type="primary">
+            <Typography.Text className="text-xs text-primary">
+              {t('label.reject-all')}
+            </Typography.Text>
+          </Button>
+        </>
+      )}
     </div>
   );
 };
