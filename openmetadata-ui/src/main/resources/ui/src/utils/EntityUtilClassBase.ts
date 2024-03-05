@@ -234,7 +234,7 @@ class EntityUtilClassBase {
     }
   }
 
-  public getResourceEntityFromEntityType(entityType: string) {
+  public getResourceEntityFromEntityType(entityType: string): string {
     switch (entityType) {
       case EntityType.TABLE: {
         return ResourceEntity.TABLE;

@@ -187,7 +187,9 @@ const EntityVersionPage: FunctionComponent = () => {
     setIsLoading(true);
     try {
       await fetchResourcePermission(
-        entityUtilClassBase.getResourceEntityFromEntityType(entityType)
+        entityUtilClassBase.getResourceEntityFromEntityType(
+          entityType
+        ) as ResourceEntity
       );
     } finally {
       setIsLoading(false);
@@ -632,8 +634,12 @@ const EntityVersionPage: FunctionComponent = () => {
         return <DataProductsPage />;
       }
 
-      default:
-        return entityUtilClassBase.getEntityDetailComponent(entityType);
+      default: {
+        const VersinoPage =
+          entityUtilClassBase.getEntityDetailComponent(entityType);
+
+        return <VersinoPage />;
+      }
     }
   };
 
