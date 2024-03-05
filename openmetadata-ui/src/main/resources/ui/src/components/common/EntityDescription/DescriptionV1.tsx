@@ -33,7 +33,7 @@ import {
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import AvatarCarousel from '../AvatarCarousel/AvatarCarousel';
+import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 
 const { Text } = Typography;
@@ -80,7 +80,8 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
-  const { suggestions, selectedUserSuggestions = [] } = useSuggestionsContext();
+  const { suggestions = [], selectedUserSuggestions = [] } =
+    useSuggestionsContext();
 
   const handleRequestDescription = useCallback(() => {
     history.push(
@@ -230,7 +231,7 @@ const DescriptionV1 = ({
           <Text className="right-panel-label">{t('label.description')}</Text>
           {showActions && actionButtons}
         </div>
-        {suggestions.length > 0 && <AvatarCarousel />}
+        {suggestions.length > 0 && <SuggestionsSlider />}
       </div>
 
       <div>

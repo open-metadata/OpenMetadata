@@ -52,7 +52,7 @@ const AvatarCarousel = () => {
       <Carousel
         beforeChange={(_, to) => onProfileClick(to)}
         dots={false}
-        slidesToShow={2}>
+        slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
         {avatarList.map((avatar, index) => (
           <div
             className={`cursor-pointer m-r-xss avatar-item ${
@@ -60,7 +60,7 @@ const AvatarCarousel = () => {
             }`}
             key={index}
             onClick={() => onProfileClick(index)}>
-            <UserPopOverCard userName={avatar?.name ?? ''}>
+            <UserPopOverCard className="" userName={avatar?.name ?? ''}>
               <span>
                 <ProfilePicture name={avatar.name ?? ''} width="28" />
               </span>

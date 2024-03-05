@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';

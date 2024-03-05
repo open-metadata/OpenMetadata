@@ -28,6 +28,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { Suggestion } from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
+import { usePub } from '../../../hooks/usePubSub';
 import {
   getSuggestionsList,
   updateSuggestionStatus,
@@ -51,6 +52,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const [suggestionsByUser, setSuggestionsByUser] = useState<
     Map<string, Suggestion[]>
   >(new Map());
+  const publish = usePub();
 
   const [loading, setLoading] = useState(false);
   const refreshEntity = useRef<(suggestion: Suggestion) => void>();
@@ -99,7 +101,9 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         await updateSuggestionStatus(suggestion, status);
         await fetchSuggestions(entityFqn);
         if (status === SuggestionAction.Accept) {
-          refreshEntity.current?.(suggestion);
+          // call component refresh function
+          // refreshEntity.current?.(suggestion);
+          publish('updateDetails', suggestion);
         }
       } catch (err) {
         showErrorToast(err as AxiosError);

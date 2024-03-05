@@ -22,6 +22,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -65,6 +66,7 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
+import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
@@ -88,6 +90,7 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import EntityLink from '../../utils/EntityLink';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -97,7 +100,7 @@ import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoine
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
-const TableDetailsPageV1 = () => {
+const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
   const { currentUser } = useAuthContext();
@@ -898,6 +901,49 @@ const TableDetailsPageV1 = () => {
     }));
   }, []);
 
+  const updateDescriptionFromSuggestions = useCallback(
+    (suggestion: Suggestion) => {
+      setTableDetails((prev) => {
+        if (!prev) {
+          return;
+        }
+
+        const activeCol = prev?.columns.find((column) => {
+          return (
+            EntityLink.getTableEntityLink(
+              prev.fullyQualifiedName ?? '',
+              column.name ?? ''
+            ) === suggestion.entityLink
+          );
+        });
+
+        if (!activeCol) {
+          return {
+            ...prev,
+            description: suggestion.description,
+          };
+        } else {
+          const updatedColumns = prev.columns.map((column) => {
+            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
+              return {
+                ...column,
+                description: suggestion.description,
+              };
+            } else {
+              return column;
+            }
+          });
+
+          return {
+            ...prev,
+            columns: updatedColumns,
+          };
+        }
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
@@ -915,8 +961,8 @@ const TableDetailsPageV1 = () => {
 
   useSub(
     'updateDetails',
-    (_) => {
-      // handle table update here
+    (suggestion: Suggestion) => {
+      updateDescriptionFromSuggestions(suggestion);
     },
     [tableDetails]
   );
@@ -1023,4 +1069,4 @@ const TableDetailsPageV1 = () => {
   );
 };
 
-export default withSuggestions(TableDetailsPageV1);
+export default withSuggestions(withActivityFeed(TableDetailsPageV1));
