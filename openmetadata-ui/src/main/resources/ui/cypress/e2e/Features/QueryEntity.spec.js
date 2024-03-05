@@ -153,7 +153,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="owner-link"]').should('contain', DATA.owner);
 
     // Update Description
-    cy.get('[data-testid="edit-description-btn"]').click();
+    cy.get('[data-testid="edit-description"]').filter(':visible').click();
     cy.get(descriptionBox).clear().type('updated description');
     cy.get('[data-testid="save"]').click();
     verifyResponseStatusCode('@patchQuery', 200);
