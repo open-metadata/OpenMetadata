@@ -418,7 +418,7 @@ export const VISIT_ENTITIES_DATA = {
   storedProcedure: {
     term: STORED_PROCEDURE_DETAILS.name,
     displayName: STORED_PROCEDURE_DETAILS.name,
-    entity: EntityType.storedProcedure,
+    entity: EntityType.StoreProcedure,
     serviceName: DATABASE_SERVICE_DETAILS.name,
     entityType: 'Stored Procedure',
   },

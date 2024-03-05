@@ -45,44 +45,6 @@ import {
 } from '../constants/settings.constant';
 import { SIDEBAR_LIST_ITEMS } from '../constants/sidebar.constant';
 
-Cypress.Commands.add('loginByGoogleApi', () => {
-  cy.log('Logging in to Google');
-  cy.request({
-    method: 'POST',
-    url: 'https://www.googleapis.com/oauth2/v4/token',
-    body: {
-      grant_type: 'refresh_token',
-      client_id: Cypress.env('googleClientId'),
-      client_secret: Cypress.env('googleClientSecret'),
-      refresh_token: Cypress.env('googleRefreshToken'),
-    },
-  }).then(({ body }) => {
-    const { access_token, id_token } = body;
-
-    cy.request({
-      method: 'GET',
-      url: 'https://www.googleapis.com/oauth2/v3/userinfo',
-      headers: { Authorization: `Bearer ${access_token}` },
-    }).then(({ body }) => {
-      cy.log(body);
-      const userItem = {
-        token: id_token,
-        user: {
-          googleId: body.sub,
-          email: body.email,
-          givenName: body.given_name,
-          familyName: body.family_name,
-          imageUrl: body.picture,
-        },
-      };
-
-      window.localStorage.setItem('googleCypress', JSON.stringify(userItem));
-      window.localStorage.setItem('oidcIdToken', id_token);
-      cy.visit('/');
-    });
-  });
-});
-
 Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   interceptURL('GET', '/api/v1/users/loggedInUser?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
@@ -207,7 +169,7 @@ Cypress.Commands.add('settingClick', (dataTestId, isCustomProperty) => {
 
   cy.sidebarClick(SidebarItem.SETTINGS);
 
-  (paths ?? []).forEach((path) => {
+  (paths ?? []).forEach((path: string) => {
     cy.get(`[data-testid="${path}"]`).scrollIntoView().click();
   });
 });
