@@ -41,8 +41,8 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
@@ -128,6 +128,7 @@ export const DataAssetsHeader = ({
   afterDomainUpdateAction,
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
+  extraDropdownContent,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
@@ -263,7 +264,7 @@ export const DataAssetsHeader = ({
     }
 
     history.push(
-      getEntityDetailLink(
+      entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
@@ -489,6 +490,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={dataAsset.name}
                   entityType={entityType}
+                  extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
