@@ -59,7 +59,7 @@ export const SEARCH_INDEX = {
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   term: 'dim_address',
-  entity: DATA_ASSETS.tables,
+  entity: EntityType.Table,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
   sqlTestCaseName: 'my_sql_test_case_cypress',
@@ -224,7 +224,7 @@ export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
-export const TEAM_ENTITY = 'team_entity';
+export const TEAM_ENTITY = 'alert_entity';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';
@@ -254,8 +254,8 @@ export const NEW_COLUMN_TEST_CASE = {
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
   label: 'Column Value Lengths To Be Between',
-  min: 3,
-  max: 6,
+  min: '3',
+  max: '6',
   description: 'New table test case for columnValueLengthsToBeBetween',
 };
 

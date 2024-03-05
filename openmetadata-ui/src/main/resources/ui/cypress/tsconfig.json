@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "rootDir": "./",
+    "downlevelIteration": true,
     "target": "ES5",
-    "lib": ["es5", "dom"],
+    "lib": ["dom", "dom.iterable", "ES2020.Promise", "es2021"],
     "types": ["cypress", "node"]
   },
   "include": ["./**/*.ts"]

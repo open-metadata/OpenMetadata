@@ -81,7 +81,7 @@ Cypress.Commands.add('storeSession', (username, password) => {
     cy.url().should('not.eq', `${BASE_URL}/signin`);
 
     // Don't want to show any popup in the tests
-    cy.setCookie(`STAR_OMD_USER_admin`, 'true');
+    cy.setCookie(`STAR_OMD_USER_${username.split('@')[0]}`, 'true');
 
     // Get version and set cookie to hide version banner
     cy.request({
@@ -94,7 +94,7 @@ Cypress.Commands.add('storeSession', (username, password) => {
         .replaceAll('.', '_')}`;
 
       cy.setCookie(versionCookie, 'true');
-      window.localStorage.setItem('loggedInUsers', 'admin');
+      window.localStorage.setItem('loggedInUsers', username.split('@')[0]);
     });
   });
 });

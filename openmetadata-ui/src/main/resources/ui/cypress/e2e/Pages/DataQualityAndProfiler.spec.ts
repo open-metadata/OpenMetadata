@@ -27,25 +27,22 @@ import {
   scheduleIngestion,
 } from '../../common/Utils/Ingestion';
 import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
-import { goToServiceListingPage } from '../../common/Utils/Services';
+import { goToServiceListingPage, Services } from '../../common/Utils/Services';
 import {
-  DATA_ASSETS,
   DATA_QUALITY_SAMPLE_DATA_TABLE,
   DELETE_TERM,
   NEW_COLUMN_TEST_CASE,
   NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE,
   NEW_TABLE_TEST_CASE,
   NEW_TEST_SUITE,
-  SERVICE_TYPE,
   TEAM_ENTITY,
 } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
-const serviceType = 'Mysql';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const serviceName = `cypress-mysql`;
 const tableFqn = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
 const testSuite = {
   name: `${tableFqn}.testSuite`,
@@ -83,7 +80,7 @@ const goToProfilerTab = () => {
   visitEntityDetailsPage({
     term: TEAM_ENTITY,
     serviceName,
-    entity: DATA_ASSETS.tables,
+    entity: EntityType.Table,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
@@ -183,7 +180,7 @@ describe(
     });
 
     it('Add and ingest mysql data', () => {
-      goToServiceListingPage(SERVICE_TYPE.Database);
+      goToServiceListingPage(Services.Database);
 
       mySql.createService();
     });
@@ -231,7 +228,7 @@ describe(
         .scrollIntoView()
         .should('be.visible')
         .and('not.be.disabled')
-        .type(10);
+        .type('10');
       cy.get('[data-testid="submit-btn"]')
         .scrollIntoView()
         .should('be.visible')
@@ -464,7 +461,7 @@ describe(
         .scrollIntoView()
         .should('be.visible')
         .clear()
-        .type(4);
+        .type('4');
       interceptURL('PATCH', '/api/v1/dataQuality/testCases/*', 'updateTest');
       cy.get('.ant-modal-footer').contains('Submit').click();
       verifyResponseStatusCode('@updateTest', 200);
@@ -816,7 +813,7 @@ describe(
       visitEntityDetailsPage({
         term: tableName,
         serviceName: DATABASE_SERVICE.service.name,
-        entity: DATA_ASSETS.tables,
+        entity: EntityType.Table,
       });
       verifyResponseStatusCode('@waitForPageLoad', 200);
       cy.get('[data-testid="entity-header-display-name"]').should(
@@ -889,8 +886,8 @@ describe(
 
     it('Update profiler setting modal', () => {
       const profilerSetting = {
-        profileSample: 60,
-        sampleDataCount: 100,
+        profileSample: '60',
+        sampleDataCount: '100',
         profileQuery: 'select * from table',
         excludeColumns: 'user_id',
         includeColumns: 'shop_id',
@@ -908,7 +905,7 @@ describe(
       visitEntityDetailsPage({
         term: DATABASE_SERVICE.entity.name,
         serviceName: DATABASE_SERVICE.service.name,
-        entity: DATA_ASSETS.tables,
+        entity: EntityType.Table,
       });
       cy.get('[data-testid="profiler"]').should('be.visible').click();
       verifyResponseStatusCode('@tableProfiler', 200);

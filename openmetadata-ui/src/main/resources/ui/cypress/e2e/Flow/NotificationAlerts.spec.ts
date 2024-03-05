@@ -61,6 +61,7 @@ describe(
     const data = {
       user: {
         displayName: '',
+        id: '',
       },
       domain: {
         name: '',

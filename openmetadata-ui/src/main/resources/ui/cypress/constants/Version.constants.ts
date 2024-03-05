@@ -746,12 +746,15 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST: Record<
     name: string;
     serviceName: string;
     entity: EntityType;
-    entityCreationDetails: typeof TABLE_DETAILS_FOR_VERSION_TEST;
+    entityCreationDetails:
+      | typeof TABLE_DETAILS_FOR_VERSION_TEST
+      | typeof TOPIC_DETAILS_FOR_VERSION_TEST
+      | typeof DASHBOARD_DETAILS_FOR_VERSION_TEST;
     entityPatchPayload: typeof TABLE_PATCH_PAYLOAD;
     isChildrenExist: boolean;
     childFieldNameToCheck?: string;
     columnDisplayNameToUpdate?: string;
-    childSelector: string;
+    childSelector?: string;
     entityAddedDescription: string;
     updatedTagEntityChildName?: string;
     entityChildRemovedDescription?: string;
@@ -813,7 +816,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST: Record<
   'ML Model': {
     name: ML_MODEL_NAME,
     serviceName: 'mlflow_svc',
-    entity: EntityType.Pipeline,
+    entity: EntityType.MlModel,
     entityCreationDetails: ML_MODEL_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: ML_MODEL_PATCH_PAYLOAD,
     isChildrenExist: true,

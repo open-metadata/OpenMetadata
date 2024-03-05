@@ -35,7 +35,7 @@ export const deleteAlertSteps = (name: string) => {
 };
 
 export const addOwnerFilter = (
-  filterNumber: string,
+  filterNumber: number,
   ownerName: string,
   exclude = false,
   selectId = 'Owner'
@@ -64,7 +64,7 @@ export const addOwnerFilter = (
 };
 
 export const addEntityFQNFilter = (
-  filterNumber: string,
+  filterNumber: number,
   entityFQN: string,
   exclude = false,
   selectId = 'Entity FQN'
@@ -93,7 +93,7 @@ export const addEntityFQNFilter = (
 };
 
 export const addEventTypeFilter = (
-  filterNumber: string,
+  filterNumber: number,
   eventType: string,
   exclude = false
 ) => {
@@ -124,8 +124,9 @@ export const addEventTypeFilter = (
   }
 };
 
-export const addUpdaterNameFilter = (
-  filterNumber: string,
+export const addFilterWithUsersListInput = (
+  filterTestId: string,
+  filterNumber: number,
   updaterName: string,
   exclude = false
 ) => {
@@ -133,9 +134,7 @@ export const addUpdaterNameFilter = (
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
-  cy.get('[data-testid="Updater Name-filter-option"]')
-    .filter(':visible')
-    .click();
+  cy.get(`[data-testid="${filterTestId}"]`).filter(':visible').click();
 
   // Search and select user
   interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
@@ -156,7 +155,7 @@ export const addUpdaterNameFilter = (
 };
 
 export const addDomainFilter = (
-  filterNumber: string,
+  filterNumber: number,
   domainName: string,
   exclude = false
 ) => {
@@ -181,7 +180,7 @@ export const addDomainFilter = (
   }
 };
 
-export const addGMEFilter = (filterNumber: string, exclude = false) => {
+export const addGMEFilter = (filterNumber: number, exclude = false) => {
   // Select general metadata events filter
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
@@ -199,11 +198,11 @@ export const addGMEFilter = (filterNumber: string, exclude = false) => {
 };
 
 export const addInternalDestination = (
-  destinationNumber: string,
+  destinationNumber: number,
   category: string,
   type: string,
-  typeId: string,
-  searchText: string
+  typeId?: string,
+  searchText?: string
 ) => {
   // Select destination category
   cy.get(`[data-testid="destination-category-select-${destinationNumber}"]`)
@@ -261,7 +260,7 @@ export const addInternalDestination = (
 };
 
 export const addExternalDestination = (
-  destinationNumber: string,
+  destinationNumber: number,
   category: string,
   input: string
 ) => {

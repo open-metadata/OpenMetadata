@@ -411,7 +411,7 @@ export const VISIT_ENTITIES_DATA = {
   mlmodel: {
     term: ML_MODEL_SERVICE.entity.name,
     displayName: ML_MODEL_SERVICE.entity.name,
-    entity: EntityType.Pipeline,
+    entity: EntityType.MlModel,
     serviceName: ML_MODEL_SERVICE.service.name,
     entityType: 'ML Model',
   },
