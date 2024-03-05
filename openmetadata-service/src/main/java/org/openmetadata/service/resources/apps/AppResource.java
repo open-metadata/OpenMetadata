@@ -5,7 +5,6 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.apps.ApplicationHandler.removeUninstalledApp;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -618,8 +617,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
           JsonPatch patch)
       throws SchedulerException {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
-    // Remove the previous initialized instance and delete app
-    removeUninstalledApp(app.getClassName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
@@ -658,8 +655,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
-    // Remove the previous initialized instance and delete app
-    removeUninstalledApp(app.getClassName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     setAppRuntimeProperties(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
@@ -1035,8 +1030,5 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
       }
     }
-
-    // Remove App from instances Map Lookup
-    removeUninstalledApp(installedApp.getClassName());
   }
 }
