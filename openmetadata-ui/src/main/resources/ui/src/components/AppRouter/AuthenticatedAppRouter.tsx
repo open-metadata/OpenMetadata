@@ -1030,6 +1030,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
       />
 
+      <AdminProtectedRoute
+        exact
+        component={CustomPropertiesPageV1}
+        hasPermission={false}
+        path={getSettingCategoryPath(
+          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
+        )}
+      />
+
       <Route
         exact
         component={EntityVersionPage}
@@ -1039,6 +1048,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         ]}
       />
       <Route
+        exact
         component={EntityDetail}
         path={[
           ROUTES.ENTITY_DETAILS_WITH_SUB_TAB,
@@ -1047,15 +1057,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         ]}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={CustomPropertiesPageV1}
-        hasPermission={false}
-        path={getSettingCategoryPath(
-          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
-        )}
-      />
       {RouteElements && <RouteElements />}
+
       <Route
         exact
         path={[
