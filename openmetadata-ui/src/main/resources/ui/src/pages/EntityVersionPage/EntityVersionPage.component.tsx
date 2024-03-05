@@ -28,6 +28,7 @@ import DashboardVersion from '../../components/Dashboard/DashboardVersion/Dashbo
 import DataModelVersion from '../../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component';
 import StoredProcedureVersion from '../../components/Database/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
+import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
@@ -105,6 +106,8 @@ import {
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
+import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
+import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
 import './EntityVersionPage.less';
 
 export type VersionData =
@@ -240,6 +243,11 @@ const EntityVersionPage: FunctionComponent = () => {
         }
         case EntityType.GLOSSARY_TERM: {
           await fetchResourcePermission(ResourceEntity.GLOSSARY_TERM);
+
+          break;
+        }
+        case EntityType.DATA_PRODUCT: {
+          await fetchResourcePermission(ResourceEntity.DATA_PRODUCT);
 
           break;
         }
@@ -676,6 +684,18 @@ const EntityVersionPage: FunctionComponent = () => {
             versionList={versionList}
           />
         );
+      }
+
+      case EntityType.DATABASE: {
+        return <DatabaseVersionPage />;
+      }
+
+      case EntityType.DATABASE_SCHEMA: {
+        return <DatabaseSchemaVersionPage />;
+      }
+
+      case EntityType.DATA_PRODUCT: {
+        return <DataProductsPage />;
       }
 
       default:

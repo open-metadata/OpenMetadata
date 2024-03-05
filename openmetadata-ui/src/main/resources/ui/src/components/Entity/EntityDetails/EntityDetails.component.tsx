@@ -14,6 +14,7 @@ import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import DataProductsPage from '../../DataProducts/DataProductsPage/DataProductsPage.component';
 
 const TableDetailsPageV1 = withSuspenseFallback(
   React.lazy(
@@ -82,9 +83,6 @@ export const EntityDetail = () => {
 
   const Component = useMemo(() => {
     switch (entityType) {
-      case EntityType.TABLE:
-      default:
-        return TableDetailsPageV1;
       case EntityType.DATABASE:
         return DatabaseDetails;
       case EntityType.DATABASE_SCHEMA:
@@ -105,6 +103,11 @@ export const EntityDetail = () => {
         return ContainerPage;
       case EntityType.SEARCH_INDEX:
         return SearchIndexDetailsPage;
+      case EntityType.DATA_PRODUCT:
+        return DataProductsPage;
+      case EntityType.TABLE:
+      default:
+        return TableDetailsPageV1;
     }
   }, [entityType]);
 

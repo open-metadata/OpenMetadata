@@ -38,7 +38,6 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import DataProductsPage from '../DataProducts/DataProductsPage/DataProductsPage.component';
 import { EntityDetail } from '../Entity/EntityDetails/EntityDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -449,15 +448,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
-  const dataProductPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.DATA_PRODUCT,
-        permissions
-      ),
-    [permissions]
-  );
-
   const tagCategoryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(
@@ -547,12 +537,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_VERSION}
       />
-
-      <Route
-        exact
-        component={DataProductsPage}
-        path={ROUTES.DATA_PRODUCT_VERSION}
-      />
       <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
       <Route
         exact
@@ -608,15 +592,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.ADD_CUSTOM_METRIC}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DataProductsPage}
-        hasPermission={dataProductPermission}
-        path={[
-          ROUTES.DATA_PRODUCT_DETAILS,
-          ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB,
-        ]}
       />
 
       <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
