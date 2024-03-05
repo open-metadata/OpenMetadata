@@ -15,7 +15,6 @@ In this section, we provide guides and references to use the Druid connector.
 
 Configure and schedule Druid metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)

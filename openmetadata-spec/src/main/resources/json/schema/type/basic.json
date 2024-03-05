@@ -85,6 +85,14 @@
       "type": "string",
       "format": "time"
     },
+    "enum": {
+      "$comment" : "@om-field-type",
+      "description": "List of values in Enum.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "timezone": {
       "description": "Timezone of the user in the format `America/Los_Angeles`, `Brazil/East`, etc.",
       "type": "string",

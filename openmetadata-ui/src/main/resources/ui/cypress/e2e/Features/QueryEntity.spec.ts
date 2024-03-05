@@ -153,7 +153,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="owner-link"]').should('contain', DATA.owner);
 
     // Update Description
-    cy.get('[data-testid="edit-description-btn"]').click();
+    cy.get('[data-testid="edit-description"]').filter(':visible').click();
     cy.get(descriptionBox).clear().type('updated description');
     cy.get('[data-testid="save"]').click();
     verifyResponseStatusCode('@patchQuery', 200);
@@ -184,7 +184,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
 
-    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-testid="query-btn"]').click();
     cy.get('[data-menu-id*="edit-query"]').click();
     cy.get('.CodeMirror-line')
       .click()
@@ -218,7 +218,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="query-entity-expand-button"]').click();
     verifyResponseStatusCode('@getQueryById', 200);
 
-    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-testid="query-btn"]').click();
     cy.get('.ant-dropdown').should('be.visible');
     cy.get('[data-menu-id*="delete-query"]').click();
     cy.get('[data-testid="save-button"]').click();

@@ -88,14 +88,15 @@
         "webAnalyticUserActivityReportData",
         "domain",
         "storedProcedure",
-        "dataProduct"
+        "dataProduct",
+        "ingestionPipeline"
       ],
       "uniqueItems": true
     },
     "recreateIndex": {
       "title": "Recreate Indexes",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",

@@ -8,6 +8,7 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.Pair;
@@ -86,6 +87,8 @@ public interface SearchClient {
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
+
+  JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;
 

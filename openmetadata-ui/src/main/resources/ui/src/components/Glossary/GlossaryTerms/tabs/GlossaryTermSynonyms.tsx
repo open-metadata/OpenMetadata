@@ -186,9 +186,13 @@ const GlossaryTermSynonyms = ({
         </Typography.Text>
         {permissions.EditAll && synonyms.length > 0 && isViewMode && (
           <Tooltip
-            placement="bottomLeft"
+            placement="top"
             title={
-              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              permissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.synonym-plural'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               className="cursor-pointer flex-center m-l-xss"
