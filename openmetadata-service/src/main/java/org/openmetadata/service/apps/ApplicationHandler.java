@@ -24,22 +24,34 @@ public class ApplicationHandler {
   }
 
   public static void triggerApplicationOnDemand(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
     runMethodFromApplication(app, daoCollection, searchRepository, omConfig, "triggerOnDemand");
   }
 
   public static void installApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
     runMethodFromApplication(app, daoCollection, searchRepository, omConfig, "install");
   }
 
   public static void configureApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
     runMethodFromApplication(app, daoCollection, searchRepository, omConfig, "configure");
   }
 
   public static Object runAppInit(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig)
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig)
       throws ClassNotFoundException,
           NoSuchMethodException,
           InvocationTargetException,
@@ -47,7 +59,8 @@ public class ApplicationHandler {
           IllegalAccessException {
     Class<?> clz = Class.forName(app.getClassName());
     Object resource =
-        clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class, OpenMetadataApplicationConfig.class)
+        clz.getDeclaredConstructor(
+                CollectionDAO.class, SearchRepository.class, OpenMetadataApplicationConfig.class)
             .newInstance(daoCollection, searchRepository, omConfig);
 
     // Call init Method
@@ -61,7 +74,11 @@ public class ApplicationHandler {
 
   /** Load an App from its className and call its methods dynamically */
   public static void runMethodFromApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig, String methodName) {
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig,
+      String methodName) {
     // Native Application
     try {
       Object resource = getAppInstance(app.getClassName());

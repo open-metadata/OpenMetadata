@@ -51,7 +51,10 @@ public class AbstractNativeApplication implements NativeApplication {
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
 
-  public AbstractNativeApplication(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+  public AbstractNativeApplication(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
     this.omConfig = omConfig;

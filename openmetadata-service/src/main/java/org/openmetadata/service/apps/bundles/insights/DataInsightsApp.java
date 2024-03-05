@@ -30,8 +30,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private static final String SERVICE_TYPE = "Metadata";
   private static final String PIPELINE_DESCRIPTION = "OpenMetadata DataInsight Pipeline";
 
-  public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
-    super(collectionDAO, searchRepository , omConfig);
+  public DataInsightsApp(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
+    super(collectionDAO, searchRepository, omConfig);
   }
 
   @Override

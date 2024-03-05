@@ -65,8 +65,11 @@ import org.quartz.JobExecutionContext;
 public class DataInsightsReportApp extends AbstractNativeApplication {
   private static final String KPI_NOT_SET = "No Kpi Set";
 
-  public DataInsightsReportApp(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
-    super(collectionDAO, searchRepository , omConfig);
+  public DataInsightsReportApp(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
+    super(collectionDAO, searchRepository, omConfig);
   }
 
   @Override

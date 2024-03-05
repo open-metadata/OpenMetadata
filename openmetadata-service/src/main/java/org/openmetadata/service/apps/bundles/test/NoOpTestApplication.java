@@ -11,7 +11,10 @@ import org.openmetadata.service.search.SearchRepository;
 @SuppressWarnings("unused")
 public class NoOpTestApplication extends AbstractNativeApplication {
 
-  public NoOpTestApplication(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+  public NoOpTestApplication(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
     super(collectionDAO, searchRepository, omConfig);
   }
 

@@ -97,7 +97,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
 
-  public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository, OpenMetadataApplicationConfig omConfig) {
+  public SearchIndexApp(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      OpenMetadataApplicationConfig omConfig) {
     super(collectionDAO, searchRepository, omConfig);
   }
 
