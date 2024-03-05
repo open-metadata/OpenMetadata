@@ -270,19 +270,22 @@ parameterValues:
 ```
 
 ### Table Custom SQL Test
-Write you own SQL test. The test will pass if the following condition is met:
-- The query result return 0 row
+Write you own SQL test. When writting your query you can use 2 strategies:
+- `ROWS` (default): expects the query to be written as `SELECT <field>, <field> FROM <foo> WHERE <condition>`. **Note** if your query returns a large amount of rows it might cause an "Out Of Memeory" error. In this case we recoomend you to use the `COUNT` startegy.
+- `COUNT`: expects the query to be written as `SELECT COUNT(<field>) FROM <foo> WHERE <condition>`.
 
 **Properties**
 
 * `sqlExpression`: SQL expression
+* `strategy`: one of `ROWS` or `COUNT`
+* `threshold`: and integer defining the threshold above which the test should fail (default to 0 if not specified)
 
 **Behavior**
 
 | Condition      | Status |
 | ----------- | ----------- |
-|`sqlExpression` returns **0 row**|Success ✅|
-|`sqlExpression` returns **1 or more rows**|Failed ❌|
+|`sqlExpression` returns **row <= threshold (default to 0)**|Success ✅|
+|`sqlExpression` returns **row > threshold (default to 0)**|Failed ❌|
 
 **Example**
 ```sql
