@@ -300,7 +300,7 @@ Write you own SQL test. When writting your query you can use 2 strategies:
 
 * `sqlExpression`: SQL expression
 * `strategy`: one of `ROWS` or `COUNT`
-* `threshold`: and integerer defining the threshold above which the test should fail (default to 0 if not specified)
+* `threshold`: and integer defining the threshold above which the test should fail (default to 0 if not specified)
 
 **Behavior**
 
