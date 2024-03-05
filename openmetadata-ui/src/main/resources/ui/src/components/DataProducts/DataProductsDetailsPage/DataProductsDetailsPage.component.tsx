@@ -332,7 +332,7 @@ const DataProductsDetailsPage = ({
     }
   };
 
-  const onStyleSave = (data: Style) => {
+  const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
@@ -343,7 +343,7 @@ const DataProductsDetailsPage = ({
       style,
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
 
@@ -537,7 +537,11 @@ const DataProductsDetailsPage = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: t('label.data-product'),
+                    })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
@@ -578,7 +582,6 @@ const DataProductsDetailsPage = ({
         bodyText={getEntityDeleteMessage(dataProduct.name, '')}
         entityName={dataProduct.name}
         entityType="Glossary"
-        loadingState="success"
         visible={isDelete}
         onCancel={() => setIsDelete(false)}
         onConfirm={onDelete}

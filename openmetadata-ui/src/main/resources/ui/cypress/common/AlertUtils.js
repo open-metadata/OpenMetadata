@@ -380,7 +380,7 @@ export const verifyAlertDetails = (
 
 export const addGetSchemaChangesAction = (filterNumber, exclude = false) => {
   // Select owner filter
-  cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
+  cy.get(`[data-testid="trigger-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
   cy.get(`[data-testid="Get Schema Changes-filter-option"]`)
@@ -401,7 +401,7 @@ export const addPipelineStatusUpdatesAction = (
   exclude = false
 ) => {
   // Select pipeline status action
-  cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
+  cy.get(`[data-testid="trigger-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
   cy.get('[data-testid="Get Pipeline Status Updates-filter-option"]')
@@ -419,7 +419,7 @@ export const addPipelineStatusUpdatesAction = (
 
   if (exclude) {
     // Change action effect
-    cy.get(`[data-testid="action-switch-${filterNumber}"]`)
+    cy.get(`[data-testid="trigger-switch-${filterNumber}"]`)
       .scrollIntoView()
       .click();
   }

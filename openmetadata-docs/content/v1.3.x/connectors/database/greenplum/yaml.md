@@ -17,7 +17,6 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [Lineage](#lineage)

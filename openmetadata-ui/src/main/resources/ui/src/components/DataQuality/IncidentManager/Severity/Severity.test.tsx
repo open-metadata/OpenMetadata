@@ -57,9 +57,7 @@ describe('Severity', () => {
   it('Should show edit icon if onSubmit is provided and edit permission is true', async () => {
     render(<Severity onSubmit={jest.fn()} />);
 
-    expect(
-      await screen.findByTestId('edit-description-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-severity-icon')).toBeInTheDocument();
   });
 
   it('Should not show edit icon if edit permission is false', async () => {
@@ -67,17 +65,15 @@ describe('Severity', () => {
     const { container } = render(<Severity onSubmit={jest.fn()} />);
 
     expect(
-      queryByTestId(container, 'edit-description-icon')
+      queryByTestId(container, 'edit-severity-icon')
     ).not.toBeInTheDocument();
   });
 
   it('Should render modal onClick of edit icon', async () => {
     render(<Severity onSubmit={jest.fn()} />);
-    const editIcon = await screen.findByTestId('edit-description-icon');
+    const editIcon = await screen.findByTestId('edit-severity-icon');
 
-    expect(
-      await screen.findByTestId('edit-description-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-severity-icon')).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(editIcon);
@@ -89,11 +85,9 @@ describe('Severity', () => {
   it('Should call onSubmit function onClick of submit', async () => {
     const mockSubmit = jest.fn();
     render(<Severity onSubmit={mockSubmit} />);
-    const editIcon = await screen.findByTestId('edit-description-icon');
+    const editIcon = await screen.findByTestId('edit-severity-icon');
 
-    expect(
-      await screen.findByTestId('edit-description-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-severity-icon')).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(editIcon);

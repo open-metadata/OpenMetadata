@@ -23,8 +23,9 @@ Configure and schedule Amundsen metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-Before this, you must ingest the database / messaging service you want to get metadata for. 
-For more details click [here](/connectors/metadata/amundsen#create-database-service)
+Before this, you must create the service you want to get metadata for.  
+You can learn how to do it by folowing the initial part of the Connector documentation for the service.
+You can find the connectors list [here](/connectors).
 
 ### Python Requirements
 

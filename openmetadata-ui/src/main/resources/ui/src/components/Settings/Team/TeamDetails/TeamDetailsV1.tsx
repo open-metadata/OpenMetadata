@@ -36,17 +36,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { ReactComponent as IconTeams } from '../../../../assets/svg/teams.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  ROUTES,
-} from '../../../../constants/constants';
+import { ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
   ROLE_DOCS,
@@ -89,7 +84,7 @@ import {
 } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
-import Description from '../../../common/EntityDescription/Description';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -739,6 +734,7 @@ const TeamDetailsV1 = ({
         isSummaryPanelOpen
         assetCount={assetsCount}
         isEntityDeleted={isTeamDeleted}
+        noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => history.push(ROUTES.EXPLORE)}
@@ -1131,28 +1127,16 @@ const TeamDetailsV1 = ({
                 <Col className="border-top" span={24}>
                   <Card
                     className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"
-                    data-testid="teams-description"
-                    title={
-                      <Space align="center">
-                        <Typography.Text className="right-panel-label font-normal">
-                          {t('label.description')}
-                        </Typography.Text>
-                        {editDescriptionPermission && (
-                          <EditIcon
-                            className="cursor-pointer align-middle"
-                            color={DE_ACTIVE_COLOR}
-                            data-testid="edit-description"
-                            {...ICON_DIMENSION}
-                            onClick={() => descriptionHandler(true)}
-                          />
-                        )}
-                      </Space>
-                    }>
-                    <Description
+                    data-testid="teams-description">
+                    <DescriptionV1
                       description={currentTeam.description ?? ''}
                       entityName={getEntityName(currentTeam)}
+                      entityType={EntityType.TEAM}
+                      hasEditAccess={editDescriptionPermission}
                       isEdit={isDescriptionEditable}
+                      showCommentsIcon={false}
                       onCancel={() => descriptionHandler(false)}
+                      onDescriptionEdit={() => descriptionHandler(true)}
                       onDescriptionUpdate={onDescriptionUpdate}
                     />
                   </Card>
