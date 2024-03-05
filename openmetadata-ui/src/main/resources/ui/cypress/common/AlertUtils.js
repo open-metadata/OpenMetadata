@@ -127,7 +127,8 @@ export const addEventTypeFilter = (
   }
 };
 
-export const addUpdaterNameFilter = (
+export const addFilterWithUsersListInput = (
+  filterTestId,
   filterNumber,
   updaterName,
   exclude = false
@@ -136,9 +137,7 @@ export const addUpdaterNameFilter = (
   cy.get(`[data-testid="filter-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
-  cy.get('[data-testid="Updater Name-filter-option"]')
-    .filter(':visible')
-    .click();
+  cy.get(`[data-testid="${filterTestId}"]`).filter(':visible').click();
 
   // Search and select user
   interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
@@ -380,7 +379,7 @@ export const verifyAlertDetails = (
 
 export const addGetSchemaChangesAction = (filterNumber, exclude = false) => {
   // Select owner filter
-  cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
+  cy.get(`[data-testid="trigger-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
   cy.get(`[data-testid="Get Schema Changes-filter-option"]`)
@@ -401,7 +400,7 @@ export const addPipelineStatusUpdatesAction = (
   exclude = false
 ) => {
   // Select pipeline status action
-  cy.get(`[data-testid="action-select-${filterNumber}"]`).click({
+  cy.get(`[data-testid="trigger-select-${filterNumber}"]`).click({
     waitForAnimations: true,
   });
   cy.get('[data-testid="Get Pipeline Status Updates-filter-option"]')
@@ -419,7 +418,7 @@ export const addPipelineStatusUpdatesAction = (
 
   if (exclude) {
     // Change action effect
-    cy.get(`[data-testid="action-switch-${filterNumber}"]`)
+    cy.get(`[data-testid="trigger-switch-${filterNumber}"]`)
       .scrollIntoView()
       .click();
   }

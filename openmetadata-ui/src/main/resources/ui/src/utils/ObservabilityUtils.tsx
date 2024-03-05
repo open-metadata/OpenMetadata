@@ -15,10 +15,12 @@ import { includes, isNil } from 'lodash';
 import React from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
+import { ReactComponent as MentionIcon } from '../assets/svg/ic-mentions.svg';
 import { ReactComponent as MSTeamsIcon } from '../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/team-colored-icon.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user-colored-icon.svg';
+import { ReactComponent as AssigneeIcon } from '../assets/svg/user.svg';
 import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
@@ -36,6 +38,14 @@ export const getAlertDestinationCategoryIcons = (type: string) => {
       break;
     case 'Admins':
       Icon = AdminIcon;
+
+      break;
+    case 'Assignees':
+      Icon = AssigneeIcon;
+
+      break;
+    case 'Mentions':
+      Icon = MentionIcon;
 
       break;
     case 'GChat':

@@ -459,6 +459,66 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     });
   });
 
+  describe('Add update and delete Enum custom properties', () => {
+    Object.values(ENTITIES).forEach((entity) => {
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
+
+      it(`Add Enum custom property for ${entity.name} Entities`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+
+        addCustomPropertiesForEntity(
+          propertyName,
+          entity,
+          'Enum',
+          entity.enumConfig,
+          entity.entityObj
+        );
+
+        // Navigating back to custom properties page
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+      });
+
+      it(`Edit created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+        editCreatedProperty(propertyName, 'Enum');
+      });
+
+      it(`Delete created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+        deleteCreatedProperty(propertyName);
+      });
+    });
+  });
+
   describe('Custom properties for glossary and glossary terms', () => {
     const propertyName = `addcyentity${glossaryTerm.name}test${uuid()}`;
     const properties = Object.values(CustomPropertyType).join(', ');
@@ -481,7 +541,9 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         `/api/v1/metadata/types/name/glossaryTerm*`,
         'getEntity'
       );
-      cy.get('[data-testid="glossaries-tab"]').click();
+      cy.get(
+        `[data-testid=${Cypress.$.escapeSelector('glossary terms-tab')}]`
+      ).click();
 
       cy.get('[data-testid="advance-search-button"]').click();
       verifyResponseStatusCode('@getEntity', 200);

@@ -95,18 +95,25 @@ const TableDescription = ({
       {!suggestionData && !isReadOnly ? (
         <Space align="baseline" size="middle">
           {hasEditPermission && (
-            <Button
-              className="cursor-pointer hover-cell-icon"
-              data-testid="edit-button"
-              style={{
-                color: DE_ACTIVE_COLOR,
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
-              }}
-              onClick={onClick}>
-              <EditIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
-            </Button>
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.description'),
+              })}>
+              <Button
+                className="cursor-pointer hover-cell-icon"
+                data-testid="edit-button"
+                style={{
+                  color: DE_ACTIVE_COLOR,
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                }}
+                onClick={onClick}>
+                <EditIcon
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                />
+              </Button>
+            </Tooltip>
           )}
 
           <EntityTasks

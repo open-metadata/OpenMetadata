@@ -32,7 +32,8 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 )
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TableConstraint,
     TablePartition,
     TableType,
@@ -206,11 +207,11 @@ class RedshiftSource(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
-    def _get_partition_key(self, diststyle: str) -> Optional[List[str]]:
+    def _get_partition_key(self, diststyle: str) -> Optional[str]:
         try:
             regex = re.match(r"KEY\((\w+)\)", diststyle)
             if regex:
-                return [regex.group(1)]
+                return regex.group(1)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(err)
@@ -218,13 +219,20 @@ class RedshiftSource(
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         diststyle = self.partition_details.get(f"{schema_name}.{table_name}")
         if diststyle:
-            partition_details = TablePartition(
-                columns=self._get_partition_key(diststyle),
-                intervalType=IntervalType.COLUMN_VALUE,
-            )
+            distkey = self._get_partition_key(diststyle)
+            if distkey is not None:
+                partition_details = TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=distkey,
+                            intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                            interval=None,
+                        )
+                    ]
+                )
             return True, partition_details
         return False, None
 

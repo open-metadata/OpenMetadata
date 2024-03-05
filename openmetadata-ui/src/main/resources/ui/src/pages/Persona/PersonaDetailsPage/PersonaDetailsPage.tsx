@@ -222,7 +222,7 @@ export const PersonaDetailsPage = () => {
                 selectedUsers={personaDetails.users ?? []}
                 onUpdate={(users) => handlePersonaUpdate({ users })}>
                 <Button
-                  data-testid="add-user-button"
+                  data-testid="add-persona-button"
                   size="small"
                   type="primary">
                   {t('label.add-entity', { entity: t('label.user') })}

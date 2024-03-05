@@ -84,7 +84,9 @@
         "Users",
         "Teams",
         "Admins",
+        "Assignees",
         "Owners",
+        "Mentions",
         "Followers",
         "External"
       ]

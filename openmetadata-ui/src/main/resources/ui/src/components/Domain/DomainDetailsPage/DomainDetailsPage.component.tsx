@@ -51,7 +51,11 @@ import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ERROR_MESSAGE,
+  getEntityDetailsPath,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -76,7 +80,6 @@ import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
-  getDataProductsDetailsPath,
   getDomainDetailsPath,
   getDomainPath,
   getDomainVersionsPath,
@@ -198,7 +201,12 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(getDataProductsDetailsPath(res.fullyQualifiedName ?? ''));
+        history.push(
+          getEntityDetailsPath(
+            EntityType.DATA_PRODUCT,
+            res.fullyQualifiedName ?? ''
+          )
+        );
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -312,7 +320,7 @@ const DomainDetailsPage = ({
     setIsNameEditing(false);
   };
 
-  const onStyleSave = (data: Style) => {
+  const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
@@ -323,7 +331,7 @@ const DomainDetailsPage = ({
       style,
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
 
@@ -598,7 +606,11 @@ const DomainDetailsPage = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: t('label.domain'),
+                    })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"

@@ -41,8 +41,8 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
@@ -76,7 +76,7 @@ export const ExtraInfoLabel = ({
   value: string | number;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider className="self-center" type="vertical" />
     <Typography.Text className="self-center text-xs whitespace-nowrap">
       {!isEmpty(label) && (
         <span className="text-grey-muted">{`${label}: `}</span>
@@ -96,7 +96,7 @@ export const ExtraInfoLink = ({
   href: string;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider className="self-center" type="vertical" />
     <div className="d-flex items-center text-xs">
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
@@ -128,6 +128,7 @@ export const DataAssetsHeader = ({
   afterDomainUpdateAction,
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
+  extraDropdownContent,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
@@ -263,7 +264,7 @@ export const DataAssetsHeader = ({
     }
 
     history.push(
-      getEntityDetailLink(
+      entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
@@ -346,7 +347,7 @@ export const DataAssetsHeader = ({
               />
             </Col>
             <Col span={24}>
-              <div className="d-flex no-wrap">
+              <div className="d-flex flex-wrap gap-2">
                 {showDomain && (
                   <>
                     <DomainLabel
@@ -357,7 +358,7 @@ export const DataAssetsHeader = ({
                       entityType={entityType}
                       hasPermission={editDomainPermission}
                     />
-                    <Divider className="self-center m-x-sm" type="vertical" />
+                    <Divider className="self-center" type="vertical" />
                   </>
                 )}
                 <OwnerLabel
@@ -365,7 +366,7 @@ export const DataAssetsHeader = ({
                   owner={dataAsset?.owner}
                   onUpdate={onOwnerUpdate}
                 />
-                <Divider className="self-center m-x-sm" type="vertical" />
+                <Divider className="self-center" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space data-testid="header-tier-container">
                     {tier ? (
@@ -381,13 +382,20 @@ export const DataAssetsHeader = ({
                     )}
 
                     {editTierPermission && (
-                      <Button
-                        className="flex-center p-0"
-                        data-testid="edit-tier"
-                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                        size="small"
-                        type="text"
-                      />
+                      <Tooltip
+                        title={t('label.edit-entity', {
+                          entity: t('label.tier'),
+                        })}>
+                        <Button
+                          className="flex-center p-0"
+                          data-testid="edit-tier"
+                          icon={
+                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                          }
+                          size="small"
+                          type="text"
+                        />
+                      </Tooltip>
                     )}
                   </Space>
                 </TierCard>
@@ -462,9 +470,8 @@ export const DataAssetsHeader = ({
                 )}
 
                 <Tooltip
-                  open={!isEmpty(copyTooltip)}
-                  placement="bottomRight"
-                  title={copyTooltip}>
+                  placement="topRight"
+                  title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
                     icon={<Icon component={ShareIcon} />}
                     onClick={handleShareButtonClick}
@@ -483,6 +490,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={dataAsset.name}
                   entityType={entityType}
+                  extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll

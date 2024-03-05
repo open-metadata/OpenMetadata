@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -321,7 +322,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "get summary for a specific test suite",
               schema = @Schema(type = "String", format = "uuid"))
           @QueryParam("testSuiteId")
-          UUID testSuiteId) {
+          UUID testSuiteId)
+      throws IOException {
     ResourceContext<?> resourceContext = getResourceContext();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);

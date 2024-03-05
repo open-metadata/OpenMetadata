@@ -412,7 +412,7 @@ export const deleteEntity = (
   displayName: string
 ) => {
   deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
-
+  cy.clickOutside();
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
   cy.get('[data-testid="delete-modal"]').then(() => {
@@ -446,6 +446,7 @@ export const deleteEntity = (
   );
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
+  cy.clickOutside();
 
   if (endPoint === EntityType.Table) {
     interceptURL(

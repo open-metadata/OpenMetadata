@@ -21,21 +21,21 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
-import org.openmetadata.service.resources.CollectionRegistry;
-import org.openmetadata.service.resources.CollectionRegistry.CollectionDetails;
-import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -173,37 +173,31 @@ public class SecretsManagerUpdateService {
       retrieveConnectionTypeRepositoriesMap() {
     Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
         connTypeRepositoriesMap =
-            CollectionRegistry.getInstance().getCollectionMap().values().stream()
+            Entity.getEntityList().stream()
                 .map(this::retrieveServiceRepository)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(
                     Collectors.toMap(
                         ServiceEntityRepository::getServiceConnectionClass, Function.identity()));
+
     if (connTypeRepositoriesMap.isEmpty()) {
       throw new SecretsManagerUpdateException("Unexpected error: ServiceRepository not found.");
     }
     return connTypeRepositoriesMap;
   }
 
-  private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(
-      CollectionDetails collectionDetails) {
-    Class<?> collectionDetailsClass = extractCollectionDetailsClass(collectionDetails);
-    if (ServiceEntityResource.class.isAssignableFrom(collectionDetailsClass)) {
-      return Optional.of(
-          ((ServiceEntityResource<?, ?, ?>) collectionDetails.getResource()).getRepository());
-    }
-    return Optional.empty();
-  }
-
-  private Class<?> extractCollectionDetailsClass(CollectionDetails collectionDetails) {
-    Class<?> collectionDetailsClass;
+  private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(String entityType) {
     try {
-      collectionDetailsClass = Class.forName(collectionDetails.getResourceClass());
-    } catch (ClassNotFoundException e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getEntityRepository(entityType);
+      if (ServiceEntityRepository.class.isAssignableFrom(repository.getClass())) {
+        return Optional.of(((ServiceEntityRepository<?, ?>) repository));
+      }
+      return Optional.empty();
+    } catch (EntityNotFoundException e) {
+      return Optional.empty();
     }
-    return collectionDetailsClass;
   }
 
   private List<User> retrieveBotUsers() {

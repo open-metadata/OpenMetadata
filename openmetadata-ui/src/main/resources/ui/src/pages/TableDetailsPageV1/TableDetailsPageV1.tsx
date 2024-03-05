@@ -42,7 +42,10 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTableTabPath, getVersionPath } from '../../constants/constants';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -91,7 +94,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from './PartitionedKeys/PartitionedKeys.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
@@ -160,7 +162,7 @@ const TableDetailsPageV1 = () => {
     } finally {
       setLoading(false);
     }
-  }, [tableFqn]);
+  }, [tableFqn, viewUsagePermission]);
 
   const fetchQueryCount = async () => {
     if (!tableDetails?.id) {
@@ -295,7 +297,9 @@ const TableDetailsPageV1 = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(getTableTabPath(tableFqn, activeKey));
+        history.push(
+          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
+        );
       }
     }
   };
@@ -525,7 +529,6 @@ const TableDetailsPageV1 = () => {
               isReadOnly={deleted}
               joins={tableDetails?.joins?.columnJoins ?? []}
               tableConstraints={tableDetails?.tableConstraints}
-              tablePartitioned={tableDetails?.tablePartition}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />
@@ -544,11 +547,6 @@ const TableDetailsPageV1 = () => {
                 <TableConstraints
                   constraints={tableDetails?.tableConstraints}
                 />
-                {tableDetails?.tablePartition ? (
-                  <PartitionedKeys
-                    tablePartition={tableDetails.tablePartition}
-                  />
-                ) : null}
               </Space>
             }
             beforeSlot={
@@ -564,6 +562,7 @@ const TableDetailsPageV1 = () => {
             entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}
+            tablePartition={tableDetails?.tablePartition}
             viewAllPermission={viewAllPermission}
             onTagSelectionChange={handleTagSelection}
             onThreadLinkSelect={onThreadLinkSelect}

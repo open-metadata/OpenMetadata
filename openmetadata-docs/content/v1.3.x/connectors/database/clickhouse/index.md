@@ -16,17 +16,16 @@ In this section, we provide guides and references to use the Clickhouse connecto
 
 Configure and schedule Clickhouse metadata and profiler workflows from the OpenMetadata UI:
 
-- [Clickhouse](#clickhouse)
-  - [Requirements](#requirements)
-    - [Profiler \& Data Quality](#profiler-&-data-quality)
-    - [Usage \& Lineage](#usage-&-lineage)
-  - [Metadata Ingestion](#metadata-ingestion)
-      - [Service Name](#service-name)
-      - [Connection Options](#connection-options)
-      - [Metadata Ingestion Options](#metadata-ingestion-options)
-  - [Troubleshooting](#troubleshooting)
-    - [Workflow Deployment Error](#workflow-deployment-error)
-  - [Related](#related)
+- [Requirements](#requirements)
+  - [Profiler \& Data Quality](#profiler-&-data-quality)
+  - [Usage \& Lineage](#usage-&-lineage)
+- [Metadata Ingestion](#metadata-ingestion)
+    - [Service Name](#service-name)
+    - [Connection Options](#connection-options)
+    - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Troubleshooting](#troubleshooting)
+  - [Workflow Deployment Error](#workflow-deployment-error)
+- [Related](#related)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
 
