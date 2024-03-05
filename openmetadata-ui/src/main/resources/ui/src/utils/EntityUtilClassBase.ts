@@ -12,20 +12,10 @@
  */
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import {
-  getContainerDetailPath,
-  getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getDataModelDetailsPath,
   getEditWebhookPath,
-  getMlModelPath,
-  getPipelineDetailsPath,
+  getEntityDetailsPath,
   getServiceDetailsPath,
-  getStoredProcedureDetailPath,
-  getTableDetailsPath,
-  getTableTabPath,
   getTagsDetailsPath,
-  getTopicDetailsPath,
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -45,34 +35,62 @@ import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import { getTableFQNFromColumnFQN } from './CommonUtils';
 import {
-  getDataProductsDetailsPath,
   getDomainDetailsPath,
   getGlossaryPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
-import { getSearchIndexDetailsPath } from './SearchIndexUtils';
 
 class EntityUtilClassBase {
-  public getEntityLink(indexType: string, fullyQualifiedName: string) {
+  public getEntityLink(
+    indexType: string,
+    fullyQualifiedName: string,
+    tab?: string,
+    subTab?: string
+  ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
       case EntityType.TOPIC:
-        return getTopicDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.TOPIC,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.DASHBOARD:
       case EntityType.DASHBOARD:
-        return getDashboardDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DASHBOARD,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.PIPELINE:
       case EntityType.PIPELINE:
-        return getPipelineDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.PIPELINE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.DATABASE:
-        return getDatabaseDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DATABASE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.DATABASE_SCHEMA:
-        return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.GLOSSARY:
       case SearchIndex.GLOSSARY:
@@ -101,43 +119,74 @@ class EntityUtilClassBase {
 
       case EntityType.MLMODEL:
       case SearchIndex.MLMODEL:
-        return getMlModelPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.MLMODEL,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.CONTAINER:
       case SearchIndex.CONTAINER:
-        return getContainerDetailPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.CONTAINER,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
       case SearchIndex.TAG:
         return getTagsDetailsPath(fullyQualifiedName);
 
       case SearchIndex.DASHBOARD_DATA_MODEL:
       case EntityType.DASHBOARD_DATA_MODEL:
-        return getDataModelDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DASHBOARD_DATA_MODEL,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.STORED_PROCEDURE:
       case EntityType.STORED_PROCEDURE:
-        return getStoredProcedureDetailPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.STORED_PROCEDURE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.TEST_CASE:
-        return `${getTableTabPath(
+        return `${getEntityDetailsPath(
+          EntityType.TABLE,
           getTableFQNFromColumnFQN(fullyQualifiedName),
           EntityTabs.PROFILER
         )}?activeTab=Data Quality`;
 
       case EntityType.SEARCH_INDEX:
       case SearchIndex.SEARCH_INDEX:
-        return getSearchIndexDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.SEARCH_INDEX,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.DOMAIN:
       case SearchIndex.DOMAIN:
-        return getDomainDetailsPath(fullyQualifiedName);
+        return getDomainDetailsPath(fullyQualifiedName, tab);
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
-        return getDataProductsDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DATA_PRODUCT,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.USER:
       case SearchIndex.USER:
-        return getUserPath(fullyQualifiedName);
+        return getUserPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.TEAM:
       case SearchIndex.TEAM:
@@ -146,7 +195,12 @@ class EntityUtilClassBase {
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
-        return getTableDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.TABLE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
     }
   }
 
