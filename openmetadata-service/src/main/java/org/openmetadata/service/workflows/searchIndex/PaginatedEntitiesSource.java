@@ -72,7 +72,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private ResultList<? extends EntityInterface> read(String cursor) throws SearchIndexException {
     LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    ResultList<? extends EntityInterface> result = null;
+    ResultList<? extends EntityInterface> result;
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
@@ -83,31 +83,19 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               cursor);
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
-        throw new SearchIndexException(
-            new IndexingError()
-                .withErrorSource(READER)
-                .withLastFailedCursor(lastFailedCursor)
-                .withSubmittedCount(batchSize)
-                .withSuccessCount(result.getData().size())
-                .withFailedCount(result.getErrors().size())
-                .withMessage(
-                    "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
-                .withFailedEntities(result.getErrors()));
+        if (result.getPaging().getAfter() == null) {
+          isDone = true;
+        } else {
+          this.cursor = result.getPaging().getAfter();
+        }
+        updateStats(result.getData().size(), result.getErrors().size());
+        return result;
       }
 
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
       updateStats(result.getData().size(), result.getErrors().size());
-    } catch (SearchIndexException ex) {
-      lastFailedCursor = this.cursor;
-      if (result.getPaging().getAfter() == null) {
-        isDone = true;
-      } else {
-        this.cursor = result.getPaging().getAfter();
-      }
-      updateStats(result.getData().size(), result.getErrors().size());
-      throw ex;
     } catch (Exception e) {
       lastFailedCursor = this.cursor;
       IndexingError indexingError =

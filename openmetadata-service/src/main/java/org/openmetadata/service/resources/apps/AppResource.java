@@ -5,7 +5,6 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.apps.ApplicationHandler.removeUninstalledApp;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -1031,8 +1030,5 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
       }
     }
-
-    // Remove App from instances Map Lookup
-    removeUninstalledApp(installedApp.getClassName());
   }
 }
