@@ -1,13 +1,11 @@
 package org.openmetadata.service.util.jdbi;
 
+import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
-
-import java.time.temporal.ChronoUnit;
-import java.util.concurrent.TimeUnit;
-
 
 @Slf4j
 public class OMSqlLogger implements SqlLogger {
