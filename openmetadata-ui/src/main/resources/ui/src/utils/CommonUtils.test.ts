@@ -11,33 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { cloneDeep } from 'lodash';
 import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
-import { ERROR_MESSAGE } from '../constants/constants';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../generated/type/tagLabel';
-import {
-  digitFormatter,
-  getBase64EncodedString,
-  getIngestionFrequency,
-  getIsErrorMatch,
-  getNameFromFQN,
-  getTagValue,
-  prepareLabel,
-  reduceColorOpacity,
-  sortTagsCaseInsensitive,
-} from './CommonUtils';
-import {
-  mockFQN,
   mockFQNWithSpecialChar1,
   mockFQNWithSpecialChar2,
   mockFQNWithSpecialChar3,
@@ -48,9 +22,36 @@ import {
   mockTableNameWithSpecialChar3,
   mockTableNameWithSpecialChar4,
   mockTableNameWithSpecialChar5,
-  mockTags,
-  sortedMockTags,
 } from './CommonUtils.mock';
+
+import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
+import {
+  getDayCron,
+  getHourCron,
+} from '../components/common/CronEditor/CronEditor.constant';
+import { ERROR_MESSAGE } from '../constants/constants';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../generated/type/tagLabel';
+import {
+  digitFormatter,
+  getBase64EncodedString,
+  getEntityDetailLink,
+  getIngestionFrequency,
+  getIsErrorMatch,
+  getNameFromFQN,
+  getTagValue,
+  prepareLabel,
+  reduceColorOpacity,
+  sortTagsCaseInsensitive,
+} from './CommonUtils';
+import { mockFQN, mockTags, sortedMockTags } from './CommonUtils.mock';
 
 const AXIOS_ERROR_MESSAGE = {
   isAxiosError: true,
@@ -201,6 +202,44 @@ describe('Tests for CommonUtils', () => {
 
         expect(result).toBe(false);
       });
+    });
+
+    it('should return the correct path for EntityType.TABLE', () => {
+      let result = getEntityDetailLink(
+        EntityType.TABLE,
+        'table_fqn',
+        EntityTabs.ACTIVITY_FEED
+      );
+
+      expect(result).toEqual('/table/table_fqn/activity_feed/all');
+
+      result = getEntityDetailLink(
+        EntityType.TABLE,
+        'table_fqn',
+        EntityTabs.ACTIVITY_FEED,
+        'mentions'
+      );
+
+      expect(result).toEqual('/table/table_fqn/activity_feed/mentions');
+
+      result = getEntityDetailLink(
+        EntityType.TABLE,
+        'table_fqn',
+        EntityTabs.ACTIVITY_FEED,
+        'tasks'
+      );
+
+      expect(result).toEqual('/table/table_fqn/activity_feed/tasks');
+    });
+
+    it('should return the correct path for EntityType.TOPIC', () => {
+      const result = getEntityDetailLink(
+        EntityType.TOPIC,
+        'topic_fqn',
+        EntityTabs.CONFIG
+      );
+
+      expect(result).toEqual('/topic/topic_fqn/config');
     });
 
     it('should reduce color opacity by the given value', () => {

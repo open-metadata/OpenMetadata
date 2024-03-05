@@ -30,8 +30,11 @@ import {
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedCount } from '../../../../rest/feedsAPI';
-import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import {
+  getCountBadge,
+  getEntityDetailLink,
+  Transi18next,
+} from '../../../../utils/CommonUtils';
 import { getEntityUserLink } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
@@ -102,7 +105,7 @@ const FeedsWidget = ({
 
   const redirectToUserPage = useCallback(() => {
     history.push(
-      entityUtilClassBase.getEntityLink(
+      getEntityDetailLink(
         EntityType.USER,
         currentUser?.name as string,
         EntityTabs.ACTIVITY_FEED,

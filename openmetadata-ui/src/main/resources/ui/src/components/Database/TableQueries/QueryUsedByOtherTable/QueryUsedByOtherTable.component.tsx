@@ -17,12 +17,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
+  getTableDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.constant';
-import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -69,11 +68,7 @@ const QueryUsedByOtherTable = ({
         {topThreeTable.length
           ? topThreeTable.map((table, index) => (
               <Text className="m-r-xss" key={table.name}>
-                <Link
-                  to={getEntityDetailsPath(
-                    EntityType.TABLE,
-                    table.fullyQualifiedName || ''
-                  )}>
+                <Link to={getTableDetailsPath(table.fullyQualifiedName || '')}>
                   {getEntityName(table)}
                 </Link>
                 {topThreeTable.length - 1 !== index && ','}
@@ -89,10 +84,7 @@ const QueryUsedByOtherTable = ({
                   {remainingTable.map((table) => (
                     <Link
                       key={table.id}
-                      to={getEntityDetailsPath(
-                        EntityType.TABLE,
-                        table.fullyQualifiedName || ''
-                      )}>
+                      to={getTableDetailsPath(table.fullyQualifiedName || '')}>
                       {getEntityName(table)}
                     </Link>
                   ))}

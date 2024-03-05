@@ -26,7 +26,7 @@ import {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
-import { getEntityDetailsPath } from '../../../constants/constants';
+import { getTableTabPath } from '../../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
@@ -84,8 +84,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getEntityDetailsPath(
-          EntityType.TABLE,
+        url: getTableTabPath(
           table.fullyQualifiedName ?? '',
           EntityTabs.PROFILER
         ),
@@ -112,8 +111,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const handleRedirection = () => {
     history.push({
-      pathname: getEntityDetailsPath(
-        EntityType.TABLE,
+      pathname: getTableTabPath(
         table.fullyQualifiedName ?? '',
         EntityTabs.PROFILER
       ),

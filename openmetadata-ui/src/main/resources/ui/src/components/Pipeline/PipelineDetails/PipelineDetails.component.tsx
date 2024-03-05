@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import {
-  getEntityDetailsPath,
+  getPipelineDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -505,11 +505,7 @@ const PipelineDetails = ({
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.PIPELINE,
-          pipelineFQN,
-          tabValue
-        ),
+        pathname: getPipelineDetailsPath(pipelineFQN, tabValue),
       });
     }
   };

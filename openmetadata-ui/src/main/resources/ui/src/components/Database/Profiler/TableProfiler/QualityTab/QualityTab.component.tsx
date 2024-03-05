@@ -17,18 +17,14 @@ import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../../../constants/constants';
+import { getTableTabPath } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { Table } from '../../../../../generated/entity/data/table';
 import { TestCase } from '../../../../../generated/tests/testCase';
@@ -79,8 +75,7 @@ export const QualityTab = () => {
           {
             name: getEntityName(table),
             url:
-              getEntityDetailsPath(
-                EntityType.TABLE,
+              getTableTabPath(
                 table.fullyQualifiedName ?? '',
                 EntityTabs.PROFILER
               ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,

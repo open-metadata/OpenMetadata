@@ -44,9 +44,9 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getEntityDetailsPath,
+  getDatabaseDetailsPath,
   getExplorePath,
-  getVersionPath,
+  getVersionPathWithTab,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -252,11 +252,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.DATABASE,
-          decodedDatabaseFQN,
-          key
-        ),
+        pathname: getDatabaseDetailsPath(decodedDatabaseFQN, key),
       });
     }
   };
@@ -438,7 +434,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPath(
+        getVersionPathWithTab(
           EntityType.DATABASE,
           decodedDatabaseFQN,
           toString(currentVersion),
