@@ -18,7 +18,7 @@ import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getTableTabPath } from '../../../../constants/constants';
+import { getEntityDetailsPath } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -261,7 +261,11 @@ const IncidentManagerPageHeader = ({
               className="font-medium"
               data-testid="table-name"
               to={{
-                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER
+                ),
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),

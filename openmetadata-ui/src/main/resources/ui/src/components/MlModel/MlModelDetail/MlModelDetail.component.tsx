@@ -19,7 +19,7 @@ import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getMlModelDetailsPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -150,7 +150,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getMlModelDetailsPath(decodedMlModelFqn, activeKey));
+      history.push(
+        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
+      );
     }
   };
 

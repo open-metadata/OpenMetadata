@@ -37,6 +37,7 @@ import { SearchService } from '../../../generated/entity/services/searchService'
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
 import { ServicesType } from '../../../interface/service.interface';
+import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
@@ -102,6 +103,7 @@ export type DataAssetsHeaderProps = {
   onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
+  extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
 } & (
   | DataAssetTable
   | DataAssetTopic

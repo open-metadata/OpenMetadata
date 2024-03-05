@@ -24,7 +24,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import QueryCard from '../../components/Database/TableQueries/QueryCard';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { getTableTabPath } from '../../constants/constants';
+import { getEntityDetailsPath } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -103,7 +103,11 @@ const QueryPage = () => {
         ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
         {
           name: getEntityName(tableRes),
-          url: getTableTabPath(datasetFQN, 'table_queries'),
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
+            datasetFQN,
+            'table_queries'
+          ),
         },
         {
           name: t('label.query'),

@@ -24,7 +24,7 @@ import {
   DataAssetsHeaderProps,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import {
-  getDashboardDetailsPath,
+  getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
@@ -181,7 +181,8 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.dashboard && (
             <ExtraInfoLink
-              href={getDashboardDetailsPath(
+              href={getEntityDetailsPath(
+                EntityType.DASHBOARD,
                 mlModelDetail.dashboard?.fullyQualifiedName as string
               )}
               label={t('label.dashboard')}

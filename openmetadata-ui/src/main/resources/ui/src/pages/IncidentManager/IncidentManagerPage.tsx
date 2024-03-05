@@ -34,7 +34,7 @@ import TestCaseIncidentManagerStatus from '../../components/DataQuality/Incident
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
-  getTableTabPath,
+  getEntityDetailsPath,
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -374,7 +374,11 @@ const IncidentManagerPage = () => {
             <Link
               data-testid="table-link"
               to={{
-                pathname: getTableTabPath(tableFqn, EntityTabs.PROFILER),
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER
+                ),
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
