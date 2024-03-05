@@ -123,6 +123,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
 
+  protected Jdbi jdbi;
+
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException,
@@ -143,7 +145,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
-    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setCollectionDAO(collectionDAO);
 
