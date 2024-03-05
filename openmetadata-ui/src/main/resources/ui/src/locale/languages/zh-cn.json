@@ -2,6 +2,7 @@
   "label": {
     "aborted": "已中止",
     "accept": "接受",
+    "accept-all": "Accept All",
     "accept-suggestion": "接受建议",
     "access": "访问",
     "access-block-time": "Access block time",
@@ -869,6 +870,7 @@
     "region-name": "区域名称",
     "registry": "仓库",
     "reject": "Reject",
+    "reject-all": "Reject All",
     "rejected": "Rejected",
     "related-term-plural": "关联术语",
     "relevance": "相关性",

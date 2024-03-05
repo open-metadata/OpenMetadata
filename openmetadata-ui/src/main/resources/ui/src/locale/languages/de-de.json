@@ -2,6 +2,7 @@
   "label": {
     "aborted": "Abgebrochen",
     "accept": "Akzeptieren",
+    "accept-all": "Accept All",
     "accept-suggestion": "Vorschlag akzeptieren",
     "access": "Zugriff",
     "access-block-time": "Access block time",
@@ -869,6 +870,7 @@
     "region-name": "Region Name",
     "registry": "Register",
     "reject": "Ablehnen",
+    "reject-all": "Reject All",
     "rejected": "Rejected",
     "related-term-plural": "Verwandte Begriffe",
     "relevance": "Relevanz",

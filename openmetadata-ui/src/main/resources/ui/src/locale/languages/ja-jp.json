@@ -2,6 +2,7 @@
   "label": {
     "aborted": "中断",
     "accept": "Accept",
+    "accept-all": "Accept All",
     "accept-suggestion": "提案を受け入れる",
     "access": "アクセス",
     "access-block-time": "Access block time",
@@ -869,6 +870,7 @@
     "region-name": "リージョン名",
     "registry": "レジストリ",
     "reject": "Reject",
+    "reject-all": "Reject All",
     "rejected": "Rejected",
     "related-term-plural": "関連する用語",
     "relevance": "Relevance",
