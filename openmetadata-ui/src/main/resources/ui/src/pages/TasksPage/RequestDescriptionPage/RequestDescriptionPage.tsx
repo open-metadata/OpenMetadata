@@ -36,7 +36,7 @@ import {
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
@@ -135,7 +135,7 @@ const RequestDescription = () => {
             })
           );
           history.push(
-            entityUtilClassBase.getEntityLink(
+            getEntityDetailLink(
               entityType,
               decodedEntityFQN,
               EntityTabs.ACTIVITY_FEED,

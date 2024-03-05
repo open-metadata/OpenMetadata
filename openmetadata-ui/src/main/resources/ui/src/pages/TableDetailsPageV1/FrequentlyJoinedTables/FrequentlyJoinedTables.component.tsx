@@ -14,8 +14,7 @@ import { Col, Row, Space, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { getTableDetailsPath } from '../../../constants/constants';
 import { JoinedWith } from '../../../generated/entity/data/table';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './frequently-joined-tables.style.less';
@@ -53,11 +52,7 @@ export const FrequentlyJoinedTables = ({
             data-testid="related-tables-data"
             key={table.name}
             size={4}>
-            <Link
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                table.fullyQualifiedName
-              )}>
+            <Link to={getTableDetailsPath(table.fullyQualifiedName)}>
               <Typography.Text className="frequently-joint-name">
                 {table.name}
               </Typography.Text>

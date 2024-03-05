@@ -21,6 +21,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,8 +44,8 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  getEntityDetailsPath,
-  getVersionPath,
+  getDatabaseSchemaDetailsPath,
+  getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -95,6 +96,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
+  const isMounting = useRef(true);
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -167,7 +169,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const viewDatabaseSchemaPermission = useMemo(
     () =>
       databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
-    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
+    [databaseSchemaPermission]
   );
 
   const onThreadLinkSelect = useCallback(
@@ -290,8 +292,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     (activeKey: string) => {
       if (activeKey !== activeTab) {
         history.push({
-          pathname: getEntityDetailsPath(
-            EntityType.DATABASE_SCHEMA,
+          pathname: getDatabaseSchemaDetailsPath(
             decodedDatabaseSchemaFQN,
             activeKey
           ),
@@ -448,7 +449,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPath(
+        getVersionPathWithTab(
           EntityType.DATABASE_SCHEMA,
           decodedDatabaseSchemaFQN,
           String(currentVersion),
@@ -495,7 +496,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       fetchStoreProcedureCount();
       getEntityFeedCount();
     }
-  }, [viewDatabaseSchemaPermission]);
+  }, [viewDatabaseSchemaPermission, decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
@@ -507,6 +508,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     viewDatabaseSchemaPermission,
     deleted,
   ]);
+
+  // always Keep this useEffect at the end...
+  useEffect(() => {
+    isMounting.current = false;
+  }, []);
 
   const {
     editTagsPermission,
