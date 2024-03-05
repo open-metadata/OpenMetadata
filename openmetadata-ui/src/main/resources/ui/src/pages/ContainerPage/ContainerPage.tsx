@@ -38,7 +38,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
-  getEntityDetailsPath,
+  getContainerDetailPath,
   getVersionPath,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -255,11 +255,7 @@ const ContainerPage = () => {
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.CONTAINER,
-          decodedContainerName,
-          tabValue
-        ),
+        pathname: getContainerDetailPath(decodedContainerName, tabValue),
       });
     }
   };

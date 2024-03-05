@@ -19,7 +19,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
+  getDataModelDetailsPath,
   getVersionPath,
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
@@ -142,11 +142,7 @@ const DataModelDetails = ({
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
       history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.DASHBOARD_DATA_MODEL,
-          decodedDataModelFQN,
-          tabValue
-        ),
+        pathname: getDataModelDetailsPath(decodedDataModelFQN, tabValue),
       });
     }
   };
