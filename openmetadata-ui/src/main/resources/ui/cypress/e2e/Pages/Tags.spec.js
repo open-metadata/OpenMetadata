@@ -75,7 +75,7 @@ describe('Classification Page', { tags: 'Governance' }, () => {
     cy.get('[data-testid="add-classification"]').should('be.visible');
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible');
     cy.get('[data-testid="manage-button"]').should('be.visible');
-    cy.get('[data-testid="description"]').should('be.visible');
+    cy.get('[data-testid="description-container"]').should('be.visible');
     cy.get('[data-testid="table"]').should('be.visible');
 
     cy.get('.ant-table-thead > tr > .ant-table-cell')
