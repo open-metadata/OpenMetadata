@@ -371,7 +371,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // evey time junit tests are run to save time. But over the course of development of a release,
   // when tests are run enough times, the webhook tests are run for all the entities.
   public boolean runWebhookTests = new Random().nextBoolean();
-  ;
 
   protected boolean supportsSearchIndex = false;
 
