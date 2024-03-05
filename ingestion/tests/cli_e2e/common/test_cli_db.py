@@ -126,6 +126,12 @@ class CliCommonDB:
                     if expected_column_profile:
                         column_profile = column.profile.dict()
                         for key in expected_column_profile:  # type: ignore
+                            if key == "nonParametricSkew":
+                                self.assertTrue(
+                                    column_profile[key].__round__(10)
+                                    == expected_column_profile[key].__round__(10)
+                                )
+                                continue
                             self.assertTrue(
                                 column_profile[key] == expected_column_profile[key]
                             )

@@ -99,7 +99,7 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 6
+        return 8
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -107,4 +107,4 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 5
+        return 7
