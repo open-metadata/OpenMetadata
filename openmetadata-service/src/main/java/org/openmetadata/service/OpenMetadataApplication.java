@@ -13,8 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.util.MicrometerBundleSingleton.setWebAnalyticsEvents;
-
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -114,6 +112,7 @@ import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
+import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -143,6 +142,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
+
+    // Initialize HTTP and JDBI timers
+    MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
@@ -223,7 +225,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig);
 
-    setWebAnalyticsEvents(catalogConfig);
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(
@@ -277,25 +278,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             });
 
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
-    SqlLogger sqlLogger =
-        new SqlLogger() {
-          @Override
-          public void logBeforeExecution(StatementContext context) {
-            LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
-          }
-
-          @Override
-          public void logAfterExecution(StatementContext context) {
-            LOG.debug(
-                "sql {}, parameters {}, timeTaken {} ms",
-                context.getRenderedSql(),
-                context.getBinding(),
-                context.getElapsedTime(ChronoUnit.MILLIS));
-          }
-        };
-    if (LOG.isDebugEnabled()) {
-      jdbi.setSqlLogger(sqlLogger);
-    }
+    jdbi.setSqlLogger(new OMSqlLogger());
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
