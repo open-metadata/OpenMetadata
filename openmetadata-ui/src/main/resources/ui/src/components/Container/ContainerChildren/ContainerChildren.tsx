@@ -15,8 +15,7 @@ import { ColumnsType } from 'antd/lib/table';
 import React, { FC, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { getContainerDetailPath } from '../../../constants/constants';
 import { Container } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -49,10 +48,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
             <Link
               className="break-word"
               data-testid="container-name"
-              to={getEntityDetailsPath(
-                EntityType.CONTAINER,
-                record.fullyQualifiedName ?? ''
-              )}>
+              to={getContainerDetailPath(record.fullyQualifiedName ?? '')}>
               {getEntityName(record)}
             </Link>
           </div>
