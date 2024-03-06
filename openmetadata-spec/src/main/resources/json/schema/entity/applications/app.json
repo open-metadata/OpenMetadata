@@ -195,6 +195,11 @@
       "type": "boolean",
       "default": true
     },
+    "allowUninstall": {
+      "description": "Allow users to uninstall the app. If `false`, the `uninstall` step will be hidden.",
+      "type": "boolean",
+      "default": true
+    },
     "appConfiguration": {
       "description": "Application Configuration object.",
       "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"

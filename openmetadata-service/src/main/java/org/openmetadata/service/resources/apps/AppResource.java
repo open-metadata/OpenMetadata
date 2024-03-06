@@ -686,6 +686,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
+    if (!app.getAllowUninstall()) {
+      throw new AuthorizationException(
+          "App is not allowed to be uninstalled. Please contact the app owner.");
+    }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
@@ -711,6 +715,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    if (!app.getAllowUninstall()) {
+      throw new AuthorizationException(
+          "App is not allowed to be uninstalled. Please contact the app owner.");
+    }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     // Remove from repository
