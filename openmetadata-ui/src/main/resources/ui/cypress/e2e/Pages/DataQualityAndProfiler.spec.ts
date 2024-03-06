@@ -664,6 +664,7 @@ describe(
     });
 
     it('delete created service', () => {
+      goToServiceListingPage(Services.Database);
       mySql.deleteService();
     });
 
