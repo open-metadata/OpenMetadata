@@ -44,7 +44,7 @@ const SchemaTab: FunctionComponent<Props> = ({
     () =>
       selectedUserSuggestions?.filter(
         (item) => EntityLink.getTableColumnName(item.entityLink) !== undefined
-      ),
+      ) ?? [],
     [selectedUserSuggestions]
   );
 
