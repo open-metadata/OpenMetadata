@@ -18,7 +18,9 @@ import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getServiceDetailsPath,
+  getUserPath,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
@@ -45,6 +47,7 @@ import { TaskType, Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
   EntityData,
   Option,
@@ -82,6 +85,7 @@ import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
+import { getIncidentManagerDetailPagePath } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -170,6 +174,27 @@ export const getUpdateTagsPath = (
 export const getTaskDetailPath = (task: Thread) => {
   const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
+
+  if (entityType === EntityType.TEST_CASE) {
+    return getIncidentManagerDetailPagePath(
+      entityFqn,
+      IncidentManagerTabs.ISSUES
+    );
+  } else if (entityType === EntityType.USER) {
+    return getUserPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
+  ) {
+    return getGlossaryTermDetailsPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  }
 
   return getEntityDetailsPath(
     entityType as EntityType,
