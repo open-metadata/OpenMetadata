@@ -195,10 +195,10 @@
       "type": "boolean",
       "default": true
     },
-    "allowUninstall": {
-      "description": "Allow users to uninstall the app. If `false`, the `uninstall` step will be hidden.",
+    "systemApp": {
+      "description": "A system app cannot be uninstall.",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "appConfiguration": {
       "description": "Application Configuration object.",

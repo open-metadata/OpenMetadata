@@ -673,6 +673,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled."),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
   public Response delete(
@@ -686,9 +687,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
-    if (!app.getAllowUninstall()) {
+    if (app.getSystemApp()) {
       throw new AuthorizationException(
-          "App is not allowed to be uninstalled. Please contact the app owner.");
+          "System App cannot be uninstalled. Please contact your administrator.");
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -703,6 +704,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled."),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
   public Response delete(
@@ -715,9 +717,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
-    if (!app.getAllowUninstall()) {
+    if (app.getSystemApp()) {
       throw new AuthorizationException(
-          "App is not allowed to be uninstalled. Please contact the app owner.");
+          "System App cannot be uninstalled. Please contact your administrator.");
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
