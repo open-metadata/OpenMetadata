@@ -2,7 +2,6 @@ package org.openmetadata.service.apps;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -11,12 +10,6 @@ import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 public class ApplicationHandler {
-
-  private static HashMap<String, Object> instances = new HashMap<>();
-
-  public static Object getAppInstance(String className) {
-    return instances.get(className);
-  }
 
   private ApplicationHandler() {
     /*Helper*/
@@ -53,8 +46,6 @@ public class ApplicationHandler {
     Method initMethod = resource.getClass().getMethod("init", App.class);
     initMethod.invoke(resource, app);
 
-    instances.put(app.getClassName(), resource);
-
     return resource;
   }
 
@@ -63,11 +54,7 @@ public class ApplicationHandler {
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
     try {
-      Object resource = getAppInstance(app.getClassName());
-      if (resource == null) {
-        resource = runAppInit(app, daoCollection, searchRepository);
-      }
-
+      Object resource = runAppInit(app, daoCollection, searchRepository);
       // Call method on demand
       Method scheduleMethod = resource.getClass().getMethod(methodName);
       scheduleMethod.invoke(resource);
@@ -77,13 +64,9 @@ public class ApplicationHandler {
         | IllegalAccessException
         | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
-      throw new UnhandledServerException("Exception encountered", e);
+      throw new UnhandledServerException(e.getCause().getMessage());
     } catch (ClassNotFoundException e) {
-      throw new UnhandledServerException("Exception encountered", e);
+      throw new UnhandledServerException(e.getCause().getMessage());
     }
-  }
-
-  public static void removeUninstalledApp(String className) {
-    instances.remove(className);
   }
 }
