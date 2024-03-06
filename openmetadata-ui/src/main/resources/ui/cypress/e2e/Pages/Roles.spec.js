@@ -124,7 +124,9 @@ describe('Roles page should work properly', { tags: 'Settings' }, () => {
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
 
     // Verify added description
-    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
+    cy.get(
+      '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+    )
       .should('be.visible')
       .should('contain', description);
 
@@ -206,7 +208,9 @@ describe('Roles page should work properly', { tags: 'Settings' }, () => {
 
     cy.get('[data-testid="inactive-link"]').should('be.visible');
     // Asserting updated description
-    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
+    cy.get(
+      '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+    )
       .should('be.visible')
       .should('contain', `${description}-updated`);
   });
