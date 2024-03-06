@@ -83,7 +83,7 @@ jest.mock('./TableUtils', () => ({
 
 jest.mock('../constants/constants', () => ({
   NO_DATA_PLACEHOLDER: jest.fn().mockReturnValue('---'),
-  getEntityDetailsPath: jest.fn().mockReturnValue('getDashboardDetailsPath'),
+  getDashboardDetailsPath: jest.fn().mockReturnValue('getDashboardDetailsPath'),
 }));
 
 describe('Tests for DataAssetsHeaderUtils', () => {

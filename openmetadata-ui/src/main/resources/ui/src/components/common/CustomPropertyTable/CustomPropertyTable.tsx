@@ -18,20 +18,23 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
+
 import { EntityField } from '../../../constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ChangeDescription, Type } from '../../../generated/entity/type';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+
+import { getEntityDetailLink, Transi18next } from '../../../utils/CommonUtils';
+
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { CustomProperty } from '../../../generated/type/customProperty';
-import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -192,7 +195,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     ) {
       return (
         <Link
-          to={entityUtilClassBase.getEntityLink(
+          to={getEntityDetailLink(
             entityType,
             entityDetails.fullyQualifiedName,
             EntityTabs.CUSTOM_PROPERTIES

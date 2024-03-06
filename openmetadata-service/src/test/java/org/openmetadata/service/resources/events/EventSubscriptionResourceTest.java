@@ -643,7 +643,7 @@ public class EventSubscriptionResourceTest
         .withEnabled(true)
         .withBatchSize(10)
         .withRetries(0)
-        .withPollInterval(0)
+        .withPollInterval(1)
         .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION);
   }
 

@@ -17,7 +17,7 @@ import { toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPath } from '../../../constants/constants';
+import { getVersionPathWithTab } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/table';
@@ -36,7 +36,6 @@ import DataProductsContainer from '../../DataProducts/DataProductsContainer/Data
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
-
 const StoredProcedureVersion = ({
   version,
   currentVersionData,
@@ -90,7 +89,7 @@ const StoredProcedureVersion = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPath(
+      getVersionPathWithTab(
         EntityType.STORED_PROCEDURE,
         currentVersionData.fullyQualifiedName ?? '',
         String(version),

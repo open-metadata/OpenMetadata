@@ -42,10 +42,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
+import { getTableTabPath, getVersionPath } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -296,9 +293,7 @@ const TableDetailsPageV1 = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(
-          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
-        );
+        history.push(getTableTabPath(tableFqn, activeKey));
       }
     }
   };
