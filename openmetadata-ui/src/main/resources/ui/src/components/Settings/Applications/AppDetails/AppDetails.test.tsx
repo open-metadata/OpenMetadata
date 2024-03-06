@@ -22,6 +22,10 @@ import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.const
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';
 
+jest.mock('../../../../constants/constants', () => ({
+  DE_ACTIVE_COLOR: '#fefefe',
+}));
+
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );

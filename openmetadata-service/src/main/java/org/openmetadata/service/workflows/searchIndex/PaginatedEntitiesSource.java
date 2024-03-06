@@ -98,12 +98,27 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
       lastFailedCursor = this.cursor;
+      int remainingRecords =
+          stats.getTotalRecords() - stats.getFailedRecords() - stats.getSuccessRecords();
+      int submittedRecords;
+      if (remainingRecords - batchSize <= 0) {
+        submittedRecords = remainingRecords;
+        updateStats(0, remainingRecords);
+        this.cursor = null;
+        this.isDone = true;
+      } else {
+        submittedRecords = batchSize;
+        String decodedCursor = RestUtil.decodeCursor(cursor);
+        this.cursor =
+            RestUtil.encodeCursor(String.valueOf(Integer.parseInt(decodedCursor) + batchSize));
+        updateStats(0, batchSize);
+      }
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
-              .withSubmittedCount(batchSize)
+              .withSubmittedCount(submittedRecords)
               .withSuccessCount(0)
-              .withFailedCount(batchSize)
+              .withFailedCount(submittedRecords)
               .withMessage(
                   "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
               .withLastFailedCursor(lastFailedCursor)

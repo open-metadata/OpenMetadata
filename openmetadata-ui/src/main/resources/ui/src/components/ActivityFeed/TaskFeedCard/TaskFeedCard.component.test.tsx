@@ -72,6 +72,15 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('formatDateTime'),
 }));
 
+jest.mock('../../../utils/EntityLink', () => {
+  return {
+    __esModule: true,
+    default: {
+      getTableColumnName: jest.fn().mockReturnValue('getTableColumnName'),
+    },
+  };
+});
+
 const mockProps = {
   post: TASK_POST,
   feed: TASK_FEED,

@@ -615,7 +615,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [serviceCategory, decodedServiceFQN, getOtherDetails, isMetadataService]);
+  }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
   useEffect(() => {
     getOtherDetails();
