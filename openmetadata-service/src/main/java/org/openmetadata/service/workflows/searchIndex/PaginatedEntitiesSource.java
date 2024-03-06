@@ -109,7 +109,8 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       } else {
         submittedRecords = batchSize;
         String decodedCursor = RestUtil.decodeCursor(cursor);
-        this.cursor = RestUtil.encodeCursor(String.valueOf(Integer.parseInt(decodedCursor) + batchSize));
+        this.cursor =
+            RestUtil.encodeCursor(String.valueOf(Integer.parseInt(decodedCursor) + batchSize));
         updateStats(0, batchSize);
       }
       IndexingError indexingError =
