@@ -30,6 +30,24 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParam),
 }));
 
+jest.mock('../../constants/constants', () => ({
+  DEPLOYED_PROGRESS_VAL: 0,
+  INGESTION_PROGRESS_END_VAL: 0,
+  INGESTION_PROGRESS_START_VAL: 0,
+}));
+
+jest.mock('../../rest/serviceAPI', () => ({
+  postService: jest.fn(),
+}));
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getSettingPath: jest.fn(),
+}));
+
+jest.mock('../../utils/ServiceUtils', () => ({
+  getServiceRouteFromServiceType: jest.fn(),
+}));
+
 describe('Test AddServicePage component', () => {
   it('AddServicePage component should render', async () => {
     const { container } = render(<AddServicePage />);
