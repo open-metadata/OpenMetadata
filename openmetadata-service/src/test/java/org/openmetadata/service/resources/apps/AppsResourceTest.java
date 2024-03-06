@@ -1,7 +1,10 @@
 package org.openmetadata.service.resources.apps;
 
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import java.io.IOException;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +22,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
+  private static final String SYSTEM_APP_NAME = "systemApp";
 
   public AppsResourceTest() {
     super(Entity.APPLICATION, App.class, AppResource.AppList.class, "apps", AppResource.FIELDS);
@@ -36,7 +40,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       appMarketPlaceDefinition =
           appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
     } catch (EntityNotFoundException | HttpResponseException ex) {
-      CreateAppMarketPlaceDefinitionReq req = appMarketPlaceResourceTest.createRequest(name);
+      CreateAppMarketPlaceDefinitionReq req =
+          appMarketPlaceResourceTest
+              .createRequest(name)
+              .withSystemApp(name.equals(SYSTEM_APP_NAME));
       appMarketPlaceDefinition =
           appMarketPlaceResourceTest.createAndCheckEntity(req, ADMIN_AUTH_HEADERS);
     }
@@ -52,6 +59,16 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Override
   protected void post_entityCreateWithInvalidName_400() {
     // Does not apply since the App is already validated in the AppMarketDefinition
+  }
+
+  @Test
+  void delete_systemApp_403() throws IOException {
+    CreateApp systemAppRequest = createRequest(SYSTEM_APP_NAME);
+    App systemApp = createAndCheckEntity(systemAppRequest, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteEntity(systemApp.getId(), ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        "System App cannot be uninstalled");
   }
 
   @Override

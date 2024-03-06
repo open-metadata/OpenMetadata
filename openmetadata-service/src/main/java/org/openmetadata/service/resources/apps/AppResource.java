@@ -673,7 +673,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled."),
+        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled"),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
   public Response delete(
@@ -688,8 +688,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
     if (app.getSystemApp()) {
-      throw new AuthorizationException(
-          "System App cannot be uninstalled. Please contact your administrator.");
+      throw new AuthorizationException("System App cannot be uninstalled");
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -704,7 +703,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled."),
+        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled"),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
   public Response delete(
@@ -718,8 +717,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     if (app.getSystemApp()) {
-      throw new AuthorizationException(
-          "System App cannot be uninstalled. Please contact your administrator.");
+      throw new AuthorizationException("System App cannot be uninstalled");
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -988,7 +986,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures())
             .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
-            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration());
+            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
+            .withSystemApp(marketPlaceDefinition.getSystemApp());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
