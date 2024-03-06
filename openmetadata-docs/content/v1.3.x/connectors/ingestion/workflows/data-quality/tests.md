@@ -292,19 +292,25 @@ Validate a list of table column name matches an expected set of columns
 ```
 
 ### Table Custom SQL Test
-Write you own SQL test. The test will pass if the following condition is met:
-- The query result return 0 row
+Write you own SQL test. When writting your query you can use 2 strategies:
+- `ROWS` (default): expects the query to be written as `SELECT <field>, <field> FROM <foo> WHERE <condition>`. **Note** if your query returns a large amount of rows it might cause an "Out Of Memeory" error. In this case we recoomend you to use the `COUNT` startegy.
+- `COUNT`: expects the query to be written as `SELECT COUNT(<field>) FROM <foo> WHERE <condition>`.
+
+**How to use the Threshold Parameter?**
+The threshold allows you to define a limit for which you test should pass or fail - by defaut this number is 0. For example if my custom SQL query test returns 10 rows and my threshold is 5 the test will fail. If I update my threshold to 11 on my next run my test will pass.
 
 **Properties**
 
 * `sqlExpression`: SQL expression
+* `strategy`: one of `ROWS` or `COUNT`
+* `threshold`: an integer defining the threshold above which the test should fail (default to 0 if not specified)
 
 **Behavior**
 
 | Condition      | Status |
 | ----------- | ----------- |
-|`sqlExpression` returns **0 row**|Success ✅|
-|`sqlExpression` returns **1 or more rows**|Failed ❌|
+|`sqlExpression` returns **row <= threshold (default to 0)**|Success ✅|
+|`sqlExpression` returns **row > threshold (default to 0)**|Failed ❌|
 
 **Example**
 ```sql
