@@ -452,7 +452,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               initialValues={{
                 profileSampleType: state?.selectedProfileSampleType,
                 profileSamplePercentage: state?.profileSample || 100,
-                sampleDataCount: state.sampleDataCount,
+                sampleDataCount: state?.sampleDataCount,
               }}
               layout="vertical">
               <Form.Item

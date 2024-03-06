@@ -15,6 +15,10 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import SchemaEditor from './SchemaEditor';
 
+jest.mock('../../../constants/constants', () => ({
+  JSON_TAB_SIZE: 25,
+}));
+
 describe('SchemaEditor component test', () => {
   it('Component should render properly', async () => {
     render(<SchemaEditor value="" />);

@@ -20,6 +20,12 @@ import {
 import React from 'react';
 import ErrorPlaceHolderIngestion from './ErrorPlaceHolderIngestion';
 
+jest.mock('../AirflowMessageBanner/AirflowMessageBanner', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="airflow-message-banner" />);
+});
+
 describe('Test Error placeholder ingestion Component', () => {
   it('Component should render', async () => {
     const { container } = render(<ErrorPlaceHolderIngestion />);

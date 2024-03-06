@@ -16,7 +16,29 @@ import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
 const mockOnUpdate = jest.fn();
 
-describe('SelectableList Component Test', () => {
+jest.mock('../SelectableList/SelectableList.component', () => {
+  return {
+    SelectableList: jest.fn().mockReturnValue(<div>SelectableList</div>),
+  };
+});
+
+jest.mock('../../../utils/CommonUtils', () => {
+  return {
+    getCountBadge: jest.fn().mockReturnValue(<div>CountBadge</div>),
+  };
+});
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../constants/constants', () => ({
+  DE_ACTIVE_COLOR: '#fff',
+  PAGE_SIZE_MEDIUM: 15,
+}));
+
+describe('UserTeamSelectableList Component Test', () => {
   it('should render children if provided', () => {
     render(
       <UserTeamSelectableList hasPermission onUpdate={mockOnUpdate}>

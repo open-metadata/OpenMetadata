@@ -69,6 +69,10 @@ jest.mock('../DataInsightProvider', () => ({
     .mockReturnValue({ chartFilter: {}, kpi: {} }),
 }));
 
+jest.mock('../../../constants/constants', () => ({
+  ROUTES: {},
+}));
+
 const mockProps = {
   onScrollToChart: jest.fn(),
 };
