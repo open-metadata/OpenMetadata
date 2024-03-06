@@ -15,7 +15,7 @@ package org.openmetadata.service.apps.bundles.changeEvent.msteams;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.MS_TEAMS;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
+import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import java.util.List;
@@ -54,7 +54,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
 
       // Build Target
-      if (webhook.getEndpoint() != null) {
+      if (webhook != null && webhook.getEndpoint() != null) {
         String msTeamsWebhookURL = webhook.getEndpoint().toString();
         if (!CommonUtil.nullOrEmpty(msTeamsWebhookURL)) {
           target = client.target(msTeamsWebhookURL).request();
@@ -70,7 +70,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
     try {
       TeamsMessage teamsMessage = teamsMessageFormatter.buildOutgoingMessage(event);
       List<Invocation.Builder> targets =
-          getTargetsForWebhook(
+          getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), MS_TEAMS, client, event);
       if (target != null) {
         targets.add(target);

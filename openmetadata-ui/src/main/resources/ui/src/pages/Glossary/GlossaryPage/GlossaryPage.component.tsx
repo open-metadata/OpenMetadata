@@ -28,10 +28,7 @@ import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  ERROR_PLACEHOLDER_TYPE,
-  LOADING_STATE,
-} from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -59,9 +56,6 @@ const GlossaryPage = () => {
   const history = useHistory();
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
-    LOADING_STATE.INITIAL
-  );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const [previewAsset, setPreviewAsset] =
@@ -199,53 +193,68 @@ const GlossaryPage = () => {
     }
   };
 
-  const updateVote = async (data: VotingDataProps) => {
-    try {
-      const isGlossaryEntity =
-        Fqn.split(selectedData?.fullyQualifiedName).length <= 1;
+  const updateVote = useCallback(
+    async (data: VotingDataProps) => {
+      try {
+        const isGlossaryEntity =
+          Fqn.split(selectedData?.fullyQualifiedName).length <= 1;
 
-      if (isGlossaryEntity) {
-        await updateGlossaryVotes(selectedData?.id ?? '', data);
-        fetchGlossaryList();
-      } else {
-        await updateGlossaryTermVotes(selectedData?.id ?? '', data);
-        fetchGlossaryTermDetails();
+        if (isGlossaryEntity) {
+          const {
+            entity: { votes },
+          } = await updateGlossaryVotes(selectedData?.id ?? '', data);
+          setSelectedData(
+            (pre) =>
+              pre && {
+                ...pre,
+                votes,
+              }
+          );
+        } else {
+          const {
+            entity: { votes },
+          } = await updateGlossaryTermVotes(selectedData?.id ?? '', data);
+          setSelectedData(
+            (pre) =>
+              pre && {
+                ...pre,
+                votes,
+              }
+          );
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
+    },
+    [setSelectedData, selectedData]
+  );
+
+  const handleGlossaryDelete = async (id: string) => {
+    try {
+      await deleteGlossary(id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.glossary'),
+        })
+      );
+      setIsLoading(true);
+      // check if the glossary available
+      const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+      const glossaryPath =
+        updatedGlossaries.length > 0
+          ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+          : getGlossaryPath();
+
+      history.push(glossaryPath);
+      fetchGlossaryList();
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', {
+          entity: t('label.glossary'),
+        })
+      );
     }
-  };
-
-  const handleGlossaryDelete = (id: string) => {
-    setDeleteStatus(LOADING_STATE.WAITING);
-    deleteGlossary(id)
-      .then(() => {
-        setDeleteStatus(LOADING_STATE.SUCCESS);
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary'),
-          })
-        );
-        setIsLoading(true);
-        // check if the glossary available
-        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
-        const glossaryPath =
-          updatedGlossaries.length > 0
-            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
-            : getGlossaryPath();
-
-        history.push(glossaryPath);
-        fetchGlossaryList();
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.delete-entity-error', {
-            entity: t('label.glossary'),
-          })
-        );
-      })
-      .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
   const handleGlossaryTermUpdate = useCallback(
@@ -274,35 +283,32 @@ const GlossaryPage = () => {
     [selectedData]
   );
 
-  const handleGlossaryTermDelete = (id: string) => {
-    setDeleteStatus(LOADING_STATE.WAITING);
-    deleteGlossaryTerm(id)
-      .then(() => {
-        setDeleteStatus(LOADING_STATE.SUCCESS);
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary-term'),
-          })
-        );
-        let fqn;
-        if (glossaryFqn) {
-          const fqnArr = Fqn.split(glossaryFqn);
-          fqnArr.pop();
-          fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
-        }
-        setIsLoading(true);
-        history.push(getGlossaryPath(fqn));
-        fetchGlossaryList();
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.delete-entity-error', {
-            entity: t('label.glossary-term'),
-          })
-        );
-      })
-      .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
+  const handleGlossaryTermDelete = async (id: string) => {
+    try {
+      await deleteGlossaryTerm(id);
+
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.glossary-term'),
+        })
+      );
+      let fqn;
+      if (glossaryFqn) {
+        const fqnArr = Fqn.split(glossaryFqn);
+        fqnArr.pop();
+        fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
+      }
+      setIsLoading(true);
+      history.push(getGlossaryPath(fqn));
+      fetchGlossaryList();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.delete-entity-error', {
+          entity: t('label.glossary-term'),
+        })
+      );
+    }
   };
 
   const handleAssetClick = useCallback(
@@ -359,7 +365,6 @@ const GlossaryPage = () => {
         <Loader />
       ) : (
         <GlossaryV1
-          deleteStatus={deleteStatus}
           isGlossaryActive={isGlossaryActive}
           isSummaryPanelOpen={Boolean(previewAsset)}
           isVersionsView={false}

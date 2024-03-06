@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { CustomProperty, Type } from '../../../generated/entity/type';
+import { Type } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
 
 export interface CustomPropertyTableProp {
   hasAccess: boolean;

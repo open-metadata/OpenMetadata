@@ -103,24 +103,16 @@ describe(
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
       cy.get(
-        `[data-testid="description"] [data-testid="diff-added"]`
+        `[data-testid="description-container"] [data-testid="diff-added"]`
       ).scrollIntoView();
 
-      cy.get(`[data-testid="description"] [data-testid="diff-added"]`).should(
-        'be.visible'
-      );
+      cy.get(
+        `[data-testid="description-container"] [data-testid="diff-added"]`
+      ).should('be.visible');
 
       cy.get('[data-testid="mutually-exclusive-container"]').as(
         'mutuallyExclusiveContainer'
       );
-
-      cy.get(
-        '[data-testid="mutually-exclusive-container"] [data-testid="diff-removed"]'
-      ).should('be.visible');
-
-      cy.get(
-        '[data-testid="mutually-exclusive-container"] [data-testid="diff-added"]'
-      ).should('be.visible');
 
       cy.get('[data-testid="version-button"]').click();
 

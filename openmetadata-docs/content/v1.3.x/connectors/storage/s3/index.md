@@ -3,12 +3,13 @@ title: S3
 slug: /connectors/storage/s3
 ---
 
-# S3
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="S3"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=[]
+/ %}
 
 This page contains the setup guide and reference information for the S3 connector.
 
@@ -20,10 +21,6 @@ Configure and schedule S3 metadata workflows from the OpenMetadata UI:
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/s3/yaml"} /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 We need the following permissions in AWS:
 

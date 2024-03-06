@@ -19,6 +19,7 @@ import React, {
   FC,
   Fragment,
   HTMLAttributes,
+  ReactNode,
   useCallback,
   useEffect,
   useState,
@@ -214,7 +215,7 @@ const PopoverTitle = React.memo(
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
-  displayName?: string;
+  displayName?: ReactNode;
   type?: UserTeam;
   showUserName?: boolean;
   showUserProfile?: boolean;
@@ -269,9 +270,7 @@ const UserPopOverCard: FC<Props> = ({
               : getUserPath(userName ?? '')
           }>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? (
-            <span className="">{displayName ?? userName ?? ''}</span>
-          ) : null}
+          {showUserName ? <span>{displayName ?? userName}</span> : null}
         </Link>
       )}
     </Popover>

@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router';
@@ -53,12 +54,14 @@ interface Props {
   showActions?: boolean;
   showCommentsIcon?: boolean;
   reduceDescription?: boolean;
+  className?: string;
 }
 const DescriptionV1 = ({
   hasEditAccess,
   onDescriptionEdit,
   description = '',
   isEdit,
+  className,
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
@@ -126,24 +129,34 @@ const DescriptionV1 = ({
     () => (
       <Space size={12}>
         {!isReadOnly && hasEditAccess && (
-          <Icon
-            component={EditIcon}
-            data-testid="edit-description"
-            style={{ color: DE_ACTIVE_COLOR }}
-            onClick={onDescriptionEdit}
-          />
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.description'),
+            })}>
+            <Icon
+              component={EditIcon}
+              data-testid="edit-description"
+              style={{ color: DE_ACTIVE_COLOR }}
+              onClick={onDescriptionEdit}
+            />
+          </Tooltip>
         )}
         {taskActionButton}
         {showCommentsIcon && (
-          <Icon
-            component={CommentIcon}
-            data-testid="description-thread"
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={20}
-            onClick={() => {
-              onThreadLinkSelect?.(entityLink);
-            }}
-          />
+          <Tooltip
+            title={t('label.list-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <Icon
+              component={CommentIcon}
+              data-testid="description-thread"
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={20}
+              onClick={() => {
+                onThreadLinkSelect?.(entityLink);
+              }}
+            />
+          </Tooltip>
         )}
       </Space>
     ),
@@ -159,7 +172,7 @@ const DescriptionV1 = ({
 
   const content = (
     <Space
-      className="schema-description d-flex"
+      className={classNames('schema-description d-flex', className)}
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>

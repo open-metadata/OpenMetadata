@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import {
@@ -30,6 +30,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -45,6 +46,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { CategoricalChartState } from 'recharts/types/chart/generateCategoricalChart';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../../assets/svg/no-search-placeholder.svg';
 import {
@@ -59,14 +61,12 @@ import {
   COLORS,
   PROFILER_FILTER_RANGE,
 } from '../../../../constants/profiler.constant';
-import { CSMode } from '../../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import {
-  TestCaseParameterValue,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
@@ -82,22 +82,19 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
-import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
+import {
+  LineChartRef,
+  TestCaseChartDataType,
+  TestSummaryProps,
+} from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import './test-summary.less';
 
-type ChartDataType = {
-  information: { label: string; color: string }[];
-  data: Record<string, string | number | undefined | Thread>[];
-};
-
-const TestSummary: React.FC<TestSummaryProps> = ({
-  data,
-  showOnlyGraph = false,
-}) => {
+const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const { entityThread = [] } = useActivityFeedProvider();
+  const chartRef = useRef(null);
+  const [chartMouseEvent, setChartMouseEvent] =
+    useState<CategoricalChartState>();
 
   const defaultRange = useMemo(
     () => ({
@@ -129,7 +126,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   };
 
   const chartData = useMemo(() => {
-    const chartData: ChartDataType['data'] = [];
+    const chartData: TestCaseChartDataType['data'] = [];
 
     results.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
@@ -286,6 +283,17 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       />
     );
   };
+  const tooltipOffset = useMemo(() => {
+    const lineChartContainer = chartRef?.current as unknown as LineChartRef;
+    const chartContainer =
+      lineChartContainer?.container?.getBoundingClientRect();
+
+    // if tooltip is near the right edge of the chart, reduce edge offset
+    return chartMouseEvent?.chartX &&
+      chartMouseEvent.chartX + 200 > chartContainer?.width
+      ? -20
+      : -200;
+  }, [chartRef, chartMouseEvent]);
 
   const getGraph = useMemo(() => {
     if (isGraphLoading) {
@@ -303,6 +311,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
             top: 16,
             bottom: 16,
             right: 40,
+          }}
+          ref={chartRef}
+          onMouseMove={(e) => {
+            setChartMouseEvent(e);
           }}>
           <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
           <XAxis
@@ -315,12 +327,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           />
           <YAxis
             allowDataOverflow
+            domain={['min', 'max']}
             padding={{ top: 8, bottom: 8 }}
             tickFormatter={(value) => axisTickFormatter(value)}
           />
           <Tooltip
             content={<TestSummaryCustomTooltip />}
-            offset={-200}
+            offset={tooltipOffset}
+            position={{ y: 100 }}
             wrapperStyle={{ pointerEvents: 'auto' }}
           />
           {referenceArea()}
@@ -367,7 +381,13 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         </Typography.Paragraph>
       </ErrorPlaceHolder>
     );
-  }, [isGraphLoading, selectedTimeRange, incidentData, chartData]);
+  }, [
+    isGraphLoading,
+    selectedTimeRange,
+    incidentData,
+    chartData,
+    tooltipOffset,
+  ]);
 
   useEffect(() => {
     if (dateRangeObject) {
@@ -375,127 +395,27 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   }, [dateRangeObject]);
 
-  const parameterValuesWithSqlExpression = useMemo(
-    () =>
-      data.parameterValues && data.parameterValues.length > 0
-        ? data.parameterValues.filter((param) => param.name === 'sqlExpression')
-        : undefined,
-    [data.parameterValues]
-  );
-
-  const parameterValuesWithoutSqlExpression = useMemo(
-    () =>
-      data.parameterValues && data.parameterValues.length > 0
-        ? data.parameterValues.filter((param) => param.name !== 'sqlExpression')
-        : undefined,
-    [data.parameterValues]
-  );
-
-  const showParamsData = (param: TestCaseParameterValue) => {
-    const isSqlQuery = param.name === 'sqlExpression';
-
-    if (isSqlQuery) {
-      return (
-        <Row
-          className="sql-expression-container"
-          gutter={[8, 8]}
-          key={param.name}>
-          <Col span={24}>
-            <Typography.Text className="text-grey-muted">
-              {`${param.name}:`}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <SchemaEditor
-              editorClass="table-query-editor"
-              mode={{ name: CSMode.SQL }}
-              options={{
-                styleActiveLine: false,
-              }}
-              value={param.value ?? ''}
-            />
-          </Col>
-        </Row>
-      );
-    } else {
-      return (
-        <Col data-testid="parameter-value" key={param.name} span={24}>
-          <Typography.Text className="text-grey-muted">
-            {`${param.name}:`}{' '}
-          </Typography.Text>
-          <Typography.Text>{param.value}</Typography.Text>
-        </Col>
-      );
-    }
-  };
-
-  const showParameters = useMemo(
-    () =>
-      !isUndefined(parameterValuesWithoutSqlExpression) &&
-      !isEmpty(parameterValuesWithoutSqlExpression),
-    [parameterValuesWithSqlExpression, parameterValuesWithoutSqlExpression]
-  );
-
   const handleSelectedTimeRange = useCallback((range: string) => {
     setSelectedTimeRange(range);
   }, []);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <Row data-testid="test-summary-container" gutter={[0, 16]}>
-      <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Row gutter={[16, 16]}>
-            <Col className="d-flex justify-end" span={24}>
-              <DatePickerMenu
-                showSelectedCustomRange
-                defaultDateRange={pick(defaultRange, ['key', 'title'])}
-                handleDateRangeChange={handleDateRangeChange}
-                handleSelectedTimeRange={handleSelectedTimeRange}
-              />
-            </Col>
-            <Col data-testid="graph-container" span={24}>
-              {getGraph}
-            </Col>
-          </Row>
-        )}
+      <Col className="d-flex justify-end" span={24}>
+        <DatePickerMenu
+          showSelectedCustomRange
+          defaultDateRange={pick(defaultRange, ['key', 'title'])}
+          handleDateRangeChange={handleDateRangeChange}
+          handleSelectedTimeRange={handleSelectedTimeRange}
+        />
       </Col>
-      {showOnlyGraph ? null : (
-        <Col span={24}>
-          <Row align="top" data-testid="params-container" gutter={[16, 16]}>
-            {showParameters && (
-              <Col>
-                <Typography.Text className="text-grey-muted">
-                  {`${t('label.parameter')}:`}
-                </Typography.Text>
-                {!isEmpty(parameterValuesWithoutSqlExpression) ? (
-                  <Row className="parameter-value-container" gutter={[4, 4]}>
-                    {parameterValuesWithoutSqlExpression?.map(showParamsData)}
-                  </Row>
-                ) : (
-                  <Typography.Text className="m-l-xs" type="secondary">
-                    {t('label.no-parameter-available')}
-                  </Typography.Text>
-                )}
-              </Col>
-            )}
-            {!isUndefined(parameterValuesWithSqlExpression) ? (
-              <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
-            ) : null}
-            {data.description && (
-              <Col>
-                <Space direction="vertical" size={4}>
-                  <Typography.Text className="text-grey-muted">
-                    {`${t('label.description')}:`}
-                  </Typography.Text>
-                  <RichTextEditorPreviewer markdown={data.description} />
-                </Space>
-              </Col>
-            )}
-          </Row>
-        </Col>
-      )}
+      <Col data-testid="graph-container" span={24}>
+        {getGraph}
+      </Col>
     </Row>
   );
 };

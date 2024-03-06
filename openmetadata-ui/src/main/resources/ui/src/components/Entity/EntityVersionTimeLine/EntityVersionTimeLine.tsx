@@ -13,101 +13,127 @@
 
 import { Col, Divider, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize, isEmpty, toString } from 'lodash';
-import React, { Fragment, useMemo, useState } from 'react';
+import { isEmpty, toString } from 'lodash';
+import React, { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { getUserPath } from '../../../constants/constants';
 import { EntityHistory } from '../../../generated/type/entityHistory';
-import { getUserByName } from '../../../rest/userAPI';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CloseIcon from '../../Modals/CloseIcon.component';
+import './entity-version-timeline.less';
+import {
+  EntityVersionButtonProps,
+  EntityVersionTimelineProps,
+} from './EntityVersionTimeline.interface';
 
-type Props = {
-  versionList: EntityHistory;
-  currentVersion: string;
-  versionHandler: (v: string) => void;
-  onBack: () => void;
+export const VersionButton = ({
+  version,
+  onVersionSelect,
+  selected,
+  isMajorVersion,
+}: EntityVersionButtonProps) => {
+  const { t } = useTranslation();
+
+  const {
+    updatedBy,
+    version: versionNumber,
+    changeDescription,
+    updatedAt,
+    glossary,
+  } = version;
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: updatedBy,
+  });
+
+  const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
+
+  return (
+    <div
+      className="timeline-content p-b-md cursor-pointer"
+      onClick={() => onVersionSelect(toString(versionNumber))}>
+      <div className="timeline-wrapper">
+        <span
+          className={classNames(
+            'timeline-rounder',
+            {
+              selected,
+            },
+            {
+              major: isMajorVersion,
+            }
+          )}
+          data-testid={`version-selector-${versionText}`}
+        />
+        <span className={classNames('timeline-line')} />
+      </div>
+      <div>
+        <Typography.Text
+          className={classNames('d-flex font-medium', {
+            'text-primary': selected,
+          })}>
+          <span>{versionText}</span>
+          {isMajorVersion ? (
+            <span
+              className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
+              style={{ backgroundColor: '#EEEAF8' }}>
+              {t('label.major')}
+            </span>
+          ) : null}
+        </Typography.Text>
+        <div
+          className={classNames('text-xs font-normal break-all', {
+            'diff-description': selected,
+          })}>
+          {getSummary({
+            changeDescription: changeDescription,
+            isGlossaryTerm: !isEmpty(glossary),
+          })}
+        </div>
+        <div className="text-xs d-flex gap-1 items-center flex-wrap">
+          <UserPopOverCard
+            className="font-italic"
+            profileWidth={16}
+            userName={updatedBy}>
+            <Link className="thread-author m-r-xss" to={getUserPath(updatedBy)}>
+              {getEntityName(user)}
+            </Link>
+          </UserPopOverCard>
+          <span className="font-medium font-italic version-timestamp">
+            {formatDateTime(updatedAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 };
-type VersionType = 'all' | 'major' | 'minor';
 
-const EntityVersionTimeLine: React.FC<Props> = ({
+const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   versionList = {} as EntityHistory,
   currentVersion,
   versionHandler,
   onBack,
-}: Props) => {
+}) => {
   const { t } = useTranslation();
-  const [versionType] = useState<VersionType>('all');
-  const [uname, setUname] = useState<string>('');
 
-  const fetchUserName = async (userName: string) => {
-    try {
-      const userData = await getUserByName(userName);
+  const versions = useMemo(
+    () =>
+      versionList.versions?.map((v, i) => {
+        const currV = JSON.parse(v);
 
-      const name: string = getEntityName(userData);
-      setUname(name);
-    } catch (err) {
-      setUname(userName);
-    }
-  };
-
-  const versions = useMemo(() => {
-    let versionTypeList = [];
-    const list = versionList.versions ?? [];
-
-    switch (versionType) {
-      case 'major':
-        versionTypeList = list.filter((v) => {
-          const currV = JSON.parse(v);
-
+        const majorVersionChecks = () => {
           return isMajorVersion(
             parseFloat(currV?.changeDescription?.previousVersion)
               .toFixed(1)
               .toString(),
             parseFloat(currV?.version).toFixed(1).toString()
           );
-        });
-
-        break;
-      case 'minor':
-        versionTypeList = list.filter((v) => {
-          const currV = JSON.parse(v);
-
-          return !isMajorVersion(
-            parseFloat(currV?.changeDescription?.previousVersion)
-              .toFixed(1)
-              .toString(),
-            parseFloat(currV?.version).toFixed(1).toString()
-          );
-        });
-
-        break;
-      case 'all':
-      default:
-        versionTypeList = list;
-
-        break;
-    }
-
-    return versionTypeList.length ? (
-      versionTypeList.map((v, i) => {
-        const currV = JSON.parse(v);
-        const userId: string = currV?.updatedBy;
-        fetchUserName(userId);
-        {
-          userId === 'admin' ? setUname('admin') : ' ';
-        }
-        const majorVersionChecks = () => {
-          return (
-            isMajorVersion(
-              parseFloat(currV?.changeDescription?.previousVersion)
-                .toFixed(1)
-                .toString(),
-              parseFloat(currV?.version).toFixed(1).toString()
-            ) && versionType === 'all'
-          );
         };
-        const versionText = `v${parseFloat(currV?.version).toFixed(1)}`;
 
         return (
           <Fragment key={currV.version}>
@@ -118,74 +144,17 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 </div>
               </div>
             ) : null}
-            <div
-              className="timeline-content p-b-md cursor-pointer"
-              onClick={() => versionHandler(toString(currV?.version))}>
-              <div className="timeline-wrapper">
-                <span
-                  className={classNames(
-                    'timeline-rounder',
-                    {
-                      selected: toString(currV?.version) === currentVersion,
-                    },
-                    {
-                      major: majorVersionChecks(),
-                    }
-                  )}
-                  data-testid={`version-selector-${versionText}`}
-                />
-                <span className={classNames('timeline-line')} />
-              </div>
-              <div>
-                <Typography.Text
-                  className={classNames('d-flex font-medium', {
-                    'text-primary': toString(currV?.version) === currentVersion,
-                  })}>
-                  <span>{versionText}</span>
-                  {majorVersionChecks() ? (
-                    <span
-                      className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
-                      style={{ backgroundColor: '#EEEAF8' }}>
-                      {t('label.major')}
-                    </span>
-                  ) : null}
-                </Typography.Text>
-                <div
-                  className={classNames('text-xs font-normal break-all', {
-                    'diff-description':
-                      toString(currV?.version) === currentVersion,
-                  })}>
-                  {getSummary({
-                    changeDescription: currV?.changeDescription,
-                    isGlossaryTerm: !isEmpty(currV?.glossary),
-                  })}
-                </div>
-                <p className="text-xs font-italic">
-                  <span className="font-medium">{uname}</span>
-                  <span className="text-grey-muted">
-                    {' '}
-                    {t('label.updated-on')}{' '}
-                  </span>
-                  <span className="font-medium">
-                    {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
-                      hour: 'numeric',
-                      minute: 'numeric',
-                    })}
-                  </span>
-                </p>
-              </div>
-            </div>
+            <VersionButton
+              isMajorVersion={majorVersionChecks()}
+              selected={toString(currV.version) === currentVersion}
+              version={currV}
+              onVersionSelect={versionHandler}
+            />
           </Fragment>
         );
-      })
-    ) : (
-      <p className="text-grey-muted d-flex justify-center items-center">
-        {t('message.no-version-type-available', {
-          type: capitalize(versionType),
-        })}
-      </p>
-    );
-  }, [versionList, currentVersion, versionHandler, versionType]);
+      }),
+    [versionList, currentVersion, versionHandler]
+  );
 
   return (
     <Drawer

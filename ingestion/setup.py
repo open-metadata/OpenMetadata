@@ -30,7 +30,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
-    "pandas": "pandas<=2,<3",
+    "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=14.0",
     "pydantic": "pydantic~=1.10",
     "pydomo": "pydomo~=0.3",
@@ -92,6 +92,8 @@ pii_requirements = {
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
+    VERSIONS["azure-identity"],
+    "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",
@@ -135,7 +137,7 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
-    "backup": {VERSIONS["boto3"], "azure-identity", "azure-storage-blob"},
+    "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "bigquery": {
         "cachetools",
         "google-cloud-datacatalog>=3.6.2",
@@ -188,7 +190,6 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        "elasticsearch==7.13.1",
         VERSIONS["elasticsearch8"],
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
@@ -311,6 +312,7 @@ test = {
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
+    "testcontainers==3.7.1",
 }
 
 e2e_test = {

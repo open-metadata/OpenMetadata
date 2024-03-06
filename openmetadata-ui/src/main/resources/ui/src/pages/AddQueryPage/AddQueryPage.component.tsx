@@ -136,6 +136,7 @@ const AddQueryPage = () => {
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values): Promise<void> => {
+    setIsSaving(true);
     const updatedValues: CreateQuery = {
       ...values,
       description: isEmpty(description) ? undefined : description,
@@ -162,7 +163,6 @@ const AddQueryPage = () => {
       showSuccessToast(
         t('server.create-entity-success', { entity: t('label.query') })
       );
-      setIsSaving(false);
       handleCancelClick();
     } catch (error) {
       if (
@@ -181,6 +181,7 @@ const AddQueryPage = () => {
           })
         );
       }
+    } finally {
       setIsSaving(false);
     }
   };

@@ -116,18 +116,18 @@ const Ingestion: React.FC<IngestionProps> = ({
     });
   };
 
-  const handleDelete = (id: string, displayName: string) => {
+  const handleDelete = async (id: string, displayName: string) => {
     setDeleteSelection({ id, name: displayName, state: 'waiting' });
-    deleteIngestion(id, displayName)
-      .then(() => {
-        setTimeout(() => {
-          setDeleteSelection({ id, name: displayName, state: 'success' });
-          handleCancelConfirmationModal();
-        }, 500);
-      })
-      .catch(() => {
+    try {
+      await deleteIngestion(id, displayName);
+
+      setTimeout(() => {
+        setDeleteSelection({ id, name: displayName, state: 'success' });
         handleCancelConfirmationModal();
-      });
+      }, 500);
+    } catch (error) {
+      handleCancelConfirmationModal();
+    }
   };
 
   const getSearchedIngestions = () => {
@@ -264,7 +264,6 @@ const Ingestion: React.FC<IngestionProps> = ({
       <EntityDeleteModal
         entityName={deleteSelection.name}
         entityType={t('label.ingestion-lowercase')}
-        loadingState={deleteSelection.state}
         visible={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
         onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}

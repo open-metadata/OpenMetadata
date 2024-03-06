@@ -39,16 +39,20 @@ Validate the total row count in the table is equal to the given value.
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableRowCountToEqual
-parameterValues:
-    - name: value
-      value: 2
+- name: myTestName
+  description: test description
+  testDefinitionName: tableRowCountToEqual
+  parameterValues:
+      - name: value
+        value: 2
 ```
 
 **JSON Config**
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
     "testDefinitionName": "tableRowCountToEqual",
     "parameterValues": [
         {
@@ -79,8 +83,10 @@ Any of those two need to be informed.
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableRowCountToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  testDefinitionName: tableRowCountToBeBetween
+  parameterValues:
     - name: minValue
       value: 10
     - name: maxValue
@@ -91,6 +97,8 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
     "testDefinitionName": "tableRowCountToBeBetween",
     "parameterValues": [
         {
@@ -122,8 +130,10 @@ Validate that the number of columns in a table is equal to a given value.
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableColumnCountToEqual
-parameterValues:
+- name: myTestName
+  description: test description
+  testDefinitionName: tableColumnCountToEqual
+  parameterValues:
     - name: columnCount
       value: 5
 ```
@@ -132,6 +142,8 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
     "testDefinitionName": "tableColumnCountToEqual",
     "parameterValues": [
         {
@@ -160,8 +172,10 @@ Validate the number of columns in a table is between the given value
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableColumnCountToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  testDefinitionName: tableColumnCountToBeBetween
+  parameterValues:
     - name: minColValue
       value: 5
     - name: maxColValue
@@ -172,6 +186,8 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
     "testDefinitionName": "tableColumnCountToBeBetween",
     "parameterValues": [
         {
@@ -203,8 +219,10 @@ Validate a column name is present in the table
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableColumnNameToExist
-parameterValues:
+- name: myTestName
+  description: test description
+  testDefinitionName: tableColumnNameToExist
+  parameterValues:
     - name: columnName
       value: order_id
 ```
@@ -213,6 +231,7 @@ parameterValues:
 
 ```json
 {
+    "myTestName": "myTestName",
     "testDefinitionName": "tableColumnNameToExist",
     "parameterValues": [
         {
@@ -243,8 +262,10 @@ Validate a list of table column name matches an expected set of columns
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableColumnToMatchSet
-parameterValues:
+- name: myTestName
+  description: test description
+  testDefinitionName: tableColumnToMatchSet
+  parameterValues:
     - name: columnNames
       value: "col1, col2, col3"
     - name: ordered
@@ -255,6 +276,7 @@ parameterValues:
 
 ```json
 {
+    "myTestName": "myTestName",
     "testDefinitionName": "tableColumnToMatchSet",
     "parameterValues": [
         {
@@ -270,19 +292,25 @@ parameterValues:
 ```
 
 ### Table Custom SQL Test
-Write you own SQL test. The test will pass if the following condition is met:
-- The query result return 0 row
+Write you own SQL test. When writting your query you can use 2 strategies:
+- `ROWS` (default): expects the query to be written as `SELECT <field>, <field> FROM <foo> WHERE <condition>`. **Note** if your query returns a large amount of rows it might cause an "Out Of Memeory" error. In this case we recoomend you to use the `COUNT` startegy.
+- `COUNT`: expects the query to be written as `SELECT COUNT(<field>) FROM <foo> WHERE <condition>`.
+
+**How to use the Threshold Parameter?**
+The threshold allows you to define a limit for which you test should pass or fail - by defaut this number is 0. For example if my custom SQL query test returns 10 rows and my threshold is 5 the test will fail. If I update my threshold to 11 on my next run my test will pass.
 
 **Properties**
 
 * `sqlExpression`: SQL expression
+* `strategy`: one of `ROWS` or `COUNT`
+* `threshold`: an integer defining the threshold above which the test should fail (default to 0 if not specified)
 
 **Behavior**
 
 | Condition      | Status |
 | ----------- | ----------- |
-|`sqlExpression` returns **0 row**|Success ✅|
-|`sqlExpression` returns **1 or more rows**|Failed ❌|
+|`sqlExpression` returns **row <= threshold (default to 0)**|Success ✅|
+|`sqlExpression` returns **row > threshold (default to 0)**|Failed ❌|
 
 **Example**
 ```sql
@@ -303,8 +331,10 @@ WHERE lifetime_value < 0;
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableCustomSQLQuery
-parameterValues:
+- name: myTestName
+  description: test description
+  testDefinitionName: tableCustomSQLQuery
+  parameterValues:
     - name: sqlExpression
       value: >
         SELECT 
@@ -317,6 +347,8 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
     "testDefinitionName": "tableCustomSQLQuery",
     "parameterValues": [
         {
@@ -354,8 +386,10 @@ The Table Row Inserted Count To Be Between cannot be executed against tables tha
 **YAML Config**
 
 ```yaml
-testDefinitionName: tableRowInsertedCountToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  testDefinitionName: tableRowInsertedCountToBeBetween
+  parameterValues:
     - name: min
       value: 10
     - name: max
@@ -372,6 +406,8 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
     "testDefinitionName": "tableRowInsertedCountToBeBetween",
     "parameterValues": [
         {
@@ -433,8 +469,11 @@ Makes sure that there are no duplicate values in a given column.
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesToBeUnique
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValuesToBeUnique
+  parameterValues:
     - name: columnNames
       value: true
 ```
@@ -443,6 +482,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesToBeUnique",
     "parameterValues": [
         {
@@ -470,8 +512,11 @@ Validates that there are no null values in the column.
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesToBeNotNull
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValuesToBeNotNull
+  parameterValues:
     - name: columnValuesToBeNotNull
       value: true
 ```
@@ -480,6 +525,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesToBeNotNull",
     "parameterValues": [
         {
@@ -517,8 +565,11 @@ The other databases will fall back to the `LIKE` expression
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesToMatchRegex
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValuesToMatchRegex
+  parameterValues:
     - name: regex
       value: "%something%"
 ```
@@ -527,6 +578,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesToMatchRegex",
     "parameterValues": [
         {
@@ -564,8 +618,11 @@ The other databases will fall back to the `LIKE` expression
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesToMatchRegex
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValuesToMatchRegex
+  parameterValues:
     - name: forbiddenRegex
       value: "%something%"
 ```
@@ -574,6 +631,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesToMatchRegex",
     "parameterValues": [
         {
@@ -611,6 +671,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesToBeInSet",
     "parameterValues": [
         {
@@ -641,8 +704,11 @@ Validate that there are no values in a column in a set of forbidden values.
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesToBeNotInSet
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValuesToBeNotInSet
+  parameterValues:
     - name: forbiddenValues
       value: ["forbidden1", "forbidden2"]
 ```
@@ -651,6 +717,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesToBeNotInSet",
     "parameterValues": [
         {
@@ -689,8 +758,11 @@ Any of those two need to be informed.
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValuesToBeBetween
+  parameterValues:
     - name: minValue
       value: ["forbidden1", "forbidden2"]
 ```
@@ -699,6 +771,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesToBeBetween",
     "parameterValues": [
         {
@@ -730,8 +805,11 @@ Validates that the number of missing values matches a given number. Missing valu
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesMissingCountToBeEqual
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValuesMissingCountToBeEqual
+  parameterValues:
     - name: missingValueMatch
       value: ["NA", "N/A"]
     - name: missingCountValue
@@ -742,6 +820,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesMissingCountToBeEqual",
     "parameterValues": [
         {
@@ -763,6 +844,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValuesMissingCountToBeEqual",
     "parameterValues": [
         {
@@ -805,8 +889,11 @@ Any of those two need to be informed.
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValueLengthsToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValueLengthsToBeBetween
+  parameterValues:
     - name: minLength
       value: 50
     - name: maxLength
@@ -817,6 +904,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValueLengthsToBeBetween",
     "parameterValues": [
         {
@@ -854,8 +944,11 @@ Validate the maximum value of a column is between a specific range
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValueMaxToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValueMaxToBeBetween
+  parameterValues:
     - name: minValueForMaxInCol
       value: 50
     - name: maxValueForMaxInCol
@@ -866,6 +959,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValueMaxToBeBetween",
     "parameterValues": [
         {
@@ -903,8 +999,11 @@ Validate the minimum value of a column is between a specific range
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValueMinToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValueMinToBeBetween
+  parameterValues:
     - name: minValueForMinInCol
       value: 10
     - name: maxValueForMinInCol
@@ -914,7 +1013,10 @@ parameterValues:
 **JSON Config**
 
 ```json
-{
+{   
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValueMinToBeBetween",
     "parameterValues": [
         {
@@ -952,8 +1054,11 @@ Validate the mean of a column is between a specific range
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValueMeanToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValueMeanToBeBetween
+  parameterValues:
     - name: minValueForMeanInCol
       value: 5
     - name: maxValueForMeanInCol
@@ -964,6 +1069,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValueMeanToBeBetween",
     "parameterValues": [
         {
@@ -1001,8 +1109,11 @@ Validate the median of a column is between a specific range
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValueMedianToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValueMedianToBeBetween
+  parameterValues:
     - name: minValueForMedianInCol
       value: 5
     - name: maxValueForMedianInCol
@@ -1013,6 +1124,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValueMedianToBeBetween",
     "parameterValues": [
         {
@@ -1050,8 +1164,11 @@ Validate the sum of a column is between a specific range
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValueMedianToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValueMedianToBeBetween
+  parameterValues:
     - name: minValueForMedianInCol
       value: 5
     - name: maxValueForMedianInCol
@@ -1062,6 +1179,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValueMedianToBeBetween",
     "parameterValues": [
         {
@@ -1099,8 +1219,11 @@ Validate the standard deviation of a column is between a specific range
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValueStdDevToBeBetween
-parameterValues:
+- name: myTestName
+  description: test description
+  columnName: columnName
+  testDefinitionName: columnValueStdDevToBeBetween
+  parameterValues:
     - name: minValueForStdDevInCol
       value: 5
     - name: maxValueForStdDevInCol
@@ -1111,6 +1234,9 @@ parameterValues:
 
 ```json
 {
+    "name": "myTestName",
+    "description": "test description",
+    "columnName": "columnName",
     "testDefinitionName": "columnValueStdDevToBeBetween",
     "parameterValues": [
         {

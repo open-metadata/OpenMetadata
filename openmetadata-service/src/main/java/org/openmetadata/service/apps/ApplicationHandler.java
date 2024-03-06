@@ -30,21 +30,31 @@ public class ApplicationHandler {
     runMethodFromApplication(app, daoCollection, searchRepository, "configure");
   }
 
+  public static Object runAppInit(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository)
+      throws ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    Class<?> clz = Class.forName(app.getClassName());
+    Object resource =
+        clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
+            .newInstance(daoCollection, searchRepository);
+
+    // Call init Method
+    Method initMethod = resource.getClass().getMethod("init", App.class);
+    initMethod.invoke(resource, app);
+
+    return resource;
+  }
+
   /** Load an App from its className and call its methods dynamically */
   public static void runMethodFromApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
     try {
-      Class<?> clz = Class.forName(app.getClassName());
-      Object resource = clz.getConstructor().newInstance();
-
-      // Call init Method
-      Method initMethod =
-          resource
-              .getClass()
-              .getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
-      initMethod.invoke(resource, app, daoCollection, searchRepository);
-
+      Object resource = runAppInit(app, daoCollection, searchRepository);
       // Call method on demand
       Method scheduleMethod = resource.getClass().getMethod(methodName);
       scheduleMethod.invoke(resource);
@@ -54,9 +64,9 @@ public class ApplicationHandler {
         | IllegalAccessException
         | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
-      throw new UnhandledServerException("Exception encountered", e);
+      throw new UnhandledServerException(e.getCause().getMessage());
     } catch (ClassNotFoundException e) {
-      throw new UnhandledServerException("Exception encountered", e);
+      throw new UnhandledServerException(e.getCause().getMessage());
     }
   }
 }

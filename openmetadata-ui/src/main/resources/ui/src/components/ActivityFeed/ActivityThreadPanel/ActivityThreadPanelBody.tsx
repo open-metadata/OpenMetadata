@@ -279,7 +279,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         ) : (
           <Fragment>
-            {showNewConversation || isEqual(threads.length, 0) ? (
+            {showNewConversation ||
+            (isEqual(threads.length, 0) && !isThreadLoading) ? (
               <>
                 {isConversationType && (
                   <Space className="w-full" direction="vertical">
@@ -294,7 +295,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     />
                   </Space>
                 )}
-                {(isAnnouncementType || isTaskType) && (
+                {(isAnnouncementType || isTaskType) && !isThreadLoading && (
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>

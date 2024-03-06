@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Space, Tooltip, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -34,15 +34,17 @@ const UserProfileTeams = ({
 }: UserProfileTeamsProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
 
-  const handleTeamsSave = () => {
-    updateUserDetails({
+  const handleTeamsSave = async () => {
+    setIsLoading(true);
+    await updateUserDetails({
       teams: selectedTeams.map((teamId) => ({ id: teamId.id, type: 'team' })),
     });
 
+    setIsLoading(false);
     setIsTeamsEdit(false);
   };
 
@@ -73,19 +75,25 @@ const UserProfileTeams = ({
           </Typography.Text>
 
           {!isTeamsEdit && isAdminUser && (
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-teams-button"
-              {...ICON_DIMENSION}
-              onClick={() => setIsTeamsEdit(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.team-plural'),
+              })}>
+              <EditIcon
+                className="cursor-pointer align-middle"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-teams-button"
+                {...ICON_DIMENSION}
+                onClick={() => setIsTeamsEdit(true)}
+              />
+            </Tooltip>
           )}
         </Space>
       }>
       {isTeamsEdit && isAdminUser ? (
         <InlineEdit
           direction="vertical"
+          isLoading={isLoading}
           onCancel={() => setIsTeamsEdit(false)}
           onSave={handleTeamsSave}>
           <TeamsSelectable

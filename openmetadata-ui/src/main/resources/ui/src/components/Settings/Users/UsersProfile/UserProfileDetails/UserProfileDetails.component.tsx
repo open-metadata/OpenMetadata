@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Input, Space, Typography } from 'antd';
+import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -102,9 +102,11 @@ const UserProfileDetails = ({
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setDisplayName(e.target.value);
 
-  const handleDisplayNameSave = useCallback(() => {
+  const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
-      updateUserDetails({ displayName: displayName ?? '' });
+      setIsLoading(true);
+      await updateUserDetails({ displayName: displayName ?? '' });
+      setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
@@ -113,6 +115,7 @@ const UserProfileDetails = ({
     () =>
       isDisplayNameEdit && hasEditPermission ? (
         <InlineEdit
+          isLoading={isLoading}
           onCancel={() => setIsDisplayNameEdit(false)}
           onSave={handleDisplayNameSave}>
           <Input
@@ -139,13 +142,18 @@ const UserProfileDetails = ({
               : getEntityName(userData)}
           </Typography.Text>
           {hasEditPermission && (
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-displayName"
-              {...ICON_DIMENSION}
-              onClick={() => setIsDisplayNameEdit(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.display-name'),
+              })}>
+              <EditIcon
+                className="cursor-pointer align-middle"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-displayName"
+                {...ICON_DIMENSION}
+                onClick={() => setIsDisplayNameEdit(true)}
+              />
+            </Tooltip>
           )}
         </Space>
       ),
