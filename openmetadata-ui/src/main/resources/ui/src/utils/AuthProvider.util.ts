@@ -290,16 +290,15 @@ export const getUrlPathnameExpiryAfterRoute = () => {
  */
 export const extractDetailsFromToken = () => {
   const token = localStorage.getItem(oidcTokenKey) || '';
-
   if (token) {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
       const dateNow = Date.now();
-
-      if (isNil(exp)) {
+      if (exp === null) {
         return {
           exp,
           isExpired: false,
+          timeoutExpiry: 0,
         };
       }
 

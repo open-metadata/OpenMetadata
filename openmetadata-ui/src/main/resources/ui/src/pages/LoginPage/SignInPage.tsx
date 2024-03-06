@@ -269,35 +269,33 @@ const SignInPage = () => {
                   </div>
                 )}
                 {!isAuthProviderLDAP && (
+                  <div className="mt-8" onClick={onClickForgotPassword}>
+                    <Typography.Link underline data-testid="forgot-password">
+                      {t('label.forgot-password')}
+                    </Typography.Link>
+                  </div>
+                )}
+                {authConfig?.enableSelfSignup && !isAuthProviderLDAP && (
                   <>
-                    <div className="mt-8" onClick={onClickForgotPassword}>
-                      <Typography.Link underline data-testid="forgot-password">
-                        {t('label.forgot-password')}
-                      </Typography.Link>
-                    </div>
-                    {authConfig?.enableSelfSignup && (
-                      <>
-                        <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                          <Typography.Text className="text-sm" type="secondary">
-                            {t('label.or-lowercase')}
-                          </Typography.Text>
-                        </Divider>
+                    <Divider className="w-min-0 mt-8 mb-12 justify-center">
+                      <Typography.Text className="text-sm" type="secondary">
+                        {t('label.or-lowercase')}
+                      </Typography.Text>
+                    </Divider>
 
-                        <div className="mt-4 d-flex flex-center">
-                          <Typography.Text className="mr-4">
-                            {t('message.new-to-the-platform')}
-                          </Typography.Text>
-                          <Button
-                            data-testid="signup"
-                            type="link"
-                            onClick={onClickSignUp}>
-                            {t('label.create-entity', {
-                              entity: t('label.account'),
-                            })}
-                          </Button>
-                        </div>
-                      </>
-                    )}
+                    <div className="mt-4 d-flex flex-center">
+                      <Typography.Text className="mr-4">
+                        {t('message.new-to-the-platform')}
+                      </Typography.Text>
+                      <Button
+                        data-testid="signup"
+                        type="link"
+                        onClick={onClickSignUp}>
+                        {t('label.create-entity', {
+                          entity: t('label.account'),
+                        })}
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>

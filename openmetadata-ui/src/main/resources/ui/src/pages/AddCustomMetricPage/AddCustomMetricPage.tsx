@@ -25,7 +25,7 @@ import SingleColumnProfile from '../../components/Database/Profiler/TableProfile
 import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
-import { getEntityDetailsPath } from '../../constants/constants';
+import { getTableTabPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
@@ -59,11 +59,7 @@ const AddCustomMetricPage = () => {
           ...getEntityBreadcrumbs(table, EntityType.TABLE),
           {
             name: getEntityName(table),
-            url: getEntityDetailsPath(
-              EntityType.TABLE,
-              entityFqn,
-              EntityTabs.PROFILER
-            ),
+            url: getTableTabPath(entityFqn, EntityTabs.PROFILER),
           },
           {
             name: t('label.add-entity-metric', {
@@ -98,20 +94,14 @@ const AddCustomMetricPage = () => {
   const handleBackClick = () => {
     if (isColumnMetric) {
       history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.TABLE,
-          entityFqn,
-          EntityTabs.PROFILER
-        ),
+        pathname: getTableTabPath(entityFqn, EntityTabs.PROFILER),
         search: QueryString.stringify({
           activeTab: TableProfilerTab.COLUMN_PROFILE,
           activeColumnFqn,
         }),
       });
     } else {
-      history.push(
-        getEntityDetailsPath(EntityType.TABLE, entityFqn, EntityTabs.PROFILER)
-      );
+      history.push(getTableTabPath(entityFqn, EntityTabs.PROFILER));
     }
   };
 

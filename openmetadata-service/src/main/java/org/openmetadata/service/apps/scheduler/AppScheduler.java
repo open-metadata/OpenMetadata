@@ -135,14 +135,13 @@ public class AppScheduler {
 
   public void addApplicationSchedule(App application) {
     try {
-      if (scheduler.getJobDetail(new JobKey(application.getId().toString(), APPS_JOB_GROUP))
-          != null) {
+      if (scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP)) != null) {
         LOG.info("Job already exists for the application, skipping the scheduling");
         return;
       }
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
-        JobDetail jobDetail = jobBuilder(application, application.getId().toString());
+        JobDetail jobDetail = jobBuilder(application, application.getName());
         Trigger trigger = trigger(application);
         scheduler.scheduleJob(jobDetail, trigger);
       } else {
@@ -155,8 +154,18 @@ public class AppScheduler {
   }
 
   public void deleteScheduledApplication(App app) throws SchedulerException {
-    scheduler.deleteJob(new JobKey(app.getId().toString(), APPS_JOB_GROUP));
-    scheduler.unscheduleJob(new TriggerKey(app.getId().toString(), APPS_TRIGGER_GROUP));
+    // Scheduled Jobs
+    scheduler.deleteJob(new JobKey(app.getName(), APPS_JOB_GROUP));
+    scheduler.unscheduleJob(new TriggerKey(app.getName(), APPS_TRIGGER_GROUP));
+
+    // OnDemand Jobs
+    scheduler.deleteJob(
+        new JobKey(
+            String.format("%s-%s", app.getName(), AppRunType.OnDemand.value()), APPS_JOB_GROUP));
+    scheduler.unscheduleJob(
+        new TriggerKey(
+            String.format("%s-%s", app.getName(), AppRunType.OnDemand.value()),
+            APPS_TRIGGER_GROUP));
   }
 
   private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
@@ -175,7 +184,7 @@ public class AppScheduler {
 
   private Trigger trigger(App app) {
     return TriggerBuilder.newTrigger()
-        .withIdentity(app.getId().toString(), APPS_TRIGGER_GROUP)
+        .withIdentity(app.getName(), APPS_TRIGGER_GROUP)
         .withSchedule(getCronSchedule(app.getAppSchedule()))
         .build();
   }
@@ -210,11 +219,11 @@ public class AppScheduler {
   public void triggerOnDemandApplication(App application) {
     try {
       JobDetail jobDetailScheduled =
-          scheduler.getJobDetail(new JobKey(application.getId().toString(), APPS_JOB_GROUP));
+          scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
       JobDetail jobDetailOnDemand =
           scheduler.getJobDetail(
               new JobKey(
-                  String.format("%s-%s", application.getId(), AppRunType.OnDemand.value()),
+                  String.format("%s-%s", application.getName(), AppRunType.OnDemand.value()),
                   APPS_JOB_GROUP));
       // Check if the job is already running
       List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
@@ -233,12 +242,12 @@ public class AppScheduler {
         JobDetail newJobDetail =
             jobBuilder(
                 application,
-                String.format("%s-%s", application.getId(), AppRunType.OnDemand.value()));
+                String.format("%s-%s", application.getName(), AppRunType.OnDemand.value()));
         newJobDetail.getJobDataMap().put("triggerType", AppRunType.OnDemand.value());
         Trigger trigger =
             TriggerBuilder.newTrigger()
                 .withIdentity(
-                    String.format("%s-%s", application.getId(), AppRunType.OnDemand.value()),
+                    String.format("%s-%s", application.getName(), AppRunType.OnDemand.value()),
                     APPS_TRIGGER_GROUP)
                 .startNow()
                 .build();
