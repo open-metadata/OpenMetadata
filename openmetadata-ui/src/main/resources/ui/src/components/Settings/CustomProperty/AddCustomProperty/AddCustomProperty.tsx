@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, omit, startCase } from 'lodash';
+import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -23,7 +23,10 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { SUPPORTED_FIELD_TYPES } from '../../../../constants/constants';
+import {
+  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+  PROPERTY_TYPES_WITH_FORMAT,
+} from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
@@ -89,20 +92,34 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    const supportedTypes = propertyTypes.filter((property) =>
-      SUPPORTED_FIELD_TYPES.includes(property.name)
-    );
-
-    return map(supportedTypes, (type) => ({
+    return map(propertyTypes, (type) => ({
       key: type.name,
       label: startCase(type.displayName ?? type.name),
       value: type.id,
     }));
   }, [propertyTypes]);
 
-  const isEnumType =
-    propertyTypeOptions.find((option) => option.value === watchedPropertyType)
-      ?.key === 'enum';
+  const { hasEnumConfig, hasFormatConfig, hasEntityReferenceConfig } =
+    useMemo(() => {
+      const watchedOption = propertyTypeOptions.find(
+        (option) => option.value === watchedPropertyType
+      );
+      const watchedOptionKey = watchedOption?.key ?? '';
+
+      const hasEnumConfig = watchedOptionKey === 'enum';
+
+      const hasFormatConfig =
+        PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
+
+      const hasEntityReferenceConfig =
+        PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedOptionKey);
+
+      return {
+        hasEnumConfig,
+        hasFormatConfig,
+        hasEntityReferenceConfig,
+      };
+    }, [watchedPropertyType, propertyTypeOptions]);
 
   const fetchPropertyType = async () => {
     try {
@@ -142,6 +159,8 @@ const AddCustomProperty = () => {
     data: Exclude<CustomProperty, 'propertyType' | 'customPropertyConfig'> & {
       propertyType: string;
       customPropertyConfig: string[];
+      formatConfig: string;
+      entityReferenceConfig: string;
       multiSelect?: boolean;
     }
   ) => {
@@ -151,24 +170,42 @@ const AddCustomProperty = () => {
 
     try {
       setIsCreating(true);
-      await addPropertyToEntity(typeDetail?.id ?? '', {
-        ...omit(data, 'multiSelect'),
-        propertyType: {
-          id: data.propertyType,
-          type: 'type',
+      let customPropertyConfig;
+
+      if (hasEnumConfig) {
+        customPropertyConfig = {
+          config: {
+            multiSelect: Boolean(data?.multiSelect),
+            values: data.customPropertyConfig,
+          },
+        };
+      }
+
+      if (hasFormatConfig) {
+        customPropertyConfig = {
+          config: data.formatConfig,
+        };
+      }
+
+      if (hasEntityReferenceConfig) {
+        customPropertyConfig = {
+          config: data.entityReferenceConfig,
+        };
+      }
+
+      const payload = omitBy(
+        {
+          ...omit(data, 'multiSelect'),
+          propertyType: {
+            id: data.propertyType,
+            type: 'type',
+          },
+          customPropertyConfig,
         },
-        // Only add customPropertyConfig if it is an enum type
-        ...(isEnumType
-          ? {
-              customPropertyConfig: {
-                config: {
-                  multiSelect: Boolean(data?.multiSelect),
-                  values: data.customPropertyConfig,
-                },
-              },
-            }
-          : {}),
-      });
+        isUndefined
+      ) as unknown as CustomProperty;
+
+      await addPropertyToEntity(typeDetail?.id ?? '', payload);
       history.goBack();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -265,6 +302,32 @@ const AddCustomProperty = () => {
     formItemLayout: FormItemLayout.HORIZONTAL,
   };
 
+  const formatConfigField: FieldProp = {
+    name: 'formatConfig',
+    required: true,
+    label: t('label.format'),
+    id: 'root/formatConfig',
+    type: FieldTypes.TEXT,
+    props: {
+      'data-testid': 'formatConfig',
+      autoComplete: 'off',
+    },
+    placeholder: t('label.format'),
+  };
+
+  const entityReferenceConfigField: FieldProp = {
+    name: 'entityReferenceConfig',
+    required: true,
+    label: t('label.entity-references-type'),
+    id: 'root/entityReferenceConfig',
+    type: FieldTypes.TEXT,
+    props: {
+      'data-testid': 'entityReferenceConfig',
+      autoComplete: 'off',
+    },
+    placeholder: t('label.entity-references-type'),
+  };
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -276,14 +339,24 @@ const AddCustomProperty = () => {
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
         {generateFormFields(formFields)}
-        {isEnumType && (
-          <>
-            {generateFormFields([
+        {
+          // Only show enum value field if the property type has enum config
+          hasEnumConfig &&
+            generateFormFields([
               customPropertyConfigTypeValueField,
               multiSelectField,
-            ])}
-          </>
-        )}
+            ])
+        }
+        {
+          // Only show format field if the property type has format config
+          hasFormatConfig && generateFormFields([formatConfigField])
+        }
+
+        {
+          // Only show entity reference field if the property type has entity reference config
+          hasEntityReferenceConfig &&
+            generateFormFields([entityReferenceConfigField])
+        }
         {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>
