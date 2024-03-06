@@ -246,7 +246,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             test_case_definition: test case definition to add
         """
         source: TestCase = self._fetch_entity_if_exists(
-            entity=TestCase, entity_id=test_case.id, fields=["testDefinition", "testSuite"] #type: ignore
+            entity=TestCase, entity_id=test_case.id, fields=["testDefinition", "testSuite"]  # type: ignore
         )  # type: ignore
 
         if not source:

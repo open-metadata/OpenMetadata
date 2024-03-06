@@ -102,6 +102,7 @@ class User(Base):
     nickname = sqa.Column(sqa.String(256))
     age = sqa.Column(sqa.Integer)
 
+
 class EmptyUser(Base):
     __tablename__ = "empty_users"
     id = sqa.Column(sqa.Integer, primary_key=True)
@@ -232,13 +233,12 @@ class TestE2EWorkflow(unittest.TestCase):
 
         os.remove(cls.db_path)
         return super().tearDownClass()
-    
 
     def test_e2e_cli_workflow(self):
         """test cli workflow e2e"""
         parameters = [
-            {"table_name":"users", "status":"Success"},
-            {"table_name":"empty_users", "status":"Aborted"},
+            {"table_name": "users", "status": "Success"},
+            {"table_name": "empty_users", "status": "Aborted"},
         ]
 
         for param in parameters:
@@ -246,8 +246,9 @@ class TestE2EWorkflow(unittest.TestCase):
                 table_name = param["table_name"]
                 status = param["status"]
                 test_suite_config["source"]["sourceConfig"]["config"].update(
-                    {"entityFullyQualifiedName":\
-                     f"test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"}
+                    {
+                        "entityFullyQualifiedName": f"test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
+                    }
                 )
 
                 workflow = TestSuiteWorkflow.create(test_suite_config)
@@ -272,21 +273,25 @@ class TestE2EWorkflow(unittest.TestCase):
                     f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
                     ".my_test_case/testCaseResult",
                     data={
-                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())*1000,
-                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())*1000,
+                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
+                        * 1000,
+                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
+                        * 1000,
                     },
                 )
                 test_case_result_2 = self.metadata.client.get(
                     f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
                     ".id.table_column_to_be_not_null/testCaseResult",
                     data={
-                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())*1000,
-                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())*1000,
+                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
+                        * 1000,
+                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
+                        * 1000,
                     },
                 )
 
-                data_test_case_result_1: dict = test_case_result_1.get("data") # type: ignore
-                data_test_case_result_2: dict = test_case_result_2.get("data") # type: ignore
+                data_test_case_result_1: dict = test_case_result_1.get("data")  # type: ignore
+                data_test_case_result_2: dict = test_case_result_2.get("data")  # type: ignore
 
                 assert data_test_case_result_1
                 assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
