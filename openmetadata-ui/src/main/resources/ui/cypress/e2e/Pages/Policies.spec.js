@@ -144,7 +144,9 @@ describe('Policy page should work properly', { tags: 'Settings' }, () => {
       .should('contain', ruleName);
 
     // Verify policy description
-    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
+    cy.get(
+      '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+    )
       .eq(0)
       .should('be.visible')
       .should('contain', description);
@@ -193,7 +195,9 @@ describe('Policy page should work properly', { tags: 'Settings' }, () => {
     cy.get('[data-testid="save"]').should('be.visible').click();
 
     // Validate added description
-    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
+    cy.get(
+      '[data-testid="asset-description-container"]  [data-testid="viewer-container"]'
+    )
       .should('be.visible')
       .should('contain', `${updatedDescription}-${policyName}`);
   });
