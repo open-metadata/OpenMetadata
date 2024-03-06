@@ -896,11 +896,15 @@ describe(
         partitionIntervalType: 'COLUMN-VALUE',
         partitionValues: 'test',
       };
-      interceptURL('GET', '/api/v1/tables/*/tableProfile?*', 'tableProfiler');
+      interceptURL(
+        'GET',
+        '/api/v1/tables/*/tableProfile?startTs=*',
+        'tableProfiler'
+      );
       interceptURL('GET', '/api/v1/tables/*/systemProfile?*', 'systemProfiler');
       interceptURL(
         'GET',
-        '/api/v1/tables/*/tableProfilerConfig*',
+        '/api/v1/tables/*/tableProfilerConfig',
         'tableProfilerConfig'
       );
       visitEntityDetailsPage({
