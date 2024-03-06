@@ -22,9 +22,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityDetailsPath, PAGE_SIZE } from '../../../constants/constants';
+import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import {
@@ -217,11 +216,7 @@ export const AddTestCaseList = ({
                     <Typography.Paragraph className="m-0">
                       <Link
                         data-testid="table-link"
-                        to={getEntityDetailsPath(
-                          EntityType.TABLE,
-                          tableFqn,
-                          EntityTabs.PROFILER
-                        )}
+                        to={getTableTabPath(tableFqn, 'profiler')}
                         onClick={(e) => e.stopPropagation()}>
                         {tableName}
                       </Link>

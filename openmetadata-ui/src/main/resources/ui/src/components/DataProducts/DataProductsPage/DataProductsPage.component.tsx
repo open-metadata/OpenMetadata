@@ -18,12 +18,7 @@ import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useFqn } from '../../../hooks/useFqn';
@@ -34,7 +29,11 @@ import {
   getDataProductVersionsList,
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDataProductVersionsPath,
+  getDomainPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -64,10 +63,7 @@ const DataProductsPage = () => {
 
         if (dataProduct?.name !== updatedData.name) {
           history.push(
-            getEntityDetailsPath(
-              EntityType.DATA_PRODUCT,
-              response.fullyQualifiedName ?? ''
-            )
+            getDataProductsDetailsPath(response.fullyQualifiedName ?? '')
           );
         }
       } catch (error) {
@@ -148,16 +144,13 @@ const DataProductsPage = () => {
   };
 
   const onVersionChange = (selectedVersion: string) => {
-    const path = getVersionPath(
-      EntityType.DATA_PRODUCT,
-      dataProductFqn,
-      selectedVersion
-    );
+    const path = getDataProductVersionsPath(dataProductFqn, selectedVersion);
     history.push(path);
   };
 
   const onBackHandler = () => {
-    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn));
+    const path = getDataProductsDetailsPath(dataProductFqn);
+    history.push(path);
   };
 
   useEffect(() => {

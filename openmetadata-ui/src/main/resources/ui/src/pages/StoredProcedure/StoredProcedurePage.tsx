@@ -36,7 +36,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
-  getEntityDetailsPath,
+  getStoredProcedureDetailPath,
   getVersionPath,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -404,11 +404,7 @@ const StoredProcedurePage = () => {
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
       history.push(
-        getEntityDetailsPath(
-          EntityType.STORED_PROCEDURE,
-          decodedStoredProcedureFQN,
-          activeKey
-        )
+        getStoredProcedureDetailPath(decodedStoredProcedureFQN, activeKey)
       );
     }
   };

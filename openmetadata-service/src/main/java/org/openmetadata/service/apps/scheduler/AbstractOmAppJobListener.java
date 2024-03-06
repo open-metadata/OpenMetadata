@@ -125,6 +125,10 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       JobExecutionContext context, AppRunRecord runRecord, boolean update) {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
     if (dataMap.containsKey(SCHEDULED_APP_RUN_EXTENSION)) {
+      // Update the Run Record in Data Map
+      dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
+
+      // Push Updates to the Database
       App jobApp =
           JsonUtils.readOrConvertValue(
               context.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
