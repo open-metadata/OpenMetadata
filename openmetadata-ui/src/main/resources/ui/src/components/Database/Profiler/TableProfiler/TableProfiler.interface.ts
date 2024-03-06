@@ -25,6 +25,7 @@ import {
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParams } from '../../../../rest/testAPI';
 
 export interface TableProfilerProps {
@@ -53,6 +54,7 @@ export interface TableProfilerContextInterface {
   splitTestCases: SplitTestCasesType;
   dateRangeObject: DateRangeObject;
   onDateRangeChange: (dateRange: DateRangeObject) => void;
+  testCasePaging: UsePagingInterface;
 }
 
 export type SplitTestCasesType = {

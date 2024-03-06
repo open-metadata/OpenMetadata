@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import Qs from 'qs';
@@ -25,13 +25,14 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { API_RES_MAX_SIZE } from '../../../../constants/constants';
+import { PAGE_SIZE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   getLatestTableProfileByFqn,
@@ -63,6 +64,7 @@ export const TableProfilerProvider = ({
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
+  const testCasePaging = usePaging(PAGE_SIZE);
   const location = useLocation();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
@@ -218,15 +220,16 @@ export const TableProfilerProvider = ({
   const fetchAllTests = async (params?: ListTestCaseParams) => {
     setIsTestsLoading(true);
     try {
-      const { data } = await getListTestCase({
+      const { data, paging } = await getListTestCase({
         ...params,
-        fields: 'testCaseResult, testDefinition, incidentId',
+        fields: 'testCaseResult, incidentId',
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
-        limit: API_RES_MAX_SIZE,
+        limit: testCasePaging.pageSize,
       });
       splitTableAndColumnTest(data);
       setAllTestCases(data);
+      testCasePaging.handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -261,15 +264,14 @@ export const TableProfilerProvider = ({
       !isTourOpen &&
       [TableProfilerTab.DATA_QUALITY, TableProfilerTab.COLUMN_PROFILE].includes(
         activeTab
-      ) &&
-      isEmpty(allTestCases);
+      );
 
     if (fetchTest) {
       fetchAllTests();
     } else {
       setIsTestsLoading(false);
     }
-  }, [viewTest, isTourOpen, activeTab]);
+  }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
 
   const tableProfilerPropsData: TableProfilerContextInterface = useMemo(() => {
     return {
@@ -289,6 +291,7 @@ export const TableProfilerProvider = ({
       onCustomMetricUpdate: handleUpdateCustomMetrics,
       onDateRangeChange: handleDateRangeChange,
       dateRangeObject,
+      testCasePaging,
     };
   }, [
     isTestsLoading,
@@ -302,6 +305,7 @@ export const TableProfilerProvider = ({
     splitTestCases,
     customMetric,
     dateRangeObject,
+    testCasePaging,
   ]);
 
   return (
