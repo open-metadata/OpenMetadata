@@ -218,8 +218,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
         try {
           resultList = paginatedEntitiesSource.readNext(null);
           if (!resultList.getData().isEmpty()) {
+            searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
             if (!resultList.getErrors().isEmpty()) {
-              searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
               throw new SearchIndexException(
                   new IndexingError()
                       .withErrorSource(READER)
