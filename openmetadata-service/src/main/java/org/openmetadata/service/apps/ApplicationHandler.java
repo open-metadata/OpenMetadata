@@ -19,10 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 @Slf4j
 public class ApplicationHandler {
 
-  // TODO: Have this as a singleton loaded with OM config
-  // TODO: the `setAppRuntimeProperties` call should happen before the init
-  // and then be removed after the init with `unsetAppRuntimeProperties`??
-
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
   private final AppsPrivateConfiguration privateConfiguration;
