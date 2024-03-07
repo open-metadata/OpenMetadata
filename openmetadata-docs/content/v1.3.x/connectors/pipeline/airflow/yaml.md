@@ -30,9 +30,15 @@ To run the Airflow ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[airflow]"
 ```
 
-Note that this installs the same Airflow version that we ship in the Ingestion Container.
+{% note %}
 
-The ingestion using Airflow version 2.3.3 as a source package has been tested against Airflow 2.3.3 and Airflow 2.2.5.
+Note that this installs the same Airflow version that we ship in the Ingestion Container. If you are running
+the ingestion from Airflow already, you **DON'T NEED** to install the `airflow` plugin.
+
+Instead, just run `pip3 install "openmetadata-ingestion"`.
+
+{% /note %}
+
 
 **Note:** we only support officially supported Airflow versions. You can check the version list [here](https://airflow.apache.org/docs/apache-airflow/stable/installation/supported-versions.html).
 
@@ -61,8 +67,6 @@ This is a sample config for Airbyte:
 
 {% codeInfo srNumber=1 %}
 
-- 
-- 
 **connection**: Airflow metadata database connection. See
   these [docs](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html)
   for supported backends.

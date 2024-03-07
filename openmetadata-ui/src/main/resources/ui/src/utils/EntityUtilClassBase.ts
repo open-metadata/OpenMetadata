@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import {
   getEditWebhookPath,
   getEntityDetailsPath,
@@ -18,8 +19,20 @@ import {
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import ContainerPage from '../pages/ContainerPage/ContainerPage';
+import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
+import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
+import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
+import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
+import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
+import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
+import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
+import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import { getTableFQNFromColumnFQN } from './CommonUtils';
 import {
   getDomainDetailsPath,
@@ -188,6 +201,83 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+    }
+  }
+
+  public getEntityDetailComponent(entityType: string) {
+    switch (entityType) {
+      case EntityType.DATABASE:
+        return DatabaseDetailsPage;
+      case EntityType.DATABASE_SCHEMA:
+        return DatabaseSchemaPageComponent;
+      case EntityType.PIPELINE:
+        return PipelineDetailsPage;
+      case EntityType.TOPIC:
+        return TopicDetailsPage;
+      case EntityType.DASHBOARD:
+        return DashboardDetailsPage;
+      case EntityType.STORED_PROCEDURE:
+        return StoredProcedurePage;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return DataModelsPage;
+      case EntityType.MLMODEL:
+        return MlModelPage;
+      case EntityType.CONTAINER:
+        return ContainerPage;
+      case EntityType.SEARCH_INDEX:
+        return SearchIndexDetailsPage;
+      case EntityType.DATA_PRODUCT:
+        return DataProductsPage;
+      case EntityType.TABLE:
+      default:
+        return TableDetailsPageV1;
+    }
+  }
+
+  public getResourceEntityFromEntityType(entityType: string): string {
+    switch (entityType) {
+      case EntityType.TABLE: {
+        return ResourceEntity.TABLE;
+      }
+      case EntityType.TOPIC: {
+        return ResourceEntity.TOPIC;
+      }
+      case EntityType.DASHBOARD: {
+        return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.PIPELINE: {
+        return ResourceEntity.PIPELINE;
+      }
+      case EntityType.MLMODEL: {
+        return ResourceEntity.ML_MODEL;
+      }
+      case EntityType.CONTAINER: {
+        return ResourceEntity.CONTAINER;
+      }
+      case EntityType.SEARCH_INDEX: {
+        return ResourceEntity.SEARCH_INDEX;
+      }
+      case EntityType.DASHBOARD_DATA_MODEL: {
+        return ResourceEntity.DASHBOARD_DATA_MODEL;
+      }
+      case EntityType.STORED_PROCEDURE: {
+        return ResourceEntity.STORED_PROCEDURE;
+      }
+      case EntityType.DATABASE: {
+        return ResourceEntity.DATABASE;
+      }
+      case EntityType.DATABASE_SCHEMA: {
+        return ResourceEntity.DATABASE_SCHEMA;
+      }
+      case EntityType.GLOSSARY_TERM: {
+        return ResourceEntity.GLOSSARY_TERM;
+      }
+      case EntityType.DATA_PRODUCT: {
+        return ResourceEntity.DATA_PRODUCT;
+      }
+      default: {
+        return ResourceEntity.TABLE;
+      }
     }
   }
 }
