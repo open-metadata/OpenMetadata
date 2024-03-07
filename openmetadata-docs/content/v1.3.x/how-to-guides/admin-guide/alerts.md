@@ -1,9 +1,10 @@
 ---
-title: Alerts & Notifications
-slug: /features/alerts-notifications
+title: Set up Alerts and Notifications
+slug: /how-to-guides/admin-guide/alerts
 ---
 
-# Alerts & Notifications
+# Set up Alerts and Notifications
+
 Starting in 0.13 OpenMetadata allows users to define fine grain notification/alerts using the "Alerts" feature. This feature replaces the Webhook that present in version 0.12 and before. It stills provides native integration with Slack and MS Webhook and give you the ability to send alerts using a generic webhook. It also introduces the ability to send email alerts
 
 ## Creating an Alert
@@ -16,7 +17,7 @@ Once on the alert page click on the purple button `Create alert` in the top righ
 Configure you alert.
 
 As with most configuration in OpenMetadata you will first need to add a Name and a Description for your alert. Once this is completed, we can move on to the configuration. You have 3 steps to configure your alert:
-1. **Trigger**: this will determine how your alert should be triggered. You can select your alert to be triggered when events happen against all the existing assets or only specific ones
+1. **Trigger**: this will determine how your alert should be trigger. You can select your alert to be triggered when events happen against all the existing assets or only specific ones
 2. **Filter**: in this section, you can add specific event filters. The filter input will determine what event will trigger an alert to be sent. Setting `Allow` against a condition will result in an alert being sent if the condition is met while setting `Deny` will silence this condition (i.e. alert won't be sent for the denied event).
 3. **Destination**: you will determine where your alert should be sent in this section. We provide 4 destinations
     - Slack
@@ -25,7 +26,7 @@ As with most configuration in OpenMetadata you will first need to add a Name and
     - Webhook
 
 {% image
-    src="/images/v1.1/features/alerts-notifications/OMAlerts.gif"
+    src="/images/v1.3/features/alerts-notifications/OMAlerts.gif"
     alt="Set profiler configuration"
     caption="Configure OpenMetadata Alert"
  /%}
