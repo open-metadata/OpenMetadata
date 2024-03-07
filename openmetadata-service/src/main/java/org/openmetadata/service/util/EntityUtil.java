@@ -16,6 +16,7 @@ package org.openmetadata.service.util;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -538,7 +539,7 @@ public final class EntityUtil {
     }
     List<EntityReference> references = new ArrayList<>();
     for (String fqn : fqns) {
-      references.add(getEntityReference(entityType, fqn));
+      references.add(Entity.getEntityReferenceByName(entityType, fqn, NON_DELETED));
     }
     return references;
   }
