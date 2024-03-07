@@ -318,14 +318,14 @@ const AddCustomProperty = () => {
   const entityReferenceConfigField: FieldProp = {
     name: 'entityReferenceConfig',
     required: true,
-    label: t('label.entity-references-type'),
+    label: t('label.entity-reference-types'),
     id: 'root/entityReferenceConfig',
     type: FieldTypes.TEXT,
     props: {
       'data-testid': 'entityReferenceConfig',
       autoComplete: 'off',
     },
-    placeholder: t('label.entity-references-type'),
+    placeholder: t('label.entity-reference-types'),
   };
 
   const firstPanelChildren = (
