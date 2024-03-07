@@ -49,24 +49,26 @@ public class ListFilter {
   }
 
   public String getCondition(String tableName) {
-    String condition = getIncludeCondition(tableName);
-    condition = addCondition(condition, getDatabaseCondition(tableName));
-    condition = addCondition(condition, getDatabaseSchemaCondition(tableName));
-    condition = addCondition(condition, getServiceCondition(tableName));
-    condition = addCondition(condition, getPipelineTypeCondition(tableName));
-    condition = addCondition(condition, getParentCondition(tableName));
-    condition = addCondition(condition, getDisabledCondition());
-    condition = addCondition(condition, getCategoryCondition(tableName));
-    condition = addCondition(condition, getWebhookCondition(tableName));
-    condition = addCondition(condition, getWebhookTypeCondition(tableName));
-    condition = addCondition(condition, getTestCaseCondition());
-    condition = addCondition(condition, getTestSuiteTypeCondition(tableName));
-    condition = addCondition(condition, getTestSuiteFQNCondition());
-    condition = addCondition(condition, getDomainCondition());
-    condition = addCondition(condition, getEntityFQNHashCondition());
-    condition = addCondition(condition, getTestCaseResolutionStatusType());
-    condition = addCondition(condition, getAssignee());
-    condition = addCondition(condition, getEventSubscriptionAlertType());
+    ArrayList<String> conditions = new ArrayList<>();
+    conditions.add(getIncludeCondition(tableName));
+    conditions.add(getDatabaseCondition(tableName));
+    conditions.add(getDatabaseSchemaCondition(tableName));
+    conditions.add(getServiceCondition(tableName));
+    conditions.add(getPipelineTypeCondition(tableName));
+    conditions.add(getParentCondition(tableName));
+    conditions.add(getDisabledCondition());
+    conditions.add(getCategoryCondition(tableName));
+    conditions.add(getWebhookCondition(tableName));
+    conditions.add(getWebhookTypeCondition(tableName));
+    conditions.add(getTestCaseCondition());
+    conditions.add(getTestSuiteTypeCondition(tableName));
+    conditions.add(getTestSuiteFQNCondition());
+    conditions.add(getDomainCondition());
+    conditions.add(getEntityFQNHashCondition());
+    conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getAssignee());
+    conditions.add(getEventSubscriptionAlertType());
+    String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -199,49 +201,43 @@ public class ListFilter {
   }
 
   private String getTestCaseCondition() {
-    String condition1 = "";
+    ArrayList<String> conditions = new ArrayList<>();
+
     String entityFQN = getQueryParam("entityFQN");
     boolean includeAllTests = Boolean.parseBoolean(getQueryParam("includeAllTests"));
+    String status = getQueryParam("testCaseStatus");
+    String testSuiteId = getQueryParam("testSuiteId");
+    String type = getQueryParam("testCaseType");
+
     if (entityFQN != null) {
-      condition1 =
+      conditions.add(
           includeAllTests
               ? String.format(
                   "(entityFQN LIKE '%s%s%%' OR entityFQN = '%s')",
                   escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
-              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN));
+              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN)));
     }
 
-    String condition2 = "";
-    String testSuiteId = getQueryParam("testSuiteId");
     if (testSuiteId != null) {
-      condition2 =
-          String.format(
+      conditions.add(String.format(
               "id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-              testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
+              testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE));
     }
 
-    String cond = addCondition(condition1, condition2);
-
-    String condition3 = "";
-    String status = getQueryParam("testCaseStatus");
     if (status != null) {
-      condition3 = String.format("status = '%s'", status);
+      conditions.add(String.format("status = '%s'", status));
     }
 
-    cond = addCondition(cond, condition3);
-
-    String condition4 = "";
-    String type = getQueryParam("testCaseType");
     if (type != null) {
-      condition4 =
+      conditions.add(
           switch (type) {
             case "table" -> "entityLink NOT LIKE '%::columns::%'";
             case "column" -> "entityLink LIKE '%::columns::%'";
             default -> "";
-          };
+          });
     }
 
-    return addCondition(cond, condition4);
+    return addCondition(conditions);
   }
 
   private String getTestSuiteTypeCondition(String tableName) {
@@ -334,14 +330,19 @@ public class ListFilter {
         : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
   }
 
-  protected String addCondition(String condition1, String condition2) {
-    if (condition1.isEmpty()) {
-      return condition2;
+  protected String addCondition(List<String> conditions) {
+    StringBuffer condition = new StringBuffer();
+
+    for (String c : conditions) {
+      if (!c.isEmpty()) {
+        if (!condition.isEmpty()) {
+          // Add `AND` between conditions
+          condition.append(" AND ");
+        }
+        condition.append(c);
+      }
     }
-    if (condition2.isEmpty()) {
-      return condition1;
-    }
-    return condition1 + " AND " + condition2;
+    return condition.toString();
   }
 
   public static String escapeApostrophe(String name) {
