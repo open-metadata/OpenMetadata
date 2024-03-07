@@ -61,9 +61,9 @@ def get_connection_url(connection: TrinoConnection) -> str:
     if isinstance(connection.authType, jwtAuth.JwtAuth):
         if not connection.connectionOptions:
             connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.__root__["access_token"] = (
-            connection.authType.jwt.get_secret_value()
-        )
+        connection.connectionOptions.__root__[
+            "access_token"
+        ] = connection.authType.jwt.get_secret_value()
     if connection.connectionOptions is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"

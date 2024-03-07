@@ -178,9 +178,9 @@ class TrinoSource(CommonDbSourceService):
     Trino does not support querying by table type: Getting views is not supported.
     """
 
-    ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = (  # pylint: disable=protected-access
-        "JSON"
-    )
+    ColumnTypeParser._COLUMN_TYPE_MAPPING[
+        JSON
+    ] = "JSON"  # pylint: disable=protected-access
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):

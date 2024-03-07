@@ -284,26 +284,26 @@ class SASUnitTest(TestCase):
         )
 
         config_ = mock_sas_config["source"]["serviceConnection"]["config"]
-        self.database_service = mock_database_service_object = (
-            self.metadata.create_or_update(
-                CreateDatabaseServiceRequest(
-                    name="local_sas",
-                    serviceType="SAS",
-                    connection=DatabaseConnection(
-                        config=SASConnection(
-                            type=config_["type"],
-                            username=config_["username"],
-                            password=config_["password"],
-                            serverHost=config_["serverHost"],
-                            datatables=config_["datatables"],
-                            dataTablesCustomFilter=config_["dataTablesCustomFilter"],
-                            reports=config_["reports"],
-                            reportsCustomFilter=config_["reportsCustomFilter"],
-                            dataflows=config_["dataflows"],
-                            dataflowsCustomFilter=config_["dataflowsCustomFilter"],
-                        )
-                    ),
-                )
+        self.database_service = (
+            mock_database_service_object
+        ) = self.metadata.create_or_update(
+            CreateDatabaseServiceRequest(
+                name="local_sas",
+                serviceType="SAS",
+                connection=DatabaseConnection(
+                    config=SASConnection(
+                        type=config_["type"],
+                        username=config_["username"],
+                        password=config_["password"],
+                        serverHost=config_["serverHost"],
+                        datatables=config_["datatables"],
+                        dataTablesCustomFilter=config_["dataTablesCustomFilter"],
+                        reports=config_["reports"],
+                        reportsCustomFilter=config_["reportsCustomFilter"],
+                        dataflows=config_["dataflows"],
+                        dataflowsCustomFilter=config_["dataflowsCustomFilter"],
+                    )
+                ),
             )
         )
 

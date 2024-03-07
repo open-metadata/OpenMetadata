@@ -350,15 +350,15 @@ class DeltalakeSource(DatabaseServiceSource):
                 parsed_string["dataTypeDisplay"] = array_data_type_display
                 # Parse Primitive Datatype string
                 # if Datatype is Arrya(int) -> Parse int
-                parsed_string["arrayDataType"] = (
-                    ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
-                        array_data_type_display[
-                            ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX
-                        ]
-                    )[
-                        "dataType"
+                parsed_string[
+                    "arrayDataType"
+                ] = ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
+                    array_data_type_display[
+                        ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX
                     ]
-                )
+                )[
+                    "dataType"
+                ]
             column = Column(name=row["col_name"], **parsed_string)
         else:
             col_type = re.search(r"^\w+", row["data_type"]).group(0)

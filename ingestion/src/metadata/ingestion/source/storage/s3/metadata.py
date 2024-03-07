@@ -144,17 +144,15 @@ class S3Source(StorageServiceSource):
                             f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                             f"and generating structured container"
                         )
-                        structured_container: Optional[S3ContainerDetails] = (
-                            self._generate_container_details(
-                                bucket_response=bucket_response,
-                                metadata_entry=metadata_entry,
-                                parent=EntityReference(
-                                    id=self._bucket_cache[
-                                        bucket_response.name
-                                    ].id.__root__,
-                                    type="container",
-                                ),
-                            )
+                        structured_container: Optional[
+                            S3ContainerDetails
+                        ] = self._generate_container_details(
+                            bucket_response=bucket_response,
+                            metadata_entry=metadata_entry,
+                            parent=EntityReference(
+                                id=self._bucket_cache[bucket_response.name].id.__root__,
+                                type="container",
+                            ),
                         )
                         if structured_container:
                             yield structured_container
@@ -249,12 +247,12 @@ class S3Source(StorageServiceSource):
                 f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                 f"and generating structured container"
             )
-            structured_container: Optional[S3ContainerDetails] = (
-                self._generate_container_details(
-                    bucket_response=bucket_response,
-                    metadata_entry=metadata_entry,
-                    parent=parent,
-                )
+            structured_container: Optional[
+                S3ContainerDetails
+            ] = self._generate_container_details(
+                bucket_response=bucket_response,
+                metadata_entry=metadata_entry,
+                parent=parent,
             )
             if structured_container:
                 result.append(structured_container)

@@ -245,9 +245,9 @@ class SplineUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.spline.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.spline.context.__dict__["pipeline_service"] = (
-            MOCK_PIPELINE_SERVICE.name.__root__
-        )
+        self.spline.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
 
     def test_client(self):
         with patch.object(REST, "get", return_value=mock_data.get("execution-events")):

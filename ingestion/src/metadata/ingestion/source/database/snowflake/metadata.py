@@ -194,9 +194,9 @@ class SnowflakeSource(
         results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
         for row in results:
             if row.CLUSTERING_KEY:
-                self.partition_details[f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"] = (
-                    row.CLUSTERING_KEY
-                )
+                self.partition_details[
+                    f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
+                ] = row.CLUSTERING_KEY
 
     def set_schema_description_map(self) -> None:
         results = self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS).all()

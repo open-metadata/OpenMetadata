@@ -237,9 +237,9 @@ class DatabricksPipelineTests(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.databricks.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.databricks.context.__dict__["pipeline_service"] = (
-            MOCK_PIPELINE_SERVICE.name.__root__
-        )
+        self.databricks.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.databricks.context.__dict__["job_id_list"] = [
             mock_history_data[0]["job_id"]
         ]

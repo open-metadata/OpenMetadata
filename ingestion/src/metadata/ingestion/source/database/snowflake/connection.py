@@ -128,9 +128,9 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
         connection.connectionArguments.__root__["private_key"] = pkb
 
     if connection.clientSessionKeepAlive:
-        connection.connectionArguments.__root__["client_session_keep_alive"] = (
-            connection.clientSessionKeepAlive
-        )
+        connection.connectionArguments.__root__[
+            "client_session_keep_alive"
+        ] = connection.clientSessionKeepAlive
 
     return create_generic_db_connection(
         connection=connection,

@@ -298,9 +298,9 @@ class DbtSource(DbtServiceSource):
         Method to append dbt test cases for later processing
         """
         self.context.dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = (
-            self.parse_upstream_nodes(manifest_entities, manifest_node)
-        )
+        self.context.dbt_tests[key][
+            DbtCommonEnum.UPSTREAM.value
+        ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
         self.context.dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
             (
                 item
@@ -408,15 +408,15 @@ class DbtSource(DbtServiceSource):
                         table_name=model_name,
                     )
 
-                    table_entity: Optional[Union[Table, List[Table]]] = (
-                        get_entity_from_es_result(
-                            entity_list=self.metadata.es_search_from_fqn(
-                                entity_type=Table,
-                                fqn_search_string=table_fqn,
-                                fields="sourceHash",
-                            ),
-                            fetch_multiple_entities=False,
-                        )
+                    table_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=self.metadata.es_search_from_fqn(
+                            entity_type=Table,
+                            fqn_search_string=table_fqn,
+                            fields="sourceHash",
+                        ),
+                        fetch_multiple_entities=False,
                     )
 
                     if table_entity:
@@ -506,13 +506,13 @@ class DbtSource(DbtServiceSource):
 
                         # check if the parent table exists in OM before adding it to the upstream list
                         # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
-                        parent_table_entity: Optional[Union[Table, List[Table]]] = (
-                            get_entity_from_es_result(
-                                entity_list=self.metadata.es_search_from_fqn(
-                                    entity_type=Table, fqn_search_string=parent_fqn
-                                ),
-                                fetch_multiple_entities=False,
-                            )
+                        parent_table_entity: Optional[
+                            Union[Table, List[Table]]
+                        ] = get_entity_from_es_result(
+                            entity_list=self.metadata.es_search_from_fqn(
+                                entity_type=Table, fqn_search_string=parent_fqn
+                            ),
+                            fetch_multiple_entities=False,
                         )
                         if parent_table_entity:
                             upstream_nodes.append(parent_fqn)
@@ -595,10 +595,10 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[Union[Table, List[Table]]] = (
-                    get_entity_from_es_result(
-                        entity_list=from_es_result, fetch_multiple_entities=False
-                    )
+                from_entity: Optional[
+                    Union[Table, List[Table]]
+                ] = get_entity_from_es_result(
+                    entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
                     yield Either(

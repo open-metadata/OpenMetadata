@@ -94,9 +94,9 @@ class QlikDataModelValue(BaseModel):
 
 
 class QlikDataModelLayout(BaseModel):
-    qLayout: Optional[Union[QlikTablesList, List[QlikDataModelValue]]] = (
-        QlikTablesList()
-    )
+    qLayout: Optional[
+        Union[QlikTablesList, List[QlikDataModelValue]]
+    ] = QlikTablesList()
 
 
 class QlikDataModelResult(BaseModel):

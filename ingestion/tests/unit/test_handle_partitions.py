@@ -123,9 +123,9 @@ class BigqueryUnitTest(TestCase):
             mock_bigquery_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.bigquery_source.context.__dict__["database"] = (
-            MOCK_DATABASE.fullyQualifiedName.__root__
-        )
+        self.bigquery_source.context.__dict__[
+            "database"
+        ] = MOCK_DATABASE.fullyQualifiedName.__root__
         self.bigquery_source.client = client
         self.inspector = types.SimpleNamespace()
 

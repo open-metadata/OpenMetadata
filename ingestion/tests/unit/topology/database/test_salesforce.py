@@ -443,13 +443,13 @@ class SalesforceUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.salesforce_source.context.__dict__["database_service"] = (
-            MOCK_DATABASE_SERVICE
-        )
+        self.salesforce_source.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE
         self.salesforce_source.context.__dict__["database"] = MOCK_DATABASE
-        self.salesforce_source.context.__dict__["database_schema"] = (
-            MOCK_DATABASE_SCHEMA
-        )
+        self.salesforce_source.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA
 
     def test_table_column(self):
         result = self.salesforce_source.get_columns(SALESFORCE_FIELDS)

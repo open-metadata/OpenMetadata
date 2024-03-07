@@ -101,9 +101,9 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
 
     if service_type == DatabaseServiceType.BigQuery:
         if table_partition:
-            column_partitions: Optional[List[PartitionColumnDetails]] = (
-                entity.tablePartition.columns
-            )
+            column_partitions: Optional[
+                List[PartitionColumnDetails]
+            ] = entity.tablePartition.columns
             if not column_partitions:
                 raise TypeError("table partition missing. Skipping table")
 

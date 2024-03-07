@@ -324,22 +324,22 @@ class AtlasUnitTest(TestCase):
             )
         )
 
-        self.database_service = mock_database_service_object = (
-            self.metadata.create_or_update(
-                CreateDatabaseServiceRequest(
-                    name="hive",
-                    serviceType="Hive",
-                    connection=DatabaseConnection(
-                        config=HiveConnection(
-                            type="Hive",
-                            scheme="hive",
-                            username=None,
-                            password=None,
-                            hostPort="http://nohost:6000",
-                            databaseName="Reporting",
-                        )
-                    ),
-                )
+        self.database_service = (
+            mock_database_service_object
+        ) = self.metadata.create_or_update(
+            CreateDatabaseServiceRequest(
+                name="hive",
+                serviceType="Hive",
+                connection=DatabaseConnection(
+                    config=HiveConnection(
+                        type="Hive",
+                        scheme="hive",
+                        username=None,
+                        password=None,
+                        hostPort="http://nohost:6000",
+                        databaseName="Reporting",
+                    )
+                ),
             )
         )
 

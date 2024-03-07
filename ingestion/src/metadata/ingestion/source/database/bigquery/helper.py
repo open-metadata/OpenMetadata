@@ -56,13 +56,15 @@ def get_inspector_details(
             __root__=database_name
         )
         if service_connection.credentials.gcpImpersonateServiceAccount:
-            kwargs["impersonate_service_account"] = (
+            kwargs[
+                "impersonate_service_account"
+            ] = (
                 service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
             )
 
-            kwargs["lifetime"] = (
-                service_connection.credentials.gcpImpersonateServiceAccount.lifetime
-            )
+            kwargs[
+                "lifetime"
+            ] = service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
     client = get_bigquery_client(project_id=database_name, **kwargs)
     engine = get_connection(service_connection)

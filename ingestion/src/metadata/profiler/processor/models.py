@@ -27,12 +27,12 @@ class ProfilerDef(BaseModel):
     """
 
     name: str  # Profiler name
-    timeout_seconds: Optional[int] = (
-        None  # Stop running a query after X seconds and continue
-    )
-    metrics: Optional[List[str]] = (
-        None  # names of currently supported Static and Composed metrics
-    )
+    timeout_seconds: Optional[
+        int
+    ] = None  # Stop running a query after X seconds and continue
+    metrics: Optional[
+        List[str]
+    ] = None  # names of currently supported Static and Composed metrics
     # TBD:
     # time_metrics: List[TimeMetricDef] = None
     # custom_metrics: List[CustomMetricDef] = None

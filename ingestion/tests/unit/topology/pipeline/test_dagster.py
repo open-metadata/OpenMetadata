@@ -275,9 +275,9 @@ class DagsterUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.dagster.context.__dict__["pipeline_service"] = (
-            MOCK_PIPELINE_SERVICE.name.__root__
-        )
+        self.dagster.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.dagster.context.__dict__["repository_name"] = "hacker_new_repository"
         self.dagster.context.__dict__["repository_location"] = "project_fully_featured"
 

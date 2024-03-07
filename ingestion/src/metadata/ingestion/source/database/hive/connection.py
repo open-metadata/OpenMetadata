@@ -105,9 +105,9 @@ def get_connection(connection: HiveConnection) -> Engine:
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["kerberos_service_name"] = (
-            connection.kerberosServiceName
-        )
+        connection.connectionArguments.__root__[
+            "kerberos_service_name"
+        ] = connection.kerberosServiceName
 
     return create_generic_db_connection(
         connection=connection,

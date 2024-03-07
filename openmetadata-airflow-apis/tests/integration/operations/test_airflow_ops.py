@@ -52,9 +52,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
-os.environ["AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"] = (
-    "mysql+pymysql://airflow_user:airflow_pass@localhost/airflow_db"
-)
+os.environ[
+    "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"
+] = "mysql+pymysql://airflow_user:airflow_pass@localhost/airflow_db"
 os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
 os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
     (
