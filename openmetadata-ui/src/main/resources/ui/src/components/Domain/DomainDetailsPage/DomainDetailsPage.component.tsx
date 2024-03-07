@@ -54,6 +54,7 @@ import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNa
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
+  DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
   ERROR_MESSAGE,
   getEntityDetailsPath,
@@ -588,7 +589,13 @@ const DomainDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                      />
+                    }
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {

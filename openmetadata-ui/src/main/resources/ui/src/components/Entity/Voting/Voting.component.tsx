@@ -14,8 +14,11 @@
 import { Button, Tooltip, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ThumbsDownFilled } from '../../../assets/svg/thumbs-down-filled.svg';
+import { ReactComponent as ThumbsDownOutline } from '../../../assets/svg/thumbs-down-outline.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
+import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
 
@@ -44,9 +47,9 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           disabled={disabled}
           icon={
             voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpFilled color="#008376" height={15} width={15} />
+              <ThumbsUpFilled {...DATA_ASSET_ICON_DIMENSION} />
             ) : (
-              <ThumbsUpOutline height={15} width={15} />
+              <ThumbsUpOutline {...DATA_ASSET_ICON_DIMENSION} />
             )
           }
           loading={loading === QueryVoteType.votedUp}
@@ -63,18 +66,9 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           disabled={disabled}
           icon={
             voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsUpFilled
-                className="rotate-inverse"
-                color="#E7B85D"
-                height={15}
-                width={15}
-              />
+              <ThumbsDownFilled {...DATA_ASSET_ICON_DIMENSION} />
             ) : (
-              <ThumbsUpOutline
-                className="rotate-inverse"
-                height={15}
-                width={15}
-              />
+              <ThumbsDownOutline {...DATA_ASSET_ICON_DIMENSION} />
             )
           }
           loading={loading === QueryVoteType.votedDown}
