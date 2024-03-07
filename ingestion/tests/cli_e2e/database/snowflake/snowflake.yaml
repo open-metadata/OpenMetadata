@@ -11,6 +11,7 @@ source:
       type: Snowflake
       connectionOptions: {}
       connectionArguments: {}
+      clientSessionKeepAlive: True
   sourceConfig:
     config:
       markDeletedTables: true

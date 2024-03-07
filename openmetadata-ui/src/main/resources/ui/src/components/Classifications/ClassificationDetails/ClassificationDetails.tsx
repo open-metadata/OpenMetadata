@@ -30,7 +30,11 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+  PRIMERY_COLOR,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -57,7 +61,7 @@ import {
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
-import Description from '../../common/EntityDescription/Description';
+import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
@@ -446,7 +450,13 @@ const ClassificationDetails = forwardRef(
                     <Button
                       className="w-16 p-0"
                       data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
+                      icon={
+                        <Icon
+                          className="vertical-align-text-top"
+                          component={VersionIcon}
+                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                        />
+                      }
                       onClick={versionHandler}>
                       <Typography.Text>{currentVersion}</Typography.Text>
                     </Button>
@@ -480,14 +490,16 @@ const ClassificationDetails = forwardRef(
         )}
 
         <div className="m-b-sm m-t-xs" data-testid="description-container">
-          <Description
+          <DescriptionV1
             className={classNames({
               'opacity-60': isClassificationDisabled,
             })}
             description={description}
             entityName={getEntityName(currentClassification)}
+            entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}
             isEdit={isEditClassification}
+            showCommentsIcon={false}
             onCancel={handleCancelEditDescription}
             onDescriptionEdit={handleEditDescriptionClick}
             onDescriptionUpdate={handleUpdateDescription}

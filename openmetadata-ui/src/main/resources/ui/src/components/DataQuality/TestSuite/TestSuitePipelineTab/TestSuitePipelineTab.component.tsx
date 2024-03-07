@@ -561,6 +561,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     selectedPipeline,
     currDeployId,
     currTriggerId,
+    isConfirmationModalOpen,
   ]);
 
   const errorPlaceholder = useMemo(
@@ -617,7 +618,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
       <EntityDeleteModal
         entityName={deleteSelection.name}
         entityType={t('label.ingestion-lowercase')}
-        loadingState={deleteSelection.state}
         visible={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
         onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}

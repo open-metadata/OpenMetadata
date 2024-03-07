@@ -21,8 +21,10 @@ import { Node } from 'reactflow';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getLineageDetailsObject } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -265,6 +267,15 @@ const EdgeInfoDrawer = ({
                   {t('server.no-query-available')}
                 </Typography.Paragraph>
               )}
+            </Col>
+            <Col>
+              <Divider />
+              <Typography.Paragraph className="right-panel-label m-b-sm">
+                {`${t('label.lineage-source')}`}
+              </Typography.Paragraph>
+              <Typography.Text className="m-b-0">
+                {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
+              </Typography.Text>
             </Col>
           </Row>
         )}

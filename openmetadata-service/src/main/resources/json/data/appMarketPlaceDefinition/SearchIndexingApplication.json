@@ -52,7 +52,7 @@
       "storageService",
       "dataProduct"
     ],
-    "recreateIndex": false,
+    "recreateIndex": true,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
   }

@@ -100,6 +100,7 @@ import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -364,10 +365,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Type INT_TYPE;
   public static Type STRING_TYPE;
 
+  public static Type ENUM_TYPE;
+
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
   // when tests are run enough times, the webhook tests are run for all the entities.
-  public static boolean runWebhookTests;
+  public boolean runWebhookTests = new Random().nextBoolean();
 
   protected boolean supportsSearchIndex = false;
 
@@ -435,22 +438,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
 
-    runWebhookTests = new Random().nextBoolean();
-    // if (true) {
-    webhookCallbackResource.clearEvents();
-    EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-    alertResourceTest.startWebhookSubscription();
-    alertResourceTest.startWebhookEntitySubscriptions(entityType);
-    // }
+    if (runWebhookTests) {
+      webhookCallbackResource.clearEvents();
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      alertResourceTest.startWebhookSubscription();
+      alertResourceTest.startWebhookEntitySubscriptions(entityType);
+    }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    // if (true) {
-    EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-    alertResourceTest.validateWebhookEvents();
-    alertResourceTest.validateWebhookEntityEvents(entityType);
-    // }
+    if (runWebhookTests) {
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+      alertResourceTest.validateWebhookEvents();
+      alertResourceTest.validateWebhookEntityEvents(entityType);
+    }
     delete_recursiveTest();
   }
 
@@ -1877,7 +1879,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void checkIndexCreated() throws IOException {
+  protected void checkIndexCreated() throws IOException, JSONException {
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       RestClient client = getSearchClient();
       Request request = new Request("GET", "/_cat/indices");
@@ -2610,6 +2612,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       ChangeDescription expectedChangeDescription,
       Map<String, String> authHeaders)
       throws IOException {
+    if (!runWebhookTests) {
+      return;
+    }
     validateChangeEvents(
         entityInterface,
         timestamp,
@@ -2751,6 +2756,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       EventType expectedEventType,
       Double expectedVersion,
       Map<String, String> authHeaders) {
+    if (!runWebhookTests) {
+      return;
+    }
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
     EventHolder eventHolder = new EventHolder();
 

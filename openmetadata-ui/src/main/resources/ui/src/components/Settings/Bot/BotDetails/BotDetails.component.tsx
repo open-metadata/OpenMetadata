@@ -12,7 +12,16 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Space, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -25,7 +34,6 @@ import { getRoles } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import Description from '../../../common/EntityDescription/Description';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -34,6 +42,8 @@ import './bot-details.less';
 import { BotsDetailProps } from './BotDetails.interfaces';
 
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
+import { EntityType } from '../../../../enums/entity.enum';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 
 const BotDetails: FC<BotsDetailProps> = ({
@@ -157,22 +167,29 @@ const BotDetails: FC<BotsDetailProps> = ({
                           </Typography.Text>
                         )}
                         {(displayNamePermission || editAllPermission) && (
-                          <Button
-                            className="p-0"
-                            data-testid="edit-displayName"
-                            icon={<EditIcon width={16} />}
-                            type="text"
-                            onClick={() => setIsDisplayNameEdit(true)}
-                          />
+                          <Tooltip
+                            title={t('label.edit-entity', {
+                              entity: t('label.display-name'),
+                            })}>
+                            <Button
+                              className="p-0"
+                              data-testid="edit-displayName"
+                              icon={<EditIcon width={16} />}
+                              type="text"
+                              onClick={() => setIsDisplayNameEdit(true)}
+                            />
+                          </Tooltip>
                         )}
                       </Space>
                     )}
                   </div>
-                  <Description
+                  <DescriptionV1
                     description={botData.description || ''}
                     entityName={getEntityName(botData)}
+                    entityType={EntityType.BOT}
                     hasEditAccess={descriptionPermission || editAllPermission}
                     isEdit={isDescriptionEdit}
+                    showCommentsIcon={false}
                     onCancel={() => setIsDescriptionEdit(false)}
                     onDescriptionEdit={() => setIsDescriptionEdit(true)}
                     onDescriptionUpdate={handleDescriptionChange}
