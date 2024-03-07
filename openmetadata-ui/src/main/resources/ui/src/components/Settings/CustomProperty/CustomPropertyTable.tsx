@@ -12,7 +12,7 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { isArray, isEmpty, isString, isUndefined } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -123,7 +123,15 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           const config = data.config;
 
-          if (!isString(config)) {
+          // If config is an array and not empty
+          if (isArray(config) && !isEmpty(config)) {
+            return (
+              <Typography.Text>{JSON.stringify(config ?? [])}</Typography.Text>
+            );
+          }
+
+          // If config is an object, then it is a enum config
+          if (!isString(config) && !isArray(config)) {
             return (
               <Space data-testid="enum-config" direction="vertical" size={4}>
                 <Typography.Text>
@@ -137,6 +145,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
             );
           }
 
+          // else it is a string
           return <Typography.Text>{config}</Typography.Text>;
         },
       },
