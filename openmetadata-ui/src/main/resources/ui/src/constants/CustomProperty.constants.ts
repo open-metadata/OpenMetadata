@@ -16,3 +16,121 @@ export const PROPERTY_TYPES_WITH_ENTITY_REFERENCE = [
   'entityReference',
   'entityReferenceList',
 ];
+
+export const ENTITY_REFERENCE_OPTIONS = [
+  {
+    key: 'table',
+    value: 'table',
+    label: 'Table',
+  },
+  {
+    key: 'storedProcedure',
+    value: 'storedProcedure',
+    label: 'Stored Procedure',
+  },
+  {
+    key: 'databaseSchema',
+    value: 'databaseSchema',
+    label: 'Database Schema',
+  },
+  {
+    key: 'database',
+    value: 'database',
+    label: 'Database',
+  },
+  {
+    key: 'dashboard',
+    value: 'dashboard',
+    label: 'Dashboard',
+  },
+  {
+    key: 'dashboardDataModel',
+    value: 'dashboardDataModel',
+    label: 'Dashboard DataModel',
+  },
+  {
+    key: 'pipeline',
+    value: 'pipeline',
+    label: 'Pipeline',
+  },
+  {
+    key: 'topic',
+    value: 'topic',
+    label: 'Topic',
+  },
+  {
+    key: 'container',
+    value: 'container',
+    label: 'Container',
+  },
+  {
+    key: 'searchIndex',
+    value: 'searchIndex',
+    label: 'Search Index',
+  },
+  {
+    key: 'mlmodel',
+    value: 'mlmodel',
+    label: 'MLmodel',
+  },
+  {
+    key: 'glossaryTerm',
+    value: 'glossaryTerm',
+    label: 'Glossary Term',
+  },
+  {
+    key: 'tag',
+    value: 'tag',
+    label: 'Tag',
+  },
+  {
+    key: 'user',
+    value: 'user',
+    label: 'User',
+  },
+  {
+    key: 'team',
+    value: 'team',
+    label: 'Team',
+  },
+  {
+    key: 'databaseService',
+    value: 'databaseService',
+    label: 'Database Service',
+  },
+  {
+    key: 'messagingService',
+    value: 'messagingService',
+    label: 'Messaging Service',
+  },
+  {
+    key: 'pipelineService',
+    value: 'pipelineService',
+    label: 'Pipeline Service',
+  },
+  {
+    key: 'dashboardService',
+    value: 'dashboardService',
+    label: 'Dashboard Service',
+  },
+  {
+    key: 'searchService',
+    value: 'searchService',
+    label: 'Search Service',
+  },
+  {
+    key: 'storageService',
+    value: 'storageService',
+    label: 'Storage Service',
+  },
+  {
+    key: 'metadataService',
+    value: 'metadataService',
+    label: 'Metadata Service',
+  },
+  {
+    key: 'mlModelService',
+    value: 'mlModelService',
+    label: 'MLmodel Service',
+  },
+];

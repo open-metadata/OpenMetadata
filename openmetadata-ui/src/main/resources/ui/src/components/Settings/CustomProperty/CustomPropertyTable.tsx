@@ -66,16 +66,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   const handlePropertyUpdate = async (data: FormData) => {
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
+        const config = data.customPropertyConfig;
+        const isEnumType = selectedProperty.propertyType.name === 'enum';
+
         return {
           ...property,
           description: data.description,
-          ...(data.customPropertyConfig
+          ...(config
             ? {
                 customPropertyConfig: {
-                  config: {
-                    multiSelect: Boolean(data?.multiSelect),
-                    values: data.customPropertyConfig,
-                  },
+                  config: isEnumType
+                    ? {
+                        multiSelect: Boolean(data?.multiSelect),
+                        values: config,
+                      }
+                    : config,
                 },
               }
             : {}),

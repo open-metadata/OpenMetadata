@@ -24,6 +24,7 @@ import React, {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
 } from '../../../../constants/CustomProperty.constants';
@@ -160,7 +161,7 @@ const AddCustomProperty = () => {
       propertyType: string;
       customPropertyConfig: string[];
       formatConfig: string;
-      entityReferenceConfig: string;
+      entityReferenceConfig: string[];
       multiSelect?: boolean;
     }
   ) => {
@@ -195,7 +196,11 @@ const AddCustomProperty = () => {
 
       const payload = omitBy(
         {
-          ...omit(data, 'multiSelect'),
+          ...omit(data, [
+            'multiSelect',
+            'formatConfig',
+            'entityReferenceConfig',
+          ]),
           propertyType: {
             id: data.propertyType,
             type: 'type',
@@ -320,12 +325,15 @@ const AddCustomProperty = () => {
     required: true,
     label: t('label.entity-reference-types'),
     id: 'root/entityReferenceConfig',
-    type: FieldTypes.TEXT,
+    type: FieldTypes.SELECT,
     props: {
+      mode: 'multiple',
+      options: ENTITY_REFERENCE_OPTIONS,
       'data-testid': 'entityReferenceConfig',
-      autoComplete: 'off',
+      placeholder: `${t('label.select-field', {
+        field: t('label.type'),
+      })}`,
     },
-    placeholder: t('label.entity-reference-types'),
   };
 
   const firstPanelChildren = (
