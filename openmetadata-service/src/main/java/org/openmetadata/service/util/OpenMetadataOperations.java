@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.fernet.Fernet;
@@ -244,6 +245,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean recreateIndexes) {
     try {
       parseConfig();
+      ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       App searchIndexApp =
           new App()

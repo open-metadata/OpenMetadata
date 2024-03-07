@@ -1,42 +1,76 @@
 package org.openmetadata.service.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
+import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
 public class ApplicationHandler {
 
-  private ApplicationHandler() {
-    /*Helper*/
+  @Getter private static ApplicationHandler instance;
+  private final OpenMetadataApplicationConfig config;
+  private final AppsPrivateConfiguration privateConfiguration;
+
+  private ApplicationHandler(OpenMetadataApplicationConfig config) {
+    this.config = config;
+    this.privateConfiguration = config.getAppsPrivateConfiguration();
   }
 
-  public static void triggerApplicationOnDemand(
+  public static void initialize(OpenMetadataApplicationConfig config) {
+    instance = new ApplicationHandler(config);
+  }
+
+  /**
+   * Load the apps' OM configuration and private parameters
+   */
+  private void setAppRuntimeProperties(App app) {
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
+
+    if (privateConfiguration != null
+        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
+      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
+        if (app.getName().equals(appPrivateConfig.getName())) {
+          app.setPrivateConfiguration(appPrivateConfig.getParameters());
+        }
+      }
+    }
+  }
+
+  public void triggerApplicationOnDemand(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     runMethodFromApplication(app, daoCollection, searchRepository, "triggerOnDemand");
   }
 
-  public static void installApplication(
+  public void installApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     runMethodFromApplication(app, daoCollection, searchRepository, "install");
   }
 
-  public static void configureApplication(
+  public void configureApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     runMethodFromApplication(app, daoCollection, searchRepository, "configure");
   }
 
-  public static Object runAppInit(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository)
+  public Object runAppInit(App app, CollectionDAO daoCollection, SearchRepository searchRepository)
       throws ClassNotFoundException,
           NoSuchMethodException,
           InvocationTargetException,
           InstantiationException,
           IllegalAccessException {
+    // add private runtime properties
+    setAppRuntimeProperties(app);
     Class<?> clz = Class.forName(app.getClassName());
     Object resource =
         clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
@@ -50,7 +84,7 @@ public class ApplicationHandler {
   }
 
   /** Load an App from its className and call its methods dynamically */
-  public static void runMethodFromApplication(
+  public void runMethodFromApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
     try {
