@@ -2,10 +2,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class ListFilterTest {
   @Test

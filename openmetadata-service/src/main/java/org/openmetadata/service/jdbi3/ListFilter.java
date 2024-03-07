@@ -219,7 +219,8 @@ public class ListFilter {
     }
 
     if (testSuiteId != null) {
-      conditions.add(String.format(
+      conditions.add(
+          String.format(
               "id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
               testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE));
     }
