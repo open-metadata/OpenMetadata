@@ -288,9 +288,11 @@ class MetabaseSource(DashboardServiceSource):
 
         lineage_parser = LineageParser(
             query,
-            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
-            if db_service
-            else None,
+            (
+                ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+                if db_service
+                else None
+            ),
         )
 
         for table in lineage_parser.source_tables:

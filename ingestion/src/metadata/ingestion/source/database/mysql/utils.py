@@ -136,9 +136,9 @@ def parse_column(self, line, state):
     raw_type = get_display_datatype(
         col_type=type_,
         char_len=type_instance.length if hasattr(type_instance, "length") else None,
-        precision=type_instance.precision
-        if hasattr(type_instance, "precision")
-        else None,
+        precision=(
+            type_instance.precision if hasattr(type_instance, "precision") else None
+        ),
         scale=type_instance.scale if hasattr(type_instance, "scale") else None,
     )
 

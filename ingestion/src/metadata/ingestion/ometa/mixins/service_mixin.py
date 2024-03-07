@@ -56,9 +56,11 @@ class OMetaServiceMixin:
         return create_entity_class(
             name=config.serviceName,
             serviceType=config.serviceConnection.__root__.config.type.value,
-            connection=config.serviceConnection.__root__
-            if self.config.storeServiceConnection
-            else None,
+            connection=(
+                config.serviceConnection.__root__
+                if self.config.storeServiceConnection
+                else None
+            ),
         )
 
     def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:

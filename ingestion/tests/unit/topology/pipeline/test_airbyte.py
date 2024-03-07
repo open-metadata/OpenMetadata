@@ -171,9 +171,9 @@ class AirbyteUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.airbyte.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.airbyte.context.__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        self.airbyte.context.__dict__["pipeline_service"] = (
+            MOCK_PIPELINE_SERVICE.name.__root__
+        )
         self.client = airbyte_client.return_value
         self.client.list_jobs.return_value = mock_data.get("jobs")
         self.client.list_workspaces.return_value = mock_data.get("workspace")

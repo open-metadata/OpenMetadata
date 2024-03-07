@@ -34,9 +34,11 @@ def get_connection(connection: NifiConnection) -> NifiClient:
         return NifiClient(
             host_port=connection.hostPort,
             username=connection.nifiConfig.username,
-            password=connection.nifiConfig.password.get_secret_value()
-            if connection.nifiConfig.password
-            else None,
+            password=(
+                connection.nifiConfig.password.get_secret_value()
+                if connection.nifiConfig.password
+                else None
+            ),
             verify=connection.nifiConfig.verifySSL,
         )
 

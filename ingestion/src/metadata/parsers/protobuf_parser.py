@@ -224,11 +224,11 @@ class ProtobufParser:
                     cls(
                         name=field.name,
                         dataType=self._get_field_type(field.type, cls=cls),
-                        children=self.get_protobuf_fields(
-                            field.message_type.fields, cls=cls
-                        )
-                        if field.type == 11
-                        else None,
+                        children=(
+                            self.get_protobuf_fields(field.message_type.fields, cls=cls)
+                            if field.type == 11
+                            else None
+                        ),
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except

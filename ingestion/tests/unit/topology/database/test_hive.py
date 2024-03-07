@@ -336,9 +336,9 @@ class HiveUnitTest(TestCase):
             mock_hive_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.hive.context.__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.hive.context.__dict__["database_service"] = (
+            MOCK_DATABASE_SERVICE.name.__root__
+        )
         self.hive.inspector = types.SimpleNamespace()
 
         self.hive.inspector.get_pk_constraint = lambda table_name, schema_name: []
@@ -351,9 +351,9 @@ class HiveUnitTest(TestCase):
             for either in self.hive.yield_database(MOCK_DATABASE.name.__root__)
         ]
 
-        self.hive.context.__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.hive.context.__dict__["database_service"] = (
+            MOCK_DATABASE_SERVICE.name.__root__
+        )
         self.hive.context.__dict__["database"] = MOCK_DATABASE.name.__root__
 
     def test_yield_schema(self):
@@ -364,9 +364,9 @@ class HiveUnitTest(TestCase):
             )
         ]
 
-        self.hive.context.__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        self.hive.context.__dict__["database_schema"] = (
+            MOCK_DATABASE_SCHEMA.name.__root__
+        )
 
     def test_yield_table(self):
         self.hive.inspector.get_columns = (

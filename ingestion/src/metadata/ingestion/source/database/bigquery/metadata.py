@@ -151,9 +151,11 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": _array_sys_data_type_repr(col_type)
-            if str(col_type) == "ARRAY"
-            else str(col_type),
+            "system_data_type": (
+                _array_sys_data_type_repr(col_type)
+                if str(col_type) == "ARRAY"
+                else str(col_type)
+            ),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
@@ -520,9 +522,11 @@ class BigquerySource(
             return True, TablePartition(
                 columns=[
                     PartitionColumnDetails(
-                        columnName="_PARTITIONTIME"
-                        if table.time_partitioning.type_ == "HOUR"
-                        else "_PARTITIONDATE",
+                        columnName=(
+                            "_PARTITIONTIME"
+                            if table.time_partitioning.type_ == "HOUR"
+                            else "_PARTITIONDATE"
+                        ),
                         interval=str(table.time_partitioning.type_),
                         intervalType=PartitionIntervalTypes.INGESTION_TIME,
                     )

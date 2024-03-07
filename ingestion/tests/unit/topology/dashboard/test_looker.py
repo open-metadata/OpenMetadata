@@ -144,9 +144,9 @@ class LookerUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.looker.context.__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        self.looker.context.__dict__["dashboard_service"] = (
+            MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        )
 
     def test_create(self):
         """

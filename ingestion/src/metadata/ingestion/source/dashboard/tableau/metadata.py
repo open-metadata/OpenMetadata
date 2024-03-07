@@ -427,9 +427,11 @@ class TableauSource(DashboardServiceSource):
             try:
                 if column:
                     parsed_column = {
-                        "dataTypeDisplay": column.remoteType
-                        if column.remoteType
-                        else DataType.UNKNOWN.value,
+                        "dataTypeDisplay": (
+                            column.remoteType
+                            if column.remoteType
+                            else DataType.UNKNOWN.value
+                        ),
                         "dataType": ColumnTypeParser.get_column_type(
                             column.remoteType if column.remoteType else None
                         ),

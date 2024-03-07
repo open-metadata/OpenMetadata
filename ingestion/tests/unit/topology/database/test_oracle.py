@@ -195,9 +195,9 @@ class OracleUnitTest(TestCase):
             mock_oracle_config["source"],
             self.metadata,
         )
-        self.oracle.context.__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.oracle.context.__dict__["database_service"] = (
+            MOCK_DATABASE_SERVICE.name.__root__
+        )
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
@@ -214,9 +214,9 @@ class OracleUnitTest(TestCase):
                 MOCK_DATABASE_SCHEMA.name.__root__
             )
         ]
-        self.oracle.context.__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        self.oracle.context.__dict__["database_schema"] = (
+            MOCK_DATABASE_SCHEMA.name.__root__
+        )
 
     def test_yield_stored_procedure(self):
         assert EXPECTED_STORED_PROCEDURE == [

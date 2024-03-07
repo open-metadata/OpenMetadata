@@ -52,9 +52,11 @@ class DagsterClient:
             url,
             transport=RequestsHTTPTransport(
                 url=f"{url}/graphql",
-                headers={"Dagster-Cloud-Api-Token": config.token.get_secret_value()}
-                if config.token
-                else None,
+                headers=(
+                    {"Dagster-Cloud-Api-Token": config.token.get_secret_value()}
+                    if config.token
+                    else None
+                ),
                 timeout=config.timeout,
             ),
         )

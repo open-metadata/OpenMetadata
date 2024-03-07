@@ -199,9 +199,9 @@ class ElasticSearchUnitTest(TestCase):
             mock_es_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.es_source.context.__dict__[
-            "search_service"
-        ] = MOCK_SEARCH_SERVICE.name.__root__
+        self.es_source.context.__dict__["search_service"] = (
+            MOCK_SEARCH_SERVICE.name.__root__
+        )
 
     def test_partition_parse_columns(self):
         actual_index = next(self.es_source.yield_search_index(MOCK_DETAILS)).right

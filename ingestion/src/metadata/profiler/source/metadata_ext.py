@@ -205,9 +205,11 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                         )
                         if filter_by_database(
                             self.source_config.databaseFilterPattern,
-                            database_fqn
-                            if self.source_config.useFqnForFiltering
-                            else database,
+                            (
+                                database_fqn
+                                if self.source_config.useFqnForFiltering
+                                else database
+                            ),
                         ):
                             self.status.filter(database, "Database pattern not allowed")
                             continue

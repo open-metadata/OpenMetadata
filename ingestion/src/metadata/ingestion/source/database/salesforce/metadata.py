@@ -172,9 +172,11 @@ class SalesforceSource(DatabaseServiceSource):
                     )
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
+                        (
+                            table_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
                         self.status.filter(
                             table_fqn,

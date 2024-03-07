@@ -84,9 +84,11 @@ def generate_entity_link(dbt_test):
         entity_link.get_entity_link(
             Table,
             fqn=table_fqn,
-            column_name=manifest_node.column_name
-            if hasattr(manifest_node, "column_name")
-            else None,
+            column_name=(
+                manifest_node.column_name
+                if hasattr(manifest_node, "column_name")
+                else None
+            ),
         )
         for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
     ]

@@ -129,7 +129,9 @@ class DataInsightSource(Source):
 
                 processor = self.processors[report_data_type.value]
                 processor = cast(DataProcessor, processor)
-                processor.pre_hook() if processor.pre_hook else None  # pylint: disable=expression-not-assigned
+                (
+                    processor.pre_hook() if processor.pre_hook else None
+                )  # pylint: disable=expression-not-assigned
 
                 for data in (
                     producer.fetch_data(
@@ -139,7 +141,9 @@ class DataInsightSource(Source):
                 ):
                     processor.refine(data)
 
-                processor.post_hook() if processor.post_hook else None  # pylint: disable=expression-not-assigned
+                (
+                    processor.post_hook() if processor.post_hook else None
+                )  # pylint: disable=expression-not-assigned
 
                 if processor.clean_up_cache:
                     self.entities_cache.clear()

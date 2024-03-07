@@ -257,25 +257,31 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
     Convert the validation error into a message to log
     """
     missing_fields = [
-        f"Extra parameter '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Extra parameter in {err.get('loc')}"
+        (
+            f"Extra parameter '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Extra parameter in {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") == "value_error.extra"
     ]
 
     extra_fields = [
-        f"Missing parameter '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Missing parameter in {err.get('loc')}"
+        (
+            f"Missing parameter '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Missing parameter in {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") == "value_error.missing"
     ]
 
     invalid_fields = [
-        f"Invalid parameter value for '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Invalid parameter value for {err.get('loc')}"
+        (
+            f"Invalid parameter value for '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Invalid parameter value for {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") not in ("value_error.missing", "value_error.extra")
     ]

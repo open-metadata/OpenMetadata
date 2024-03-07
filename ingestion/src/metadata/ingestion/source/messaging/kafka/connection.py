@@ -69,9 +69,9 @@ def get_connection(
         if connection.saslUsername:
             connection.consumerConfig["sasl.username"] = connection.saslUsername
         if connection.saslPassword:
-            connection.consumerConfig[
-                "sasl.password"
-            ] = connection.saslPassword.get_secret_value()
+            connection.consumerConfig["sasl.password"] = (
+                connection.saslPassword.get_secret_value()
+            )
         if connection.saslMechanism:
             connection.consumerConfig["sasl.mechanism"] = connection.saslMechanism.value
 
@@ -79,15 +79,15 @@ def get_connection(
             connection.consumerConfig.get("security.protocol") is None
             and connection.securityProtocol
         ):
-            connection.consumerConfig[
-                "security.protocol"
-            ] = connection.securityProtocol.value
+            connection.consumerConfig["security.protocol"] = (
+                connection.securityProtocol.value
+            )
 
     if connection.basicAuthUserInfo:
         connection.schemaRegistryConfig = connection.schemaRegistryConfig or {}
-        connection.schemaRegistryConfig[
-            "basic.auth.user.info"
-        ] = connection.basicAuthUserInfo.get_secret_value()
+        connection.schemaRegistryConfig["basic.auth.user.info"] = (
+            connection.basicAuthUserInfo.get_secret_value()
+        )
 
     admin_client_config = connection.consumerConfig
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers

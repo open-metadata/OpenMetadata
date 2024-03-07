@@ -153,9 +153,11 @@ class DatalakeSource(DatabaseServiceSource):
                 )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else project_id,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else project_id
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered out")
                 else:
@@ -212,9 +214,11 @@ class DatalakeSource(DatabaseServiceSource):
                 # Check if the bucket matches a certain filter pattern
                 if filter_by_schema(
                     self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else bucket.name,
+                    (
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else bucket.name
+                    ),
                 ):
                     # If it does not match, the bucket is filtered out
                     self.status.filter(schema_fqn, "Bucket Filtered Out")
@@ -242,9 +246,11 @@ class DatalakeSource(DatabaseServiceSource):
             )
             if filter_by_schema(
                 self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else bucket["Name"],
+                (
+                    schema_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else bucket["Name"]
+                ),
             ):
                 self.status.filter(schema_fqn, "Bucket Filtered Out")
                 continue
@@ -290,9 +296,11 @@ class DatalakeSource(DatabaseServiceSource):
             )
             if filter_by_schema(
                 self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else schema["name"],
+                (
+                    schema_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else schema["name"]
+                ),
             ):
                 self.status.filter(schema_fqn, "Container Filtered Out")
                 continue
@@ -494,9 +502,11 @@ class DatalakeSource(DatabaseServiceSource):
 
         if filter_by_table(
             self.config.sourceConfig.config.tableFilterPattern,
-            table_fqn
-            if self.config.sourceConfig.config.useFqnForFiltering
-            else table_name,
+            (
+                table_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else table_name
+            ),
         ):
             self.status.filter(
                 table_fqn,

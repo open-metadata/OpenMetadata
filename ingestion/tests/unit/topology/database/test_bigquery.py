@@ -566,9 +566,9 @@ class BigqueryUnitTest(TestCase):
             )
         )
         self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
-        self.bq_source.context.__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.bq_source.context.__dict__["database_service"] = (
+            MOCK_DATABASE_SERVICE.name.__root__
+        )
         self.bq_source.inspector = types.SimpleNamespace()
         self.bq_source.inspector.get_pk_constraint = lambda table_name, schema: []
         self.bq_source.inspector.get_unique_constraints = (
@@ -624,9 +624,9 @@ class BigqueryUnitTest(TestCase):
         get_tag_labels.return_value = []
         get_table_partition_details.return_value = False, None
         self.bq_source.context.__dict__["database"] = MOCK_DB_NAME
-        self.bq_source.context.__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        self.bq_source.context.__dict__["database_schema"] = (
+            MOCK_DATABASE_SCHEMA.name.__root__
+        )
 
         for i, table in enumerate(MOCK_TABLE_NAMES):
             _get_foreign_constraints.return_value = MOCK_TABLE_CONSTRAINT[i]

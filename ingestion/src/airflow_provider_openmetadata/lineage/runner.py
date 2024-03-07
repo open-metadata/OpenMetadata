@@ -150,9 +150,9 @@ class AirflowLineageRunner:
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
-                downstreamTasks=list(task.downstream_task_ids)
-                if task.downstream_task_ids
-                else None,
+                downstreamTasks=(
+                    list(task.downstream_task_ids) if task.downstream_task_ids else None
+                ),
             )
             for task in self.dag.tasks or []
         ]

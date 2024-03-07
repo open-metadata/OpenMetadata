@@ -57,12 +57,14 @@ class ColumnValuesToBeUniqueValidator(
         unique_count = dict(
             self.runner.select_all_from_query(
                 metric.value(column).query(
-                    sample=self.runner._sample  # pylint: disable=protected-access
-                    if isinstance(
-                        self.runner._sample,  # pylint: disable=protected-access
-                        AliasedClass,
-                    )
-                    else self.runner.table,
+                    sample=(
+                        self.runner._sample  # pylint: disable=protected-access
+                        if isinstance(
+                            self.runner._sample,  # pylint: disable=protected-access
+                            AliasedClass,
+                        )
+                        else self.runner.table
+                    ),
                     session=self.runner._session,  # pylint: disable=protected-access
                 )  # type: ignore
             )[

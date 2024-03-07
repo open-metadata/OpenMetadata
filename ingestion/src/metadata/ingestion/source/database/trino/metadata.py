@@ -178,9 +178,9 @@ class TrinoSource(CommonDbSourceService):
     Trino does not support querying by table type: Getting views is not supported.
     """
 
-    ColumnTypeParser._COLUMN_TYPE_MAPPING[  # pylint: disable=protected-access
-        JSON
-    ] = "JSON"
+    ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = (  # pylint: disable=protected-access
+        "JSON"
+    )
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -223,9 +223,11 @@ class TrinoSource(CommonDbSourceService):
                     )
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_catalog,
+                        (
+                            database_fqn
+                            if self.source_config.useFqnForFiltering
+                            else new_catalog
+                        ),
                     ):
                         self.status.filter(database_fqn, "Database Filtered Out")
                         continue

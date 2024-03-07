@@ -346,12 +346,12 @@ class Profiler(Generic[TMetric]):
             # Composed metrics require the results as an argument
             logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_composed_metrics(
-                col,
-                metric,
-                current_col_results,
+            self._column_results[col.name][metric.name()] = (
+                self.profiler_interface.get_composed_metrics(
+                    col,
+                    metric,
+                    current_col_results,
+                )
             )
 
     def run_hybrid_metrics(self, col: Column):
@@ -369,13 +369,13 @@ class Profiler(Generic[TMetric]):
             return
         for metric in self.get_col_metrics(self.hybrid_metric, col):
             logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_hybrid_metrics(
-                col,
-                metric,
-                current_col_results,
-                table=self.table,
+            self._column_results[col.name][metric.name()] = (
+                self.profiler_interface.get_hybrid_metrics(
+                    col,
+                    metric,
+                    current_col_results,
+                    table=self.table,
+                )
             )
 
     def _prepare_table_metrics(self) -> List:
@@ -631,12 +631,16 @@ class Profiler(Generic[TMetric]):
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=self._table_results.get("createDateTime"),
                 sizeInByte=self._table_results.get("sizeInBytes"),
-                profileSample=self.profile_sample_config.profile_sample
-                if self.profile_sample_config
-                else None,
-                profileSampleType=self.profile_sample_config.profile_sample_type
-                if self.profile_sample_config
-                else None,
+                profileSample=(
+                    self.profile_sample_config.profile_sample
+                    if self.profile_sample_config
+                    else None
+                ),
+                profileSampleType=(
+                    self.profile_sample_config.profile_sample_type
+                    if self.profile_sample_config
+                    else None
+                ),
                 customMetrics=self._table_results.get("customMetrics"),
             )
 

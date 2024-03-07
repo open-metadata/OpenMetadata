@@ -156,9 +156,9 @@ class DomoDashboardUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.domodashboard.context.__dict__["dashboard"] = MOCK_DASHBOARD.name
-        self.domodashboard.context.__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        self.domodashboard.context.__dict__["dashboard_service"] = (
+            MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        )
 
     def test_dashboard(self):
         dashboard_list = []

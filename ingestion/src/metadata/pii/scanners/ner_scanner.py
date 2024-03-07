@@ -108,9 +108,11 @@ class NERScanner:
                 results = self.analyzer.analyze(row, language="en")
                 for result in results:
                     entities_score[result.entity_type] = StringAnalysis(
-                        score=result.score
-                        if result.score > entities_score[result.entity_type].score
-                        else entities_score[result.entity_type].score,
+                        score=(
+                            result.score
+                            if result.score > entities_score[result.entity_type].score
+                            else entities_score[result.entity_type].score
+                        ),
                         appearances=entities_score[result.entity_type].appearances + 1,
                     )
             except Exception as exc:

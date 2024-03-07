@@ -194,9 +194,9 @@ class SnowflakeSource(
         results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
         for row in results:
             if row.CLUSTERING_KEY:
-                self.partition_details[
-                    f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
-                ] = row.CLUSTERING_KEY
+                self.partition_details[f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"] = (
+                    row.CLUSTERING_KEY
+                )
 
     def set_schema_description_map(self) -> None:
         results = self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS).all()
@@ -250,9 +250,11 @@ class SnowflakeSource(
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue

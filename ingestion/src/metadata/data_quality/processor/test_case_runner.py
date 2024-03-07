@@ -206,9 +206,11 @@ class TestCaseRunner(Processor):
                             )
                         ),
                         testSuite=test_suite_fqn,
-                        parameterValues=list(test_case_to_create.parameterValues)
-                        if test_case_to_create.parameterValues
-                        else None,
+                        parameterValues=(
+                            list(test_case_to_create.parameterValues)
+                            if test_case_to_create.parameterValues
+                            else None
+                        ),
                         owner=None,
                     )
                 )

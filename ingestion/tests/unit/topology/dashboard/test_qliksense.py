@@ -151,9 +151,9 @@ class QlikSenseUnitTest(TestCase):
                 mock_qliksense_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
-            self.qliksense.context.__dict__[
-                "dashboard_service"
-            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+            self.qliksense.context.__dict__["dashboard_service"] = (
+                MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+            )
 
     @pytest.mark.order(1)
     def test_dashboard(self):

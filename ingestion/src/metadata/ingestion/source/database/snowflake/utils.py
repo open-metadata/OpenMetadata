@@ -167,7 +167,7 @@ def get_schema_columns(self, connection, schema, **kw):
         )
         result = connection.execute(
             text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
-            {"table_schema": self.denormalize_name(fqn.unquote_name(schema))}
+            {"table_schema": self.denormalize_name(fqn.unquote_name(schema))},
             # removing " " from schema name because schema name is in the WHERE clause of a query
         )
 
@@ -232,11 +232,13 @@ def get_schema_columns(self, connection, schema, **kw):
                 ),
                 "comment": comment,
                 "primary_key": (
-                    column_name
-                    in schema_primary_keys[table_name]["constrained_columns"]
-                )
-                if current_table_pks
-                else False,
+                    (
+                        column_name
+                        in schema_primary_keys[table_name]["constrained_columns"]
+                    )
+                    if current_table_pks
+                    else False
+                ),
             }
         )
         if is_identity == "YES":

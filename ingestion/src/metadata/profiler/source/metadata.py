@@ -161,9 +161,11 @@ class OpenMetadataSource(Source):
         )
         if filter_by_database(
             self.source_config.databaseFilterPattern,
-            database_fqn
-            if self.source_config.useFqnForFiltering
-            else database.name.__root__,
+            (
+                database_fqn
+                if self.source_config.useFqnForFiltering
+                else database.name.__root__
+            ),
         ):
             self.status.filter(database.name.__root__, "Database pattern not allowed")
             return None
@@ -187,9 +189,11 @@ class OpenMetadataSource(Source):
                 )
                 if filter_by_schema(
                     self.source_config.schemaFilterPattern,
-                    schema_fqn
-                    if self.source_config.useFqnForFiltering
-                    else table.databaseSchema.name,  # type: ignore
+                    (
+                        schema_fqn
+                        if self.source_config.useFqnForFiltering
+                        else table.databaseSchema.name
+                    ),  # type: ignore
                 ):
                     self.status.filter(
                         f"Schema pattern not allowed: {table.fullyQualifiedName.__root__}",
@@ -207,9 +211,11 @@ class OpenMetadataSource(Source):
 
                 if filter_by_table(
                     self.source_config.tableFilterPattern,
-                    table_fqn
-                    if self.source_config.useFqnForFiltering
-                    else table.name.__root__,
+                    (
+                        table_fqn
+                        if self.source_config.useFqnForFiltering
+                        else table.name.__root__
+                    ),
                 ):
                     self.status.filter(
                         f"Table pattern not allowed: {table.fullyQualifiedName.__root__}",

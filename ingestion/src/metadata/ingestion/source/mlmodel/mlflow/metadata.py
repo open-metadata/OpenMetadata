@@ -209,9 +209,11 @@ class MlflowSource(MlModelServiceSource):
                     return [
                         MlFeature(
                             name=feature["name"],
-                            dataType=FeatureType.categorical
-                            if feature["type"] == "string"
-                            else FeatureType.numerical,
+                            dataType=(
+                                FeatureType.categorical
+                                if feature["type"] == "string"
+                                else FeatureType.numerical
+                            ),
                         )
                         for feature in features
                     ]

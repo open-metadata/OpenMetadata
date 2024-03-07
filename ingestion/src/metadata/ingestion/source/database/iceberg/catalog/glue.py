@@ -69,9 +69,11 @@ class IcebergGlueCatalog(IcebergCatalogBase):
             parameters = {
                 **parameters,
                 "aws_access_key_id": aws_config.awsAccessKeyId,
-                "aws_secret_access_key": aws_config.awsSecretAccessKey.get_secret_value()
-                if aws_config.awsSecretAccessKey
-                else None,
+                "aws_secret_access_key": (
+                    aws_config.awsSecretAccessKey.get_secret_value()
+                    if aws_config.awsSecretAccessKey
+                    else None
+                ),
                 "aws_session_token": aws_config.awsSessionToken,
                 "region_name": aws_config.awsRegion,
                 "profile_name": aws_config.profileName,

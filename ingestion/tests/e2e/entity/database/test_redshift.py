@@ -1,6 +1,5 @@
 """Test default database ingestion (Redshift)."""
 
-
 import pytest
 from playwright.sync_api import Page
 

@@ -170,13 +170,17 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             manifest_dict=self.context.dbt_file.dbt_manifest
         )
         dbt_objects = DbtObjects(
-            dbt_catalog=parse_catalog(self.context.dbt_file.dbt_catalog)
-            if self.context.dbt_file.dbt_catalog
-            else None,
+            dbt_catalog=(
+                parse_catalog(self.context.dbt_file.dbt_catalog)
+                if self.context.dbt_file.dbt_catalog
+                else None
+            ),
             dbt_manifest=parse_manifest(self.context.dbt_file.dbt_manifest),
-            dbt_run_results=parse_run_results(self.context.dbt_file.dbt_run_results)
-            if self.context.dbt_file.dbt_run_results
-            else None,
+            dbt_run_results=(
+                parse_run_results(self.context.dbt_file.dbt_run_results)
+                if self.context.dbt_file.dbt_run_results
+                else None
+            ),
         )
         yield dbt_objects
 

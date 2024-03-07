@@ -238,9 +238,11 @@ class Histogram(HybridMetric):
 
         bins = list(np.arange(num_bins) * bin_width + res_min)
         bins_label = [
-            self._format_bin_labels(bins[i], bins[i + 1])
-            if i < len(bins) - 1
-            else self._format_bin_labels(bins[i])
+            (
+                self._format_bin_labels(bins[i], bins[i + 1])
+                if i < len(bins) - 1
+                else self._format_bin_labels(bins[i])
+            )
             for i in range(len(bins))
         ]
 

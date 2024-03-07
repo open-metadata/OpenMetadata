@@ -317,9 +317,9 @@ class LookerSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             # First, pick up all the LookML Models
             try:
-                all_lookml_models: Sequence[
-                    LookmlModel
-                ] = self.client.all_lookml_models()
+                all_lookml_models: Sequence[LookmlModel] = (
+                    self.client.all_lookml_models()
+                )
 
                 # Then, gather their information and build the parser
                 self.parser = all_lookml_models
@@ -413,9 +413,9 @@ class LookerSource(DashboardServiceSource):
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
-                self._explores_cache[
-                    explore_datamodel.name.__root__
-                ] = self.context.dataModel  # This is the newly created explore
+                self._explores_cache[explore_datamodel.name.__root__] = (
+                    self.context.dataModel
+                )  # This is the newly created explore
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
@@ -866,9 +866,11 @@ class LookerSource(DashboardServiceSource):
                         displayName=chart.title or chart.id,
                         description=self.build_chart_description(chart) or None,
                         chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=chart.query.share_url
-                        if chart.query is not None
-                        else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}",
+                        sourceUrl=(
+                            chart.query.share_url
+                            if chart.query is not None
+                            else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
+                        ),
                         service=self.context.dashboard_service,
                     )
                 )

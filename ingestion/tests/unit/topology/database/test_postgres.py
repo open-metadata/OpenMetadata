@@ -282,13 +282,13 @@ class PostgresUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.postgres_source.context.__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.postgres_source.context.__dict__["database_service"] = (
+            MOCK_DATABASE_SERVICE.name.__root__
+        )
         self.postgres_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.postgres_source.context.__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        self.postgres_source.context.__dict__["database_schema"] = (
+            MOCK_DATABASE_SCHEMA.name.__root__
+        )
 
         self.usage_config = OpenMetadataWorkflowConfig.parse_obj(
             mock_postgres_usage_config

@@ -255,9 +255,9 @@ class SupersetUnitTest(TestCase):
 
             self.assertEqual(type(self.superset_api), SupersetAPISource)
 
-            self.superset_api.context.__dict__[
-                "dashboard_service"
-            ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
+            self.superset_api.context.__dict__["dashboard_service"] = (
+                EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
+            )
 
             with patch.object(
                 SupersetAPIClient, "fetch_total_charts", return_value=1
@@ -278,9 +278,9 @@ class SupersetUnitTest(TestCase):
 
             self.assertEqual(type(self.superset_db), SupersetDBSource)
 
-            self.superset_db.context.__dict__[
-                "dashboard_service"
-            ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
+            self.superset_db.context.__dict__["dashboard_service"] = (
+                EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
+            )
 
             with patch.object(Engine, "execute", return_value=mock_data["chart-db"]):
                 self.superset_db.prepare()

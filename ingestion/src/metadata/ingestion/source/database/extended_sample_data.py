@@ -449,9 +449,11 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                     name=random_name,
                     displayName=random_name,
                     description="Test glossary term ",
-                    parent=self.glossary_term_list[-1]
-                    if len(self.glossary_term_list) > 3
-                    else None,
+                    parent=(
+                        self.glossary_term_list[-1]
+                        if len(self.glossary_term_list) > 3
+                        else None
+                    ),
                 )
             )
             if len(self.glossary_term_list) > 3 and self.glossary_term_list[-1]:

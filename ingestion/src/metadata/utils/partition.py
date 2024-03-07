@@ -101,9 +101,9 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
 
     if service_type == DatabaseServiceType.BigQuery:
         if table_partition:
-            column_partitions: Optional[
-                List[PartitionColumnDetails]
-            ] = entity.tablePartition.columns
+            column_partitions: Optional[List[PartitionColumnDetails]] = (
+                entity.tablePartition.columns
+            )
             if not column_partitions:
                 raise TypeError("table partition missing. Skipping table")
 
@@ -113,9 +113,11 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
                 return PartitionProfilerConfig(
                     enablePartitioning=True,
                     partitionColumnName=partiton.columnName,
-                    partitionIntervalUnit=PartitionIntervalUnit.DAY
-                    if partiton.interval != "HOUR"
-                    else partiton.interval,
+                    partitionIntervalUnit=(
+                        PartitionIntervalUnit.DAY
+                        if partiton.interval != "HOUR"
+                        else partiton.interval
+                    ),
                     partitionInterval=1,
                     partitionIntervalType=partiton.intervalType.value,
                     partitionValues=None,
@@ -125,12 +127,16 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
             if partiton.intervalType == PartitionIntervalTypes.INGESTION_TIME:
                 return PartitionProfilerConfig(
                     enablePartitioning=True,
-                    partitionColumnName="_PARTITIONDATE"
-                    if partiton.interval == "DAY"
-                    else "_PARTITIONTIME",
-                    partitionIntervalUnit=PartitionIntervalUnit.DAY
-                    if partiton.interval != "HOUR"
-                    else partiton.interval,
+                    partitionColumnName=(
+                        "_PARTITIONDATE"
+                        if partiton.interval == "DAY"
+                        else "_PARTITIONTIME"
+                    ),
+                    partitionIntervalUnit=(
+                        PartitionIntervalUnit.DAY
+                        if partiton.interval != "HOUR"
+                        else partiton.interval
+                    ),
                     partitionInterval=1,
                     partitionIntervalType=partiton.intervalType.value,
                     partitionValues=None,

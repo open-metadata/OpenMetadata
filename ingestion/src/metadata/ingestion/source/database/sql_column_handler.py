@@ -68,9 +68,7 @@ class SqlColumnHandlerMixin:
         data_type_display = (
             f"{data_type_display}"
             if data_type_display
-            else f"{col_type}({col_data_length})"
-            if col_data_length
-            else col_type
+            else f"{col_type}({col_data_length})" if col_data_length else col_type
         )
         if col_type == "ARRAY":
             if arr_data_type is None:
@@ -186,13 +184,13 @@ class SqlColumnHandlerMixin:
                 .lower()
             )
             parsed_string["dataTypeDisplay"] = f"{array_data_type_display}"
-            parsed_string[
-                "arrayDataType"
-            ] = ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
-                array_data_type_display[6:-1]
-            )[
-                "dataType"
-            ]
+            parsed_string["arrayDataType"] = (
+                ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
+                    array_data_type_display[6:-1]
+                )[
+                    "dataType"
+                ]
+            )
         return Column(**parsed_string)
 
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
@@ -271,11 +269,13 @@ class SqlColumnHandlerMixin:
                     col_data_length = 1 if col_data_length is None else col_data_length
                     om_column = Column(
                         name=ColumnName(
-                            __root__=column["name"]
-                            # Passing whitespace if column name is an empty string
-                            # since pydantic doesn't accept empty string
-                            if column["name"]
-                            else " "
+                            __root__=(
+                                column["name"]
+                                # Passing whitespace if column name is an empty string
+                                # since pydantic doesn't accept empty string
+                                if column["name"]
+                                else " "
+                            )
                         ),
                         description=column.get("comment"),
                         dataType=col_type,

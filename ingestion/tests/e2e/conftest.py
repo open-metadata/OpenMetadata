@@ -1,6 +1,5 @@
 """Module fixture for data quality e2e tests"""
 
-
 import pytest
 from playwright.sync_api import Browser, Page, expect
 

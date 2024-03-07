@@ -158,9 +158,11 @@ class PrestoSource(CommonDbSourceService):
                     )
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_catalog,
+                        (
+                            database_fqn
+                            if self.source_config.useFqnForFiltering
+                            else new_catalog
+                        ),
                     ):
                         self.status.filter(database_fqn, "Database Filtered Out")
                         continue

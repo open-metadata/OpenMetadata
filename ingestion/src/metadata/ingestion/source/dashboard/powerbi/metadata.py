@@ -346,9 +346,9 @@ class PowerbiSource(DashboardServiceSource):
         for column in table.columns or []:
             try:
                 parsed_column = {
-                    "dataTypeDisplay": column.dataType
-                    if column.dataType
-                    else DataType.UNKNOWN.value,
+                    "dataTypeDisplay": (
+                        column.dataType if column.dataType else DataType.UNKNOWN.value
+                    ),
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),

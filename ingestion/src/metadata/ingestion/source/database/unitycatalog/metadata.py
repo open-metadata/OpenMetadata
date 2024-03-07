@@ -138,9 +138,11 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                     )
                     if filter_by_database(
                         self.config.sourceConfig.config.databaseFilterPattern,
-                        database_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else catalog_name,
+                        (
+                            database_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else catalog_name
+                        ),
                     ):
                         self.status.filter(
                             database_fqn,
@@ -187,9 +189,11 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 )
                 if filter_by_schema(
                     self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else schema.name,
+                    (
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema.name
+                    ),
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
@@ -249,9 +253,11 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 )
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table_name,
+                    (
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name
+                    ),
                 ):
                     self.status.filter(
                         table_fqn,

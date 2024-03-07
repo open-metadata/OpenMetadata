@@ -420,9 +420,9 @@ class DatalakeUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.datalake_source.context.__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.datalake_source.context.__dict__["database_service"] = (
+            MOCK_DATABASE_SERVICE.name.__root__
+        )
 
     def test_s3_schema_filer(self):
         self.datalake_source.client.list_buckets = lambda: MOCK_S3_SCHEMA
@@ -550,9 +550,9 @@ class DatalakeGCSUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.datalake_source.context.__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.datalake_source.context.__dict__["database_service"] = (
+            MOCK_DATABASE_SERVICE.name.__root__
+        )
 
     @patch(
         "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"

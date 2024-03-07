@@ -295,9 +295,11 @@ class CommonDbSourceService(
                     )
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        table_fqn
-                        if self.source_config.useFqnForFiltering
-                        else table_name,
+                        (
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -322,9 +324,11 @@ class CommonDbSourceService(
 
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        view_fqn
-                        if self.source_config.useFqnForFiltering
-                        else view_name,
+                        (
+                            view_fqn
+                            if self.source_config.useFqnForFiltering
+                            else view_name
+                        ),
                     ):
                         self.status.filter(
                             view_fqn,

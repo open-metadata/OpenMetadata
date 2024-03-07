@@ -35,9 +35,9 @@ def get_connection(connection: LookerConnection) -> Looker40SDK:
     if not os.environ.get("LOOKERSDK_CLIENT_ID"):
         os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
     if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
-        os.environ[
-            "LOOKERSDK_CLIENT_SECRET"
-        ] = connection.clientSecret.get_secret_value()
+        os.environ["LOOKERSDK_CLIENT_SECRET"] = (
+            connection.clientSecret.get_secret_value()
+        )
     if not os.environ.get("LOOKERSDK_BASE_URL"):
         os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
 

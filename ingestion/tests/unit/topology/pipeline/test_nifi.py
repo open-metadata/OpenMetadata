@@ -208,9 +208,9 @@ class NifiUnitTest(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
         self.nifi.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.nifi.context.__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        self.nifi.context.__dict__["pipeline_service"] = (
+            MOCK_PIPELINE_SERVICE.name.__root__
+        )
 
     def test_pipeline_name(self):
         assert (

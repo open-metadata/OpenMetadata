@@ -136,9 +136,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
 
         # Try to get the global manifest
-        self.global_manifest: Optional[
-            ManifestMetadataConfig
-        ] = self.get_manifest_file()
+        self.global_manifest: Optional[ManifestMetadataConfig] = (
+            self.get_manifest_file()
+        )
 
     @property
     def name(self) -> str:

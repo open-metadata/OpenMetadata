@@ -71,9 +71,11 @@ def get_json_schema_fields(properties) -> Optional[List[FieldModel]]:
                     name=value.get("title", key),
                     dataType=JsonSchemaDataTypes(value.get("type")).name,
                     description=value.get("description"),
-                    children=get_json_schema_fields(value.get("properties"))
-                    if value.get("type") == "object"
-                    else None,
+                    children=(
+                        get_json_schema_fields(value.get("properties"))
+                        if value.get("type") == "object"
+                        else None
+                    ),
                 )
             )
         except Exception as exc:  # pylint: disable=broad-except

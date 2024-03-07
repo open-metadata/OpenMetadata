@@ -239,9 +239,11 @@ class AmundsenSource(Source):
                 table_name = "default"
 
             database_request = CreateDatabaseRequest(
-                name=table_name
-                if hasattr(service_entity.connection.config, "supportsDatabase")
-                else "default",
+                name=(
+                    table_name
+                    if hasattr(service_entity.connection.config, "supportsDatabase")
+                    else "default"
+                ),
                 service=service_entity.fullyQualifiedName.__root__,
             )
             yield Either(right=database_request)

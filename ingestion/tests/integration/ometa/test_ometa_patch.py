@@ -251,9 +251,9 @@ class OMetaTableTest(TestCase):
         )
         # Test if table and column descriptions are getting patched
         new_patched_table.description = "This should get patched"
-        new_patched_table.columns[
-            0
-        ].description = "This column description should get patched"
+        new_patched_table.columns[0].description = (
+            "This column description should get patched"
+        )
 
         # Test if table and column tags are getting patched
         new_patched_table.tags = [PII_TAG_LABEL]
@@ -284,9 +284,9 @@ class OMetaTableTest(TestCase):
 
         # Descriptions should not override already present descriptions
         new_patched_table.description = "This should NOT get patched"
-        new_patched_table.columns[
-            0
-        ].description = "This column description should NOT get patched"
+        new_patched_table.columns[0].description = (
+            "This column description should NOT get patched"
+        )
 
         # Only adding the tags is allowed
         new_patched_table.tags = [PII_TAG_LABEL, TIER_TAG_LABEL]

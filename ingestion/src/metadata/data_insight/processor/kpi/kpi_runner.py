@@ -109,12 +109,12 @@ class KpiRunner:
             data_insight_chart (EntityReference): _description_
         """
         results = None
-        data_insight_chart_entity: Optional[
-            DataInsightChart
-        ] = self.metadata.get_by_name(
-            entity=DataInsightChart,
-            fqn=data_insight_chart.fullyQualifiedName,
-            fields=["*"],
+        data_insight_chart_entity: Optional[DataInsightChart] = (
+            self.metadata.get_by_name(
+                entity=DataInsightChart,
+                fqn=data_insight_chart.fullyQualifiedName,
+                fields=["*"],
+            )
         )
 
         if not data_insight_chart_entity:

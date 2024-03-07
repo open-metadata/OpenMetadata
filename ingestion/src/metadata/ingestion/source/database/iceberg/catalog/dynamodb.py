@@ -88,9 +88,11 @@ class IcebergDynamoDbCatalog(IcebergCatalogBase):
             parameters = {
                 **parameters,
                 "aws_secret_key_id": aws_config.awsAccessKeyId,
-                "aws_secret_access_key": aws_config.awsSecretAccessKey
-                if aws_config.awsSecretAccessKey
-                else None,
+                "aws_secret_access_key": (
+                    aws_config.awsSecretAccessKey
+                    if aws_config.awsSecretAccessKey
+                    else None
+                ),
                 "aws_session_token": aws_config.awsSessionToken,
                 "region_name": aws_config.awsRegion,
                 "profile_name": aws_config.profileName,

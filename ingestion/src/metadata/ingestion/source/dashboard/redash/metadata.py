@@ -260,17 +260,19 @@ class RedashSource(DashboardServiceSource):
                 yield Either(
                     right=CreateChartRequest(
                         name=widgets["id"],
-                        displayName=chart_display_name
-                        if visualization and visualization["query"]
-                        else "",
+                        displayName=(
+                            chart_display_name
+                            if visualization and visualization["query"]
+                            else ""
+                        ),
                         chartType=get_standard_chart_type(
                             visualization["type"] if visualization else ""
                         ),
                         service=self.context.dashboard_service,
                         sourceUrl=self.get_dashboard_url(dashboard_details),
-                        description=visualization["description"]
-                        if visualization
-                        else "",
+                        description=(
+                            visualization["description"] if visualization else ""
+                        ),
                     )
                 )
             except Exception as exc:

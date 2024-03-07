@@ -298,9 +298,9 @@ class DbtSource(DbtServiceSource):
         Method to append dbt test cases for later processing
         """
         self.context.dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.dbt_tests[key][
-            DbtCommonEnum.UPSTREAM.value
-        ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+        self.context.dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = (
+            self.parse_upstream_nodes(manifest_entities, manifest_node)
+        )
         self.context.dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
             (
                 item
@@ -408,15 +408,15 @@ class DbtSource(DbtServiceSource):
                         table_name=model_name,
                     )
 
-                    table_entity: Optional[
-                        Union[Table, List[Table]]
-                    ] = get_entity_from_es_result(
-                        entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table,
-                            fqn_search_string=table_fqn,
-                            fields="sourceHash",
-                        ),
-                        fetch_multiple_entities=False,
+                    table_entity: Optional[Union[Table, List[Table]]] = (
+                        get_entity_from_es_result(
+                            entity_list=self.metadata.es_search_from_fqn(
+                                entity_type=Table,
+                                fqn_search_string=table_fqn,
+                                fields="sourceHash",
+                            ),
+                            fetch_multiple_entities=False,
+                        )
                     )
 
                     if table_entity:
@@ -425,9 +425,11 @@ class DbtSource(DbtServiceSource):
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=manifest_node.resource_type.value,
-                                description=manifest_node.description
-                                if manifest_node.description
-                                else None,
+                                description=(
+                                    manifest_node.description
+                                    if manifest_node.description
+                                    else None
+                                ),
                                 path=get_data_model_path(manifest_node=manifest_node),
                                 rawSql=dbt_raw_query if dbt_raw_query else "",
                                 sql=dbt_compiled_query if dbt_compiled_query else "",
@@ -504,13 +506,13 @@ class DbtSource(DbtServiceSource):
 
                         # check if the parent table exists in OM before adding it to the upstream list
                         # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
-                        parent_table_entity: Optional[
-                            Union[Table, List[Table]]
-                        ] = get_entity_from_es_result(
-                            entity_list=self.metadata.es_search_from_fqn(
-                                entity_type=Table, fqn_search_string=parent_fqn
-                            ),
-                            fetch_multiple_entities=False,
+                        parent_table_entity: Optional[Union[Table, List[Table]]] = (
+                            get_entity_from_es_result(
+                                entity_list=self.metadata.es_search_from_fqn(
+                                    entity_type=Table, fqn_search_string=parent_fqn
+                                ),
+                                fetch_multiple_entities=False,
+                            )
                         )
                         if parent_table_entity:
                             upstream_nodes.append(parent_fqn)
@@ -547,18 +549,20 @@ class DbtSource(DbtServiceSource):
                 columns.append(
                     Column(
                         name=column_name,
-                        description=manifest_column.description
-                        if manifest_column.description
-                        else column_description,
+                        description=(
+                            manifest_column.description
+                            if manifest_column.description
+                            else column_description
+                        ),
                         dataType=ColumnTypeParser.get_column_type(
                             catalog_column.type
                             if catalog_column
                             else manifest_column.data_type
                         ),
                         dataLength=1,
-                        ordinalPosition=catalog_column.index
-                        if catalog_column
-                        else None,
+                        ordinalPosition=(
+                            catalog_column.index if catalog_column else None
+                        ),
                         tags=get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_column.tags,
@@ -591,10 +595,10 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[
-                    Union[Table, List[Table]]
-                ] = get_entity_from_es_result(
-                    entity_list=from_es_result, fetch_multiple_entities=False
+                from_entity: Optional[Union[Table, List[Table]]] = (
+                    get_entity_from_es_result(
+                        entity_list=from_es_result, fetch_multiple_entities=False
+                    )
                 )
                 if from_entity and to_entity:
                     yield Either(
@@ -882,9 +886,11 @@ class DbtSource(DbtServiceSource):
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=manifest_node.column_name
-                        if hasattr(manifest_node, "column_name")
-                        else None,
+                        column_name=(
+                            manifest_node.column_name
+                            if hasattr(manifest_node, "column_name")
+                            else None
+                        ),
                         test_case_name=manifest_node.name,
                     )
                     self.metadata.add_test_case_results(

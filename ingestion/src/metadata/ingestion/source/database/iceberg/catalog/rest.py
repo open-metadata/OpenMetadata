@@ -51,9 +51,11 @@ class IcebergRestCatalog(IcebergCatalogBase):
             "warehouse": catalog.warehouseLocation,
             "uri": catalog.connection.uri,
             "credential": credential,
-            "token": catalog.connection.token.get_secret_value()
-            if catalog.connection.token
-            else None,
+            "token": (
+                catalog.connection.token.get_secret_value()
+                if catalog.connection.token
+                else None
+            ),
         }
 
         if catalog.connection.fileSystem:

@@ -113,9 +113,11 @@ class AWSClient:
         """
         return Session(
             aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key.get_secret_value()
-            if aws_secret_access_key
-            else None,
+            aws_secret_access_key=(
+                aws_secret_access_key.get_secret_value()
+                if aws_secret_access_key
+                else None
+            ),
             aws_session_token=aws_session_token,
             region_name=aws_region,
             profile_name=profile,
