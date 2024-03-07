@@ -14,8 +14,8 @@ import React, { FC } from 'react';
 import SuggestionsProvider from '../Suggestions/SuggestionsProvider/SuggestionsProvider';
 
 export const withSuggestions =
-  <T extends unknown>(Component: FC<T>) =>
-  (props: JSX.IntrinsicAttributes & { children?: React.ReactNode } & T) => {
+  (Component: FC) =>
+  (props: JSX.IntrinsicAttributes & { children?: React.ReactNode }) => {
     return (
       <SuggestionsProvider>
         <Component {...props} />

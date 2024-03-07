@@ -63,7 +63,9 @@ const AvatarCarousel = () => {
             className={`cursor-pointer m-r-xss avatar-item ${
               currentSlide === index ? 'active' : ''
             }`}
-            key={index}
+            key={avatar.id}
+            role="button"
+            tabIndex={0}
             onClick={() => setCurrentSlide(index)}>
             <UserPopOverCard className="" userName={avatar?.name ?? ''}>
               <span>
