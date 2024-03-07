@@ -163,7 +163,7 @@ export const visitEntityDetailsPage = ({
   serviceName: string;
   entity: EntityType;
   dataTestId?: string;
-  entityType?: EntityType;
+  entityType?: string;
   entityFqn?: string;
 }) => {
   if (entity === EntityType.DataModel) {

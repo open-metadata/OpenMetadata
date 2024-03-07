@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
+import {
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+} from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
-import { interceptURL, uuid, verifyResponseStatusCode } from '../common';
+import {
+  descriptionBox,
+  interceptURL,
+  uuid,
+  verifyResponseStatusCode,
+} from '../common';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -188,3 +197,148 @@ export const deleteCustomProperties = (
 export const customPropertiesArray = Array(10)
   .fill(null)
   .map(() => generateCustomProperties());
+
+export const addCustomPropertiesForEntity = (
+  propertyName: string,
+  customPropertyData: { description: string },
+  customType: string,
+  value: { values: string[]; multiSelect: boolean }
+) => {
+  // Add Custom property for selected entity
+  cy.get('[data-testid="add-field-button"]').click();
+
+  // validation should work
+  cy.get('[data-testid="create-button"]').scrollIntoView().click();
+
+  cy.get('#name_help').should('contain', 'Name is required');
+  cy.get('#propertyType_help').should('contain', 'Property Type is required');
+
+  cy.get('#description_help').should('contain', 'Description is required');
+
+  // capital case validation
+  cy.get('[data-testid="name"]')
+    .scrollIntoView()
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // with underscore validation
+  cy.get('[data-testid="name"]')
+    .clear()
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // with space validation
+  cy.get('[data-testid="name"]')
+    .clear()
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // with dots validation
+  cy.get('[data-testid="name"]')
+    .clear()
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // should allow name in another languages
+  cy.get('[data-testid="name"]').clear().type('汝らヴェディア');
+  // should not throw the validation error
+  cy.get('#name_help').should('not.exist');
+
+  cy.get('[data-testid="name"]').clear().type(propertyName);
+
+  cy.get('[data-testid="propertyType"]').click();
+  cy.get(`[title="${customType}"]`).click();
+
+  if (customType === 'Enum') {
+    value.values.forEach((val) => {
+      cy.get('#root\\/customPropertyConfig').type(`${val}{enter}`);
+    });
+
+    cy.clickOutside();
+
+    if (value.multiSelect) {
+      cy.get('#root\\/multiSelect').scrollIntoView().click();
+    }
+  }
+
+  cy.get(descriptionBox).clear().type(customPropertyData.description);
+
+  // Check if the property got added
+  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
+    'customProperties'
+  );
+  cy.get('[data-testid="create-button"]').scrollIntoView().click();
+
+  cy.wait('@customProperties');
+  cy.get('.ant-table-row').should('contain', propertyName);
+
+  // Navigating to home page
+  cy.clickOnLogo();
+};
+
+export const editCreatedProperty = (propertyName: string, type: string) => {
+  // Fetching for edit button
+  cy.get(`[data-row-key="${propertyName}"]`)
+    .find('[data-testid="edit-button"]')
+    .as('editButton');
+
+  if (type === 'Enum') {
+    cy.get(`[data-row-key="${propertyName}"]`)
+      .find('[data-testid="enum-config"]')
+      .should('contain', '["enum1","enum2","enum3"]');
+  }
+
+  cy.get('@editButton').click();
+
+  cy.get(descriptionBox).clear().type('This is new description');
+
+  if (type === 'Enum') {
+    cy.get('#root\\/customPropertyConfig').type(`updatedValue{enter}`);
+
+    cy.clickOutside();
+  }
+
+  interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
+
+  cy.get('button[type="submit"]').scrollIntoView().click();
+
+  cy.wait('@checkPatchForDescription', { timeout: 15000 });
+
+  cy.get('.ant-modal-wrap').should('not.exist');
+
+  // Fetching for updated descriptions for the created custom property
+  cy.get(`[data-row-key="${propertyName}"]`)
+    .find('[data-testid="viewer-container"]')
+    .should('contain', 'This is new description');
+
+  if (type === 'Enum') {
+    cy.get(`[data-row-key="${propertyName}"]`)
+      .find('[data-testid="enum-config"]')
+      .should('contain', '["enum1","enum2","enum3","updatedValue"]');
+  }
+};
+
+export const deleteCreatedProperty = (propertyName: string) => {
+  // Fetching for delete button
+  cy.get(`[data-row-key="${propertyName}"]`)
+    .scrollIntoView()
+    .find('[data-testid="delete-button"]')
+    .click();
+
+  // Checking property name is present on the delete pop-up
+  cy.get('[data-testid="body-text"]').should('contain', propertyName);
+
+  cy.get('[data-testid="save-button"]').should('be.visible').click();
+};
