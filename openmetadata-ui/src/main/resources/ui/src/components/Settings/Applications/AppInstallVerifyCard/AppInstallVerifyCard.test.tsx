@@ -43,6 +43,14 @@ jest.mock('../AppLogo/AppLogo.component', () =>
   jest.fn().mockImplementation(() => <>AppLogo</>)
 );
 
+jest.mock('../../../../constants/constants', () => ({
+  LIGHT_GREEN_COLOR: '#00ff00',
+}));
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  Transi18next: jest.fn().mockReturnValue('Transi18next'),
+}));
+
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
