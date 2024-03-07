@@ -54,7 +54,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           }
           loading={loading === QueryVoteType.votedUp}
           onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-          <Typography.Text data-testid="up-vote-count">
+          <Typography.Text className="m-l-xs" data-testid="up-vote-count">
             {votes?.upVotes ?? 0}
           </Typography.Text>
         </Button>
@@ -73,7 +73,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           }
           loading={loading === QueryVoteType.votedDown}
           onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-          <Typography.Text data-testid="down-vote-count">
+          <Typography.Text className="m-l-xs" data-testid="down-vote-count">
             {votes?.downVotes ?? 0}
           </Typography.Text>
         </Button>

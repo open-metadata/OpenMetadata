@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -433,9 +433,17 @@ export const DataAssetsHeader = ({
                   <Tooltip title={t('label.open-task-plural')}>
                     <Button
                       className="w-16 p-0"
-                      icon={<Icon component={TaskOpenIcon} />}
+                      icon={
+                        <Icon
+                          className="vertical-align-text-top"
+                          component={TaskOpenIcon}
+                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                        />
+                      }
                       onClick={handleOpenTaskClick}>
-                      <Typography.Text>{openTaskCount}</Typography.Text>
+                      <Typography.Text className="m-l-xs">
+                        {openTaskCount}
+                      </Typography.Text>
                     </Button>
                   </Tooltip>
                 )}
@@ -446,12 +454,15 @@ export const DataAssetsHeader = ({
                     data-testid="version-button"
                     icon={
                       <Icon
+                        className="vertical-align-text-top"
                         component={VersionIcon}
                         style={{ ...DATA_ASSET_ICON_DIMENSION }}
                       />
                     }
                     onClick={onVersionClick}>
-                    <Typography.Text>{version}</Typography.Text>
+                    <Typography.Text className="m-l-xs">
+                      {version}
+                    </Typography.Text>
                   </Button>
                 </Tooltip>
 
@@ -467,13 +478,16 @@ export const DataAssetsHeader = ({
                       disabled={deleted}
                       icon={
                         <Icon
+                          className="vertical-align-text-top"
                           component={isFollowing ? StarFilledIcon : StarIcon}
                           style={{ ...DATA_ASSET_ICON_DIMENSION }}
                         />
                       }
                       loading={isFollowingLoading}
                       onClick={handleFollowingClick}>
-                      <Typography.Text>{followers}</Typography.Text>
+                      <Typography.Text className="m-l-xs">
+                        {followers}
+                      </Typography.Text>
                     </Button>
                   </Tooltip>
                 )}
@@ -482,8 +496,10 @@ export const DataAssetsHeader = ({
                   placement="topRight"
                   title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
+                    className="flex-center"
                     icon={
                       <Icon
+                        className="vertical-align-text-top"
                         component={ShareIcon}
                         style={{ ...DATA_ASSET_ICON_DIMENSION }}
                       />

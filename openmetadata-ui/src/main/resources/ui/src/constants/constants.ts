@@ -566,9 +566,9 @@ export const ICON_DIMENSION = {
 };
 
 export const DATA_ASSET_ICON_DIMENSION = {
-  height: 32,
-  width: 32,
-  fontSize: 32,
+  height: 18,
+  width: 18,
+  fontSize: 18,
 };
 
 export const COMMON_ICON_STYLES: CSSProperties = {
