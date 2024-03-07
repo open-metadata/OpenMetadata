@@ -57,13 +57,15 @@ def _get_object_key(
 ) -> str:
     validate_path_pattern(file_path_format)
     file_name = file_path_format.format(
-        service_name = table.service.name,
-        database_name = table.database.name,
-        database_schema_name = table.databaseSchema.name,
-        table_name = table.name.__root__
+        service_name=table.service.name,
+        database_name=table.database.name,
+        database_schema_name=table.databaseSchema.name,
+        table_name=table.name.__root__,
     )
     if not overwrite_data:
-        file_name = file_name.replace(".parquet",f"_{datetime.now().strftime('%Y_%m_%d')}.parquet")
+        file_name = file_name.replace(
+            ".parquet", f"_{datetime.now().strftime('%Y_%m_%d')}.parquet"
+        )
     if prefix:
         return f"{clean_uri(prefix)}/{file_name}"
     return file_name
