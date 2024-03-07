@@ -441,9 +441,7 @@ export const DataAssetsHeader = ({
                         />
                       }
                       onClick={handleOpenTaskClick}>
-                      <Typography.Text className="m-l-xs">
-                        {openTaskCount}
-                      </Typography.Text>
+                      <Typography.Text>{openTaskCount}</Typography.Text>
                     </Button>
                   </Tooltip>
                 )}
@@ -460,9 +458,7 @@ export const DataAssetsHeader = ({
                       />
                     }
                     onClick={onVersionClick}>
-                    <Typography.Text className="m-l-xs">
-                      {version}
-                    </Typography.Text>
+                    <Typography.Text>{version}</Typography.Text>
                   </Button>
                 </Tooltip>
 
@@ -485,9 +481,7 @@ export const DataAssetsHeader = ({
                       }
                       loading={isFollowingLoading}
                       onClick={handleFollowingClick}>
-                      <Typography.Text className="m-l-xs">
-                        {followers}
-                      </Typography.Text>
+                      <Typography.Text>{followers}</Typography.Text>
                     </Button>
                   </Tooltip>
                 )}
