@@ -346,7 +346,7 @@ const PoliciesDetailPage = () => {
               </Typography.Title>
               <Description
                 hasEditAccess
-                className="m-b-md"
+                className="m-y-md"
                 description={policy.description || ''}
                 entityFqn={policy.fullyQualifiedName}
                 entityName={policyName}
