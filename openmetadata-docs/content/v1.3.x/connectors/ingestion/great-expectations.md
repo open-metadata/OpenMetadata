@@ -1,15 +1,15 @@
 ---
-title: Great Expectations Integration
-slug: /features/integrations/great-expectations
+title: Great Expectations
+slug: /connectors/ingestion/great-expectations
 ---
 
-# Great Expectations
+# Great Expectations 
 For Data Quality tests the open source python package Great Expectations stands out from the crowd. For those of you who don't know, [Great Expectations](https://greatexpectations.io/) is a shared, open standard for data quality. It helps data teams eliminate pipeline debt, through data testing, documentation, and profiling. Learn more about the product in [their documentation](https://docs.greatexpectations.io/docs/).  With this tutorial, we show you how to configure Great Expectations to integrate with OpenMetadata and ingest your test results to your table service page.
 
 ## Requirements
 
 ### OpenMetadata Requirements
-You will to have OpenMetadata version 0.10 or later.
+You will to have OpenMetadata version 0.12 or later.
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](/quick-start/local-deployment) or follow the [Prefect Integration](/features/integrations/prefect) guide.
 
