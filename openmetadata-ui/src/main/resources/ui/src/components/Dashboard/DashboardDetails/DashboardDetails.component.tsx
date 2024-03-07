@@ -21,7 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import { getDashboardDetailsPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -225,7 +225,13 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getDashboardDetailsPath(decodedDashboardFQN, activeKey));
+      history.push(
+        getEntityDetailsPath(
+          EntityType.DASHBOARD,
+          decodedDashboardFQN,
+          activeKey
+        )
+      );
     }
   };
 

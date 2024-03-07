@@ -293,11 +293,11 @@ export const extractDetailsFromToken = (token: string) => {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
       const dateNow = Date.now();
-      if (exp === null) {
+
+      if (isNil(exp)) {
         return {
           exp,
           isExpired: false,
-          timeoutExpiry: 0,
         };
       }
 

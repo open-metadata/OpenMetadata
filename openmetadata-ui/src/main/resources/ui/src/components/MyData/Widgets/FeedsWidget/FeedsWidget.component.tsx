@@ -31,11 +31,8 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedCount } from '../../../../rest/feedsAPI';
-import {
-  getCountBadge,
-  getEntityDetailLink,
-  Transi18next,
-} from '../../../../utils/CommonUtils';
+import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityUserLink } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
@@ -105,7 +102,7 @@ const FeedsWidget = ({
 
   const redirectToUserPage = useCallback(() => {
     history.push(
-      getEntityDetailLink(
+      entityUtilClassBase.getEntityLink(
         EntityType.USER,
         currentUser?.name as string,
         EntityTabs.ACTIVITY_FEED,

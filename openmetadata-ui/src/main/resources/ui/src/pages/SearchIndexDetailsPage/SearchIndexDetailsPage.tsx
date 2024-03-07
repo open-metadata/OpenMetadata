@@ -38,7 +38,10 @@ import Lineage from '../../components/Lineage/Lineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { getVersionPath } from '../../constants/constants';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -73,10 +76,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  defaultFields,
-  getSearchIndexTabPath,
-} from '../../utils/SearchIndexUtils';
+import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -229,7 +229,13 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getSearchIndexTabPath(decodedSearchIndexFQN, activeKey));
+      history.push(
+        getEntityDetailsPath(
+          EntityType.SEARCH_INDEX,
+          decodedSearchIndexFQN,
+          activeKey
+        )
+      );
     }
   };
   const saveUpdatedSearchIndexData = useCallback(

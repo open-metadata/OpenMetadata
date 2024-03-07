@@ -157,7 +157,7 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
 );
 
 jest.mock('../../constants/constants', () => ({
-  getContainerDetailPath: jest.fn().mockReturnValue('/container-detail-path'),
+  getEntityDetailsPath: jest.fn().mockReturnValue('/container-detail-path'),
   getVersionPath: jest.fn().mockReturnValue('/version-path'),
 }));
 

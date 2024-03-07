@@ -25,7 +25,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
-  getTableTabPath,
+  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -69,7 +69,11 @@ const AddQueryPage = () => {
         ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
         {
           name: getEntityName(tableRes),
-          url: getTableTabPath(datasetFQN, 'table_queries'),
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
+            datasetFQN,
+            'table_queries'
+          ),
         },
         {
           name: t('label.add-entity', {

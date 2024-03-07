@@ -51,10 +51,10 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import {
   getCountBadge,
-  getEntityDetailLink,
   getFeedCounts,
   Transi18next,
 } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityUserLink,
@@ -134,7 +134,12 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+      entityUtilClassBase.getEntityLink(
+        entityType,
+        fqn,
+        EntityTabs.ACTIVITY_FEED,
+        subTab
+      )
     );
     setActiveThread();
   };

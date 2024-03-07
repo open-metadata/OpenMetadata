@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
-import { CreateDomain } from '../../../generated/api/domains/createDomain';
-import { Domain } from '../../../generated/entity/domains/domain';
+import React, { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 
-export interface AddDataProductModalProps {
-  open: boolean;
-  data?: Domain;
-  onCancel: () => void;
-  onSubmit: (data: CreateDomain | CreateDataProduct) => Promise<void>;
-}
+export const EntityDetail = () => {
+  const { entityType } = useParams<{ entityType: EntityType }>();
+
+  const Component = useMemo(
+    () => entityUtilClassBase.getEntityDetailComponent(entityType),
+    [entityType]
+  );
+
+  return <Component />;
+};

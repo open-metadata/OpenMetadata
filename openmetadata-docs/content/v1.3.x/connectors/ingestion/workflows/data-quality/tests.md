@@ -293,11 +293,11 @@ Validate a list of table column name matches an expected set of columns
 
 ### Table Custom SQL Test
 Write you own SQL test. When writting your query you can use 2 strategies:
-- `ROWS` (default): expects the query to be written as `SELECT <field>, <field> FROM <foo> WHERE <condition>`. **Note** if your query returns a large amount of rows it might cause an "Out Of Memeory" error. In this case we recoomend you to use the `COUNT` startegy.
+- `ROWS` (default): expects the query to be written as `SELECT <field>, <field> FROM <foo> WHERE <condition>`. **Note** if your query returns a large amount of rows it might cause an "Out Of Memeory" error. In this case we recomend you to use the `COUNT` strategy.
 - `COUNT`: expects the query to be written as `SELECT COUNT(<field>) FROM <foo> WHERE <condition>`.
 
 **How to use the Threshold Parameter?**
-The threshold allows you to define a limit for which you test should pass or fail - by defaut this number is 0. For example if my custom SQL query test returns 10 rows and my threshold is 5 the test will fail. If I update my threshold to 11 on my next run my test will pass.
+The threshold allows you to define a limit for which you test should pass or fail - by defaut this number is 0. For example if my custom SQL query test returns 10 rows (or a COUNT value of 10) and my threshold is 5 the test will fail. If I update my threshold to 11 on my next run my test will pass.
 
 **Properties**
 
@@ -473,6 +473,7 @@ Makes sure that there are no duplicate values in a given column.
   description: test description
   columnName: columnName
   testDefinitionName: columnValuesToBeUnique
+  computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: columnNames
       value: true
@@ -516,6 +517,7 @@ Validates that there are no null values in the column.
   description: test description
   columnName: columnName
   testDefinitionName: columnValuesToBeNotNull
+  computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: columnValuesToBeNotNull
       value: true
@@ -569,6 +571,7 @@ The other databases will fall back to the `LIKE` expression
   description: test description
   columnName: columnName
   testDefinitionName: columnValuesToMatchRegex
+  computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: regex
       value: "%something%"
@@ -622,6 +625,7 @@ The other databases will fall back to the `LIKE` expression
   description: test description
   columnName: columnName
   testDefinitionName: columnValuesToMatchRegex
+  computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: forbiddenRegex
       value: "%something%"
@@ -661,10 +665,13 @@ Validate values form a set are present in a column.
 **YAML Config**
 
 ```yaml
-testDefinitionName: columnValuesToBeInSet
-parameterValues:
-    - name: allowedValues
-      value: ["forbidden1", "forbidden2"]
+- name: myTestName
+  testDefinitionName: columnValuesToBeInSet
+  columnName: columnName
+  computePassedFailedRowCount: <true or false>
+  parameterValues:
+      - name: allowedValues
+        value: ["forbidden1", "forbidden2"]
 ```
 
 **JSON Config**
@@ -708,6 +715,7 @@ Validate that there are no values in a column in a set of forbidden values.
   description: test description
   columnName: columnName
   testDefinitionName: columnValuesToBeNotInSet
+  computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: forbiddenValues
       value: ["forbidden1", "forbidden2"]
@@ -762,6 +770,7 @@ Any of those two need to be informed.
   description: test description
   columnName: columnName
   testDefinitionName: columnValuesToBeBetween
+  computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: minValue
       value: ["forbidden1", "forbidden2"]
@@ -893,6 +902,7 @@ Any of those two need to be informed.
   description: test description
   columnName: columnName
   testDefinitionName: columnValueLengthsToBeBetween
+  computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: minLength
       value: 50

@@ -26,6 +26,10 @@ jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
 });
 
+jest.mock('../../../../constants/profiler.constant', () => ({
+  SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME: [],
+}));
+
 describe('ParameterForm component test', () => {
   it('Select box should render if "columnName" field is present and table data provided', async () => {
     await act(async () => {
