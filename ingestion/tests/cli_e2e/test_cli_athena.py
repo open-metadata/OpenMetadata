@@ -133,16 +133,16 @@ class AthenaCliTest(CliCommonDB.TestSuite):
     def assert_for_vanilla_ingestion(
         self, source_status: Status, sink_status: Status
     ) -> None:
-        self.assertTrue(len(source_status.failures) == 0)
-        self.assertTrue(len(source_status.warnings) == 0)
-        self.assertTrue(len(source_status.filtered) == 5)
-        self.assertTrue(
-            (len(source_status.records) + len(source_status.updated_records))
-            >= self.expected_tables()
+        self.assertEqual(len(source_status.failures), 0)
+        self.assertEqual(len(source_status.warnings), 0)
+        self.assertEqual(len(source_status.filtered), 5)
+        self.assertGreaterEqual(
+            len(source_status.records) + len(source_status.updated_records),
+            self.expected_tables()
         )
-        self.assertTrue(len(sink_status.failures) == 0)
-        self.assertTrue(len(sink_status.warnings) == 0)
-        self.assertTrue(
-            (len(sink_status.records) + len(sink_status.updated_records))
-            >= self.expected_tables()
+        self.assertEqual(len(sink_status.failures), 0)
+        self.assertEqual(len(sink_status.warnings), 0)
+        self.assertGreaterEqual(
+            len(sink_status.records) + len(sink_status.updated_records),
+            self.expected_tables()
         )
