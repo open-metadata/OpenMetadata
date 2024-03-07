@@ -56,13 +56,13 @@ class CliCommonDB:
             self.assertEqual(len(source_status.filtered), 0)
             self.assertGreaterEqual(
                 (len(source_status.records) + len(source_status.updated_records)),
-                self.expected_tables()
+                self.expected_tables(),
             )
             self.assertEqual(len(sink_status.failures), 0)
             self.assertEqual(len(sink_status.warnings), 0)
             self.assertGreater(
                 (len(sink_status.records) + len(sink_status.updated_records)),
-                self.expected_tables()
+                self.expected_tables(),
             )
 
         def assert_for_table_with_profiler(
@@ -71,12 +71,12 @@ class CliCommonDB:
             self.assertEqual(len(source_status.failures), 0)
             self.assertGreaterEqual(
                 (len(source_status.records) + len(source_status.updated_records)),
-                self.expected_profiled_tables()
+                self.expected_profiled_tables(),
             )
             self.assertEqual(len(sink_status.failures), 0)
             self.assertGreaterEqual(
                 (len(sink_status.records) + len(sink_status.updated_records)),
-                self.expected_profiled_tables()
+                self.expected_profiled_tables(),
             )
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             lineage = self.retrieve_lineage(self.fqn_created_table())
@@ -88,7 +88,7 @@ class CliCommonDB:
                             "columnsLineage"
                         ]
                     ),
-                    self.view_column_lineage_count()
+                    self.view_column_lineage_count(),
                 )
 
         def assert_for_table_with_profiler_time_partition(
@@ -107,9 +107,7 @@ class CliCommonDB:
                 for key in expected_profiler_time_partition_results["table_profile"]:
                     self.assertEqual(
                         table_profile[key],
-                        expected_profiler_time_partition_results["table_profile"][
-                            key
-                        ]
+                        expected_profiler_time_partition_results["table_profile"][key],
                     )
 
                 for column in profile.columns:
@@ -129,14 +127,16 @@ class CliCommonDB:
                             if key == "nonParametricSkew":
                                 self.assertEqual(
                                     column_profile[key].__round__(10),
-                                    expected_column_profile[key].__round__(10)
+                                    expected_column_profile[key].__round__(10),
                                 )
                                 continue
                             self.assertEqual(
                                 column_profile[key], expected_column_profile[key]
                             )
                 if sample_data:
-                    self.assertGreater(len(json.loads(sample_data.json()).get("rows")), 0)
+                    self.assertGreater(
+                        len(json.loads(sample_data.json()).get("rows")), 0
+                    )
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: Status, sink_status: Status
@@ -148,8 +148,7 @@ class CliCommonDB:
         ):
             self.assertEqual(len(source_status.failures), 0)
             self.assertEqual(
-                len(source_status.filtered),
-                self.expected_filtered_schema_includes()
+                len(source_status.filtered), self.expected_filtered_schema_includes()
             )
 
         def assert_filtered_schemas_excludes(
@@ -157,8 +156,7 @@ class CliCommonDB:
         ):
             self.assertEqual(len(source_status.failures), 0)
             self.assertEqual(
-                len(source_status.filtered),
-                self.expected_filtered_schema_excludes()
+                len(source_status.filtered), self.expected_filtered_schema_excludes()
             )
 
         def assert_filtered_tables_includes(
@@ -179,9 +177,7 @@ class CliCommonDB:
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertEqual(
-                len(source_status.filtered), self.expected_filtered_mix()
-            )
+            self.assertEqual(len(source_status.filtered), self.expected_filtered_mix())
 
         @staticmethod
         @abstractmethod
