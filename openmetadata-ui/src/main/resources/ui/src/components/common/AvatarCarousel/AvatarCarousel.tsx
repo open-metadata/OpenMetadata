@@ -12,7 +12,7 @@
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Carousel } from 'antd';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -35,22 +35,27 @@ const AvatarCarousel = () => {
     (index: number) => {
       const activeUser = avatarList[index];
       onUpdateActiveUser(activeUser);
-      setCurrentSlide(index);
     },
     [avatarList]
   );
+
+  useEffect(() => {
+    onProfileClick(currentSlide);
+  }, [currentSlide]);
 
   return (
     <div className="avatar-carousel-container d-flex items-center">
       <Button
         className="carousel-arrow"
+        data-testid="prev-slide"
+        disabled={avatarList.length <= 1 || currentSlide <= 0}
         icon={<LeftOutlined />}
         size="small"
         type="text"
         onClick={prevSlide}
       />
       <Carousel
-        beforeChange={(_, to) => onProfileClick(to)}
+        afterChange={(current) => setCurrentSlide(current)}
         dots={false}
         slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
         {avatarList.map((avatar, index) => (
@@ -59,7 +64,7 @@ const AvatarCarousel = () => {
               currentSlide === index ? 'active' : ''
             }`}
             key={index}
-            onClick={() => onProfileClick(index)}>
+            onClick={() => setCurrentSlide(index)}>
             <UserPopOverCard className="" userName={avatar?.name ?? ''}>
               <span>
                 <ProfilePicture name={avatar.name ?? ''} width="28" />
@@ -70,6 +75,10 @@ const AvatarCarousel = () => {
       </Carousel>
       <Button
         className="carousel-arrow"
+        data-testid="next-slide"
+        disabled={
+          avatarList.length <= 1 || currentSlide === avatarList.length - 1
+        }
         icon={<RightOutlined />}
         size="small"
         type="text"
