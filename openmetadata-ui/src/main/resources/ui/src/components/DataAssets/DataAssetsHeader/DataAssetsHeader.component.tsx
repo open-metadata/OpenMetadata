@@ -30,7 +30,10 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -441,7 +444,12 @@ export const DataAssetsHeader = ({
                   <Button
                     className="w-16 p-0"
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        component={VersionIcon}
+                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                      />
+                    }
                     onClick={onVersionClick}>
                     <Typography.Text>{version}</Typography.Text>
                   </Button>
@@ -460,6 +468,7 @@ export const DataAssetsHeader = ({
                       icon={
                         <Icon
                           component={isFollowing ? StarFilledIcon : StarIcon}
+                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
                         />
                       }
                       loading={isFollowingLoading}
@@ -473,7 +482,12 @@ export const DataAssetsHeader = ({
                   placement="topRight"
                   title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
-                    icon={<Icon component={ShareIcon} />}
+                    icon={
+                      <Icon
+                        component={ShareIcon}
+                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                      />
+                    }
                     onClick={handleShareButtonClick}
                   />
                 </Tooltip>
