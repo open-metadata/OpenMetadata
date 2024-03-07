@@ -34,7 +34,6 @@ import { getRoles } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import Description from '../../../common/EntityDescription/Description';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -43,6 +42,8 @@ import './bot-details.less';
 import { BotsDetailProps } from './BotDetails.interfaces';
 
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
+import { EntityType } from '../../../../enums/entity.enum';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 
 const BotDetails: FC<BotsDetailProps> = ({
@@ -182,11 +183,13 @@ const BotDetails: FC<BotsDetailProps> = ({
                       </Space>
                     )}
                   </div>
-                  <Description
+                  <DescriptionV1
                     description={botData.description || ''}
                     entityName={getEntityName(botData)}
+                    entityType={EntityType.BOT}
                     hasEditAccess={descriptionPermission || editAllPermission}
                     isEdit={isDescriptionEdit}
+                    showCommentsIcon={false}
                     onCancel={() => setIsDescriptionEdit(false)}
                     onDescriptionEdit={() => setIsDescriptionEdit(true)}
                     onDescriptionUpdate={handleDescriptionChange}

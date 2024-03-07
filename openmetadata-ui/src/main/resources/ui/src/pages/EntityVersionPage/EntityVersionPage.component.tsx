@@ -28,22 +28,15 @@ import DashboardVersion from '../../components/Dashboard/DashboardVersion/Dashbo
 import DataModelVersion from '../../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component';
 import StoredProcedureVersion from '../../components/Database/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
+import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
 import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
 import TopicVersion from '../../components/Topic/TopicVersion/TopicVersion.component';
 import {
-  getContainerDetailPath,
-  getDashboardDetailsPath,
-  getDataModelDetailsPath,
-  getMlModelDetailsPath,
-  getPipelineDetailsPath,
-  getStoredProcedureDetailPath,
-  getTableTabPath,
-  getTopicDetailsPath,
+  getEntityDetailsPath,
   getVersionPath,
-  getVersionPathWithTab,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -110,10 +103,12 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from '../../rest/topicsAPI';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getSearchIndexTabPath } from '../../utils/SearchIndexUtils';
 import { getTierTags } from '../../utils/TableUtils';
+import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
+import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
 import './EntityVersionPage.less';
 
 export type VersionData =
@@ -152,63 +147,16 @@ const EntityVersionPage: FunctionComponent = () => {
   );
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
-  const backHandler = useCallback(() => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        history.push(getTableTabPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.TOPIC:
-        history.push(getTopicDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.DASHBOARD:
-        history.push(getDashboardDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.PIPELINE:
-        history.push(getPipelineDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.MLMODEL:
-        history.push(getMlModelDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.CONTAINER:
-        history.push(getContainerDetailPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.SEARCH_INDEX:
-        history.push(getSearchIndexTabPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        history.push(getDataModelDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.STORED_PROCEDURE:
-        history.push(getStoredProcedureDetailPath(decodedEntityFQN, tab));
-
-        break;
-
-      default:
-        break;
-    }
-  }, [entityType, decodedEntityFQN, tab]);
+  const backHandler = useCallback(
+    () => history.push(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
+    [entityType, decodedEntityFQN, tab]
+  );
 
   const versionHandler = useCallback(
     (newVersion = version) => {
       if (tab) {
         history.push(
-          getVersionPathWithTab(entityType, decodedEntityFQN, newVersion, tab)
+          getVersionPath(entityType, decodedEntityFQN, newVersion, tab)
         );
       } else {
         history.push(getVersionPath(entityType, decodedEntityFQN, newVersion));
@@ -238,71 +186,11 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchEntityPermissions = useCallback(async () => {
     setIsLoading(true);
     try {
-      switch (entityType) {
-        case EntityType.TABLE: {
-          await fetchResourcePermission(ResourceEntity.TABLE);
-
-          break;
-        }
-        case EntityType.TOPIC: {
-          await fetchResourcePermission(ResourceEntity.TOPIC);
-
-          break;
-        }
-        case EntityType.DASHBOARD: {
-          await fetchResourcePermission(ResourceEntity.DASHBOARD);
-
-          break;
-        }
-        case EntityType.PIPELINE: {
-          await fetchResourcePermission(ResourceEntity.PIPELINE);
-
-          break;
-        }
-        case EntityType.MLMODEL: {
-          await fetchResourcePermission(ResourceEntity.ML_MODEL);
-
-          break;
-        }
-        case EntityType.CONTAINER: {
-          await fetchResourcePermission(ResourceEntity.CONTAINER);
-
-          break;
-        }
-        case EntityType.SEARCH_INDEX: {
-          await fetchResourcePermission(ResourceEntity.SEARCH_INDEX);
-
-          break;
-        }
-        case EntityType.DASHBOARD_DATA_MODEL: {
-          await fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
-
-          break;
-        }
-        case EntityType.STORED_PROCEDURE: {
-          await fetchResourcePermission(ResourceEntity.STORED_PROCEDURE);
-
-          break;
-        }
-        case EntityType.DATABASE: {
-          await fetchResourcePermission(ResourceEntity.DATABASE);
-
-          break;
-        }
-        case EntityType.DATABASE_SCHEMA: {
-          await fetchResourcePermission(ResourceEntity.DATABASE_SCHEMA);
-
-          break;
-        }
-        case EntityType.GLOSSARY_TERM: {
-          await fetchResourcePermission(ResourceEntity.GLOSSARY_TERM);
-
-          break;
-        }
-        default: {
-          break;
-        }
-      }
+      fetchResourcePermission(
+        entityUtilClassBase.getResourceEntityFromEntityType(
+          entityType
+        ) as ResourceEntity
+      );
     } finally {
       setIsLoading(false);
     }
@@ -557,6 +445,8 @@ const EntityVersionPage: FunctionComponent = () => {
       return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
     }
 
+    let VersionPage = null;
+
     switch (entityType) {
       case EntityType.TABLE: {
         return (
@@ -734,8 +624,22 @@ const EntityVersionPage: FunctionComponent = () => {
         );
       }
 
+      case EntityType.DATABASE: {
+        return <DatabaseVersionPage />;
+      }
+
+      case EntityType.DATABASE_SCHEMA: {
+        return <DatabaseSchemaVersionPage />;
+      }
+
+      case EntityType.DATA_PRODUCT: {
+        return <DataProductsPage />;
+      }
+
       default:
-        return null;
+        VersionPage = entityUtilClassBase.getEntityDetailComponent(entityType);
+
+        return VersionPage && <VersionPage />;
     }
   };
 

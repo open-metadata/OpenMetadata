@@ -331,7 +331,7 @@ class RedshiftSource(
                         )
                     ]
                 )
-            return True, partition_details
+                return True, partition_details
         return False, None
 
     def process_additional_table_constraints(
