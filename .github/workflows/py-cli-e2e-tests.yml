@@ -17,7 +17,8 @@ on:
     input:
       e2e-tests:
         description: "E2E Tests to run"
-        type: string
+        required: True
+        default: '["python"]'
 
 permissions:
   id-token: write
