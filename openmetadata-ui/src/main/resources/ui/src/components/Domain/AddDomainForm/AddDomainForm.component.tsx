@@ -49,10 +49,11 @@ const AddDomainForm = ({
   loading,
   onCancel,
   onSubmit,
-  formRef: form,
+  formRef,
   type,
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm(formRef);
   const { permissions } = usePermissionProvider();
 
   const domainTypeArray = Object.keys(DomainType).map((key) => ({
@@ -235,67 +236,64 @@ const AddDomainForm = ({
   };
 
   return (
-    <>
-      <div data-testid="add-domain">
-        <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
-          {generateFormFields(formFields)}
-          <div className="m-t-xss">
-            {getField(ownerField)}
-            {selectedOwner && (
-              <div className="m-b-sm" data-testid="owner-container">
-                <UserTag
-                  id={selectedOwner.name ?? selectedOwner.id}
-                  isTeam={selectedOwner.type === UserTeam.Team}
-                  name={getEntityName(selectedOwner)}
-                  size={UserTagSize.small}
-                />
-              </div>
-            )}
+    <Form
+      data-testid="add-domain"
+      form={form}
+      layout="vertical"
+      onFinish={handleFormSubmit}>
+      {generateFormFields(formFields)}
+      <div className="m-t-xss">
+        {getField(ownerField)}
+        {selectedOwner && (
+          <div className="m-b-sm" data-testid="owner-container">
+            <UserTag
+              id={selectedOwner.name ?? selectedOwner.id}
+              isTeam={selectedOwner.type === UserTeam.Team}
+              name={getEntityName(selectedOwner)}
+              size={UserTagSize.small}
+            />
           </div>
-          <div className="m-t-xss">
-            {getField(expertsField)}
-            {Boolean(expertsList.length) && (
-              <Space
-                wrap
-                className="m-b-xs"
-                data-testid="experts-container"
-                size={[8, 8]}>
-                {expertsList.map((d) => (
-                  <UserTag
-                    id={d.name ?? d.id}
-                    key={'expert' + d.id}
-                    name={getEntityName(d)}
-                    size={UserTagSize.small}
-                  />
-                ))}
-              </Space>
-            )}
-          </div>
-
-          {!isFormInDialog && (
-            <Space
-              className="w-full justify-end"
-              data-testid="cta-buttons"
-              size={16}>
-              <Button
-                data-testid="cancel-domain"
-                type="link"
-                onClick={onCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="save-domain"
-                disabled={!createPermission}
-                htmlType="submit"
-                loading={loading}
-                type="primary">
-                {t('label.save')}
-              </Button>
-            </Space>
-          )}
-        </Form>
+        )}
       </div>
-    </>
+      <div className="m-t-xss">
+        {getField(expertsField)}
+        {Boolean(expertsList.length) && (
+          <Space
+            wrap
+            className="m-b-xs"
+            data-testid="experts-container"
+            size={[8, 8]}>
+            {expertsList.map((d) => (
+              <UserTag
+                id={d.name ?? d.id}
+                key={'expert' + d.id}
+                name={getEntityName(d)}
+                size={UserTagSize.small}
+              />
+            ))}
+          </Space>
+        )}
+      </div>
+
+      {!isFormInDialog && (
+        <Space
+          className="w-full justify-end"
+          data-testid="cta-buttons"
+          size={16}>
+          <Button data-testid="cancel-domain" type="link" onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="save-domain"
+            disabled={!createPermission}
+            htmlType="submit"
+            loading={loading}
+            type="primary">
+            {t('label.save')}
+          </Button>
+        </Space>
+      )}
+    </Form>
   );
 };
 
