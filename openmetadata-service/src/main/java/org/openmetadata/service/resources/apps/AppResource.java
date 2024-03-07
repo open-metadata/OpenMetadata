@@ -45,8 +45,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
-import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
-import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -138,7 +136,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         // Schedule
         if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-          ApplicationHandler.getInstance().installApplication(app, Entity.getCollectionDAO(), searchRepository);
+          ApplicationHandler.getInstance()
+              .installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
       }
 
@@ -560,8 +559,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.getInstance().installApplication(app, Entity.getCollectionDAO(), searchRepository);
-      ApplicationHandler.getInstance().configureApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -599,8 +600,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.getInstance().installApplication(
-          updatedApp, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
@@ -634,7 +635,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.getInstance().installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -716,7 +718,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-        ApplicationHandler.getInstance().installApplication(app, Entity.getCollectionDAO(), searchRepository);
+        ApplicationHandler.getInstance()
+            .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       }
       // We don't want to store this information
       unsetAppRuntimeProperties(app);
@@ -751,7 +754,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.getInstance().installApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -786,7 +790,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // The application will have the updated appConfiguration we can use to run the `configure`
     // logic
     try {
-      ApplicationHandler.getInstance().configureApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.getInstance()
+          .configureApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App has been configured.").build();
     } catch (RuntimeException e) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -819,8 +824,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.getInstance().triggerApplicationOnDemand(
-          app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -867,7 +872,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.getInstance().installApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.getInstance()
+          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
       if (!app.getPipelines().isEmpty()) {

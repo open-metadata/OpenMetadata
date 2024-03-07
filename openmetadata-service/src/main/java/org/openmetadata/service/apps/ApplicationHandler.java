@@ -1,8 +1,9 @@
 package org.openmetadata.service.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
@@ -14,15 +15,12 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 @Slf4j
 public class ApplicationHandler {
 
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
   private final AppsPrivateConfiguration privateConfiguration;
-
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
@@ -38,8 +36,7 @@ public class ApplicationHandler {
    */
   private void setAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(config, app.getBot().getName())
-            .build());
+        new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
 
     if (privateConfiguration != null
         && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
@@ -66,8 +63,7 @@ public class ApplicationHandler {
     runMethodFromApplication(app, daoCollection, searchRepository, "configure");
   }
 
-  public Object runAppInit(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository)
+  public Object runAppInit(App app, CollectionDAO daoCollection, SearchRepository searchRepository)
       throws ClassNotFoundException,
           NoSuchMethodException,
           InvocationTargetException,
