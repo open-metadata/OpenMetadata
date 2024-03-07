@@ -6,7 +6,7 @@ slug: /features
 # Features
 
 OpenMetadata includes a rapidly growing set of features to address common needs in data discovery, quality,
-observability, and collaboration.
+observability, and collaboration. 
 
 ## All Your Data in One Place
 OpenMetadata provides all the data context you need for different use cases in a single place.

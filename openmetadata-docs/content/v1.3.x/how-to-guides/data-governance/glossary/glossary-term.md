@@ -26,9 +26,9 @@ The glossary term can include additional information as follows:
 
 - **Mutually Exclusive** - There are cases where only one term from a particular glossary is relevant for a data asset. For example, an asset can either be ‘PII-Sensitive’ or a ‘PII-NonSensitive’. It cannot be both. For such cases, a Glossary or a Glossary Term can be created where the child terms can be mutually exclusive. If this configuration is enabled, you won’t be able to assign multiple terms from the same Glossary/Term to the same data asset.
 
-- **Reviewers** - Multiple reviewers can be added. 
+- **Reviewers** - A term also has a set of Reviewers who review and accept the changes to the Glossary for Governance. Multiple reviewers can be added. 
 
-- **Assets** - After creating a glossary term, data assets can be associated with the term.
+- **Assets** - After creating a glossary term, data assets can be associated with the term, which helps in data discovery.
 
 {% image
 src="/images/v1.3/how-to-guides/governance/glossary-term.png"
@@ -36,7 +36,7 @@ alt="Glossary Term Requirements"
 caption="Glossary Term Requirements"
 /%}
 
-Glossary terms can be added manually. You can also [export or bulk import the glossary terms](/how-to-guides/data-governance/glossary/import) using a CSV file.
+Each term has a **life cycle status** (e.g., Draft, Approved). Glossary terms can be added manually. You can also [export or bulk import the glossary terms](/how-to-guides/data-governance/glossary/import) using a CSV file.
 
 ## Details of a Glossary Term
 

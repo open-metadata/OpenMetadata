@@ -1,5 +1,11 @@
 # 1.2.0 Release 🎉
 
+{% note noteType="Tip" %} 
+**2023, October 26th**
+
+[OpenMetadata 1.2 Release - Domains, Data Products, Search Index, Stored Procedures, Glossary Approval Workflow, Customizable Landing Page, Applications, Knowledge Center, Cost Analysis, and lots more](https://blog.open-metadata.org/openmetadata-release-1-2-531f0e3c6d9a)
+{% /note %}
+
 {% inlineCalloutContainer %}
 {% inlineCallout
 color="violet-70"
@@ -12,7 +18,14 @@ Learn how to upgrade your OpenMetadata instance to 1.2.0!
 
 You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.2.0-release).
 
+{%  youtube videoId="Mu7eq6OVtxk" start="0:00" end="3:29" width="560px" height="315px" /%}
+
 ## Domains and Data Products
+
+{%  youtube videoId="t-9G3vaSdjI" start="0:00" end="1:21" width="560px" height="315px" /%}
+
+{%  youtube videoId="6NgI_G38D0A" start="0:00" end="0:54" width="560px" height="315px" /%}
+
 - Added support for Domains and Data Products.
 - Assets can be added to a Domain, and users can scope their discovery experience to one Domain.
 - Assets can also be added as Data Products in a Domain.
@@ -27,6 +40,9 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - The metadata workflow will bring the Stored Procedures and parse their executions to extract lineage information.
 
 ## Glossary Approval Workflow & Glossary Styling
+
+{%  youtube videoId="PgTcKQtpAks" start="0:00" end="2:51" width="560px" height="315px" /%}
+
 - Introduced a glossary approval workflow. An approval workflow is created if Reviewers are added to a glossary.
 - A task is added for reviewers to approve or reject the glossary term. The terms will show up in Draft status.
 - Only the reviewers can approve or reject the term.

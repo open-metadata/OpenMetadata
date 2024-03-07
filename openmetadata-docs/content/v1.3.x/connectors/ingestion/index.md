@@ -57,6 +57,17 @@ To analyze relationships in your data platform.
 
 {%/inlineCalloutContainer%}
 
+## Great Expectations
+
+[Great Expectations](https://greatexpectations.io/) is a shared, open standard for data quality. It helps data teams eliminate pipeline debt, through data testing, documentation, and profiling. Learn how to configure Great Expectations to integrate with OpenMetadata and ingest your test results to your table service page.
+
+{%inlineCallout
+  bold="Great Expectations"
+  icon="MdOutlineChangeCircle"
+  href="/connectors/ingestion/great-expectations"%}
+Ingest your test results from Great Expectations.
+{%/inlineCallout%}
+
 ## Metadata Versioning
 
 One fundamental aspect of Metadata Ingestion is being able to analyze the evolution of your metadata. OpenMetadata

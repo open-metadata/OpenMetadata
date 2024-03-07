@@ -56,6 +56,13 @@ Watch the [Webinar on Glossaries and Classifications in OpenMetadata](https://ww
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
+  bold="Glossary Export"
+  icon="MdDownload"
+  href="/how-to-guides/data-governance/glossary-classification/export"%}
+  Quickly export a glossary as a CSV file.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
   bold="How to Add Assets to Glossary Terms"
   icon="MdPushPin"
   href="/how-to-guides/data-governance/glossary-classification/assets"%}

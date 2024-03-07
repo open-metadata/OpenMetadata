@@ -1,6 +1,6 @@
 ---
-title: Great Expectations Integration
-slug: /features/integrations/great-expectations
+title: Great Expectations
+slug: /connectors/ingestion/great-expectations
 ---
 
 # Great Expectations
@@ -9,7 +9,7 @@ For Data Quality tests the open source python package Great Expectations stands 
 ## Requirements
 
 ### OpenMetadata Requirements
-You will to have OpenMetadata version 0.10 or later.
+You will to have OpenMetadata version 0.12 or later.
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](/quick-start/local-deployment) or follow the [Prefect Integration](/features/integrations/prefect) guide.
 
@@ -32,7 +32,7 @@ action:
   module_name: metadata.great_expectations.action
   class_name: OpenMetadataValidationAction
   config_file_path: path/to/ometa/config/file/
-  ometa_service_name: my_service_name
+  database_service_name: my_service_name
 [...]
 ```
 
@@ -43,10 +43,10 @@ In your checkpoint yaml file, you will need to add the above code block in `acti
 - `module_name`: this is OpenMetadata  submodule name
 - `class_name`: this is the name of the class that will be used to execute the custom action
 - `config_file_path`: this is the path to your `config.yaml` file that holds the configuration of your OpenMetadata server
-- `ometa_service_name`: [Optional] this is an optional parameter. If not specified and 2 tables have the same name in 2 different OpenMetadata services, the custom action will fail
+- `database_service_name`: [Optional] this is an optional parameter. If not specified and 2 tables have the same name in 2 different OpenMetadata services, the custom action will fail
 
 {% image
-src={"/images/v1.1/features/integrations/ge-checkpoint-file.gif"}
+src={"/images/v1.2/features/integrations/ge-checkpoint-file.gif"}
 alt="Great Expectations checkpoint file"
 caption=" "
  /%}
@@ -66,7 +66,7 @@ data_context.run_checkpoint(
           "module_name": "metadata.great_expectations.action",
           "class_name": "OpenMetadataValidationAction",
           "config_file_path": "path/to/ometa/config/file/",
-          "ometa_service_name": "my_service_name",
+          "database_service_name": "my_service_name",
         },
     ,}
 )
@@ -91,7 +91,7 @@ securityConfig:
 You can use environment variables in your configuration file by simply using `{{ env('<MY_ENV_VAR>') }}`. These will be parsed and rendered at runtime allowing you to securely create your configuration and commit it to your favorite version control tool. As we support multiple security configurations, you can check out the [Enable Security](/deployment/security) section for more details on how to set the `securityConfig` part of the `yaml` file.
 
 {% image
-src="/images/v1.1/features/integrations/ge-config-yaml.gif"
+src="/images/v1.2/features/integrations/ge-config-yaml.gif"
 alt="Great Expectations config file"
  /%}
 
@@ -103,7 +103,7 @@ great_expectations checkpoint run <my_checkpoint>
 ```
 
 {% image
-src="/images/v1.1/features/integrations/ge-run-checkpoint.gif"
+src="/images/v1.2/features/integrations/ge-run-checkpoint.gif"
 alt="Run Great Expectations checkpoint"
  /%}
 
