@@ -261,7 +261,7 @@ const RolesDetailPage = () => {
               </Typography.Title>
               <DescriptionV1
                 hasEditAccess
-                className="m-b-md"
+                className="m-y-md"
                 description={role.description || ''}
                 entityFqn={role.fullyQualifiedName}
                 entityName={roleName}
@@ -275,7 +275,9 @@ const RolesDetailPage = () => {
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
                 <TabPane key="policies" tab={t('label.policy-plural')}>
-                  <Space className="w-full" direction="vertical">
+                  <Space
+                    className="role-detail-tab w-full"
+                    direction="vertical">
                     <Button
                       data-testid="add-policy"
                       type="primary"
