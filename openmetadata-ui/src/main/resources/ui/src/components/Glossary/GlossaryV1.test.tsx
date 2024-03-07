@@ -121,6 +121,10 @@ jest.mock('./ImportGlossary/ImportGlossary', () =>
     .mockReturnValue(<div data-testid="import-glossary">ImportGlossary</div>)
 );
 
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((component) => component),
+}));
+
 const mockProps: GlossaryV1Props = {
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
