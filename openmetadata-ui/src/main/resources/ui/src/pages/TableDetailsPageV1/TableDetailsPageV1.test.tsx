@@ -43,6 +43,10 @@ jest.mock('../../rest/tableAPI', () => ({
   restoreTable: jest.fn(),
 }));
 
+jest.mock('../../rest/suggestionsAPI', () => ({
+  getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+}));
+
 jest.mock('../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
@@ -154,6 +158,25 @@ jest.mock(
     })),
     __esModule: true,
     default: 'ActivityFeedProvider',
+  })
+);
+
+jest.mock(
+  '../../components/Suggestions/SuggestionsProvider/SuggestionsProvider',
+  () => ({
+    useSuggestionsContext: jest.fn().mockImplementation(() => ({
+      suggestions: [],
+      suggestionsByUser: new Map(),
+      selectedUserSuggestions: [],
+      entityFqn: 'fqn',
+      loading: false,
+      allSuggestionsUsers: [],
+      onUpdateActiveUser: jest.fn(),
+      fetchSuggestions: jest.fn(),
+      acceptRejectSuggestion: jest.fn(),
+    })),
+    __esModule: true,
+    default: 'SuggestionsProvider',
   })
 );
 

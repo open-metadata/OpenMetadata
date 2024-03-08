@@ -30,7 +30,11 @@ import {
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
+import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+
 const { Text } = Typography;
 
 interface Props {
@@ -73,6 +77,9 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
+  const { suggestions = [], selectedUserSuggestions = [] } =
+    useSuggestionsContext();
+
   const handleRequestDescription = useCallback(() => {
     history.push(
       getRequestDescriptionPath(entityType as string, entityFqn as string)
@@ -85,8 +92,18 @@ const DescriptionV1 = ({
     );
   }, [entityType, entityFqn]);
 
-  const entityLink = useMemo(() => {
-    return getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION);
+  const { entityLink, entityLinkWithoutField } = useMemo(() => {
+    const entityLink = getEntityFeedLink(
+      entityType,
+      entityFqn,
+      EntityField.DESCRIPTION
+    );
+    const entityLinkWithoutField = getEntityFeedLink(entityType, entityFqn);
+
+    return {
+      entityLink,
+      entityLinkWithoutField,
+    };
   }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
@@ -167,26 +184,55 @@ const DescriptionV1 = ({
     ]
   );
 
+  const suggestionData = useMemo(() => {
+    const activeSuggestion = selectedUserSuggestions.find(
+      (suggestion) => suggestion.entityLink === entityLinkWithoutField
+    );
+
+    if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+      return (
+        <SuggestionsAlert
+          hasEditAccess={hasEditAccess}
+          suggestion={activeSuggestion}
+        />
+      );
+    }
+
+    return null;
+  }, [hasEditAccess, entityLinkWithoutField, selectedUserSuggestions]);
+
+  const descriptionContent = useMemo(() => {
+    if (suggestionData) {
+      return suggestionData;
+    } else {
+      return description.trim() ? (
+        <RichTextEditorPreviewer
+          className={reduceDescription ? 'max-two-lines' : ''}
+          enableSeeMoreVariant={!removeBlur}
+          markdown={description}
+        />
+      ) : (
+        <span>{t('label.no-description')}</span>
+      );
+    }
+  }, [description, suggestionData]);
+
   const content = (
     <Space
       className="schema-description d-flex"
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>
-      <Space size="middle">
-        <Text className="right-panel-label">{t('label.description')}</Text>
-        {showActions && actionButtons}
-      </Space>
+      <div className="d-flex justify-between">
+        <div className="d-flex items-center gap-2">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {showActions && actionButtons}
+        </div>
+        {suggestions.length > 0 && <SuggestionsSlider />}
+      </div>
+
       <div>
-        {description.trim() ? (
-          <RichTextEditorPreviewer
-            className={reduceDescription ? 'max-two-lines' : ''}
-            enableSeeMoreVariant={!removeBlur}
-            markdown={description}
-          />
-        ) : (
-          <span>{t('label.no-description')}</span>
-        )}
+        {descriptionContent}
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}
           placeholder={t('label.enter-entity', {

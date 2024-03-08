@@ -23,6 +23,7 @@ import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import DirectionProvider from './context/DirectionProvider/DirectionProvider';
@@ -80,11 +81,13 @@ const App: FC = () => {
                         <PermissionProvider>
                           <WebSocketProvider>
                             <GlobalSearchProvider>
-                              <DomainProvider>
-                                <EntityExportModalProvider>
-                                  <AppRouter />
-                                </EntityExportModalProvider>
-                              </DomainProvider>
+                              <ApplicationsProvider>
+                                <DomainProvider>
+                                  <EntityExportModalProvider>
+                                    <AppRouter />
+                                  </EntityExportModalProvider>
+                                </DomainProvider>
+                              </ApplicationsProvider>
                             </GlobalSearchProvider>
                           </WebSocketProvider>
                         </PermissionProvider>

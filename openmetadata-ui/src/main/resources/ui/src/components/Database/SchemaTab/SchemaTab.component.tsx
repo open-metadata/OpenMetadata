@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
-import React, { Fragment, FunctionComponent, useState } from 'react';
+import React, { Fragment, FunctionComponent, useMemo, useState } from 'react';
+import EntityLink from '../../../utils/EntityLink';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
@@ -32,23 +35,38 @@ const SchemaTab: FunctionComponent<Props> = ({
   tablePartitioned,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
+  const { selectedUserSuggestions } = useSuggestionsContext();
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
   };
 
+  const columnSuggestions = useMemo(
+    () =>
+      selectedUserSuggestions?.filter(
+        (item) => EntityLink.getTableColumnName(item.entityLink) !== undefined
+      ) ?? [],
+    [selectedUserSuggestions]
+  );
+
   return (
     <Fragment>
-      <div className="w-1/2">
-        <Searchbar
-          removeMargin
-          placeholder={`${t('message.find-in-table')}`}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearchAction}
-        />
+      <div className="d-flex items-center justify-between">
+        <div className="w-1/2">
+          <Searchbar
+            removeMargin
+            placeholder={`${t('message.find-in-table')}`}
+            searchValue={searchText}
+            typingInterval={500}
+            onSearch={handleSearchAction}
+          />
+        </div>
+        {columnSuggestions.length > 0 && (
+          <Button className="suggestion-pending-btn">
+            {columnSuggestions.length} {t('label.suggestion-pending')}
+          </Button>
+        )}
       </div>
-
       <SchemaTable
         columnName={columnName}
         entityFqn={entityFqn}
