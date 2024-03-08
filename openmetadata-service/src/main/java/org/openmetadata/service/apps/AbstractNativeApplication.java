@@ -195,7 +195,11 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
+    // Run the application
     this.run(jobExecutionContext);
+
+    // Invoke Close
+    this.close();
   }
 
   @Override
