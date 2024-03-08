@@ -261,16 +261,16 @@ describe(
           .click();
       });
 
-      addInternalDestination(1, 'Owners', 'G Chat');
+      addInternalDestination(0, 'Owners', 'G Chat');
       addInternalDestination(
-        2,
+        1,
         'Teams',
         'Slack',
         'Team-select',
         'Organization'
       );
       addInternalDestination(
-        3,
+        2,
         'Users',
         'Email',
         'User-select',
