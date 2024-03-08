@@ -368,6 +368,8 @@ class EntityClass {
     addDomainToEntity(domainDetails1.displayName);
   }
 
+  validateDomainVersionForEntity() {}
+
   updateDomain() {
     addDomainToEntity(domainDetails2.displayName);
   }

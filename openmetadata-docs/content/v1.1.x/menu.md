@@ -220,6 +220,8 @@ site_menu:
     url: /how-to-guides/quick-start-guide-for-admins/admin-guide-roles-policies/authorization
   - category: How-to Guides / Quick Start Guide for Admins / Admin Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
     url: /how-to-guides/quick-start-guide-for-admins/admin-guide-roles-policies/use-cases
+  - category: How-to Guides / Quick Start Guide for Admins / Set up Alerts and Notifications
+    url: /how-to-guides/quick-start-guide-for-admins/alerts
   - category: How-to Guides / Quick Start Guide for Admins / CLI Ingestion with basic auth
     url: /how-to-guides/quick-start-guide-for-admins/cli-ingestion-with-basic-auth
   - category: How-to Guides / Quick Start Guide for Admins / How to add a custom property to an entity
@@ -316,6 +318,12 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
+  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
+    url: /how-to-guides/data-insights/airflow-sdk
+  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
+    url: /how-to-guides/data-insights/metadata-cli   
+  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
+    url: /how-to-guides/data-insights/elasticsearch-reindex 
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
@@ -337,6 +345,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary-classification/glossary-terms
   - category: How-to Guides / Data Governance / Glossary and Classification / How to Bulk Import a Glossary
     url: /how-to-guides/data-governance/glossary-classification/import-glossary
+  - category: How-to Guides / Data Governance / Glossary / Glossary Export
+    url: /how-to-guides/data-governance/glossary-classification/export
   - category: How-to Guides / Data Governance / Glossary and Classification / How to Add Assets to Glossary Terms
     url: /how-to-guides/data-governance/glossary-classification/assets
   - category: How-to Guides / Data Governance / Glossary and Classification / How to Classify Data Assets
@@ -356,6 +366,52 @@ site_menu:
     url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.1.5 Release
+    url: /releases/all-releases/#1.1.5-release
+  - category: Releases / All Releases / 1.1.4 Release
+    url: /releases/all-releases/#1.1.4-release
+  - category: Releases / All Releases / 1.1.2 Release
+    url: /releases/all-releases/#1.1.2-release
+  - category: Releases / All Releases / 1.1.1 Release
+    url: /releases/all-releases/#1.1.1-release
+  - category: Releases / All Releases / 1.1.0 Release
+    url: /releases/all-releases/#1.1.0-release
+  - category: Releases / All Releases / 1.0.0 Release
+    url: /releases/all-releases/#1.0.0-release
+  - category: Releases / All Releases / 0.13.3 Release
+    url: /releases/all-releases/#0.13.3-release
+  - category: Releases / All Releases / 0.13.2 Release
+    url: /releases/all-releases/#0.13.2-release
+  - category: Releases / All Releases / 0.13.1 Release
+    url: /releases/all-releases/#0.13.1-release
+  - category: Releases / All Releases / 0.13.0 Release
+    url: /releases/all-releases/#0.13.0-release
+  - category: Releases / All Releases / 0.12.3 Release
+    url: /releases/all-releases/#0.12.3-release
+  - category: Releases / All Releases / 0.12.2 Release
+    url: /releases/all-releases/#0.12.2-release
+  - category: Releases / All Releases / 0.12.1 Release
+    url: /releases/all-releases/#0.12.1-release
+  - category: Releases / All Releases / 0.12.0 Release
+    url: /releases/all-releases/#0.12.0-release
+  - category: Releases / All Releases / 0.11.0 Release
+    url: /releases/all-releases/#0.11.0-release
+  - category: Releases / All Releases / 0.10.1 Release
+    url: /releases/all-releases/#0.10.1-release
+  - category: Releases / All Releases / 0.10.0 Release
+    url: /releases/all-releases/#0.10.0-release
+  - category: Releases / All Releases / 0.9.0 Release
+    url: /releases/all-releases/#0.9.0-release
+  - category: Releases / All Releases / 0.8.0 Release
+    url: /releases/all-releases/#0.8.0-release
+  - category: Releases / All Releases / 0.7.0 Release
+    url: /releases/all-releases/#0.7.0-release
+  - category: Releases / All Releases / 0.6.0 Release
+    url: /releases/all-releases/#0.6.0-release
+  - category: Releases / All Releases / 0.5.0 Release
+    url: /releases/all-releases/#0.5.0-release
+  - category: Releases / All Releases / 0.4.0 Release
+    url: /releases/all-releases/#0.4.0-release
 
   - category: Connectors
     url: /connectors
@@ -716,6 +772,8 @@ site_menu:
     url: /connectors/ingestion/versioning/change-events
   - category: Connectors / Ingestion / Versioning / Event Notification via Webhooks
     url: /connectors/ingestion/versioning/event-notification-via-webhooks
+  - category: Connectors / Ingestion / Great Expectations
+    url: /connectors/ingestion/great-expectations
   - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
@@ -728,22 +786,6 @@ site_menu:
 
   - category: Features / Discovery & Collaboration
     url: /features/discovery-collaboration
-
-  - category: Features / Integrations
-    url: /features/integrations
-  - category: Features / Integrations / Great Expectations
-    url: /features/integrations/great-expectations
-  - category: Features / Integrations / Prefect
-    url: /features/integrations/prefect
-
-  - category: Features / Glossaries
-    url: /features/glossaries
-
-  - category: Features / Data Insights
-    url: /features/data-insight
-
-  - category: Features / Alerts & Notifications
-    url: /features/alerts-notifications
 
   - category: Main Concepts
     url: /main-concepts

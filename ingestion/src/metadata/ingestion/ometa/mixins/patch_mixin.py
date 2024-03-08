@@ -234,9 +234,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch_test_case_definition(
         self,
-        source: TestCase,
+        test_case: TestCase,
         entity_link: str,
         test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
+        compute_passed_failed_row_count: Optional[bool] = False,
     ) -> Optional[TestCase]:
         """Given a test case and a test case definition JSON PATCH the test case
 
@@ -245,7 +246,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             test_case_definition: test case definition to add
         """
         source: TestCase = self._fetch_entity_if_exists(
-            entity=TestCase, entity_id=source.id, fields=["testDefinition", "testSuite"]
+            entity=TestCase, entity_id=test_case.id, fields=["testDefinition", "testSuite"]  # type: ignore
         )  # type: ignore
 
         if not source:
@@ -256,6 +257,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         destination.entityLink = EntityLink(__root__=entity_link)
         if test_case_parameter_values:
             destination.parameterValues = test_case_parameter_values
+        if compute_passed_failed_row_count != source.computePassedFailedRowCount:
+            destination.computePassedFailedRowCount = compute_passed_failed_row_count
 
         return self.patch(entity=TestCase, source=source, destination=destination)
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +32,6 @@ import './add-domain.less';
 const AddDomain = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [form] = useForm();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { refreshDomains } = useDomainProvider();
 
@@ -114,7 +112,6 @@ const AddDomain = () => {
               })}
             </Typography.Title>
             <AddDomainForm
-              formRef={form}
               isFormInDialog={false}
               loading={isLoading}
               type={DomainFormType.DOMAIN}

@@ -3,9 +3,9 @@ title: Data Insights
 slug: /how-to-guides/data-insights
 ---
 
-# Overview of Data Insights
+# Overview of Data Insights 
 
-OpenMetadata is a centralized, active metadata repository where all your data resides. Organizations can drive the adoption of OpenMetadata by monitoring its usage and setting up company-wide KPIs. The built-in goal-setting and tracking mechanisms help proactively drive your company's data culture. You can define the **Key Performance Indicators** and set goals to be achieved within a timeframe towards **better documentation, ownership, and tiering**. 
+OpenMetadata is a centralized, active metadata repository where all your data resides. Platform adoption is an important element for teams implementing OpenMetadata. Organizations can drive the adoption of OpenMetadata by monitoring its usage and setting up company-wide KPIs. The built-in goal-setting and tracking mechanisms help proactively drive your company's data culture. You can define the **Key Performance Indicators** and set goals to be achieved within a timeframe towards **better documentation, ownership, and tiering**. 
 
 The **Data Insights Dashboard** provides an analytical view of all the key metrics around data assets and user activity. The KPIs help to drive platform adoption. You can monitor data health and track the progress toward the organizational goals. The Data Insights Report is emailed at a regular cadence so that teams can assess their performance relative to the KPIs to determine data ownership, tiering, and documentation. You can also assess user engagement and growth with the aggregated user activity.
 
@@ -66,5 +66,28 @@ Watch a demo of Data Insights in OpenMetadata
   icon="MdInsights"
   href="/how-to-guides/data-insights/data-culture"%}
   Improve your data culture for data-driven decision making.
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}
+
+Refer the following for technical documentation related to Data Insights
+
+{%inlineCalloutContainer%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Run Data Insights using Airflow SDK"
+  icon="MdInsights"
+  href="/how-to-guides/data-insights/airflow-sdk"%}
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Run Data Insights using Metadata CLI"
+  icon="MdInsights"
+  href="/how-to-guides/data-insights/metadata-cli"%}
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Run Elasticsearch Reindex using Airflow SDK"
+  icon="MdInsights"
+  href="/how-to-guides/data-insights/elasticsearch-reindex"%}
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}
