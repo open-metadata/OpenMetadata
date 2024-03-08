@@ -66,66 +66,69 @@ public class MigrationUtil {
   }
 
   private static void handleTablePartitionMigration(String jsonRow, CollectionDAO collectionDAO) {
-      try {
-          JsonObject jsonObj = JsonUtils.readJson(jsonRow).asJsonObject();
+    try {
+      JsonObject jsonObj = JsonUtils.readJson(jsonRow).asJsonObject();
 
-          // We need to pop the tablePartition from the json before serializing it
-          JsonObject tablePartition = jsonObj.getJsonObject("tablePartition");
+      // We need to pop the tablePartition from the json before serializing it
+      JsonObject tablePartition = jsonObj.getJsonObject("tablePartition");
 
-          // Remove the tablePartition from the json. We need to convert it to a map to remove the key
-          // as JsonObject is immutable
-          HashMap<String, Object> jsonMap = JsonUtils.readValue(jsonObj.toString(), HashMap.class);
-          jsonMap.remove("tablePartition");
+      // Remove the tablePartition from the json. We need to convert it to a map to remove the key
+      // as JsonObject is immutable
+      HashMap<String, Object> jsonMap = JsonUtils.readValue(jsonObj.toString(), HashMap.class);
+      jsonMap.remove("tablePartition");
 
-          jsonObj = JsonUtils.readJson(JsonUtils.pojoToJson(jsonMap)).asJsonObject();
+      jsonObj = JsonUtils.readJson(JsonUtils.pojoToJson(jsonMap)).asJsonObject();
 
-          Table table = JsonUtils.readValue(jsonObj.toString(), Table.class);
+      Table table = JsonUtils.readValue(jsonObj.toString(), Table.class);
 
-          if (tablePartition.isEmpty()) {
-              LOG.info("Table {} does not have partition details", table.getId());
-              return;
-          }
-          JsonArray partitionColumns = tablePartition.getJsonArray("columns");
-
-          List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<PartitionColumnDetails>();
-
-          if ((partitionColumns == null || partitionColumns.isEmpty())
-                  && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
-              // BigQuery tables have pseudo columns for partitioning that were not being set in the
-              // partitionColumns entity
-              String interval = tablePartition.getString("interval", null);
-              if (interval != null) {
-                  JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
-                  switch (interval) {
-                      case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
-                      case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
-                  }
-              }
-              ;
-          }
-
-          if (partitionColumns == null || partitionColumns.isEmpty()) {
-              LOG.info("Columns partition details field for Table {} is empty. Nothing to do. Skipping migration.", table.getId());
-              return;
-          }
-
-          for (JsonValue column : partitionColumns) {
-              PartitionColumnDetails partitionColumnDetail = new PartitionColumnDetails();
-              partitionColumnDetail.setColumnName(((JsonString) column).getString());
-              String intervalType = tablePartition.getString("intervalType", null);
-              if (intervalType != null) {
-                  partitionColumnDetail.setIntervalType(PartitionIntervalTypes.fromValue(intervalType));
-              }
-              partitionColumnDetail.setInterval(tablePartition.getString("interval", null));
-              partitionColumnDetails.add(partitionColumnDetail);
-          }
-
-          table.withTablePartition(new TablePartition().withColumns(partitionColumnDetails));
-
-          collectionDAO.tableDAO().update(table);
-      } catch (Exception exc) {
-          LOG.warn("Fail to migrate table partition. The partition detail may have been migrated already.");
-          LOG.debug(String.format("Table JSON %s\n", jsonRow), exc);
+      if (tablePartition.isEmpty()) {
+        LOG.info("Table {} does not have partition details", table.getId());
+        return;
       }
+      JsonArray partitionColumns = tablePartition.getJsonArray("columns");
+
+      List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<PartitionColumnDetails>();
+
+      if ((partitionColumns == null || partitionColumns.isEmpty())
+          && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
+        // BigQuery tables have pseudo columns for partitioning that were not being set in the
+        // partitionColumns entity
+        String interval = tablePartition.getString("interval", null);
+        if (interval != null) {
+          JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+          switch (interval) {
+            case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
+            case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
+          }
+        }
+        ;
+      }
+
+      if (partitionColumns == null || partitionColumns.isEmpty()) {
+        LOG.info(
+            "Columns partition details field for Table {} is empty. Nothing to do. Skipping migration.",
+            table.getId());
+        return;
+      }
+
+      for (JsonValue column : partitionColumns) {
+        PartitionColumnDetails partitionColumnDetail = new PartitionColumnDetails();
+        partitionColumnDetail.setColumnName(((JsonString) column).getString());
+        String intervalType = tablePartition.getString("intervalType", null);
+        if (intervalType != null) {
+          partitionColumnDetail.setIntervalType(PartitionIntervalTypes.fromValue(intervalType));
+        }
+        partitionColumnDetail.setInterval(tablePartition.getString("interval", null));
+        partitionColumnDetails.add(partitionColumnDetail);
+      }
+
+      table.withTablePartition(new TablePartition().withColumns(partitionColumnDetails));
+
+      collectionDAO.tableDAO().update(table);
+    } catch (Exception exc) {
+      LOG.warn(
+          "Fail to migrate table partition. The partition detail may have been migrated already.");
+      LOG.debug(String.format("Table JSON %s\n", jsonRow), exc);
+    }
   }
 }
