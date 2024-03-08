@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -67,7 +68,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     App systemApp = createAndCheckEntity(systemAppRequest, ADMIN_AUTH_HEADERS);
     assertResponse(
         () -> deleteEntity(systemApp.getId(), ADMIN_AUTH_HEADERS),
-        FORBIDDEN,
+        BAD_REQUEST,
         "System App cannot be uninstalled");
   }
 

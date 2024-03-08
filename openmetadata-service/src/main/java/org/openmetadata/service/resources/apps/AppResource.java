@@ -673,7 +673,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled"),
+        @ApiResponse(responseCode = "400", description = "System App cannot be uninstalled"),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
   public Response delete(
@@ -688,7 +688,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
     if (app.getSystemApp()) {
-      throw new AuthorizationException("System App cannot be uninstalled");
+      throw new BadRequestException("System App cannot be uninstalled");
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -703,7 +703,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "403", description = "System App cannot be uninstalled"),
+        @ApiResponse(responseCode = "400", description = "System App cannot be uninstalled"),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
   public Response delete(
@@ -717,7 +717,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     if (app.getSystemApp()) {
-      throw new AuthorizationException("System App cannot be uninstalled");
+      throw new BadRequestException("System App cannot be uninstalled");
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
