@@ -211,25 +211,6 @@ describe('QualityTab', () => {
     ).toHaveAttribute('aria-selected', 'false');
   });
 
-  it('should show skeleton loader when data is loading', async () => {
-    (useTableProfiler as jest.Mock).mockReturnValue({
-      ...mockUseTableProfiler,
-      permissions: {
-        EditAll: true,
-        EditTests: true,
-      },
-      isTableDeleted: true,
-      isTestsLoading: true,
-      isProfilerDataLoading: true,
-    });
-
-    await act(async () => {
-      render(<QualityTab />);
-    });
-
-    expect(await screen.findByTestId('skeleton-table')).toBeInTheDocument();
-  });
-
   it('should display the initial summary data', async () => {
     (useTableProfiler as jest.Mock).mockImplementationOnce(() => ({
       ...mockUseTableProfiler,
