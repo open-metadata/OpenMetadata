@@ -68,6 +68,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -688,7 +689,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
     if (app.getSystemApp()) {
-      throw new BadRequestException("System App cannot be uninstalled");
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -717,7 +719,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     if (app.getSystemApp()) {
-      throw new BadRequestException("System App cannot be uninstalled");
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);

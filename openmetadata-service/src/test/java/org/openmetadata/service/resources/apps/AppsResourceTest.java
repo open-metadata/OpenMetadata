@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.apps;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.Map;
@@ -62,13 +63,12 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Test
-  void delete_systemApp_403() throws IOException {
+  void delete_systemApp_400() throws IOException {
     CreateApp systemAppRequest = createRequest(SYSTEM_APP_NAME);
     App systemApp = createAndCheckEntity(systemAppRequest, ADMIN_AUTH_HEADERS);
-    assertResponse(
+    assertResponseContains(
         () -> deleteEntity(systemApp.getId(), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "System App cannot be uninstalled");
+        BAD_REQUEST, "of type SystemApp can not be deleted");
   }
 
   @Override
