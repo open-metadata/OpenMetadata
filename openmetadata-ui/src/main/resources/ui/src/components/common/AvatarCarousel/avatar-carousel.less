@@ -10,10 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../../styles/variables.less');
+
 .avatar-item {
   opacity: 0.4;
   &.active {
     opacity: 1;
+  }
+  &:hover {
+    border-color: @border-color !important;
+  }
+  &:focus {
+    border-color: @border-color !important;
   }
 }
 

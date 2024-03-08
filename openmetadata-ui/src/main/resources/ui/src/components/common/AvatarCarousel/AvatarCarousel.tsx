@@ -59,20 +59,19 @@ const AvatarCarousel = () => {
         dots={false}
         slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
         {avatarList.map((avatar, index) => (
-          <div
-            className={`cursor-pointer m-r-xss avatar-item ${
-              currentSlide === index ? 'active' : ''
-            }`}
+          <UserPopOverCard
+            className=""
             key={avatar.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => setCurrentSlide(index)}>
-            <UserPopOverCard className="" userName={avatar?.name ?? ''}>
-              <span>
-                <ProfilePicture name={avatar.name ?? ''} width="28" />
-              </span>
-            </UserPopOverCard>
-          </div>
+            userName={avatar?.name ?? ''}>
+            <Button
+              className={`p-0 m-r-xss avatar-item ${
+                currentSlide === index ? 'active' : ''
+              }`}
+              shape="circle"
+              onClick={() => setCurrentSlide(index)}>
+              <ProfilePicture name={avatar.name ?? ''} width="30" />
+            </Button>
+          </UserPopOverCard>
         ))}
       </Carousel>
       <Button
