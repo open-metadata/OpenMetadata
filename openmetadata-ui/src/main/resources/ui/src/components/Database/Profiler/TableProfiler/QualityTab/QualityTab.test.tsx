@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -47,7 +47,7 @@ const mockUseTableProfiler = {
   testCasePaging: {
     currentPage: 1,
     pageSize: 10,
-    paging: { total: 16 },
+    paging: { total: 16, after: 'after' },
     handlePageChange: jest.fn(),
     handlePageSizeChange: jest.fn(),
     showPagination: true,
@@ -85,6 +85,23 @@ jest.mock('../../../../../rest/tableAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockTable)),
 }));
+jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
+  return jest.fn().mockImplementation(({ pagingHandler }) => (
+    <div>
+      <p>NextPrevious.component</p>
+      <button
+        data-testid="next-btn"
+        onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}>
+        Next
+      </button>
+    </div>
+  ));
+});
+jest.mock('../../DataQualityTab/DataQualityTab', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>DataQualityTab.component</div>);
+});
 
 describe('QualityTab', () => {
   it('should render QualityTab', async () => {
@@ -104,7 +121,33 @@ describe('QualityTab', () => {
     expect(
       await screen.findByText('label.test-case-plural')
     ).toBeInTheDocument();
+    expect(
+      await screen.findByText('NextPrevious.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('DataQualityTab.component')
+    ).toBeInTheDocument();
     expect(await screen.findByText('label.pipeline')).toBeInTheDocument();
+  });
+
+  it("Pagination should be called with 'handlePageChange'", async () => {
+    await act(async () => {
+      render(<QualityTab />);
+    });
+    const nextBtn = await screen.findByTestId('next-btn');
+
+    await act(async () => {
+      fireEvent.click(nextBtn);
+    });
+
+    expect(
+      mockUseTableProfiler.testCasePaging.handlePageChange
+    ).toHaveBeenCalledWith(2);
+    expect(mockUseTableProfiler.fetchAllTests).toHaveBeenCalledWith({
+      after: 'after',
+      testCaseStatus: undefined,
+      testCaseType: 'all',
+    });
   });
 
   it('should render the Add button if editTest is true and isTableDeleted is false', async () => {
