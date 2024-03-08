@@ -32,15 +32,30 @@ const mockTable = {
 };
 
 const mockPush = jest.fn();
+const mockUseTableProfiler = {
+  tableProfiler: MOCK_TABLE,
+  permissions: {
+    EditAll: true,
+    EditDataProfile: true,
+    EditTests: true,
+  },
+  fetchAllTests: jest.fn(),
+  onTestCaseUpdate: jest.fn(),
+  allTestCases: [],
+  isTestsLoading: false,
+  isTableDeleted: false,
+  testCasePaging: {
+    currentPage: 1,
+    pageSize: 10,
+    paging: { total: 16 },
+    handlePageChange: jest.fn(),
+    handlePageSizeChange: jest.fn(),
+    showPagination: true,
+  },
+};
 
 jest.mock('../TableProfilerProvider', () => ({
-  useTableProfiler: jest.fn().mockImplementation(() => ({
-    tableProfiler: MOCK_TABLE,
-    permissions: {
-      EditAll: true,
-      EditDataProfile: true,
-    },
-  })),
+  useTableProfiler: jest.fn().mockImplementation(() => mockUseTableProfiler),
 }));
 
 jest.mock(
@@ -93,14 +108,6 @@ describe('QualityTab', () => {
   });
 
   it('should render the Add button if editTest is true and isTableDeleted is false', async () => {
-    (useTableProfiler as jest.Mock).mockReturnValue({
-      permissions: {
-        EditAll: true,
-        EditTests: true,
-      },
-      isTableDeleted: false,
-    });
-
     await act(async () => {
       render(<QualityTab />);
     });
@@ -112,6 +119,7 @@ describe('QualityTab', () => {
 
   it('should not render the Add button if editTest is false', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
       permissions: {
         EditAll: false,
         EditTests: false,
@@ -130,6 +138,7 @@ describe('QualityTab', () => {
 
   it('should not render the Add button if isTableDeleted is true', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
       permissions: {
         EditAll: true,
         EditTests: true,
@@ -161,6 +170,7 @@ describe('QualityTab', () => {
 
   it('should show skeleton loader when data is loading', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
       permissions: {
         EditAll: true,
         EditTests: true,
@@ -178,13 +188,14 @@ describe('QualityTab', () => {
   });
 
   it('should display the initial summary data', async () => {
-    (useTableProfiler as jest.Mock).mockReturnValue({
+    (useTableProfiler as jest.Mock).mockImplementationOnce(() => ({
+      ...mockUseTableProfiler,
       permissions: {
         EditAll: true,
         EditTests: true,
       },
       isTableDeleted: false,
-    });
+    }));
 
     await act(async () => {
       render(<QualityTab />);
