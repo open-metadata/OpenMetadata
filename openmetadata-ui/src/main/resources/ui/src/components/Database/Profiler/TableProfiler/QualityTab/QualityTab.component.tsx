@@ -88,7 +88,13 @@ export const QualityTab = () => {
     currentPage,
   }) => {
     if (cursorType) {
-      fetchAllTests({ [cursorType]: paging[cursorType] });
+      fetchAllTests({
+        [cursorType]: paging[cursorType],
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+      });
     }
     handlePageChange(currentPage);
   };

@@ -51,16 +51,11 @@ export interface TableProfilerContextInterface {
   fetchAllTests: (params?: ListTestCaseParams) => Promise<void>;
   onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
-  splitTestCases: SplitTestCasesType;
   dateRangeObject: DateRangeObject;
   onDateRangeChange: (dateRange: DateRangeObject) => void;
   testCasePaging: UsePagingInterface;
 }
 
-export type SplitTestCasesType = {
-  column: TestCase[];
-  table: TestCase[];
-};
 export type TableTestsType = {
   tests: TestCase[];
   results: {

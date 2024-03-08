@@ -46,7 +46,6 @@ import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interfa
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
 import {
   OverallTableSummaryType,
-  SplitTestCasesType,
   TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
@@ -74,10 +73,6 @@ export const TableProfilerProvider = ({
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
-  const [splitTestCases, setSplitTestCases] = useState<SplitTestCasesType>({
-    column: [],
-    table: [],
-  });
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
@@ -160,19 +155,6 @@ export const TableProfilerProvider = ({
     setDateRangeObject(data);
   };
 
-  const splitTableAndColumnTest = (data: TestCase[]) => {
-    const columnTestsCase: TestCase[] = [];
-    const tableTests: TestCase[] = [];
-    data.forEach((test) => {
-      if (test.entityFQN === datasetFQN) {
-        tableTests.push(test);
-      } else {
-        columnTestsCase.push(test);
-      }
-    });
-    setSplitTestCases({ column: columnTestsCase, table: tableTests });
-  };
-
   const onTestCaseUpdate = useCallback(
     (testCase?: TestCase) => {
       if (isUndefined(testCase)) {
@@ -182,7 +164,6 @@ export const TableProfilerProvider = ({
         const updatedTests = prevTestCases.map((test) => {
           return testCase.id === test.id ? { ...test, ...testCase } : test;
         });
-        splitTableAndColumnTest(updatedTests);
 
         return updatedTests;
       });
@@ -227,7 +208,7 @@ export const TableProfilerProvider = ({
         includeAllTests: true,
         limit: testCasePaging.pageSize,
       });
-      splitTableAndColumnTest(data);
+
       setAllTestCases(data);
       testCasePaging.handlePagingChange(paging);
     } catch (error) {
@@ -260,11 +241,7 @@ export const TableProfilerProvider = ({
 
   useEffect(() => {
     const fetchTest =
-      viewTest &&
-      !isTourOpen &&
-      [TableProfilerTab.DATA_QUALITY, TableProfilerTab.COLUMN_PROFILE].includes(
-        activeTab
-      );
+      !isTourOpen && activeTab === TableProfilerTab.DATA_QUALITY && viewTest;
 
     if (fetchTest) {
       fetchAllTests();
@@ -286,7 +263,6 @@ export const TableProfilerProvider = ({
       onSettingButtonClick: () => setSettingModalVisible(true),
       fetchAllTests,
       isProfilingEnabled: !isUndefined(tableProfiler?.profile),
-      splitTestCases,
       customMetric,
       onCustomMetricUpdate: handleUpdateCustomMetrics,
       onDateRangeChange: handleDateRangeChange,
@@ -302,7 +278,6 @@ export const TableProfilerProvider = ({
     isTableDeleted,
     overallSummary,
     onTestCaseUpdate,
-    splitTestCases,
     customMetric,
     dateRangeObject,
     testCasePaging,
