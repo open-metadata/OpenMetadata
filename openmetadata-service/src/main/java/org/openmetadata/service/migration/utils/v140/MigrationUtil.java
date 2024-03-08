@@ -87,7 +87,7 @@ public class MigrationUtil {
       }
       JsonArray partitionColumns = tablePartition.getJsonArray("columns");
 
-      List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<PartitionColumnDetails>();
+      List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<>();
 
       if ((partitionColumns == null || partitionColumns.isEmpty())
           && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
@@ -101,7 +101,6 @@ public class MigrationUtil {
             case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
           }
         }
-        ;
       }
 
       if (partitionColumns == null || partitionColumns.isEmpty()) {
