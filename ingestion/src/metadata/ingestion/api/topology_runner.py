@@ -255,10 +255,10 @@ class TopologyRunnerMixin(Generic[C]):
                 )
                 while True:
                     # If the result wasn't processed yet we wait to guarantee the stages are being processed sequencially.
-                    if self.queue.has_tasks(thread_id):
-                        time.sleep(0.01)
-
-                    else:
+                    # if self.queue.has_tasks(thread_id):
+                    #     time.sleep(0.01)
+                    #
+                    # else:
                         try:
                             self.queue.add(
                                 QueueItem(thread_id=thread_id, item=next(stage_results))
@@ -276,10 +276,10 @@ class TopologyRunnerMixin(Generic[C]):
                 children_result = self.process_nodes(child_nodes)
 
                 while True:
-                    if self.queue.has_tasks(thread_id):
-                        time.sleep(0.01)
+                    # if self.queue.has_tasks(thread_id):
+                    #     time.sleep(0.01)
 
-                    else:
+                    # else:
                         try:
                             self.queue.add(
                                 QueueItem(thread_id=thread_id, item=next(children_result))
