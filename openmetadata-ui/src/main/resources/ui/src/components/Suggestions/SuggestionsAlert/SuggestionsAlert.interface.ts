@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Suggestion } from '../../../generated/entity/feed/suggestion';
 
-import React, { Suspense } from 'react';
-import Loader from '../common/Loader/Loader';
-
-export default function withSuspenseFallback(Component) {
-  return function DefaultFallback(props) {
-    return (
-      <Suspense
-        fallback={
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        }>
-        <Component {...props} />
-      </Suspense>
-    );
-  };
+export interface SuggestionsAlertProps {
+  suggestion: Suggestion;
+  hasEditAccess?: boolean;
+  maxLength?: number;
 }
