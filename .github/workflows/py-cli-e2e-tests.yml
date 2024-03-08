@@ -14,10 +14,11 @@ on:
   schedule:
     - cron:  '0 0 * * *'
   workflow_dispatch:
-    input:
+    inputs:
       e2e-tests:
         description: "E2E Tests to run"
-        type: string
+        required: True
+        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
 
 permissions:
   id-token: write
