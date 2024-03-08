@@ -102,7 +102,7 @@
         "enabled": {
           "description": "If True, enables Metadata Extraction to be incremental",
           "type": "boolean",
-          "default": true,
+          "default": false,
           "title": "Enabled"
         },
         "lookbackDays": {
