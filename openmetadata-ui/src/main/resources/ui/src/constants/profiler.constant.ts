@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { map, values } from 'lodash';
+import { capitalize, map, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
@@ -24,7 +24,7 @@ import {
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import { EntityType } from '../generated/tests/testDefinition';
+import { TestCaseType } from '../rest/testAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -397,12 +397,8 @@ export const TIME_BASED_PARTITION = [
 ];
 
 export const TEST_CASE_TYPE_OPTION = [
-  {
-    label: t('label.all'),
-    value: '',
-  },
-  ...map(EntityType, (value, key) => ({
-    label: key,
+  ...map(TestCaseType, (value) => ({
+    label: capitalize(value),
     value: value,
   })),
 ];

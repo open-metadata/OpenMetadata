@@ -13,7 +13,7 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -27,16 +27,18 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { EntityTabs, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { Table } from '../../../../../generated/entity/data/table';
-import { TestCase } from '../../../../../generated/tests/testCase';
-import { EntityType as TestType } from '../../../../../generated/tests/testDefinition';
+import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../../../../rest/tableAPI';
+import { TestCaseType } from '../../../../../rest/testAPI';
 import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { SummaryPanel } from '../../../../DataQuality/SummaryPannel/SummaryPanel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -51,10 +53,19 @@ export const QualityTab = () => {
     fetchAllTests,
     onTestCaseUpdate,
     allTestCases,
-    splitTestCases,
     isTestsLoading,
     isTableDeleted,
+    testCasePaging,
   } = useTableProfiler();
+
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+  } = testCasePaging;
 
   const editTest = permissions.EditAll || permissions.EditTests;
   const { fqn: datasetFQN } = useFqn();
@@ -62,11 +73,27 @@ export const QualityTab = () => {
   const { t } = useTranslation();
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
-    useState<string>('');
-  const [selectedTestType, setSelectedTestType] = useState('');
+    useState<TestCaseStatus>('' as TestCaseStatus);
+  const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
   const [table, setTable] = useState<Table>();
   const [isTestSuiteLoading, setIsTestSuiteLoading] = useState(true);
   const testSuite = useMemo(() => table?.testSuite, [table]);
+
+  const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
+    cursorType,
+    currentPage,
+  }) => {
+    if (cursorType) {
+      fetchAllTests({
+        [cursorType]: paging[cursorType],
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+      });
+    }
+    handlePageChange(currentPage);
+  };
 
   const tableBreadcrumb = useMemo(() => {
     return table
@@ -84,37 +111,36 @@ export const QualityTab = () => {
       : undefined;
   }, [table]);
 
-  const filteredTestCase = useMemo(() => {
-    let tests: TestCase[] = allTestCases ?? [];
-    if (selectedTestType === TestType.Table) {
-      tests = splitTestCases.table;
-    } else if (selectedTestType === TestType.Column) {
-      tests = splitTestCases.column;
-    }
-
-    return tests.filter(
-      (data) =>
-        selectedTestCaseStatus === '' ||
-        data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
-    );
-  }, [selectedTestCaseStatus, selectedTestType, allTestCases, splitTestCases]);
   const tabs = useMemo(
     () => [
       {
         label: t('label.test-case-plural'),
         key: EntityTabs.TEST_CASES,
         children: (
-          <div className="p-t-md">
-            <DataQualityTab
-              afterDeleteAction={fetchAllTests}
-              breadcrumbData={tableBreadcrumb}
-              isLoading={isTestsLoading}
-              showTableColumn={false}
-              testCases={filteredTestCase}
-              onTestCaseResultUpdate={onTestCaseUpdate}
-              onTestUpdate={onTestCaseUpdate}
-            />
-          </div>
+          <Row className="p-t-md">
+            <Col span={24}>
+              <DataQualityTab
+                afterDeleteAction={fetchAllTests}
+                breadcrumbData={tableBreadcrumb}
+                isLoading={isTestsLoading}
+                showTableColumn={false}
+                testCases={allTestCases}
+                onTestCaseResultUpdate={onTestCaseUpdate}
+                onTestUpdate={onTestCaseUpdate}
+              />
+            </Col>
+            <Col span={24}>
+              {showPagination && (
+                <NextPrevious
+                  currentPage={currentPage}
+                  pageSize={pageSize}
+                  paging={paging}
+                  pagingHandler={handleTestCasePageChange}
+                  onShowSizeChange={handlePageSizeChange}
+                />
+              )}
+            </Col>
+          </Row>
         ),
       },
       {
@@ -125,23 +151,34 @@ export const QualityTab = () => {
     ],
     [
       isTestsLoading,
-      filteredTestCase,
+      allTestCases,
       onTestCaseUpdate,
       testSuite,
       fetchAllTests,
       tableBreadcrumb,
+      testCasePaging,
     ]
   );
 
-  const handleTestCaseStatusChange = (value: string) => {
+  const handleTestCaseStatusChange = (value: TestCaseStatus) => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
+      fetchAllTests({
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(value) ? undefined : value,
+      });
     }
   };
 
-  const handleTestCaseTypeChange = (value: string) => {
+  const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
       setSelectedTestType(value);
+      fetchAllTests({
+        testCaseType: value,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+      });
     }
   };
 
