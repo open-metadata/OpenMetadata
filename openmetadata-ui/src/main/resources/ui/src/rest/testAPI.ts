@@ -16,7 +16,11 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
-import { TestCase, TestCaseResult } from '../generated/tests/testCase';
+import {
+  TestCase,
+  TestCaseResult,
+  TestCaseStatus,
+} from '../generated/tests/testCase';
 import {
   EntityType,
   TestDefinition,
@@ -32,6 +36,11 @@ export enum TestSuiteType {
   executable = 'executable',
   logical = 'logical',
 }
+export enum TestCaseType {
+  all = 'all',
+  table = 'table',
+  column = 'column',
+}
 
 export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
@@ -43,6 +52,8 @@ export type ListTestCaseParams = ListParams & {
   testSuiteId?: string;
   includeAllTests?: boolean;
   orderByLastExecutionDate?: boolean;
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: TestCaseType;
 };
 
 export type ListTestDefinitionsParams = ListParams & {

@@ -74,7 +74,6 @@ jest.mock('../../../../common/TestIndicator/TestIndicator', () => {
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockImplementation(() => ({
     tableProfiler: MOCK_TABLE,
-    splitTestCases: { column: [] },
   })),
 }));
 

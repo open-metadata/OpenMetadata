@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useMemo, useState } from 'react';
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -18,7 +24,19 @@ import {
 } from '../../constants/constants';
 import { Paging } from '../../generated/type/paging';
 
-export const usePaging = (defaultPageSize = PAGE_SIZE_BASE) => {
+export interface UsePagingInterface {
+  paging: Paging;
+  handlePagingChange: Dispatch<SetStateAction<Paging>>;
+  currentPage: number;
+  handlePageChange: Dispatch<SetStateAction<number>>;
+  pageSize: number;
+  handlePageSizeChange: (page: number) => void;
+  showPagination: boolean;
+}
+
+export const usePaging = (
+  defaultPageSize = PAGE_SIZE_BASE
+): UsePagingInterface => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [pageSize, setPageSize] = useState(defaultPageSize);
