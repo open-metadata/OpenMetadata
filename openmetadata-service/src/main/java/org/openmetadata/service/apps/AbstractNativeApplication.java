@@ -1,7 +1,6 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
 import java.util.List;
@@ -196,21 +195,21 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    // This is the part of the code that is executed by the scheduler
-    App jobApp =
-        JsonUtils.readOrConvertValue(
-            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
-    // Initialise the Application
-    this.init(jobApp);
-
-    // Trigger
-    this.startApp(jobExecutionContext);
+    this.run(jobExecutionContext);
   }
 
   @Override
   public void configure() {
     /* Not needed by default */
   }
+
+  @Override
+  public void close() {
+    /* Not needed by default */
+  }
+
+  @Override
+  public void shutDown() {}
 
   public static AppRuntime getAppRuntime(App app) {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);

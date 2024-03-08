@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.AppRuntime;
@@ -70,6 +71,7 @@ public class AppScheduler {
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
+  private final AppJobFactory jobFactory;
   private static final @Getter CronMapper cronMapper = CronMapper.fromUnixToQuartz();
   private static final @Getter CronParser cronParser =
       new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
@@ -84,9 +86,10 @@ public class AppScheduler {
     properties.putAll(defaultAppScheduleConfig);
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
-    this.scheduler = factory.getScheduler();
 
-    this.scheduler.setJobFactory(new CustomJobFactory(dao, searchClient));
+    this.jobFactory = new AppJobFactory(dao, searchClient);
+    this.scheduler = factory.getScheduler();
+    this.scheduler.setJobFactory(jobFactory);
 
     // Add OMJob Listener
     this.scheduler
@@ -153,7 +156,12 @@ public class AppScheduler {
     }
   }
 
+  @SneakyThrows
   public void deleteScheduledApplication(App app) throws SchedulerException {
+
+    // Remove from Job Map
+    jobFactory.removeJob(app.getClassName());
+
     // Scheduled Jobs
     scheduler.deleteJob(new JobKey(app.getName(), APPS_JOB_GROUP));
     scheduler.unscheduleJob(new TriggerKey(app.getName(), APPS_TRIGGER_GROUP));

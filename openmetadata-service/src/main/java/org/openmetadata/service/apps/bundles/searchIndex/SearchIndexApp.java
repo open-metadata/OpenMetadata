@@ -149,7 +149,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   @Override
-  public void startApp(JobExecutionContext jobExecutionContext) {
+  public void run(JobExecutionContext jobExecutionContext) {
     try {
       LOG.info("Executing Reindexing Job with JobData : {}", jobData);
       // Update Job Status
