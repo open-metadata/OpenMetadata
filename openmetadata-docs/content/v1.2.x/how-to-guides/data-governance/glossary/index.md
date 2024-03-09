@@ -7,7 +7,7 @@ slug: /how-to-guides/data-governance/glossary
 
 A Glossary is a Controlled Vocabulary to describe important concepts and terminologies within your organization to foster a common and consistent understanding of data. A controlled vocabulary is an organized arrangement of words and phrases to define terminology to organize and retrieve information. 
 
-Glossary adds semantics or meaning to data by defining the business terminologies. It defines concepts related to a specific domain. For example, Business Glossary or Bank Glossary. A well-defined business glossary helps foster team collaboration with the use of standard terms. A glossary can be used for labeling data. Glossaries are important for data discovery, retrieval, and exploration through conceptual terms, and facilitates **Data Governance**.
+Glossary adds semantics or meaning to data by defining the business terminologies. It defines concepts related to a specific domain. For example, Business Glossary or Bank Glossary. A well-defined business glossary helps foster team collaboration with the use of standard terms. The terms from the glossary can be used for labeling or tagging as additional metadata of data assets for describing and categorizing things. Glossaries are important for data discovery, retrieval, and exploration through conceptual terms, and facilitates **Data Governance**.
 
 ## Glossary in OpenMetadata
 
@@ -61,6 +61,13 @@ You can create, delete, modify, and update using APIs. Refer to the **[Glossary 
   icon="MdUpload"
   href="/how-to-guides/data-governance/glossary/import"%}
   Save time and effort by bulk uploading glossary terms using a CSV file.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Glossary Export"
+  icon="MdDownload"
+  href="/how-to-guides/data-governance/glossary/export"%}
+  Quickly export a glossary as a CSV file.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"

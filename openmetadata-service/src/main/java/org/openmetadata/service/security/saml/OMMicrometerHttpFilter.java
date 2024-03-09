@@ -12,10 +12,8 @@
  */
 package org.openmetadata.service.security.saml;
 
-import static org.openmetadata.service.util.MicrometerBundleSingleton.getWebAnalyticEvents;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.prometheusMeterRegistry;
 
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.micrometer.core.instrument.Timer;
 import java.io.IOException;
 import javax.servlet.Filter;
@@ -25,9 +23,8 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.service.util.MicrometerBundleSingleton;
 
 /**
  * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
@@ -53,16 +50,9 @@ public class OMMicrometerHttpFilter implements Filter {
     long startTime = System.nanoTime();
     chain.doFilter(request, response);
     double elapsed = (System.nanoTime() - startTime) / 1.0E9;
-    String requestPath = ((HttpServletRequest) request).getPathInfo();
-    if (CommonUtil.nullOrEmpty(requestPath)) {
-      requestPath = ((HttpServletRequest) request).getServletPath();
-    }
-    String responseStatus = String.valueOf(((HttpServletResponse) response).getStatus());
     String requestMethod = ((HttpServletRequest) request).getMethod();
-    MicrometerBundle.httpRequests
-        .labels(requestMethod, responseStatus, requestPath)
-        .observe(elapsed);
-    timer.stop(getWebAnalyticEvents());
+    MicrometerBundleSingleton.httpRequests.labels(requestMethod).observe(elapsed);
+    timer.stop(MicrometerBundleSingleton.getRequestsLatencyTimer());
   }
 
   @Override
