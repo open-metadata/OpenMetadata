@@ -1,36 +1,36 @@
 ---
-title: S3
-slug: /connectors/storage/s3
+title: Azure
+slug: /connectors/storage/Azure
 ---
 
 {% connectorDetailsHeader
-name="S3"
+name="Azure"
 stage="PROD"
-platform="OpenMetadata"
+platform="Collate"
 availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
-This page contains the setup guide and reference information for the S3 connector.
+This page contains the setup guide and reference information for the Azure connector.
 
-Configure and schedule S3 metadata workflows from the OpenMetadata UI:
+Configure and schedule Azure metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/s3/yaml"} /%}
+{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/Azure/yaml"} /%}
 
 ## Requirements
 
 We need the following permissions in AWS:
 
-### S3 Permissions
+### Azure Permissions
 
 For all the buckets that we want to ingest, we need to provide the following:
-- `s3:ListBucket`
-- `s3:GetObject`
-- `s3:GetBucketLocation`
-- `s3:ListAllMyBuckets`
+- `Azure:ListBucket`
+- `Azure:GetObject`
+- `Azure:GetBucketLocation`
+- `Azure:ListAllMyBuckets`
 
 Note that the `Resources` should be all the buckets that you'd like to scan. A possible policy could be:
 
@@ -41,13 +41,13 @@ Note that the `Resources` should be all the buckets that you'd like to scan. A p
         {
             "Effect": "Allow",
             "Action": [
-                "s3:GetObject",
-                "s3:ListBucket",
-                "s3:GetBucketLocation",
-                "s3:ListAllMyBuckets"
+                "Azure:GetObject",
+                "Azure:ListBucket",
+                "Azure:GetBucketLocation",
+                "Azure:ListAllMyBuckets"
             ],
             "Resource": [
-                "arn:aws:s3:::*"
+                "arn:aws:Azure:::*"
             ]
         }
     ]
@@ -140,14 +140,14 @@ caption="Add a new Service from the Storage Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select S3 as the service type and click Next.
+Select Azure as the service type and click Next.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.3/connectors/s3/select-service.png"
+  src="/images/v1.3/connectors/Azure/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -173,7 +173,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.3/connectors/s3/add-new-service.png"
+  src="/images/v1.3/connectors/Azure/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -187,7 +187,7 @@ from.
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your S3 service as
+you've configured the connector to read from your Azure service as
 desired.
 
 {% /stepDescription %}
@@ -195,7 +195,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.3/connectors/s3/service-connection.png"
+  src="/images/v1.3/connectors/Azure/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 

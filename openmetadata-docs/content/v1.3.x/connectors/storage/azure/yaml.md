@@ -1,19 +1,19 @@
 ---
-title: Run the S3 Connector Externally
-slug: /connectors/storage/s3/yaml
+title: Run the Azure Connector Externally
+slug: /connectors/storage/Azure/yaml
 ---
 
 {% connectorDetailsHeader
-name="S3"
+name="Azure"
 stage="PROD"
-platform="OpenMetadata"
+platform="Collate"
 availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
-This page contains the setup guide and reference information for the S3 connector.
+This page contains the setup guide and reference information for the Azure connector.
 
-Configure and schedule S3 metadata workflows from the CLI:
+Configure and schedule Azure metadata workflows from the CLI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -28,13 +28,13 @@ To deploy OpenMetadata, check the Deployment guides.
 
 To run the metadata ingestion, we need the following permissions in AWS:
 
-### S3 Permissions
+### Azure Permissions
 
 For all the buckets that we want to ingest, we need to provide the following:
-- `s3:ListBucket`
-- `s3:GetObject`
-- `s3:GetBucketLocation`
-- `s3:ListAllMyBuckets`
+- `Azure:ListBucket`
+- `Azure:GetObject`
+- `Azure:GetBucketLocation`
+- `Azure:ListAllMyBuckets`
 
 Note that the `Resources` should be all the buckets that you'd like to scan. A possible policy could be:
 
@@ -45,13 +45,13 @@ Note that the `Resources` should be all the buckets that you'd like to scan. A p
         {
             "Effect": "Allow",
             "Action": [
-                "s3:GetObject",
-                "s3:ListBucket",
-                "s3:GetBucketLocation",
-                "s3:ListAllMyBuckets"
+                "Azure:GetObject",
+                "Azure:ListBucket",
+                "Azure:GetBucketLocation",
+                "Azure:ListAllMyBuckets"
             ],
             "Resource": [
-                "arn:aws:s3:::*"
+                "arn:aws:Azure:::*"
             ]
         }
     ]
@@ -104,7 +104,7 @@ You can learn more about this [here](/connectors/storage). Keep reading for an e
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/storage/s3Connection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/storage/AzureConnection.json)
 you can find the structure to create a connection to Athena.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -238,11 +238,11 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 ```yaml
 source:
-  type: s3
-  serviceName: local_s3
+  type: Azure
+  serviceName: local_Azure
   serviceConnection:
     config:
-      type: S3
+      type: Azure
       awsConfig:
 ```
 ```yaml {% srNumber=1 %}
@@ -256,7 +256,7 @@ source:
         awsRegion: us-east-2
 ```
 ```yaml {% srNumber=4 %}
-        # endPointURL: https://s3.us-east-2.amazonaws.com/custom
+        # endPointURL: https://Azure.us-east-2.amazonaws.com/custom
 ```
 ```yaml {% srNumber=5 %}
         # profileName: profile
