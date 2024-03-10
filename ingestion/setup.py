@@ -190,7 +190,6 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        "elasticsearch==7.13.1",
         VERSIONS["elasticsearch8"],
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},

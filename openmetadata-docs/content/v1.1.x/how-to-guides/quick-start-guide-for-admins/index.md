@@ -41,3 +41,12 @@ Ready to start with advanced access management using **Roles and Policies**?
   href="/how-to-guides/quick-start-guide-for-admins/admin-guide-roles-policies"%}
   Know it all about Roles and Policies to get started.
 {%/inlineCallout%}
+
+Set up fine-grained alerts and notifications to keep your data teams updated.
+{%inlineCallout
+  color="violet-70"
+  bold="Set up Alerts and Notifications"
+  icon="MdOutlineNotificationsActive"
+  href="/how-to-guides/quick-start-guide-for-admins/alerts"%}
+  Send alerts to multiple destinations to keep the team informed.
+{%/inlineCallout%}

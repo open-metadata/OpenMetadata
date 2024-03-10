@@ -24,6 +24,7 @@ import {
   Space,
   Tooltip,
 } from 'antd';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
@@ -42,8 +43,6 @@ import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
-
-import classNames from 'classnames';
 import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
@@ -56,7 +55,8 @@ import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { getEntityDetailLink, refreshPage } from '../../utils/CommonUtils';
+import { refreshPage } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   getEntityFQN,
   getEntityType,
@@ -226,7 +226,7 @@ const NavBar = ({
           user: createdBy,
         });
 
-        path = getEntityDetailLink(
+        path = entityUtilClassBase.getEntityLink(
           entityType as EntityType,
           entityFQN,
           EntityTabs.ACTIVITY_FEED,

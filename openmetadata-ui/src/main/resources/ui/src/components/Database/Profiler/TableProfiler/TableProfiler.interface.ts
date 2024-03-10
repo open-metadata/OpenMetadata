@@ -25,6 +25,7 @@ import {
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParams } from '../../../../rest/testAPI';
 
 export interface TableProfilerProps {
@@ -50,15 +51,11 @@ export interface TableProfilerContextInterface {
   fetchAllTests: (params?: ListTestCaseParams) => Promise<void>;
   onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
-  splitTestCases: SplitTestCasesType;
   dateRangeObject: DateRangeObject;
   onDateRangeChange: (dateRange: DateRangeObject) => void;
+  testCasePaging: UsePagingInterface;
 }
 
-export type SplitTestCasesType = {
-  column: TestCase[];
-  table: TestCase[];
-};
 export type TableTestsType = {
   tests: TestCase[];
   results: {

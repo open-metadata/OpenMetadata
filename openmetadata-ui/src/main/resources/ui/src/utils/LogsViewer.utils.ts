@@ -13,10 +13,10 @@
 
 import { isUndefined, startCase } from 'lodash';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import { getTableTabPath } from '../constants/constants';
+import { getEntityDetailsPath } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../constants/service-guide.constant';
-import { EntityTabs } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
@@ -88,7 +88,8 @@ export const getLogBreadCrumbs = (
       {
         name: ingestionDetails.name,
         url:
-          getTableTabPath(
+          getEntityDetailsPath(
+            EntityType.TABLE,
             (ingestionDetails.sourceConfig.config as Pipeline)
               ?.entityFullyQualifiedName ?? '',
             EntityTabs.PROFILER

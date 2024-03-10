@@ -21,5 +21,3 @@ export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   { name: t('label.configure'), step: 2 },
   { name: t('label.schedule'), step: 3 },
 ];
-
-export const APP_UI_SCHEMA = { metaPilotAppType: { 'ui:widget': 'hidden' } };
