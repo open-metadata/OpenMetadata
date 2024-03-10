@@ -124,6 +124,7 @@ def get_columns(
         Column("minor_id", Integer, primary_key=True),
         Column("name", String, primary_key=True),
         Column("value", String),
+        Column("class_desc", String),
         schema="sys",
     )
     sys_columns = alias(
