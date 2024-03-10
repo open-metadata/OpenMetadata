@@ -1,6 +1,6 @@
 ---
 title: Run the GCS Connector Externally
-slug: /connectors/storage/GCS/yaml
+slug: /connectors/storage/gcs/yaml
 ---
 
 {% connectorDetailsHeader

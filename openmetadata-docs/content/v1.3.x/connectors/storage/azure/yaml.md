@@ -1,6 +1,6 @@
 ---
 title: Run the Azure Connector Externally
-slug: /connectors/storage/Azure/yaml
+slug: /connectors/storage/azure/yaml
 ---
 
 {% connectorDetailsHeader

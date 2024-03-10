@@ -18,7 +18,7 @@ Configure and schedule Azure metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/Azure/yaml"} /%}
+{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/azure/yaml"} /%}
 
 ## Requirements
 
