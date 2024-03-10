@@ -63,7 +63,7 @@ The policy would look like:
 }
 ```
 
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/storage/GCS).
+You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/storage/gcs).
 
 ## Connection Details
 

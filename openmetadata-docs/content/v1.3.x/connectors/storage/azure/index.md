@@ -1,6 +1,6 @@
 ---
 title: Azure
-slug: /connectors/storage/Azure
+slug: /connectors/storage/azure
 ---
 
 {% connectorDetailsHeader
