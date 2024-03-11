@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { TopicConfigObjectInterface } from '../components/Topic/TopicDetails/TopicDetails.interface';
 import { Topic } from '../generated/entity/data/topic';
 
@@ -25,4 +26,15 @@ export const getConfigObject = (
     'Max Message Size': topicDetails.maximumMessageSize,
     'Schema Type': topicDetails.messageSchema?.schemaType,
   };
+};
+
+export const getTopicSchemaFields = (topicDetails: Topic) => {
+  const fields = topicDetails.messageSchema?.schemaFields ?? [];
+  if (!isEmpty(fields)) {
+    const data = fields[0].dataType === 'RECORD' ? fields[0].children : fields;
+
+    return data ?? [];
+  }
+
+  return [];
 };

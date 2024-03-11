@@ -19,12 +19,15 @@ import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../../enums/entity.enum';
+import { Container } from '../../../../generated/entity/data/container';
 import { Dashboard } from '../../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { Column, Table } from '../../../../generated/entity/data/table';
+import { Topic } from '../../../../generated/entity/data/topic';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getConstraintIcon, getEntityIcon } from '../../../../utils/TableUtils';
+import { getTopicSchemaFields } from '../../../../utils/TopicDetailsUtils';
 import { getColumnHandle, getTestSuiteSummary } from '../CustomNode.utils';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
@@ -44,6 +47,8 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       EntityType.DASHBOARD,
       EntityType.MLMODEL,
       EntityType.DASHBOARD_DATA_MODEL,
+      EntityType.CONTAINER,
+      EntityType.TOPIC,
     ];
 
     return node && supportedTypes.includes(node.entityType as EntityType);
@@ -69,6 +74,14 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       [EntityType.DASHBOARD_DATA_MODEL]: {
         data: (node as Table).columns ?? [],
         label: t('label.column-plural'),
+      },
+      [EntityType.CONTAINER]: {
+        data: (node as Container).dataModel?.columns ?? [],
+        label: t('label.column-plural'),
+      },
+      [EntityType.TOPIC]: {
+        data: getTopicSchemaFields(node as Topic),
+        label: t('label.field-plural'),
       },
     };
 

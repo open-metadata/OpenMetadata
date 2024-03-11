@@ -12,6 +12,7 @@
  */
 import { MlFeature } from '../../../../generated/entity/data/mlmodel';
 import { Column } from '../../../../generated/entity/data/table';
+import { Field } from '../../../../generated/entity/data/topic';
 import { EntityReference } from '../../../../generated/entity/type';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
@@ -20,4 +21,8 @@ export interface NodeChildrenProps {
   isConnectable: boolean;
 }
 
-export type EntityChildren = Column[] | EntityReference[] | MlFeature[];
+export type EntityChildren =
+  | Column[]
+  | EntityReference[]
+  | MlFeature[]
+  | Field[];
