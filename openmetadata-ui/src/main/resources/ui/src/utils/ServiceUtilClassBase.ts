@@ -107,6 +107,7 @@ class ServiceUtilClassBase {
     StorageServiceType.Adls,
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
+    StorageServiceType.Gcs,
   ];
 
   protected updateUnsupportedServices(types: string[]) {
