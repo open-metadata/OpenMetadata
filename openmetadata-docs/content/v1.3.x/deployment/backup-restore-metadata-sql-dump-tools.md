@@ -37,7 +37,7 @@ Ingest some data...
 BACKUP_FILE="backup_$(date +%Y%m%d%H%M).sql"
 DOCKER_COMPOSE_FILE="docker/development/docker-compose.yml"
 # backup
-docker compose -f $DOCKER_COMPOSE_FILE exec ingestion mysqldump --no-tablespaces -u openmetadata_user -popenmetadata_password -h mysql -P 3306 openmetadata_db > $BACKUP_FILE
+docker compose -f $DOCKER_COMPOSE_FILE exec ingestion mysqldump --set-gtid-purged=OFF --no-tablespaces -u openmetadata_user -popenmetadata_password -h mysql -P 3306 openmetadata_db > $BACKUP_FILE
 # create the restore database
 docker compose -f $DOCKER_COMPOSE_FILE exec mysql  mysql -u root -ppassword -e "create database restore;"
 docker compose -f $DOCKER_COMPOSE_FILE exec mysql  mysql -u root -ppassword -e "grant all privileges on restore.* to 'openmetadata_user'@'%';"
