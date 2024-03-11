@@ -207,7 +207,7 @@ export const ROUTES = {
   ADD_DOMAIN: '/add-domain',
 
   GLOSSARY: '/glossary',
-  ADD_GLOSSARY: '/add-glossary',
+  ADD_GLOSSARY: '/glossary/add',
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_ROUTE_FQN}`,
   GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_ROUTE_FQN}/action/${PLACEHOLDER_ACTION}`,
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_ROUTE_FQN}/add-term`,

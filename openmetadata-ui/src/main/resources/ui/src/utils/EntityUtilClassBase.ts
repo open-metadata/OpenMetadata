@@ -229,8 +229,9 @@ class EntityUtilClassBase {
       case EntityType.DATA_PRODUCT:
         return DataProductsPage;
       case EntityType.TABLE:
-      default:
         return TableDetailsPageV1;
+      default:
+        return null;
     }
   }
 
