@@ -404,7 +404,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const removeNodeHandler = useCallback(
-    (node: Node | NodeProps) => {
+    async (node: Node | NodeProps) => {
       if (!entityLineage) {
         return;
       }
@@ -414,18 +414,57 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         (item) => item?.data?.isColumnLineage === false
       );
 
-      // Get edges connected to selected node
       const edgesToRemove = getConnectedEdges([node as Node], nodeEdges);
-      edgesToRemove.forEach((edge) => {
-        removeEdgeHandler(edge, true);
+
+      const filteredEdges: EdgeDetails[] = [];
+
+      await Promise.all(
+        edgesToRemove.map(async (edge) => {
+          const { data } = edge;
+          const edgeData: EdgeData = {
+            fromEntity: data.edge.fromEntity.type,
+            fromId: data.edge.fromEntity.id,
+            toEntity: data.edge.toEntity.type,
+            toId: data.edge.toEntity.id,
+          };
+
+          await removeLineageHandler(edgeData);
+
+          filteredEdges.push(
+            ...(entityLineage.edges ?? []).filter(
+              (item) =>
+                !(
+                  item.fromEntity.id === edgeData.fromId &&
+                  item.toEntity.id === edgeData.toId
+                )
+            )
+          );
+
+          setEdges((prev) => {
+            return prev.filter(
+              (item) =>
+                !(
+                  item.source === edgeData.fromId &&
+                  item.target === edgeData.toId
+                )
+            );
+          });
+        })
+      );
+
+      const updatedNodes = (entityLineage.nodes ?? []).filter(
+        (previousNode) => previousNode.id !== node.id
+      );
+
+      setNodes((prev) => {
+        return prev.filter((previousNode) => previousNode.id !== node.id);
       });
 
-      setEntityLineage((prev) => {
+      setUpdatedEntityLineage(() => {
         return {
-          ...prev,
-          nodes: (prev.nodes ?? []).filter(
-            (previousNode) => previousNode.id !== node.id
-          ),
+          ...entityLineage,
+          edges: filteredEdges,
+          nodes: updatedNodes,
         };
       });
 
