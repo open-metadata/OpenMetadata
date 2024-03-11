@@ -5,18 +5,6 @@ slug: /deployment/backup-restore-metadata
 
 # Backup & Restore Metadata
 
-## Deprecation notice
-
-{% inlineCalloutContainer %}
-  {% inlineCallout
-    color="violet-70"
-    icon="10k"
-    bold="Use Native SQL Backup Tools"
-    href="/v1.4/deployment/backup-restore-metadata" %}
-    Go to the latest version of the documentation to learn how to backup and restore metadata using native SQL backup tools.
-  {% /inlineCallout %}
-{% /inlineCalloutContainer %}
-
 ## Introduction
 
 The goal of OpenMetadata is to enable company-wide collaboration around metadata. The more we use it, the more value
