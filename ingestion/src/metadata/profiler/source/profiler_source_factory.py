@@ -19,6 +19,9 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.profiler.source.base.profiler_source import ProfilerSource
 from metadata.profiler.source.bigquery.profiler_source import BigQueryProfilerSource
 
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import DatabricksType
+from metadata.profiler.source.databricks.profiler_source import DataBricksProfilerSource
+
 
 class ProfilerSourceFactory:
     """Creational factory for profiler source objects"""
@@ -43,4 +46,8 @@ profiler_source_factory = ProfilerSourceFactory()
 profiler_source_factory.register_source(
     BigqueryType.BigQuery.value.lower(),
     BigQueryProfilerSource,
+)
+profiler_source_factory.register_source(
+    DatabricksType.Databricks.value.lower(),
+    DataBricksProfilerSource,
 )
