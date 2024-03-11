@@ -93,16 +93,6 @@
         "type": "string"
       }
     },
-    "entityReference": {
-      "$comment": "@om-field-type",
-      "description": "Owner of this table.",
-      "$ref": "../type/entityReference.json"
-    },
-    "entityReferenceList": {
-      "$comment": "@om-field-type",
-      "description": "Entity Reference List.",
-      "$ref": "../type/entityReferenceList.json"
-    },
     "timezone": {
       "description": "Timezone of the user in the format `America/Los_Angeles`, `Brazil/East`, etc.",
       "type": "string",
