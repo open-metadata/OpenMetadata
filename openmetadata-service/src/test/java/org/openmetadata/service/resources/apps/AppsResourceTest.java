@@ -2,7 +2,6 @@ package org.openmetadata.service.resources.apps;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -68,7 +67,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     App systemApp = createAndCheckEntity(systemAppRequest, ADMIN_AUTH_HEADERS);
     assertResponseContains(
         () -> deleteEntity(systemApp.getId(), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST, "of type SystemApp can not be deleted");
+        BAD_REQUEST,
+        "of type SystemApp can not be deleted");
   }
 
   @Override
