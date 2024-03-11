@@ -441,7 +441,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_get_table_details_invalid_name_structure(self):
         """Test with invalid name structure."""
         data = {"name": "invalidname"}
-        with self.assertRaises(IndexError):
+        with self.assertRaises(ValueError):
             self.open_lineage_source._get_table_details(data)
 
     def test_get_pipelines_list(self):
@@ -451,13 +451,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(ol_event, EXPECTED_OL_EVENT)
 
     @patch(
-        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_entity_fqn_from_om"
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
     )
     def test_yield_pipeline_lineage_details(self, mock_get_entity):
         def t_fqn_build_side_effect(
-            entity_type, table_name, service_name, schema_name, database_name
+             table_details,
         ):
-            return f"testService.{schema_name}.{table_name}"
+            return f"testService.shopify.{table_details.name}"
 
         def mock_get_uuid_by_name(entity, fqn):
             if fqn == "testService.shopify.raw_product_catalog":
