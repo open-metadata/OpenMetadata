@@ -109,7 +109,7 @@
       "javaType": "org.openmetadata.schema.type.ThreadType",
       "type": "string",
       "description": "Type of thread.",
-      "enum": ["Conversation", "Task", "Announcement"],
+      "enum": ["Conversation", "Task", "Announcement", "AI"],
       "javaEnums": [
         {
           "name": "Conversation"
@@ -119,6 +119,9 @@
         },
         {
           "name": "Announcement"
+        },
+        {
+          "name": "AI"
         }
       ],
       "default": "Conversation"
@@ -143,6 +146,17 @@
       },
       "required": ["startTime", "endTime"],
       "additionalProperties": false
+    },
+    "aiDetails": {
+      "javaType": "org.openmetadata.schema.type.AIDetails",
+      "description": "Details about the AI conversation. This is only applicable if thread is of type AI.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "The query being discussed with AI",
+          "type": "string"
+        }
+      }
     },
     "post": {
       "javaType": "org.openmetadata.schema.type.Post",
@@ -245,6 +259,10 @@
     "announcement": {
       "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
       "$ref": "#/definitions/announcementDetails"
+    },
+    "ai": {
+      "description": "Details about the AI conversation. This is only applicable if thread is of type AI.",
+      "$ref": "#/definitions/aiDetails"
     }
   },
   "required": ["id", "about", "message"],

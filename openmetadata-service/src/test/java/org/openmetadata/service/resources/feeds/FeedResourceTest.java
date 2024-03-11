@@ -88,6 +88,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.AIDetails;
 import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -519,6 +520,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void post_validAI_200() throws IOException {
+    // Sample EntityLink
+    String about = String.format("<#E::%s::%s>", Entity.BOT, "ingestion-bot");
+    createAI(USER.getName(), about, "First AI", "query", USER_AUTH_HEADERS);
+    createAI(USER.getName(), about, "Second AI", "query", USER_AUTH_HEADERS);
+
+    // List all the AI and make sure the number of AI increased by 2
+    assertEquals(2, listAI(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal());
+  }
+
+  @Test
   void post_invalidAnnouncement_400() throws IOException {
     // create two announcements with same start time in the future
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
@@ -920,6 +932,37 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
     assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
     assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
+  }
+
+  @Test
+  void patch_ai_200() throws IOException {
+    String about = String.format("<#E::%s::%s>", Entity.BOT, "ingestion-bot");
+
+    // Create thread without AI
+    CreateThread create =
+        new CreateThread()
+            .withFrom(USER.getName())
+            .withMessage("message")
+            .withAbout(about)
+            .withType(ThreadType.AI);
+    Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(thread);
+
+    Thread updated = thread.withAi(new AIDetails().withQuery("query"));
+    Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
+
+    assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
+    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
+    assertEquals("query", patched.getAi().getQuery());
+
+    // Patch again to update the query
+    String originalJson2 = JsonUtils.pojoToJson(patched);
+    Thread updated2 = patched.withAi(new AIDetails().withQuery("query2"));
+    Thread patched2 = patchThreadAndCheck(updated2, originalJson2, TEST_AUTH_HEADERS);
+
+    assertNotEquals(patched2.getUpdatedAt(), patched.getUpdatedAt());
+    assertEquals(TEST_USER_NAME, patched2.getUpdatedBy());
+    assertEquals("query2", patched2.getAi().getQuery());
   }
 
   @Test
@@ -1550,6 +1593,22 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         null);
   }
 
+  public ThreadList listAI(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return listThreads(
+        entityLink,
+        limitPosts,
+        authHeaders,
+        null,
+        null,
+        null,
+        ThreadType.AI.toString(),
+        null,
+        null,
+        null,
+        null);
+  }
+
   public ThreadList listThreads(
       String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
@@ -1773,6 +1832,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withAbout(about)
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails);
+    return createAndCheck(create, authHeaders);
+  }
+
+  public Thread createAI(
+      String fromUser, String about, String message, String query, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    CreateThread create =
+        new CreateThread()
+            .withFrom(fromUser)
+            .withMessage(message)
+            .withAbout(about)
+            .withType(ThreadType.AI)
+            .withAiDetails(new AIDetails().withQuery(query));
     return createAndCheck(create, authHeaders);
   }
 

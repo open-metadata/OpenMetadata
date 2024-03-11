@@ -913,7 +913,7 @@ public class FeedRepository {
   }
 
   private boolean fieldsChanged(Thread original, Thread updated) {
-    // Patch supports isResolved, message, task assignees, reactions, and announcements for now
+    // Patch supports isResolved, message, task assignees, reactions, announcements and AI for now
     return !original.getResolved().equals(updated.getResolved())
         || !original.getMessage().equals(updated.getMessage())
         || (Collections.isEmpty(original.getReactions())
@@ -935,6 +935,10 @@ public class FeedRepository {
                 || !Objects.equals(
                     original.getAnnouncement().getEndTime(),
                     updated.getAnnouncement().getEndTime())))
+        || (original.getAi() == null && updated.getAi() != null)
+        || (original.getAi() != null
+            && updated.getAi() != null
+            && !original.getAi().getQuery().equals(updated.getAi().getQuery()))
         || (original.getTask() != null
             && (original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
                 || !original

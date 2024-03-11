@@ -55,6 +55,10 @@
     },
     "announcementDetails": {
       "$ref": "../../entity/feed/thread.json#/definitions/announcementDetails"
+    },
+    "aiDetails": {
+      "description": "Details about the AI conversation. This is only applicable if thread is of type AI.",
+      "$ref": "../../entity/feed/thread.json#/definitions/aiDetails"
     }
   },
   "required": ["message", "from", "about"],
