@@ -455,7 +455,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     )
     def test_yield_pipeline_lineage_details(self, mock_get_entity):
         def t_fqn_build_side_effect(
-             table_details,
+            table_details,
         ):
             return f"testService.shopify.{table_details.name}"
 
