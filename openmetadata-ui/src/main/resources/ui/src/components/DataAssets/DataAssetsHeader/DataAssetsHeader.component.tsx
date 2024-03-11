@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -30,7 +30,10 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -41,8 +44,8 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
@@ -128,6 +131,7 @@ export const DataAssetsHeader = ({
   afterDomainUpdateAction,
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
+  extraDropdownContent,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
@@ -263,7 +267,7 @@ export const DataAssetsHeader = ({
     }
 
     history.push(
-      getEntityDetailLink(
+      entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
@@ -429,7 +433,13 @@ export const DataAssetsHeader = ({
                   <Tooltip title={t('label.open-task-plural')}>
                     <Button
                       className="w-16 p-0"
-                      icon={<Icon component={TaskOpenIcon} />}
+                      icon={
+                        <Icon
+                          className="vertical-align-text-top"
+                          component={TaskOpenIcon}
+                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                        />
+                      }
                       onClick={handleOpenTaskClick}>
                       <Typography.Text>{openTaskCount}</Typography.Text>
                     </Button>
@@ -440,7 +450,13 @@ export const DataAssetsHeader = ({
                   <Button
                     className="w-16 p-0"
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                      />
+                    }
                     onClick={onVersionClick}>
                     <Typography.Text>{version}</Typography.Text>
                   </Button>
@@ -458,7 +474,9 @@ export const DataAssetsHeader = ({
                       disabled={deleted}
                       icon={
                         <Icon
+                          className="vertical-align-text-top"
                           component={isFollowing ? StarFilledIcon : StarIcon}
+                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
                         />
                       }
                       loading={isFollowingLoading}
@@ -472,7 +490,14 @@ export const DataAssetsHeader = ({
                   placement="topRight"
                   title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
-                    icon={<Icon component={ShareIcon} />}
+                    className="flex-center"
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={ShareIcon}
+                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                      />
+                    }
                     onClick={handleShareButtonClick}
                   />
                 </Tooltip>
@@ -489,6 +514,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={dataAsset.name}
                   entityType={entityType}
+                  extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
