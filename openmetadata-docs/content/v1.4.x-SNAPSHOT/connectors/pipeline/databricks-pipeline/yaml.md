@@ -18,7 +18,7 @@ Configure and schedule Databricks Pipeline metadata and profiler workflows from 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -76,11 +76,11 @@ This is a sample config for Databricks Pipeline:
 {% /codeInfo %}
 
 
-{% partial file="/v1.3/connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -110,14 +110,14 @@ source:
         http_path: <http path of databricks cluster>
 ```
 
-{% partial file="/v1.3/connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

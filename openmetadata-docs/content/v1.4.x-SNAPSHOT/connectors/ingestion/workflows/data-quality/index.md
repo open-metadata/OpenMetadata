@@ -55,7 +55,7 @@ Tests cases are actual test that will be ran and executed against your entity. T
 Navigate to the entity you want to add a test (we currently support quality test only for database entity). Go to `Profiler & Data Quality` tab. From there, click on the `Add Test` button in the upper right corner and select the type of test you want to implement
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/add-test-case.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/add-test-case.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
@@ -66,7 +66,7 @@ Select the type of test you want to run and set the parameters (if any) for your
 **Note:** if you have a profiler workflow running, you will be able to visualize some context around your column or table data.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/add-test-defintion.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/add-test-defintion.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
@@ -75,13 +75,13 @@ Select the type of test you want to run and set the parameters (if any) for your
 If it is the first test you are creating for this entity, you'll need to set an execution time. click on `Add Ingestion` button and select a schedule. Note that the time is shown in UTC.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/add-ingestion.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/add-ingestion.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/ingestion-page.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/ingestion-page.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
@@ -94,7 +94,7 @@ Test Suites are logical container allowing you to group related Test Cases toget
 From the vertical navigation bar, click on `Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button on the top right corner.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/profiler-tab-view.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/profiler-tab-view.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
@@ -103,7 +103,7 @@ From the vertical navigation bar, click on `Quality` and navigate to the `By Tes
 On the next page, enter the name and description (optional) of your test suite.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/test-suite-page.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-suite-page.png"
   alt="Create test suite"
   caption="Create test suite"
  /%}
@@ -115,13 +115,13 @@ On the next page, you will be able to add existing test cases from different ent
 **Note:** Test Case name needs to be unique across the whole platform. A warning message will show if your Test Case name is not unique.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/test-case-page.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-case-page.png"
   alt="Create test case"
   caption="Create test case"
  /%}
 
 
-{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
 
 ## How to Visualize Test Results
 ### From the Quality Page
@@ -133,7 +133,7 @@ From the home page click on the `Quality` menu item on the vertical navigation. 
 If you want to look at your tests grouped by Test Suites, navigate to the `By Test Suites` tab. This will bring you to the Test Suite page where you can select a specific Test Suite.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/test-suite-home-page.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-suite-home-page.png"
   alt="Test suite home page"
   caption="Test suite home page"
  /%}
@@ -142,7 +142,7 @@ If you want to look at your tests grouped by Test Suites, navigate to the `By Te
 From there you can select a Test Suite and visualize the results associated with this specific Test Suite.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/test-suite-results.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-suite-results.png"
   alt="Test suite results page"
   caption="Test suite results page"
  /%}
@@ -154,7 +154,7 @@ Navigate to your table and click on the `profiler & Data Quality` tab. From ther
 In the top panel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/table-results-entity.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/table-results-entity.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
@@ -163,7 +163,7 @@ In the top panel, click on the white background `Data Quality` button. This will
  In v1.1.0 we introduce the ability for user to flag the resolution status of failed test cases. When a test case fail, it will automatically be marked as new. It indicates that a new failure has happened.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-new.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-new.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
@@ -171,12 +171,12 @@ In the top panel, click on the white background `Data Quality` button. This will
 The next step for a user is to mark the new failure as `ack` (acknowledged) signifying to users that someone is looking into test failure resolution. When hovering over the resolution status user will be able to see the time (UTC) and the user who acknowledge the failure
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-ack-form.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-ack-form.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-ack.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-ack.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
@@ -184,13 +184,13 @@ The next step for a user is to mark the new failure as `ack` (acknowledged) sign
  Then the user is able to mark a test as `resolved`. We made it mandatory for users to 1) select a reason and 2) add a comment when resolving failed test so that knowledge can be maintain inside the platform.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-resolved.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/resolution-workflow-resolved.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}

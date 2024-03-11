@@ -13,7 +13,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 This will populate the dbt tab from the Table Entity Page.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/dbt-features/dbt-query.png"
+  src="/images/v1.4/features/ingestion/workflows/dbt/dbt-features/dbt-query.png"
   alt="dbt"
   caption="dbt"
  /%}

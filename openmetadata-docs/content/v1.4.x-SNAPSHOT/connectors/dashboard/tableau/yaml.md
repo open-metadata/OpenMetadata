@@ -18,7 +18,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -138,7 +138,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -181,11 +181,11 @@ source:
       paginationLimit: pagination_limit
 ```
 
-{% partial file="/v1.3/connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -314,4 +314,4 @@ workflowConfig:
 ```
 
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

@@ -19,7 +19,7 @@ Configure and schedule Datalake metadata and profiler workflows from the OpenMet
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/datalake/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/datalake/yaml"} /%}
 
 ## Requirements
 
@@ -60,12 +60,12 @@ permissions on the Storage Account:
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Datalake", 
-    selectServicePath: "/images/v1.3/connectors/datalake/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/datalake/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/datalake/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/datalake/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/datalake/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/datalake/service-connection.png",
 } 
 /%}
 
@@ -174,18 +174,18 @@ We support two ways of authenticating to GCS:
 
 The current approach for authentication is based on `app registration`, reach out to us on [slack](https://slack.open-metadata.org/) if you find the need for another auth system
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

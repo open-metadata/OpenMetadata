@@ -55,7 +55,7 @@ bucket_home/
 If you wish to scan the entire bucket, only enter the `dbt Bucket Name` and keep the `dbt Object Prefix` field empty.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/dbt-prefix-example.png"
+  src="/images/v1.4/features/ingestion/workflows/dbt/dbt-prefix-example.png"
   alt="dbt-prefix-example"
   caption="dbt Multiple Projects Prefix Example"
  /%}

@@ -19,7 +19,7 @@ Configure and schedule Atlas metadata and profiler workflows from the OpenMetada
 - [Metadata Ingestion](#metadata-ingestion)
 
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -99,7 +99,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
@@ -139,10 +139,10 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

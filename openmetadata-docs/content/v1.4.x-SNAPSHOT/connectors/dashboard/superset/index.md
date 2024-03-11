@@ -18,7 +18,7 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/superset/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/superset/yaml"} /%}
 
 ## Requirements
 
@@ -31,12 +31,12 @@ The ingestion also works with Superset 2.0.0 🎉
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Superset", 
-    selectServicePath: "/images/v1.3/connectors/superset/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/superset/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/superset/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/superset/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/superset/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/superset/service-connection.png",
 } 
 /%}
 
@@ -80,7 +80,7 @@ You can use Mysql Connection when you have SSO enabled and your Superset is back
 - **Host and Port**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
 - **databaseSchema**: Enter the database schema which is associated with the Superset instance..
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 #### For Postgres Connection
 
@@ -91,16 +91,16 @@ You can use Postgres Connection when you have SSO enabled and your Superset is b
 - **Host and Port**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
 - **Database**: Initial Postgres database to connect to. Specify the name of database associated with Superset instance.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}

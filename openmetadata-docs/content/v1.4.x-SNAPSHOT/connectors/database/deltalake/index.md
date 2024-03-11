@@ -20,7 +20,7 @@ Configure and schedule Deltalake metadata and profiler workflows from the OpenMe
 - [Metadata Ingestion](#metadata-ingestion)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/deltalake/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/deltalake/yaml"} /%}
 
 
 ## Requirements
@@ -31,12 +31,12 @@ for Python 3.11
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Deltalake", 
-    selectServicePath: "/images/v1.3/connectors/deltalake/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/deltalake/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/deltalake/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/deltalake/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/deltalake/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/deltalake/service-connection.png",
 } 
 /%}
 
@@ -88,19 +88,19 @@ Here, we will need to inform all the common database settings (url, username, pa
 
 You will need to provide the driver to the ingestion image, and pass the `classpath` which will be used in the Spark Configuration under `sparks.driver.extraClassPath`.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}
 

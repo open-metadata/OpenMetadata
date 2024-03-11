@@ -18,7 +18,7 @@ Configure and schedule DynamoDB metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -112,11 +112,11 @@ This is a sample config for DynamoDB:
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -175,17 +175,17 @@ source:
 ```
 
 
-{% partial file="/v1.3/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
 
 
 ## dbt Integration

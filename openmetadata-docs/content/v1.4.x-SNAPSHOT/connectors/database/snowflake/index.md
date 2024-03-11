@@ -24,7 +24,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
 
 ## Requirements
 
@@ -86,12 +86,12 @@ Make sure to add the `GRANT <USAGE|OWNERSHIP> ON PROCEDURE <NAME>(<SIGNATURE>) t
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Snowflake", 
-    selectServicePath: "/images/v1.3/connectors/snowflake/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/snowflake/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/snowflake/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/snowflake/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/snowflake/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/snowflake/service-connection.png",
 } 
 /%}
 
@@ -113,18 +113,18 @@ Make sure to add the `GRANT <USAGE|OWNERSHIP> ON PROCEDURE <NAME>(<SIGNATURE>) t
 Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By default, it will skip the `TRANSIENT` and `TEMPORARY` tables.
 - **Client Session Keep Alive**: Optional Configuration to keep the session active in case the ingestion job runs for longer duration.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

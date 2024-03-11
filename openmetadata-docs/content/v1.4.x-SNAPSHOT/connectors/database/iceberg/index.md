@@ -20,7 +20,7 @@ Configure and schedule Iceberg metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/iceberg/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/iceberg/yaml"} /%}
 
 ## Requirements
 
@@ -43,12 +43,12 @@ It depends on where and how the Hive / Rest Catalog is setup and where the Icebe
 ## Metadata Ingestion
 
 {% partial
-  file="/v1.3/connectors/metadata-ingestion-ui.md"
+  file="/v1.4/connectors/metadata-ingestion-ui.md"
   variables={
     connector: "Iceberg",
-    selectServicePath: "/images/v1.3/connectors/iceberg/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/iceberg/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/iceberg/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/iceberg/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/iceberg/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/iceberg/service-connection.png",
 }
 /%}
 
@@ -187,14 +187,14 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

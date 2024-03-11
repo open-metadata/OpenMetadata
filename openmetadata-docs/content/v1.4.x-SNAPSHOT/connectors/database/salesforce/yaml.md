@@ -18,7 +18,7 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -97,11 +97,11 @@ By default, the domain `login` is used for accessing Salesforce.
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -158,14 +158,14 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.3/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

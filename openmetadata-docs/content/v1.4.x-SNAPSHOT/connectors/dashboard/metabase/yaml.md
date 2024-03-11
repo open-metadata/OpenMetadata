@@ -18,7 +18,7 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -75,11 +75,11 @@ This is a sample config for Metabase:
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/dashboard/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/dashboard/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 
 {% /codeInfoContainer %}
@@ -104,14 +104,14 @@ source:
       hostPort: <hostPort>
 ```
 
-{% partial file="/v1.3/connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

@@ -67,7 +67,7 @@ Mandatory LDAP Specific Configuration:
 
 Please see the below image for a sample LDAP Configuration in ApacheDS.
 
-{% image src="/images/v1.3/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap" /%}
+{% image src="/images/v1.4/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap" /%}
 
 Advanced LDAP Specific Configuration (Optional):
 
@@ -151,4 +151,4 @@ For the Ldap we need to set:
 - `adminPrincipals`: This is the list of admin Principal for the OpenMetadata , if mail in ldap is example@openmetadata.org, then if we want this user to be admin in the OM, we should add 'example', in this list.
 - `principalDomain`: Company Domain.
 
-{% partial file="/v1.3/deployment/configure-ingestion.md" /%}
+{% partial file="/v1.4/deployment/configure-ingestion.md" /%}

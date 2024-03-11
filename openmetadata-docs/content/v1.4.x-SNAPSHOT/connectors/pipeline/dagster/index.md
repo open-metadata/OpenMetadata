@@ -25,7 +25,7 @@ Configure and schedule Dagster metadata and profiler workflows from the OpenMeta
 - [Troubleshooting](#troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dagster/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dagster/yaml"} /%}
 
 ## Requirements
 
@@ -38,12 +38,12 @@ The ingestion framework uses [dagster graphql python client](https://docs.dagste
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Dagster", 
-    selectServicePath: "/images/v1.3/connectors/dagster/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/dagster/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/dagster/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/dagster/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/dagster/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/dagster/service-connection.png",
 } 
 /%}
 
@@ -63,12 +63,12 @@ The ingestion framework uses [dagster graphql python client](https://docs.dagste
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}

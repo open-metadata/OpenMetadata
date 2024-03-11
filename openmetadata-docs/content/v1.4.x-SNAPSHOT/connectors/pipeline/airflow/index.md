@@ -15,7 +15,7 @@ In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
 
 ## Requirements
 
@@ -27,12 +27,12 @@ You can check the version list [here](https://airflow.apache.org/docs/apache-air
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Airflow", 
-    selectServicePath: "/images/v1.3/connectors/airflow/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/airflow/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/airflow/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/airflow/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/airflow/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/airflow/service-connection.png",
 } 
 /%}
 
@@ -55,12 +55,12 @@ In terms of `connection` we support the following selections:
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}

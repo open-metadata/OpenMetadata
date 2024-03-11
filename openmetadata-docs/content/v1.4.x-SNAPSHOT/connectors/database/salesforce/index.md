@@ -19,7 +19,7 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/salesforce/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/salesforce/yaml"} /%}
 
 ## Requirements
 
@@ -31,12 +31,12 @@ These are the permissions you will require to fetch the metadata from Salesforce
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Salesforce", 
-    selectServicePath: "/images/v1.3/connectors/salesforce/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/salesforce/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/salesforce/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/salesforce/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/salesforce/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/salesforce/service-connection.png",
 } 
 /%}
 
@@ -53,18 +53,18 @@ These are the permissions you will require to fetch the metadata from Salesforce
 - **Salesforce Domain**: When connecting to Salesforce, you can specify the domain to use for accessing the platform. The common domains include `login` and `test`, and you can also utilize Salesforce My Domain.
 By default, the domain `login` is used for accessing Salesforce.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

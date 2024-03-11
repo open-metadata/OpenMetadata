@@ -26,7 +26,7 @@ As with most configuration in OpenMetadata you will first need to add a Name and
     - Webhook
 
 {% image
-    src="/images/v1.3/features/alerts-notifications/OMAlerts.gif"
+    src="/images/v1.4/features/alerts-notifications/OMAlerts.gif"
     alt="Set profiler configuration"
     caption="Configure OpenMetadata Alert"
  /%}

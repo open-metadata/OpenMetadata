@@ -23,19 +23,19 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/greenplum/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/greenplum/yaml"} /%}
 
 ## Requirements
 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Greenplum", 
-    selectServicePath: "/images/v1.3/connectors/greenplum/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/greenplum/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/greenplum/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/greenplum/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/greenplum/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/greenplum/service-connection.png",
 } 
 /%}
 
@@ -110,18 +110,18 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
     Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 - **Host and Port**: Enter the fully qualified hostname and port number for your Greenplum deployment in the Host and Port field.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

@@ -44,4 +44,4 @@ We are flattening this structure to simplify the navigation.
 
 {% /note %}
 
-{% partial file="/v1.3/connectors/storage/manifest.md" /%}
+{% partial file="/v1.4/connectors/storage/manifest.md" /%}

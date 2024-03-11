@@ -11,7 +11,7 @@ OpenMetadata supports the Installation and Running of Application on kubernetes 
 
 Below is the expected Kubernetes Deployment Architecture for OpenMetadata Application in **Production**.
 
-{% image src="/images/v1.3/deployment/kubernetes/kubernetes-architecture-prod.png" alt="Kubernetes Deployment Architecture" /%}
+{% image src="/images/v1.4/deployment/kubernetes/kubernetes-architecture-prod.png" alt="Kubernetes Deployment Architecture" /%}
 
 In the above architecture diagram, OpenMetadata Application is deployed using Helm Charts. The various kubernetes manifests that supports the installation. With the above architecture, OpenMetadata Application Connects with external dependencies which is Database, ElasticSearch and Orchestration tools like airflow.
 

@@ -37,7 +37,7 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
 
 ## Requirements
 
@@ -69,12 +69,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ## Metadata Ingestion
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "DB2", 
-    selectServicePath: "/images/v1.3/connectors/db2/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/db2/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/db2/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/db2/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/db2/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/db2/service-connection.png",
 } 
 /%}
 
@@ -90,19 +90,19 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 Note: In case you are using Db2 for IBM i, then from advanced config you need choose the `ibmi` scheme.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}
 

@@ -21,7 +21,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
 
 ## Requirements
 
@@ -49,12 +49,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "MySQL", 
-    selectServicePath: "/images/v1.3/connectors/mysql/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/mysql/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/mysql/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/mysql/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/mysql/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/mysql/service-connection.png",
 } 
 /%}
 
@@ -134,18 +134,18 @@ Executing the profiler workflow or data quality tests, will require the user to 
 - **sslCert**: Provide the path to ssl client certificate file (ssl_cert).
 - **sslKey**: Provide the path to ssl client certificate file (ssl_key).
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

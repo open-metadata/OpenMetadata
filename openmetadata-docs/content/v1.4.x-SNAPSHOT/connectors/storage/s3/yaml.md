@@ -18,7 +18,7 @@ Configure and schedule S3 metadata workflows from the CLI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -99,7 +99,7 @@ file at the bucket root.
 
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
-{% partial file="/v1.3/connectors/storage/manifest.md" /%}
+{% partial file="/v1.4/connectors/storage/manifest.md" /%}
 
 ## Metadata Ingestion
 
@@ -212,11 +212,11 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/storage/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/storage/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -279,11 +279,11 @@ source:
         # key: value
 ```
 
-{% partial file="/v1.3/connectors/yaml/storage/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/storage/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -291,7 +291,7 @@ source:
 
 
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
 
 ## Related
 

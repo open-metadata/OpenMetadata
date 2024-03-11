@@ -12,7 +12,7 @@ This guide will help you upgrade an OpenMetadata deployment using release binari
 This guide assumes that you have an OpenMetadata deployment that you installed and configured following the
 [Bare Metal deployment](/deployment/bare-metal) guide.
 
-{% partial file="/v1.3/deployment/upgrade/upgrade-prerequisites.md" /%}
+{% partial file="/v1.4/deployment/upgrade/upgrade-prerequisites.md" /%}
 
 # Upgrade process
 
@@ -88,4 +88,4 @@ binaries. You may restart the server by running the following command.
 ./bin/openmetadata.sh start
 ```
 
-{% partial file="/v1.3/deployment/upgrade/post-upgrade-steps.md" /%}
+{% partial file="/v1.4/deployment/upgrade/post-upgrade-steps.md" /%}

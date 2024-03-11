@@ -23,7 +23,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -109,11 +109,11 @@ This is a sample config for Redshift:
 
 
 
-{% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -167,26 +167,26 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.3/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
 
 
-{% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "redshift"} /%}
+{% partial file="/v1.4/connectors/yaml/query-usage.md" variables={connector: "redshift"} /%}
 
-{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "redshift"} /%}
+{% partial file="/v1.4/connectors/yaml/lineage.md" variables={connector: "redshift"} /%}
 
-{% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "redshift"} /%}
+{% partial file="/v1.4/connectors/yaml/data-profiler.md" variables={connector: "redshift"} /%}
 
-{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

@@ -22,7 +22,7 @@ Please, ensure you have a Bucket Policy with the permissions explained in the re
 
 
 {% image
-src="/images/v1.3/connectors/datalake/troubleshoot-clientId.png"
+src="/images/v1.4/connectors/datalake/troubleshoot-clientId.png"
 alt="Configure service connection"
 caption="Find Client ID" /%}
 

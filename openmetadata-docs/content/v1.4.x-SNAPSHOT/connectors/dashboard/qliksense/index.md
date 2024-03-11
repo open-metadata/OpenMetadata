@@ -18,7 +18,7 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/qliksense/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/qliksense/yaml"} /%}
 
 ## Requirements
 
@@ -29,12 +29,12 @@ To deploy OpenMetadata, check the Deployment guides.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "QlikSense", 
-    selectServicePath: "/images/v1.3/connectors/qliksense/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/qliksense/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/qliksense/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/qliksense/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/qliksense/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/qliksense/service-connection.png",
 } 
 /%}
 
@@ -84,12 +84,12 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}

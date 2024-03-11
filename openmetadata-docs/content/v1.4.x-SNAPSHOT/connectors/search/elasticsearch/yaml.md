@@ -18,7 +18,7 @@ Configure and schedule Elasticsearch metadata and profiler workflows from the Op
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -117,11 +117,11 @@ This is a sample config for Elasticsearch:
 **connectionTimeoutSecs**: Connection timeout configuration for communicating with Elasticsearch APIs.
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/search/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/search/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -164,14 +164,14 @@ source:
       connectionTimeoutSecs: 30
 ```
 
-{% partial file="/v1.3/connectors/yaml/search/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/search/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

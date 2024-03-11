@@ -24,7 +24,7 @@ OpenMetadata supports a hierarchical team structure with **teamType** that can b
 {% /note %}
 
 {% image
-src="/images/v1.3/how-to-guides/teams-and-users/teams.png"
+src="/images/v1.4/how-to-guides/teams-and-users/teams.png"
 alt="team-structure"
 caption="Team Hierarchy in OpenMetadata"
 /%}

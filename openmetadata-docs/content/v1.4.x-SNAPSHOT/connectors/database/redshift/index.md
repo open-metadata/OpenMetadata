@@ -23,7 +23,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
 
 ## Requirements
 
@@ -48,12 +48,12 @@ For the usage and lineage workflow, the user will need `SELECT` privilege on `ST
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Redshift", 
-    selectServicePath: "/images/v1.3/connectors/redshift/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/redshift/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/redshift/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/redshift/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/redshift/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/redshift/service-connection.png",
 } 
 /%}
 
@@ -91,18 +91,18 @@ There are a couple of types of SSL modes that Redshift supports which can be add
 
 For more information, you can visit [Redshift SSL documentation](https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html)
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

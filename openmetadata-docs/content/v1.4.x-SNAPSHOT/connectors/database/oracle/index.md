@@ -22,7 +22,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
 
 ## Requirements
 
@@ -57,12 +57,12 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Oracle", 
-    selectServicePath: "/images/v1.3/connectors/oracle/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/oracle/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/oracle/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/oracle/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/oracle/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/oracle/service-connection.png",
 } 
 /%}
 
@@ -83,18 +83,18 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
     We are shipping the binaries for ARM and AMD architectures from [here](https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html)
     and [here](https://www.oracle.com/database/technologies/instant-client/linux-arm-aarch64-downloads.html) for the instant client version 19.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

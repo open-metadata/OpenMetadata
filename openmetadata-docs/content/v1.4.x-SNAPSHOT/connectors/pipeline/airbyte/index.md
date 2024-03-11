@@ -17,17 +17,17 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airbyte/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airbyte/yaml"} /%}
 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Airbyte", 
-    selectServicePath: "/images/v1.3/connectors/airbyte/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/airbyte/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/airbyte/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/airbyte/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/airbyte/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/airbyte/service-connection.png",
 } 
 /%}
 
@@ -40,12 +40,12 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}

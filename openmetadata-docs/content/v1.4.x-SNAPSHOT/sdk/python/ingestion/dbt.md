@@ -75,5 +75,5 @@ _parse_data_model()
 The models which are extracted are shown in the OpenMetadata UI in the `dbt` tab
 
 {% image
-src="/images/v1.3/sdk/python/ingestion/extracting-dbt-data.png"
+src="/images/v1.4/sdk/python/ingestion/extracting-dbt-data.png"
 alt="Extracting dbt data" %}

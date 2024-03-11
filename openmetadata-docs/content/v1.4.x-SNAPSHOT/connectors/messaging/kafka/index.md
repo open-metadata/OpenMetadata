@@ -18,7 +18,7 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kafka/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kafka/yaml"} /%}
 
 ## Requirements
 
@@ -29,12 +29,12 @@ The ingestion of the Kafka topics' schema is done separately by configuring the 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Kafka", 
-    selectServicePath: "/images/v1.3/connectors/kafka/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/kafka/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/kafka/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/kafka/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/kafka/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/kafka/service-connection.png",
 } 
 /%}
 
@@ -59,12 +59,12 @@ To ingest the topic schema `Schema Registry URL` must be passed
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/messaging/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/messaging/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}

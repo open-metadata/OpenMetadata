@@ -10,7 +10,7 @@ Creating a Team in OpenMetadata is easy. Decide on the `teamType` that you would
 **1.** Click on **Settings >> Teams**. Further, navigate to the relevant `BusinessUnit`, `Division`, or `Department` where you would like to create a new team. Click on **Add Team**.
 
 {% image
-src="/images/v1.3/how-to-guides/teams-and-users/add-team1.png"
+src="/images/v1.4/how-to-guides/teams-and-users/add-team1.png"
 alt="select-team-type"
 caption="Add a Team"
 /%}
@@ -24,7 +24,7 @@ caption="Add a Team"
 {% /note %}
 
 {% image
-src="/images/v1.3/how-to-guides/teams-and-users/add-team2.png"
+src="/images/v1.4/how-to-guides/teams-and-users/add-team2.png"
 alt="select-team-type"
 caption="Enter the Team Details"
 /%}
@@ -32,7 +32,7 @@ caption="Enter the Team Details"
 **3.** The new team has been created. You can further add Users or create another Team within it.
 
 {% image
-src="/images/v1.3/how-to-guides/teams-and-users/add-team3.png"
+src="/images/v1.4/how-to-guides/teams-and-users/add-team3.png"
 alt="select-team-type"
 caption="New Team Created"
 /%}

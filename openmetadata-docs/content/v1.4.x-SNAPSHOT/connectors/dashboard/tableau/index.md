@@ -19,7 +19,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/tableau/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/tableau/yaml"} /%}
 
 ## Requirements
 
@@ -31,12 +31,12 @@ For more information on enabling the Tableau Metadata APIs follow the link [here
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Tableau", 
-    selectServicePath: "/images/v1.3/connectors/tableau/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/tableau/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/tableau/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/tableau/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/tableau/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/tableau/service-connection.png",
 } 
 /%}
 
@@ -92,12 +92,12 @@ For more information to get a Personal Access Token please visit this [link](htt
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}

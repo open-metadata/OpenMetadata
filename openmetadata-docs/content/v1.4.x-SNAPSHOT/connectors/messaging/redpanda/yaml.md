@@ -18,7 +18,7 @@ Configure and schedule Redpanda metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -115,11 +115,11 @@ following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/messaging/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/messaging/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -158,14 +158,14 @@ source:
       schemaRegistryConfig: {}
 ```
 
-{% partial file="/v1.3/connectors/yaml/messaging/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/messaging/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

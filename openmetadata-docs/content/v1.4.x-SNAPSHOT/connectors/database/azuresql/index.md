@@ -24,7 +24,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/azuresql/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/azuresql/yaml"} /%}
 
 ## Requirements
 
@@ -43,12 +43,12 @@ GRANT SELECT TO Mary;
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Azure SQL", 
-    selectServicePath: "/images/v1.3/connectors/azuresql/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/azuresql/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/azuresql/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/azuresql/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/azuresql/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/azuresql/service-connection.png",
 } 
 /%}
 
@@ -64,18 +64,18 @@ GRANT SELECT TO Mary;
 - **Driver**: Connecting to AzureSQL requires ODBC driver to be installed. Specify ODBC driver name in the field.
 You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16). In case of docker or kubernetes deployment this driver comes out of the box with version  `ODBC Driver 18 for SQL Server`.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

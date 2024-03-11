@@ -24,7 +24,7 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
+{% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
 
 ## Requirements
 
@@ -57,7 +57,7 @@ Make sure the SQL server that you are trying to connect is in running state.
 This step allow the sql server to accept remote connection request.
 
 {% image
-src="/images/v1.3/connectors/mssql/remote-connection.png"
+src="/images/v1.4/connectors/mssql/remote-connection.png"
 alt="Remote Connection"
 caption="Rm"
 /%}
@@ -86,12 +86,12 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.3/connectors/metadata-ingestion-ui.md" 
+  file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "MSSQL", 
-    selectServicePath: "/images/v1.3/connectors/mssql/select-service.png",
-    addNewServicePath: "/images/v1.3/connectors/mssql/add-new-service.png",
-    serviceConnectionPath: "/images/v1.3/connectors/mssql/service-connection.png",
+    selectServicePath: "/images/v1.4/connectors/mssql/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/mssql/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/mssql/service-connection.png",
 } 
 /%}
 
@@ -107,18 +107,18 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 - **URI String**: In case of a `pyodbc` connection.
 - **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 
-{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.3/connectors/test-connection.md" /%}
+{% partial file="/v1.4/connectors/test-connection.md" /%}
 
-{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.4/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.3/connectors/troubleshooting.md" /%}
+{% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.3/connectors/database/related.md" /%}
+{% partial file="/v1.4/connectors/database/related.md" /%}

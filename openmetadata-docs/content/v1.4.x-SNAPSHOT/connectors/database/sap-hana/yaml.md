@@ -21,7 +21,7 @@ Configure and schedule SAP Hana metadata and profiler workflows from the OpenMet
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -116,11 +116,11 @@ If you have a User Store configured, then:
 
 {% /codeInfo %}
 
-{% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 #### Advanced Configuration
 
 {% codeInfo srNumber=7 %}
@@ -179,21 +179,21 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.3/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "sapHana"} /%}
+{% partial file="/v1.4/connectors/yaml/data-profiler.md" variables={connector: "sapHana"} /%}
 
-{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 
