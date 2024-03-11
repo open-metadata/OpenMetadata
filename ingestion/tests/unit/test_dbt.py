@@ -46,6 +46,7 @@ mock_dbt_config = {
             "config": {
                 "type": "DBT",
                 "dbtConfigSource": {
+                    "dbtConfigType": "local",
                     "dbtCatalogFilePath": "sample/dbt_files/catalog.json",
                     "dbtManifestFilePath": "sample/dbt_files/manifest.json",
                     "dbtRunResultsFilePath": "sample/dbt_files/run_results.json",

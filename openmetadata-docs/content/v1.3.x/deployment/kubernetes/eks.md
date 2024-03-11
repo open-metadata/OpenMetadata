@@ -23,9 +23,9 @@ It is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html
 
 We support 
 
-- Amazon RDS (MySQL) engine version 8 or greater
-- Amazon RDS (PostgreSQL) engine version between 12 or greater
-- Amazon OpenSearch engine version 2.7
+- Amazon RDS (MySQL) engine version 8 or higher
+- Amazon RDS (PostgreSQL) engine version 12 or higher
+- Amazon OpenSearch engine version 2.X (upto 2.7)
 
 {%note noteType="Tip"%}
 When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch, as you can see in the ElasticSearch configuration example below.
@@ -72,7 +72,7 @@ openmetadata:
   ...
 ```
 
-Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](/quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
 
 Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 

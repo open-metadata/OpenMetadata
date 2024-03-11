@@ -40,7 +40,7 @@ import { ReactComponent as IconExternalLink } from '../../../../assets/svg/exter
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { APP_UI_SCHEMA } from '../../../../constants/Applications.constant';
+
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../../enums/service.enum';
@@ -93,6 +93,7 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
+  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -258,7 +259,7 @@ const AppDetails = () => {
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
+        setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
       }
     }
   };
@@ -345,7 +346,7 @@ const AppDetails = () => {
                     okText={t('label.submit')}
                     schema={jsonSchema}
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                    uiSchema={APP_UI_SCHEMA}
+                    uiSchema={UiSchema}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}
@@ -453,7 +454,11 @@ const AppDetails = () => {
               placement="bottomRight"
               trigger={['click']}
               onOpenChange={setShowActions}>
-              <Tooltip placement="right">
+              <Tooltip
+                placement="topRight"
+                title={t('label.manage-entity', {
+                  entity: t('label.application'),
+                })}>
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"

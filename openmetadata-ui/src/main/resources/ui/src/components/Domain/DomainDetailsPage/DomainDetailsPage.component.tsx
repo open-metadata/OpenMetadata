@@ -15,6 +15,7 @@ import {
   Button,
   Col,
   Dropdown,
+  Modal,
   Row,
   Space,
   Tabs,
@@ -22,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
+import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -51,7 +53,12 @@ import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+  ERROR_MESSAGE,
+  getEntityDetailsPath,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -61,7 +68,6 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
-import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
@@ -76,7 +82,6 @@ import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
-  getDataProductsDetailsPath,
   getDomainDetailsPath,
   getDomainPath,
   getDomainVersionsPath,
@@ -91,9 +96,9 @@ import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
+import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import '../domain.less';
-import { DomainTabs } from '../DomainPage.interface';
+import { DomainFormType, DomainTabs } from '../DomainPage.interface';
 import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
 import DocumentationTab from '../DomainTabs/DocumentationTab/DocumentationTab.component';
@@ -106,6 +111,7 @@ const DomainDetailsPage = ({
   isVersionsView = false,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
+  const [form] = useForm();
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
   const { tab: activeTab, version } =
@@ -198,7 +204,12 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(getDataProductsDetailsPath(res.fullyQualifiedName ?? ''));
+        history.push(
+          getEntityDetailsPath(
+            EntityType.DATA_PRODUCT,
+            res.fullyQualifiedName ?? ''
+          )
+        );
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -336,6 +347,11 @@ const DomainDetailsPage = ({
   const handleAssetClick = useCallback((asset) => {
     setPreviewAsset(asset);
   }, []);
+
+  const handleCloseDataProductModal = useCallback(
+    () => setShowAddDataProductModal(false),
+    []
+  );
 
   const manageButtonContent: ItemType[] = [
     ...(editDisplayNamePermission
@@ -573,7 +589,13 @@ const DomainDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                      />
+                    }
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {
@@ -598,7 +620,11 @@ const DomainDetailsPage = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: t('label.domain'),
+                    })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
@@ -627,13 +653,41 @@ const DomainDetailsPage = ({
       </Row>
 
       {showAddDataProductModal && (
-        <AddDataProductModal
+        <Modal
+          centered
+          cancelText={t('label.cancel')}
+          className="add-data-product-modal"
+          closable={false}
+          footer={[
+            <Button
+              key="cancel-btn"
+              type="link"
+              onClick={handleCloseDataProductModal}>
+              {t('label.cancel')}
+            </Button>,
+            <Button
+              data-testid="save-data-product"
+              key="save-btn"
+              type="primary"
+              onClick={() => form.submit()}>
+              {t('label.save')}
+            </Button>,
+          ]}
+          maskClosable={false}
+          okText={t('label.submit')}
           open={showAddDataProductModal}
-          onCancel={() => setShowAddDataProductModal(false)}
-          onSubmit={(data: CreateDomain | CreateDataProduct) =>
-            addDataProduct(data as CreateDataProduct)
-          }
-        />
+          title={t('label.add-entity', { entity: t('label.data-product') })}
+          width={750}
+          onCancel={handleCloseDataProductModal}>
+          <AddDomainForm
+            isFormInDialog
+            formRef={form}
+            loading={false}
+            type={DomainFormType.DATA_PRODUCT}
+            onCancel={handleCloseDataProductModal}
+            onSubmit={addDataProduct}
+          />
+        </Modal>
       )}
       {assetModalVisible && (
         <AssetSelectionModal

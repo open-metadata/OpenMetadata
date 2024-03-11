@@ -16,7 +16,6 @@ In this section, we provide guides and references to use the Couchbase connector
 
 Configure and schedule Couchbase metadata workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/couchbase/yaml"} /%}

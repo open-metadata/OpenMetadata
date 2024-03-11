@@ -23,7 +23,7 @@ import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersi
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getVersionPathWithTab } from '../../constants/constants';
+import { getVersionPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
@@ -86,7 +86,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.SEARCH_INDEX,
         entityFqn,
         String(version),
