@@ -142,9 +142,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     boolean containsViewAll = operations.stream().anyMatch(o -> o.equals(VIEW_ALL));
     if (containsViewAll) {
       operations =
-          operations.stream()
-              .filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o))
-              .collect(Collectors.toList());
+          operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).toList();
     }
 
     // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are
@@ -152,9 +150,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     boolean containsEditAll = operations.stream().anyMatch(o -> o.equals(EDIT_ALL));
     if (containsEditAll) {
       operations =
-          operations.stream()
-              .filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o))
-              .collect(Collectors.toList());
+          operations.stream().filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o)).toList();
     }
     return operations;
   }
