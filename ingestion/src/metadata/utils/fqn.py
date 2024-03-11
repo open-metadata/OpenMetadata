@@ -219,6 +219,8 @@ def _(
     if entity:
         return str(entity.fullyQualifiedName.__root__)
 
+    return None
+
 
 @fqn_build_registry.add(Database)
 def _(
@@ -597,6 +599,17 @@ def search_database_schema_from_es(
     fetch_multiple_entities: bool = False,
     fields: Optional[str] = None,
 ):
+    """
+    Find database schema entity in elasticsearch index.
+
+    :param metadata: OM Client
+    :param database_name: name of database in which we are searching for database schema
+    :param schema_name: name of schema we are searching for
+    :param service_name: name of service in which we are searching for database schema
+    :param fetch_multiple_entities: should single match be returned or all matches
+    :param fields: additional fields to return
+    :return: entity / entities matching search criteria
+    """
     if not schema_name:
         raise FQNBuildingException(
             f"Schema Name should be informed, but got schema_name=`{schema_name}`"
