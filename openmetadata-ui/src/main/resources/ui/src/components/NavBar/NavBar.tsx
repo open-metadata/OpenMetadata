@@ -45,7 +45,6 @@ import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
-
 import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
@@ -138,8 +137,6 @@ const NavBar = ({
     }
   };
 
-  const handleFeatureModal = (value: boolean) => setIsFeatureModalOpen(value);
-
   const renderAlertCards = useMemo(() => {
     const cardList = popupAlertsCardsClassBase.alertsCards();
 
@@ -153,7 +150,7 @@ const NavBar = ({
   const handleSupportClick = ({ key }: MenuInfo) => {
     switch (key) {
       case HELP_ITEMS_ENUM.WHATS_NEW:
-        handleFeatureModal(true);
+        setIsFeatureModalOpen(true);
 
         break;
       default:
@@ -356,7 +353,7 @@ const NavBar = ({
     refreshPage();
   }, []);
 
-  const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
+  const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
 
   const handleSelectOption = useCallback((text: string) => {
     history.replace({
