@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -21,7 +22,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import { getEntityDetailsPath } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  getEntityDetailsPath,
+} from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -443,10 +447,10 @@ const DashboardDetails = ({
               <Typography.Link href={record.sourceUrl} target="_blank">
                 <span className="break-all">{chartName}</span>
 
-                <ExternalLinkIcon
-                  className="m-l-xs flex-none"
-                  height={14}
-                  width={14}
+                <Icon
+                  className="m-l-xs flex-none align-middle"
+                  component={ExternalLinkIcon}
+                  style={{ ...DATA_ASSET_ICON_DIMENSION }}
                 />
               </Typography.Link>
             </div>

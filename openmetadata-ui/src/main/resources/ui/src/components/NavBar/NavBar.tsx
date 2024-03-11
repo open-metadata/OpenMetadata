@@ -24,10 +24,12 @@ import {
   Space,
   Tooltip,
 } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
   useEffect,
@@ -43,13 +45,16 @@ import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
+
 import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { getVersion } from '../../rest/miscAPI';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
@@ -67,11 +72,13 @@ import {
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
+import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
@@ -87,14 +94,11 @@ import popupAlertsCardsClassBase from './PopupAlertClassBase';
 const cookieStorage = new CookieStorage();
 
 const NavBar = ({
-  supportDropdown,
   searchValue,
-  isFeatureModalOpen,
   isTourRoute = false,
   pathname,
   isSearchBoxOpen,
   handleSearchBoxOpen,
-  handleFeatureModal,
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
@@ -117,6 +121,24 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
+  const [version, setVersion] = useState<string>();
+
+  const fetchOMVersion = async () => {
+    try {
+      const res = await getVersion();
+      setVersion(res.version);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.version'),
+        })
+      );
+    }
+  };
+
+  const handleFeatureModal = (value: boolean) => setIsFeatureModalOpen(value);
 
   const renderAlertCards = useMemo(() => {
     const cardList = popupAlertsCardsClassBase.alertsCards();
@@ -127,6 +149,17 @@ const NavBar = ({
       return <Component key={key} />;
     });
   }, []);
+
+  const handleSupportClick = ({ key }: MenuInfo) => {
+    switch (key) {
+      case HELP_ITEMS_ENUM.WHATS_NEW:
+        handleFeatureModal(true);
+
+        break;
+      default:
+        break;
+    }
+  };
 
   const entitiesSelect = useMemo(
     () => (
@@ -301,6 +334,10 @@ const NavBar = ({
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
     };
   }, [socket]);
+
+  useEffect(() => {
+    fetchOMVersion();
+  }, []);
 
   useEffect(() => {
     const targetNode = document.body;
@@ -509,7 +546,10 @@ const NavBar = ({
           </Dropdown>
 
           <Dropdown
-            menu={{ items: supportDropdown }}
+            menu={{
+              items: getHelpDropdownItems(version),
+              onClick: handleSupportClick,
+            }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
             trigger={['click']}>
