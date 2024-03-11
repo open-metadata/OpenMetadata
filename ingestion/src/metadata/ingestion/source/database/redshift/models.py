@@ -58,10 +58,10 @@ class RedshiftTableMap(BaseModel):
         If the table is already registered in the map, it does nothing.
         This relies on the processing of the table being ordered by latest changes first.
         """
-        if not schema in self.table_map:
+        if schema not in self.table_map:
             self.table_map[schema] = {table.name: table}
         else:
-            if not table.name in self.table_map[schema]:
+            if table.name not in self.table_map[schema]:
                 self.table_map[schema][table.name] = table
 
     def get_deleted(self, schema_name: SchemaName) -> List[TableName]:

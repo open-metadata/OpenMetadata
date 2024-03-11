@@ -254,23 +254,23 @@ class RedshiftSource(
         yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
     def _set_incremental_table_processor(self, database: str):
-        self.incremental_table_processor = RedshiftIncrementalTableProcessor.create(
-            self.connection, self.inspector.default_schema_name
-        )
+        if self.incremental.enabled:
+            self.incremental_table_processor = RedshiftIncrementalTableProcessor.create(
+                self.connection, self.inspector.default_schema_name
+            )
 
-        self.incremental_table_processor.set_table_map(
-            database=database, start_date=self.incremental.start_datetime_utc
-        )
+            self.incremental_table_processor.set_table_map(
+                database=database, start_date=self.incremental.start_datetime_utc
+            )
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             self.inspector = inspect(self.engine)
             self.get_partition_details()
 
-            if self.incremental.enabled:
-                self._set_incremental_table_processor(
-                    self.config.serviceConnection.__root__.config.database
-                )
+            self._set_incremental_table_processor(
+                self.config.serviceConnection.__root__.config.database
+            )
 
             yield self.config.serviceConnection.__root__.config.database
         else:
@@ -295,8 +295,7 @@ class RedshiftSource(
                     self.set_inspector(database_name=new_database)
                     self.get_partition_details()
 
-                    if self.incremental.enabled:
-                        self._set_incremental_table_processor(new_database)
+                    self._set_incremental_table_processor(new_database)
 
                     yield new_database
                 except Exception as exc:

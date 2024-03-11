@@ -66,7 +66,7 @@ class BigQueryIncrementalTableProcessor:
             timestamp = entry.timestamp
             deleted = self._is_table_deleted(entry)
 
-            if not table_name in table_map:
+            if table_name not in table_map:
                 table_map[table_name] = BigQueryTable(
                     name=table_name, timestamp=timestamp, deleted=deleted
                 )
