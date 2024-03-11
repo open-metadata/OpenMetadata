@@ -174,12 +174,31 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter test case by status",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
+          @QueryParam("testCaseStatus")
+          String status,
+      @Parameter(
+              description = "Filter for test case type (e.g. column, table, all",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"column", "table", "all"}))
+          @QueryParam("testCaseType")
+          @DefaultValue("all")
+          String type) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString())
-            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString());
+            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString())
+            .addQueryParam("testCaseStatus", status)
+            .addQueryParam("testCaseType", type);
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);

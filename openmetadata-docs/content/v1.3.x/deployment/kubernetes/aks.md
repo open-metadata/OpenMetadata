@@ -5,6 +5,62 @@ slug: /deployment/kubernetes/aks
 # Openmetadata Deployment on Azure Kubernetes Service Cluster
 Openmetadata can be deployed on Azure Kubernetes Service. It however requires certain cloud specific configurations with regards to setting up storage accounts for Airflow which is one of its dependencies.
 
+## Prerequisites
+
+### Azure Services for Database and Search Engine as Elastic Cloud
+
+It is recommended to use [Azure SQL](https://azure.microsoft.com/en-in/products/azure-sql/database) and [Elastic Cloud on Azure](https://www.elastic.co/partners/microsoft-azure) for Production Deployments.
+
+We support 
+
+- Azure SQL (MySQL) engine version 8 or higher
+- Azure SQL (PostgreSQL) engine version 12 or higher
+- Elastic Cloud (ElasticSearch version 8.10.2)
+
+Once you have the Azure SQL and Elastic Cloud on Azure configured, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <ELASTIC_CLOUD_ENDPOINT_WITHOUT_HTTPS>
+      searchType: elasticsearch
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: true
+        username: <ELASTIC_CLOUD_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <AZURE_SQL_ENDPOINT>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      dbUseSSL: true
+      databaseName: <AZURE_SQL_DATABASE_NAME>
+      auth:
+        username: <AZURE_SQL_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
+```
+
+We recommend -
+- Azure SQL to be Multi Zone Available and Production Workload Environment
+- Elastic Cloud Environment with multiple zones and minimum 2 nodes
+
+Make sure to create database and elastic cloud credentials as Kubernetes Secrets mentioned [here](/quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
+
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 
 ### Step 1 - Create a AKS cluster
 If you are deploying on a new cluster set the `EnableAzureDiskFileCSIDriver=true` to enable container storage interface storage drivers.

@@ -12,7 +12,6 @@
  */
 import {
   interceptURL,
-  login,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -293,7 +292,7 @@ const checkPermission = (permission?: {
   viewTests?: boolean;
   editDisplayName?: boolean;
 }) => {
-  login(USER_DETAILS.email, USER_DETAILS.password);
+  cy.login(USER_DETAILS.email, USER_DETAILS.password);
   visitEntityDetailsPage({
     term: DATABASE_SERVICE.entity.name,
     serviceName: DATABASE_SERVICE.service.name,
@@ -352,7 +351,7 @@ describe('Permissions', { tags: 'Settings' }, () => {
       { op: 'add', path: '/rules/0/operations/5', value: 'EditQueries' },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
@@ -385,7 +384,7 @@ describe('Permissions', { tags: 'Settings' }, () => {
       },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
