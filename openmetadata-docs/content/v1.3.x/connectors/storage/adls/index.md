@@ -1,83 +1,35 @@
 ---
-title: Azure
-slug: /connectors/storage/azure
+title: ADLS
+slug: /connectors/storage/ADLS
 ---
 
 {% connectorDetailsHeader
-name="Azure"
+name="ADLS"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
-This page contains the setup guide and reference information for the Azure connector.
+This page contains the setup guide and reference information for the ADLS connector.
 
-Configure and schedule Azure metadata workflows from the OpenMetadata UI:
+Configure and schedule ADLS metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/azure/yaml"} /%}
+{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/ADLS/yaml"} /%}
 
 ## Requirements
 
-We need the following permissions in AWS:
+We need the following permissions in Azure Data Lake Storage:
 
-### Azure Permissions
+### ADLS Permissions
 
-For all the buckets that we want to ingest, we need to provide the following:
-- `Azure:ListBucket`
-- `Azure:GetObject`
-- `Azure:GetBucketLocation`
-- `Azure:ListAllMyBuckets`
+To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need an **App Registration** with the following permissions on the Storage Account:
+- Storage Blob Data Contributor
+- Storage Queue Data Contributor
 
-Note that the `Resources` should be all the buckets that you'd like to scan. A possible policy could be:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "Azure:GetObject",
-                "Azure:ListBucket",
-                "Azure:GetBucketLocation",
-                "Azure:ListAllMyBuckets"
-            ],
-            "Resource": [
-                "arn:aws:Azure:::*"
-            ]
-        }
-    ]
-}
-```
-
-### CloudWatch Permissions
-
-Which is used to fetch the total size in bytes for a bucket and the total number of files. It requires:
-- `cloudwatch:GetMetricData`
-- `cloudwatch:ListMetrics`
-
-The policy would look like:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "VisualEditor0",
-            "Effect": "Allow",
-            "Action": [
-                "cloudwatch:GetMetricData",
-                "cloudwatch:ListMetrics"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
-```
 
 ### OpenMetadata Manifest
 
@@ -140,14 +92,14 @@ caption="Add a new Service from the Storage Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select Azure as the service type and click Next.
+Select ADLS as the service type and click Next.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.3/connectors/Azure/select-service.png"
+  src="/images/v1.3/connectors/adls/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -173,7 +125,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.3/connectors/Azure/add-new-service.png"
+  src="/images/v1.3/connectors/adls/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -187,7 +139,7 @@ from.
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your Azure service as
+you've configured the connector to read from your ADLS service as
 desired.
 
 {% /stepDescription %}
@@ -195,7 +147,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.3/connectors/Azure/service-connection.png"
+  src="/images/v1.3/connectors/adls/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
