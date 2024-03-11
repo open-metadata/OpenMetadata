@@ -674,7 +674,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "400", description = "System App cannot be uninstalled"),
+        @ApiResponse(responseCode = "400", description = "System entity {name} of type SystemApp can not be deleted."),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
   public Response delete(
@@ -705,7 +705,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "400", description = "System App cannot be uninstalled"),
+        @ApiResponse(responseCode = "400", description = "System entity {name} of type SystemApp can not be deleted."),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
   public Response delete(
