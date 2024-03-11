@@ -23,8 +23,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -40,6 +43,7 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   private EntityReference TABLE_REF;
   private String QUERY;
@@ -226,6 +230,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Test
+  @Order(1)
   void test_sensitivePIIQuery() throws IOException {
     CreateQuery create = createRequest("sensitiveQuery");
     create.withTags(List.of(PII_SENSITIVE_TAG_LABEL));
@@ -268,10 +273,25 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         () -> createEntity(postDuplicateCreate, ADMIN_AUTH_HEADERS),
         Response.Status.CONFLICT,
         "Entity already exists");
-    assertResponse(
-        () -> patchEntity(updatedQuery.getId(), origJson, updatedQuery, ADMIN_AUTH_HEADERS),
-        Response.Status.CONFLICT,
-        "Entity already exists");
+  }
+
+  @Test
+  void test_patchQueryMustUpdateChecksum(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    String queryText = String.format(QUERY, "test2");
+    query.setQuery(queryText);
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldUpdated(change, "query", create.getQuery(), queryText);
+    fieldUpdated(
+        change, "checksum", EntityUtil.hash(create.getQuery()), EntityUtil.hash(queryText));
+    patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(updatedQuery.getQuery(), queryText);
+    assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
   }
 
   public ResultList<Query> getQueries(
