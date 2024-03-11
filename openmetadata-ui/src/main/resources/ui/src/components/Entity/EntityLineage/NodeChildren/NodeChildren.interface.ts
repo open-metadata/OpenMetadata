@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,23 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { MlFeature } from '../../../../generated/entity/data/mlmodel';
+import { Column } from '../../../../generated/entity/data/table';
+import { EntityReference } from '../../../../generated/entity/type';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
-@import (reference) url('../../../styles//antd-master.less');
-
-.sidebar-icon-container {
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  width: 46px;
-  box-sizing: content-box !important;
-  border: @global-border;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: @padding-xs;
-  background-color: @grey-1;
-  border-radius: @border-radius-base;
-  margin: auto;
+export interface NodeChildrenProps {
+  node: SearchedDataProps['data'][number]['_source'];
+  isConnectable: boolean;
 }
+
+export type EntityChildren = Column[] | EntityReference[] | MlFeature[];
