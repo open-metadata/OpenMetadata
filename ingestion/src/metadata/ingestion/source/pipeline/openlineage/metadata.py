@@ -108,18 +108,25 @@ class OpenlineageSource(PipelineServiceSource):
         if len(symlinks) > 0:
             try:
                 # @todo verify if table can have multiple identifiers pointing at it
-                name_parts = symlinks[0]["name"].split(".")
+                name = symlinks[0]["name"]
             except (KeyError, IndexError):
                 raise ValueError(
                     "input table name cannot be retrieved from symlinks.identifiers facet."
                 )
         else:
             try:
-                name_parts = data["name"].split(".")
+                name = data["name"]
             except KeyError:
                 raise ValueError(
                     "input table name cannot be retrieved from name attribute."
                 )
+
+        name_parts = name.split(".")
+
+        if len(name_parts) < 2:
+            raise ValueError(
+                f"input table name should be of 'schema.table' format! Received: {name}"
+            )
 
         # we take last two elements to explicitly collect schema and table names
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
