@@ -197,6 +197,11 @@
       "type": "boolean",
       "default": true
     },
+    "systemApp": {
+      "description": "A system app cannot be uninstall.",
+      "type": "boolean",
+      "default": false
+    },
     "appConfiguration": {
       "description": "Application Configuration object.",
       "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
