@@ -81,49 +81,44 @@ public class MigrationUtil {
 
       Table table = JsonUtils.readValue(jsonObj.toString(), Table.class);
 
-      if (tablePartition.isEmpty()) {
-        LOG.info("Table {} does not have partition details", table.getId());
-        return;
-      }
-      JsonArray partitionColumns = tablePartition.getJsonArray("columns");
+      if (!tablePartition.isEmpty()) {
+        JsonArray partitionColumns = tablePartition.getJsonArray("columns");
 
-      List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<>();
+        List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<>();
 
-      if ((partitionColumns == null || partitionColumns.isEmpty())
-          && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
-        // BigQuery tables have pseudo columns for partitioning that were not being set in the
-        // partitionColumns entity
-        String interval = tablePartition.getString("interval", null);
-        if (interval != null) {
-          JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
-          switch (interval) {
-            case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
-            case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
+        if ((partitionColumns == null || partitionColumns.isEmpty())
+                && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
+          // BigQuery tables can have pseudo columns for partitioning that were not being set in the
+          // partitionColumns entity
+          String interval = tablePartition.getString("interval", null);
+          if (interval != null) {
+            JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+            switch (interval) {
+              case "HOUR" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONTIME").build();
+              case "DAY" -> partitionColumns = jsonArrayBuilder.add("_PARTITIONDATE").build();
+            }
           }
         }
-      }
 
-      if (partitionColumns == null || partitionColumns.isEmpty()) {
-        LOG.info(
-            "Columns partition details field for Table {} is empty. Nothing to do. Skipping migration.",
-            table.getId());
+        if (partitionColumns != null && !partitionColumns.isEmpty()) {
+          for (JsonValue column : partitionColumns) {
+            PartitionColumnDetails partitionColumnDetail = new PartitionColumnDetails();
+            partitionColumnDetail.setColumnName(((JsonString) column).getString());
+            String intervalType = tablePartition.getString("intervalType", null);
+            if (intervalType != null) {
+              partitionColumnDetail.setIntervalType(PartitionIntervalTypes.fromValue(intervalType));
+            }
+            partitionColumnDetail.setInterval(tablePartition.getString("interval", null));
+            partitionColumnDetails.add(partitionColumnDetail);
+          }
+
+          table.withTablePartition(new TablePartition().withColumns(partitionColumnDetails));
+
+          collectionDAO.tableDAO().update(table);
+        }
         return;
       }
-
-      for (JsonValue column : partitionColumns) {
-        PartitionColumnDetails partitionColumnDetail = new PartitionColumnDetails();
-        partitionColumnDetail.setColumnName(((JsonString) column).getString());
-        String intervalType = tablePartition.getString("intervalType", null);
-        if (intervalType != null) {
-          partitionColumnDetail.setIntervalType(PartitionIntervalTypes.fromValue(intervalType));
-        }
-        partitionColumnDetail.setInterval(tablePartition.getString("interval", null));
-        partitionColumnDetails.add(partitionColumnDetail);
-      }
-
-      table.withTablePartition(new TablePartition().withColumns(partitionColumnDetails));
-
-      collectionDAO.tableDAO().update(table);
+      LOG.debug("Table {} does not have partition details", table.getId());
     } catch (Exception exc) {
       LOG.warn(
           "Fail to migrate table partition. The partition detail may have been migrated already.");
