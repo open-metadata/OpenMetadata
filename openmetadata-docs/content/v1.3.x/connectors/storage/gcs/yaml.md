@@ -26,70 +26,15 @@ Configure and schedule GCS metadata workflows from the CLI:
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the metadata ingestion, we need the following permissions in AWS:
+We need the following permissions in GCP:
 
 ### GCS Permissions
 
 For all the buckets that we want to ingest, we need to provide the following:
-- `GCS:ListBucket`
-- `GCS:GetObject`
-- `GCS:GetBucketLocation`
-- `GCS:ListAllMyBuckets`
-
-Note that the `Resources` should be all the buckets that you'd like to scan. A possible policy could be:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "GCS:GetObject",
-                "GCS:ListBucket",
-                "GCS:GetBucketLocation",
-                "GCS:ListAllMyBuckets"
-            ],
-            "Resource": [
-                "arn:aws:GCS:::*"
-            ]
-        }
-    ]
-}
-```
-
-### CloudWatch Permissions
-
-Which is used to fetch the total size in bytes for a bucket and the total number of files. It requires:
-- `cloudwatch:GetMetricData`
-- `cloudwatch:ListMetrics`
-
-The policy would look like:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "VisualEditor0",
-            "Effect": "Allow",
-            "Action": [
-                "cloudwatch:GetMetricData",
-                "cloudwatch:ListMetrics"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
-```
-
-### Python Requirements
-
-To run the Athena ingestion, you will need to install:
-
-```bash
-pip3 install "openmetadata-ingestion[athena]"
-```
+- `storage.buckets.get`
+- `storage.buckets.list`
+- `storage.objects.get`
+- `storage.objects.list`
 
 ### OpenMetadata Manifest
 
