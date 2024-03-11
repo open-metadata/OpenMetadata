@@ -42,7 +42,7 @@ export const mockLinkBasedSummaryTitleResponse = (
       pathname:
         'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task',
     }}>
-    <div className="d-flex">
+    <div className="d-flex items-center">
       <Text
         className="entity-title text-link-color font-medium m-r-xss"
         data-testid="entity-title"
@@ -148,7 +148,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
           pathname:
             'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
         }}>
-        <div className="d-flex">
+        <div className="d-flex items-center">
           <Text
             className="entity-title text-link-color font-medium m-r-xss"
             data-testid="entity-title"
