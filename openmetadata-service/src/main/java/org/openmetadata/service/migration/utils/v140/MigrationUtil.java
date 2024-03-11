@@ -87,7 +87,7 @@ public class MigrationUtil {
         List<PartitionColumnDetails> partitionColumnDetails = new ArrayList<>();
 
         if ((partitionColumns == null || partitionColumns.isEmpty())
-                && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
+            && table.getServiceType() == CreateDatabaseService.DatabaseServiceType.BigQuery) {
           // BigQuery tables can have pseudo columns for partitioning that were not being set in the
           // partitionColumns entity
           String interval = tablePartition.getString("interval", null);
