@@ -11,18 +11,20 @@
  *  limitations under the License.
  */
 
-import { getEntityDetailsPath } from '../constants/constants';
+import {
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+} from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityUtilClassBase } from './EntityUtilClassBase';
-import { getGlossaryPath } from './RouterUtils';
 
 jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
   getEditWebhookPath: jest.fn(),
   getServiceDetailsPath: jest.fn(),
   getTagsDetailsPath: jest.fn(),
-
+  getGlossaryTermDetailsPath: jest.fn(),
   getUserPath: jest.fn(),
 }));
 
@@ -33,7 +35,6 @@ jest.mock('./CommonUtils', () => ({
 jest.mock('./RouterUtils', () => ({
   getEntityDetailsPath: jest.fn(),
   getDomainDetailsPath: jest.fn(),
-  getGlossaryPath: jest.fn(),
   getSettingPath: jest.fn(),
   getTeamsWithFqnPath: jest.fn(),
 }));
@@ -109,7 +110,11 @@ describe('EntityUtilClassBase', () => {
     const fqn = 'testingGlossary';
     entityUtil.getEntityLink(EntityType.GLOSSARY, fqn);
 
-    expect(getGlossaryPath).toHaveBeenCalledWith(fqn);
+    expect(getGlossaryTermDetailsPath).toHaveBeenCalledWith(
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   it('should return table details path for table index type', () => {
