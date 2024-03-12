@@ -126,7 +126,7 @@
     "incremental": {
       "title": "Incremental Metadata Extraction Configuration",
       "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
-      "$ref": "#/definitions/incrementalExtraction"
+      "$ref": "#/definitions/incremental"
     }
   },
   "additionalProperties": false
