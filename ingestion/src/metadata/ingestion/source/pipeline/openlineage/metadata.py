@@ -49,6 +49,7 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
+    OpenLineageTable,
     TableDetails,
     TableFQN,
 )
@@ -94,28 +95,28 @@ class OpenlineageSource(PipelineServiceSource):
         self.metadata.close()
 
     @classmethod
-    def _get_table_details(cls, data: Dict) -> TableDetails:
+    def _get_table_details(cls, data: OpenLineageTable) -> TableDetails:
         """
         extracts table entity schema and name from input/output entry collected from Open Lineage.
 
         :param data: single entry from inputs/outputs objects
         :return: TableDetails object with schema and name
         """
-        symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
+        symlinks = data.facets.symlinks.identifiers
 
         # for some OL events name can be extracted from dataset facet but symlinks is preferred so - if present - we
         # use it instead
         if len(symlinks) > 0:
             try:
                 # @todo verify if table can have multiple identifiers pointing at it
-                name = symlinks[0]["name"]
+                name = symlinks[0].name
             except (KeyError, IndexError):
                 raise ValueError(
                     "input table name cannot be retrieved from symlinks.identifiers facet."
                 )
         else:
             try:
-                name = data["name"]
+                name = data.name
             except KeyError:
                 raise ValueError(
                     "input table name cannot be retrieved from name attribute."
@@ -147,8 +148,7 @@ class OpenlineageSource(PipelineServiceSource):
     def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
         """
         Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
+        :param table_details: table details
         :return: fully qualified name of a Table in Open Metadata
         """
         result = None
@@ -199,18 +199,18 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @classmethod
-    def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
+    def _render_pipeline_name(cls, event: OpenLineageEvent) -> str:
         """
         Renders pipeline name from parent facet of run facet. It is our expectation that every OL event contains parent
-        run facet so we can always create pipeline entities and link them to lineage events.
+        run facet, so we can always create pipeline entities and link them to lineage events.
 
-        :param run_facet: Open Lineage run facet
+        :param event: Open Lineage event
         :return: pipeline name (not fully qualified name)
         """
-        run_facet = pipeline_details.run_facet
+        run_facet = event.run
 
-        namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-        name = run_facet["facets"]["parent"]["job"]["name"]
+        namespace = run_facet.facets.parent.job.namespace
+        name = run_facet.facets.parent.job.name
 
         return f"{namespace}-{name}"
 
@@ -229,25 +229,21 @@ class OpenlineageSource(PipelineServiceSource):
         return event if event.eventType == event_type else {}
 
     @classmethod
-    def _get_om_table_columns(cls, table_input: Dict) -> Optional[List]:
+    def _get_om_table_columns(cls, table_input: OpenLineageTable) -> Optional[List]:
         """
 
-        :param table_input:
+        :param table_input: Parsed Table object from lineage event
         :return:
         """
         try:
-            fields = table_input["facets"]["schema"]["fields"]
+            fields = table_input.facets.schema_.fields
 
-            # @todo check if this way of passing type is ok
-            columns = [
-                Column(name=f.get("name"), dataType=f.get("type").upper())
-                for f in fields
-            ]
+            columns = [Column(name=f.name, dataType=f.type_.upper()) for f in fields]
             return columns
         except KeyError:
             return None
 
-    def get_create_table_request(self, table: Dict) -> Optional[Either]:
+    def get_create_table_request(self, table: OpenLineageTable) -> Optional[Either]:
         """
         If certain table from Open Lineage events doesn't already exist in Open Metadata, register appropriate entity.
         This makes sense especially for output facet of OpenLineage event - as database service ingestion is a scheduled
@@ -378,7 +374,7 @@ class OpenlineageSource(PipelineServiceSource):
         pipeline_name = self.get_pipeline_name(pipeline_details)
         try:
             description = f"""```json
-            {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
+            {json.dumps(pipeline_details.run, indent=4).strip()}```"""
             request = CreatePipelineRequest(
                 name=pipeline_name,
                 service=self.context.pipeline_service,

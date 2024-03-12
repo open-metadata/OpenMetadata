@@ -13,22 +13,9 @@ Openlineage Source Model module
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel
-
-"""
-"run": {
-      "runId": "59fc8906-4a4a-45ab-9a54-9cc2d399e10e",
-      "facets": {
-        "parent": {
-          "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
-          "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/ParentRunFacet.json#/$defs/ParentRunFacet",
-          "run": {
-            "runId": "daf8bcc1-cc3c-41bb-9251-334cacf698fa"
-          },
-          "job": {
-"""
+from pydantic import BaseModel, Field
 
 
 class OpenLineageJob(BaseModel):
@@ -48,6 +35,34 @@ class RunFacet(BaseModel):
     facets: OLFacets
 
 
+# data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
+class SchemaField(BaseModel):
+    name: str
+    type_: str = Field(alias="type")
+
+
+class Fields(BaseModel):
+    fields: Optional[List[SchemaField]]
+
+
+class TableIdentifier(BaseModel):
+    name: str
+
+
+class TableSymlinks(BaseModel):
+    identifiers: Optional[List[TableIdentifier]]
+
+
+class TableFacet(BaseModel):
+    schema_: Fields = Field(alias="schema")
+    symlinks: Optional[TableSymlinks]
+
+
+class OpenLineageTable(BaseModel):
+    facets: TableFacet
+    name: str
+
+
 class OpenLineageEvent(BaseModel):
     """
     An object containing data extracted from raw OpenLineage event. Used as a basis for all abstract methods of
@@ -57,8 +72,8 @@ class OpenLineageEvent(BaseModel):
     run: RunFacet
     job: Dict
     eventType: str
-    inputs: List[Any]
-    outputs: List[Any]
+    inputs: List[OpenLineageTable]
+    outputs: List[OpenLineageTable]
 
 
 class TableFQN(BaseModel):
