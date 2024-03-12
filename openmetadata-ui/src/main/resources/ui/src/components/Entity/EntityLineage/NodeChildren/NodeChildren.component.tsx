@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
+import { LINEAGE_COLUMN_NODE_SUPPORTED } from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Container } from '../../../../generated/entity/data/container';
@@ -42,16 +43,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const supportsColumns = useMemo(() => {
-    const supportedTypes = [
-      EntityType.TABLE,
-      EntityType.DASHBOARD,
-      EntityType.MLMODEL,
-      EntityType.DASHBOARD_DATA_MODEL,
-      EntityType.CONTAINER,
-      EntityType.TOPIC,
-    ];
-
-    return node && supportedTypes.includes(node.entityType as EntityType);
+    return (
+      node &&
+      LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
+    );
   }, [node.id]);
 
   const { children, childrenHeading } = useMemo(() => {
