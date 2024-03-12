@@ -27,6 +27,7 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
+import '../incident-manager.style.less';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
