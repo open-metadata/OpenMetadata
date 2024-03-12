@@ -105,6 +105,7 @@ processor:
     #       bucketName: awsdatalake-testing
     #       prefix: data/sales/demo1
     #       overwriteData: false
+    #       filePathPattern: "{service_name}/{database_name}_{database_schema_name}_{table_name}.parquet"
     #       storageConfig:
     #         awsRegion: us-east-2
     #         awsAccessKeyId: <your-access-key-id>
@@ -123,6 +124,7 @@ processor:
     #       bucketName: awsdatalake-testing
     #       prefix: data/sales/demo1
     #       overwriteData: false
+    #       filePathPattern: "{service_name}/{database_name}_{database_schema_name}_{table_name}.parquet"
     #       storageConfig:
     #         awsRegion: us-east-2
     #         awsAccessKeyId: <your-access-key-id>
