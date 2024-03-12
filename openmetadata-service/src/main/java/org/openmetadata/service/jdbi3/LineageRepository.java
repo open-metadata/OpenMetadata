@@ -28,7 +28,12 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -37,10 +42,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Repository
@@ -173,30 +178,61 @@ public class LineageRepository {
     if (details == null) {
       return null;
     }
-
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
-      if (areValidEntities(from, to)) {
-        throw new IllegalArgumentException(
-            "Column level lineage is only allowed between two tables or from table to dashboard.");
-      }
-      Table fromTable = dao.tableDAO().findEntityById(from.getId());
-      ColumnsEntityInterface toTable = getToEntity(to);
       for (ColumnLineage columnLineage : columnsLineage) {
         for (String fromColumn : columnLineage.getFromColumns()) {
-          // From column belongs to the fromNode
-          if (fromColumn.startsWith(fromTable.getFullyQualifiedName())) {
-            ColumnUtil.validateColumnFQN(fromTable.getColumns(), fromColumn);
-          } else {
-            Table otherTable =
-                dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
-            ColumnUtil.validateColumnFQN(otherTable.getColumns(), fromColumn);
-          }
+          validateChildren(fromColumn, from);
         }
-        ColumnUtil.validateColumnFQN(toTable.getColumns(), columnLineage.getToColumn());
+        validateChildren(columnLineage.getToColumn(), to);
       }
     }
     return JsonUtils.pojoToJson(details);
+  }
+
+  private void validateChildren(String columnFQN, EntityReference entityReference) {
+    switch (entityReference.getType()) {
+      case "table":
+        Table table = dao.tableDAO().findEntityById(entityReference.getId());
+        ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
+        break;
+      case "topic":
+        Topic topic = dao.topicDAO().findEntityById(entityReference.getId());
+        ColumnUtil.validateFieldFQN(topic.getMessageSchema().getSchemaFields(), columnFQN);
+        break;
+      case "container":
+        Container container = dao.containerDAO().findEntityById(entityReference.getId());
+        ColumnUtil.validateColumnFQN(container.getDataModel().getColumns(), columnFQN);
+        break;
+      case "dashboardDataModel":
+        DashboardDataModel dashboardDataModel =
+            dao.dashboardDataModelDAO().findEntityById(entityReference.getId());
+        ColumnUtil.validateColumnFQN(dashboardDataModel.getColumns(), columnFQN);
+        break;
+      case "dashboard":
+        Dashboard dashboard = dao.dashboardDAO().findEntityById(entityReference.getId());
+        dashboard.getCharts().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        CatalogExceptionMessage.invalidFieldName("chart", columnFQN)));
+        break;
+      case "mlmodel":
+        MlModel mlModel = dao.mlModelDAO().findEntityById(entityReference.getId());
+        mlModel.getMlFeatures().stream()
+            .filter(f -> f.getFullyQualifiedName().equals(columnFQN))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        CatalogExceptionMessage.invalidFieldName("feature", columnFQN)));
+        break;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
+    }
   }
 
   private ColumnsEntityInterface getToEntity(EntityReference from) {

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -65,6 +66,20 @@ public final class ColumnUtil {
     }
     if (!validColumn) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
+    }
+  }
+
+  // validate if a given field exists in the topic
+  public static void validateFieldFQN(List<Field> fields, String fieldFQN) {
+    boolean validField = false;
+    for (Field field : fields) {
+      if (field.getFullyQualifiedName().equals(fieldFQN)) {
+        validField = true;
+        break;
+      }
+    }
+    if (!validField) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFieldFQN(fieldFQN));
     }
   }
 
