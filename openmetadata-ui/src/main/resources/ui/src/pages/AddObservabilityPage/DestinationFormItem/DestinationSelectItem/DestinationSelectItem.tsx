@@ -14,7 +14,13 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Alert, Button, Col, Form, Row, Select, Tabs, Typography } from 'antd';
 import { isEmpty, isUndefined, map } from 'lodash';
-import React, { ReactElement, useCallback, useMemo, useState } from 'react';
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DESTINATION_DROPDOWN_TABS,
@@ -144,52 +150,44 @@ function DestinationSelectItem({
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
 
-  // Using recommended method here https://legacy.reactjs.org/docs/hooks-faq.html#how-can-i-measure-a-dom-node
-  // To execute code after mounting instead of using useRef
-  const measuredRef = useCallback((node) => {
-    if (node !== null) {
-      // Get the current destinations list
-      const [selectedSource] = form.getFieldValue('resources');
-      const destinationsValue = form.getFieldValue('destinations');
+  useEffect(() => {
+    // Get the current destinations list
+    const [selectedSource] = form.getFieldValue('resources');
+    const destinationsValue = form.getFieldValue('destinations');
 
-      // Logic to set the initial values for the active tab and the destination options
-      // after the component is mounted, based on the set destination values
-      if (!isEmpty(destinationsValue)) {
-        // Set the active tab and selection options as external when in edit mode
-        // and the destination category is 'External'
-        if (
-          destinationsValue[id].category === SubscriptionCategory.External &&
-          isEditMode &&
-          // Since the default value of category for new added destination form item is 'External'
-          // Adding the below condition to exclude the case and set default tab as 'Internal'
-          !isUndefined(destinationsValue[id].destinationType)
-        ) {
-          setActiveTab(DESTINATION_DROPDOWN_TABS.external);
-          setDestinationOptions(
-            getFilteredDestinationOptions(
-              DESTINATION_DROPDOWN_TABS.external,
-              selectedSource
-            )
-          );
-        } else {
-          setActiveTab(DESTINATION_DROPDOWN_TABS.internal);
-          setDestinationOptions(
-            getFilteredDestinationOptions(
-              DESTINATION_DROPDOWN_TABS.internal,
-              selectedSource
-            )
-          );
-        }
+    // Logic to set the initial values for the active tab and the destination options
+    // after the component is mounted, based on the set destination values
+    if (!isEmpty(destinationsValue)) {
+      // Set the active tab and selection options as external when in edit mode
+      // and the destination category is 'External'
+      if (
+        destinationsValue[id].category === SubscriptionCategory.External &&
+        isEditMode &&
+        // Since the default value of category for new added destination form item is 'External'
+        // Adding the below condition to exclude the case and set default tab as 'Internal'
+        !isUndefined(destinationsValue[id].destinationType)
+      ) {
+        setActiveTab(DESTINATION_DROPDOWN_TABS.external);
+        setDestinationOptions(
+          getFilteredDestinationOptions(
+            DESTINATION_DROPDOWN_TABS.external,
+            selectedSource
+          )
+        );
+      } else {
+        setActiveTab(DESTINATION_DROPDOWN_TABS.internal);
+        setDestinationOptions(
+          getFilteredDestinationOptions(
+            DESTINATION_DROPDOWN_TABS.internal,
+            selectedSource
+          )
+        );
       }
     }
   }, []);
 
   return (
-    <Col
-      data-testid={`destination-${id}`}
-      key={selectorKey}
-      ref={measuredRef}
-      span={24}>
+    <Col data-testid={`destination-${id}`} key={selectorKey} span={24}>
       <div className="flex gap-4">
         <div className="flex-1 w-min-0">
           <Row gutter={[8, 8]}>
