@@ -10,6 +10,8 @@ This is the supported list of connectors for Storage Services:
 {% connectorsListContainer %}
 
 {% connectorInfoCard name="S3" stage="PROD" href="/connectors/storage/s3" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Azure" stage="PROD" href="/connectors/storage/azure" platform="Collate" / %}
+{% connectorInfoCard name="GCS" stage="PROD" href="/connectors/storage/gcs" platform="Collate" / %}
 
 {% /connectorsListContainer %}
 
