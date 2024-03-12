@@ -133,14 +133,13 @@ export const ActivityFeedTab = ({
   );
 
   const handleTabChange = (subTab: string) => {
-    history.push(
-      entityUtilClassBase.getEntityLink(
-        entityType,
-        fqn,
-        EntityTabs.ACTIVITY_FEED,
-        subTab
-      )
+    const path = entityUtilClassBase.getEntityLink(
+      entityType,
+      fqn,
+      EntityTabs.ACTIVITY_FEED,
+      subTab
     );
+    history.push(path);
     setActiveThread();
   };
 
