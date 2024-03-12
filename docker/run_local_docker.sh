@@ -97,8 +97,11 @@ echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
     docker compose -f docker/development/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose-postgres.yml up -d
-else
+elif [[ $database == "mysql" ]]; then
     docker compose -f docker/development/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose.yml up -d
+else
+    echo "Invalid database type: $database"
+    exit 1
 fi
 
 RESULT=$?
