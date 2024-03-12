@@ -61,7 +61,6 @@ class JsonSchemaParserTests(TestCase):
         }
         self.assertEqual(field_names, {"firstName", "lastName", "age"})
 
-
         # validate display names
         field_display_names = {
             str(field.displayName) for field in self.parsed_schema[0].children
