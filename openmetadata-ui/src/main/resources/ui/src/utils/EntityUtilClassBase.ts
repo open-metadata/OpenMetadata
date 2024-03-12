@@ -14,6 +14,7 @@ import DataProductsPage from '../components/DataProducts/DataProductsPage/DataPr
 import {
   getEditWebhookPath,
   getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getServiceDetailsPath,
   getTagsDetailsPath,
   getUserPath,
@@ -36,7 +37,6 @@ import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import { getTableFQNFromColumnFQN } from './CommonUtils';
 import {
   getDomainDetailsPath,
-  getGlossaryPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
@@ -96,7 +96,7 @@ class EntityUtilClassBase {
       case SearchIndex.GLOSSARY:
       case EntityType.GLOSSARY_TERM:
       case SearchIndex.GLOSSARY_TERM:
-        return getGlossaryPath(fullyQualifiedName);
+        return getGlossaryTermDetailsPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.DATABASE_SERVICE:
       case EntityType.DASHBOARD_SERVICE:
