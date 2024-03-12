@@ -27,12 +27,12 @@ class ParentFacet(BaseModel):
     job: OpenLineageJob
 
 
-class OLFacets(BaseModel):
+class RunFacet(BaseModel):
     parent: ParentFacet
 
 
-class RunFacet(BaseModel):
-    facets: OLFacets
+class RunFacets(BaseModel):
+    facets: RunFacet
 
 
 class SchemaField(BaseModel):
@@ -76,23 +76,23 @@ class TableFacet(BaseModel):
     columnLineage: Optional[TableColumnLineage]
 
 
-class OpenLineageTable(BaseModel):
-    facets: TableFacet
+class Dataset(BaseModel):
+    facets: Optional[TableFacet]
     name: str
     namespace: str
 
 
-class OpenLineageEvent(BaseModel):
+class RunEvent(BaseModel):
     """
     An object containing data extracted from raw OpenLineage event. Used as a basis for all abstract methods of
     OpenlineageSource connector.
     """
 
-    run: RunFacet
+    run: RunFacets
     job: Dict
     eventType: str
-    inputs: List[OpenLineageTable]
-    outputs: List[OpenLineageTable]
+    inputs: List[Dataset]
+    outputs: List[Dataset]
 
 
 class TableFQN(BaseModel):

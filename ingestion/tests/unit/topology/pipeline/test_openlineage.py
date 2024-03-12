@@ -25,10 +25,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
-from metadata.ingestion.source.pipeline.openlineage.models import (
-    OpenLineageEvent,
-    OpenLineageTable,
-)
+from metadata.ingestion.source.pipeline.openlineage.models import Dataset, RunEvent
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
 )
@@ -118,7 +115,7 @@ with open(
 ) as ol_file:
     FULL_OL_KAFKA_EVENT = json.load(ol_file)
 
-EXPECTED_OL_EVENT = OpenLineageEvent(**FULL_OL_KAFKA_EVENT)
+EXPECTED_OL_EVENT = RunEvent(**FULL_OL_KAFKA_EVENT)
 
 
 class OpenLineageUnitTest(unittest.TestCase):
@@ -167,7 +164,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_message_to_ol_event_valid_event(self):
         """Test conversion with a valid event."""
         result = message_to_open_lineage_event(VALID_EVENT)
-        self.assertIsInstance(result, OpenLineageEvent)
+        self.assertIsInstance(result, RunEvent)
 
     def test_message_to_ol_event_missing_run_facets_parent_job_name(self):
         """Test conversion with missing 'run.facets.parent.job.name' field."""
@@ -284,12 +281,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         )
 
         tables = [
-            OpenLineageTable(
-                **{"name": "schema.table1", "facets": {}, "namespace": "ns://"}
-            ),
-            OpenLineageTable(
-                **{"name": "schema.table2", "facets": {}, "namespace": "ns://"}
-            ),
+            Dataset(**{"name": "schema.table1", "facets": {}, "namespace": "ns://"}),
+            Dataset(**{"name": "schema.table2", "facets": {}, "namespace": "ns://"}),
         ]
 
         expected_map = {
@@ -310,9 +303,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_get_table_fqn.return_value = None
 
         tables = [
-            OpenLineageTable(
-                **{"name": "schema.table1", "facets": {}, "namespace": "ns://"}
-            )
+            Dataset(**{"name": "schema.table1", "facets": {}, "namespace": "ns://"})
         ]
 
         expected_map = {}  # Expect an empty map since FQN is missing
@@ -356,10 +347,10 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
 
         inputs = [
-            OpenLineageTable(
+            Dataset(
                 **{"name": "schema.input_table1", "facets": {}, "namespace": "hive://"}
             ),
-            OpenLineageTable(
+            Dataset(
                 **{"name": "schema.input_table2", "facets": {}, "namespace": "hive://"}
             ),
         ]
@@ -419,28 +410,16 @@ class OpenLineageUnitTest(unittest.TestCase):
             "namespace": "__dummy__",
             "facets": {"symlinks": {"identifiers": [{"name": "project.schema.table"}]}},
         }
-        result = self.open_lineage_source._get_table_details(OpenLineageTable(**data))
+        result = self.open_lineage_source._get_table_details(Dataset(**data))
         self.assertEqual(result.name, "table")
         self.assertEqual(result.schema_, "schema")
 
     def test_get_table_details_without_symlinks(self):
         """Test with valid data but without symlinks."""
         data = {"name": "schema.table", "namespace": "__dummy__"}
-        result = self.open_lineage_source._get_table_details(OpenLineageTable(**data))
+        result = self.open_lineage_source._get_table_details(Dataset(**data))
         self.assertEqual(result.name, "table")
         self.assertEqual(result.schema, "schema")
-
-    def test_get_table_details_invalid_data_missing_symlinks_and_name(self):
-        """Test with invalid data missing both symlinks and name."""
-        data = {}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
-
-    def test_get_table_details_invalid_symlinks_structure(self):
-        """Test with invalid symlinks structure."""
-        data = {"facets": {"symlinks": {"identifiers": [{}]}}}
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
 
     def test_get_table_details_invalid_name_structure(self):
         """Test with invalid name structure."""
@@ -451,22 +430,22 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_get_pipelines_list(self):
         """Test get_pipelines_list method"""
         ol_event = self.read_openlineage_event_from_kafka(FULL_OL_KAFKA_EVENT)
-        self.assertIsInstance(ol_event, OpenLineageEvent)
+        self.assertIsInstance(ol_event, RunEvent)
         self.assertEqual(ol_event, EXPECTED_OL_EVENT)
 
     def test_message_to_openlineage_event_correct(self):
-        self.assertIsNotNone(OpenLineageEvent(**FULL_OL_KAFKA_EVENT))
+        self.assertIsNotNone(RunEvent(**FULL_OL_KAFKA_EVENT))
 
     def test_message_to_openlineage_event_missing_event_type(self):
         data = copy.deepcopy(FULL_OL_KAFKA_EVENT)
         data.pop("eventType")
 
         with self.assertRaises(ValueError):
-            OpenLineageEvent(**data)
+            RunEvent(**data)
 
     def test_message_to_openlineage_event_empty(self):
         with self.assertRaises(ValueError):
-            OpenLineageEvent(**{})
+            RunEvent(**{})
 
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"

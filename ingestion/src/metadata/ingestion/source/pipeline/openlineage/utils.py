@@ -5,21 +5,21 @@ from typing import Dict
 
 from pydantic.error_wrappers import ValidationError
 
-from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
+from metadata.ingestion.source.pipeline.openlineage.models import RunEvent
 
 
-def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
+def message_to_open_lineage_event(incoming_event: Dict) -> RunEvent:
     """
-    Method that takes raw Open Lineage event and parses is to shape into OpenLineageEvent.
+    Method that takes raw Open Lineage event and parses is to shape into RunEvent.
 
     We check whether received event (from Kafka) adheres to expected form and contains all the fields that are required
     for successful processing by OpenMetadata OpenLineage connector.
 
     :param incoming_event: raw event received from kafka topic by OpenlineageSource
-    :return: OpenLineageEvent
+    :return: RunEvent
     """
     try:
-        return OpenLineageEvent(**incoming_event)
+        return RunEvent(**incoming_event)
     except ValidationError:
         raise ValueError(f"Event malformed! {incoming_event}")
 
