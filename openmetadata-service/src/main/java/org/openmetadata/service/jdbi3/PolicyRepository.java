@@ -132,7 +132,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public static List<String> filterRedundantResources(List<String> resources) {
     // If ALL_RESOURCES are in the resource list, remove redundant resources specifically mentioned
     boolean containsAllResources = resources.stream().anyMatch(ALL_RESOURCES::equalsIgnoreCase);
-    return containsAllResources ? new ArrayList<>(List.of(ALL_RESOURCES)) : resources;
+    return containsAllResources
+        ? new ArrayList<>(List.of(ALL_RESOURCES))
+        : new ArrayList<>(resources);
   }
 
   public static List<MetadataOperation> filterRedundantOperations(
@@ -142,9 +144,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     boolean containsViewAll = operations.stream().anyMatch(o -> o.equals(VIEW_ALL));
     if (containsViewAll) {
       operations =
-          operations.stream()
-              .filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o))
-              .collect(Collectors.toList());
+          operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).toList();
     }
 
     // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are
@@ -152,11 +152,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
     boolean containsEditAll = operations.stream().anyMatch(o -> o.equals(EDIT_ALL));
     if (containsEditAll) {
       operations =
-          operations.stream()
-              .filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o))
-              .collect(Collectors.toList());
+          operations.stream().filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o)).toList();
     }
-    return operations;
+    return new ArrayList<>(operations);
   }
 
   /** Handles entity updated from PUT and POST operation. */
