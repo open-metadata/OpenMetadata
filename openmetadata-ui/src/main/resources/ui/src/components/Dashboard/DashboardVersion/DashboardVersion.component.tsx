@@ -114,7 +114,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Icon
                 className="m-l-xs flex-none align-middle"
                 component={IconExternalLink}
-                style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                style={DATA_ASSET_ICON_DIMENSION}
               />
             </Space>
           </Link>

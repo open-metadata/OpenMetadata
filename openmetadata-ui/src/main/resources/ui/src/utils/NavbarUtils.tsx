@@ -22,7 +22,10 @@ import {
   SupportItem,
 } from '../constants/Navbar.constants';
 
-const helpLinkLabelRenderer = (item: SupportItem, version?: string) => {
+const getHelpDropdownLabelContentRenderer = (
+  item: SupportItem,
+  version?: string
+) => {
   return (
     <Row className="cursor-pointer">
       <Col span={4}>
@@ -36,7 +39,7 @@ const helpLinkLabelRenderer = (item: SupportItem, version?: string) => {
         <Typography.Text className="text-base-color">
           {item.label}{' '}
           {item.key === HELP_ITEMS_ENUM.VERSION &&
-            (version ? version : '?').split('-')[0]}
+            (version ?? '?').split('-')[0]}
         </Typography.Text>
 
         {item.isExternal && (
@@ -51,22 +54,30 @@ const helpLinkLabelRenderer = (item: SupportItem, version?: string) => {
   );
 };
 
-export const getHelpDropdownItems = (version?: string) =>
-  HELP_ITEMS.map((item) => ({
-    label: item.isExternal ? (
+const getHelpDropdownLabel = (item: SupportItem, version?: string) => {
+  if (item.isExternal) {
+    return (
       <a
         className="no-underline"
         href={item.link}
         rel="noreferrer"
         target="_blank">
-        {helpLinkLabelRenderer(item, version)}
+        {getHelpDropdownLabelContentRenderer(item, version)}
       </a>
-    ) : item.link ? (
+    );
+  } else if (item.link) {
+    return (
       <Link className="no-underline" to={item.link}>
-        {helpLinkLabelRenderer(item)}
+        {getHelpDropdownLabelContentRenderer(item)}
       </Link>
-    ) : (
-      helpLinkLabelRenderer(item)
-    ),
+    );
+  } else {
+    return getHelpDropdownLabelContentRenderer(item);
+  }
+};
+
+export const getHelpDropdownItems = (version?: string) =>
+  HELP_ITEMS.map((item) => ({
+    label: getHelpDropdownLabel(item, version),
     key: item.key,
   }));

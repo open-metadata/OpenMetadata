@@ -341,7 +341,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                   <Icon
                     className="align-middle"
                     component={ExternalLinkIcon}
-                    style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                    style={DATA_ASSET_ICON_DIMENSION}
                   />
                 </Space>
               </a>

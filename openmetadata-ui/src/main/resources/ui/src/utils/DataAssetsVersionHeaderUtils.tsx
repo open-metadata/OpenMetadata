@@ -71,7 +71,7 @@ export const getExtraInfoSourceUrl = (
             <Icon
               className="m-l-xss"
               component={IconExternalLink}
-              style={{ ...DATA_ASSET_ICON_DIMENSION }}
+              style={DATA_ASSET_ICON_DIMENSION}
             />
           </div>
         </>

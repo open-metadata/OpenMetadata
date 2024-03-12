@@ -147,14 +147,9 @@ const NavBar = ({
     });
   }, []);
 
-  const handleSupportClick = ({ key }: MenuInfo) => {
-    switch (key) {
-      case HELP_ITEMS_ENUM.WHATS_NEW:
-        setIsFeatureModalOpen(true);
-
-        break;
-      default:
-        break;
+  const handleSupportClick = ({ key }: MenuInfo): void => {
+    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
+      setIsFeatureModalOpen(true);
     }
   };
 

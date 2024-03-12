@@ -397,7 +397,7 @@ const PipelineDetails = ({
                 <Icon
                   className="m-l-xs flex-none"
                   component={ExternalLinkIcon}
-                  style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                  style={DATA_ASSET_ICON_DIMENSION}
                 />
               </div>
             </Link>

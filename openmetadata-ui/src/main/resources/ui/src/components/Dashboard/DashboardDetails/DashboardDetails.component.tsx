@@ -450,7 +450,7 @@ const DashboardDetails = ({
                 <Icon
                   className="m-l-xs flex-none align-middle"
                   component={ExternalLinkIcon}
-                  style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                  style={DATA_ASSET_ICON_DIMENSION}
                 />
               </Typography.Link>
             </div>
