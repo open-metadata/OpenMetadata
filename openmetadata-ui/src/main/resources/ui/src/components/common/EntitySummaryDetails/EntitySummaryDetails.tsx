@@ -215,10 +215,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
                 {data.openInNewTab && (
                   <>
                     &nbsp;
-                    <Icon
-                      component={IconExternalLink}
-                      style={{ ...ICON_DIMENSION }}
-                    />
+                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
                   </>
                 )}
               </a>

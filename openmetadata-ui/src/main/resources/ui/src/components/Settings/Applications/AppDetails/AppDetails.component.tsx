@@ -507,10 +507,7 @@ const AppDetails = () => {
 
                 {appData?.developerUrl && (
                   <div className="flex-center gap-2">
-                    <Icon
-                      component={IconExternalLink}
-                      style={{ ...ICON_DIMENSION }}
-                    />
+                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
                     <Typography.Link
                       className="text-xs"
                       href={appData?.developerUrl}

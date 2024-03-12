@@ -61,7 +61,7 @@ function CommonEntitySummaryInfo({
                         className="m-l-xs"
                         component={IconExternalLink}
                         data-testid="external-link-icon"
-                        style={{ ...ICON_DIMENSION }}
+                        style={ICON_DIMENSION}
                       />
                     ) : null}
                   </Link>

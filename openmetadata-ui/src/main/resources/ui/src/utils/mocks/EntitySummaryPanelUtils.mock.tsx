@@ -49,7 +49,7 @@ export const mockLinkBasedSummaryTitleResponse = (
         ellipsis={{ tooltip: true }}>
         dim_address Task
       </Text>
-      <Icon component={IconExternalLink} style={{ ...ICON_DIMENSION }} />
+      <Icon component={IconExternalLink} style={ICON_DIMENSION} />
     </div>
   </Link>
 );
@@ -155,7 +155,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
             ellipsis={{ tooltip: true }}>
             Assert Table Exists
           </Text>
-          <Icon component={IconExternalLink} style={{ ...ICON_DIMENSION }} />
+          <Icon component={IconExternalLink} style={ICON_DIMENSION} />
         </div>
       </Link>
     ),

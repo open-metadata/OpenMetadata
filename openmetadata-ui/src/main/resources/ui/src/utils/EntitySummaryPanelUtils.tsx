@@ -74,7 +74,7 @@ export const getTitle = (
           ellipsis={{ tooltip: true }}>
           {title}
         </Text>
-        <Icon component={IconExternalLink} style={{ ...ICON_DIMENSION }} />
+        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
       </div>
     </Link>
   ) : (
