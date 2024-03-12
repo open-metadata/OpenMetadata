@@ -14,6 +14,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Space, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions.svg';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
@@ -41,47 +42,53 @@ const SuggestionsAlert = ({
       data-testid="asset-description-container"
       direction="vertical"
       size={12}>
-      <Card className="suggested-description-card">
-        <div className="d-flex m-b-xs justify-between">
-          <div className="d-flex items-center">
+      <Card className="suggested-description-card card-padding-0">
+        <div className="suggested-alert-content">
+          <RichTextEditorPreviewer
+            markdown={suggestion.description ?? ''}
+            maxLength={maxLength}
+          />
+        </div>
+        <div className="suggested-alert-footer d-flex justify-between">
+          <div className="d-flex items-center gap-2 ">
+            <StarIcon width={16} />
+            <Typography.Text className="text-grey-muted">
+              {t('label.suggested-by')}
+            </Typography.Text>
             <UserPopOverCard userName={userName}>
-              <span className="m-r-xs">
-                <ProfilePicture name={userName} width="28" />
+              <span>
+                <ProfilePicture
+                  className="suggested-alert-footer-profile-pic"
+                  name={userName}
+                  width="24"
+                />
               </span>
             </UserPopOverCard>
-
-            <Typography.Text className="m-b-0 font-medium">
-              {`${userName} ${t('label.suggested-description')}`}
-            </Typography.Text>
           </div>
+          {hasEditAccess && (
+            <div className="d-flex justify-end p-t-xss gap-2">
+              <Button
+                ghost
+                data-testid="reject-suggestion"
+                icon={<CloseOutlined />}
+                size="small"
+                type="primary"
+                onClick={() =>
+                  acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
+                }
+              />
+              <Button
+                data-testid="accept-suggestion"
+                icon={<CheckOutlined />}
+                size="small"
+                type="primary"
+                onClick={() =>
+                  acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
+                }
+              />
+            </div>
+          )}
         </div>
-        <RichTextEditorPreviewer
-          markdown={suggestion.description ?? ''}
-          maxLength={maxLength}
-        />
-        {hasEditAccess && (
-          <div className="d-flex justify-end p-t-xss gap-2">
-            <Button
-              ghost
-              data-testid="reject-suggestion"
-              icon={<CloseOutlined />}
-              size="small"
-              type="primary"
-              onClick={() =>
-                acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
-              }
-            />
-            <Button
-              data-testid="accept-suggestion"
-              icon={<CheckOutlined />}
-              size="small"
-              type="primary"
-              onClick={() =>
-                acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
-              }
-            />
-          </div>
-        )}
       </Card>
     </Space>
   );
