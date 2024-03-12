@@ -35,7 +35,6 @@ class RunFacet(BaseModel):
     facets: OLFacets
 
 
-# data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
 class SchemaField(BaseModel):
     name: str
     type_: str = Field(alias="type")
