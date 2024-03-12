@@ -23,7 +23,6 @@ import { Operation } from '../../generated/entity/policies/policy';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
-import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -260,7 +259,6 @@ const AddObservabilityPage = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const RouteElements = applicationRoutesClass.getRouteElements();
 
   const createBotPermission = useMemo(
     () =>
@@ -499,8 +497,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EntityRouter}
         path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}
       />
-
-      {RouteElements && <RouteElements />}
 
       <Route
         exact
