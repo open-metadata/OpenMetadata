@@ -12,11 +12,11 @@
     "directory": "openmetadata-ui/src/main/resources/ui"
   },
   "scripts": {
-    "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development --port 3001",
+    "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",
     "build": "NODE_ENV=production BABEL_ENV=production webpack --config ./webpack.config.prod.js --env production",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
     "pre-commit": "lint-staged --concurrent false",
-    "test": "jest --passWithNoTests --maxWorkers=3",
+    "test": "jest --passWithNoTests --maxWorkers=3 --silent",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
     "test:watch": "jest --passWithNoTests --watch --maxWorkers=3",
     "test:coverage": "jest --passWithNoTests --coverage --maxWorkers=3",
