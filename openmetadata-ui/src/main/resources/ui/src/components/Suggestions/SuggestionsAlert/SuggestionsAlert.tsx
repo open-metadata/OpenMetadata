@@ -51,7 +51,7 @@ const SuggestionsAlert = ({
         </div>
         <div className="suggested-alert-footer d-flex justify-between">
           <div className="d-flex items-center gap-2 ">
-            <StarIcon width={16} />
+            <StarIcon width={14} />
             <Typography.Text className="text-grey-muted">
               {t('label.suggested-by')}
             </Typography.Text>
@@ -60,7 +60,7 @@ const SuggestionsAlert = ({
                 <ProfilePicture
                   className="suggested-alert-footer-profile-pic"
                   name={userName}
-                  width="24"
+                  width="20"
                 />
               </span>
             </UserPopOverCard>
