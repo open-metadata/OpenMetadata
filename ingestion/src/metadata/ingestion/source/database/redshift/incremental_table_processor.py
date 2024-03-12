@@ -119,11 +119,17 @@ class RedshiftIncrementalTableProcessor:
             )
             or []
         ):
-            statement = row[0].replace(
-                '"', ""
-            )  # Removes '"' to make the Regex Match easier.
 
-            yield statement
+            yield row[0]
+
+    def _clean_statement(self, statement: str) -> str:
+        """Gets rid of unwanted characters"""
+        return (
+            statement.replace("\n", " ")
+            .replace("\t", " ")
+            .replace("\v", " ")
+            .replace('"', "")
+        )  # Removes '"' to make the Regex Match easier.
 
     def _get_schema_and_table(
         self, full_table_name: str, statement: str
@@ -151,6 +157,7 @@ class RedshiftIncrementalTableProcessor:
     def set_table_map(self, database: str, start_date: datetime):
         """Sets the RedshiftTableMap for the given database, filtering by the given start_date."""
         for statement in self._query_for_changes(database, start_date):
+            statement = self._clean_statement(statement)
             match_found = False
 
             for possible_match in self.regex_list:

@@ -29,6 +29,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+MILLISECONDS_IN_ONE_DAY = 24 * 60 * 60 * 1000
+
 
 class IncrementalConfig(BaseModel):
     """Holds the Configuration to extract the Metadata incrementally, if enabled."""
@@ -49,7 +51,7 @@ class IncrementalConfig(BaseModel):
         pipeline_name: Optional[str],
         metadata: OpenMetadata,
     ) -> "IncrementalConfig":
-        """Returns the IncrementalConfig based on the flow defined on the INcrementalConfigCreator."""
+        """Returns the IncrementalConfig based on the flow defined on the IncrementalConfigCreator."""
         return IncrementalConfigCreator(incremental, pipeline_name, metadata).create()
 
 
@@ -104,11 +106,8 @@ class IncrementalConfigCreator:
 
     def _add_safety_margin(self, last_success_timestamp: int) -> int:
         """Add some safety margin to the last successful run timestamp based on the 'safetyMarginDays'."""
-        # Hours * Minutes * Seconds * Milliseconds
-        milliseconds_in_one_day = 24 * 60 * 60 * 1000
-
         return last_success_timestamp - (
-            self.incremental.safetyMarginDays * milliseconds_in_one_day
+            self.incremental.safetyMarginDays * MILLISECONDS_IN_ONE_DAY
         )
 
     def create(self) -> IncrementalConfig:

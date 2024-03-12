@@ -24,6 +24,23 @@ How this is done depends a lot on the Source itself, but the general idea is to 
 5. Fetch/Compare only the entities with structural changes.
 6. Delete entities flagged for deletion.
 
+## External Ingestion
+
+When using the Incremental Extraction feature with External Ingestions (ingesting using YAML files instead of setting it up from the UI), you must pass the ingestion pipeline fully qualified name to the configuration.
+
+This should be `{service_name}{pipeline_name}`
+
+**Example:**
+
+```yaml
+source:
+  serviceName: my_service
+# ...
+# Other configurations
+# ...
+ingestionPipelineFQN: my_service.my_pipeline
+```
+
 
 ## Feature available for
 
