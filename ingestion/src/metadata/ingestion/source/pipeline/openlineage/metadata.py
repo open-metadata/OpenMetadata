@@ -102,7 +102,10 @@ class OpenlineageSource(PipelineServiceSource):
         :param data: single entry from inputs/outputs objects
         :return: TableDetails object with schema and name
         """
-        symlinks = data.facets.symlinks.identifiers
+        try:
+            symlinks = data.facets.symlinks.identifiers
+        except AttributeError:
+            symlinks = []
 
         # for some OL events name can be extracted from dataset facet but symlinks is preferred so - if present - we
         # use it instead
@@ -132,7 +135,7 @@ class OpenlineageSource(PipelineServiceSource):
         # we take last two elements to explicitly collect schema and table names
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
         # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        return TableDetails(name=name_parts[-1], schema_name=name_parts[-2])
+        return TableDetails(name=name_parts[-1], schema_=name_parts[-2])
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         try:
@@ -305,8 +308,8 @@ class OpenlineageSource(PipelineServiceSource):
         return None
 
     @classmethod
-    def _get_ol_table_name(cls, table: Dict) -> str:
-        return "/".join(table.get(f) for f in ["namespace", "name"]).replace("//", "/")
+    def _get_ol_table_name(cls, table: OpenLineageTable) -> str:
+        return f"{table.namespace}/{table.name}".replace("//", "/")
 
     def _build_ol_name_to_fqn_map(self, tables: List):
         result = {}
@@ -336,7 +339,7 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     def _get_column_lineage(
-        self, inputs: List, outputs: List
+        self, inputs: List[OpenLineageTable], outputs: List[OpenLineageTable]
     ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
         _result: List = []
 

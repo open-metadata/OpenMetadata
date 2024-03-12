@@ -40,6 +40,10 @@ class SchemaField(BaseModel):
     type_: str = Field(alias="type")
 
 
+class LineageSchemaField(SchemaField):
+    inputFields: List[SchemaField]
+
+
 class Fields(BaseModel):
     fields: Optional[List[SchemaField]]
 
@@ -52,14 +56,30 @@ class TableSymlinks(BaseModel):
     identifiers: Optional[List[TableIdentifier]]
 
 
+class InputField(BaseModel):
+    namespace: str
+    name: str
+    field: str
+
+
+class InputFieldList(BaseModel):
+    inputFields: List[InputField]
+
+
+class TableColumnLineage(BaseModel):
+    fields: Dict[str, InputFieldList]
+
+
 class TableFacet(BaseModel):
-    schema_: Fields = Field(alias="schema")
+    schema_: Optional[Fields] = Field(alias="schema")
     symlinks: Optional[TableSymlinks]
+    columnLineage: Optional[TableColumnLineage]
 
 
 class OpenLineageTable(BaseModel):
     facets: TableFacet
     name: str
+    namespace: str
 
 
 class OpenLineageEvent(BaseModel):

@@ -25,7 +25,10 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
-from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
+from metadata.ingestion.source.pipeline.openlineage.models import (
+    OpenLineageEvent,
+    OpenLineageTable,
+)
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
 )
@@ -281,8 +284,12 @@ class OpenLineageUnitTest(unittest.TestCase):
         )
 
         tables = [
-            {"name": "schema.table1", "facets": {}, "namespace": "ns://"},
-            {"name": "schema.table2", "facets": {}, "namespace": "ns://"},
+            OpenLineageTable(
+                **{"name": "schema.table1", "facets": {}, "namespace": "ns://"}
+            ),
+            OpenLineageTable(
+                **{"name": "schema.table2", "facets": {}, "namespace": "ns://"}
+            ),
         ]
 
         expected_map = {
@@ -302,7 +309,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         # Mock _get_table_fqn to return None for missing FQN
         mock_get_table_fqn.return_value = None
 
-        tables = [{"name": "schema.table1", "facets": {}, "namespace": "ns://"}]
+        tables = [
+            OpenLineageTable(
+                **{"name": "schema.table1", "facets": {}, "namespace": "ns://"}
+            )
+        ]
 
         expected_map = {}  # Expect an empty map since FQN is missing
 
@@ -345,8 +356,12 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
 
         inputs = [
-            {"name": "schema.input_table1", "facets": {}, "namespace": "hive://"},
-            {"name": "schema.input_table2", "facets": {}, "namespace": "hive://"},
+            OpenLineageTable(
+                **{"name": "schema.input_table1", "facets": {}, "namespace": "hive://"}
+            ),
+            OpenLineageTable(
+                **{"name": "schema.input_table2", "facets": {}, "namespace": "hive://"}
+            ),
         ]
         outputs = [
             {
@@ -397,26 +412,21 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
-    def test_get_column_lineage__invalid_inputs_outputs_structure(self):
-        """Test with invalid input and output structure."""
-        inputs = [{"invalid": "data"}]
-        outputs = [{"invalid": "data"}]
-        with self.assertRaises(ValueError):
-            self.open_lineage_source._get_column_lineage(inputs, outputs)
-
     def test_get_table_details_with_symlinks(self):
         """Test with valid data where symlinks are present."""
         data = {
-            "facets": {"symlinks": {"identifiers": [{"name": "project.schema.table"}]}}
+            "name": "__dummy__",
+            "namespace": "__dummy__",
+            "facets": {"symlinks": {"identifiers": [{"name": "project.schema.table"}]}},
         }
-        result = self.open_lineage_source._get_table_details(data)
+        result = self.open_lineage_source._get_table_details(OpenLineageTable(**data))
         self.assertEqual(result.name, "table")
-        self.assertEqual(result.schema, "schema")
+        self.assertEqual(result.schema_, "schema")
 
     def test_get_table_details_without_symlinks(self):
         """Test with valid data but without symlinks."""
-        data = {"name": "schema.table"}
-        result = self.open_lineage_source._get_table_details(data)
+        data = {"name": "schema.table", "namespace": "__dummy__"}
+        result = self.open_lineage_source._get_table_details(OpenLineageTable(**data))
         self.assertEqual(result.name, "table")
         self.assertEqual(result.schema, "schema")
 
