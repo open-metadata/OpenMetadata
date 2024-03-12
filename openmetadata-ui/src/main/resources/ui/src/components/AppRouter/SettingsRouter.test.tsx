@@ -487,8 +487,7 @@ describe('SettingsRouter', () => {
 
   it('should render AlertsActivityFeedPage component for alerts activity feed route', async () => {
     render(
-      <MemoryRouter
-        initialEntries={[`/settings/notifications/alert/ActivityFeedAlert`]}>
+      <MemoryRouter initialEntries={[`/settings/notifications/activityFeeds`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
