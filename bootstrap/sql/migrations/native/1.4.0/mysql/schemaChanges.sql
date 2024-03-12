@@ -2,3 +2,10 @@
 UPDATE dbservice_entity
 SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
 WHERE serviceType = 'MongoDB';
+
+UPDATE installed_apps
+SET json = JSON_INSERT(
+        JSON_REMOVE(json, '$.appSchedule.scheduleType'),
+        '$.appSchedule.scheduleTimeline',
+        JSON_EXTRACT(json, '$.appSchedule.scheduleType')
+    );
