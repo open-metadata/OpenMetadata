@@ -48,6 +48,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
+import { isValidDateFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
@@ -309,7 +310,7 @@ const AddCustomProperty = () => {
 
   const formatConfigField: FieldProp = {
     name: 'formatConfig',
-    required: true,
+    required: false,
     label: t('label.format'),
     id: 'root/formatConfig',
     type: FieldTypes.TEXT,
@@ -318,6 +319,27 @@ const AddCustomProperty = () => {
       autoComplete: 'off',
     },
     placeholder: t('label.format'),
+    rules: [
+      {
+        required: true,
+        message: t('label.field-required', {
+          field: t('label.format'),
+        }),
+      },
+      {
+        validator: (_, value) => {
+          if (!isValidDateFormat(value)) {
+            return Promise.reject(
+              t('label.field-invalid', {
+                field: t('label.format'),
+              })
+            );
+          }
+
+          return Promise.resolve();
+        },
+      },
+    ],
   };
 
   const entityReferenceConfigField: FieldProp = {
