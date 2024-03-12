@@ -445,7 +445,8 @@ class BigquerySource(
         self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
-        self.inspector = inspector_details.inspector
+        thread_id = self.context.get_current_thread_id()
+        self._inspector_map[thread_id] = inspector_details.inspector
 
     def get_configured_database(self) -> Optional[str]:
         return None

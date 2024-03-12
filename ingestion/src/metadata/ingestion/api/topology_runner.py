@@ -253,6 +253,9 @@ class TopologyRunnerMixin(Generic[C]):
                 stage_results = self._process_stage(
                     stage=stage, node_entity=node_entity, child_nodes=child_nodes
                 )
+
+                # for result in self._process_stage(...):
+                    # self.queue.add(result)
                 while True:
                     # If the result wasn't processed yet we wait to guarantee the stages are being processed sequencially.
                     # if self.queue.has_tasks(thread_id):
