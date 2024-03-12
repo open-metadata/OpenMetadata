@@ -127,6 +127,20 @@ The access token created using the steps mentioned [here](https://developer.alat
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=21 %}
+
+**connectionArguments**: These are additional parameters for Alation. If not specified the ingestion will use the predefined pagination logic.
+The following arguments are intended to be used in conjunction and are specifically for Alation DataSource APIs:
+- skip: This parameter determines the count of records to bypass at the start of the dataset. When set to 0, as in this case, it means that no records will be bypassed. If set to 10, it will bypass the first 10 records.
+
+- limit: This argument specifies the maximum number of records to return. Here, it's set to 10, meaning only the first 10 records will be returned.
+
+To perform incremental ingestion, these arguments should be used together. For instance, if there are a total of 30 datasources in Alation, the ingestion can be configured to execute three times, with each execution ingesting 10 datasources. 
+- 1st execution: {"skip": 0, "limit": 10}
+- 2nd execution: {"skip": 10, "limit": 10}
+- 3rd execution: {"skip": 20, "limit": 10}
+{% /codeInfo %}
+
 #### Sink Configuration
 
 {% codeInfo srNumber=20 %}
@@ -175,6 +189,12 @@ source:
 ```
 ```yaml {% srNumber=18 %}
       alationTagClassificationName: alationTags
+```
+```yaml {% srNumber=21 %}
+      connectionArguments: {
+        "skip": 0,
+        "limit": 10,
+      }
 ```
 ```yaml {% srNumber=19 %}
   sourceConfig:
