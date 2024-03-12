@@ -59,6 +59,7 @@ import {
   MSSQL,
   MYSQL,
   NIFI,
+  OPENLINEAGE,
   OPEN_SEARCH,
   ORACLE,
   PINOT,
@@ -334,6 +335,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.DatabricksPipeline:
         return DATABRICK;
+
+      case PipelineServiceType.OpenLineage:
+        return OPENLINEAGE;
 
       case MlModelServiceType.Mlflow:
         return MLFLOW;

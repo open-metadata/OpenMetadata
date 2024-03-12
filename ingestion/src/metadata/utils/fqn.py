@@ -192,17 +192,34 @@ def _(
 
 @fqn_build_registry.add(DatabaseSchema)
 def _(
-    _: Optional[OpenMetadata],  # ES Search not enabled for Schemas
+    metadata: Optional[OpenMetadata],  # ES Search not enabled for Schemas
     *,
     service_name: str,
-    database_name: str,
+    database_name: Optional[str],
     schema_name: str,
-) -> str:
-    if not service_name or not database_name or not schema_name:
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, db=`{database_name}`, schema=`{schema_name}`"
+    skip_es_search: bool = True,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
+    entity: Optional[Union[DatabaseSchema, List[DatabaseSchema]]] = None
+
+    if not skip_es_search:
+        entity = search_database_schema_from_es(
+            metadata=metadata,
+            database_name=database_name,
+            schema_name=schema_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+            service_name=service_name,
         )
-    return _build(service_name, database_name, schema_name)
+
+    if not entity and database_name:
+        fqn = _build(service_name, database_name, schema_name)
+        return [fqn] if fetch_multiple_entities else fqn
+    if entity and fetch_multiple_entities:
+        return [str(table.fullyQualifiedName.__root__) for table in entity]
+    if entity:
+        return str(entity.fullyQualifiedName.__root__)
+
+    return None
 
 
 @fqn_build_registry.add(Database)
@@ -572,6 +589,43 @@ def build_es_fqn_search_string(
         service_name or "*", database_name or "*", schema_name or "*", table_name
     )
     return fqn_search_string
+
+
+def search_database_schema_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    schema_name: str,
+    service_name: str,
+    fetch_multiple_entities: bool = False,
+    fields: Optional[str] = None,
+):
+    """
+    Find database schema entity in elasticsearch index.
+
+    :param metadata: OM Client
+    :param database_name: name of database in which we are searching for database schema
+    :param schema_name: name of schema we are searching for
+    :param service_name: name of service in which we are searching for database schema
+    :param fetch_multiple_entities: should single match be returned or all matches
+    :param fields: additional fields to return
+    :return: entity / entities matching search criteria
+    """
+    if not schema_name:
+        raise FQNBuildingException(
+            f"Schema Name should be informed, but got schema_name=`{schema_name}`"
+        )
+
+    fqn_search_string = _build(service_name or "*", database_name or "*", schema_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=DatabaseSchema,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
 
 
 def search_table_from_es(

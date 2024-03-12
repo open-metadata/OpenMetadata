@@ -27,7 +27,8 @@
         "CustomPipeline",
         "DatabricksPipeline",
         "Spline",
-        "Spark"
+        "Spark",
+        "OpenLineage"
       ],
       "javaEnums": [
         {
@@ -62,6 +63,9 @@
         },
         {
           "name": "Spark"
+        },
+        {
+          "name": "OpenLineage"
         }
       ]
     },
@@ -108,6 +112,9 @@
             },
             {
               "$ref": "./connections/pipeline/sparkConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/openLineageConnection.json"
             }
           ]
         }

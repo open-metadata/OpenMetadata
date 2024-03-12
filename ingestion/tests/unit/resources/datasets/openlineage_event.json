@@ -1,0 +1,330 @@
+  {
+    "eventTime": "2023-12-16T14:22:11.949Z",
+    "producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+    "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunEvent",
+    "eventType": "COMPLETE",
+    "run": {
+      "runId": "59fc8906-4a4a-45ab-9a54-9cc2d399e10e",
+      "facets": {
+        "parent": {
+          "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+          "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/ParentRunFacet.json#/$defs/ParentRunFacet",
+          "run": {
+            "runId": "daf8bcc1-cc3c-41bb-9251-334cacf698fa"
+          },
+          "job": {
+            "namespace": "TESTSchedulerID",
+            "name": "TESTParentJobName4"
+          }
+        },
+        "spark.logicalPlan": {
+          "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+          "_schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunFacet",
+          "plan": [
+            {
+              "class": "org.apache.spark.sql.execution.command.CreateDataSourceTableAsSelectCommand",
+              "num-children": 1,
+              "table": {
+                "product-class": "org.apache.spark.sql.catalyst.catalog.CatalogTable",
+                "identifier": {
+                  "product-class": "org.apache.spark.sql.catalyst.TableIdentifier",
+                  "table": "dst_table_test_from_src_table_df",
+                  "database": "test_db"
+                },
+                "tableType": {
+                  "product-class": "org.apache.spark.sql.catalyst.catalog.CatalogTableType",
+                  "name": "MANAGED"
+                },
+                "storage": {
+                  "product-class": "org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat",
+                  "compressed": false,
+                  "properties": null
+                },
+                "schema": {
+                  "type": "struct",
+                  "fields": []
+                },
+                "provider": "parquet",
+                "partitionColumnNames": [],
+                "owner": "",
+                "createTime": 1702736481797,
+                "lastAccessTime": -1,
+                "createVersion": "",
+                "properties": null,
+                "unsupportedFeatures": [],
+                "tracksPartitionsInCatalog": false,
+                "schemaPreservesCase": true,
+                "ignoredProperties": null
+              },
+              "mode": null,
+              "query": 0,
+              "outputColumnNames": "[id, randomid, zip]"
+            },
+            {
+              "class": "org.apache.spark.sql.execution.datasources.LogicalRelation",
+              "num-children": 0,
+              "relation": null,
+              "output": [
+                [
+                  {
+                    "class": "org.apache.spark.sql.catalyst.expressions.AttributeReference",
+                    "num-children": 0,
+                    "name": "id",
+                    "dataType": "long",
+                    "nullable": true,
+                    "metadata": {},
+                    "exprId": {
+                      "product-class": "org.apache.spark.sql.catalyst.expressions.ExprId",
+                      "id": 9,
+                      "jvmId": "78343417-b80d-45a2-b489-e7d8920e61dd"
+                    },
+                    "qualifier": []
+                  }
+                ],
+                [
+                  {
+                    "class": "org.apache.spark.sql.catalyst.expressions.AttributeReference",
+                    "num-children": 0,
+                    "name": "randomid",
+                    "dataType": "string",
+                    "nullable": true,
+                    "metadata": {},
+                    "exprId": {
+                      "product-class": "org.apache.spark.sql.catalyst.expressions.ExprId",
+                      "id": 10,
+                      "jvmId": "78343417-b80d-45a2-b489-e7d8920e61dd"
+                    },
+                    "qualifier": []
+                  }
+                ],
+                [
+                  {
+                    "class": "org.apache.spark.sql.catalyst.expressions.AttributeReference",
+                    "num-children": 0,
+                    "name": "zip",
+                    "dataType": "string",
+                    "nullable": true,
+                    "metadata": {},
+                    "exprId": {
+                      "product-class": "org.apache.spark.sql.catalyst.expressions.ExprId",
+                      "id": 11,
+                      "jvmId": "78343417-b80d-45a2-b489-e7d8920e61dd"
+                    },
+                    "qualifier": []
+                  }
+                ]
+              ],
+              "catalogTable": {
+                "product-class": "org.apache.spark.sql.catalyst.catalog.CatalogTable",
+                "identifier": {
+                  "product-class": "org.apache.spark.sql.catalyst.TableIdentifier",
+                  "table": "src_table_test",
+                  "database": "test_db"
+                },
+                "tableType": {
+                  "product-class": "org.apache.spark.sql.catalyst.catalog.CatalogTableType",
+                  "name": "MANAGED"
+                },
+                "storage": {
+                  "product-class": "org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat",
+                  "locationUri": null,
+                  "inputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+                  "outputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+                  "serde": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+                  "compressed": false,
+                  "properties": null
+                },
+                "schema": {
+                  "type": "struct",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "long",
+                      "nullable": true,
+                      "metadata": {}
+                    },
+                    {
+                      "name": "randomid",
+                      "type": "string",
+                      "nullable": true,
+                      "metadata": {}
+                    },
+                    {
+                      "name": "zip",
+                      "type": "string",
+                      "nullable": true,
+                      "metadata": {
+                        "__CHAR_VARCHAR_TYPE_STRING": "varchar(10)"
+                      }
+                    }
+                  ]
+                },
+                "provider": "parquet",
+                "partitionColumnNames": [],
+                "owner": "test_user@ad.test.net",
+                "createTime": 1682523315000,
+                "lastAccessTime": 0,
+                "createVersion": "3.3.1",
+                "properties": null,
+                "stats": null,
+                "unsupportedFeatures": [],
+                "tracksPartitionsInCatalog": false,
+                "schemaPreservesCase": true,
+                "ignoredProperties": null
+              },
+              "isStreaming": false
+            }
+          ]
+        },
+        "spark_version": {
+          "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+          "_schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunFacet",
+          "spark-version": "3.3.1",
+          "openlineage-spark-version": "1.5.0"
+        },
+        "processing_engine": {
+          "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+          "_schemaURL": "https://openlineage.io/spec/facets/1-1-0/ProcessingEngineRunFacet.json#/$defs/ProcessingEngineRunFacet",
+          "version": "3.3.1",
+          "name": "spark",
+          "openlineageAdapterVersion": "1.5.0"
+        },
+        "environment-properties": {
+          "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+          "_schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunFacet",
+          "environment-properties": {}
+        }
+      }
+    },
+    "job": {
+      "namespace": "TESTSchedulerID",
+      "name": "test_user_spark.execute_create_data_source_table_as_select_command.dst_table_test_from_src_table_df",
+      "facets": {}
+    },
+    "inputs": [
+      {
+        "namespace": "s3a://test_db-db",
+        "name": "src_table_test",
+        "facets": {
+          "dataSource": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/DatasourceDatasetFacet.json#/$defs/DatasourceDatasetFacet",
+            "name": "s3a://test_db-db",
+            "uri": "s3a://test_db-db"
+          },
+          "schema": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/SchemaDatasetFacet.json#/$defs/SchemaDatasetFacet",
+            "fields": [
+              {
+                "name": "id",
+                "type": "long"
+              },
+              {
+                "name": "randomid",
+                "type": "string"
+              },
+              {
+                "name": "zip",
+                "type": "string"
+              }
+            ]
+          },
+          "symlinks": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/SymlinksDatasetFacet.json#/$defs/SymlinksDatasetFacet",
+            "identifiers": [
+              {
+                "namespace": "hive://hive-metastore.hive.svc.cluster.local:9083",
+                "name": "shopify.raw_product_catalog",
+                "type": "TABLE"
+              }
+            ]
+          }
+        },
+        "inputFacets": {}
+      }
+    ],
+    "outputs": [
+      {
+        "namespace": "s3a://test_db-db",
+        "name": "dst_table_test_from_src_table_df",
+        "facets": {
+          "dataSource": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/DatasourceDatasetFacet.json#/$defs/DatasourceDatasetFacet",
+            "name": "s3a://test_db-db",
+            "uri": "s3a://test_db-db"
+          },
+          "schema": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/SchemaDatasetFacet.json#/$defs/SchemaDatasetFacet",
+            "fields": [
+              {
+                "name": "id",
+                "type": "long"
+              },
+              {
+                "name": "randomid",
+                "type": "string"
+              },
+              {
+                "name": "zip",
+                "type": "string"
+              }
+            ]
+          },
+          "columnLineage": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-1/ColumnLineageDatasetFacet.json#/$defs/ColumnLineageDatasetFacet",
+            "fields": {
+              "id": {
+                "inputFields": [
+                  {
+                    "namespace": "s3a://test_db-db",
+                    "name": "/src_table_test",
+                    "field": "comments"
+                  }
+                ]
+              },
+              "randomid": {
+                "inputFields": [
+                  {
+                    "namespace": "s3a://test_db-db",
+                    "name": "/src_table_test",
+                    "field": "products"
+                  }
+                ]
+              },
+              "zip": {
+                "inputFields": [
+                  {
+                    "namespace": "s3a://test_db-db",
+                    "name": "/src_table_test",
+                    "field": "platform"
+                  }
+                ]
+              }
+            }
+          },
+          "symlinks": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/SymlinksDatasetFacet.json#/$defs/SymlinksDatasetFacet",
+            "identifiers": [
+              {
+                "namespace": "hive://hive-metastore.hive.svc.cluster.local:9083",
+                "name": "shopify.fact_order_new5",
+                "type": "TABLE"
+              }
+            ]
+          },
+          "lifecycleStateChange": {
+            "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+            "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/LifecycleStateChangeDatasetFacet.json#/$defs/LifecycleStateChangeDatasetFacet",
+            "lifecycleStateChange": "CREATE"
+          }
+        },
+        "outputFacets": {}
+      }
+    ]
+  }
