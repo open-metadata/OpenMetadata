@@ -19,87 +19,93 @@ For all the buckets that we want to ingest, we need to provide the following:
 ## Connection Details
 
 $$section
-### AWS Access Key ID $(id="awsAccessKeyId")
+### GCP Credentials Configuration $(id="gcpConfig")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+You can authenticate with your BigQuery instance using either `GCP Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-Access keys consist of two parts:
-1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
-2. And a secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+You can check [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
 
-You must use both the access key ID and secret access key together to authenticate your requests.
+If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave the GCP credentials empty.
 
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
 $$
 
 $$section
-### AWS Secret Access Key $(id="awsSecretAccessKey")
+### Credentials Type $(id="type")
 
-Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+Credentials Type is the type of the account, for a service account the value of this field is `service_account`. To fetch this key, look for the value associated with the `type` key in the service account key file.
 $$
 
 $$section
-### AWS Region $(id="awsRegion")
+### Project ID $(id="projectId")
 
-Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
-
-As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
-
-Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
+A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file.
 $$
 
 $$section
-### AWS Session Token $(id="awsSessionToken")
+### Private Key ID $(id="privateKeyId")
 
-If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
-
-You can find more information on [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html).
+This is a unique identifier for the private key associated with the service account. To fetch this key, look for the value associated with the `private_key_id` key in the service account file.
 $$
 
 $$section
-### Endpoint URL $(id="endPointURL")
+### Private Key $(id="privateKey")
 
-To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
+This is the private key associated with the service account that is used to authenticate and authorize access to GCP. To fetch this key, look for the value associated with the `private_key` key in the service account file.
 
-Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
+Make sure you are passing the key in a correct format. If your private key looks like this:
+
+```
+-----BEGIN ENCRYPTED PRIVATE KEY-----
+MII..
+MBQ...
+CgU..
+8Lt..
+...
+h+4=
+-----END ENCRYPTED PRIVATE KEY-----
+```
+
+You will have to replace new lines with `\n` and the final private key that you need to pass should look like this:
+
+```
+-----BEGIN ENCRYPTED PRIVATE KEY-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END ENCRYPTED PRIVATE KEY-----\n
+```
 $$
 
 $$section
-### Profile Name $(id="profileName")
+### Client Email $(id="clientEmail")
 
-A named profile is a collection of settings and credentials that you can apply to an AWS CLI command. When you specify a profile to run a command, the settings and credentials are used to run that command. Multiple named profiles can be stored in the config and credentials files.
-
-You can inform this field if you'd like to use a profile other than `default`.
-
-Find here more information about [Named profiles for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html).
+This is the email address associated with the service account. To fetch this key, look for the value associated with the `client_email` key in the service account key file.
 $$
 
 $$section
-### Assume Role ARN $(id="assumeRoleArn")
+### Client ID $(id="clientId")
 
-Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the `ARN` (Amazon Resource Name) of the policy of the other account.
-
-A user who wants to access a role in a different account must also have permissions that are delegated from the account administrator. The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
-
-This is a required field if you'd like to `AssumeRole`.
-
-Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
+This is a unique identifier for the service account. To fetch this key, look for the value associated with the `client_id` key in the service account key file.
 $$
 
 $$section
-### Assume Role Session Name $(id="assumeRoleSessionName")
+### Auth URI $(id="authUri")
 
-An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons.
-
-By default, we'll use the name `OpenMetadataSession`.
-
-Find more information about the [Role Session Name](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session.).
+This is the URI for the authorization server. To fetch this key, look for the value associated with the `auth_uri` key in the service account key file.
 $$
 
 $$section
-### Assume Role Source Identity $(id="assumeRoleSourceIdentity")
+### Token URI $(id="tokenUri")
 
-The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
+The Google Cloud Token URI is a specific endpoint used to obtain an OAuth 2.0 access token from the Google Cloud IAM service. This token allows you to authenticate and access various Google Cloud resources and APIs that require authorization.
 
-Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
+To fetch this key, look for the value associated with the `token_uri` key in the service account credentials file.
+$$
+
+$$section
+### Auth Provider X509Cert URL $(id="authProviderX509CertUrl")
+
+This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the `auth_provider_x509_cert_url` key in the service account key file.
+$$
+
+$$section
+### Client X509Cert URL $(id="clientX509CertUrl")
+
+This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the `client_x509_cert_url` key in the service account key file.
 $$

@@ -109,7 +109,7 @@ Here are the step-by-step instructions for finding the account name for an Azure
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
-- **Key Vault**:Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
+- **Key Vault**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
 
 {% /codeInfo %}
 

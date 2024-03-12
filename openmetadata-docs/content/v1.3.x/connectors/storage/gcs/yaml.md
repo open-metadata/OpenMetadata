@@ -69,95 +69,55 @@ This is a sample config for Athena:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
+**gcpConfig:**
 
-- **awsAccessKeyId** & **awsSecretAccessKey**: When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have
-  permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
-  authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+**1.** Passing the raw credential values provided by GCP. This requires us to provide the following information, all provided by GCP:
 
-Access keys consist of two parts: An **access key ID** (for example, `AKIAIOSFODNN7EXAMPLE`), and a **secret access key** (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+  - **type**: Credentials Type is the type of the account, for a service account the value of this field is `service_account`. To fetch this key, look for the value associated with the `type` key in the service account key file.
+  - **projectId**: A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file. You can also pass multiple project id to ingest metadata from different GCP projects into one service.
+  - **privateKeyId**: This is a unique identifier for the private key associated with the service account. To fetch this key, look for the value associated with the `private_key_id` key in the service account file.
+  - **privateKey**: This is the private key associated with the service account that is used to authenticate and authorize access to GCP. To fetch this key, look for the value associated with the `private_key` key in the service account file.
+  - **clientEmail**: This is the email address associated with the service account. To fetch this key, look for the value associated with the `client_email` key in the service account key file.
+  - **clientId**: This is a unique identifier for the service account. To fetch this key, look for the value associated with the `client_id` key in the service account key  file.
+  - **authUri**: This is the URI for the authorization server. To fetch this key, look for the value associated with the `auth_uri` key in the service account key file. The default value to Auth URI is https://accounts.google.com/o/oauth2/auth.
+  - **tokenUri**: The Google Cloud Token URI is a specific endpoint used to obtain an OAuth 2.0 access token from the Google Cloud IAM service. This token allows you to authenticate and access various Google Cloud resources and APIs that require authorization. To fetch this key, look for the value associated with the `token_uri` key in the service account credentials file. Default Value to Token URI is https://oauth2.googleapis.com/token.
+  - **authProviderX509CertUrl**: This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the `auth_provider_x509_cert_url` key in the service account key file. The Default value for Auth Provider X509Cert URL is https://www.googleapis.com/oauth2/v1/certs
+  - **clientX509CertUrl**: This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the `client_x509_cert_url` key in the service account key  file.
 
-You must use both the access key ID and secret access key together to authenticate your requests.
+**2.**  Passing a local file path that contains the credentials:
+  - **gcpCredentialsPath**
 
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html).
+- If you prefer to pass the credentials file, you can do so as follows:
+```yaml
+source:
+  type: gcs
+  serviceName: local_gcs
+  serviceConnection:
+    config:
+      type: GCS
+      credentials:
+        gcpConfig: <path to file>
+```
 
-{% /codeInfo %}
+- If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for GCP you can just leave
+the GCP credentials empty. This is why they are not marked as required.
 
-{% codeInfo srNumber=2 %}
-**awsSessionToken**: If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID
-and AWS Secrets Access Key. Also, these will include an AWS Session Token.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsRegion**: Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
-
-As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
-
-Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the
-services programmatically, there are different ways in which we can extract and use the rest of AWS configurations.
-
-You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=4 %}
-
-**endPointURL**: To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the
-entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the
-default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
-
-Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=5 %}
-
-**profileName**: A named profile is a collection of settings and credentials that you can apply to a AWS CLI command.
-When you specify a profile to run a command, the settings and credentials are used to run that command.
-Multiple named profiles can be stored in the config and credentials files.
-
-You can inform this field if you'd like to use a profile other than `default`.
-
-Find here more information about [Named profiles for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html).
+```yaml
+...
+source:
+  type: gcs
+  serviceName: local_gcs
+  serviceConnection:
+    config:
+      type: GCS
+    credentials:
+      gcpConfig: {}
+...
+```
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=6 %}
-
-**assumeRoleArn**: Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the
-`ARN` (Amazon Resource Name) of the policy of the other account.
-
-A user who wants to access a role in a different account must also have permissions that are delegated from the account
-administrator. The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
-
-This is a required field if you'd like to `AssumeRole`.
-
-Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
-{% /codeInfo %}
-
-{% codeInfo srNumber=7 %}
-
-**assumeRoleSessionName**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
-is assumed by different principals or for different reasons.
-
-By default, we'll use the name `OpenMetadataSession`.
-
-Find more information about the [Role Session Name](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session.).
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=8 %}
-
-**assumeRoleSourceIdentity**: The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity
-information in AWS CloudTrail logs to determine who took actions with a role.
-
-Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
-
-{% /codeInfo %}
-
-{% partial file="/v1.3/connectors/yaml/storage/source-config-def.md" /%}
+{% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
 
@@ -165,13 +125,13 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=11 %}
+{% codeInfo srNumber=2 %}
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=12 %}
+{% codeInfo srNumber=3 %}
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
@@ -183,48 +143,42 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 ```yaml
 source:
-  type: GCS
-  serviceName: local_GCS
+  type: gcs
+  serviceName: "<service name>"
   serviceConnection:
     config:
       type: GCS
-      awsConfig:
 ```
 ```yaml {% srNumber=1 %}
-        awsAccessKeyId: KEY
-        awsSecretAccessKey: SECRET
+      credentials:
+        gcpConfig:
+          type: My Type
+          projectId: project ID # ["project-id-1", "project-id-2"]
+          privateKeyId: us-east-2
+          privateKey: |
+            -----BEGIN PRIVATE KEY-----
+            Super secret key
+            -----END PRIVATE KEY-----
+          clientEmail: client@mail.com
+          clientId: 1234
+          # authUri: https://accounts.google.com/o/oauth2/auth (default)
+          # tokenUri: https://oauth2.googleapis.com/token (default)
+          # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
+          clientX509CertUrl: https://cert.url
+          # taxonomyLocation: us
+          # taxonomyProjectID: ["project-id-1", "project-id-2"]
+          # usageLocation: us
 ```
 ```yaml {% srNumber=2 %}
-        # awsSessionToken: TOKEN
+      # connectionOptions:
+      #   key: value
 ```
 ```yaml {% srNumber=3 %}
-        awsRegion: us-east-2
-```
-```yaml {% srNumber=4 %}
-        # endPointURL: https://GCS.us-east-2.amazonaws.com/custom
-```
-```yaml {% srNumber=5 %}
-        # profileName: profile
-```
-```yaml {% srNumber=6 %}
-        # assumeRoleArn: "arn:partition:service:region:account:resource"
-```
-```yaml {% srNumber=7 %}
-        # assumeRoleSessionName: session
-```
-```yaml {% srNumber=8 %}
-        # assumeRoleSourceIdentity: identity
-```
-```yaml {% srNumber=11 %}
-      # connectionOptions:
-        # key: value
-```
-```yaml {% srNumber=12 %}
       # connectionArguments:
-        # key: value
+      #   key: value
 ```
 
-{% partial file="/v1.3/connectors/yaml/storage/source-config.md" /%}
+{% partial file="/v1.3/connectors/yaml/database/source-config.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/ingestion-sink.md" /%}
 
@@ -233,20 +187,3 @@ source:
 {% /codeBlock %}
 
 {% /codePreview %}
-
-
-
-{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
-
-## Related
-
-{% tilesContainer %}
-
-{% tile
-   icon="mediation"
-   title="Configure Ingestion Externally"
-   description="Deploy, configure, and manage the ingestion workflows externally."
-   link="/deployment/ingestion"
- / %}
-
-{% /tilesContainer %}

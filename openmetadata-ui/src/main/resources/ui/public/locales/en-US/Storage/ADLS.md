@@ -61,3 +61,10 @@ Here are the step-by-step instructions for finding the account name for an Azure
 4. You can use this account name to access and manage the resources associated with the account, such as creating and managing containers and directories.
 $$
 
+$$section
+### Key Vault Name $(id="vaultName")
+
+Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
+
+$$
+
