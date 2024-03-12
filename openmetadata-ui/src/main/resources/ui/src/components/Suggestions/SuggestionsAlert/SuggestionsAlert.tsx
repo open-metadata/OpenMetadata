@@ -52,7 +52,7 @@ const SuggestionsAlert = ({
         <div className="suggested-alert-footer d-flex justify-between">
           <div className="d-flex items-center gap-2 ">
             <StarIcon width={14} />
-            <Typography.Text className="text-grey-muted">
+            <Typography.Text className="text-grey-muted font-italic">
               {t('label.suggested-by')}
             </Typography.Text>
             <UserPopOverCard userName={userName}>
@@ -66,7 +66,7 @@ const SuggestionsAlert = ({
             </UserPopOverCard>
           </div>
           {hasEditAccess && (
-            <div className="d-flex justify-end p-t-xss gap-2">
+            <div className="d-flex justify-end gap-2">
               <Button
                 ghost
                 data-testid="reject-suggestion"
