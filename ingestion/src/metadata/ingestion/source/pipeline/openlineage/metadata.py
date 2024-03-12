@@ -131,14 +131,14 @@ class OpenlineageSource(PipelineServiceSource):
         # we take last two elements to explicitly collect schema and table names
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
         # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        return TableDetails(name=name_parts[-1], schema=name_parts[-2])
+        return TableDetails(name=name_parts[-1], schema_name=name_parts[-2])
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         try:
             return self._get_table_fqn_from_om(table_details)
         except FQNNotFoundException:
             try:
-                schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
+                schema_fqn = self._get_schema_fqn_from_om(table_details.schema_name)
 
                 return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
@@ -159,7 +159,7 @@ class OpenlineageSource(PipelineServiceSource):
                 entity_type=Table,
                 service_name=db_service,
                 database_name=None,
-                schema_name=table_details.schema,
+                schema_name=table_details.schema_name,
                 table_name=table_details.name,
             )
         if not result:
@@ -226,7 +226,7 @@ class OpenlineageSource(PipelineServiceSource):
         :param event_type: type of event we are looking for.
         :return: Open Lineage event if matches event_type, otherwise None
         """
-        return event if event.event_type == event_type else {}
+        return event if event.eventType == event_type else {}
 
     @classmethod
     def _get_om_table_columns(cls, table_input: Dict) -> Optional[List]:
@@ -276,12 +276,14 @@ class OpenlineageSource(PipelineServiceSource):
             # if fqn found then it means table is already registered and we don't need to render create table request
             return None
         except FQNNotFoundException:
-            pass
+            logger.warning(
+                f"FQN for table not found in OM. Proceeding with creating it. {table}"
+            )
 
         # If OM Table FQN was not found based on OL Partial Name - we need to register it.
         if not om_table_fqn:
             try:
-                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
+                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema_name)
             except FQNNotFoundException as e:
                 return Either(
                     left=StackTraceError(
@@ -501,7 +503,6 @@ class OpenlineageSource(PipelineServiceSource):
 
         finally:
             # Close down consumer to commit final offsets.
-            # @todo address this
             consumer.close()
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:

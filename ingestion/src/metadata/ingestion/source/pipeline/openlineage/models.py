@@ -12,27 +12,56 @@
 Openlineage Source Model module
 """
 
-from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel
+
+"""
+"run": {
+      "runId": "59fc8906-4a4a-45ab-9a54-9cc2d399e10e",
+      "facets": {
+        "parent": {
+          "_producer": "https://github.com/OpenLineage/OpenLineage/tree/1.5.0/integration/spark",
+          "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/ParentRunFacet.json#/$defs/ParentRunFacet",
+          "run": {
+            "runId": "daf8bcc1-cc3c-41bb-9251-334cacf698fa"
+          },
+          "job": {
+"""
 
 
-@dataclass
-class OpenLineageEvent:
+class OpenLineageJob(BaseModel):
+    namespace: str
+    name: Optional[str]
+
+
+class ParentFacet(BaseModel):
+    job: OpenLineageJob
+
+
+class OLFacets(BaseModel):
+    parent: ParentFacet
+
+
+class RunFacet(BaseModel):
+    facets: OLFacets
+
+
+class OpenLineageEvent(BaseModel):
     """
     An object containing data extracted from raw OpenLineage event. Used as a basis for all abstract methods of
     OpenlineageSource connector.
     """
 
-    run_facet: Dict
+    run: RunFacet
     job: Dict
-    event_type: str
+    eventType: str
     inputs: List[Any]
     outputs: List[Any]
 
 
-@dataclass
-class TableFQN:
+class TableFQN(BaseModel):
     """
     Fully Qualified Name of a Table.
     """
@@ -40,8 +69,7 @@ class TableFQN:
     value: str
 
 
-@dataclass
-class ColumnFQN:
+class ColumnFQN(BaseModel):
     """
     Fully Qualified Name of a Column.
     """
@@ -49,8 +77,7 @@ class ColumnFQN:
     value: str
 
 
-@dataclass
-class LineageNode:
+class LineageNode(BaseModel):
     """
     A node being a part of Lineage information.
     """
@@ -60,8 +87,7 @@ class LineageNode:
     node_type: str = "table"
 
 
-@dataclass
-class LineageEdge:
+class LineageEdge(BaseModel):
     """
     An object describing connection of two nodes in the Lineage information.
     """
@@ -70,13 +96,12 @@ class LineageEdge:
     to_node: LineageNode
 
 
-@dataclass
-class TableDetails:
+class TableDetails(BaseModel):
     """
     Minimal table information.
     """
 
-    schema: str
+    schema_name: str
     name: str
 
 

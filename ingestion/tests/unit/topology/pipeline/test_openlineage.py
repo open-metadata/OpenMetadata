@@ -115,13 +115,7 @@ with open(
 ) as ol_file:
     FULL_OL_KAFKA_EVENT = json.load(ol_file)
 
-EXPECTED_OL_EVENT = OpenLineageEvent(
-    run_facet=FULL_OL_KAFKA_EVENT["run"],
-    job=FULL_OL_KAFKA_EVENT["job"],
-    event_type=FULL_OL_KAFKA_EVENT["eventType"],
-    inputs=FULL_OL_KAFKA_EVENT["inputs"],
-    outputs=FULL_OL_KAFKA_EVENT["outputs"],
-)
+EXPECTED_OL_EVENT = OpenLineageEvent(**FULL_OL_KAFKA_EVENT)
 
 
 class OpenLineageUnitTest(unittest.TestCase):
@@ -449,6 +443,20 @@ class OpenLineageUnitTest(unittest.TestCase):
         ol_event = self.read_openlineage_event_from_kafka(FULL_OL_KAFKA_EVENT)
         self.assertIsInstance(ol_event, OpenLineageEvent)
         self.assertEqual(ol_event, EXPECTED_OL_EVENT)
+
+    def test_message_to_openlineage_event_correct(self):
+        self.assertIsNotNone(OpenLineageEvent(**FULL_OL_KAFKA_EVENT))
+
+    def test_message_to_openlineage_event_missing_event_type(self):
+        data = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        data.pop("eventType")
+
+        with self.assertRaises(ValueError):
+            OpenLineageEvent(**data)
+
+    def test_message_to_openlineage_event_empty(self):
+        with self.assertRaises(ValueError):
+            OpenLineageEvent(**{})
 
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
