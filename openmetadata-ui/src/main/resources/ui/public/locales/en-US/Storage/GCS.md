@@ -6,7 +6,7 @@ By default, the GCS connector will ingest only top-level containers (Buckets). I
 
 ## Requirements
 
-We need the following permissions in AWS:
+We need the following permissions in GCS:
 
 ### GCS Permissions
 

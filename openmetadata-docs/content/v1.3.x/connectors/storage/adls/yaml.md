@@ -26,7 +26,7 @@ Configure and schedule Azure metadata workflows from the CLI:
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the metadata ingestion, we need the following permissions in AWS:
+To run the metadata ingestion, we need the following permissions in ADLS:
 
 ### ADLS Permissions
 
