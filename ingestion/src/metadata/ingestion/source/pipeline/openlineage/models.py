@@ -116,7 +116,7 @@ class TableDetails(BaseModel):
     Minimal table information.
     """
 
-    schema_name: str
+    schema_: str
     name: str
 
 

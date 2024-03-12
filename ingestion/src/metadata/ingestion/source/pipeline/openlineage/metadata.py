@@ -139,7 +139,7 @@ class OpenlineageSource(PipelineServiceSource):
             return self._get_table_fqn_from_om(table_details)
         except FQNNotFoundException:
             try:
-                schema_fqn = self._get_schema_fqn_from_om(table_details.schema_name)
+                schema_fqn = self._get_schema_fqn_from_om(table_details.schema_)
 
                 return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
@@ -159,7 +159,7 @@ class OpenlineageSource(PipelineServiceSource):
                 entity_type=Table,
                 service_name=db_service,
                 database_name=None,
-                schema_name=table_details.schema_name,
+                schema_name=table_details.schema_,
                 table_name=table_details.name,
             )
         if not result:
@@ -279,7 +279,7 @@ class OpenlineageSource(PipelineServiceSource):
         # If OM Table FQN was not found based on OL Partial Name - we need to register it.
         if not om_table_fqn:
             try:
-                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema_name)
+                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema_)
             except FQNNotFoundException as e:
                 return Either(
                     left=StackTraceError(
