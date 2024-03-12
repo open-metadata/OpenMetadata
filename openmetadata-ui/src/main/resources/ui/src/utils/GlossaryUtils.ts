@@ -13,6 +13,7 @@
 
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
@@ -93,12 +94,17 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
             must_not: [
               {
                 term: {
-                  entityType: 'glossaryTerm',
+                  entityType: EntityType.GLOSSARY_TERM,
                 },
               },
               {
                 term: {
-                  entityType: 'tag',
+                  entityType: EntityType.TAG,
+                },
+              },
+              {
+                term: {
+                  entityType: EntityType.DATA_PRODUCT,
                 },
               },
             ],
