@@ -46,7 +46,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.openlineage.models import (
     Dataset,
-    EventType,
+    RunState,
     InputField,
     LineageEdge,
     LineageNode,
@@ -218,7 +218,7 @@ class OpenlineageSource(PipelineServiceSource):
 
     @classmethod
     def _filter_event_by_type(
-        cls, event: RunEvent, event_type: EventType
+        cls, event: RunEvent, event_type: RunState
     ) -> Optional[Dict]:
         """
         returns event if it's of particular event_type.
@@ -489,7 +489,7 @@ class OpenlineageSource(PipelineServiceSource):
                         _result = message_to_open_lineage_event(
                             json.loads(message.value())
                         )
-                        result = self._filter_event_by_type(_result, EventType.COMPLETE)
+                        result = self._filter_event_by_type(_result, RunState.COMPLETE)
                         if result:
                             yield result
                     except Exception as e:

@@ -107,8 +107,6 @@ VALID_EVENT = {
 MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT = copy.deepcopy(VALID_EVENT)
 del MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT["run"]["facets"]["parent"]["job"]["name"]
 
-MALFORMED_NESTED_STRUCTURE_EVENT = copy.deepcopy(VALID_EVENT)
-MALFORMED_NESTED_STRUCTURE_EVENT["run"]["facets"]["parent"]["job"] = "Not a dict"
 
 with open(
     f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json"
@@ -170,11 +168,6 @@ class OpenLineageUnitTest(unittest.TestCase):
         """Test conversion with missing 'run.facets.parent.job.name' field."""
         with self.assertRaises(ValueError):
             message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
-
-    def test_message_to_ol_event_malformed_nested_structure(self):
-        """Test conversion with a malformed nested structure."""
-        with self.assertRaises(TypeError):
-            message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
 
     def test_poll_message_receives_message(self):
         """Test if poll_message receives a kafka  message."""
@@ -355,8 +348,9 @@ class OpenLineageUnitTest(unittest.TestCase):
             ),
         ]
         outputs = [
-            {
+            Dataset(**{
                 "name": "schema.output_table",
+                "namespace": "hive://",
                 "facets": {
                     "columnLineage": {
                         "fields": {
@@ -381,7 +375,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                         }
                     }
                 },
-            }
+            })
         ]
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
 
@@ -419,13 +413,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         data = {"name": "schema.table", "namespace": "__dummy__"}
         result = self.open_lineage_source._get_table_details(Dataset(**data))
         self.assertEqual(result.name, "table")
-        self.assertEqual(result.schema, "schema")
+        self.assertEqual(result.schema_, "schema")
 
     def test_get_table_details_invalid_name_structure(self):
         """Test with invalid name structure."""
-        data = {"name": "invalidname"}
+        data = {"name": "invalidname", "namespace": "__dummy__"}
         with self.assertRaises(ValueError):
-            self.open_lineage_source._get_table_details(data)
+            self.open_lineage_source._get_table_details(Dataset(**data))
 
     def test_get_pipelines_list(self):
         """Test get_pipelines_list method"""

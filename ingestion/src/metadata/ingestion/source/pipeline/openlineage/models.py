@@ -18,34 +18,34 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
-class OpenLineageJob(BaseModel):
+class RunState(str, Enum):
+    """
+    List of used OpenLineage run states.
+    """
+
+    START = "START"
+    RUNNING = "RUNNING"
+    COMPLETE = "COMPLETE"
+    ABORT = "ABORT"
+    FAIL = "FAIL"
+    OTHER = "OTHER"
+
+
+class Job(BaseModel):
     namespace: str
     name: str
 
 
 class ParentFacet(BaseModel):
-    job: OpenLineageJob
+    job: Job
 
 
-class RunFacet(BaseModel):
+class RunFacetWithParent(BaseModel):
     parent: ParentFacet
 
 
-class RunFacets(BaseModel):
-    facets: RunFacet
-
-
-class SchemaField(BaseModel):
-    name: str
-    type_: str = Field(alias="type")
-
-
-class LineageSchemaField(SchemaField):
-    inputFields: List[SchemaField]
-
-
-class Fields(BaseModel):
-    fields: Optional[List[SchemaField]]
+class Run(BaseModel):
+    facets: RunFacetWithParent
 
 
 class TableIdentifier(BaseModel):
@@ -70,16 +70,29 @@ class TableColumnLineage(BaseModel):
     fields: Dict[str, InputFieldList]
 
 
-class TableFacet(BaseModel):
+class SchemaField(BaseModel):
+    name: str
+    type_: str = Field(alias="type")
+
+
+class LineageSchemaField(SchemaField):
+    inputFields: List[SchemaField]
+
+
+class Fields(BaseModel):
+    fields: Optional[List[SchemaField]]
+
+
+class TableFacets(BaseModel):
     schema_: Optional[Fields] = Field(alias="schema")
     symlinks: Optional[TableSymlinks]
     columnLineage: Optional[TableColumnLineage]
 
 
 class Dataset(BaseModel):
-    facets: Optional[TableFacet]
-    name: str
     namespace: str
+    name: str
+    facets: Optional[TableFacets]
 
 
 class RunEvent(BaseModel):
@@ -88,9 +101,9 @@ class RunEvent(BaseModel):
     OpenlineageSource connector.
     """
 
-    run: RunFacets
+    run: Run
     job: Dict
-    eventType: str
+    eventType: RunState
     inputs: List[Dataset]
     outputs: List[Dataset]
 
@@ -137,11 +150,3 @@ class TableDetails(BaseModel):
 
     schema_: str
     name: str
-
-
-class EventType(str, Enum):
-    """
-    List of used OpenLineage event types.
-    """
-
-    COMPLETE = "COMPLETE"
