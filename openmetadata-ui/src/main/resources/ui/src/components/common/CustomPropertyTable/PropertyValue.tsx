@@ -12,10 +12,11 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Form, Select, Tooltip, Typography } from 'antd';
+import { DatePicker, Form, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isArray, isEmpty, isUndefined, noop, toNumber } from 'lodash';
+import { isArray, isEmpty, isUndefined, noop, toNumber, toUpper } from 'lodash';
+import moment, { Moment } from 'moment';
 import React, { FC, Fragment, useState } from 'react';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
@@ -158,6 +159,52 @@ export const PropertyValue: FC<Props> = ({
                   mode={isMultiSelect ? 'multiple' : undefined}
                   options={options}
                   placeholder={t('label.enum-value-plural')}
+                  style={{ width: '250px' }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'date':
+      case 'dateTime': {
+        const format = toUpper(property.customPropertyConfig?.config as string);
+
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'dateTime-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="dateTime-form"
+              initialValues={{
+                dateTimeValue: value ? moment(value, format) : undefined,
+              }}
+              layout="vertical"
+              onFinish={(values: { dateTimeValue: Moment }) => {
+                onInputSave(values.dateTimeValue.format(format));
+              }}>
+              <Form.Item
+                name="dateTimeValue"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: propertyType.name,
+                    }),
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}>
+                <DatePicker
+                  data-testid="date-time-picker"
+                  disabled={isLoading}
+                  format={format}
+                  showTime={propertyType.name === 'dateTime'}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
