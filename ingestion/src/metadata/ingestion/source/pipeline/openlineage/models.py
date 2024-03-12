@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 class OpenLineageJob(BaseModel):
     namespace: str
-    name: Optional[str]
+    name: str
 
 
 class ParentFacet(BaseModel):
