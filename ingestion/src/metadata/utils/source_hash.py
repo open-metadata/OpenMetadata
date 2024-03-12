@@ -46,7 +46,7 @@ def generate_source_hash(
 
         json_bytes = create_request_json.encode("utf-8")
         return hashlib.md5(json_bytes).hexdigest()
-    
+
     except Exception as exc:
         logger.warning(f"Failed to generate source hash due to - {exc}")
         logger.debug(traceback.format_exc())
