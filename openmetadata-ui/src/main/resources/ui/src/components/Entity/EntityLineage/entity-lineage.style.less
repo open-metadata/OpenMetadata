@@ -68,11 +68,15 @@
   }
 }
 .custom-node-column-lineage-normal {
-  border-bottom: 1px solid @border-color;
+  border-top: 1px solid @border-color;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
+  font-size: 12px;
+  &:first-child {
+    border-top: none;
+  }
 }
 
 .custom-node {

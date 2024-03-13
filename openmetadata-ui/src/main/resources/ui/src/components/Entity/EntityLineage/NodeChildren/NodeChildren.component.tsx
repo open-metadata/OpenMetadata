@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Input } from 'antd';
-import classNames from 'classnames';
+import { Button, Collapse, Input } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,15 +24,14 @@ import { Dashboard } from '../../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { Column, Table } from '../../../../generated/entity/data/table';
 import { Topic } from '../../../../generated/entity/data/topic';
-import { EntityReference } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getConstraintIcon, getEntityIcon } from '../../../../utils/TableUtils';
-import { getTopicSchemaFields } from '../../../../utils/TopicDetailsUtils';
-import { getColumnHandle, getTestSuiteSummary } from '../CustomNode.utils';
+import { getEntityIcon } from '../../../../utils/TableUtils';
+import { getColumnContent, getTestSuiteSummary } from '../CustomNode.utils';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
+  const { Panel } = Collapse;
   const { isEditMode, tracedColumns, expandedNodes, onColumnClick } =
     useLineageProvider();
   const { entityType, id } = node;
@@ -75,7 +73,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         label: t('label.column-plural'),
       },
       [EntityType.TOPIC]: {
-        data: getTopicSchemaFields(node as Topic),
+        data: (node as Topic).messageSchema?.schemaFields ?? [],
         label: t('label.field-plural'),
       },
     };
@@ -141,6 +139,56 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [children]
   );
 
+  const renderRecord = useCallback(
+    (record: Column) => {
+      return (
+        <Collapse defaultActiveKey={record.fullyQualifiedName}>
+          <Panel
+            header={getEntityName(record)}
+            key={record.fullyQualifiedName ?? ''}>
+            {record?.children?.map((child) => {
+              const { fullyQualifiedName, dataType } = child;
+              if (['RECORD', 'STRUCT'].includes(dataType)) {
+                return renderRecord(child);
+              } else {
+                const isColumnTraced = tracedColumns.includes(
+                  fullyQualifiedName ?? ''
+                );
+
+                return getColumnContent(
+                  child,
+                  isColumnTraced,
+                  isConnectable,
+                  onColumnClick
+                );
+              }
+            })}
+          </Panel>
+        </Collapse>
+      );
+    },
+    [isConnectable, tracedColumns]
+  );
+
+  const renderColumnsData = useCallback(
+    (column: Column) => {
+      const { fullyQualifiedName, dataType } = column;
+      if (['RECORD', 'STRUCT'].includes(dataType)) {
+        return renderRecord(column);
+      } else {
+        const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+
+        return getColumnContent(
+          column,
+          isColumnTraced,
+          isConnectable,
+          onColumnClick
+        );
+      }
+    },
+    [isConnectable, tracedColumns]
+  );
+
   if (supportsColumns) {
     return (
       <div className="column-container bg-grey-1 p-sm p-y-xs">
@@ -183,41 +231,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             </div>
 
             <section className="m-t-md" id="table-columns">
-              <div className="border rounded-4">
-                {filteredColumns.map((column) => {
-                  const { fullyQualifiedName, type } =
-                    column as EntityReference;
-                  const isColumnTraced = tracedColumns.includes(
-                    (column as EntityReference).fullyQualifiedName ?? ''
-                  );
-
-                  return (
-                    <div
-                      className={classNames(
-                        'custom-node-column-container',
-                        isColumnTraced
-                          ? 'custom-node-header-tracing'
-                          : 'custom-node-column-lineage-normal bg-white'
-                      )}
-                      data-testid={`column-${fullyQualifiedName}`}
-                      key={fullyQualifiedName}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onColumnClick(fullyQualifiedName ?? '');
-                      }}>
-                      {getColumnHandle(
-                        type,
-                        isConnectable,
-                        'lineage-column-node-handle',
-                        fullyQualifiedName
-                      )}
-                      {getConstraintIcon({
-                        constraint: (column as Column).constraint,
-                      })}
-                      <p className="p-xss">{getEntityName(column)}</p>
-                    </div>
-                  );
-                })}
+              <div className="border rounded-4 overflow-hidden">
+                {filteredColumns.map((column) =>
+                  renderColumnsData(column as Column)
+                )}
               </div>
             </section>
 

@@ -18,8 +18,10 @@ import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
-import { TestSuite } from '../../../generated/entity/data/table';
+import { Column, TestSuite } from '../../../generated/entity/data/table';
 import { formTwoDigitNumber } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getConstraintIcon } from '../../../utils/TableUtils';
 import { EdgeTypeEnum } from './EntityLineage.interface';
 
 export const getHandleByType = (
@@ -137,6 +139,42 @@ export const getTestSuiteSummary = (testSuite?: TestSuite) => {
           {formTwoDigitNumber(testSuite?.summary?.failed ?? 0)}
         </div>
       </div>
+    </div>
+  );
+};
+
+export const getColumnContent = (
+  column: Column,
+  isColumnTraced: boolean,
+  isConnectable: boolean,
+  onColumnClick: (column: string) => void
+) => {
+  const { fullyQualifiedName } = column;
+
+  return (
+    <div
+      className={classNames(
+        'custom-node-column-container',
+        isColumnTraced
+          ? 'custom-node-header-tracing'
+          : 'custom-node-column-lineage-normal bg-white'
+      )}
+      data-testid={`column-${fullyQualifiedName}`}
+      key={fullyQualifiedName}
+      onClick={(e) => {
+        e.stopPropagation();
+        onColumnClick(fullyQualifiedName ?? '');
+      }}>
+      {getColumnHandle(
+        EntityLineageNodeType.DEFAULT,
+        isConnectable,
+        'lineage-column-node-handle',
+        fullyQualifiedName
+      )}
+      {getConstraintIcon({
+        constraint: (column as Column).constraint,
+      })}
+      <p className="p-xss">{getEntityName(column)}</p>
     </div>
   );
 };
