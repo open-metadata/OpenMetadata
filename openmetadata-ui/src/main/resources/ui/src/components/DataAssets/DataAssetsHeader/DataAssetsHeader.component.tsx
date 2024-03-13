@@ -108,7 +108,11 @@ export const ExtraInfoLink = ({
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
-      <IconExternalLink className="m-l-xss " width={14} />{' '}
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
     </div>
   </>
 );
@@ -438,7 +442,7 @@ export const DataAssetsHeader = ({
                         <Icon
                           className="vertical-align-text-top"
                           component={TaskOpenIcon}
-                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                          style={DATA_ASSET_ICON_DIMENSION}
                         />
                       }
                       onClick={handleOpenTaskClick}>
@@ -455,7 +459,7 @@ export const DataAssetsHeader = ({
                       <Icon
                         className="vertical-align-text-top"
                         component={VersionIcon}
-                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                        style={DATA_ASSET_ICON_DIMENSION}
                       />
                     }
                     onClick={onVersionClick}>
@@ -477,7 +481,7 @@ export const DataAssetsHeader = ({
                         <Icon
                           className="vertical-align-text-top"
                           component={isFollowing ? StarFilledIcon : StarIcon}
-                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                          style={DATA_ASSET_ICON_DIMENSION}
                         />
                       }
                       loading={isFollowingLoading}
@@ -496,7 +500,7 @@ export const DataAssetsHeader = ({
                       <Icon
                         className="vertical-align-text-top"
                         component={ShareIcon}
-                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                        style={DATA_ASSET_ICON_DIMENSION}
                       />
                     }
                     onClick={handleShareButtonClick}

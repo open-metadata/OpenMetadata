@@ -36,7 +36,7 @@ export const ServicesEntityMap = {
   [Services.Pipeline]: EntityType.Pipeline,
   [Services.MLModels]: EntityType.MlModel,
   [Services.Storage]: EntityType.Container,
-  [Services.Search]: EntityType.SeachIndex,
+  [Services.Search]: EntityType.SearchIndex,
 };
 
 export const RETRY_TIMES = 4;
