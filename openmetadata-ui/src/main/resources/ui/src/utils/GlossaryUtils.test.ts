@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../enums/entity.enum';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -41,12 +42,17 @@ describe('Glossary Utils', () => {
                 must_not: [
                   {
                     term: {
-                      entityType: 'glossaryTerm',
+                      entityType: EntityType.GLOSSARY_TERM,
                     },
                   },
                   {
                     term: {
-                      entityType: 'tag',
+                      entityType: EntityType.TAG,
+                    },
+                  },
+                  {
+                    term: {
+                      entityType: EntityType.DATA_PRODUCT,
                     },
                   },
                 ],

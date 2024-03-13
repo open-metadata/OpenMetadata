@@ -51,6 +51,7 @@ jest.mock(
   '../../components/Settings/Applications/AppDetails/ApplicationSchemaClassBase',
   () => ({
     importSchema: jest.fn().mockResolvedValue({}),
+    getJSONUISchema: jest.fn().mockReturnValue({}),
   })
 );
 

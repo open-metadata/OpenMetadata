@@ -20,6 +20,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
@@ -165,7 +166,13 @@ function DataAssetsVersionHeader({
               <Button
                 className="w-16 p-0"
                 data-testid="version-button"
-                icon={<Icon component={VersionIcon} />}
+                icon={
+                  <Icon
+                    className="vertical-align-text-top"
+                    component={VersionIcon}
+                    style={DATA_ASSET_ICON_DIMENSION}
+                  />
+                }
                 onClick={onVersionClick}>
                 <Typography.Text>{version}</Typography.Text>
               </Button>

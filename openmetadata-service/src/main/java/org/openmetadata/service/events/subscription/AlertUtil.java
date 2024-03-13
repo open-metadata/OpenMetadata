@@ -45,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.JsonUtils;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
@@ -56,8 +57,13 @@ public final class AlertUtil {
     }
     Expression expression = parseExpression(condition);
     AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
+    SimpleEvaluationContext context =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(ruleEvaluator)
+            .build();
     try {
-      expression.getValue(ruleEvaluator, clz);
+      expression.getValue(context, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message =
@@ -73,7 +79,12 @@ public final class AlertUtil {
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
       Expression expression = parseExpression(completeCondition);
-      result = Boolean.TRUE.equals(expression.getValue(ruleEvaluator, Boolean.class));
+      SimpleEvaluationContext context =
+          SimpleEvaluationContext.forReadOnlyDataBinding()
+              .withInstanceMethods()
+              .withRootObject(ruleEvaluator)
+              .build();
+      result = Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);
       return result;
     } else {

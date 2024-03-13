@@ -20,7 +20,7 @@ For Production Deployment using Docker, we recommend bringing your own Databases
 
 {% partial file="/v1.3/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
 
-### Docker (version 20.10.0 or greater)
+### Docker (version 20.10.0 or higher)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps deliver software in packages called Containers.
 
@@ -242,9 +242,9 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 
 We support
 
-- Amazon RDS (MySQL) engine version 8 or greater
+- Amazon RDS (MySQL) engine version 8 or higher
 - Amazon OpenSearch (ElasticSearch) engine version up to 8.10.2 or Amazon OpenSearch engine version up to 2.7
-- Amazon RDS (PostgreSQL) engine version 12 or greater
+- Amazon RDS (PostgreSQL) engine version 12 or higher
 
 Note:-
 When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,

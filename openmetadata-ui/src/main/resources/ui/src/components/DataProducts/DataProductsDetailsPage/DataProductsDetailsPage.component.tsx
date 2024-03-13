@@ -32,7 +32,12 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -59,11 +64,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
-import {
-  getDataProductsDetailsPath,
-  getDataProductVersionsPath,
-  getDomainPath,
-} from '../../../utils/RouterUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -353,14 +354,17 @@ const DataProductsDetailsPage = ({
       fetchDataProductAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDataProductsDetailsPath(dataProductFqn, activeKey));
+      history.push(
+        getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn, activeKey)
+      );
     }
   };
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getDataProductsDetailsPath(dataProductFqn)
-      : getDataProductVersionsPath(
+      ? getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn)
+      : getVersionPath(
+          EntityType.DATA_PRODUCT,
           dataProductFqn,
           toString(dataProduct.version)
         );
@@ -512,7 +516,13 @@ const DataProductsDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={DATA_ASSET_ICON_DIMENSION}
+                      />
+                    }
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {
