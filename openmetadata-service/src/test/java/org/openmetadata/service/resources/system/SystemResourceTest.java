@@ -311,7 +311,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   private static ValidationResponse getValidation() throws HttpResponseException {
-    WebTarget target = getResource("system/validate");
+    WebTarget target = getResource("system/healthcheck");
     return TestUtils.get(target, ValidationResponse.class, ADMIN_AUTH_HEADERS);
   }
 
