@@ -22,7 +22,6 @@ import {
   omitBy,
   pick,
   round,
-  uniqueId,
 } from 'lodash';
 import { DateRangeObject } from 'Models';
 import React, {
@@ -343,7 +342,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             <Line
               dataKey={info.label}
               dot={updatedDot}
-              key={uniqueId(info.label)}
+              key={info.label}
               stroke={info.color}
               type="monotone"
             />

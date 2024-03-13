@@ -187,6 +187,20 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
 
+
+{% codeInfo srNumber=9 %}
+
+**sslMode**: SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca`, `allow` etc.
+NOTE: if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=10 %}
+
+**sslConfig.certificatePath**: CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `verify-ca`.
+
+{% /codeInfo %}
+
 #### Advanced Configuration
 
 {% codeInfo srNumber=7 %}
@@ -237,6 +251,13 @@ source:
 ```
 ```yaml {% srNumber=6 %}
       ingestAllDatabases: true
+```
+```yaml {% srNumber=9 %}
+      # sslMode: disable
+```
+```yaml {% srNumber=10 %}
+      # sslConfig:
+      #       certificatePath:  /path/to/public.cert
 ```
 ```yaml {% srNumber=7 %}
       # connectionOptions:
