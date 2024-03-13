@@ -21,12 +21,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -46,13 +44,14 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Repository
 public class LineageRepository {
   private final CollectionDAO dao;
 
-  public SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   public LineageRepository() {
     this.dao = Entity.getCollectionDAO();
@@ -192,58 +191,65 @@ public class LineageRepository {
 
   private void validateChildren(String columnFQN, EntityReference entityReference) {
     switch (entityReference.getType()) {
-      case "table":
+      case "table" -> {
         Table table = dao.tableDAO().findEntityById(entityReference.getId());
         ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
-        break;
-      case "topic":
+      }
+      case "topic" -> {
         Topic topic = dao.topicDAO().findEntityById(entityReference.getId());
         ColumnUtil.validateFieldFQN(topic.getMessageSchema().getSchemaFields(), columnFQN);
-        break;
-      case "container":
+      }
+      case "container" -> {
         Container container = dao.containerDAO().findEntityById(entityReference.getId());
         ColumnUtil.validateColumnFQN(container.getDataModel().getColumns(), columnFQN);
-        break;
-      case "dashboardDataModel":
+      }
+      case "dashboardDataModel" -> {
         DashboardDataModel dashboardDataModel =
             dao.dashboardDataModelDAO().findEntityById(entityReference.getId());
         ColumnUtil.validateColumnFQN(dashboardDataModel.getColumns(), columnFQN);
-        break;
-      case "dashboard":
+      }
+      case "dashboard" -> {
         Dashboard dashboard = dao.dashboardDAO().findEntityById(entityReference.getId());
         dashboard.getCharts().stream()
             .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
-            .findFirst()
+            .findAny()
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(
                         CatalogExceptionMessage.invalidFieldName("chart", columnFQN)));
-        break;
-      case "mlmodel":
+      }
+      case "mlmodel" -> {
         MlModel mlModel = dao.mlModelDAO().findEntityById(entityReference.getId());
         mlModel.getMlFeatures().stream()
             .filter(f -> f.getFullyQualifiedName().equals(columnFQN))
-            .findFirst()
+            .findAny()
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(
                         CatalogExceptionMessage.invalidFieldName("feature", columnFQN)));
-        break;
-      default:
-        throw new IllegalArgumentException(
-            String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
+      }
+      default -> throw new IllegalArgumentException(
+          String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
     }
   }
 
-  private ColumnsEntityInterface getToEntity(EntityReference from) {
-    return from.getType().equals(Entity.TABLE)
-        ? dao.tableDAO().findEntityById(from.getId())
-        : dao.dashboardDataModelDAO().findEntityById(from.getId());
-  }
-
-  private boolean areValidEntities(EntityReference from, EntityReference to) {
-    return !from.getType().equals(Entity.TABLE)
-        || !(to.getType().equals(Entity.TABLE) || to.getType().equals(Entity.DASHBOARD_DATA_MODEL));
+  @Transaction
+  public boolean deleteLineageByFQN(
+      String fromEntity, String fromFQN, String toEntity, String toFQN) {
+    EntityReference from = EntityUtil.getEntityReference(fromEntity, fromFQN);
+    EntityReference to = EntityUtil.getEntityReference(toEntity, toFQN);
+    // Finally, delete lineage relationship
+    boolean result =
+        dao.relationshipDAO()
+                .delete(
+                    from.getId(),
+                    from.getType(),
+                    to.getId(),
+                    to.getType(),
+                    Relationship.UPSTREAM.ordinal())
+            > 0;
+    deleteLineageFromSearch(from, to);
+    return result;
   }
 
   @Transaction
@@ -296,7 +302,7 @@ public class LineageRepository {
     getDownstreamLineage(primary.getId(), primary.getType(), lineage, downstreamDepth);
 
     // Remove duplicate nodes
-    lineage.withNodes(lineage.getNodes().stream().distinct().collect(Collectors.toList()));
+    lineage.withNodes(lineage.getNodes().stream().distinct().toList());
     return lineage;
   }
 
