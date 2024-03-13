@@ -44,7 +44,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Repository
@@ -236,7 +235,8 @@ public class LineageRepository {
   @Transaction
   public boolean deleteLineageByFQN(
       String fromEntity, String fromFQN, String toEntity, String toFQN) {
-    EntityReference from = Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference from =
+        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
     EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
     // Finally, delete lineage relationship
     boolean result =

@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.findChildren;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
@@ -57,29 +58,18 @@ public final class ColumnUtil {
 
   // Validate if a given column exists in the table
   public static void validateColumnFQN(List<Column> columns, String columnFQN) {
-    boolean validColumn = false;
-    for (Column column : columns) {
-      if (column.getFullyQualifiedName().equals(columnFQN)) {
-        validColumn = true;
-        break;
-      }
-    }
-    if (!validColumn) {
+    boolean exists = findChildren(columns, "getChildren", columnFQN);
+    if (!exists) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
     }
   }
 
   // validate if a given field exists in the topic
   public static void validateFieldFQN(List<Field> fields, String fieldFQN) {
-    boolean validField = false;
-    for (Field field : fields) {
-      if (field.getFullyQualifiedName().equals(fieldFQN)) {
-        validField = true;
-        break;
-      }
-    }
-    if (!validField) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFieldFQN(fieldFQN));
+    boolean exists = findChildren(fields, "getChildren", fieldFQN);
+    if (!exists) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldName("field", fieldFQN));
     }
   }
 

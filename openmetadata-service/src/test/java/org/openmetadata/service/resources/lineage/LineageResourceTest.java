@@ -334,12 +334,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     // Finally, add detailed column level lineage
     details.getColumnsLineage().clear();
     List<ColumnLineage> lineage = details.getColumnsLineage();
-    lineage.add(
-        new ColumnLineage().withFromColumns(List.of(t1c1FQN, t3c1FQN)).withToColumn(t2c1FQN));
-    lineage.add(
-        new ColumnLineage().withFromColumns(List.of(t1c2FQN, t3c2FQN)).withToColumn(t2c2FQN));
-    lineage.add(
-        new ColumnLineage().withFromColumns(List.of(t1c3FQN, t3c3FQN)).withToColumn(t2c3FQN));
+    lineage.add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn(t2c1FQN));
+    lineage.add(new ColumnLineage().withFromColumns(List.of(t1c2FQN)).withToColumn(t2c2FQN));
+    lineage.add(new ColumnLineage().withFromColumns(List.of(t1c3FQN)).withToColumn(t2c3FQN));
 
     addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
   }
@@ -377,7 +374,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Invalid fully qualified field name %s", f3FQN));
+        String.format("Invalid field name %s", f3FQN));
 
     LineageDetails topicToContainer = new LineageDetails();
     String f1c1 = CONTAINER.getDataModel().getColumns().get(0).getFullyQualifiedName();
@@ -421,10 +418,10 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
         BAD_REQUEST,
         String.format("Invalid feature name %s", m3f3));
     deleteEdgeByName(
-        TABLE_DATA_MODEL_LINEAGE.getEntityReference().getType(),
-        TABLE_DATA_MODEL_LINEAGE.getFullyQualifiedName(),
-        ML_MODEL.getEntityReference().getType(),
-        ML_MODEL.getFullyQualifiedName());
+        TOPIC.getEntityReference().getType(),
+        TOPIC.getFullyQualifiedName(),
+        CONTAINER.getEntityReference().getType(),
+        CONTAINER.getFullyQualifiedName());
   }
 
   @Order(5)
@@ -524,7 +521,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     WebTarget target =
         getResourceAsURI(
-            String.format("lineage/%s/name/%s/%s/name/%s", fromEntity, URLEncoder.encode(fromFQN), toEntity, URLEncoder.encode(toFQN)));
+            String.format(
+                "lineage/%s/name/%s/%s/name/%s",
+                fromEntity, URLEncoder.encode(fromFQN), toEntity, URLEncoder.encode(toFQN)));
     TestUtils.delete(target, authHeaders);
   }
 
