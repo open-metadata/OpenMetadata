@@ -15,7 +15,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, startCase } from 'lodash';
+import { isEqual, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -242,13 +242,11 @@ const IncidentManagerPage = () => {
   };
 
   const handleDateRangeChange = (value: DateRangeObject) => {
-    const dateRangeObject = {
-      startTs: filters.startTs,
-      endTs: filters.endTs,
-    };
+    const updatedFilter = pick(value, ['startTs', 'endTs']);
+    const existingFilters = pick(filters, ['startTs', 'endTs']);
 
-    if (!isEqual(value, dateRangeObject)) {
-      setFilters((pre) => ({ ...pre, ...dateRangeObject }));
+    if (!isEqual(existingFilters, updatedFilter)) {
+      setFilters((pre) => ({ ...pre, ...updatedFilter }));
     }
   };
 

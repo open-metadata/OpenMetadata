@@ -21,7 +21,7 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
-  return jest.fn().mockImplementation(() => <p>ProfilePicture</p>);
+  return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
 jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
