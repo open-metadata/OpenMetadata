@@ -31,11 +31,10 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
-import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
@@ -43,6 +42,8 @@ import {
   mockSearchData,
   MOCK_EXPLORE_PAGE_COUNT,
 } from '../../constants/mockTourData.constants';
+import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -393,7 +394,10 @@ const ExplorePageV1: FunctionComponent = () => {
       }),
     ])
       .catch((error) => {
-        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
+        if (
+          error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
+          error.response?.data.message.includes(ES_EXCEPTION_SHARDS_FAILED)
+        ) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error);

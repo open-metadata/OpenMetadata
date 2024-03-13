@@ -13,8 +13,8 @@ version: "3.9"
 services:  
   execute-migrate-all:
     container_name: execute_migrate_all
-    command: "./bootstrap/bootstrap_storage.sh migrate-all"
-    image: docker.getcollate.io/openmetadata/server:1.3.0-SNAPSHOT
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    image: docker.getcollate.io/openmetadata/server:1.4.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -142,10 +142,15 @@ services:
 
       #secretsManagerConfiguration
       SECRET_MANAGER: ${SECRET_MANAGER:-db}
-      #parameters:
+      # AWS:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}
       OM_SM_ACCESS_KEY: ${OM_SM_ACCESS_KEY:-""}
+      # Azure:
+      OM_SM_VAULT_NAME: ${OM_SM_VAULT_NAME:-""}
+      OM_SM_CLIENT_ID: ${OM_SM_CLIENT_ID:-""}
+      OM_SM_CLIENT_SECRET: ${OM_SM_CLIENT_SECRET:-""}
+      OM_SM_TENANT_ID: ${OM_SM_TENANT_ID:-""}
 
       #email configuration:
       OM_EMAIL_ENTITY: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
@@ -202,7 +207,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.3.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.4.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}

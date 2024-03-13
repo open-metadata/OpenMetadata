@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Checkbox, List, Space, Tooltip } from 'antd';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../../components/Loader/Loader';
+import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   pagingObject,
@@ -23,7 +24,7 @@ import {
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -46,9 +47,11 @@ const RemoveIcon = ({
           entity: t('label.owner-lowercase'),
         })
       }>
-      <SVGIcons
+      <Icon
+        className="align-middle"
+        component={IconRemoveColored}
         data-testid="remove-owner"
-        icon={Icons.ICON_REMOVE_COLORED}
+        style={{ fontSize: '16px' }}
         onClick={(e) => {
           e.stopPropagation();
           removeOwner && removeOwner();
@@ -87,6 +90,7 @@ export const SelectableList = ({
 
   const [fetching, setFetching] = useState(false);
   const [fetchOptionFailed, setFetchOptionFailed] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     setSelectedItemInternal(() => {
@@ -172,6 +176,15 @@ export const SelectableList = ({
     [pagingInfo, uniqueOptions, searchText]
   );
 
+  const handleUpdate = useCallback(
+    async (updateItems: EntityReference[]) => {
+      setUpdating(true);
+      await onUpdate(updateItems);
+      setUpdating(false);
+    },
+    [setUpdating, onUpdate]
+  );
+
   const selectionHandler = (item: EntityReference) => {
     if (multiSelect) {
       setSelectedItemInternal((itemsMap) => {
@@ -186,17 +199,17 @@ export const SelectableList = ({
         return newItemsMap;
       });
     } else {
-      onUpdate(selectedItemsInternal.has(item.id) ? [] : [item]);
+      handleUpdate(selectedItemsInternal.has(item.id) ? [] : [item]);
     }
   };
 
-  const handleUpdateClick = () => {
-    onUpdate([...selectedItemsInternal.values()]);
+  const handleUpdateClick = async () => {
+    handleUpdate([...selectedItemsInternal.values()]);
   };
 
-  const handleRemoveClick = () => {
-    onUpdate([]);
-  };
+  const handleRemoveClick = useCallback(async () => {
+    handleUpdate([]);
+  }, [handleUpdate]);
 
   const handleClearAllClick = () => {
     setSelectedItemInternal(new Map());
@@ -227,6 +240,7 @@ export const SelectableList = ({
               </Button>
               <Button
                 data-testid="selectable-list-update-btn"
+                loading={updating}
                 size="small"
                 type="primary"
                 onClick={handleUpdateClick}>
@@ -246,7 +260,10 @@ export const SelectableList = ({
         />
       }
       itemLayout="vertical"
-      loading={{ spinning: fetching, indicator: <Loader /> }}
+      loading={{
+        spinning: fetching || updating,
+        indicator: <Loader size="small" />,
+      }}
       locale={{
         emptyText: emptyPlaceholderText ?? t('message.no-data-available'),
       }}

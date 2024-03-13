@@ -20,7 +20,6 @@ from .common.test_cli_dashboard import CliCommonDashboard
 
 
 class TableauCliTest(CliCommonDashboard.TestSuite):
-
     # in case we want to do something before running the tests
     def prepare(self) -> None:
         redshift_file_path = str(
@@ -72,7 +71,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return 2
 
     def expected_filtered_sink_mix(self) -> int:
-        return 13
+        return 9
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
-        return 5
+        return 2

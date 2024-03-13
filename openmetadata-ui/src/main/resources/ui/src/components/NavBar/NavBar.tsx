@@ -22,10 +22,14 @@ import {
   Row,
   Select,
   Space,
+  Tooltip,
 } from 'antd';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
   useEffect,
@@ -35,21 +39,28 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
+import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
+import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
+import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { getVersion } from '../../rest/miscAPI';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { getEntityDetailLink, refreshPage } from '../../utils/CommonUtils';
+import { refreshPage } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   getEntityFQN,
   getEntityType,
@@ -60,22 +71,21 @@ import {
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
+import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
-import { useGlobalSearchProvider } from '../GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
-import { UserProfileIcon } from '../Users/UserProfileIcon/UserProfileIcon.component';
-import { useWebSocketConnector } from '../WebSocketProvider/WebSocketProvider';
+import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
@@ -83,14 +93,11 @@ import popupAlertsCardsClassBase from './PopupAlertClassBase';
 const cookieStorage = new CookieStorage();
 
 const NavBar = ({
-  supportDropdown,
   searchValue,
-  isFeatureModalOpen,
   isTourRoute = false,
   pathname,
   isSearchBoxOpen,
   handleSearchBoxOpen,
-  handleFeatureModal,
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
@@ -106,16 +113,29 @@ const NavBar = ({
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
-  const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
-  const [cancelIcon, setCancelIcon] = useState<string>(
-    Icons.CLOSE_CIRCLE_OUTLINED
-  );
+  const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
+  const [version, setVersion] = useState<string>();
+
+  const fetchOMVersion = async () => {
+    try {
+      const res = await getVersion();
+      setVersion(res.version);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.version'),
+        })
+      );
+    }
+  };
 
   const renderAlertCards = useMemo(() => {
     const cardList = popupAlertsCardsClassBase.alertsCards();
@@ -126,6 +146,12 @@ const NavBar = ({
       return <Component key={key} />;
     });
   }, []);
+
+  const handleSupportClick = ({ key }: MenuInfo): void => {
+    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
+      setIsFeatureModalOpen(true);
+    }
+  };
 
   const entitiesSelect = useMemo(
     () => (
@@ -225,7 +251,7 @@ const NavBar = ({
           user: createdBy,
         });
 
-        path = getEntityDetailLink(
+        path = entityUtilClassBase.getEntityLink(
           entityType as EntityType,
           entityFQN,
           EntityTabs.ACTIVITY_FEED,
@@ -302,6 +328,10 @@ const NavBar = ({
   }, [socket]);
 
   useEffect(() => {
+    fetchOMVersion();
+  }, []);
+
+  useEffect(() => {
     const targetNode = document.body;
     targetNode.addEventListener('keydown', handleKeyPress);
 
@@ -318,7 +348,7 @@ const NavBar = ({
     refreshPage();
   }, []);
 
-  const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
+  const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
 
   const handleSelectOption = useCallback((text: string) => {
     history.replace({
@@ -384,15 +414,25 @@ const NavBar = ({
                   <CmdKIcon />
                   <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
                     {searchValue ? (
-                      <SVGIcons
+                      <Icon
                         alt="icon-cancel"
-                        icon={cancelIcon}
+                        className={classNames('align-middle', {
+                          'text-primary': !isSearchBlur,
+                        })}
+                        component={IconCloseCircleOutlined}
+                        style={{ fontSize: '16px' }}
                         onClick={handleClear}
                       />
                     ) : (
-                      <SVGIcons
+                      <Icon
                         alt="icon-search"
-                        icon={searchIcon}
+                        className={classNames('align-middle', {
+                          'text-grey-3': isSearchBlur,
+                          'text-primary': !isSearchBlur,
+                        })}
+                        component={IconSearch}
+                        data-testid="search-icon"
+                        style={{ fontSize: '16px' }}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -406,8 +446,7 @@ const NavBar = ({
               type="text"
               value={searchValue}
               onBlur={() => {
-                setSearchIcon('icon-searchv1');
-                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+                setIsSearchBlur(true);
               }}
               onChange={(e) => {
                 const { value } = e.target;
@@ -415,8 +454,7 @@ const NavBar = ({
                 handleSearchChange(value);
               }}
               onFocus={() => {
-                setSearchIcon('icon-searchv1color');
-                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+                setIsSearchBlur(false);
               }}
               onKeyDown={handleKeyDown}
             />
@@ -436,12 +474,12 @@ const NavBar = ({
               <Col className="flex-center">
                 <DomainIcon
                   className="d-flex text-base-color"
-                  height={18}
-                  name="folder"
-                  width={18}
+                  height={24}
+                  name="domain"
+                  width={24}
                 />
               </Col>
-              <Col>{activeDomain}</Col>
+              <Col className="flex-center">{activeDomain}</Col>
               <Col className="flex-center">
                 <DropDownIcon height={14} width={14} />
               </Col>
@@ -488,25 +526,32 @@ const NavBar = ({
             placement="bottomRight"
             trigger={['click']}
             onOpenChange={handleBellClick}>
-            <Badge dot={hasTaskNotification || hasMentionNotification}>
-              <Icon
-                className="align-middle"
-                component={IconBell}
-                style={{ fontSize: '20px' }}
-              />
-            </Badge>
+            <Tooltip placement="top" title={t('label.notification-plural')}>
+              <Badge dot={hasTaskNotification || hasMentionNotification}>
+                <Icon
+                  className="align-middle"
+                  component={IconBell}
+                  style={{ fontSize: '24px' }}
+                />
+              </Badge>
+            </Tooltip>
           </Dropdown>
 
           <Dropdown
-            menu={{ items: supportDropdown }}
+            menu={{
+              items: getHelpDropdownItems(version),
+              onClick: handleSupportClick,
+            }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
             trigger={['click']}>
-            <Icon
-              className="align-middle"
-              component={Help}
-              style={{ fontSize: '20px' }}
-            />
+            <Tooltip placement="top" title={t('label.need-help')}>
+              <Icon
+                className="align-middle"
+                component={Help}
+                style={{ fontSize: '24px' }}
+              />
+            </Tooltip>
           </Dropdown>
 
           <UserProfileIcon />

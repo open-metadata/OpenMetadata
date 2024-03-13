@@ -16,9 +16,9 @@ import { Button } from 'antd';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PRIMERY_COLOR } from '../../constants/constants';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
-import { useTourProvider } from '../TourProvider/TourProvider';
 import './tour.style.less';
 
 const Tour = ({ steps }: { steps: TourSteps[] }) => {
@@ -47,6 +47,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           inViewThreshold={200}
           lastStepNextButton={
             <Button
+              data-testid="last-step-button"
               icon={
                 <svg viewBox="0 0 18.4 14.4" width={16}>
                   <path

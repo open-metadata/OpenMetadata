@@ -223,3 +223,7 @@ email:
   username: ""
   password: ""
   transportationStrategy: "SMTP_TLS"
+
+
+dataQualityConfiguration:
+  severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"

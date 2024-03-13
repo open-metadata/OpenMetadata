@@ -35,6 +35,7 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import Loader from '../components/common/Loader/Loader';
 import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
 import {
@@ -46,7 +47,6 @@ import {
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
-import Loader from '../components/Loader/Loader';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { INFO_COLOR } from '../constants/constants';
 import {
@@ -70,7 +70,7 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from './CommonUtils';
-import { getDecodedFqn } from './StringsUtils';
+import { getEntityName } from './EntityUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
@@ -562,7 +562,9 @@ export const createNodes = (
   edgesData: EdgeDetails[],
   entityFqn: string
 ) => {
-  const uniqueNodesData = removeDuplicateNodes(nodesData);
+  const uniqueNodesData = removeDuplicateNodes(nodesData).sort((a, b) =>
+    getEntityName(a).localeCompare(getEntityName(b))
+  );
 
   // Create a new dagre graph
   const graph = new dagre.graphlib.Graph();
@@ -601,7 +603,7 @@ export const createNodes = (
       className: '',
       data: {
         node,
-        isRootNode: getDecodedFqn(entityFqn) === node.fullyQualifiedName,
+        isRootNode: entityFqn === node.fullyQualifiedName,
       },
       position: {
         x: position.x,
@@ -668,7 +670,7 @@ export const createEdges = (
         edge,
         isColumnLineage: false,
         isPipelineRootNode: !isNil(edge.pipeline)
-          ? getDecodedFqn(entityFqn) === edge.pipeline?.fullyQualifiedName
+          ? entityFqn === edge.pipeline?.fullyQualifiedName
           : false,
       },
     });

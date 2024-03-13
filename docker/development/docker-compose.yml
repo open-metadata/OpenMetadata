@@ -56,15 +56,21 @@ services:
     ports:
       - "9200:9200"
       - "9300:9300"
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
+      interval: 15s
+      timeout: 10s
+      retries: 10
     volumes:
       - es-data:/usr/share/elasticsearch/data
+    
   
   execute-migrate-all:
     build:
       context: ../../.
       dockerfile: docker/development/Dockerfile
     container_name: execute_migrate_all
-    command: "./bootstrap/bootstrap_storage.sh migrate-all debug force"
+    command: "./bootstrap/openmetadata-ops.sh -d migrate --force"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -248,7 +254,7 @@ services:
       WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
     depends_on:
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
       mysql:
         condition: service_healthy
     networks:
@@ -383,10 +389,15 @@ services:
 
       #secretsManagerConfiguration
       SECRET_MANAGER: ${SECRET_MANAGER:-db}
-      #parameters:
+      # AWS:
       OM_SM_REGION: ${OM_SM_REGION:-""}
       OM_SM_ACCESS_KEY_ID: ${OM_SM_ACCESS_KEY_ID:-""}
       OM_SM_ACCESS_KEY: ${OM_SM_ACCESS_KEY:-""}
+      # Azure:
+      OM_SM_VAULT_NAME: ${OM_SM_VAULT_NAME:-""}
+      OM_SM_CLIENT_ID: ${OM_SM_CLIENT_ID:-""}
+      OM_SM_CLIENT_SECRET: ${OM_SM_CLIENT_SECRET:-""}
+      OM_SM_TENANT_ID: ${OM_SM_TENANT_ID:-""}
       
       #email configuration:
       OM_EMAIL_ENTITY: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
@@ -417,7 +428,7 @@ services:
       - "5005:5005"
     depends_on:
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
       mysql:
         condition: service_healthy
       execute-migrate-all:
@@ -456,6 +467,18 @@ services:
       # AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: local_airflow
       # AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
       # AIRFLOW__LINEAGE__JWT_TOKEN: ...
+
+      ## Secrets Manager
+      # To integrate Azure Key Vault
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_KEY_VAULT_NAME: ${OM_SM_VAULT_NAME:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_TENANT_ID: ${OM_SM_TENANT_ID:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_CLIENT_ID: ${OM_SM_CLIENT_ID:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AZURE_CLIENT_SECRET: ${OM_SM_CLIENT_SECRET:-""}
+      # To Integrate with AWS SSM
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_REGION: ${OM_SM_AWS_REGION:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_ACCESS_KEY_ID: ${OM_SM_AWS_ACCESS_KEY_ID:-""}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_SECRET_ACCESS_KEY: ${OM_SM_AWS_SECRET_ACCESS_KEY:-""}
+
 
     entrypoint: /bin/bash
     command:

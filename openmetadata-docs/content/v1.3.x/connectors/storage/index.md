@@ -7,7 +7,13 @@ slug: /connectors/storage
 
 This is the supported list of connectors for Storage Services:
 
-- [S3](/connectors/storage/s3)
+{% connectorsListContainer %}
+
+{% connectorInfoCard name="S3" stage="PROD" href="/connectors/storage/s3" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Azure" stage="PROD" href="/connectors/storage/azure" platform="Collate" / %}
+{% connectorInfoCard name="GCS" stage="PROD" href="/connectors/storage/gcs" platform="Collate" / %}
+
+{% /connectorsListContainer %}
 
 If you have a request for a new connector, don't hesitate to reach out in [Slack](https://slack.open-metadata.org/) or
 open a [feature request](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in our GitHub repo.

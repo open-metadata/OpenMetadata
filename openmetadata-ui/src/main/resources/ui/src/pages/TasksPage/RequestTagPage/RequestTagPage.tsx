@@ -20,10 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -35,7 +35,7 @@ import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
@@ -70,6 +70,7 @@ const RequestTag = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const taskMessage = useMemo(
     () =>
@@ -102,6 +103,7 @@ const RequestTag = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
@@ -125,7 +127,7 @@ const RequestTag = () => {
           })
         );
         history.push(
-          getEntityDetailLink(
+          entityUtilClassBase.getEntityLink(
             entityType,
             entityFQN,
             EntityTabs.ACTIVITY_FEED,
@@ -133,7 +135,8 @@ const RequestTag = () => {
           )
         );
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -193,6 +196,7 @@ const RequestTag = () => {
                 })}
               </Typography.Paragraph>
               <Form
+                data-testid="form-container"
                 form={form}
                 initialValues={{
                   suggestTags: [],
@@ -246,12 +250,13 @@ const RequestTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
                       data-testid="submit-tag-request"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>

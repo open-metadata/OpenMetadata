@@ -217,7 +217,6 @@ class ProfilerSource(ProfilerSourceInterface):
     def _get_context_entities(
         self, entity: Table
     ) -> Tuple[DatabaseSchema, Database, DatabaseService]:
-
         schema_entity = None
         database_entity = None
         db_service = None

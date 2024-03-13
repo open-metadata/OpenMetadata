@@ -15,6 +15,7 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -38,11 +39,13 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.JsonUtils;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
@@ -54,8 +57,13 @@ public final class AlertUtil {
     }
     Expression expression = parseExpression(condition);
     AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
+    SimpleEvaluationContext context =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(ruleEvaluator)
+            .build();
     try {
-      expression.getValue(ruleEvaluator, clz);
+      expression.getValue(context, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message =
@@ -71,7 +79,12 @@ public final class AlertUtil {
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
       Expression expression = parseExpression(completeCondition);
-      result = Boolean.TRUE.equals(expression.getValue(ruleEvaluator, Boolean.class));
+      SimpleEvaluationContext context =
+          SimpleEvaluationContext.forReadOnlyDataBinding()
+              .withInstanceMethods()
+              .withRootObject(ruleEvaluator)
+              .build();
+      result = Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
       LOG.debug("Alert evaluated as Result : {}", result);
       return result;
     } else {
@@ -97,7 +110,7 @@ public final class AlertUtil {
     return builder.toString();
   }
 
-  public static boolean shouldTriggerAlert(String entityType, FilteringRules config) {
+  public static boolean shouldTriggerAlert(ChangeEvent event, FilteringRules config) {
     if (config == null) {
       return true;
     }
@@ -107,21 +120,28 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (entityType.equals(THREAD)
+    if (event.getEntityType().equals(THREAD)
         && (config.getResources().get(0).equals("announcement")
             || config.getResources().get(0).equals("task")
             || config.getResources().get(0).equals("conversation"))) {
-      return true;
+      Thread thread = AlertsRuleEvaluator.getThread(event);
+      return config.getResources().get(0).equalsIgnoreCase(thread.getType().value());
     }
 
-    return config.getResources().contains(entityType); // Use Trigger Specific Settings
+    // Test Suite
+    if (config.getResources().get(0).equals(TEST_SUITE)) {
+      return event.getEntityType().equals(TEST_SUITE)
+          || event.getEntityType().equals(Entity.TEST_CASE);
+    }
+
+    return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
     // Check Trigger Conditions
     FilteringRules filteringRules =
         ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
-    return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
+    return AlertUtil.shouldTriggerAlert(event, filteringRules)
         && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
   }
 
@@ -154,8 +174,7 @@ public final class AlertUtil {
 
   private static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
-    boolean triggerChangeEvent =
-        AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules);
+    boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
     if (triggerChangeEvent) {
       // Evaluate Rules

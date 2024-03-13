@@ -7,7 +7,7 @@ slug: /deployment/security/google/kubernetes
 
 Check the Helm information [here](https://artifacthub.io/packages/search?repo=open-metadata).
 
-Once the `Client Id` and `Client Secret` are generated, see the snippet below for an example of where to
+Once the `Client Id` is generated, see the snippet below for an example of where to
 place the client id value and update the authorizer configurations in the `values.yaml`.
 
 
@@ -20,8 +20,6 @@ openmetadata:
       initialAdmins:
         - "user1"
         - "user2"
-      botPrincipals:
-        - "<service_application_client_id>"
       principalDomain: "open-metadata.org"
     authentication:
       provider: "google"

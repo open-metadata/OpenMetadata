@@ -61,6 +61,8 @@ export enum EntityType {
   GOVERN = 'govern',
   ALL = 'all',
   CUSTOM_METRIC = 'customMetric',
+  INGESTION_PIPELINE = 'ingestionPipeline',
+  QUERY = 'query',
 }
 
 export enum AssetsType {

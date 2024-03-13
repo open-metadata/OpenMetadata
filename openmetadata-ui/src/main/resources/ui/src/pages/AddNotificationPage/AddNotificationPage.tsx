@@ -13,17 +13,14 @@
  */
 import { Button, Col, Form, Input, Row, Skeleton, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../components/Loader/Loader';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
@@ -40,17 +37,18 @@ import {
   createNotificationAlert,
   getAlertsFromName,
   getResourceFunctions,
-  updateNotificationAlert,
+  updateNotificationAlertWithPut,
 } from '../../rest/alertsAPI';
+import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabilityPage.interface';
+import AlertFormSourceItem from '../AddObservabilityPage/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from '../AddObservabilityPage/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './add-alerts-page.styles.less';
 
 const AddNotificationPage = () => {
@@ -86,7 +84,7 @@ const AddNotificationPage = () => {
     [fqn]
   );
 
-  const fetchAlerts = async () => {
+  const fetchAlert = async () => {
     try {
       setLoadingCount((count) => count + 1);
 
@@ -138,86 +136,33 @@ const AddNotificationPage = () => {
     if (!fqn) {
       return;
     }
-    fetchAlerts();
+    fetchAlert();
   }, [fqn]);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
 
-  const handleSave = async (data: CreateEventSubscription) => {
-    try {
-      setIsButtonLoading(true);
+  const handleSave = useCallback(
+    async (data: CreateEventSubscription) => {
+      try {
+        setIsButtonLoading(true);
 
-      const destinations = data.destinations?.map((d) => ({
-        type: d.type,
-        config: d.config,
-        category: d.category,
-      }));
-
-      if (fqn && !isUndefined(alert)) {
-        const { resources, ...otherData } = data;
-
-        // Remove 'destinationType' field from the `destination` as it is used for internal UI use
-        const initialDestinations = alert.destinations.map((d) => {
-          const { destinationType, ...originalData } = d;
-
-          return originalData;
+        await handleAlertSave({
+          data,
+          fqn,
+          createAlertAPI: createNotificationAlert,
+          updateAlertAPI: updateNotificationAlertWithPut,
+          afterSaveAction: () => {
+            history.push(getNotificationAlertDetailsPath(data.name));
+          },
         });
-
-        const jsonPatch = compare(
-          { ...alert, destinations: initialDestinations },
-          {
-            ...alert,
-            ...otherData,
-            filteringRules: {
-              ...alert.filteringRules,
-              resources,
-            },
-            destinations,
-          }
-        );
-
-        await updateNotificationAlert(alert.id, jsonPatch);
-      } else {
-        await createNotificationAlert({
-          ...data,
-          destinations,
-        });
+      } catch {
+        // Error handling done in "handleAlertSave"
+      } finally {
+        setIsButtonLoading(false);
       }
-
-      showSuccessToast(
-        t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
-          entity: t('label.alert-plural'),
-        })
-      );
-      history.push(getNotificationAlertDetailsPath(data.name));
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.alert'),
-            entityPlural: t('label.alert-lowercase-plural'),
-            name: data.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t(
-            `server.${
-              isEditMode ? 'entity-updating-error' : 'entity-creation-error'
-            }`,
-            {
-              entity: t('label.alert-lowercase'),
-            }
-          )
-        );
-      }
-    } finally {
-      setIsButtonLoading(false);
-    }
-  };
+    },
+    [fqn, history]
+  );
 
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
@@ -285,7 +230,10 @@ const AddNotificationPage = () => {
                               message: t('message.entity-name-validation'),
                             },
                           ]}>
-                          <Input placeholder={t('label.name')} />
+                          <Input
+                            disabled={isEditMode}
+                            placeholder={t('label.name')}
+                          />
                         </Form.Item>
                       </Col>
                       <Col span={24}>
@@ -303,7 +251,7 @@ const AddNotificationPage = () => {
                         </Form.Item>
                       </Col>
                       <Col span={24}>
-                        <ObservabilityFormTriggerItem
+                        <AlertFormSourceItem
                           filterResources={entityFunctions}
                         />
                       </Col>

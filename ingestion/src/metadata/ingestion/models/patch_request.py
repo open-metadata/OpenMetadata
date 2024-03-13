@@ -80,6 +80,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "description": True,
     "owner": True,
     "tags": True,
+    "sourceHash": True,
     # Table Entity Fields
     "tableType": True,
     "columns": {"__all__": ALLOWED_COLUMN_FIELDS},
@@ -210,9 +211,9 @@ def _determine_restricted_operation(
     Only retain add operation for restrict_update_fields fields
     """
     path = patch_ops.get("path")
-    op = patch_ops.get("op")
+    ops = patch_ops.get("op")
     for field in restrict_update_fields or []:
-        if field in path and op != PatchOperation.ADD.value:
+        if field in path and ops != PatchOperation.ADD.value:
             return False
     return True
 

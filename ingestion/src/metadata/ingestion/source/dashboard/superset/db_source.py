@@ -15,7 +15,6 @@ Superset source module
 import traceback
 from typing import Iterable, Optional
 
-from sqlalchemy import sql
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 
@@ -87,7 +86,7 @@ class SupersetDBSource(SupersetSourceMixin):
         try:
             if table_name:
                 col_list = self.engine.execute(
-                    sql.text(FETCH_COLUMN), table_name=table_name.lower()
+                    FETCH_COLUMN, table_name=table_name.lower()
                 )
                 return [FetchColumn(**col) for col in col_list]
         except Exception as err:
@@ -216,7 +215,6 @@ class SupersetDBSource(SupersetSourceMixin):
     def yield_datamodel(
         self, dashboard_details: FetchDashboard
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
-
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)

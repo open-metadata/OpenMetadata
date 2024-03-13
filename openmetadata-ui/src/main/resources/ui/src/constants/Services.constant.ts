@@ -23,6 +23,7 @@ import amundsen from '../assets/img/service-icon-amundsen.png';
 import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
+import bigtable from '../assets/img/service-icon-bigtable.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
@@ -53,6 +54,7 @@ import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
+import openlineage from '../assets/img/service-icon-openlineage.svg';
 import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -122,6 +124,7 @@ export const SQLITE = sqlite;
 export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
+export const BIGTABLE = bigtable;
 export const HIVE = hive;
 export const IMPALA = impala;
 export const POSTGRES = postgres;
@@ -166,6 +169,7 @@ export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
 export const SAS = sas;
+export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
 
 export const AIRFLOW = airflow;
@@ -379,13 +383,14 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.SapHana,
+  DatabaseServiceType.BigTable,
+  DatabaseServiceType.SAS,
+  DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
   PipelineServiceType.Spark,
-  DatabaseServiceType.MongoDB,
+  PipelineServiceType.OpenLineage,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
-  SearchServiceType.ElasticSearch,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
 ];

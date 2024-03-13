@@ -21,10 +21,14 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
+    MongoDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.profiler.processor.sampler.nosql.sampler import NoSQLSampler
 from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
 from metadata.profiler.processor.sampler.sqlalchemy.bigquery.sampler import (
     BigQuerySampler,
@@ -59,3 +63,4 @@ sampler_factory_.register(DatabaseConnection.__name__, SQASampler)
 sampler_factory_.register(BigQueryConnection.__name__, BigQuerySampler)
 sampler_factory_.register(DatalakeConnection.__name__, DatalakeSampler)
 sampler_factory_.register(TrinoConnection.__name__, TrinoSampler)
+sampler_factory_.register(MongoDBConnection.__name__, NoSQLSampler)

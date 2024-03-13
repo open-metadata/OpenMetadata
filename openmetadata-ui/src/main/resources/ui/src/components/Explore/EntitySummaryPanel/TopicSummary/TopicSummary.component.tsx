@@ -24,16 +24,14 @@ import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
 } from '../../../../utils/EntitySummaryPanelUtils';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getOwnerNameWithProfilePic,
-} from '../../../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
+import { TopicConfigObjectInterface } from '../../../Topic/TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
@@ -75,11 +73,7 @@ function TopicSummary({
     const owner = entityDetails.owner;
 
     return {
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        t('label.no-entity', {
-          entity: t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getTeamAndUserDetailsPath(owner?.name ?? ''),
       isLink: !isEmpty(owner?.name),
     };

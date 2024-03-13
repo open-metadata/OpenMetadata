@@ -65,16 +65,6 @@ to identify the graph nodes as OpenMetadata Entities.
 
 Note that if a Model is not materialized, its data won't be ingested.
 
-### Query Log
-
-{% note %}
-
-Up until 0.11, Query Log analysis for lineage happens during the Usage Workflow.
-
-From 0.12 onwards, there is a separated Lineage Workflow that will take care of this process.
-
-{% /note %}
-
 #### How to run?
 
 The main difference here is between those sources that provide internal access to query logs and those that do not. For
@@ -150,7 +140,7 @@ and [Airbyte](/connectors/pipeline/airbyte).
 
 All of them ingest the lineage information out of the box. The only special case is Airflow, where one needs to
 setup `inlets` and `outlets`. You can find more information about it
-[here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend#adding-lineage).
+[here](/connectors/pipeline/airflow/lineage-backend#adding-lineage).
 
 ## Manual Lineage
 

@@ -20,10 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -38,7 +38,7 @@ import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
@@ -80,6 +80,7 @@ const UpdateTag = () => {
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const sanitizeValue = useMemo(
     () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
@@ -136,6 +137,7 @@ const UpdateTag = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
@@ -159,7 +161,7 @@ const UpdateTag = () => {
           })
         );
         history.push(
-          getEntityDetailLink(
+          entityUtilClassBase.getEntityLink(
             entityType,
             entityFQN,
             EntityTabs.ACTIVITY_FEED,
@@ -167,7 +169,8 @@ const UpdateTag = () => {
           )
         );
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -237,7 +240,11 @@ const UpdateTag = () => {
                   entity: t('label.task'),
                 })}
               </Typography.Paragraph>
-              <Form form={form} layout="vertical" onFinish={onCreateTask}>
+              <Form
+                data-testid="form-container"
+                form={form}
+                layout="vertical"
+                onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.title')}:`}
@@ -298,12 +305,13 @@ const UpdateTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
-                      data-testid="submit-test"
+                      data-testid="submit-tag-request"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {t('label.submit')}
                     </Button>

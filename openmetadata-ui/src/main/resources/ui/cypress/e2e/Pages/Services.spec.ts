@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import EntityClass from '../../common/Entities/EntityClass';
 import DashboardServiceClass from './../../common/Entities/DashboardServiceClass';
 import DatabaseServiceClass from './../../common/Entities/DatabaseServiceClass';
 import MessagingServiceClass from './../../common/Entities/MessagingServiceClass';
@@ -37,78 +38,91 @@ const OWNER2 = 'Cynthia Meyer';
 const TEAM_OWNER_1 = 'Marketplace';
 const TEAM_OWNER_2 = 'DevOps';
 
-entities.forEach((entity) => {
-  describe(`${entity.getName()} page`, () => {
-    before(() => {
-      cy.login();
+describe('Services detail page', { tags: 'Integration' }, () => {
+  before(() => {
+    cy.login();
+    EntityClass.preRequisitesForTests();
+  });
 
-      entity.prepareForTests();
-    });
+  after(() => {
+    cy.login();
 
-    after(() => {
-      cy.login();
-      entity.cleanup();
-    });
+    EntityClass.postRequisitesForTests();
+  });
 
-    beforeEach(() => {
-      cy.login();
-      entity.visitEntity();
-    });
+  entities.forEach((entity) => {
+    describe(`${entity.getName()} page`, () => {
+      before(() => {
+        cy.login();
 
-    it(`Domain assign, update & delete`, () => {
-      entity.assignDomain();
-      entity.updateDomain();
-      entity.removeDomain();
-    });
+        entity.prepareForTests();
+      });
 
-    it(`User as Owner assign, update & delete`, () => {
-      entity.userOwnerFlow(OWNER1, OWNER2);
-    });
+      after(() => {
+        cy.login();
+        entity.cleanup();
+      });
 
-    it(`Team as Owner assign, update & delete`, () => {
-      entity.teamOwnerFlow(TEAM_OWNER_1, TEAM_OWNER_2);
-    });
+      beforeEach(() => {
+        cy.login();
+        entity.visitEntity();
+      });
 
-    it(`Tier assign, update & delete`, () => {
-      entity.tierFlow('Tier1', 'Tier5');
-    });
+      it(`Domain assign, update & delete`, () => {
+        entity.assignDomain();
+        entity.updateDomain();
+        entity.removeDomain();
+      });
 
-    it(`Update description`, () => {
-      entity.updateDescription();
-    });
+      it(`User as Owner assign, update & delete`, () => {
+        entity.userOwnerFlow(OWNER1, OWNER2);
+      });
 
-    it(`Tags assign, update & delete`, () => {
-      entity.assignTags();
-      entity.updateTags();
-      entity.removeTags();
-    });
+      it(`Team as Owner assign, update & delete`, () => {
+        entity.teamOwnerFlow(TEAM_OWNER_1, TEAM_OWNER_2);
+      });
 
-    it(`GlossaryTerm assign, update & delete`, () => {
-      entity.assignGlossary();
-      entity.updateGlossary();
-      entity.removeGlossary();
-    });
+      it(`Tier assign, update & delete`, () => {
+        entity.tierFlow('Tier1', 'Tier5');
+      });
 
-    it(`Update displayName`, () => {
-      entity.renameEntity();
-    });
+      it(`Update description`, () => {
+        entity.updateDescription();
+      });
 
-    it(`Annoucement create & delete`, () => {
-      entity.createAnnouncement();
-      entity.removeAnnouncement();
-    });
+      it(`Tags assign, update & delete`, () => {
+        entity.assignTags();
+        entity.updateTags();
+        entity.removeTags();
+      });
 
-    it(`Inactive annoucement create & delete`, () => {
-      entity.createInactiveAnnouncement();
-      entity.removeInactiveAnnouncement();
-    });
+      it(`GlossaryTerm assign, update & delete`, () => {
+        entity.assignGlossary();
+        entity.updateGlossary();
+        entity.removeGlossary();
+      });
 
-    it(`Soft delete`, () => {
-      entity.softDeleteEntity();
-    });
+      it(`Update displayName`, () => {
+        entity.renameEntity();
+      });
 
-    it(`Hard delete`, () => {
-      entity.hardDeleteEntity();
+      it(`Annoucement create & delete`, () => {
+        entity.createAnnouncement();
+        entity.removeAnnouncement();
+      });
+
+      it(`Inactive annoucement create & delete`, () => {
+        entity.createInactiveAnnouncement();
+        entity.removeInactiveAnnouncement();
+      });
+
+      it(`Soft delete`, () => {
+        entity.softDeleteEntity();
+      });
+
+      it(`Hard delete`, () => {
+        entity.hardDeleteEntity();
+      });
     });
   });
 });

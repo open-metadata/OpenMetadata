@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
-import React, { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import { capitalize, isUndefined } from 'lodash';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -27,6 +28,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
@@ -84,15 +86,17 @@ const ManageButton: FC<ManageButtonProps> = ({
     }
   };
 
-  const handleDisplayNameUpdate = (data: EntityName) => {
-    if (onEditDisplayName) {
-      onEditDisplayName(data)
-        .then(() => {
-          setIsDisplayNameEditing(false);
-        })
-        .catch(() => {
-          // do nothing
-        });
+  const handleDisplayNameUpdate = async (data: EntityName) => {
+    if (!onEditDisplayName) {
+      return;
+    }
+    setIsDisplayNameEditing(true);
+    try {
+      await onEditDisplayName(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDisplayNameEditing(false);
     }
   };
 
@@ -267,13 +271,18 @@ const ManageButton: FC<ManageButtonProps> = ({
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
           trigger={['click']}>
-          <Button
-            className={classNames('flex-center px-1.5', buttonClassName)}
-            data-testid="manage-button"
-            title="Manage"
-            type="default">
-            <IconDropdown className="anticon self-center manage-dropdown-icon" />
-          </Button>
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: capitalize(entityType),
+            })}>
+            <Button
+              className={classNames('flex-center px-1.5', buttonClassName)}
+              data-testid="manage-button"
+              type="default">
+              <IconDropdown className="anticon self-center manage-dropdown-icon" />
+            </Button>
+          </Tooltip>
         </Dropdown>
       ) : (
         <></>
@@ -342,49 +351,3 @@ const ManageButton: FC<ManageButtonProps> = ({
 };
 
 export default ManageButton;
-
-interface ManageButtonItemProps {
-  label: ReactNode;
-  icon: ReactNode;
-  description: string;
-  disabled: boolean;
-  onClick: () => void;
-}
-
-export const ManageButtonItem = ({
-  label,
-  icon,
-  description,
-  disabled,
-  onClick,
-}: ManageButtonItemProps) => {
-  return (
-    <Tooltip title={disabled && NO_PERMISSION_FOR_ACTION}>
-      <Row
-        className={classNames('cursor-pointer manage-button', {
-          'cursor-not-allowed opacity-50': disabled,
-        })}
-        onClick={onClick}>
-        <Col className="m-t-xss" span={3}>
-          {icon}
-        </Col>
-        <Col span={21}>
-          <Row data-testid="restore-button">
-            <Col span={21}>
-              <Typography.Text
-                className="font-medium"
-                data-testid="delete-button-title">
-                {label}
-              </Typography.Text>
-            </Col>
-            <Col className="p-t-xss">
-              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {description}
-              </Typography.Paragraph>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-    </Tooltip>
-  );
-};

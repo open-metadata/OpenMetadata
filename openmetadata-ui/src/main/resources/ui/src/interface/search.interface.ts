@@ -20,6 +20,7 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
@@ -32,6 +33,7 @@ import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
@@ -113,7 +115,11 @@ export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
 
-export interface GlossarySearchSource extends SearchSourceBase, GlossaryTerm {} // extends EntityInterface
+export interface GlossarySearchSource extends SearchSourceBase, Glossary {} // extends EntityInterface
+export interface GlossaryTermSearchSource
+  extends SearchSourceBase,
+    GlossaryTerm {} // extends EntityInterface
+
 export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
 export interface TestCaseSearchSource
   extends SearchSourceBase,
@@ -121,6 +127,10 @@ export interface TestCaseSearchSource
   testSuites: TestSuite[];
 } // extends EntityInterface
 export interface TestSuiteSearchSource extends SearchSourceBase, TestSuite {}
+
+export interface IngestionPipelineSearchSource
+  extends SearchSourceBase,
+    IngestionPipeline {}
 
 export interface DatabaseServiceSearchSource
   extends SearchSourceBase,
@@ -181,6 +191,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.PIPELINE]: PipelineSearchSource;
   [SearchIndex.DASHBOARD]: DashboardSearchSource;
   [SearchIndex.GLOSSARY]: GlossarySearchSource;
+  [SearchIndex.GLOSSARY_TERM]: GlossaryTermSearchSource;
   [SearchIndex.TEAM]: TeamSearchSource;
   [SearchIndex.USER]: UserSearchSource;
   [SearchIndex.TOPIC]: TopicSearchSource;
@@ -203,6 +214,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
+  [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
 };
 
 export type SearchRequest<

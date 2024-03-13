@@ -1,0 +1,37 @@
+# E2E Labels when source files are changes
+# strings specified in the format of "openmetadata-ui/**/*[a-zA-Z]*" handles case sensitivity
+
+"e2e:Settings":
+  - "openmetadata-ui/**/[Ss]ettings/**/*"
+
+"e2e:DataAssets":
+  - "openmetadata-ui/**/*[dD]atabase*"
+  - "openmetadata-ui/**/*[tT]able*"
+  - "openmetadata-ui/**/*[tT]opic*"
+  - "openmetadata-ui/**/*[dD]ashboard*"
+  - "openmetadata-ui/**/*[pP]ipeline*"
+  - "openmetadata-ui/**/*[mM]lmodel*"
+  - "openmetadata-ui/**/*[cC]ontainer*"
+  - "openmetadata-ui/**/*[sS]erach[iI]ndex*"
+  - "openmetadata-ui/**/*[tT]ask*"
+  - "openmetadata-ui/**/*[sS]earch*"
+  - "openmetadata-ui/**/*[mM]y[dD]ata*"
+  - "openmetadata-ui/**/*[eE]xplore*"
+
+"e2e:Governance":
+  - "openmetadata-ui/**/*[gG]lossary*"
+  - "openmetadata-ui/**/*[tT]ag*"
+  - "openmetadata-ui/**/*[dD]omain*"
+
+"e2e:Observability":
+  - "openmetadata-ui/**/*[Aa]lert*"
+  - "openmetadata-ui/**/*[Ii]ncident[Mm]anager*"
+  - "openmetadata-ui/**/*[Mm]etric*"
+  - "openmetadata-ui/**/*[Dd]ata[qQ]uality*"
+  - "openmetadata-ui/**/*[Dd]ata[Ii]nsight*"
+  - "openmetadata-ui/**/*[Oo]bservability*"
+
+"e2e:Integration":
+  - "openmetadata-ui/**/*integration*"
+  - "openmetadata-ui/**/*[iI]ngestion*"
+  - "openmetadata-ui/**/*[sS]ervice*"

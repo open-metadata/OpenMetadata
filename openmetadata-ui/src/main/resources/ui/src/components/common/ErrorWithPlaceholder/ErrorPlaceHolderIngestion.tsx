@@ -15,11 +15,11 @@ import { Card, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
-import Loader from '../../../components/Loader/Loader';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
+import Loader from '../Loader/Loader';
 
 const ErrorPlaceHolderIngestion = () => {
   const { platform, isFetchingStatus } = useAirflowStatus();

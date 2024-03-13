@@ -44,7 +44,9 @@ import {
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
+import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { ClientErrors } from '../../../enums/Axios.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
@@ -72,8 +74,7 @@ import {
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
@@ -426,6 +427,10 @@ export const AuthProvider = ({
     if (isGetRequest && hasActiveDomain) {
       // Filter ES Query
       if (config.url?.includes('/search/query')) {
+        if (config.params?.index === SearchIndex.TAG) {
+          return config;
+        }
+
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
@@ -628,7 +633,7 @@ export const AuthProvider = ({
             {children}
           </OidcAuthenticator>
         ) : (
-          <Loader />
+          <Loader fullScreen />
         );
       }
       case AuthProviderEnum.Azure: {
@@ -643,7 +648,7 @@ export const AuthProvider = ({
             </MsalAuthenticator>
           </MsalProvider>
         ) : (
-          <Loader />
+          <Loader fullScreen />
         );
       }
       default: {
@@ -687,7 +692,7 @@ export const AuthProvider = ({
 
   return (
     <AuthContext.Provider value={authContext}>
-      {isLoading ? <Loader /> : getProtectedApp()}
+      {isLoading ? <Loader fullScreen /> : getProtectedApp()}
     </AuthContext.Provider>
   );
 };

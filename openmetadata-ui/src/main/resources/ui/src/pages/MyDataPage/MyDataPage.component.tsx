@@ -23,12 +23,12 @@ import React, {
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
+import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
@@ -208,7 +208,9 @@ const MyDataPage = () => {
         mainContainerClassName="p-t-0"
         pageTitle={t('label.my-data')}>
         {isLoading ? (
-          <Loader />
+          <div className="ant-layout-content flex-center">
+            <Loader />
+          </div>
         ) : (
           <ReactGridLayout
             className="bg-white"

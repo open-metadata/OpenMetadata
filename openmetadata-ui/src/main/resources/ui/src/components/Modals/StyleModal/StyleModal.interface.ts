@@ -15,7 +15,7 @@ import { Style } from '../../../generated/type/schema';
 export interface StyleModalProps {
   open: boolean;
   style?: Style;
-  onSubmit: (value: Style) => void;
+  onSubmit: (value: Style) => Promise<void>;
   onCancel: () => void;
 }
 

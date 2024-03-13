@@ -7,14 +7,14 @@ slug: /deployment/security/google/bare-metal
 
 ## Update conf/openmetadata.yaml
 
-Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
+Once the `Client Id` is generated, add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
 
 ```yaml
 authenticationConfiguration:
   provider: "google"
   publicKeyUrls:
     - "https://www.googleapis.com/oauth2/v3/certs"
-    - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+    - "{your domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
   authority: "https://accounts.google.com"
   clientId: "{client id}"
   callbackUrl: "http://localhost:8585/callback"

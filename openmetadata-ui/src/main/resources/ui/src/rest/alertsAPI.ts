@@ -108,7 +108,9 @@ export const updateNotificationAlert = async (
   return response.data;
 };
 
-export const updateAlert = async (alert: EventSubscription) => {
+export const updateNotificationAlertWithPut = async (
+  alert: CreateEventSubscription
+) => {
   const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
 
   return response.data;
@@ -130,14 +132,6 @@ export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
     PagingResponse<FilterResourceDescriptor[]>
   >(`${BASE_URL}/${AlertType.Notification}/resources`);
-
-  return response.data;
-};
-
-export const triggerEventById = async (id: string) => {
-  const response = await axiosClient.put<EventSubscription>(
-    `${BASE_URL}/trigger/${id}`
-  );
 
   return response.data;
 };

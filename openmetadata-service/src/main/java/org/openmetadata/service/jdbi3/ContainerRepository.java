@@ -36,7 +36,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
-  private static final String CONTAINER_PATCH_FIELDS = "dataModel,sourceHash";
+  private static final String CONTAINER_PATCH_FIELDS = "dataModel";
 
   public ContainerRepository() {
     super(
@@ -54,7 +54,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     setDefaultFields(container);
     container.setParent(
         fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
-    container.setSourceHash(fields.contains("sourceHash") ? container.getSourceHash() : null);
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS),
@@ -82,6 +81,8 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void setFullyQualifiedName(Container container) {
+    container.setParent(
+        container.getParent() != null ? container.getParent() : getParent(container));
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
           FullyQualifiedName.add(

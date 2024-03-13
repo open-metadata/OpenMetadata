@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -71,7 +72,7 @@ public class SearchRepository {
 
   private final String language;
 
-  @Getter @Setter public SearchIndexFactory searchIndexFactory;
+  @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
@@ -92,8 +93,7 @@ public class SearchRepository {
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
-  public SearchRepository(
-      ElasticSearchConfiguration config, SearchIndexFactory searchIndexFactory) {
+  public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
     if (config != null
         && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
@@ -101,7 +101,17 @@ public class SearchRepository {
     } else {
       searchClient = new ElasticSearchClient(config);
     }
-    this.searchIndexFactory = searchIndexFactory;
+    try {
+      if (config != null && (!nullOrEmpty(config.getSearchIndexFactoryClassName()))) {
+        this.searchIndexFactory =
+            Class.forName(config.getSearchIndexFactoryClassName())
+                .asSubclass(SearchIndexFactory.class)
+                .getDeclaredConstructor()
+                .newInstance();
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize search index factory using default one", e);
+    }
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
@@ -657,6 +667,11 @@ public class SearchRepository {
   public Response aggregate(String index, String fieldName, String value, String query)
       throws IOException {
     return searchClient.aggregate(index, fieldName, value, query);
+  }
+
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
+    return searchClient.aggregate(query, index, aggregationJson);
   }
 
   public Response suggest(SearchRequest request) throws IOException {

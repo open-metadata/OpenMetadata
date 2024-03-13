@@ -46,27 +46,27 @@ MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
 SELECT obj.name AS table_name,
         ep.value AS table_comment,
         s.name AS "schema"
-FROM sys.tables AS obj
+FROM sys.objects AS obj
 LEFT JOIN sys.extended_properties AS ep
-    ON obj.object_id = ep.major_id AND ep.minor_id = 0
+    ON obj.object_id = ep.major_id AND ep.minor_id = 0 AND ep.name = 'MS_Description'
 JOIN sys.schemas AS s
     ON obj.schema_id = s.schema_id
-WHERE ep.name = 'MS_Description'
+WHERE
+    obj.type IN ('U', 'V') /* User tables and views */
 """
 )
 
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
-select
-	definition view_def,
-	views.name view_name,
-	sch.name "schema"
-from sys.sql_modules as mod,
-sys.views as views,
-sys.schemas as sch
- where
-mod.object_id=views.object_id and
-views.schema_id=sch.schema_id
+SELECT
+    definition view_def,
+    views.name view_name,
+    sch.name "schema"
+FROM sys.sql_modules as mod
+INNER JOIN sys.views as views
+    ON mod.object_id = views.object_id
+INNER JOIN sys.schemas as sch
+    ON views.schema_id = sch.schema_id
 """
 )
 
@@ -236,8 +236,7 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
   CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
   INNER JOIN sys.databases db
     ON db.database_id = t.dbid
-  WHERE s.last_execution_time between '2024-01-13' and '2024-01-20'
-    AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND p.objtype NOT IN ('Prepared', 'Proc')
     AND s.last_execution_time > '{start_date}'

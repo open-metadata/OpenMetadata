@@ -85,6 +85,14 @@ export const updateObservabilityAlert = async (
   return response.data;
 };
 
+export const updateObservabilityAlertWithPut = async (
+  alert: CreateEventSubscription
+) => {
+  const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
+
+  return response.data;
+};
+
 export const deleteObservabilityAlert = async (id: string) => {
   const response = await axiosClient.delete(`${BASE_URL}/${id}`);
 
@@ -103,14 +111,6 @@ export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
     PagingResponse<FilterResourceDescriptor[]>
   >(`${BASE_URL}/observability/resources`);
-
-  return response.data;
-};
-
-export const triggerEventById = async (id: string) => {
-  const response = await axiosClient.put<EventSubscription>(
-    `${BASE_URL}/trigger/${id}`
-  );
 
   return response.data;
 };

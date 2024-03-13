@@ -19,14 +19,15 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { IngestionPipelineList } from '../../components/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import Services from '../../components/Services/Services';
+import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
+import Services from '../../components/Settings/Services/Services';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { useAuth } from '../../hooks/authHooks';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
@@ -35,7 +36,7 @@ const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
   const location = useLocation();
   const history = useHistory();
-
+  const { isAdminUser } = useAuth();
   const search =
     qs.parse(
       location.search.startsWith('?')
@@ -85,11 +86,17 @@ const ServicesPage = () => {
                 children: <Services serviceName={serviceName} />,
                 label: 'Services',
               },
-              {
-                key: 'pipelines',
-                children: <IngestionPipelineList serviceName={serviceName} />,
-                label: 'Pipelines',
-              },
+              ...(isAdminUser
+                ? [
+                    {
+                      key: 'pipelines',
+                      children: (
+                        <IngestionPipelineList serviceName={serviceName} />
+                      ),
+                      label: 'Pipelines',
+                    },
+                  ]
+                : []),
             ]}
             onChange={(activeKey) =>
               history.push({ search: `tab=${activeKey}` })

@@ -44,24 +44,25 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { useAuth } from '../../../hooks/authHooks';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import {
   getCountBadge,
-  getEntityDetailLink,
   getFeedCounts,
   Transi18next,
 } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityUserLink,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import Loader from '../../Loader/Loader';
-import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import '../../Widgets/FeedsWidget/feeds-widget.less';
+import Loader from '../../common/Loader/Loader';
+import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
+import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -88,6 +89,7 @@ export const ActivityFeedTab = ({
   const history = useHistory();
   const { t } = useTranslation();
   const { currentUser } = useAuthContext();
+  const { isAdminUser } = useAuth();
   const initialRender = useRef(true);
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
@@ -132,7 +134,12 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+      entityUtilClassBase.getEntityLink(
+        entityType,
+        fqn,
+        EntityTabs.ACTIVITY_FEED,
+        subTab
+      )
     );
     setActiveThread();
   };
@@ -205,7 +212,9 @@ export const ActivityFeedTab = ({
 
   const { feedFilter, threadType } = useMemo(() => {
     const currentFilter =
-      currentUser?.isAdmin && currentUser?.fullyQualifiedName === fqn
+      isAdminUser &&
+      currentUser?.name === fqn &&
+      activeTab !== ActivityFeedTabs.TASKS
         ? FeedFilter.ALL
         : FeedFilter.OWNER_OR_FOLLOWS;
     const filter = isUserEntity ? currentFilter : undefined;
@@ -339,11 +348,12 @@ export const ActivityFeedTab = ({
                 </Space>
 
                 <span>
-                  {getCountBadge(
-                    count.conversationCount,
-                    '',
-                    activeTab === ActivityFeedTabs.ALL
-                  )}
+                  {!isUserEntity &&
+                    getCountBadge(
+                      count.conversationCount,
+                      '',
+                      activeTab === ActivityFeedTabs.ALL
+                    )}
                 </span>
               </div>
             ),
@@ -386,7 +396,7 @@ export const ActivityFeedTab = ({
                   <span>{t('label.task-plural')}</span>
                 </Space>
                 <span>
-                  {getCountBadge(count.totalTasksCount, '', isTaskActiveTab)}
+                  {getCountBadge(count.openTaskCount, '', isTaskActiveTab)}
                 </span>
               </div>
             ),

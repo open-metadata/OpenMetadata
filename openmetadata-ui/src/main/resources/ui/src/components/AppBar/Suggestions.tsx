@@ -16,8 +16,21 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  DashboardSource,
+  DataProductSource,
+  GlossarySource,
+  MlModelSource,
+  Option,
+  PipelineSource,
+  SearchIndexSource,
+  SearchSuggestions,
+  TableSource,
+  TagSource,
+  TopicSource,
+} from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   ContainerSearchSource,
@@ -33,20 +46,7 @@ import {
   getSuggestionElement,
 } from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  DashboardSource,
-  DataProductSource,
-  GlossarySource,
-  MlModelSource,
-  Option,
-  PipelineSource,
-  SearchIndexSource,
-  SearchSuggestions,
-  TableSource,
-  TagSource,
-  TopicSource,
-} from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { useTourProvider } from '../TourProvider/TourProvider';
+import Loader from '../common/Loader/Loader';
 
 type SuggestionProp = {
   searchText: string;
@@ -79,7 +79,7 @@ const Suggestions = ({
   const [containerSuggestions, setContainerSuggestions] = useState<
     ContainerSearchSource[]
   >([]);
-  const [glossarySuggestions, setGlossarySuggestions] = useState<
+  const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
     GlossarySource[]
   >([]);
   const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
@@ -120,7 +120,9 @@ const Suggestions = ({
     setDataModelSuggestions(
       filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
     );
-    setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
+    setGlossaryTermSuggestions(
+      filterOptionsByIndex(options, SearchIndex.GLOSSARY_TERM)
+    );
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
@@ -179,8 +181,8 @@ const Suggestions = ({
             searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
           },
           {
-            suggestions: glossarySuggestions,
-            searchIndex: SearchIndex.GLOSSARY,
+            suggestions: glossaryTermSuggestions,
+            searchIndex: SearchIndex.GLOSSARY_TERM,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {

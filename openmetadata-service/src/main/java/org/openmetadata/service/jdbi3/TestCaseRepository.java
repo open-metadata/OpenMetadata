@@ -193,7 +193,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestDefinition(TestCase test) {
-    return getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
+    return getFromEntityRef(test.getId(), Relationship.CONTAINS, TEST_DEFINITION, true);
   }
 
   private void validateTestParameters(
@@ -247,7 +247,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         test.getId(),
         TEST_DEFINITION,
         TEST_CASE,
-        Relationship.APPLIED_TO);
+        Relationship.CONTAINS);
   }
 
   @Override
@@ -409,13 +409,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updateResultSummaries(testCase, isDeleted, resultSummaries, resultSummary);
 
       // Update test case result summary attribute for the test suite
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      TestSuite original =
+          TestSuiteRepository.copyTestSuite(
+              testSuite); // we'll need the original state to update the test suite
       testSuite.setTestCaseResultSummary(resultSummaries);
-      daoCollection
-          .testSuiteDAO()
-          .update(
-              testSuite.getId(),
-              testSuite.getFullyQualifiedName(),
-              JsonUtils.pojoToJson(testSuite));
+      EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+          testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+      testSuiteUpdater.update();
     }
   }
 
@@ -652,11 +654,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testSuite.setSummary(null); // we don't want to store the summary in the database
     List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
     resultSummaries.removeIf(summary -> summary.getTestCaseName().equals(testCaseFqn));
+
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite original =
+        TestSuiteRepository.copyTestSuite(
+            testSuite); // we'll need the original state to update the test suite
     testSuite.setTestCaseResultSummary(resultSummaries);
-    daoCollection
-        .testSuiteDAO()
-        .update(
-            testSuite.getId(), testSuite.getFullyQualifiedName(), JsonUtils.pojoToJson(testSuite));
+    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+        testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+    testSuiteUpdater.update();
   }
 
   @Override
@@ -900,7 +907,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_DEFINITION,
           original.getTestDefinition(),
           updated.getTestDefinition(),
-          Relationship.APPLIED_TO,
+          Relationship.CONTAINS,
           TEST_CASE,
           updated.getId());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());

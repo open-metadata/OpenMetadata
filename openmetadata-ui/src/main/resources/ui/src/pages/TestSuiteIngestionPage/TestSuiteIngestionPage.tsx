@@ -15,16 +15,16 @@ import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
-import { INGESTION_DATA } from '../../components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../components/Loader/Loader';
-import { getTableTabPath } from '../../constants/constants';
-import { EntityTabs } from '../../enums/entity.enum';
+import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
+import { INGESTION_DATA } from '../../components/DataQuality/AddDataQualityTest/rightPanelData';
+import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/TestSuiteIngestion';
+import { getEntityDetailsPath } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { useFqn } from '../../hooks/useFqn';
@@ -78,7 +78,8 @@ const TestSuiteIngestionPage = () => {
         },
         {
           name: getEntityName(response.executableEntityReference),
-          url: getTableTabPath(
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
             response.executableEntityReference?.fullyQualifiedName ?? '',
             EntityTabs.PROFILER
           ),

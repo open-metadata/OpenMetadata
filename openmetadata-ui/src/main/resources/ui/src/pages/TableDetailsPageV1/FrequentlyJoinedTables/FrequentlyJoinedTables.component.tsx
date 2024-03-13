@@ -14,7 +14,8 @@ import { Col, Row, Space, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTableDetailsPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { JoinedWith } from '../../../generated/entity/data/table';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './frequently-joined-tables.style.less';
@@ -33,20 +34,30 @@ export const FrequentlyJoinedTables = ({
   const { t } = useTranslation();
 
   return (
-    <Row className="m-b-lg" gutter={[0, 8]}>
+    <Row
+      className="m-b-lg"
+      data-testid="frequently-joint-table-container"
+      gutter={[0, 8]}>
       <Col className="m-b" span={24}>
         <Typography.Text className="right-panel-label">
           {t('label.frequently-joined-table-plural')}
         </Typography.Text>
       </Col>
-      <Col className="frequently-joint-data-container" span={24}>
+      <Col
+        className="frequently-joint-data-container"
+        data-testid="frequently-joint-data-container"
+        span={24}>
         {joinedTables.map((table) => (
           <Space
             className="w-full frequently-joint-data"
             data-testid="related-tables-data"
             key={table.name}
             size={4}>
-            <Link to={getTableDetailsPath(table.fullyQualifiedName)}>
+            <Link
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                table.fullyQualifiedName
+              )}>
               <Typography.Text className="frequently-joint-name">
                 {table.name}
               </Typography.Text>

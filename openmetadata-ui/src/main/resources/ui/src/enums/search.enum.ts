@@ -20,7 +20,8 @@ export enum SearchIndex {
   PIPELINE = 'pipeline_search_index',
   USER = 'user_search_index',
   TEAM = 'team_search_index',
-  GLOSSARY = 'glossary_term_search_index',
+  GLOSSARY = 'glossary_search_index',
+  GLOSSARY_TERM = 'glossary_term_search_index',
   MLMODEL = 'mlmodel_search_index',
   TAG = 'tag_search_index',
   CONTAINER = 'container_search_index',
@@ -41,4 +42,5 @@ export enum SearchIndex {
   STORED_PROCEDURE = 'stored_procedure_search_index',
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
   DATA_PRODUCT = 'data_product_search_index',
+  INGESTION_PIPELINE = 'ingestion_pipeline_search_index',
 }

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
-import { VotingDataProps } from '../../Voting/voting.interface';
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 export interface GlossaryHeaderProps {
   isVersionView?: boolean;
@@ -21,8 +21,8 @@ export interface GlossaryHeaderProps {
   permissions: OperationPermission;
   selectedData: Glossary | GlossaryTerm;
   isGlossary: boolean;
-  onUpdate: (data: GlossaryTerm | Glossary) => void;
-  onDelete: (id: string) => void;
+  onUpdate: (data: GlossaryTerm | Glossary) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
   onAssetAdd?: () => void;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;

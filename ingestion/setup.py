@@ -30,7 +30,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
-    "pandas": "pandas<=2,<3",
+    "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=14.0",
     "pydantic": "pydantic~=1.10",
     "pydomo": "pydomo~=0.3",
@@ -41,7 +41,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
-    "databricks-sdk": "databricks-sdk~=0.1",
+    "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
     "google": "google>=3.0.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy==3.5.0",
@@ -92,6 +92,8 @@ pii_requirements = {
 
 base_requirements = {
     "antlr4-python3-runtime==4.13.1",
+    VERSIONS["azure-identity"],
+    "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",
@@ -118,7 +120,7 @@ base_requirements = {
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage>=1.0.4",
+    "collate-sqllineage~=1.3.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "wheel~=0.38.4",
@@ -135,7 +137,7 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
-    "backup": {VERSIONS["boto3"], "azure-identity", "azure-storage-blob"},
+    "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "bigquery": {
         "cachetools",
         "google-cloud-datacatalog>=3.6.2",
@@ -143,6 +145,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["pyarrow"],
         "sqlalchemy-bigquery>=1.2.2",
     },
+    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
     "clickhouse": {"clickhouse-driver~=0.2", "clickhouse-sqlalchemy~=0.2"},
     "dagster": {
         VERSIONS["pymysql"],
@@ -187,7 +190,6 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        "elasticsearch==7.13.1",
         VERSIONS["elasticsearch8"],
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
@@ -232,6 +234,7 @@ plugins: Dict[str, Set[str]] = {
     "mysql": {VERSIONS["pymysql"]},
     "nifi": {},  # uses requests
     "okta": {"okta~=2.3"},
+    "openlineage": {*COMMONS["kafka"]},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
@@ -310,6 +313,7 @@ test = {
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
+    "testcontainers==3.7.1",
 }
 
 e2e_test = {

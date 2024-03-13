@@ -20,12 +20,12 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -36,7 +36,7 @@ import {
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
@@ -73,6 +73,7 @@ const RequestDescription = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const taskMessage = useMemo(
     () =>
@@ -109,6 +110,7 @@ const RequestDescription = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
@@ -133,7 +135,7 @@ const RequestDescription = () => {
             })
           );
           history.push(
-            getEntityDetailLink(
+            entityUtilClassBase.getEntityLink(
               entityType,
               decodedEntityFQN,
               EntityTabs.ACTIVITY_FEED,
@@ -141,7 +143,8 @@ const RequestDescription = () => {
             )
           );
         })
-        .catch((err: AxiosError) => showErrorToast(err));
+        .catch((err: AxiosError) => showErrorToast(err))
+        .finally(() => setIsLoading(false));
     } else {
       showErrorToast(t('server.no-task-creation-without-assignee'));
     }
@@ -206,7 +209,11 @@ const RequestDescription = () => {
                   entity: t('label.task'),
                 })}
               </Typography.Paragraph>
-              <Form form={form} layout="vertical" onFinish={onCreateTask}>
+              <Form
+                data-testid="form-container"
+                form={form}
+                layout="vertical"
+                onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.task-entity', {
@@ -262,12 +269,13 @@ const RequestDescription = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
-                      data-testid="submit-test"
+                      data-testid="submit-btn"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>

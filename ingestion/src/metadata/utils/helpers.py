@@ -20,10 +20,8 @@ import re
 import shutil
 import sys
 from datetime import datetime, timedelta
-from functools import wraps
 from math import floor, log
 from pathlib import Path
-from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import sqlparse
@@ -99,40 +97,6 @@ om_chart_type_dict = {
     "text": ChartType.Text,
     "scatter": ChartType.Scatter,
 }
-
-
-def calculate_execution_time(func):
-    """
-    Method to calculate workflow execution time
-    """
-
-    @wraps(func)
-    def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        result = func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
-        return result
-
-    return calculate_debug_time
-
-
-def calculate_execution_time_generator(func):
-    """
-    Generator method to calculate workflow execution time
-    """
-
-    def calculate_debug_time(*args, **kwargs):
-        start = perf_counter()
-        yield from func(*args, **kwargs)
-        end = perf_counter()
-        logger.debug(
-            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
-        )
-
-    return calculate_debug_time
 
 
 def pretty_print_time_duration(duration: Union[int, float]) -> str:

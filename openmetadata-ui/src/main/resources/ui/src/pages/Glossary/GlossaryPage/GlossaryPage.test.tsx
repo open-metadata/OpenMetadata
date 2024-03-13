@@ -35,7 +35,7 @@ jest.mock('../../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => {
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn(() => ({
       permissions: {

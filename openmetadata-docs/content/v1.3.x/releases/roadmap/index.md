@@ -14,7 +14,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) if you would like to pri
 You can check the latest release [here](/releases/all-releases).
 
 
-## 1.3 Release - Dec 22nd, 2023
+## 1.3 Release - Feb 05th, 2024
 
 {% tilesContainer %}
 
@@ -26,7 +26,7 @@ You can check the latest release [here](/releases/all-releases).
 
 {% tile title="Ingestion" %}
 - OpenSearch Connector
-- OpenAPI Connector
+- SAS Connector
 - Include Tags for Athena & Datalake connector
 - Support for Tableau & Looker data models
 {% /tile %}
@@ -72,12 +72,16 @@ You can check the latest release [here](/releases/all-releases).
 {% /tilesContainer %}
 
 
-## 1.4 Release - Feb 20th 2024
+## 1.4 Release - April 10th 2024
 
 {% tilesContainer %}
 
 {% tile title="Entities" %}
 - Asset Deprecation, owners can mark assets as deprecated along with a notice of whats the new asset to use. Search will exclude deprecated assets
+{% /tile %}
+
+{% tile title="Ingestion" %}
+- OpenAPI Connector
 {% /tile %}
 
 {% tile title="Data Quality" %}

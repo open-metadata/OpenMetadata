@@ -24,12 +24,7 @@ import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
-import org.openmetadata.schema.services.connections.database.BigQueryConnection;
-import org.openmetadata.schema.services.connections.database.DatalakeConnection;
-import org.openmetadata.schema.services.connections.database.IcebergConnection;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.database.PostgresConnection;
-import org.openmetadata.schema.services.connections.database.TrinoConnection;
+import org.openmetadata.schema.services.connections.database.*;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -49,8 +44,10 @@ public final class ClassConverterFactory {
         Map.ofEntries(
             Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
             Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
+            Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
             Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
+            Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
             Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),

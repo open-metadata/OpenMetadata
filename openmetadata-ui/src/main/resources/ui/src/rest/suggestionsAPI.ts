@@ -12,7 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
-import { SuggestionAction } from '../components/MetaPilot/MetaPilotProvider/MetaPilotProvider.interface';
+import { SuggestionAction } from '../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
 import { Suggestion } from '../generated/entity/feed/suggestion';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
@@ -23,9 +23,7 @@ export type ListSuggestionsParams = ListParams & {
   entityFQN?: string;
 };
 
-export const getMetaPilotSuggestionsList = async (
-  params?: ListSuggestionsParams
-) => {
+export const getSuggestionsList = async (params?: ListSuggestionsParams) => {
   const response = await APIClient.get<PagingResponse<Suggestion[]>>(BASE_URL, {
     params,
   });

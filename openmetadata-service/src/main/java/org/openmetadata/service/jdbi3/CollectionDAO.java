@@ -977,7 +977,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> AND "
-                + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) "
+                + "JSON_OVERLAPS(json_extract(taskAssignees, '$[*].id'), :userTeamJsonMysql) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -995,7 +995,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> AND "
-                + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) ",
+                + "JSON_OVERLAPS(json_extract(taskAssignees, '$[*].id'), :userTeamJsonMysql) ",
         connectionType = MYSQL)
     int listCountTasksAssignedTo(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
@@ -1012,7 +1012,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> "
-                + "AND (JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username) "
+                + "AND (JSON_OVERLAPS(JSON_EXTRACT(taskAssignees, '$[*].id'), :userTeamJsonMysql) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -1031,7 +1031,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> "
-                + "AND (JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username) ",
+                + "AND (JSON_OVERLAPS(JSON_EXTRACT(taskAssignees, '$[*].id'), :userTeamJsonMysql) OR createdBy = :username) ",
         connectionType = MYSQL)
     int listCountTasksOfUser(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
@@ -1189,18 +1189,37 @@ public interface CollectionDAO {
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType);
 
-    @SqlQuery(
-        "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
-            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
-            + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
-            + "GROUP BY te.type, te.taskStatus")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
+                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+                + "((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
+                + " OR (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username)"
+                + "GROUP BY te.type, te.taskStatus",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
+                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+                + "((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) OR "
+                + "(JSON_OVERLAPS(JSON_EXTRACT(taskAssignees, '$[*].id'), :userTeamJsonMysql) OR createdBy = :username)"
+                + " GROUP BY te.type, te.taskStatus",
+        connectionType = MYSQL)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
     List<List<String>> listCountByOwner(
-        @BindUUID("userId") UUID userId, @BindList("teamIds") List<String> teamIds);
+        @BindUUID("userId") UUID userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("username") String username,
+        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
+        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres);
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
@@ -3203,7 +3222,8 @@ public interface CollectionDAO {
     List<String> listWithoutEntityFilter(
         @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
 
-    @SqlQuery("SELECT json FROM change_event ORDER BY eventTime ASC LIMIT :limit OFFSET :offset")
+    @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
     @SqlQuery("SELECT count(*) FROM change_event")

@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.fernet.Fernet;
@@ -57,10 +58,10 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -182,6 +183,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       flyway.migrate();
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
+      LOG.info("create indexes.");
+      searchRepository.createIndexes();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
@@ -203,7 +207,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       flyway.migrate();
       validateAndRunSystemDataMigrations(force);
+      LOG.info("Update Search Indexes.");
+      searchRepository.updateIndexes();
       printChangeLog();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
@@ -235,7 +244,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean recreateIndexes) {
     try {
       parseConfig();
-      AppScheduler.initialize(collectionDAO, searchRepository);
+      ApplicationHandler.initialize(config);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
       App searchIndexApp =
           new App()
               .withId(UUID.randomUUID())
@@ -252,6 +262,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
                           config.getElasticSearchConfiguration().getSearchIndexMappingLanguage()))
               .withRuntime(new ScheduledExecutionContext().withEnabled(true));
       AppScheduler.getInstance().triggerOnDemandApplication(searchIndexApp);
+      do {
+        Thread.sleep(3000l);
+      } while (!AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().isEmpty());
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
@@ -280,6 +293,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
         deployPipeline(pipeline, pipelineServiceClient, pipelineStatuses);
       }
       printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to deploy pipelines due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "migrate-secrets",
+      description =
+          "Migrate secrets from DB to the configured Secrets Manager. "
+              + "Note that this does not support migrating between external Secrets Managers")
+  public Integer migrateSecrets() {
+    try {
+      LOG.info("Migrating Secrets from DB...");
+      parseConfig();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
@@ -389,8 +420,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new ConnectionAwareAnnotationSqlLocator(
                 config.getDataSourceFactory().getDriverClass()));
 
-    searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
+    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     // Initialize secrets manager
     secretsManager =
@@ -429,7 +459,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
-    Entity.cleanup();
   }
 
   private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {
@@ -442,19 +471,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
         migrationDAO.listMetricsFromDBMigrations();
     Set<String> columns = new LinkedHashSet<>(Set.of("version", "installedOn"));
     List<List<String>> rows = new ArrayList<>();
-    for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
-      List<String> row = new ArrayList<>();
-      JsonObject metricsJson = new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
-      Set<String> keys = metricsJson.keySet();
-      columns.addAll(keys);
-      row.add(serverChangeLog.getVersion());
-      row.add(serverChangeLog.getInstalledOn());
-      row.addAll(
-          metricsJson.entrySet().stream()
-              .map(Map.Entry::getValue)
-              .map(JsonElement::toString)
-              .toList());
-      rows.add(row);
+    try {
+      for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
+        List<String> row = new ArrayList<>();
+        if (serverChangeLog.getMetrics() != null) {
+          JsonObject metricsJson =
+              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
+          Set<String> keys = metricsJson.keySet();
+          columns.addAll(keys);
+          row.add(serverChangeLog.getVersion());
+          row.add(serverChangeLog.getInstalledOn());
+          row.addAll(
+              metricsJson.entrySet().stream()
+                  .map(Map.Entry::getValue)
+                  .map(JsonElement::toString)
+                  .toList());
+          rows.add(row);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to generate migration metrics due to", e);
     }
     printToAsciiTable(columns.stream().toList(), rows, "No Server Change log found");
   }

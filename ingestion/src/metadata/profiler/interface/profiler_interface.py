@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
+    DataStorageConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -93,7 +93,7 @@ class ProfilerInterface(ABC):
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
         entity: Table,
-        storage_config: SampleDataStorageConfig,
+        storage_config: DataStorageConfig,
         profile_sample_config: Optional[ProfileSampleConfig],
         source_config: DatabaseServiceProfilerPipeline,
         sample_query: Optional[str],
@@ -248,7 +248,7 @@ class ProfilerInterface(ABC):
             DatabaseProfilerConfig,
             DatabaseAndSchemaConfig,
         ]
-    ):
+    ) -> Optional[DataStorageConfig]:
         if (
             config
             and config.sampleDataStorageConfig
@@ -264,7 +264,7 @@ class ProfilerInterface(ABC):
         database_profiler_config: Optional[DatabaseProfilerConfig],
         db_service: Optional[DatabaseService],
         profiler_config: ProfilerProcessorConfig,
-    ) -> Optional[SampleDataStorageConfig]:
+    ) -> Optional[DataStorageConfig]:
         """Get config for a specific entity
 
         Args:
@@ -425,8 +425,12 @@ class ProfilerInterface(ABC):
         runner,
         *args,
         **kwargs,
-    ):
-        """Get metrics"""
+    ) -> Dict[str, Any]:
+        """Get metrics
+        Return:
+            Dict[str, Any]: dict of metrics tio be merged into the final column profile. Keys need to be compatible with
+            the `metadata.generated.schema.entity.data.table.ColumnProfile` schema.
+        """
         raise NotImplementedError
 
     @abstractmethod

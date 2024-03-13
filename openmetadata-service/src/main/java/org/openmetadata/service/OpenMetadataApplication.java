@@ -13,8 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.util.MicrometerBundleSingleton.setWebAnalyticsEvents;
-
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -38,7 +36,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
-import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
@@ -60,8 +57,6 @@ import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.SqlLogger;
-import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -90,11 +85,9 @@ import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
@@ -114,7 +107,9 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
+import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -122,6 +117,8 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
+
+  protected Jdbi jdbi;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -137,16 +134,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
+    // Instantiate incident severity classifier
+    IncidentSeverityClassifierInterface.createInstance(catalogConfig.getDataQualityConfiguration());
+
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
-    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    // Initialize HTTP and JDBI timers
+    MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
+
+    jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setCollectionDAO(collectionDAO);
 
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
-    new SearchRepository(catalogConfig.getElasticSearchConfiguration(), new SearchIndexFactory());
+    new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
 
@@ -211,10 +214,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Event publishers
     registerEventPublisher(catalogConfig);
 
-    // update entities secrets if required
-    new SecretsManagerUpdateService(secretsManager, catalogConfig.getClusterName())
-        .updateEntities();
-
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created
     // by authorizer
@@ -223,7 +222,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig);
 
-    setWebAnalyticsEvents(catalogConfig);
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(
@@ -277,25 +275,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             });
 
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
-    SqlLogger sqlLogger =
-        new SqlLogger() {
-          @Override
-          public void logBeforeExecution(StatementContext context) {
-            LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
-          }
-
-          @Override
-          public void logAfterExecution(StatementContext context) {
-            LOG.debug(
-                "sql {}, parameters {}, timeTaken {} ms",
-                context.getRenderedSql(),
-                context.getBinding(),
-                context.getElapsedTime(ChronoUnit.MILLIS));
-          }
-        };
-    if (LOG.isDebugEnabled()) {
-      jdbi.setSqlLogger(sqlLogger);
-    }
+    jdbi.setSqlLogger(new OMSqlLogger());
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));

@@ -7,14 +7,14 @@ slug: /deployment/security/okta/bare-metal
 
 ## Update conf/openmetadata.yaml
 
-Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
+Once the `Client Id` is generated, add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
 
 ```yaml
 authenticationConfiguration:
   provider: "okta"
   publicKeyUrls:
     - "{ISSUER_URL}/v1/keys"
-    - "http://{your openmetadata domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+    - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: "{ISSUER_URL}"
   clientId: "{CLIENT_ID - SPA APP}"
   callbackUrl: "http://localhost:8585/callback"

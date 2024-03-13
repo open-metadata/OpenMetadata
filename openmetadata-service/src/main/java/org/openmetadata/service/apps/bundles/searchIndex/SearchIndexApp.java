@@ -1,9 +1,9 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import java.util.ArrayList;
@@ -48,6 +48,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
+@SuppressWarnings("unused")
 public class SearchIndexApp extends AbstractNativeApplication {
 
   private static final String ALL = "all";
@@ -57,6 +58,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "dashboard",
           "topic",
           "pipeline",
+          "ingestionPipeline",
           "searchIndex",
           "user",
           "team",
@@ -83,7 +85,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "webAnalyticEntityViewReportData",
           "webAnalyticUserActivityReportData",
           "domain",
-          "storedProcedure");
+          "storedProcedure",
+          "storageService");
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
   private Processor entityProcessor;
@@ -93,9 +96,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
 
+  public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super(collectionDAO, searchRepository);
+  }
+
   @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    super.init(app, dao, searchRepository);
+  public void init(App app) {
+    super.init(app);
     // request for reindexing
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
@@ -126,7 +133,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
                 paginatedEntitiesSources.add(source);
               } else {
                 paginatedDataInsightSources.add(
-                    new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
+                    new PaginatedDataInsightSource(
+                        collectionDAO, entityType, jobData.getBatchSize()));
               }
             });
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
@@ -158,8 +166,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
 
       // Run ReIndexing
-      entitiesReIndex();
-      dataInsightReindex();
+      entitiesReIndex(jobExecutionContext);
+      dataInsightReindex(jobExecutionContext);
       // Mark Job as Completed
       updateJobStatus();
     } catch (Exception ex) {
@@ -174,12 +182,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(indexingError);
     } finally {
-      // store job details in Database
-      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
-      // Update Record to db
-      updateRecordToDb(jobExecutionContext);
       // Send update
-      sendUpdates();
+      sendUpdates(jobExecutionContext);
     }
   }
 
@@ -204,7 +208,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
-  private void entitiesReIndex() {
+  private void entitiesReIndex(JobExecutionContext jobExecutionContext) {
     Map<String, Object> contextData = new HashMap<>();
     for (PaginatedEntitiesSource paginatedEntitiesSource : paginatedEntitiesSources) {
       reCreateIndexes(paginatedEntitiesSource.getEntityType());
@@ -215,17 +219,31 @@ public class SearchIndexApp extends AbstractNativeApplication {
           resultList = paginatedEntitiesSource.readNext(null);
           if (!resultList.getData().isEmpty()) {
             searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
+            if (!resultList.getErrors().isEmpty()) {
+              throw new SearchIndexException(
+                  new IndexingError()
+                      .withErrorSource(READER)
+                      .withLastFailedCursor(paginatedEntitiesSource.getLastFailedCursor())
+                      .withSubmittedCount(paginatedEntitiesSource.getBatchSize())
+                      .withSuccessCount(resultList.getData().size())
+                      .withFailedCount(resultList.getErrors().size())
+                      .withMessage(
+                          "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                      .withFailedEntities(resultList.getErrors()));
+            }
           }
         } catch (SearchIndexException rx) {
+          jobData.setStatus(EventPublisherJob.Status.FAILED);
           jobData.setFailure(rx.getIndexingError());
+        } finally {
+          updateStats(paginatedEntitiesSource.getEntityType(), paginatedEntitiesSource.getStats());
+          sendUpdates(jobExecutionContext);
         }
       }
-      updateStats(paginatedEntitiesSource.getEntityType(), paginatedEntitiesSource.getStats());
-      sendUpdates();
     }
   }
 
-  private void dataInsightReindex() {
+  private void dataInsightReindex(JobExecutionContext jobExecutionContext) {
     Map<String, Object> contextData = new HashMap<>();
     for (PaginatedDataInsightSource paginatedDataInsightSource : paginatedDataInsightSources) {
       reCreateIndexes(paginatedDataInsightSource.getEntityType());
@@ -239,20 +257,28 @@ public class SearchIndexApp extends AbstractNativeApplication {
                 dataInsightProcessor.process(resultList, contextData), contextData);
           }
         } catch (SearchIndexException ex) {
+          jobData.setStatus(EventPublisherJob.Status.FAILED);
           jobData.setFailure(ex.getIndexingError());
+        } finally {
+          updateStats(
+              paginatedDataInsightSource.getEntityType(), paginatedDataInsightSource.getStats());
+          sendUpdates(jobExecutionContext);
         }
       }
-      updateStats(
-          paginatedDataInsightSource.getEntityType(), paginatedDataInsightSource.getStats());
-      sendUpdates();
     }
   }
 
-  private void sendUpdates() {
+  private void sendUpdates(JobExecutionContext jobExecutionContext) {
     try {
-      WebSocketManager.getInstance()
-          .broadCastMessageToAll(
-              WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+      // store job details in Database
+      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+      // Update Record to db
+      updateRecordToDb(jobExecutionContext);
+      if (WebSocketManager.getInstance() != null) {
+        WebSocketManager.getInstance()
+            .broadCastMessageToAll(
+                WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+      }
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
@@ -276,8 +302,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
           new StepStats()
               .withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), collectionDAO));
     }
-    getUpdatedStats(
-        stats, currentEntityStats.getSuccessRecords(), currentEntityStats.getFailedRecords());
+
+    stats.setSuccessRecords(
+        entityLevelStats.getAdditionalProperties().values().stream()
+            .map(s -> (StepStats) s)
+            .mapToInt(StepStats::getSuccessRecords)
+            .sum());
+    stats.setFailedRecords(
+        entityLevelStats.getAdditionalProperties().values().stream()
+            .map(s -> (StepStats) s)
+            .mapToInt(StepStats::getFailedRecords)
+            .sum());
 
     // Update for the Job
     jobDataStats.setJobStats(stats);

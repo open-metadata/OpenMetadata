@@ -28,7 +28,11 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import (
+    Table,
+    TableConstraint,
+    TableType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -46,7 +50,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import get_columns
+from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -203,6 +207,15 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         need to be overridden by sources
         """
 
+    def get_table_constraints(
+        self,
+        db_name: str,
+        schema_name: str,
+        table_name: str,
+    ) -> Optional[List[TableConstraint]]:
+        # pylint: disable=unused-argument
+        return None
+
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -217,12 +230,17 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
             df = pd.DataFrame.from_records(list(data))
-            columns = get_columns(df)
+            column_parser = DataFrameColumnParser.create(df)
+            columns = column_parser.get_columns()
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
                 columns=columns,
-                tableConstraints=None,
+                tableConstraints=self.get_table_constraints(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    db_name=self.context.database,
+                ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,

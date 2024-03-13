@@ -54,7 +54,6 @@ class TestCaseRunner(Processor):
     """Execute the test suite tests and create test cases from the YAML config"""
 
     def __init__(self, config: OpenMetadataWorkflowConfig, metadata: OpenMetadata):
-
         super().__init__()
 
         self.config = config
@@ -252,13 +251,14 @@ class TestCaseRunner(Processor):
                     if test_case_to_update.name == test_case.name.__root__
                 )
                 updated_test_case = self.metadata.patch_test_case_definition(
-                    source=test_case,
+                    test_case=test_case,
                     entity_link=entity_link.get_entity_link(
                         Table,
                         fqn=table_fqn,
                         column_name=test_case_definition.columnName,
                     ),
                     test_case_parameter_values=test_case_definition.parameterValues,
+                    compute_passed_failed_row_count=test_case_definition.computePassedFailedRowCount,
                 )
                 if updated_test_case:
                     test_cases.pop(indx)

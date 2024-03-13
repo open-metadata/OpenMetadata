@@ -18,17 +18,15 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
-import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
-import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  APP_UI_SCHEMA,
-  STEPS_FOR_APP_INSTALL,
-} from '../../constants/Applications.constant';
+import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationSchemaClassBase';
+import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
+import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
@@ -37,14 +35,11 @@ import {
   ScheduleTimeline,
 } from '../../generated/entity/applications/createAppRequest';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
-import {
-  getEntityMissingError,
-  getIngestionFrequency,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getCronInitialValue } from '../../utils/CronUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -59,9 +54,11 @@ const AppInstall = () => {
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
 
   const stepperList = useMemo(
     () =>
@@ -71,6 +68,24 @@ const AppInstall = () => {
     [appData]
   );
 
+  const { initialOptions, initialValue } = useMemo(() => {
+    let initialOptions;
+
+    if (appData?.name === 'DataInsightsReportApplication') {
+      initialOptions = ['Week'];
+    } else if (appData?.appType === AppType.External) {
+      initialOptions = ['Day'];
+    }
+
+    return {
+      initialOptions,
+      initialValue: getCronInitialValue(
+        appData?.appType ?? AppType.Internal,
+        appData?.name ?? ''
+      ),
+    };
+  }, [appData?.name, appData?.appType]);
+
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -79,7 +94,8 @@ const AppInstall = () => {
       });
       setAppData(data);
 
-      const schema = await import(`../../utils/ApplicationSchemas/${fqn}.json`);
+      const schema = await applicationSchemaClassBase.importSchema(fqn);
+
       setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -98,6 +114,7 @@ const AppInstall = () => {
 
   const onSubmit = async (repeatFrequency: string) => {
     try {
+      setIsSavingLoading(true);
       const data: CreateAppRequest = {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
@@ -115,6 +132,8 @@ const AppInstall = () => {
       goToAppPage();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingLoading(false);
     }
   };
 
@@ -123,16 +142,6 @@ const AppInstall = () => {
     setAppConfiguration(updatedFormData);
     setActiveServiceStep(3);
   };
-
-  const initialOptions = useMemo(() => {
-    if (appData?.name === 'DataInsightsReportApplication') {
-      return ['Week'];
-    } else if (appData?.appType === AppType.External) {
-      return ['Day'];
-    }
-
-    return undefined;
-  }, [appData?.name, appData?.appType]);
 
   const RenderSelectedTab = useCallback(() => {
     if (!appData || !jsonSchema) {
@@ -166,7 +175,7 @@ const AppInstall = () => {
               okText={t('label.submit')}
               schema={jsonSchema}
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-              uiSchema={APP_UI_SCHEMA}
+              uiSchema={UiSchema}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
@@ -178,9 +187,9 @@ const AppInstall = () => {
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
-              isQuartzCron
               includePeriodOptions={initialOptions}
-              initialData={getIngestionFrequency(PipelineType.Application)}
+              initialData={initialValue}
+              isLoading={isSavingLoading}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
@@ -191,7 +200,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, initialOptions]);
+  }, [activeServiceStep, appData, jsonSchema, initialOptions, isSavingLoading]);
 
   useEffect(() => {
     fetchAppDetails();

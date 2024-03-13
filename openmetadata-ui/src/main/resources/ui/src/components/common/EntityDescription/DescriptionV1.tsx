@@ -13,8 +13,8 @@
 
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
@@ -30,10 +30,12 @@ import {
   getUpdateDescriptionPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
-import MetaPilotDescriptionAlert from '../../MetaPilot/MetaPilotDescriptionAlert/MetaPilotDescriptionAlert.component';
-import { useMetaPilotContext } from '../../MetaPilot/MetaPilotProvider/MetaPilotProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
+import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+
 const { Text } = Typography;
 
 interface Props {
@@ -56,12 +58,14 @@ interface Props {
   showActions?: boolean;
   showCommentsIcon?: boolean;
   reduceDescription?: boolean;
+  className?: string;
 }
 const DescriptionV1 = ({
   hasEditAccess,
   onDescriptionEdit,
   description = '',
   isEdit,
+  className,
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
@@ -76,7 +80,8 @@ const DescriptionV1 = ({
   reduceDescription,
 }: Props) => {
   const history = useHistory();
-  const { activeSuggestion, suggestions } = useMetaPilotContext();
+  const { suggestions = [], selectedUserSuggestions = [] } =
+    useSuggestionsContext();
 
   const handleRequestDescription = useCallback(() => {
     history.push(
@@ -141,24 +146,34 @@ const DescriptionV1 = ({
     () => (
       <Space size={12}>
         {!isReadOnly && hasEditAccess && (
-          <Icon
-            component={EditIcon}
-            data-testid="edit-description"
-            style={{ color: DE_ACTIVE_COLOR }}
-            onClick={onDescriptionEdit}
-          />
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.description'),
+            })}>
+            <Icon
+              component={EditIcon}
+              data-testid="edit-description"
+              style={{ color: DE_ACTIVE_COLOR }}
+              onClick={onDescriptionEdit}
+            />
+          </Tooltip>
         )}
         {taskActionButton}
         {showCommentsIcon && (
-          <Icon
-            component={CommentIcon}
-            data-testid="description-thread"
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={20}
-            onClick={() => {
-              onThreadLinkSelect?.(entityLink);
-            }}
-          />
+          <Tooltip
+            title={t('label.list-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <Icon
+              component={CommentIcon}
+              data-testid="description-thread"
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={20}
+              onClick={() => {
+                onThreadLinkSelect?.(entityLink);
+              }}
+            />
+          </Tooltip>
         )}
       </Space>
     ),
@@ -172,54 +187,55 @@ const DescriptionV1 = ({
     ]
   );
 
-  const suggestionForEmptyData = useMemo(() => {
-    if (isEmpty(description.trim())) {
-      return suggestions.find(
-        (suggestion) => suggestion.entityLink === entityLinkWithoutField
+  const suggestionData = useMemo(() => {
+    const activeSuggestion = selectedUserSuggestions.find(
+      (suggestion) => suggestion.entityLink === entityLinkWithoutField
+    );
+
+    if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+      return (
+        <SuggestionsAlert
+          hasEditAccess={hasEditAccess}
+          suggestion={activeSuggestion}
+        />
       );
     }
 
     return null;
-  }, [suggestions, description]);
+  }, [hasEditAccess, entityLinkWithoutField, selectedUserSuggestions]);
 
-  if (activeSuggestion?.entityLink === entityLinkWithoutField) {
-    return (
-      <MetaPilotDescriptionAlert
-        hasEditAccess={hasEditAccess}
-        suggestion={activeSuggestion}
-      />
-    );
-  }
-
-  if (suggestionForEmptyData) {
-    return (
-      <MetaPilotDescriptionAlert
-        hasEditAccess={hasEditAccess}
-        suggestion={suggestionForEmptyData}
-      />
-    );
-  }
+  const descriptionContent = useMemo(() => {
+    if (suggestionData) {
+      return suggestionData;
+    } else {
+      return description.trim() ? (
+        <RichTextEditorPreviewer
+          className={reduceDescription ? 'max-two-lines' : ''}
+          enableSeeMoreVariant={!removeBlur}
+          markdown={description}
+        />
+      ) : (
+        <span>{t('label.no-description')}</span>
+      );
+    }
+  }, [description, suggestionData]);
 
   const content = (
     <Space
-      className="schema-description d-flex"
+      className={classNames('schema-description d-flex', className)}
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>
-      <Space size="middle">
-        <Text className="right-panel-label">{t('label.description')}</Text>
-        {showActions && actionButtons}
-      </Space>
+      <div className="d-flex justify-between">
+        <div className="d-flex items-center gap-2">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {showActions && actionButtons}
+        </div>
+        {suggestions.length > 0 && <SuggestionsSlider />}
+      </div>
+
       <div>
-        {description.trim() ? (
-          <RichTextEditorPreviewer
-            className={reduceDescription ? 'max-two-lines' : ''}
-            enableSeeMoreVariant={!removeBlur}
-            markdown={description}
-          />
-        ) : (
-          <span>{t('label.no-description')}</span>
-        )}
+        {descriptionContent}
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}
           placeholder={t('label.enter-entity', {

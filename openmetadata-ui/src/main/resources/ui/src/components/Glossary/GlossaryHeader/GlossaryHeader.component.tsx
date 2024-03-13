@@ -32,6 +32,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -43,10 +44,11 @@ import { useEntityExportModalProvider } from '../../../components/Entity/EntityE
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
-import Voting from '../../../components/Voting/Voting.component';
-import { VotingDataProps } from '../../../components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
@@ -55,6 +57,7 @@ import {
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Style } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
@@ -70,12 +73,10 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
-
-import { useFqn } from '../../../hooks/useFqn';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import Voting from '../../Entity/Voting/Voting.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
@@ -209,13 +210,13 @@ const GlossaryHeader = ({
     history.push(path);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const { id } = selectedData;
-    onDelete(id);
+    await onDelete(id);
     setIsDelete(false);
   };
 
-  const onNameSave = (obj: { name: string; displayName: string }) => {
+  const onNameSave = async (obj: { name: string; displayName: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
 
@@ -225,11 +226,11 @@ const GlossaryHeader = ({
       displayName: displayName?.trim(),
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsNameEditing(false);
   };
 
-  const onStyleSave = (data: Style) => {
+  const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
@@ -240,11 +241,9 @@ const GlossaryHeader = ({
       style,
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
-
-  const handleUpdateVote = (data: VotingDataProps) => updateVote?.(data);
 
   const addButtonContent = [
     {
@@ -368,7 +367,13 @@ const GlossaryHeader = ({
                       : t('label.glossary-term'),
                   }
                 )}
-                icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
+                icon={
+                  <Icon
+                    className="align-middle"
+                    component={IconDelete}
+                    style={{ fontSize: '16px' }}
+                  />
+                }
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -510,25 +515,40 @@ const GlossaryHeader = ({
                 <Voting
                   voteStatus={voteStatus}
                   votes={selectedData.votes}
-                  onUpdateVote={handleUpdateVote}
+                  onUpdateVote={updateVote}
                 />
               )}
 
               {selectedData && selectedData.version && (
-                <Button
-                  className={classNames('', {
-                    'text-primary border-primary': version,
-                  })}
-                  data-testid="version-button"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={handleVersionClick}>
-                  <Typography.Text
+                <Tooltip
+                  title={t(
+                    `label.${
+                      isVersionView
+                        ? 'exit-version-history'
+                        : 'version-plural-history'
+                    }`
+                  )}>
+                  <Button
                     className={classNames('', {
-                      'text-primary': version,
-                    })}>
-                    {toString(selectedData.version)}
-                  </Typography.Text>
-                </Button>
+                      'text-primary border-primary': version,
+                    })}
+                    data-testid="version-button"
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={DATA_ASSET_ICON_DIMENSION}
+                      />
+                    }
+                    onClick={handleVersionClick}>
+                    <Typography.Text
+                      className={classNames('', {
+                        'text-primary': version,
+                      })}>
+                      {toString(selectedData.version)}
+                    </Typography.Text>
+                  </Button>
+                </Tooltip>
               )}
 
               {!isVersionView && manageButtonContent.length > 0 && (
@@ -544,7 +564,13 @@ const GlossaryHeader = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: isGlossary
+                        ? t('label.glossary')
+                        : t('label.glossary-term'),
+                    })}>
                     <Button
                       className="glossary-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
@@ -565,7 +591,6 @@ const GlossaryHeader = ({
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
           entityType="Glossary"
-          loadingState="success"
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}

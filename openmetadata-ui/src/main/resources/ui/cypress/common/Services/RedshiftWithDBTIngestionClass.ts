@@ -16,14 +16,13 @@ import { REDSHIFT } from '../../constants/service.constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   checkServiceFieldSectionHighlighting,
-  handleIngestionRetry,
   interceptURL,
-  scheduleIngestion,
   verifyResponseStatusCode,
 } from '../common';
 import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { searchServiceFromSettingPage } from '../serviceUtils';
 import { visitEntityDetailsPage } from '../Utils/Entity';
+import { handleIngestionRetry, scheduleIngestion } from '../Utils/Ingestion';
 import { Services } from '../Utils/Services';
 
 class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
@@ -188,7 +187,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
         verifyResponseStatusCode('@serviceDetails', 200);
         verifyResponseStatusCode('@ingestionPipelines', 200);
-        handleIngestionRetry('database', true, 0, 'dbt');
+        handleIngestionRetry(0, 'dbt');
       });
     });
 

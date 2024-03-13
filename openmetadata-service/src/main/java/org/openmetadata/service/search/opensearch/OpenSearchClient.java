@@ -5,7 +5,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
@@ -13,6 +12,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_S
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -130,9 +132,9 @@ import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.ScriptQueryBuilder;
 import os.org.opensearch.index.query.TermQueryBuilder;
-import os.org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
+import os.org.opensearch.index.query.functionscore.ScriptScoreFunctionBuilder;
 import os.org.opensearch.index.reindex.BulkByScrollResponse;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
@@ -315,7 +317,10 @@ public class OpenSearchClient implements SearchClient {
               request.getQuery(), request.getFrom(), request.getSize());
           case "query_search_index", "query" -> buildQuerySearchBuilder(
               request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_search_index", "testCase" -> buildTestCaseSearch(
+          case "test_case_search_index",
+              "testCase",
+              "test_suite_search_index",
+              "testSuite" -> buildTestCaseSearch(
               request.getQuery(), request.getFrom(), request.getSize());
           case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
               request.getQuery(), request.getFrom(), request.getSize());
@@ -492,7 +497,9 @@ public class OpenSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      responseMap.put("entity", hit.getSourceAsMap());
+      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+      responseMap.put("entity", tempMap);
     }
     getLineage(
         fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
@@ -644,6 +651,36 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(responseMap).build();
   }
 
+  private static ScriptScoreFunctionBuilder boostScore() {
+    return ScoreFunctionBuilders.scriptFunction(
+        "double score = _score;"
+            + "if (doc.containsKey('totalVotes') && doc['totalVotes'].value != null) { score = score + doc['totalVotes'].value; }"
+            + "if (doc.containsKey('usageSummary') && doc['usageSummary.weeklyStats.count'].value != null) { score = score + doc['usageSummary.weeklyStats.count'].value; }"
+            + "if (doc.containsKey('tier.tagFQN') && !doc['tier.tagFQN'].empty) { if (doc['tier.tagFQN'].value == 'Tier.Tier2') { score = score + 10; }"
+            + " else if (doc['tier.tagFQN'].value == 'Tier.Tier1') { score = score + 20; }}"
+            + "return score;");
+  }
+
+  private static HighlightBuilder buildHighlights(List<String> fields) {
+    List<String> defaultFields =
+        List.of(
+            FIELD_DISPLAY_NAME,
+            FIELD_NAME,
+            FIELD_DESCRIPTION,
+            FIELD_DISPLAY_NAME_NGRAM,
+            FIELD_NAME_NGRAM);
+    defaultFields = Stream.concat(defaultFields.stream(), fields.stream()).toList();
+    HighlightBuilder hb = new HighlightBuilder();
+    for (String field : defaultFields) {
+      HighlightBuilder.Field highlightField = new HighlightBuilder.Field(field);
+      highlightField.highlighterType(UNIFIED);
+      hb.field(highlightField);
+    }
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+    return hb;
+  }
+
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
@@ -686,6 +723,82 @@ public class OpenSearchClient implements SearchClient {
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
+  }
+
+  /*
+  Build dynamic aggregation from elasticsearch JSON like aggregation query.
+  See TestSuiteResourceTest for example usage (ln. 506) for tested aggregation query.
+
+  @param aggregations - JsonObject containing the aggregation query
+  */
+  public static List<AggregationBuilder> buildAggregation(JsonObject aggregations) {
+    List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
+    for (String key : aggregations.keySet()) {
+      JsonObject aggregation = aggregations.getJsonObject(key);
+      for (String aggregationType : aggregation.keySet()) {
+        switch (aggregationType) {
+          case "terms":
+            JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
+            TermsAggregationBuilder termsAggregationBuilder =
+                AggregationBuilders.terms(key).field(termAggregation.getString("field"));
+            aggregationBuilders.add(termsAggregationBuilder);
+            break;
+          case "nested":
+            JsonObject nestedAggregation = aggregation.getJsonObject("nested");
+            AggregationBuilder nestedAggregationBuilder =
+                AggregationBuilders.nested(
+                    nestedAggregation.getString("path"), nestedAggregation.getString("path"));
+            JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
+
+            List<AggregationBuilder> nestedAggregationBuilders =
+                buildAggregation(nestedAggregations);
+            for (AggregationBuilder nestedAggregationBuilder1 : nestedAggregationBuilders) {
+              nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
+            }
+            aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          default:
+            break;
+        }
+      }
+    }
+    return aggregationBuilders;
+  }
+
+  @Override
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
+    JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
+    if (aggregations == null) {
+      return null;
+    }
+
+    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregations);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (query != null) {
+      XContentParser queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
+      searchSourceBuilder.query(boolQueryBuilder);
+    }
+
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    for (AggregationBuilder aggregation : aggregationBuilder) {
+      searchSourceBuilder.aggregation(aggregation);
+    }
+
+    searchRequest.source(searchSourceBuilder);
+
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+    return jsonResponse.getJsonObject("aggregations");
   }
 
   public void updateSearch(UpdateRequest updateRequest) {
@@ -746,27 +859,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, PipelineIndex.getFields());
-
-    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightPipelineName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
-    highlightTasks.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTaskDescriptions =
-        new HighlightBuilder.Field("tasks.description");
-    highlightTaskDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightPipelineName);
-    hb.field(highlightTasks);
-    hb.field(highlightTaskDescriptions);
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(List.of("tasks.name", "tasks.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("tasks.displayName.keyword").field("tasks.displayName.keyword"));
@@ -774,50 +871,25 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, MlModelIndex.getFields());
-
-    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightPipelineName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
-    highlightTasks.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTaskDescriptions =
-        new HighlightBuilder.Field("mlFeatures.description");
-    highlightTaskDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightPipelineName);
-    hb.field(highlightTasks);
-    hb.field(highlightTaskDescriptions);
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, MlModelIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(List.of("mlFeatures.name", "mlFeatures.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TopicIndex.getFields());
-
-    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTopicName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightTopicName);
-    hb.field(highlightDisplayNameNgram);
-    hb.field(
-        new HighlightBuilder.Field("messageSchema.schemaFields.description")
-            .highlighterType(UNIFIED));
-    hb.field(
-        new HighlightBuilder.Field("messageSchema.schemaFields.children.name")
-            .highlighterType(UNIFIED));
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, TopicIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb =
+        buildHighlights(
+            List.of(
+                "messageSchema.schemaFields.description",
+                "messageSchema.schemaFields.children.name"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
         .aggregation(
@@ -828,29 +900,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardIndex.getFields());
-
-    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightDashboardName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("charts.name");
-    highlightCharts.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightChartDescriptions =
-        new HighlightBuilder.Field("charts.description");
-    highlightChartDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightDashboardName);
-    hb.field(highlightCharts);
-    hb.field(highlightChartDescriptions);
-
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(List.of("charts.name", "charts.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
         .aggregation(
@@ -866,16 +920,8 @@ public class OpenSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
-    FieldValueFactorFunctionBuilder boostScoreBuilder =
-        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
-            .missing(0)
-            .factor(0.2f);
-    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-          new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder)
-        };
     FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
     queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
@@ -883,19 +929,11 @@ public class OpenSearchClient implements SearchClient {
 
   private static SearchSourceBuilder buildGenericDataAssetSearchBuilder(
       String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightName);
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
   }
@@ -903,42 +941,11 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TableIndex.getFields());
-    ;
-    FieldValueFactorFunctionBuilder boostScoreBuilder =
-        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
-            .missing(0)
-            .factor(0.2f);
-    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-          new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder)
-        };
     FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb =
+        buildHighlights(List.of("columns.name", "columns.description", "columns.children.name"));
     queryBuilder.boostMode(CombineFunction.SUM);
-    HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTableName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("columns.name");
-    highlightColumns.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnDescriptions =
-        new HighlightBuilder.Field("columns.description");
-    highlightColumnDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnChildren =
-        new HighlightBuilder.Field("columns.children.name");
-    highlightColumnDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightTableName);
-    hb.field(highlightColumns);
-    hb.field(highlightColumnDescriptions);
-    hb.field(highlightColumnChildren);
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
@@ -965,30 +972,12 @@ public class OpenSearchClient implements SearchClient {
 
   private static SearchSourceBuilder buildGlossaryTermSearchBuilder(
       String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
-
-    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightGlossaryName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightGlossaryDisplayName =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightGlossaryDisplayName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightGlossaryName);
-    hb.field(highlightGlossaryDisplayName);
-    hb.field(highlightSynonym);
-
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(List.of("synonyms"));
+    queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
@@ -997,24 +986,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TagIndex.getFields());
-
-    HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightTagName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTagDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTagDisplayName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightTagDisplayName);
-    hb.field(highlightDescription);
-    hb.field(highlightTagName);
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, TagIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
@@ -1024,33 +1000,16 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, ContainerIndex.getFields());
-
-    HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightContainerName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
-    highlightColumns.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnDescriptions =
-        new HighlightBuilder.Field("dataModel.columns.description");
-    highlightColumnDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnChildren =
-        new HighlightBuilder.Field("dataModel.columns.children.name");
-    highlightColumnDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightContainerName);
-    hb.field(highlightColumns);
-    hb.field(highlightColumnDescriptions);
-    hb.field(highlightColumnChildren);
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb =
+        buildHighlights(
+            List.of(
+                "dataModel.columns.name",
+                "dataModel.columns.description",
+                "dataModel.columns.name.description"));
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder
@@ -1062,71 +1021,29 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, QueryIndex.getFields());
-
-    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightGlossaryName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(QUERY);
-    highlightGlossaryName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightGlossaryName);
-    hb.field(highlightQuery);
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, QueryIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
   private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TestCaseIndex.getFields());
-
-    HighlightBuilder.Field highlightTestCaseDescription =
-        new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightTestCaseDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightTestCaseName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTestSuiteName = new HighlightBuilder.Field("testSuite.name");
-    highlightTestSuiteName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTestSuiteDescription =
-        new HighlightBuilder.Field("testSuite.description");
-    highlightTestSuiteDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightTestCaseDescription);
-    hb.field(highlightTestCaseName);
-    hb.field(highlightTestSuiteName);
-    hb.field(highlightTestSuiteDescription);
-
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(List.of("testSuite.name", "testSuite.description"));
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
   private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
-
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightName);
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     return addAggregation(searchSourceBuilder);
@@ -1134,24 +1051,11 @@ public class OpenSearchClient implements SearchClient {
 
   private static SearchSourceBuilder buildDashboardDataModelsSearch(
       String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
-
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightName);
-
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder
@@ -1169,48 +1073,20 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DomainIndex.getFields());
-
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightName);
-
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, DomainIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
-
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightDisplayName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayNameNgram =
-        new HighlightBuilder.Field(FIELD_DISPLAY_NAME_NGRAM);
-    highlightDisplayNameNgram.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDisplayNameNgram);
-    hb.field(highlightDescription);
-    hb.field(highlightName);
-    hb.field(highlightDisplayName);
-
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
@@ -1220,29 +1096,11 @@ public class OpenSearchClient implements SearchClient {
 
   private static SearchSourceBuilder buildTestCaseResolutionStatusSearch(
       String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
-
-    HighlightBuilder hb = new HighlightBuilder();
-    HighlightBuilder.Field highlightTestCaseDescription =
-        new HighlightBuilder.Field("testCaseReference.description");
-    highlightTestCaseDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTestCaseName =
-        new HighlightBuilder.Field("testCaseReference.name");
-    highlightTestCaseName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightResolutionComment =
-        new HighlightBuilder.Field(
-            "testCaseResolutionStatusDetails.resolved.testCaseFailureComment");
-    highlightResolutionComment.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightResolutionType =
-        new HighlightBuilder.Field("testCaseResolutionStatusType");
-    highlightResolutionType.highlighterType(UNIFIED);
-
-    hb.field(highlightTestCaseDescription);
-    hb.field(highlightTestCaseName);
-    hb.field(highlightResolutionComment);
-    hb.field(highlightResolutionType);
-
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
@@ -1294,38 +1152,16 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildServiceSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-
-    HighlightBuilder hb = new HighlightBuilder();
-    HighlightBuilder.Field highlightServiceName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightServiceName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-
-    hb.field(highlightServiceName);
-    hb.field(highlightDescription);
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
   private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DataProductIndex.getFields())
-            .fuzziness(Fuzziness.AUTO);
-
-    HighlightBuilder hb = new HighlightBuilder();
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
-    highlightName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightDisplayName.highlighterType(UNIFIED);
-    hb.field(highlightDescription);
-    hb.field(highlightName);
-    hb.field(highlightDisplayName);
-
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, DataProductIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder =
+        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     return addAggregation(searchSourceBuilder);

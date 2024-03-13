@@ -15,7 +15,7 @@ import {
   OperationPermission,
   ResourceEntity,
   UIPermission,
-} from '../components/PermissionProvider/PermissionProvider.interface';
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   Access,
   Permission,

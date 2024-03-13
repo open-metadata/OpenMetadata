@@ -7,14 +7,14 @@ slug: /deployment/security/auth0/bare-metal
 
 ## Update conf/openmetadata.yaml
 
-Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
+Once the `Client Id` is generated, add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
 
 ```yaml
 authenticationConfiguration:
   provider: "auth0"
   publicKeyUrls: 
     - "https://parth-panchal.us.auth0.com/.well-known/jwks.json"
-    - "http://{your domain}:8585/api/v1/system/config/jwks" #Make sure this URL is always configured to enable JWT tokens
+    - "{your domain}/api/v1/system/config/jwks" #Make sure this URL is always configured to enable JWT tokens
   authority: "https://parth-panchal.us.auth0.com/"
   clientId: "{Client ID}"
   callbackUrl: "http://localhost:8585/callback"
