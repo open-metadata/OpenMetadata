@@ -380,8 +380,6 @@ site_menu:
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
-  - category: Releases / Roadmap
-    url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
   - category: Releases / All Releases / 1.3.1 Release
@@ -432,6 +430,9 @@ site_menu:
     url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
+
+  - category: Roadmap
+    url: /roadmap
 
   - category: Connectors
     url: /connectors
