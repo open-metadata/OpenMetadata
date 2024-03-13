@@ -21,6 +21,7 @@ import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   extractDetailsFromToken,
   isProtectedRoute,
@@ -28,8 +29,6 @@ import {
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';
 
