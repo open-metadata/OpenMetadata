@@ -46,11 +46,11 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.openlineage.models import (
     Dataset,
-    RunState,
     InputField,
     LineageEdge,
     LineageNode,
     RunEvent,
+    RunState,
     TableDetails,
     TableFQN,
 )

@@ -348,34 +348,36 @@ class OpenLineageUnitTest(unittest.TestCase):
             ),
         ]
         outputs = [
-            Dataset(**{
-                "name": "schema.output_table",
-                "namespace": "hive://",
-                "facets": {
-                    "columnLineage": {
-                        "fields": {
-                            "output_column1": {
-                                "inputFields": [
-                                    {
-                                        "field": "input_column1",
-                                        "namespace": "s3a://project-db",
-                                        "name": "/src_test1",
-                                    }
-                                ]
-                            },
-                            "output_column2": {
-                                "inputFields": [
-                                    {
-                                        "field": "input_column2",
-                                        "namespace": "s3a://project-db",
-                                        "name": "/src_test2",
-                                    }
-                                ]
-                            },
+            Dataset(
+                **{
+                    "name": "schema.output_table",
+                    "namespace": "hive://",
+                    "facets": {
+                        "columnLineage": {
+                            "fields": {
+                                "output_column1": {
+                                    "inputFields": [
+                                        {
+                                            "field": "input_column1",
+                                            "namespace": "s3a://project-db",
+                                            "name": "/src_test1",
+                                        }
+                                    ]
+                                },
+                                "output_column2": {
+                                    "inputFields": [
+                                        {
+                                            "field": "input_column2",
+                                            "namespace": "s3a://project-db",
+                                            "name": "/src_test2",
+                                        }
+                                    ]
+                                },
+                            }
                         }
-                    }
-                },
-            })
+                    },
+                }
+            )
         ]
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
 
