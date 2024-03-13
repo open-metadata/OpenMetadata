@@ -15,11 +15,7 @@
 .suggested-description-card {
   border-color: @primary-color !important;
   border-radius: 10px !important;
-  .markdown-parser .toastui-editor-contents {
-    p {
-      color: @text-grey-muted;
-    }
-  }
+  overflow: hidden;
 }
 
 .suggestion-pending-btn {
@@ -27,4 +23,22 @@
   border: 1px solid @yellow-2 !important;
   color: @yellow-2 !important;
   border-radius: 8px !important;
+}
+
+.suggested-alert-content {
+  padding: 12px;
+}
+
+.suggested-alert-footer {
+  background-color: @grey-1 !important;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+.suggested-alert-footer-profile-pic {
+  line-height: 10px !important;
+}
+
+td .suggested-alert-footer {
+  padding: 4px 12px;
 }

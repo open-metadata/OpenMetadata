@@ -3,6 +3,11 @@ UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb, '{connection,config,supportsProfiler}', 'true'::jsonb)
 WHERE serviceType = 'MongoDB';
 
+ALTER TABLE query_entity ADD COLUMN checksum varchar(32) GENERATED ALWAYS AS (json ->> 'checksum') STORED NOT NULL,
+    ADD UNIQUE(checksum);
+
+UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', MD5(json->'connection'));
+
 CREATE INDEX index_chart_entity_deleted ON chart_entity (fqnHash, deleted);
 CREATE INDEX index_dashboard_data_model_entity_deleted ON dashboard_data_model_entity (fqnHash, deleted);
 CREATE INDEX index_dashboard_entity_deleted ON dashboard_entity (fqnHash, deleted);

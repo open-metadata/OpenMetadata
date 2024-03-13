@@ -3,6 +3,10 @@ UPDATE dbservice_entity
 SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
 WHERE serviceType = 'MongoDB';
 
+ALTER TABLE query_entity ADD COLUMN checksum VARCHAR(32) GENERATED ALWAYS AS (json ->> '$.checksum') NOT NULL UNIQUE;
+
+UPDATE query_entity SET json = JSON_INSERT(json, '$.checksum', MD5(JSON_UNQUOTE(JSON_EXTRACT(json, '$.checksum'))));
+
 ALTER TABLE chart_entity ADD INDEX index_chart_entity_deleted(fqnHash, deleted);
 ALTER TABLE dashboard_data_model_entity ADD INDEX index_dashboard_data_model_entity_deleted(fqnHash, deleted);
 ALTER TABLE dashboard_entity ADD INDEX index_dashboard_entity_deleted(fqnHash, deleted);
