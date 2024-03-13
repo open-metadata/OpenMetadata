@@ -637,10 +637,7 @@ class SnowflakeSource(
         location = self.external_location_map.get(
             (self.context.database, self.context.database_schema, table_name)
         )
-        if (
-            table_type == TableType.External
-            and location
-        ):
+        if table_type == TableType.External and location:
             location_entity = self.metadata.es_search_container_by_path(
                 full_path=location
             )
