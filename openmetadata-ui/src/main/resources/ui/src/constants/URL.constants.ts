@@ -11,6 +11,6 @@
  *  limitations under the License.
  */
 
-export const urlJoinSlack = 'https://slack.open-metadata.org';
-export const urlGitbookDocs = 'https://docs.open-metadata.org/';
-export const urlGithubRepo = 'https://github.com/open-metadata/OpenMetadata';
+export const URL_JOIN_SLACK = 'https://slack.open-metadata.org';
+export const URL_OPEN_METADATA_DOCS = 'https://docs.open-metadata.org/';
+export const URL_GITHUB_REPO = 'https://github.com/open-metadata/OpenMetadata';

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { get, isEmpty, isUndefined } from 'lodash';
 import React from 'react';
@@ -21,7 +22,7 @@ import {
   BasicEntityInfo,
   HighlightedTagLabel,
 } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
@@ -66,14 +67,14 @@ export const getTitle = (
 
   return sourceUrl ? (
     <Link target="_blank" to={{ pathname: sourceUrl }}>
-      <div className="d-flex">
+      <div className="d-flex items-center">
         <Text
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
           ellipsis={{ tooltip: true }}>
           {title}
         </Text>
-        <IconExternalLink width={12} />
+        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
       </div>
     </Link>
   ) : (

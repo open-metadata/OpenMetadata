@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space, Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -21,6 +22,7 @@ import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/exter
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import {
   DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
   SUCCESS_COLOR,
   TEXT_BODY_COLOR,
@@ -119,10 +121,11 @@ const GlossaryTermReferences = ({
               rel="noopener noreferrer"
               target="_blank">
               <div className="d-flex items-center">
-                <ExternalLinkIcon
+                <Icon
                   className="m-r-xss"
-                  color={iconColor}
-                  width="12px"
+                  component={ExternalLinkIcon}
+                  data-testid="external-link-icon"
+                  style={{ ...ICON_DIMENSION, color: iconColor }}
                 />
                 <span className={textClassName}>{ref.name}</span>
               </div>

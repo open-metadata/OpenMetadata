@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BasicEntityInfo } from '../../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
+import { ICON_DIMENSION } from '../../constants/constants';
 import { Task } from '../../generated/entity/data/pipeline';
 import {
   Column,
@@ -40,14 +42,14 @@ export const mockLinkBasedSummaryTitleResponse = (
       pathname:
         'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task',
     }}>
-    <div className="d-flex">
+    <div className="d-flex items-center">
       <Text
         className="entity-title text-link-color font-medium m-r-xss"
         data-testid="entity-title"
         ellipsis={{ tooltip: true }}>
         dim_address Task
       </Text>
-      <IconExternalLink width={12} />
+      <Icon component={IconExternalLink} style={ICON_DIMENSION} />
     </div>
   </Link>
 );
@@ -146,14 +148,14 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
           pathname:
             'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
         }}>
-        <div className="d-flex">
+        <div className="d-flex items-center">
           <Text
             className="entity-title text-link-color font-medium m-r-xss"
             data-testid="entity-title"
             ellipsis={{ tooltip: true }}>
             Assert Table Exists
           </Text>
-          <IconExternalLink width={12} />
+          <Icon component={IconExternalLink} style={ICON_DIMENSION} />
         </div>
       </Link>
     ),

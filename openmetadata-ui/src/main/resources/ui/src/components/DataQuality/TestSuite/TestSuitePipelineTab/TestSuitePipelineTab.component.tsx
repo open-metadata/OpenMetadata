@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Divider, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -20,6 +21,7 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
+import { DATA_ASSET_ICON_DIMENSION } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -336,7 +338,11 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 target="_blank">
                 <Space align="center">
                   {name}
-                  <ExternalLinkIcon className="align-middle" width={16} />
+                  <Icon
+                    className="align-middle"
+                    component={ExternalLinkIcon}
+                    style={DATA_ASSET_ICON_DIMENSION}
+                  />
                 </Space>
               </a>
             </Tooltip>

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { MenuProps } from 'antd';
 import { ReactNode } from 'react';
 
 export interface DropdownOption {
@@ -24,14 +23,11 @@ export interface DropdownOption {
 }
 
 export interface NavBarProps {
-  supportDropdown: MenuProps['items'];
   searchValue: string;
   isTourRoute?: boolean;
-  isFeatureModalOpen: boolean;
   pathname: string;
   isSearchBoxOpen: boolean;
   handleSearchBoxOpen: (value: boolean) => void;
-  handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;
   handleOnClick: () => void;
   handleClear: () => void;
