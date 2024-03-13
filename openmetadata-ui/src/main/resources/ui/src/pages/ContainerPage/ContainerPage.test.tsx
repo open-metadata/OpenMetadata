@@ -59,7 +59,7 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <>ActivityThreadPanel</>)
 );
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     id: 'userid',
   }),

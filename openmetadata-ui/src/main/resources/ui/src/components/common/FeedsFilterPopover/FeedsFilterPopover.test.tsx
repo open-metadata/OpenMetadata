@@ -21,7 +21,7 @@ const mockProps = {
   onUpdate: onUpdateMock,
 };
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     currentUser: {
       isAdmin: true,

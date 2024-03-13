@@ -20,7 +20,7 @@ import { UserProfileIcon } from './UserProfileIcon.component';
 
 const mockLogout = jest.fn();
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
+jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     selectedPersona: {},
     setSelectedPersona: jest.fn(),
