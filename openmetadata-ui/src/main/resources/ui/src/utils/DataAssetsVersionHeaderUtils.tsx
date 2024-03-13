@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Typography } from 'antd';
 import { t } from 'i18next';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -22,6 +23,7 @@ import {
   VersionExtraInfoLink,
 } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
+import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -66,7 +68,11 @@ export const getExtraInfoSourceUrl = (
               style={{ fontSize: '12px' }}>
               {getEntityName(pipelineDetails)}{' '}
             </Typography.Link>
-            <IconExternalLink className="m-l-xss " width={14} />{' '}
+            <Icon
+              className="m-l-xss"
+              component={IconExternalLink}
+              style={DATA_ASSET_ICON_DIMENSION}
+            />
           </div>
         </>
       ) : (
