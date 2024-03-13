@@ -1985,7 +1985,7 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listCount(getTableName(), mySqlCondition, postgresCondition);
+        return listCount(getTableName(), getNameHashColumn(), mySqlCondition, postgresCondition);
       }
 
       String condition = filter.getCondition(getTableName());
