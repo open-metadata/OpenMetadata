@@ -259,6 +259,12 @@ const AddCustomProperty = () => {
         placeholder: `${t('label.select-field', {
           field: t('label.type'),
         })}`,
+        showSearch: true,
+        filterOption: (input: string, option: { label: string }) => {
+          return (option?.label ?? '')
+            .toLowerCase()
+            .includes(input.toLowerCase());
+        },
       },
     },
   ];
