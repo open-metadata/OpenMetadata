@@ -237,7 +237,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsExperts;
   protected final boolean supportsReviewers;
 
-
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
@@ -609,16 +608,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
 
     // Add random domain reference
-    EntityReference domainReference = new EntityReference().withId(UUID.randomUUID())
-            .withType(Entity.DOMAIN);
+    EntityReference domainReference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN);
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
     entity.setDomain(domainReference);
 
     assertResponse(
-            () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-            NOT_FOUND,
-            String.format("domain instance for %s not found", domainReference.getId()));
+        () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+        NOT_FOUND,
+        String.format("domain instance for %s not found", domainReference.getId()));
   }
 
   @Test
@@ -634,9 +633,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity.setDataProducts(List.of(dataProductReference));
 
     assertResponse(
-            () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-            NOT_FOUND,
-            String.format("dataProduct instance for %s not found", dataProductReference.getId()));
+        () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+        NOT_FOUND,
+        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
   }
 
   @Test

@@ -1914,7 +1914,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), NON_DELETED);
   }
 
-  final public void validateDataProducts(List<EntityReference> dataProducts) {
+  public final void validateDataProducts(List<EntityReference> dataProducts) {
     if (!supportsDataProducts) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DATA_PRODUCTS));
     }
@@ -1925,7 +1925,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
   }
-
 
   /** Override this method to support downloading CSV functionality */
   public String exportToCsv(String name, String user) throws IOException {

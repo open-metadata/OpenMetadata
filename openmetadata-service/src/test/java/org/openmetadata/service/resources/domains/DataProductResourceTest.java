@@ -176,10 +176,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             () -> {
               entityRepository.validateDataProducts(List.of(entityReference));
             })
-            .isInstanceOf(EntityNotFoundException.class)
-            .hasMessage(String.format("dataProduct instance for %s not found", rdnUUID));
+        .isInstanceOf(EntityNotFoundException.class)
+        .hasMessage(String.format("dataProduct instance for %s not found", rdnUUID));
   }
-
 
   private void entityInDataProduct(
       EntityInterface entity, EntityInterface product, boolean inDataProduct)
