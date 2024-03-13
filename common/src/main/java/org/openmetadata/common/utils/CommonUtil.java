@@ -210,6 +210,7 @@ public final class CommonUtil {
   }
 
   public static <T> boolean findChildren(List<?> list, String methodName, String fqn) {
+    if (list == null || list.isEmpty()) return false;
     try {
       Method getChildren = list.get(0).getClass().getMethod(methodName);
       Method getFQN = list.get(0).getClass().getMethod("getFullyQualifiedName");
@@ -218,11 +219,8 @@ public final class CommonUtil {
               o -> {
                 try {
                   return getFQN.invoke(o).equals(fqn)
-                      || (getChildren.invoke(o) != null
-                          && findChildren((List<?>) getChildren.invoke(o), methodName, fqn));
+                      || findChildren((List<?>) getChildren.invoke(o), methodName, fqn);
                 } catch (Exception e) {
-                  // Handle exceptions appropriately
-                  LOG.info(e.getMessage());
                   return false;
                 }
               });
