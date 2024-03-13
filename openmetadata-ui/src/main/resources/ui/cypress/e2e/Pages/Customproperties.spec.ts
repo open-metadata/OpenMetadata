@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { lowerCase } from 'lodash';
+import { lowerCase, toString } from 'lodash';
 import {
   descriptionBox,
   interceptURL,
@@ -21,6 +21,7 @@ import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
   addCustomPropertiesForEntity,
   customPropertiesArray,
+  CustomProperty,
   CustomPropertyType,
   deleteCreatedProperty,
   deleteCustomProperties,
@@ -45,7 +46,7 @@ import {
   NEW_GLOSSARY_TERMS,
   uuid,
 } from '../../constants/constants';
-import { SidebarItem } from '../../constants/Entity.interface';
+import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 
 const CREDENTIALS = {
@@ -296,13 +297,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         verifyResponseStatusCode('@getEntity', 200);
 
         // Getting the property
-        addCustomPropertiesForEntity(
-          propertyName,
-          entity,
-          'Integer',
-          entity.integerValue,
-          entity.entityObj
-        );
+        addCustomPropertiesForEntity(propertyName, entity, 'Integer');
 
         // Navigating back to custom properties page
         cy.settingClick(entity.entityApiType, true);
@@ -355,13 +350,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
         verifyResponseStatusCode('@getEntity', 200);
 
-        addCustomPropertiesForEntity(
-          propertyName,
-          entity,
-          'String',
-          entity.stringValue,
-          entity.entityObj
-        );
+        addCustomPropertiesForEntity(propertyName, entity, 'String');
 
         // Navigating back to custom properties page
         cy.settingClick(entity.entityApiType, true);
@@ -415,13 +404,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
         verifyResponseStatusCode('@getEntity', 200);
 
-        addCustomPropertiesForEntity(
-          propertyName,
-          entity,
-          'Markdown',
-          entity.markdownValue,
-          entity.entityObj
-        );
+        addCustomPropertiesForEntity(propertyName, entity, 'Markdown');
 
         // Navigating back to custom properties page
         cy.settingClick(entity.entityApiType, true);
@@ -479,8 +462,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
           propertyName,
           entity,
           'Enum',
-          entity.enumConfig,
-          entity.entityObj
+          entity.enumConfig
         );
 
         // Navigating back to custom properties page
@@ -526,13 +508,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     it('test custom properties in advanced search modal', () => {
       cy.settingClick(glossaryTerm.entityApiType, true);
 
-      addCustomPropertiesForEntity(
-        propertyName,
-        glossaryTerm,
-        'Integer',
-        '45',
-        null
-      );
+      addCustomPropertiesForEntity(propertyName, glossaryTerm, 'Integer');
 
       // Navigating to explore page
       cy.sidebarClick(SidebarItem.EXPLORE);
@@ -592,20 +568,14 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       cy.settingClick(glossaryTerm.entityApiType, true);
 
       Object.values(CustomPropertyType).forEach((type) => {
-        addCustomPropertiesForEntity(
-          lowerCase(type),
-          glossaryTerm,
-          type,
-          `${type}-(${uuid()})`,
-          null
-        );
+        addCustomPropertiesForEntity(lowerCase(type), glossaryTerm, type);
         cy.settingClick(glossaryTerm.entityApiType, true);
       });
 
       visitEntityDetailsPage({
         term: NEW_GLOSSARY_TERMS.term_1.name,
         serviceName: NEW_GLOSSARY_TERMS.term_1.fullyQualifiedName,
-        entity: 'glossaryTerms',
+        entity: 'glossaryTerms' as EntityType,
         dataTestId: 'Cypress Glossary-CypressPurchase',
       });
 
@@ -632,11 +602,14 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
       // delete custom properties
       Object.values(CustomPropertyType).forEach((customPropertyType) => {
-        const type = glossaryTerm.entityApiType;
+        const type = glossaryTerm.entityApiType as EntityType;
         const property = customPropertyValue[customPropertyType].property ?? {};
 
         deleteCustomPropertyForEntity({
-          property: { ...property, name: lowerCase(customPropertyType) },
+          property: {
+            ...property,
+            name: lowerCase(customPropertyType),
+          } as CustomProperty,
           type,
         });
       });
@@ -654,7 +627,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       cy.login();
 
       cy.getAllLocalStorage().then((data) => {
-        token = Object.values(data)[0].oidcIdToken;
+        token = toString(Object.values(data)[0].oidcIdToken);
         createEntityTableViaREST({
           token,
           ...DATABASE_SERVICE,
@@ -698,7 +671,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       visitEntityDetailsPage({
         term: DATABASE_SERVICE.entity.name,
         serviceName: DATABASE_SERVICE.service.name,
-        entity: DATA_ASSETS.tables,
+        entity: DATA_ASSETS.tables as EntityType,
       });
       verifyCustomPropertyRows();
     });

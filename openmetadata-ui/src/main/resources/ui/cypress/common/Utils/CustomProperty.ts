@@ -202,7 +202,7 @@ export const addCustomPropertiesForEntity = (
   propertyName: string,
   customPropertyData: { description: string },
   customType: string,
-  value: { values: string[]; multiSelect: boolean }
+  value?: { values: string[]; multiSelect: boolean }
 ) => {
   // Add Custom property for selected entity
   cy.get('[data-testid="add-field-button"]').click();
@@ -258,7 +258,7 @@ export const addCustomPropertiesForEntity = (
 
   cy.get('[data-testid="name"]').clear().type(propertyName);
 
-  cy.get('[data-testid="propertyType"]').click();
+  cy.get(`#root\\/propertyType`).clear().type(customType);
   cy.get(`[title="${customType}"]`).click();
 
   if (customType === 'Enum') {
@@ -288,7 +288,7 @@ export const addCustomPropertiesForEntity = (
   cy.clickOnLogo();
 };
 
-export const editCreatedProperty = (propertyName: string, type: string) => {
+export const editCreatedProperty = (propertyName: string, type?: string) => {
   // Fetching for edit button
   cy.get(`[data-row-key="${propertyName}"]`)
     .find('[data-testid="edit-button"]')
