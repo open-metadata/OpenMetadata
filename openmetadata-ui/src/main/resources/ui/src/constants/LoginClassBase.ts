@@ -17,7 +17,7 @@ import governanceImg from '../assets/img/login-screen/data-governance.png';
 import insightImg from '../assets/img/login-screen/data-insights.png';
 import dataQualityImg from '../assets/img/login-screen/data-quality.png';
 
-class CarouselImageClassBase {
+class LoginClassBase {
   public carouselImages() {
     return {
       dataDiscovery: discoveryImg,
@@ -29,7 +29,7 @@ class CarouselImageClassBase {
   }
 }
 
-const carouselImageClassBase = new CarouselImageClassBase();
+const loginClassBase = new LoginClassBase();
 
-export default carouselImageClassBase;
-export { CarouselImageClassBase };
+export default loginClassBase;
+export { LoginClassBase };

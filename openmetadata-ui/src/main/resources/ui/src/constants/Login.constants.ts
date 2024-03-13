@@ -12,7 +12,7 @@
  */
 
 import { CarouselProps } from 'antd';
-import carouselImageClassBase from './LoginClassBase';
+import loginClassBase from './LoginClassBase';
 
 const {
   dataDiscovery,
@@ -20,7 +20,7 @@ const {
   governance,
   dataInsightPlural,
   dataCollaboration,
-} = carouselImageClassBase.carouselImages();
+} = loginClassBase.carouselImages();
 
 export const LOGIN_SLIDE = [
   {
