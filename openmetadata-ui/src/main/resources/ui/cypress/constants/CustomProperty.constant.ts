@@ -23,5 +23,5 @@ export const CustomPropertySupportedEntityList = [
   EntityType.Container,
   EntityType.MlModel,
   EntityType.GlossaryTerm,
-  EntityType.SeachIndex,
+  EntityType.SearchIndex,
 ];

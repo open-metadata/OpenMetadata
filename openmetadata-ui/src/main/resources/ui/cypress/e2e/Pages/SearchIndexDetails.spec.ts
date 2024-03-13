@@ -25,6 +25,7 @@ import {
 } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { BASE_URL } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   POLICY_DETAILS,
   ROLE_DETAILS,
@@ -77,7 +78,7 @@ describe(
   'SearchIndexDetails page should work properly for data consumer role',
   { tags: 'DataAssets' },
   () => {
-    const data = {};
+    const data = { user: { id: '' } };
 
     before(() => {
       cy.login();
@@ -137,7 +138,7 @@ describe(
       visitEntityDetailsPage({
         term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
         serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-        entity: 'searchIndexes',
+        entity: EntityType.SearchIndex,
       });
 
       // Edit domain option should not be available
@@ -158,7 +159,11 @@ describe(
 );
 
 describe('SearchIndexDetails page should work properly for data steward role', () => {
-  const data = {};
+  const data = {
+    user: { id: '' },
+    policy: { id: '' },
+    role: { id: '', name: '' },
+  };
 
   before(() => {
     cy.login();
@@ -273,7 +278,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
 
     // Edit domain option should not be available
@@ -353,7 +358,7 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
     performCommonOperations();
   });
@@ -362,12 +367,12 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
+      EntityType.SearchIndex,
       'Search Index',
       'soft'
     );
@@ -424,12 +429,12 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
+      EntityType.SearchIndex,
       'Search Index'
     );
   });
