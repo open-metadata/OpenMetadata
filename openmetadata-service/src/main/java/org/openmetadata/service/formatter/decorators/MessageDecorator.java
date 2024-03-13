@@ -322,7 +322,7 @@ public interface MessageDecorator<T> {
 
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
     EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
-    message.setEntityUrl(buildEntityUrl(entityLink.getEntityFQN(), entityInterface));
+    message.setEntityUrl(buildEntityUrl(entityLink.getEntityType(), entityInterface));
     return message;
   }
 
