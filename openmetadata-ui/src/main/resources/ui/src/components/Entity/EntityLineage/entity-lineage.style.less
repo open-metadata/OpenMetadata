@@ -134,6 +134,12 @@
   &.active {
     background-color: @primary-color;
   }
+  &.active:hover {
+    background-color: @primary-color;
+  }
+  &.active:focus {
+    background-color: @primary-color;
+  }
 }
 
 .custom-lineage-heading {
@@ -217,7 +223,7 @@
 }
 
 .lineage-node-remove-btn {
-  position: absolute;
+  position: absolute !important;
   top: -20px;
   right: -20px;
   cursor: pointer;
