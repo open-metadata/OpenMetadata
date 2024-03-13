@@ -142,7 +142,9 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.open_lineage_source.context.__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.__root__
-        self.open_lineage_source.source_config.lineageInformation = {"dbServiceNames": ["skun"]}
+        self.open_lineage_source.source_config.lineageInformation = {
+            "dbServiceNames": ["skun"]
+        }
 
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
