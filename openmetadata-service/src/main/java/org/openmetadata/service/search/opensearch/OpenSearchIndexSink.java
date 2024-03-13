@@ -1,9 +1,14 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.SINK;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.*;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.EntityError;
@@ -41,7 +46,7 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
       int offset = 0;
       int currentSuccess = 0;
       int currentFailed = 0;
-      List<EntityError> entityErrorList = new ArrayList<EntityError>();
+      List<EntityError> entityErrorList = new ArrayList<>();
       List<?> entityNames =
           (List<?>)
               Optional.ofNullable(contextData.get(ENTITY_NAME_LIST_KEY))

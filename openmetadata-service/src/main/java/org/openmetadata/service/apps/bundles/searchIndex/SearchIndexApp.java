@@ -2,7 +2,10 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.*;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -220,10 +223,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
               resultList.getData().stream()
                   .map(
                       entity ->
-                          paginatedEntitiesSource.getEntityType()
-                              + " "
-                              + entity.getFullyQualifiedName())
+                          String.format(
+                              "%s %s",
+                              paginatedEntitiesSource.getEntityType(),
+                              entity.getFullyQualifiedName()))
                   .collect(Collectors.toList());
+
           contextData.put(ENTITY_NAME_LIST_KEY, entityName);
 
           if (!resultList.getData().isEmpty()) {
@@ -263,7 +268,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
           resultList = paginatedDataInsightSource.readNext(null);
           List<String> entityName =
               resultList.getData().stream()
-                  .map(entity -> paginatedDataInsightSource.getEntityType() + " " + entity.getId())
+                  .map(
+                      entity ->
+                          String.format(
+                              "%s %s", paginatedDataInsightSource.getEntityType(), entity.getId()))
                   .collect(Collectors.toList());
           contextData.put(ENTITY_NAME_LIST_KEY, entityName);
 

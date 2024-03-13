@@ -1,14 +1,19 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.SINK;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.*;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import es.org.elasticsearch.action.DocWriteRequest;
 import es.org.elasticsearch.action.bulk.BulkItemResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.client.RequestOptions;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.EntityError;
@@ -40,7 +45,7 @@ public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
       int offset = 0;
       int currentSuccess = 0;
       int currentFailed = 0;
-      List<EntityError> entityErrorList = new ArrayList<EntityError>();
+      List<EntityError> entityErrorList = new ArrayList<>();
       List<?> entityNames =
           (List<?>)
               Optional.ofNullable(contextData.get(ENTITY_NAME_LIST_KEY))
