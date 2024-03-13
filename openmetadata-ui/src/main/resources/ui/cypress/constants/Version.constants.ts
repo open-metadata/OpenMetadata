@@ -843,7 +843,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST: Record<
   'Search Index': {
     name: SEARCH_INDEX_NAME,
     serviceName: 'elasticsearch_sample',
-    entity: EntityType.SeachIndex,
+    entity: EntityType.SearchIndex,
     entityCreationDetails: SEARCH_INDEX_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: SEARCH_INDEX_PATCH_PAYLOAD,
     isChildrenExist: true,
