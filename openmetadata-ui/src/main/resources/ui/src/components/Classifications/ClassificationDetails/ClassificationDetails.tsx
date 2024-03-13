@@ -454,7 +454,7 @@ const ClassificationDetails = forwardRef(
                         <Icon
                           className="vertical-align-text-top"
                           component={VersionIcon}
-                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
+                          style={DATA_ASSET_ICON_DIMENSION}
                         />
                       }
                       onClick={versionHandler}>

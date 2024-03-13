@@ -268,7 +268,9 @@ source:
         * **clientId** : Client ID of the data storage account
         * **clientSecret** : Client Secret of the account
         * **tenantId** : Tenant ID under which the data storage account falls
-        * **accountName** : Account Name of the data Storage
+        * **accountName** : Account Name of the Data Storage
+        * **vaultName**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
+
 
 {% /codeInfo %}
 
@@ -407,7 +409,8 @@ source:
         * **clientId** : Client ID of the data storage account
         * **clientSecret** : Client Secret of the account
         * **tenantId** : Tenant ID under which the data storage account falls
-        * **accountName** : Account Name of the data Storage
+        * **accountName** : Account Name of the Data Storage
+        * **vaultName**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
 
 {% /codeInfo %}
 
