@@ -608,6 +608,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return repository
         .copy(new Query(), create, user)
         .withQuery(create.getQuery())
+        .withChecksum(EntityUtil.hash(create.getQuery()))
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))

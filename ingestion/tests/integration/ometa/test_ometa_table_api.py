@@ -492,7 +492,7 @@ class OMetaTableTest(TestCase):
         )
 
         query_no_user = CreateQueryRequest(
-            query=SqlQuery(__root__="select * from awesome"),
+            query=SqlQuery(__root__="select * from first_awesome"),
             service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
         )
 
@@ -507,7 +507,7 @@ class OMetaTableTest(TestCase):
 
         # Validate that we can properly add user information
         query_with_user = CreateQueryRequest(
-            query="select * from awesome",
+            query="select * from second_awesome",
             users=[self.owner.fullyQualifiedName],
             service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
         )
@@ -517,10 +517,17 @@ class OMetaTableTest(TestCase):
             res.id, fields=["*"]
         )
 
-        assert len(table_with_query) == 1
-        assert table_with_query[0].query == query_with_user.query
-        assert len(table_with_query[0].users) == 1
-        assert table_with_query[0].users[0].id == self.owner.id
+        assert len(table_with_query) == 2
+        query_with_owner = next(
+            (
+                query
+                for query in table_with_query
+                if query.query == query_with_user.query
+            ),
+            None,
+        )
+        assert len(query_with_owner.users) == 1
+        assert query_with_owner.users[0].id == self.owner.id
 
     def test_list_versions(self):
         """

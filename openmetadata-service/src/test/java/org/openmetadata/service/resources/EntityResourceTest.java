@@ -1299,7 +1299,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update null description with a new description
-    request = createRequest(entity.getName(), "updatedDescription", "displayName", null);
+    request = request.withDescription("updatedDescription");
     ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
     fieldAdded(change, "description", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
