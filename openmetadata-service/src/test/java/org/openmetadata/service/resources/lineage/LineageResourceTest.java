@@ -26,6 +26,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -522,8 +523,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
       Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target =
-        getResource(
-            String.format("lineage/%s/name/%s/%s/name/%s", fromEntity, fromFQN, toEntity, toFQN));
+        getResourceAsURI(
+            String.format("lineage/%s/name/%s/%s/name/%s", fromEntity, URLEncoder.encode(fromFQN), toEntity, URLEncoder.encode(toFQN)));
     TestUtils.delete(target, authHeaders);
   }
 

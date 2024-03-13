@@ -236,8 +236,8 @@ public class LineageRepository {
   @Transaction
   public boolean deleteLineageByFQN(
       String fromEntity, String fromFQN, String toEntity, String toFQN) {
-    EntityReference from = EntityUtil.getEntityReference(fromEntity, fromFQN);
-    EntityReference to = EntityUtil.getEntityReference(toEntity, toFQN);
+    EntityReference from = Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
+    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
     // Finally, delete lineage relationship
     boolean result =
         dao.relationshipDAO()
