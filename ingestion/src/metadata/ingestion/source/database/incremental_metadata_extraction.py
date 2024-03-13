@@ -12,7 +12,7 @@
 Incremental Metadata Extraction related classes
 """
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
@@ -41,7 +41,7 @@ class IncrementalConfig(BaseModel):
     @property
     def start_datetime_utc(self) -> Optional[datetime]:
         if self.start_timestamp:
-            return datetime.utcfromtimestamp(self.start_timestamp / 1000)
+            return datetime.fromtimestamp(self.start_timestamp / 1000, timezone.utc)
         return None
 
     @classmethod
