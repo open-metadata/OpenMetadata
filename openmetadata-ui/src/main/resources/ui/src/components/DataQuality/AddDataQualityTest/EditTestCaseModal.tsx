@@ -32,6 +32,7 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import {
+  getTestCaseByFqn,
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../rest/testAPI';
@@ -182,8 +183,12 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const fetchTestDefinitionById = async () => {
     setIsLoading(true);
     try {
+      const testCaseDetails = await getTestCaseByFqn(
+        testCase?.fullyQualifiedName ?? '',
+        { fields: ['testDefinition'] }
+      );
       const definition = await getTestDefinitionById(
-        testCase.testDefinition.id || ''
+        testCaseDetails.testDefinition.id || ''
       );
       form.setFieldsValue({
         name: testCase?.name,
