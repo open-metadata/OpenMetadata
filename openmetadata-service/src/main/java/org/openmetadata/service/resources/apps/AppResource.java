@@ -597,6 +597,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           JsonPatch patch)
       throws SchedulerException {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    if (app.getSystemApp()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
+    }
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
