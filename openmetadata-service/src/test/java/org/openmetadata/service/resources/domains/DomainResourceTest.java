@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.domains;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -13,10 +14,12 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -26,7 +29,10 @@ import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.JsonUtils;
@@ -111,6 +117,21 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     // Data consumer as an owner of domain can create subdomain under it
     create = createRequest("subdomain").withParent(d.getFullyQualifiedName());
     createEntity(create, authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void testValidateDomain() {
+    UUID rdnUUID = UUID.randomUUID();
+    EntityReference entityReference = new EntityReference().withId(rdnUUID);
+    TableRepository entityRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    assertThatThrownBy(
+            () -> {
+              entityRepository.validateDomain(entityReference);
+            }).isInstanceOf(EntityNotFoundException.class)
+            .hasMessage(
+                    String.format("domain instance for %s not found", rdnUUID)
+            );
   }
 
   @Override

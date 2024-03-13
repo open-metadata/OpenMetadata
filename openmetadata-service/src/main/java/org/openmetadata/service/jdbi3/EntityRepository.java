@@ -1907,6 +1907,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
   }
 
+  public final void validateDomain(EntityReference domain) {
+    if (!supportsDomain) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(DOMAIN));
+    }
+    Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), NON_DELETED);
+  }
+
   /** Override this method to support downloading CSV functionality */
   public String exportToCsv(String name, String user) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
@@ -2263,6 +2270,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
         if (updatedDomain != null) {
+          validateDomain(updatedDomain);
           // Add relationship owner --- owns ---> ownedEntity
           LOG.info(
               "Adding domain {} for entity {}",
