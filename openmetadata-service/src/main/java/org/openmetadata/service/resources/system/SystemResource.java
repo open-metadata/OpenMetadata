@@ -304,7 +304,7 @@ public class SystemResource {
   }
 
   @GET
-  @Path("/validate")
+  @Path("/healthcheck")
   @Operation(
       operationId = "validateDeployment",
       summary = "Validate the OpenMetadata deployment",
