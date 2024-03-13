@@ -2,15 +2,14 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -217,6 +216,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
       while (!stopped && !paginatedEntitiesSource.isDone()) {
         try {
           resultList = paginatedEntitiesSource.readNext(null);
+          List<String> entityName =
+              resultList.getData().stream()
+                  .map(
+                      entity ->
+                          paginatedEntitiesSource.getEntityType()
+                              + " "
+                              + entity.getFullyQualifiedName())
+                  .collect(Collectors.toList());
+          contextData.put(ENTITY_NAME_LIST_KEY, entityName);
+
           if (!resultList.getData().isEmpty()) {
             searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
             if (!resultList.getErrors().isEmpty()) {
@@ -252,6 +261,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
       while (!stopped && !paginatedDataInsightSource.isDone()) {
         try {
           resultList = paginatedDataInsightSource.readNext(null);
+          List<String> entityName =
+              resultList.getData().stream()
+                  .map(entity -> paginatedDataInsightSource.getEntityType() + " " + entity.getId())
+                  .collect(Collectors.toList());
+          contextData.put(ENTITY_NAME_LIST_KEY, entityName);
+
           if (!resultList.getData().isEmpty()) {
             searchIndexSink.write(
                 dataInsightProcessor.process(resultList, contextData), contextData);
