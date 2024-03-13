@@ -93,11 +93,6 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
-    },
-    "storageServiceName": {
-      "title": "Storage Service Names",
-      "description": "Storage Service Name for creation of lineage",
-      "type": "string"
     }
   },
   "additionalProperties": false
