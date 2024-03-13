@@ -502,6 +502,7 @@ const TableDetailsPageV1: React.FC = () => {
         <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
+              showSuggestions
               description={tableDetails?.description}
               entityFqn={datasetFQN}
               entityName={entityName}
