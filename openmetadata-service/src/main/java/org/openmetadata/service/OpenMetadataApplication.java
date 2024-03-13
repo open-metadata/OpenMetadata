@@ -144,8 +144,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-    CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
-    Entity.setCollectionDAO(collectionDAO);
+    Entity.setCollectionDAO(getDao(jdbi));
 
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
@@ -243,6 +242,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         PipelineServiceStatusJobHandler.create(
             catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
     pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
+  }
+
+  protected CollectionDAO getDao(Jdbi jdbi) {
+    return jdbi.onDemand(CollectionDAO.class);
   }
 
   private void registerSamlHandlers(
