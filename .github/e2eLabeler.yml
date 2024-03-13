@@ -30,7 +30,6 @@
   - "openmetadata-ui/**/*[Dd]ata[qQ]uality*"
   - "openmetadata-ui/**/*[Dd]ata[Ii]nsight*"
   - "openmetadata-ui/**/*[Oo]bservability*"
-  - "openmetadata-ui/**/*[Dd]ata[Qq]uality*"
 
 "e2e:Integration":
   - "openmetadata-ui/**/*integration*"
