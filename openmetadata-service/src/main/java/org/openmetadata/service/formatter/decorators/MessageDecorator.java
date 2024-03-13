@@ -176,6 +176,11 @@ public interface MessageDecorator<T> {
     OutgoingMessage message = new OutgoingMessage();
     message.setUserName(event.getUserName());
     Thread thread = getThread(event);
+
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
+    EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
+    String entityUrl = buildEntityUrl(entityLink.getEntityType(), entityInterface);
+
     String headerMessage = "";
     List<String> attachmentList = new ArrayList<>();
     switch (thread.getType()) {
@@ -214,8 +219,8 @@ public interface MessageDecorator<T> {
           case THREAD_CREATED -> {
             headerMessage =
                 String.format(
-                    "@%s created a Task with Id : %s",
-                    thread.getCreatedBy(), thread.getTask().getId());
+                    "@%s created a Task for %s %s",
+                    thread.getCreatedBy(), entityLink.getEntityType(), entityUrl);
             attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
             attachmentList.add(
                 String.format(
@@ -320,9 +325,7 @@ public interface MessageDecorator<T> {
     message.setHeader(headerMessage);
     message.setMessages(attachmentList);
 
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
-    EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
-    message.setEntityUrl(buildEntityUrl(entityLink.getEntityType(), entityInterface));
+    message.setEntityUrl(entityUrl);
     return message;
   }
 
