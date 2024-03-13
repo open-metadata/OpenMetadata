@@ -10,32 +10,36 @@ public class CommonMigrationOps {
   public static final List<MigrationOps> COMMON_OPS =
       List.of(
           // Entities
-          new MigrationOps("tableCount", "SELECT COUNT(*) FROM table_entity"),
-          new MigrationOps("topicCount", "SELECT COUNT(*) FROM topic_entity"),
-          new MigrationOps("dashboardCount", "SELECT COUNT(*) FROM dashboard_entity"),
-          new MigrationOps("pipelineCount", "SELECT COUNT(*) FROM pipeline_entity"),
-          new MigrationOps("mlModelCount", "SELECT COUNT(*) FROM ml_model_entity"),
+          new MigrationOps("tableCount", "SELECT COUNT(fqnHash) FROM table_entity"),
+          new MigrationOps("topicCount", "SELECT COUNT(fqnHash) FROM topic_entity"),
+          new MigrationOps("dashboardCount", "SELECT COUNT(fqnHash) FROM dashboard_entity"),
+          new MigrationOps("pipelineCount", "SELECT COUNT(fqnHash) FROM pipeline_entity"),
+          new MigrationOps("mlModelCount", "SELECT COUNT(fqnHash) FROM ml_model_entity"),
           new MigrationOps(
-              "storageContainerCount", "SELECT COUNT(*) FROM storage_container_entity"),
-          new MigrationOps("searchIndexCount", "SELECT COUNT(*) FROM search_index_entity"),
-          new MigrationOps("glossaryCount", "SELECT COUNT(*) FROM glossary_entity"),
-          new MigrationOps("glossaryTermCount", "SELECT COUNT(*) FROM glossary_term_entity"),
+              "storageContainerCount", "SELECT COUNT(fqnHash) FROM storage_container_entity"),
+          new MigrationOps("searchIndexCount", "SELECT COUNT(fqnHash) FROM search_index_entity"),
+          new MigrationOps("glossaryCount", "SELECT COUNT(nameHash) FROM glossary_entity"),
+          new MigrationOps("glossaryTermCount", "SELECT COUNT(fqnHash) FROM glossary_term_entity"),
           // Services
-          new MigrationOps("databaseServiceCount", "SELECT COUNT(*) FROM dbservice_entity"),
+          new MigrationOps("databaseServiceCount", "SELECT COUNT(nameHash) FROM dbservice_entity"),
           new MigrationOps(
-              "messagingServiceCount", "SELECT COUNT(*) FROM messaging_service_entity"),
+              "messagingServiceCount", "SELECT COUNT(nameHash) FROM messaging_service_entity"),
           new MigrationOps(
-              "dashboardServiceCount", "SELECT COUNT(*) FROM dashboard_service_entity"),
-          new MigrationOps("pipelineServiceCount", "SELECT COUNT(*) FROM pipeline_service_entity"),
-          new MigrationOps("mlModelServiceCount", "SELECT COUNT(*) FROM mlmodel_service_entity"),
-          new MigrationOps("searchServiceCount", "SELECT COUNT(*) FROM search_service_entity"),
-          new MigrationOps("storageServiceCount", "SELECT COUNT(*) FROM storage_service_entity"),
+              "dashboardServiceCount", "SELECT COUNT(nameHash) FROM dashboard_service_entity"),
+          new MigrationOps(
+              "pipelineServiceCount", "SELECT COUNT(nameHash) FROM pipeline_service_entity"),
+          new MigrationOps(
+              "mlModelServiceCount", "SELECT COUNT(nameHash) FROM mlmodel_service_entity"),
+          new MigrationOps(
+              "searchServiceCount", "SELECT COUNT(nameHash) FROM search_service_entity"),
+          new MigrationOps(
+              "storageServiceCount", "SELECT COUNT(nameHash) FROM storage_service_entity"),
           // Org
-          new MigrationOps("userCount", "SELECT COUNT(*) FROM user_entity"),
-          new MigrationOps("teamCount", "SELECT COUNT(*) FROM team_entity"),
-          new MigrationOps("botCount", "SELECT COUNT(*) FROM bot_entity"),
+          new MigrationOps("userCount", "SELECT COUNT(nameHash) FROM user_entity"),
+          new MigrationOps("teamCount", "SELECT COUNT(nameHash) FROM team_entity"),
+          new MigrationOps("botCount", "SELECT COUNT(nameHash) FROM bot_entity"),
           // Tests
-          new MigrationOps("testSuiteCount", "SELECT COUNT(*) FROM test_suite"));
+          new MigrationOps("testSuiteCount", "SELECT COUNT(fqnHash) FROM test_suite"));
 
   // Return a copy of the list so that we can store the correct results in each context
   public static List<MigrationOps> getCommonOps() {
