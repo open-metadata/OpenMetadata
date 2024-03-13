@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.domains;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.TABLE;
@@ -14,7 +15,6 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.List;
@@ -128,10 +128,9 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertThatThrownBy(
             () -> {
               entityRepository.validateDomain(entityReference);
-            }).isInstanceOf(EntityNotFoundException.class)
-            .hasMessage(
-                    String.format("domain instance for %s not found", rdnUUID)
-            );
+            })
+        .isInstanceOf(EntityNotFoundException.class)
+        .hasMessage(String.format("domain instance for %s not found", rdnUUID));
   }
 
   @Override

@@ -135,7 +135,6 @@ import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
@@ -2228,7 +2227,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void patchWrongDomainId(TestInfo test) throws IOException {
     Table table = createEntity(createRequest(test).withTableConstraints(null), ADMIN_AUTH_HEADERS);
 
-
     // Add random domain reference
     EntityReference domainReference = new EntityReference().withId(UUID.randomUUID());
     String originalJson = JsonUtils.pojoToJson(table);
@@ -2236,9 +2234,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table.withTableType(TableType.Regular).withDomain(domainReference);
 
     assertResponse(
-            () -> patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-            NOT_FOUND,
-            String.format("domain instance for %s not found", domainReference.getId()));
+        () -> patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+        NOT_FOUND,
+        String.format("domain instance for %s not found", domainReference.getId()));
   }
 
   @Test
