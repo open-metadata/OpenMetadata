@@ -116,9 +116,9 @@ public class MigrationUtil {
 
           collectionDAO.tableDAO().update(table);
         }
-        return;
+      } else {
+        LOG.debug("Table {} does not have partition details", table.getId());
       }
-      LOG.debug("Table {} does not have partition details", table.getId());
     } catch (Exception exc) {
       LOG.warn(
           "Fail to migrate table partition. The partition detail may have been migrated already.");
