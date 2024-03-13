@@ -15,6 +15,7 @@ Open Metadata table quality.
 This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
+import logging
 import traceback
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union, cast
@@ -72,9 +73,10 @@ from metadata.great_expectations.utils.ometa_config_handler import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.entity_link import get_entity_link
-from metadata.utils.logger import great_expectations_logger
 
-logger = great_expectations_logger()
+logger = logging.getLogger(
+    "great_expectations.validation_operators.validation_operators.openmetadata"
+)
 
 
 class OpenMetadataValidationAction(ValidationAction):
@@ -429,7 +431,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 test_case_fqn=test_case.fullyQualifiedName.__root__,
             )
 
-            logger.info(
+            logger.debug(
                 f"Test case result for {test_case.fullyQualifiedName.__root__} successfully ingested"
             )
 
