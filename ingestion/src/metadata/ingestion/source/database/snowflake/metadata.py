@@ -640,7 +640,6 @@ class SnowflakeSource(
         if (
             table_type == TableType.External
             and location
-            and self.source_config.storageServiceName
         ):
             location_entity = self.metadata.es_search_container_by_path(
                 full_path=location
