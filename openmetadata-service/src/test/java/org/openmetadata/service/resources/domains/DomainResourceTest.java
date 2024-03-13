@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.domains;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -15,6 +16,7 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.List;
@@ -22,10 +24,14 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -132,6 +138,24 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         .isInstanceOf(EntityNotFoundException.class)
         .hasMessage(String.format("domain instance for %s not found", rdnUUID));
   }
+
+  @Test
+  void patchWrongExperts(TestInfo test) throws IOException {
+    Domain entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+
+    // Add random domain reference
+    EntityReference expertReference = new EntityReference().withId(UUID.randomUUID())
+            .withType(Entity.USER);
+    String originalJson = JsonUtils.pojoToJson(entity);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    entity.setExperts(List.of(expertReference));
+
+    assertResponse(
+            () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+            NOT_FOUND,
+            String.format("user instance for %s not found", expertReference.getId()));
+  }
+
 
   @Override
   public CreateDomain createRequest(String name) {

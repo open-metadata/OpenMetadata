@@ -18,6 +18,7 @@ package org.openmetadata.service.resources.glossary;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -53,13 +54,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -642,6 +647,23 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(table.getColumns().get(0).getTags().isEmpty()); // tag t11 is removed
     assertTrue(table.getColumns().get(1).getTags().isEmpty()); // tag t111 is removed
     assertTrue(table.getTags().isEmpty()); // tag t1 is removed
+  }
+
+  @Test
+  void patchWrongReviewers(TestInfo test) throws IOException {
+    GlossaryTerm entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+
+    // Add random domain reference
+    EntityReference reviewerReference = new EntityReference().withId(UUID.randomUUID())
+            .withType(Entity.USER);
+    String originalJson = JsonUtils.pojoToJson(entity);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    entity.setReviewers(List.of(reviewerReference));
+
+    assertResponse(
+            () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+            NOT_FOUND,
+            String.format("user instance for %s not found", reviewerReference.getId()));
   }
 
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName)

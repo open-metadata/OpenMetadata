@@ -2224,22 +2224,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void patchWrongDomainId(TestInfo test) throws IOException {
-    Table table = createEntity(createRequest(test).withTableConstraints(null), ADMIN_AUTH_HEADERS);
-
-    // Add random domain reference
-    EntityReference domainReference = new EntityReference().withId(UUID.randomUUID());
-    String originalJson = JsonUtils.pojoToJson(table);
-    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
-    table.withTableType(TableType.Regular).withDomain(domainReference);
-
-    assertResponse(
-        () -> patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-        NOT_FOUND,
-        String.format("domain instance for %s not found", domainReference.getId()));
-  }
-
-  @Test
   void test_columnWithInvalidTag(TestInfo test) throws HttpResponseException {
     // Add an entity with invalid tag
     TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
