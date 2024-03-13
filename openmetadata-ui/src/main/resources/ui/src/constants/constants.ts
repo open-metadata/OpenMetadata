@@ -204,7 +204,7 @@ export const ROUTES = {
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DOMAIN_VERSION: `/domain/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
 
-  ADD_DOMAIN: '/add-domain',
+  ADD_DOMAIN: '/domain/add',
 
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/glossary/add',
