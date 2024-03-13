@@ -3903,38 +3903,50 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT (SELECT COUNT(fqnHash) FROM table_entity <cond>) as tableCount, "
-                + "(SELECT COUNT(fqnHash) FROM topic_entity <cond>) as topicCount, "
-                + "(SELECT COUNT(fqnHash) FROM dashboard_entity <cond>) as dashboardCount, "
-                + "(SELECT COUNT(fqnHash) FROM pipeline_entity <cond>) as pipelineCount, "
-                + "(SELECT COUNT(fqnHash) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT COUNT(fqnHash) FROM storage_container_entity <cond>) as storageContainerCount, "
-                + "(SELECT COUNT(fqnHash) FROM search_index_entity <cond>) as searchIndexCount, "
-                + "(SELECT COUNT(nameHash) FROM glossary_entity <cond>) as glossaryCount, "
-                + "(SELECT COUNT(fqnHash) FROM glossary_term_entity <cond>) as glossaryTermCount, "
-                + "(SELECT (SELECT COUNT(nameHash) FROM metadata_service_entity <cond>) + "
-                + "(SELECT COUNT(nameHash) FROM dbservice_entity <cond>)+"
-                + "(SELECT COUNT(nameHash) FROM messaging_service_entity <cond>)+ "
-                + "(SELECT COUNT(nameHash) FROM dashboard_service_entity <cond>)+ "
-                + "(SELECT COUNT(nameHash) FROM pipeline_service_entity <cond>)+ "
-                + "(SELECT COUNT(nameHash) FROM mlmodel_service_entity <cond>)+ "
-                + "(SELECT COUNT(nameHash) FROM search_service_entity <cond>)+ "
-                + "(SELECT COUNT(nameHash) FROM storage_service_entity <cond>)) as servicesCount, "
-                + "(SELECT COUNT(nameHash) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
-                + "(SELECT COUNT(nameHash) FROM team_entity <cond>) as teamCount, "
-                + "(SELECT COUNT(fqnHash) FROM test_suite <cond>) as testSuiteCount",
+            "SELECT (SELECT COUNT(*) FROM table_entity <cond>) as tableCount, "
+                + "(SELECT COUNT(*) FROM topic_entity <cond>) as topicCount, "
+                + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
+                + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
+                + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
+                + "(SELECT COUNT(*) FROM storage_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM search_index_entity <cond>) as searchIndexCount, "
+                + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
+                + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
+                + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
+                + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+"
+                + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM search_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM storage_service_entity <cond>)) as servicesCount, "
+                + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
+                + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
+                + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntitiesCountRowMapper.class)
     EntitiesCount getAggregatedEntitiesCount(@Define("cond") String cond) throws StatementException;
 
-    @SqlQuery(
-        "SELECT (SELECT COUNT(nameHash) FROM dbservice_entity <cond>) as databaseServiceCount, "
-            + "(SELECT COUNT(nameHash) FROM messaging_service_entity <cond>) as messagingServiceCount, "
-            + "(SELECT COUNT(nameHash) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
-            + "(SELECT COUNT(nameHash) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
-            + "(SELECT COUNT(nameHash) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
-            + "(SELECT COUNT(nameHash) FROM storage_service_entity <cond>) as storageServiceCount, "
-            + "(SELECT COUNT(nameHash) FROM search_service_entity <cond>) as searchServiceCount")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT (SELECT COUNT(nameHash) FROM dbservice_entity <cond>) as databaseServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM messaging_service_entity <cond>) as messagingServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM storage_service_entity <cond>) as storageServiceCount, "
+                + "(SELECT COUNT(nameHash) FROM search_service_entity <cond>) as searchServiceCount",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT (SELECT COUNT(*) FROM dbservice_entity <cond>) as databaseServiceCount, "
+                + "(SELECT COUNT(*) FROM messaging_service_entity <cond>) as messagingServiceCount, "
+                + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
+                + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
+                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
+                + "(SELECT COUNT(*) FROM storage_service_entity <cond>) as storageServiceCount, "
+                + "(SELECT COUNT(*) FROM search_service_entity <cond>) as searchServiceCount",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
 
