@@ -319,7 +319,10 @@ class LineageParser:
             )
 
             if not table_left or not table_right:
-                logger.warning(f"Cannot find ingredients from {comparison}")
+                logger.warning(
+                    f"Can't extract table names when parsing JOIN information from {comparison}"
+                )
+                logger.debug(f"Query: {sql_statement}")
                 continue
 
             left_table_column = TableColumn(table=table_left, column=column_left)
