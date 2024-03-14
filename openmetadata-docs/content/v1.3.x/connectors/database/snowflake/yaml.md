@@ -17,7 +17,6 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-    - [Incremental Extraction](/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake)
 - [Query Usage](#query-usage)
 - [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
