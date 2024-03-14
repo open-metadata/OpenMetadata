@@ -117,6 +117,7 @@ export const AuthProvider = ({
     getOidcToken,
     getRefreshToken,
     urlPathName,
+    setUrlPathName,
   } = useApplicationStore();
 
   const location = useLocation();
@@ -662,6 +663,12 @@ export const AuthProvider = ({
 
     return cleanup;
   }, []);
+
+  useEffect(() => {
+    if (isProtectedRoute(location.pathname)) {
+      setUrlPathName(location.pathname);
+    }
+  }, [location.pathname]);
 
   const isLoading =
     !authConfig ||

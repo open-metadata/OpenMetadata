@@ -15,7 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { Router, useLocation } from 'react-router-dom';
+import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import AppRouter from './components/AppRouter/AppRouter';
@@ -33,20 +33,11 @@ import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomLogoConfig } from './rest/settingConfigAPI';
-import { isProtectedRoute } from './utils/AuthProvider.util';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
 const App: FC = () => {
-  const location = useLocation();
-  const { applicationConfig, setApplicationConfig, setUrlPathName } =
-    useApplicationStore();
-
-  useEffect(() => {
-    if (isProtectedRoute(location.pathname)) {
-      setUrlPathName(location.pathname);
-    }
-  }, [location.pathname]);
+  const { applicationConfig, setApplicationConfig } = useApplicationStore();
 
   const fetchApplicationConfig = async () => {
     try {
