@@ -99,6 +99,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
 import {
   LineageContextType,
+  LineageLayerView,
   LineageProviderProps,
   UpstreamDownstreamData,
 } from './LineageProvider.interface';
@@ -116,6 +117,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedNode, setSelectedNode] = useState<SourceType>(
     {} as SourceType
+  );
+  const [activeLayer, setActiveLayer] = useState<LineageLayerView>(
+    LineageLayerView.COLUMN
   );
   const [activeNode, setActiveNode] = useState<Node>();
   const [selectedColumn, setSelectedColumn] = useState<string>('');
@@ -306,6 +310,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [nodes, edges]
   );
+
+  const onUpdateLayerView = useCallback((layer: LineageLayerView) => {
+    setActiveLayer(layer);
+  }, []);
 
   const updateEntityType = useCallback((entityType: EntityType) => {
     setEntityType(entityType);
@@ -1042,6 +1050,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       pipelineStatus,
       upstreamDownstreamData,
       init,
+      activeLayer,
       onInitReactFlow,
       onPaneClick,
       onConnect,
@@ -1065,6 +1074,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onLineageConfigUpdate,
       onLineageEditClick,
       onAddPipelineClick,
+      onUpdateLayerView,
     };
   }, [
     isDrawerOpen,
@@ -1086,6 +1096,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     pipelineStatus,
     upstreamDownstreamData,
     init,
+    activeLayer,
     onInitReactFlow,
     onPaneClick,
     onConnect,
@@ -1109,6 +1120,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onLineageConfigUpdate,
     onLineageEditClick,
     onAddPipelineClick,
+    onUpdateLayerView,
   ]);
 
   useEffect(() => {
