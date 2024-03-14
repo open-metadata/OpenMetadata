@@ -380,8 +380,6 @@ site_menu:
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
-  - category: Releases / Roadmap
-    url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
   - category: Releases / All Releases / 1.3.1 Release
@@ -432,6 +430,9 @@ site_menu:
     url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
+
+  - category: Roadmap
+    url: /roadmap
 
   - category: Connectors
     url: /connectors
@@ -741,6 +742,14 @@ site_menu:
     url: /connectors/storage/s3
   - category: Connectors / Storage / S3 / Run Externally
     url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / GCS
+    url: /connectors/storage/gcs
+  - category: Connectors / Storage / GCS / Run Externally
+    url: /connectors/storage/gcs/yaml
+  - category: Connectors / Storage / ADLS
+    url: /connectors/storage/adls
+  - category: Connectors / Storage / ADLS / Run Externally
+    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search

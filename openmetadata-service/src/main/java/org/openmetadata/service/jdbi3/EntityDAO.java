@@ -133,17 +133,21 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindFQN("name") String name,
       @Define("cond") String cond);
 
-  @SqlQuery("SELECT count(*) FROM <table> <cond>")
-  int listCount(@Define("table") String table, @Define("cond") String cond);
+  @SqlQuery("SELECT count(<nameHashColumn>) FROM <table> <cond>")
+  int listCount(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Define("cond") String cond);
 
   @ConnectionAwareSqlQuery(
-      value = "SELECT count(*) FROM <table> <mysqlCond>",
+      value = "SELECT count(<nameHashColumn>) FROM <table> <mysqlCond>",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value = "SELECT count(*) FROM <table> <postgresCond>",
       connectionType = POSTGRES)
   int listCount(
       @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond);
 
@@ -199,8 +203,12 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("after") String after);
 
-  @SqlQuery("SELECT count(*) FROM <table>")
-  int listTotalCount(@Define("table") String table);
+  @ConnectionAwareSqlQuery(
+      value = "SELECT count(<nameHashColumn>) FROM <table>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table>", connectionType = POSTGRES)
+  int listTotalCount(
+      @Define("table") String table, @Define("nameHashColumn") String nameHashColumn);
 
   @ConnectionAwareSqlQuery(
       value = "SELECT count(distinct(<distinctColumn>)) FROM <table> <mysqlCond>",
@@ -208,7 +216,7 @@ public interface EntityDAO<T extends EntityInterface> {
   @ConnectionAwareSqlQuery(
       value = "SELECT count(distinct(<distinctColumn>)) FROM <table> <postgresCond>",
       connectionType = POSTGRES)
-  int listCount(
+  int listCountDistinct(
       @Define("table") String table,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
@@ -325,6 +333,14 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
+  @ConnectionAwareSqlUpdate(value = "ANALYZE TABLE <table>", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "ANALYZE <table>", connectionType = POSTGRES)
+  void analyze(@Define("table") String table);
+
+  default void analyzeTable() {
+    analyze(getTableName());
+  }
+
   /** Default methods that interfaces with implementation. Don't override */
   default void insert(EntityInterface entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
@@ -403,11 +419,11 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default int listCount(ListFilter filter) {
-    return listCount(getTableName(), filter.getCondition());
+    return listCount(getTableName(), getNameHashColumn(), filter.getCondition());
   }
 
   default int listTotalCount() {
-    return listTotalCount(getTableName());
+    return listTotalCount(getTableName(), getNameHashColumn());
   }
 
   default List<String> listBefore(ListFilter filter, int limit, String before) {
