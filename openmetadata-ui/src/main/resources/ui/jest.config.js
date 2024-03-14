@@ -59,8 +59,13 @@ module.exports = {
     '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
     'quilljs-markdown': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
+    '@azure/msal-browser':
+      '<rootDir>/node_modules/@azure/msal-browser/lib/msal-browser.cjs',
+    '@azure/msal-react':
+      '<rootDir>/node_modules/@azure/msal-react/dist/index.js',
     axios: 'axios/dist/node/axios.cjs',
   },
+  transformIgnorePatterns: ['node_modules/(?!@azure/msal-react)'],
 
   // TypeScript
   preset: 'ts-jest',

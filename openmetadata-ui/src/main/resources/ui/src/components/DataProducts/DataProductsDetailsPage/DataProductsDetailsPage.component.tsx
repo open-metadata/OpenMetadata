@@ -33,6 +33,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import {
+  DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
   getEntityDetailsPath,
   getVersionPath,
@@ -515,7 +516,13 @@ const DataProductsDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={DATA_ASSET_ICON_DIMENSION}
+                      />
+                    }
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {

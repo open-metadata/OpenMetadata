@@ -144,22 +144,22 @@
     promise-polyfill "^8.2.1"
     unfetch "^4.2.0"
 
-"@azure/msal-browser@^2.37.0":
-  version "2.37.0"
-  resolved "https://registry.yarnpkg.com/@azure/msal-browser/-/msal-browser-2.37.0.tgz#32d7af74eef53f2692f8a9d6bd6818c78faf4c1b"
-  integrity sha512-YNGD/W/tw/5wDWlXOfmrVILaxVsorVLxYU2ovmL1PDvxkdudbQRyGk/76l4emqgDAl/kPQeqyivxjOU6w1YfvQ==
+"@azure/msal-browser@^3.10.0":
+  version "3.10.0"
+  resolved "https://registry.yarnpkg.com/@azure/msal-browser/-/msal-browser-3.10.0.tgz#8925659e8d1a4bd21e389cca4683eb52658c778e"
+  integrity sha512-mnmi8dCXVNZI+AGRq0jKQ3YiodlIC4W9npr6FCB9WN6NQT+6rq+cIlxgUb//BjLyzKsnYo+i4LROGeMyU+6v1A==
   dependencies:
-    "@azure/msal-common" "13.0.0"
+    "@azure/msal-common" "14.7.1"
 
-"@azure/msal-common@13.0.0":
-  version "13.0.0"
-  resolved "https://registry.yarnpkg.com/@azure/msal-common/-/msal-common-13.0.0.tgz#9c39184903b5d0fd6e643ccc12193fae220e912b"
-  integrity sha512-GqCOg5H5bouvLij9NFXFkh+asRRxsPBRwnTDsfK7o0KcxYHJbuidKw8/VXpycahGXNxgtuhqtK/n5he+5NhyEA==
+"@azure/msal-common@14.7.1":
+  version "14.7.1"
+  resolved "https://registry.yarnpkg.com/@azure/msal-common/-/msal-common-14.7.1.tgz#b13443fbacc87ce2019a91e81a6582ea73847c75"
+  integrity sha512-v96btzjM7KrAu4NSEdOkhQSTGOuNUIIsUdB8wlyB9cdgl5KqEKnTonHUZ8+khvZ6Ap542FCErbnTyDWl8lZ2rA==
 
-"@azure/msal-react@^1.5.11":
-  version "1.5.11"
-  resolved "https://registry.yarnpkg.com/@azure/msal-react/-/msal-react-1.5.11.tgz#d67882f28820bb0dbcae6d3988f4903d58adfcc7"
-  integrity sha512-ZZnbCDbSHQXA25AF0lNYVv+AdTcFFLx6jnIZdiVHUvXrrH5WJuTfl7GV337ZEAOx8x/aZa9yZfeEaQq0ZB5acg==
+"@azure/msal-react@^2.0.12":
+  version "2.0.12"
+  resolved "https://registry.yarnpkg.com/@azure/msal-react/-/msal-react-2.0.12.tgz#f33c84a57663307fcf3707ca17d9ce2d7934a048"
+  integrity sha512-23HKdajBWQ5SSzcwwFKHAWaOCpq4UCthoOBgKpab3UoHx0OuFMQiq6CrNBzBKtBFdyxCjadBGzWshRgl0Nvk1g==
 
 "@babel/code-frame@7.12.11":
   version "7.12.11"
@@ -7792,6 +7792,11 @@ eventemitter3@^4.0.0, eventemitter3@^4.0.1, eventemitter3@^4.0.4:
   version "4.0.7"
   resolved "https://registry.yarnpkg.com/eventemitter3/-/eventemitter3-4.0.7.tgz#2de9b68f6528d5644ef5c59526a1b4a07306169f"
   integrity sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==
+
+eventemitter3@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/eventemitter3/-/eventemitter3-5.0.1.tgz#53f5ffd0a492ac800721bb42c66b841de96423c4"
+  integrity sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==
 
 events@^3.2.0:
   version "3.3.0"

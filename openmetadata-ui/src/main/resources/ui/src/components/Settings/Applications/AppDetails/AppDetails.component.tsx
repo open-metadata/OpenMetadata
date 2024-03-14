@@ -40,8 +40,12 @@ import { ReactComponent as IconExternalLink } from '../../../../assets/svg/exter
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { APP_UI_SCHEMA } from '../../../../constants/Applications.constant';
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+
+import Icon from '@ant-design/icons/lib/components/Icon';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
@@ -93,6 +97,7 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
+  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -345,7 +350,7 @@ const AppDetails = () => {
                     okText={t('label.submit')}
                     schema={jsonSchema}
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                    uiSchema={APP_UI_SCHEMA}
+                    uiSchema={UiSchema}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}
@@ -502,7 +507,7 @@ const AppDetails = () => {
 
                 {appData?.developerUrl && (
                   <div className="flex-center gap-2">
-                    <IconExternalLink width={12} />
+                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
                     <Typography.Link
                       className="text-xs"
                       href={appData?.developerUrl}

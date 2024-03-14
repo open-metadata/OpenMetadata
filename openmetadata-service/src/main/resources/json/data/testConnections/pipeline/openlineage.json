@@ -1,0 +1,14 @@
+{
+    "name": "OpenLineage",
+    "displayName": "Airflow Test Connection",
+    "description": "This Test Connection validates the access against the message broker.",
+    "steps": [
+        {
+            "name": "GetWatermarkOffsets",
+            "description":  "Check if the message broker is reachable to fetch the topic details.",
+            "errorMessage": "Failed to connect to message broker",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

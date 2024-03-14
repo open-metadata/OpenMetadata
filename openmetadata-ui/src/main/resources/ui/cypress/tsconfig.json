@@ -4,7 +4,7 @@
     "downlevelIteration": true,
     "target": "ES5",
     "lib": ["dom", "dom.iterable", "ES2020.Promise", "es2021"],
-    "types": ["cypress", "node"]
+    "types": ["cypress", "node", "@cypress/grep"]
   },
   "include": ["./**/*.ts"]
 }
