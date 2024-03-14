@@ -274,7 +274,6 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
-    - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
 pipelineServiceClientConfiguration:
   enabled: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
