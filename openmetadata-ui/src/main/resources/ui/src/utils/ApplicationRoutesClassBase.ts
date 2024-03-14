@@ -12,10 +12,11 @@
  */
 
 import { FC } from 'react';
+import AuthenticatedAppRouter from '../components/AppRouter/AuthenticatedAppRouter';
 
 class ApplicationRoutesClassBase {
-  public getRouteElements(): FC | null {
-    return null;
+  public getRouteElements(): FC {
+    return AuthenticatedAppRouter;
   }
 }
 

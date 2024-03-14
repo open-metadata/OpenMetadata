@@ -15,13 +15,10 @@ import { Redirect, Route, Switch, useParams } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
-import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 
 const EntityRouter = () => {
   const { entityType } = useParams<{ entityType: EntityType }>();
-
-  const RouteElements = applicationRoutesClass.getRouteElements();
 
   const Component = useMemo(
     () => entityUtilClassBase.getEntityDetailComponent(entityType),
@@ -30,7 +27,6 @@ const EntityRouter = () => {
 
   return (
     <Switch>
-      {RouteElements && <RouteElements />}
       <Route
         exact
         component={EntityVersionPage}
