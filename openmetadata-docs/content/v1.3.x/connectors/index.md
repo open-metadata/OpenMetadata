@@ -39,13 +39,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 ## Messaging Services
 
-{% connectorsListContainer %}
-
-{% connectorInfoCard name="Kafka" stage="PROD" href="/connectors/messaging/kafka" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Kinesis" stage="PROD" href="/connectors/messaging/kinesis" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Redpanda" stage="PROD" href="/connectors/messaging/redpanda" platform="OpenMetadata" / %}
-
-{% /connectorsListContainer %}
+{% partial file="/v1.3/connectors/messaging/connectors-list.md" /%}
 
 ## Pipeline Services
 
