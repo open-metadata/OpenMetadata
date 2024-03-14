@@ -22,7 +22,12 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
+import ReactFlow, {
+  Background,
+  Controls,
+  Panel,
+  ReactFlowProvider,
+} from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -41,6 +46,7 @@ import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
+import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -184,6 +190,9 @@ const Lineage = ({
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
               <Controls position="bottom-right" showInteractive={false} />
+              <Panel position="bottom-left">
+                <LineageLayers />
+              </Panel>
             </ReactFlow>
           </ReactFlowProvider>
         ) : (
