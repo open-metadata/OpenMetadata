@@ -12,6 +12,7 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { performLogin } from '../../common/Utils/Login';
 import { BASE_URL, LOGIN_ERROR_MESSAGE } from '../../constants/constants';
 
@@ -30,7 +31,7 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
     cy.login();
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
       cy.request({
         method: 'DELETE',
         url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,

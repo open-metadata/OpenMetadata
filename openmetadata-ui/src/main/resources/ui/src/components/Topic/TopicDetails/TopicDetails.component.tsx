@@ -27,6 +27,7 @@ import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
@@ -42,7 +43,6 @@ import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -72,7 +72,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();

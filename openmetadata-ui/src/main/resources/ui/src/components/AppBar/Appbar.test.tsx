@@ -16,16 +16,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Appbar from './Appbar';
 
-jest.mock('../../hooks/authHooks', () => ({
-  useAuth: () => {
-    return {
-      isSignedIn: true,
-      isSignedOut: false,
-      isAuthenticatedRoute: true,
-      isAuthDisabled: true,
-    };
-  },
-}));
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({ search: 'pathname' }),
   Link: jest
@@ -35,12 +25,12 @@ jest.mock('react-router-dom', () => ({
     )),
   useHistory: jest.fn(),
 }));
-jest.mock('../Auth/AuthProviders/AuthProvider', () => {
+
+jest.mock('../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn().mockImplementation(() => ({
       isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
+      getOidcToken: jest.fn().mockReturnValue({ isExpired: false }),
       onLogoutHandler: jest.fn(),
     })),
   };
@@ -58,6 +48,11 @@ jest.mock('../../rest/miscAPI', () => ({
       },
     })
   ),
+}));
+
+jest.mock('../../utils/AuthProvider.util', () => ({
+  ...jest.requireActual('../../utils/AuthProvider.util'),
+  isProtectedRoute: jest.fn().mockReturnValue(true),
 }));
 
 describe('Test Appbar Component', () => {

@@ -13,8 +13,8 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { MOCK_TAG_DATA, MOCK_TAG_ENCODED_FQN } from '../../../mocks/Tags.mock';
 import { getTagByFqn } from '../../../rest/tagAPI';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
@@ -104,15 +104,12 @@ jest.mock('../../../rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock(
-  '../../../context/ApplicationConfigProvider/ApplicationConfigProvider',
-  () => ({
-    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
-      cachedEntityData: {},
-      updateCachedEntityData,
-    })),
-  })
-);
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    cachedEntityData: {},
+    updateCachedEntityData,
+  })),
+}));
 
 describe('Test EntityPopoverCard component', () => {
   it('EntityPopoverCard should render element', () => {
@@ -216,7 +213,7 @@ describe('Test EntityPopoverCard component', () => {
   it('EntityPopoverCard should not call api if cached data is available', async () => {
     const mockTagAPI = getTagByFqn as jest.Mock;
 
-    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       cachedEntityData: {
         [MOCK_TAG_ENCODED_FQN]: {
           name: 'test',

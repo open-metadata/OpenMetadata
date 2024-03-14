@@ -96,8 +96,8 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
 }));

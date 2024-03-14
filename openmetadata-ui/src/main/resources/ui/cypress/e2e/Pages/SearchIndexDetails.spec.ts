@@ -24,6 +24,7 @@ import {
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { BASE_URL } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import {
@@ -83,7 +84,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Create search index entity
         createSingleLevelEntity({
@@ -109,7 +110,7 @@ describe(
       cy.login();
 
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Delete search index
         hardDeleteService({
@@ -168,7 +169,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Create search index entity
       createSingleLevelEntity({
@@ -235,7 +236,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
     cy.login();
 
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Delete created user
       cy.request({
@@ -325,7 +326,7 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Create search index entity
       createSingleLevelEntity({
@@ -339,7 +340,7 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     cy.login();
 
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Delete search index
       hardDeleteService({

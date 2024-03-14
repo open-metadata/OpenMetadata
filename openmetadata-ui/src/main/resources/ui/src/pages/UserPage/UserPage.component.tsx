@@ -25,10 +25,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
 import { User } from '../../generated/entity/teams/user';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -41,7 +41,7 @@ const UserPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
-  const { currentUser, updateCurrentUser } = useAuthContext();
+  const { currentUser, updateCurrentUser } = useApplicationStore();
 
   const fetchUserData = async () => {
     try {

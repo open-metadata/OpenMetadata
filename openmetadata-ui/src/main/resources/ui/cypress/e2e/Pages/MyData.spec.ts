@@ -26,6 +26,7 @@ import {
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { generateRandomUser } from '../../common/Utils/Owner';
 import {
   DATABASE_SERVICE,
@@ -132,7 +133,7 @@ const updateOwnerAndVerify = ({ url, body, type, entityName, newOwner }) => {
     'feedData'
   );
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     cy.request({
       method: 'PATCH',
       url,
@@ -165,7 +166,7 @@ const updateOwnerAndVerify = ({ url, body, type, entityName, newOwner }) => {
 const prepareData = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     SINGLE_LEVEL_SERVICE.forEach((data) => {
       createSingleLevelEntity({
         token,
@@ -266,7 +267,7 @@ const prepareData = () => {
 const cleanUp = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     hardDeleteService({
       token,
       serviceFqn: DATABASE_SERVICE.service.name,

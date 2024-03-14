@@ -17,6 +17,7 @@ import {
   toastNotification,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { DELETE_TERM } from '../../constants/constants';
 import { PERSONA_DETAILS, USER_DETAILS } from '../../constants/EntityConstant';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
@@ -40,12 +41,12 @@ const updatePersonaDisplayName = (displayName) => {
 };
 
 describe('Persona operations', { tags: 'Settings' }, () => {
-  let user = {};
+  const user = {};
   const userSearchText = `${USER_DETAILS.firstName}${USER_DETAILS.lastName}`;
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // Create a new user
       cy.request({
@@ -62,7 +63,7 @@ describe('Persona operations', { tags: 'Settings' }, () => {
   after(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // Delete created user
       cy.request({

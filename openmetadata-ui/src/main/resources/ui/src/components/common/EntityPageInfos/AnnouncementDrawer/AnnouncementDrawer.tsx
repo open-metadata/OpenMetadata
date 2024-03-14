@@ -28,7 +28,8 @@ import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
@@ -47,7 +48,7 @@ const AnnouncementDrawer: FC<Props> = ({
   createPermission,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
 
   const title = (

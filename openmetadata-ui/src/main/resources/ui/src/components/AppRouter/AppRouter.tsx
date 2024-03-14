@@ -19,10 +19,10 @@ import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Loader from '../common/Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -59,7 +59,7 @@ const AppRouter = () => {
     loading,
     isSigningIn,
     getCallBackComponent,
-  } = useAuthContext();
+  } = useApplicationStore();
 
   const callbackComponent = getCallBackComponent();
   const oidcProviders = [

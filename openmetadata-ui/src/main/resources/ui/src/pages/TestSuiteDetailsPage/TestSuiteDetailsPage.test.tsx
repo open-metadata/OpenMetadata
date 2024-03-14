@@ -66,18 +66,14 @@ jest.mock(
       .mockImplementation(() => <div>DataQualityTab.component</div>);
   }
 );
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
+jest.mock('../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest
+    useApplicationStore: jest
       .fn()
       .mockImplementation(() => ({ isAuthDisabled: true })),
   };
 });
-jest.mock('../../hooks/authHooks', () => {
-  return {
-    useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
-  };
-});
+
 jest.mock('react-router-dom', () => {
   return {
     useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),

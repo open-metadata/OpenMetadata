@@ -16,9 +16,9 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Auth0Authenticator from './Auth0Authenticator';
 
-jest.mock('../AuthProviders/AuthProvider', () => {
+jest.mock('../../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       authConfig: {},
       setIsAuthenticated: jest.fn(),
       onLogoutHandler: jest.fn(),

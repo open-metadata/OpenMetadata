@@ -22,7 +22,8 @@ import { FOLLOW_DATA_ASSET } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 import './following-widget.less';
@@ -42,7 +43,7 @@ function FollowingWidget({
   widgetKey,
 }: Readonly<FollowingWidgetProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);

@@ -13,15 +13,15 @@
 
 import React, { ReactNode } from 'react';
 import { AnalyticsProvider } from 'use-analytics';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAnalyticInstance } from '../../utils/WebAnalyticsUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 
 interface WebAnalyticsProps {
   children: ReactNode;
 }
 
 const WebAnalyticsProvider = ({ children }: WebAnalyticsProps) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   return (
     <AnalyticsProvider instance={getAnalyticInstance(currentUser?.id)}>

@@ -19,8 +19,8 @@ import WelcomeScreenImg from '../../../assets/img/welcome-screen.png';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow-right.svg';
 import { ROUTES } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import './welcome-screen.style.less';
 
 const { Paragraph, Text } = Typography;
@@ -31,7 +31,7 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const userName = useMemo(() => {
     return split(getEntityName(currentUser), ' ')[0];

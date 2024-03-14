@@ -45,6 +45,7 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
@@ -59,7 +60,6 @@ import {
   getEntityUserLink,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Loader from '../../common/Loader/Loader';
 import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
@@ -88,7 +88,7 @@ export const ActivityFeedTab = ({
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
   const initialRender = useRef(true);
   const [elementRef, isInView] = useElementInView({

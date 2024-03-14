@@ -17,6 +17,7 @@ import {
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import {
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -249,7 +250,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       createEntityTable({
         token,
@@ -262,7 +263,7 @@ describe('Custom Metric', { tags: 'Observability' }, () => {
   after(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       hardDeleteService({
         token,

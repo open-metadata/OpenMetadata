@@ -16,6 +16,7 @@ import { createEntityTableViaREST } from '../../common/Utils/Entity';
 import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { getToken } from '../Utils/LocalStorage';
 import EntityClass from './EntityClass';
 
 class DatabaseServiceClass extends EntityClass {
@@ -45,7 +46,7 @@ class DatabaseServiceClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
 
       createEntityTableViaREST({
         ...DATABASE_SERVICE,

@@ -26,6 +26,7 @@ import {
   FIELDS,
   OPERATOR,
 } from '../../common/Utils/AdvancedSearch';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { USER_CREDENTIALS } from '../../constants/SearchIndexDetails.constants';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
@@ -33,7 +34,7 @@ describe('Advance search', () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
       advanceSearchPreRequests(token);
     });
   });
@@ -41,7 +42,7 @@ describe('Advance search', () => {
   after(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       hardDeleteService({
         token,

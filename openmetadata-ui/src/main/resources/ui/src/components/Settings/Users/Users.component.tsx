@@ -23,13 +23,13 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../common/Chip/Chip.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -58,7 +58,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();

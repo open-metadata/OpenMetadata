@@ -27,6 +27,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedCount } from '../../../../rest/feedsAPI';
@@ -37,7 +38,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import FeedsFilterPopover from '../../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
 
@@ -49,7 +49,7 @@ const FeedsWidget = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
     ActivityFeedTabs.ALL
   );

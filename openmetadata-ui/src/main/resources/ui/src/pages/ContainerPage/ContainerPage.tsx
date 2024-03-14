@@ -22,7 +22,7 @@ import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityF
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -56,6 +56,7 @@ import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
@@ -82,7 +83,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();

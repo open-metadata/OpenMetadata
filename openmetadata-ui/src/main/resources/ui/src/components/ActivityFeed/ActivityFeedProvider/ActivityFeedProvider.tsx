@@ -42,6 +42,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deletePostById,
   deleteThread,
@@ -59,7 +60,6 @@ import {
 } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
@@ -89,7 +89,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
     []
   );
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const fetchTestCaseResolution = useCallback(async (id: string) => {
     try {

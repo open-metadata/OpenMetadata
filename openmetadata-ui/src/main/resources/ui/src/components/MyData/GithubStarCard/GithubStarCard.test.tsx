@@ -40,8 +40,8 @@ jest.mock('../../../rest/commonAPI', () => ({
   ),
 }));
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: {
       name: 'admin',
     },

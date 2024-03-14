@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OM_SESSION_KEY } from '../hooks/useApplicationStore';
-
-export const getOidcToken = (): string => {
-  return (
-    JSON.parse(localStorage.getItem(OM_SESSION_KEY) ?? '{}')?.state
-      ?.oidcIdToken ?? ''
-  );
+export const getToken = (data: Cypress.StorageByOrigin) => {
+  try {
+    return (
+      JSON.parse((Object.values(data)[0]['om-session'] as string) ?? '{}')
+        ?.state?.oidcIdToken ?? ''
+    );
+  } catch (error) {
+    return '';
+  }
 };

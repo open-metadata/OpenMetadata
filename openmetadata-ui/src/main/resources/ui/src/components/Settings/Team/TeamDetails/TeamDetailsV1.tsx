@@ -66,6 +66,7 @@ import {
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { getSuggestions } from '../../../../rest/miscAPI';
@@ -83,7 +84,6 @@ import {
   getDeleteMessagePostFix,
 } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -139,7 +139,7 @@ const TeamDetailsV1 = ({
   const history = useHistory();
   const location = useLocation();
   const { isAdminUser } = useAuth();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { activeTab } = useMemo(() => {
     const param = location.search;

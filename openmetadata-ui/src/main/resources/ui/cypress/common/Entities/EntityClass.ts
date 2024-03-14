@@ -46,6 +46,7 @@ import {
   removeGlossaryTerm,
   udpateGlossaryTerm,
 } from '../Utils/Glossary';
+import { getToken } from '../Utils/LocalStorage';
 import {
   addOwner,
   addTeamAsOwner,
@@ -189,7 +190,7 @@ class EntityClass {
   async setToken() {
     await new Promise<void>((res) =>
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
 
         this.token = token;
         res();
@@ -222,7 +223,7 @@ class EntityClass {
 
   static preRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // assign DevOps team to user
 
@@ -296,7 +297,7 @@ class EntityClass {
 
   static postRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // Remove devops as team
       //   cy.get('[data-testid="dropdown-profile"]').click();
@@ -368,6 +369,7 @@ class EntityClass {
     addDomainToEntity(domainDetails1.displayName);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   validateDomainVersionForEntity() {}
 
   updateDomain() {

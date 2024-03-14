@@ -17,17 +17,17 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import './app-container.less';
 
 const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
 
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);

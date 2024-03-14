@@ -26,12 +26,13 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Redirect, useLocation } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const SamlCallback = () => {
-  const { handleSuccessfulLogin } = useAuthContext();
+  const { handleSuccessfulLogin } = useApplicationStore();
   const location = useLocation();
   const { t } = useTranslation();
 

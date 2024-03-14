@@ -22,8 +22,8 @@ jest.mock('../../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({
+jest.mock('../../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
     currentUser: { userId: 'test-user' },
   }),
 }));

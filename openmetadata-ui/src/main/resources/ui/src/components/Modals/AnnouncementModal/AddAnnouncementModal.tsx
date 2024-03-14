@@ -25,7 +25,8 @@ import { postThread } from '../../../rest/feedsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import './announcement-modal.less';
 
@@ -49,7 +50,7 @@ const AddAnnouncementModal: FC<Props> = ({
   entityType,
   entityFQN,
 }) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 

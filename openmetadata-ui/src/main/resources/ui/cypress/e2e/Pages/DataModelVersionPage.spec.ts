@@ -17,6 +17,7 @@ import {
   verifyResponseStatusCode,
   visitDataModelPage,
 } from '../../common/common';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { visitDataModelVersionPage } from '../../common/VersionUtils';
@@ -40,7 +41,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
 
         cy.request({
           method: 'PUT',

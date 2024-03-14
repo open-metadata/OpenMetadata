@@ -32,14 +32,14 @@ import {
   resetPassword,
 } from '../../../rest/auth-API';
 import { getBase64EncodedString } from '../../../utils/CommonUtils';
-import localState from '../../../utils/LocalStorageUtils';
 import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
 } from '../../../utils/ToastUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import { useAuthContext } from './AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
 
 export interface BasicAuthJWTPayload extends JwtPayload {
@@ -89,7 +89,14 @@ const BasicAuthProvider = ({
   onLoginFailure,
 }: BasicAuthProps) => {
   const { t } = useTranslation();
-  const { setLoadingIndicator } = useAuthContext();
+  const {
+    setLoadingIndicator,
+    setRefreshToken,
+    setOidcToken,
+    getOidcToken,
+    removeOidcToken,
+    getRefreshToken,
+  } = useApplicationStore();
   const [loginError, setLoginError] = useState<string | null>(null);
   const history = useHistory();
 
@@ -103,8 +110,8 @@ const BasicAuthProvider = ({
         });
 
         if (response.accessToken) {
-          localState.setRefreshToken(response.refreshToken);
-          localState.setOidcToken(response.accessToken);
+          setRefreshToken(response.refreshToken);
+          setOidcToken(response.accessToken);
 
           onLoginSuccess({
             id_token: response.accessToken,
@@ -191,12 +198,12 @@ const BasicAuthProvider = ({
   };
 
   const handleLogout = async () => {
-    const token = localState.getOidcToken();
-    const refreshToken = localState.getRefreshToken();
+    const token = getOidcToken();
+    const refreshToken = getRefreshToken();
     if (token) {
       try {
         await logoutUser({ token, refreshToken });
-        localState.removeOidcToken();
+        removeOidcToken();
         history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);

@@ -16,6 +16,7 @@ import { EntityType } from '../../constants/Entity.interface';
 import { MESSAGING_SERVICE } from '../../constants/EntityConstant';
 import { createSingleLevelEntity } from '../EntityUtils';
 import { visitServiceDetailsPage } from '../serviceUtils';
+import { getToken } from '../Utils/LocalStorage';
 import EntityClass from './EntityClass';
 
 class MessagingServiceClass extends EntityClass {
@@ -49,7 +50,7 @@ class MessagingServiceClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
 
       createSingleLevelEntity({
         ...MESSAGING_SERVICE,

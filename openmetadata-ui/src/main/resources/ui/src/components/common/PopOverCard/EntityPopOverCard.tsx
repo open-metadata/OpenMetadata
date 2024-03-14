@@ -22,10 +22,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -66,8 +66,7 @@ export const PopoverContent: React.FC<{
 }> = ({ entityFQN, entityType, extraInfo }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const { cachedEntityData, updateCachedEntityData } =
-    useApplicationConfigContext();
+  const { cachedEntityData, updateCachedEntityData } = useApplicationStore();
 
   const entityData: SearchedDataProps['data'][number]['_source'] | undefined =
     useMemo(() => {
