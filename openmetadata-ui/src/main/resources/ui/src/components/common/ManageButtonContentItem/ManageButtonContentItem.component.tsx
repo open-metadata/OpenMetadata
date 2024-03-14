@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Col, Row, Typography } from 'antd';
 import React from 'react';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
@@ -17,14 +18,14 @@ import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 export const ManageButtonItemLabel = ({
   name,
   onClick,
-  icon,
+  Icon,
   description,
   id,
 }: MangeButtonItemLabelProps) => {
   return (
     <Row className="cursor-pointer" data-testid={id} onClick={onClick}>
       <Col className="self-center" data-testid={`${id}-icon`} span={3}>
-        {icon}
+        <Icon width="18px" />
       </Col>
       <Col
         className="text-left"

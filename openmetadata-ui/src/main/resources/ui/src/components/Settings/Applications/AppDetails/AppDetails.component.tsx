@@ -16,6 +16,7 @@ import {
   StopOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
@@ -40,12 +41,7 @@ import { ReactComponent as IconExternalLink } from '../../../../assets/svg/exter
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-
-import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-} from '../../../../constants/constants';
+import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
@@ -172,16 +168,10 @@ const AppDetails = () => {
           {
             label: (
               <ManageButtonItemLabel
+                Icon={IconRestore}
                 description={t('message.restore-action-description', {
                   entityType: getEntityName(appData),
                 })}
-                icon={
-                  <IconRestore
-                    className="m-t-xss"
-                    name="Restore"
-                    width="18px"
-                  />
-                }
                 id="restore-button"
                 name={t('label.restore')}
               />
@@ -199,14 +189,10 @@ const AppDetails = () => {
           {
             label: (
               <ManageButtonItemLabel
+                Icon={StopOutlined as SvgComponent}
                 description={t('message.disable-app', {
                   app: getEntityName(appData),
                 })}
-                icon={
-                  <StopOutlined
-                    style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
-                  />
-                }
                 id="disable-button"
                 name={t('label.disable')}
               />
@@ -222,10 +208,10 @@ const AppDetails = () => {
     {
       label: (
         <ManageButtonItemLabel
+          Icon={DeleteIcon}
           description={t('message.uninstall-app', {
             app: getEntityName(appData),
           })}
-          icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
           id="uninstall-button"
           name={t('label.uninstall')}
         />

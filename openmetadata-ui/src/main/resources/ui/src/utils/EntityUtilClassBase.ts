@@ -281,6 +281,17 @@ class EntityUtilClassBase {
       }
     }
   }
+
+  public getManageExtraOptions(entityType: string, _: string) {
+    switch (entityType) {
+      case EntityType.TABLE: {
+        return [];
+      }
+      default: {
+        return [];
+      }
+    }
+  }
 }
 
 const entityUtilClassBase = new EntityUtilClassBase();

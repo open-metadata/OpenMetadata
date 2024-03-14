@@ -12,12 +12,13 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { ReactComponent as Icon } from '../../../assets/svg/teams-grey.svg';
 import { ManageButtonItemLabel } from './ManageButtonContentItem.component';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
 const mockProps: MangeButtonItemLabelProps = {
   name: 'export',
-  icon: null,
+  Icon: Icon,
   description: 'description',
   id: 'export',
 };

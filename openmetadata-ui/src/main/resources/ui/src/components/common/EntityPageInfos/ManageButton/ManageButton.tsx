@@ -25,7 +25,6 @@ import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-gray.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -124,16 +123,10 @@ const ManageButton: FC<ManageButtonProps> = ({
             label: (
               <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
                 <ManageButtonItemLabel
+                  Icon={IconRestore}
                   description={t('message.restore-action-description', {
                     entityType,
                   })}
-                  icon={
-                    <IconRestore
-                      className="m-t-xss"
-                      name="Restore"
-                      {...DROPDOWN_ICON_SIZE_PROPS}
-                    />
-                  }
                   id="restore-button"
                   name={t('label.restore')}
                 />
@@ -155,14 +148,8 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={IconAnnouncementsBlack}
                 description={t('message.announcement-action-description')}
-                icon={
-                  <IconAnnouncementsBlack
-                    className="m-t-xss"
-                    name="announcement"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                  />
-                }
                 id="announcement-button"
                 name={t('label.announcement-plural')}
               />
@@ -181,10 +168,10 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={EditIcon}
                 description={t('message.update-displayName-entity', {
                   entity: entityName,
                 })}
-                icon={<EditIcon width="18px" />}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -203,16 +190,10 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={IconSetting}
                 description={
                   deleteButtonDescription ??
                   t('message.update-profiler-settings')
-                }
-                icon={
-                  <IconSetting
-                    className="m-t-xss"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                    name="Profiler Settings"
-                  />
                 }
                 id="profiler-setting-button"
                 name={t('label.profiler-setting-plural')}
@@ -231,18 +212,12 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={IconDelete}
                 description={
                   deleteButtonDescription ??
                   t('message.delete-entity-type-action-description', {
                     entityType,
                   })
-                }
-                icon={
-                  <IconDelete
-                    className="m-t-xss"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                    name="Delete"
-                  />
                 }
                 id="delete-button"
                 name={t('label.delete')}

@@ -273,10 +273,10 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={ExportIcon}
                 description={t('message.export-entity-help', {
                   entity: t('label.glossary-term-lowercase-plural'),
                 })}
-                icon={<ExportIcon width="18px" />}
                 id="export-button"
                 name={t('label.export')}
               />
@@ -291,10 +291,10 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={ImportIcon}
                 description={t('message.import-entity-help', {
                   entity: t('label.glossary-term-lowercase'),
                 })}
-                icon={<ImportIcon width="20px" />}
                 id="import-button"
                 name={t('label.import')}
               />
@@ -313,12 +313,12 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={EditIcon}
                 description={t('message.rename-entity', {
                   entity: isGlossary
                     ? t('label.glossary')
                     : t('label.glossary-term'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -337,10 +337,10 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={StyleIcon}
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.glossary-term'),
                 })}
-                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -359,6 +359,7 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
+                Icon={IconDelete}
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
@@ -367,13 +368,6 @@ const GlossaryHeader = ({
                       : t('label.glossary-term'),
                   }
                 )}
-                icon={
-                  <Icon
-                    className="align-middle"
-                    component={IconDelete}
-                    style={{ fontSize: '16px' }}
-                  />
-                }
                 id="delete-button"
                 name={t('label.delete')}
               />

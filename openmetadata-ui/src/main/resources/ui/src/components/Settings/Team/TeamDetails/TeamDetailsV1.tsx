@@ -51,7 +51,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
-import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -464,13 +463,6 @@ const TeamDetailsV1 = ({
     return t('message.are-you-sure-want-to-text', { text });
   };
 
-  const restoreIcon = useMemo(
-    () => (
-      <IconRestore {...DROPDOWN_ICON_SIZE_PROPS} name={t('label.restore')} />
-    ),
-    [currentTeam.isJoinable]
-  );
-
   const handleTeamExportClick = useCallback(async () => {
     if (currentTeam?.name) {
       showModal({
@@ -496,10 +488,10 @@ const TeamDetailsV1 = ({
       {
         label: (
           <ManageButtonItemLabel
+            Icon={ExportIcon}
             description={t('message.export-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={<ExportIcon width="18px" />}
             id="export"
             name={t('label.export')}
           />
@@ -514,10 +506,10 @@ const TeamDetailsV1 = ({
       options.push({
         label: (
           <ManageButtonItemLabel
+            Icon={ImportIcon}
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={<ImportIcon width="20px" />}
             id="import-button"
             name={t('label.import')}
           />
@@ -538,8 +530,8 @@ const TeamDetailsV1 = ({
             {
               label: (
                 <ManageButtonItemLabel
+                  Icon={IconRestore}
                   description={t('message.restore-deleted-team')}
-                  icon={restoreIcon}
                   id="restore-team-dropdown"
                   name={t('label.restore-entity', {
                     entity: t('label.team'),
@@ -557,8 +549,8 @@ const TeamDetailsV1 = ({
             {
               label: (
                 <ManageButtonItemLabel
+                  Icon={IconOpenLock}
                   description={t('message.access-to-collaborate')}
-                  icon={<IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />}
                   id="open-group-dropdown"
                   name={
                     <Row>
