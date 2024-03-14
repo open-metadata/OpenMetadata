@@ -94,7 +94,7 @@ public class AuthCallbackServlet extends HttpServlet {
       // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
 
-      // Verfiy Response , Create Request And Get Token
+      // Verify Response , Create Request And Get Token
       validateAndSendTokenRequest(req, credentials, computedCallbackUrl);
 
       // Validate Nonce
