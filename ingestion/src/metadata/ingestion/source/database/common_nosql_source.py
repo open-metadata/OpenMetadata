@@ -239,7 +239,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 tableConstraints=self.get_table_constraints(
                     schema_name=schema_name,
                     table_name=table_name,
-                    db_name=self.context.database,
+                    db_name=self.context.get().database,
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
