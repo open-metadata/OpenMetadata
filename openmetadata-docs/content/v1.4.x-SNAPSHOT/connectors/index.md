@@ -60,12 +60,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 ## ML Model Services
 
-{% connectorsListContainer %}
-
-{% connectorInfoCard name="MLflow" stage="PROD" href="/connectors/ml-model/mlflow" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Sagemaker" stage="PROD" href="/connectors/ml-model/sagemaker" platform="OpenMetadata" / %}
-
-{% /connectorsListContainer %}
+{% partial file="/v1.4/connectors/ml-model/connectors-list.md" /%}
 
 ## Storage Services
 
