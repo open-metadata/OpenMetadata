@@ -3,12 +3,13 @@ title: Run the Redpanda Connector Externally
 slug: /connectors/messaging/redpanda/yaml
 ---
 
-# Run the Redpanda Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Topics     | {% icon iconName="check" /%} |
-| Sample Data| {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Redpanda"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Topics", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Redpanda connector.
 
@@ -20,12 +21,6 @@ Configure and schedule Redpanda metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 

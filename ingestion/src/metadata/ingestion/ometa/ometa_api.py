@@ -405,7 +405,12 @@ class OpenMetadata(
                 try:
                     entities.append(entity(**elmt))
                 except Exception as exc:
-                    logger.error(f"Error creating entity. Failed with exception {exc}")
+                    logger.error(
+                        f"Error creating entity [{entity.__name__}]. Failed with exception {exc}"
+                    )
+                    logger.debug(
+                        f"Can't create [{entity.__name__}] from [{elmt}]. Skipping."
+                    )
                     continue
         else:
             entities = [entity(**elmt) for elmt in resp["data"]]
@@ -418,7 +423,7 @@ class OpenMetadata(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
     ) -> Iterable[T]:

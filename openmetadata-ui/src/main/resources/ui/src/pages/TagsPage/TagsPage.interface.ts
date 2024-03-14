@@ -44,7 +44,7 @@ export interface RenameFormProps {
   onCancel: () => void;
   header: string;
   initialValues?: Tag;
-  onSubmit: (value: SubmitProps) => void;
+  onSubmit: (value: SubmitProps) => Promise<void>;
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;
   data?: Classification[];

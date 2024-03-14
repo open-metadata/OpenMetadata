@@ -9,7 +9,7 @@ Learn how you can use OpenMetadata to define Data Quality tests and measure your
 
 ## Requirements
 
-### OpenMetadata (version 0.12 or later)
+### OpenMetadata
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -181,15 +181,16 @@ The next step for a user is to mark the new failure as `ack` (acknowledged) sign
   caption="Test suite results table"
  /%}
 
- Then user are able to mark a test as `resolved`. We made it mandatory for users to 1) select a reason and 2) add a comment when resolving failed test so that knowledge can be maintain inside the platform.
+ Then the user is able to mark a test as `resolved`. We made it mandatory for users to 1) select a reason and 2) add a comment when resolving failed test so that knowledge can be maintain inside the platform.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png.png"
+  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
+
 {% image
-  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-resolved.png.png"
+  src="/images/v1.3/features/ingestion/workflows/data-quality/resolution-workflow-resolved.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}

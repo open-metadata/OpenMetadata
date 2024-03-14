@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Divider, Row, Space, Typography } from 'antd';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
@@ -161,13 +162,21 @@ function DataAssetsVersionHeader({
       <Col span={3}>
         <Row justify="end">
           <Col>
-            <Button
-              className="w-16 p-0"
-              data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
-              onClick={onVersionClick}>
-              <Typography.Text>{version}</Typography.Text>
-            </Button>
+            <Tooltip title={t('label.exit-version-history')}>
+              <Button
+                className="w-16 p-0"
+                data-testid="version-button"
+                icon={
+                  <Icon
+                    className="vertical-align-text-top"
+                    component={VersionIcon}
+                    style={DATA_ASSET_ICON_DIMENSION}
+                  />
+                }
+                onClick={onVersionClick}>
+                <Typography.Text>{version}</Typography.Text>
+              </Button>
+            </Tooltip>
           </Col>
         </Row>
       </Col>

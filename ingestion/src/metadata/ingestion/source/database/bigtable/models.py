@@ -39,22 +39,22 @@ class Row(BaseModel):
     @classmethod
     def from_partial_row(cls, row: PartialRowData):
         cells = {}
-        for cf, cf_cells in row.cells.items():
-            cells.setdefault(cf, {})
+        for column_family, cf_cells in row.cells.items():
+            cells.setdefault(column_family, {})
             for column, cell in cf_cells.items():
-                cells[cf][column] = Cell(
+                cells[column_family][column] = Cell(
                     values=[Value(timestamp=c.timestamp, value=c.value) for c in cell]
                 )
         return cls(cells=cells, row_key=row.row_key)
 
     def to_record(self) -> Dict[str, bytes]:
         record = {}
-        for cf, cells in self.cells.items():
+        for column_family, cells in self.cells.items():
             for column, cell in cells.items():
                 # Since each cell can have multiple values and the API returns them in descending order
                 # from latest to oldest, we only take the latest value. This probably does not matter since
                 # all we care about is data types and all data stored in BigTable is of type `bytes`.
-                record[f"{cf}.{column.decode()}"] = cell.values[0].value
+                record[f"{column_family}.{column.decode()}"] = cell.values[0].value
         record["row_key"] = self.row_key
 
         return record

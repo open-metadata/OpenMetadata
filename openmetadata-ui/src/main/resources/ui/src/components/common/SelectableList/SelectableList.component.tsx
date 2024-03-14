@@ -90,6 +90,7 @@ export const SelectableList = ({
 
   const [fetching, setFetching] = useState(false);
   const [fetchOptionFailed, setFetchOptionFailed] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     setSelectedItemInternal(() => {
@@ -175,6 +176,15 @@ export const SelectableList = ({
     [pagingInfo, uniqueOptions, searchText]
   );
 
+  const handleUpdate = useCallback(
+    async (updateItems: EntityReference[]) => {
+      setUpdating(true);
+      await onUpdate(updateItems);
+      setUpdating(false);
+    },
+    [setUpdating, onUpdate]
+  );
+
   const selectionHandler = (item: EntityReference) => {
     if (multiSelect) {
       setSelectedItemInternal((itemsMap) => {
@@ -189,17 +199,17 @@ export const SelectableList = ({
         return newItemsMap;
       });
     } else {
-      onUpdate(selectedItemsInternal.has(item.id) ? [] : [item]);
+      handleUpdate(selectedItemsInternal.has(item.id) ? [] : [item]);
     }
   };
 
-  const handleUpdateClick = () => {
-    onUpdate([...selectedItemsInternal.values()]);
+  const handleUpdateClick = async () => {
+    handleUpdate([...selectedItemsInternal.values()]);
   };
 
-  const handleRemoveClick = () => {
-    onUpdate([]);
-  };
+  const handleRemoveClick = useCallback(async () => {
+    handleUpdate([]);
+  }, [handleUpdate]);
 
   const handleClearAllClick = () => {
     setSelectedItemInternal(new Map());
@@ -230,6 +240,7 @@ export const SelectableList = ({
               </Button>
               <Button
                 data-testid="selectable-list-update-btn"
+                loading={updating}
                 size="small"
                 type="primary"
                 onClick={handleUpdateClick}>
@@ -249,7 +260,10 @@ export const SelectableList = ({
         />
       }
       itemLayout="vertical"
-      loading={{ spinning: fetching, indicator: <Loader /> }}
+      loading={{
+        spinning: fetching || updating,
+        indicator: <Loader size="small" />,
+      }}
       locale={{
         emptyText: emptyPlaceholderText ?? t('message.no-data-available'),
       }}

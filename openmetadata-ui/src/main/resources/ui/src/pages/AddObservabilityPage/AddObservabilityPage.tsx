@@ -42,10 +42,10 @@ import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './add-observability-page.less';
 import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
+import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormActionItem from './ObservabilityFormActionItem/ObservabilityFormActionItem';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import { default as ObservabilityFormTriggerItem } from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
+import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 
 function AddObservabilityPage() {
   const { t } = useTranslation();
@@ -168,7 +168,7 @@ function AddObservabilityPage() {
     [filterResources, selectedTrigger]
   );
 
-  const supportedActions = useMemo(
+  const supportedTriggers = useMemo(
     () =>
       filterResources.find((resource) => resource.name === selectedTrigger)
         ?.supportedActions,
@@ -181,8 +181,8 @@ function AddObservabilityPage() {
   );
 
   const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedActions) : true),
-    [selectedTrigger, supportedActions]
+    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
+    [selectedTrigger, supportedTriggers]
   );
 
   if (fetching) {
@@ -253,9 +253,7 @@ function AddObservabilityPage() {
                       </Form.Item>
                     </Col>
                     <Col span={24}>
-                      <ObservabilityFormTriggerItem
-                        filterResources={filterResources}
-                      />
+                      <AlertFormSourceItem filterResources={filterResources} />
                     </Col>
                     {shouldShowFiltersSection && (
                       <Col span={24}>
@@ -266,8 +264,8 @@ function AddObservabilityPage() {
                     )}
                     {shouldShowActionsSection && (
                       <Col span={24}>
-                        <ObservabilityFormActionItem
-                          supportedActions={supportedActions}
+                        <ObservabilityFormTriggerItem
+                          supportedTriggers={supportedTriggers}
                         />
                       </Col>
                     )}

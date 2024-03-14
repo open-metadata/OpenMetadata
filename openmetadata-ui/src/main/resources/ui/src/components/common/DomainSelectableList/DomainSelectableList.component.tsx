@@ -100,8 +100,8 @@ const DomainSelectableList = ({
   };
 
   const handleUpdate = useCallback(
-    (domains: EntityReference[]) => {
-      (onUpdate as (users: EntityReference) => void)(domains[0]);
+    async (domains: EntityReference[]) => {
+      await onUpdate(domains[0]);
       setPopupVisible(false);
     },
     [onUpdate]
@@ -152,7 +152,13 @@ const DomainSelectableList = ({
       {children ?? (
         <Tooltip
           placement="topRight"
-          title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
+          title={
+            hasPermission
+              ? t('label.edit-entity', {
+                  entity: t('label.domain'),
+                })
+              : NO_PERMISSION_FOR_ACTION
+          }>
           <Button
             className="p-0 flex-center"
             data-testid="add-domain"

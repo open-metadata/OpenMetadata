@@ -77,6 +77,7 @@ const RelatedTerms = ({
     if (!isArray(selectedData)) {
       return;
     }
+
     const newOptions = uniqWith(
       options,
       (arrVal, othVal) => arrVal.id === othVal.id
@@ -122,7 +123,7 @@ const RelatedTerms = ({
       '',
       '',
       '',
-      SearchIndex.GLOSSARY
+      SearchIndex.GLOSSARY_TERM
     );
 
     const termResult = formatSearchGlossaryTermResponse(
@@ -281,7 +282,11 @@ const RelatedTerms = ({
         {permissions.EditAll && selectedOption.length > 0 && (
           <Tooltip
             title={
-              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              permissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.related-term-plural'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               className="cursor-pointer flex-center m-l-xss"

@@ -47,12 +47,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.metabase import metadata as MetabaseMetadata
 from metadata.ingestion.source.dashboard.metabase.metadata import MetabaseSource
 from metadata.ingestion.source.dashboard.metabase.models import (
+    DashCard,
     DatasetQuery,
     MetabaseChart,
     MetabaseDashboardDetails,
     MetabaseTable,
     Native,
-    OrderedCard,
 )
 from metadata.utils import fqn
 
@@ -127,7 +127,7 @@ mock_config = {
 
 
 MOCK_CHARTS = [
-    OrderedCard(
+    DashCard(
         card=MetabaseChart(
             description="Test Chart",
             table_id=1,
@@ -138,7 +138,7 @@ MOCK_CHARTS = [
             display="chart1",
         )
     ),
-    OrderedCard(
+    DashCard(
         card=MetabaseChart(
             description="Test Chart",
             table_id=1,
@@ -151,7 +151,7 @@ MOCK_CHARTS = [
             display="chart2",
         )
     ),
-    OrderedCard(card=MetabaseChart(name="chart3", id="3")),
+    DashCard(card=MetabaseChart(name="chart3", id="3")),
 ]
 
 
@@ -170,7 +170,7 @@ EXPECTED_LINEAGE = AddLineageRequest(
 )
 
 MOCK_DASHBOARD_DETAILS = MetabaseDashboardDetails(
-    description="SAMPLE DESCRIPTION", name="test_db", id="1", ordered_cards=MOCK_CHARTS
+    description="SAMPLE DESCRIPTION", name="test_db", id="1", dashcards=MOCK_CHARTS
 )
 
 
@@ -302,21 +302,21 @@ class MetabaseUnitTest(TestCase):
 
         # test out _yield_lineage_from_api
         mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
-        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[0]]
+        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[0]]
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_query
-        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[1]]
+        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[1]]
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out if no query type
-        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[2]]
+        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[2]]
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )

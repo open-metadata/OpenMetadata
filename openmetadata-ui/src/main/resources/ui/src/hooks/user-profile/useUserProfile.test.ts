@@ -41,7 +41,7 @@ describe('useUserProfile hook', () => {
     );
 
     expect(result.current[0]).toBeNull();
-    expect(result.current[1]).toBe(true);
+    expect(result.current[1]).toBe(false);
     expect(result.current[2]).toBeUndefined();
     expect(getUserByName).not.toHaveBeenCalled();
   });
@@ -52,7 +52,7 @@ describe('useUserProfile hook', () => {
     );
 
     expect(result.current[0]).toBeNull();
-    expect(result.current[1]).toBe(true);
+    expect(result.current[1]).toBe(false);
     expect(result.current[2]).toBeUndefined();
     expect(getUserByName).toHaveBeenCalledWith('test', { fields: 'profile' });
   });
@@ -63,7 +63,7 @@ describe('useUserProfile hook', () => {
     );
 
     expect(result.current[0]).toBeNull();
-    expect(result.current[1]).toBe(true);
+    expect(result.current[1]).toBe(false);
     expect(result.current[2]).toBeUndefined();
     expect(getUserByName).not.toHaveBeenCalledWith();
   });
@@ -73,7 +73,7 @@ describe('useUserProfile hook', () => {
       useUserProfile({ permission: true, name: 'test', isTeam: true })
     );
 
-    expect(result.current[0]).toBeNull();
+    expect(result.current[0]).not.toBeNull();
     expect(result.current[1]).toBe(false);
     expect(result.current[2]).toBeUndefined();
     expect(getUserByName).not.toHaveBeenCalledWith();

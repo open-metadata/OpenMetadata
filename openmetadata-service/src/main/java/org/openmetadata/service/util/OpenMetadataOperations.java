@@ -35,6 +35,7 @@ import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppSchedule;
@@ -46,10 +47,13 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -60,6 +64,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -183,6 +188,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
       searchRepository.createIndexes();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
@@ -207,6 +213,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       printChangeLog();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
@@ -238,7 +247,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean recreateIndexes) {
     try {
       parseConfig();
-      AppScheduler.initialize(collectionDAO, searchRepository);
+      ApplicationHandler.initialize(config);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
       App searchIndexApp =
           new App()
               .withId(UUID.randomUUID())
@@ -290,6 +300,51 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
       return 1;
+    }
+  }
+
+  @Command(
+      name = "migrate-secrets",
+      description =
+          "Migrate secrets from DB to the configured Secrets Manager. "
+              + "Note that this does not support migrating between external Secrets Managers")
+  public Integer migrateSecrets() {
+    try {
+      LOG.info("Migrating Secrets from DB...");
+      parseConfig();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to migrate secrets due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "analyze-tables",
+      description =
+          "Migrate secrets from DB to the configured Secrets Manager. "
+              + "Note that this does not support migrating between external Secrets Managers")
+  public Integer analyzeTables() {
+    try {
+      LOG.info("Analyzing Tables...");
+      parseConfig();
+      Entity.getEntityList().forEach(this::analyzeEntityTable);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to analyze tables due to ", e);
+      return 1;
+    }
+  }
+
+  private void analyzeEntityTable(String entity) {
+    try {
+      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
+      LOG.info("Analyzing table for [{}] Entity", entity);
+      repository.getDao().analyzeTable();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("No repository for [{}] Entity", entity);
     }
   }
 
@@ -434,7 +489,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
-    Entity.cleanup();
   }
 
   private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {

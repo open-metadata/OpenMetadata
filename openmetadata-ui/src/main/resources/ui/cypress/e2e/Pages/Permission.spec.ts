@@ -12,7 +12,6 @@
  */
 import {
   interceptURL,
-  login,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -293,7 +292,7 @@ const checkPermission = (permission?: {
   viewTests?: boolean;
   editDisplayName?: boolean;
 }) => {
-  login(USER_DETAILS.email, USER_DETAILS.password);
+  cy.login(USER_DETAILS.email, USER_DETAILS.password);
   visitEntityDetailsPage({
     term: DATABASE_SERVICE.entity.name,
     serviceName: DATABASE_SERVICE.service.name,
@@ -352,7 +351,7 @@ describe('Permissions', { tags: 'Settings' }, () => {
       { op: 'add', path: '/rules/0/operations/5', value: 'EditQueries' },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
@@ -361,7 +360,7 @@ describe('Permissions', { tags: 'Settings' }, () => {
     interceptURL('GET', '/api/v1/queries?*', 'getQueries');
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@getQueries', 200);
-    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-testid="query-btn"]').click();
     cy.get('[data-menu-id*="edit-query"]').click();
     interceptURL('PATCH', '/api/v1/queries/*', 'updateQuery');
     cy.get('.CodeMirror-line').click().type('updated');
@@ -385,7 +384,7 @@ describe('Permissions', { tags: 'Settings' }, () => {
       },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
