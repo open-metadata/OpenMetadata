@@ -10,67 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import {
-  AuthenticationConfigurationWithScope,
-  IAuthContext,
-  OidcUser,
-} from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
+import {
+  ApplicationStore,
+  HelperFunctions,
+} from '../interface/store.interface';
 import { getOidcToken } from '../utils/LocalStorageUtils';
 
 export const OM_SESSION_KEY = 'om-session';
-interface HelperFunctions {
-  onLoginHandler: () => void;
-  onLogoutHandler: () => void;
-  getCallBackComponent: () => FC | null;
-  handleSuccessfulLogin: (user: OidcUser) => void;
-  updateAxiosInterceptors: () => void;
-}
-
-export interface ApplicationStore
-  extends IAuthContext,
-    LogoConfiguration,
-    LoginConfiguration {
-  userProfilePics: Record<string, User>;
-  cachedEntityData: Record<string, EntityUnion>;
-  urlPathName: string;
-  selectedPersona: EntityReference;
-  oidcIdToken: string;
-  refreshTokenKey: string;
-  authConfig?: AuthenticationConfigurationWithScope;
-  applicationConfig?: LogoConfiguration;
-  setSelectedPersona: (persona: EntityReference) => void;
-  setApplicationConfig: (config: LogoConfiguration) => void;
-  setUrlPathName: (urlPathName: string) => void;
-  setCurrentUser: (user: User) => void;
-  setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
-  setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
-  setJwtPrincipalClaims: (
-    claims: AuthenticationConfiguration['jwtPrincipalClaims']
-  ) => void;
-  setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
-  updateUserProfilePics: (data: { id: string; user: User }) => void;
-  updateCachedEntityData: (data: {
-    id: string;
-    entityDetails: EntityUnion;
-  }) => void;
-
-  getRefreshToken: () => string;
-  setRefreshToken: (refreshToken: string) => void;
-  getOidcToken: () => string;
-  setOidcToken: (oidcToken: string) => void;
-  removeOidcToken: () => void;
-  removeRefreshToken: () => void;
-}
 
 export const useApplicationStore = create<ApplicationStore>()(
   persist(
