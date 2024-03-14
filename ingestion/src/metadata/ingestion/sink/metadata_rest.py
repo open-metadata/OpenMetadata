@@ -198,7 +198,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         :param datamodel_link: Table ID + Data Model
         """
 
-        table: Table = datamodel_link.table_entityrecord.entity
+        table: Table = datamodel_link.table_entity
 
         if table:
             data_model = self.metadata.ingest_table_data_model(
