@@ -24,6 +24,7 @@ from requests.utils import quote
 from metadata.generated.schema.api.createEventPublisherJob import (
     CreateEventPublisherJob,
 )
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
 from metadata.ingestion.ometa.client import REST, APIError
@@ -45,7 +46,7 @@ class ESMixin(Generic[T]):
     client: REST
 
     fqdn_search = (
-        "/search/fieldQuery?fieldName=fullyQualifiedName&fieldValue={fqn}&from={from_}"
+        "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"
         "&size={size}&index={index}"
     )
 
@@ -105,17 +106,83 @@ class ESMixin(Generic[T]):
         fields: Optional[str] = None,
     ) -> Optional[List[T]]:
         """
-        Given a service_name and some filters, search for entities using ES
+        Given a service name and filters, search for entities using Elasticsearch.
 
-        :param entity_type: Entity to look for
-        :param fqn_search_string: string used to search by FQN. E.g., service.*.schema.table
-        :param from_count: Records to expect
-        :param size: Number of records
-        :param fields: Comma separated list of fields to be returned
-        :return: List of entities
+        Args:
+            entity_type (Type[T]): The type of entity to look for.
+            fqn_search_string (str): The string used to search by fully qualified name (FQN).
+                Example: "service.*.schema.table".
+            from_count (int): The starting index of the search results.
+            size (int): The maximum number of records to return.
+            fields (Optional[str]): Comma-separated list of fields to be returned.
+
+        Returns:
+            Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
+        """
+        return self._es_search_entity(
+            entity_type=entity_type,
+            field_value=fqn_search_string,
+            field_name="fullyQualifiedName",
+            from_count=from_count,
+            size=size,
+            fields=fields,
+        )
+
+    def es_search_container_by_path(
+        self,
+        full_path: str,
+        from_count: int = 0,
+        size: int = 10,
+        fields: Optional[str] = None,
+    ) -> Optional[List[Container]]:
+        """
+        Given a service name and filters, search for containers using Elasticsearch.
+
+        Args:
+            entity_type (Type[T]): The type of entity to look for.
+            full_path (str): The string used to search by full path.
+            from_count (int): The starting index of the search results.
+            size (int): The maximum number of records to return.
+            fields (Optional[str]): Comma-separated list of fields to be returned.
+
+        Returns:
+            Optional[List[Container]]: A list of containers that match the search criteria, or None if no entities are found.
+        """
+        return self._es_search_entity(
+            entity_type=Container,
+            field_value=full_path,
+            field_name="fullPath",
+            from_count=from_count,
+            size=size,
+            fields=fields,
+        )
+
+    def _es_search_entity(
+        self,
+        entity_type: Type[T],
+        field_value: str,
+        field_name: str,
+        from_count: int = 0,
+        size: int = 10,
+        fields: Optional[str] = None,
+    ) -> Optional[List[T]]:
+        """
+        Search for entities using Elasticsearch.
+
+        Args:
+            entity_type (Type[T]): The type of entity to look for.
+            field_value (str): The value to search for in the specified field.
+            field_name (str): The name of the field to search in.
+            from_count (int, optional): The starting index of the search results. Defaults to 0.
+            size (int, optional): The maximum number of search results to return. Defaults to 10.
+            fields (Optional[str], optional): Comma-separated list of fields to be returned. Defaults to None.
+
+        Returns:
+            Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
         """
         query_string = self.fqdn_search.format(
-            fqn=fqn_search_string,
+            field_name=field_name,
+            field_value=field_value,
             from_=from_count,
             size=size,
             index=ES_INDEX_MAP[entity_type.__name__],  # Fail if not exists

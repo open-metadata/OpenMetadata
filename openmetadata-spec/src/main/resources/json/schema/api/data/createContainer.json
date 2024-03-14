@@ -76,6 +76,10 @@
       "description": "Source URL of container.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
+    "fullPath": {
+      "description": "Full path of the container/file.",
+      "type": "string"
+    },
     "domain" : {
       "description": "Fully qualified name of the domain the Container belongs to.",
       "type": "string"

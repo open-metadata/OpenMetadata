@@ -236,6 +236,7 @@ class StorageUnitTest(TestCase):
                 sourceUrl=SourceUrl(
                     __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&tab=objects"
                 ),
+                fullPath="s3://test_bucket",
             ),
             self.object_store_source._generate_unstructured_container(
                 bucket_response=bucket_response
@@ -280,6 +281,7 @@ class StorageUnitTest(TestCase):
                 sourceUrl=SourceUrl(
                     __root__="https://s3.console.aws.amazon.com/s3/buckets/test_bucket?region=us-east-1&prefix=transactions/&showversions=false"
                 ),
+                fullPath="s3://test_bucket/transactions",
             ),
             self.object_store_source._generate_container_details(
                 S3BucketResponse(
