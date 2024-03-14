@@ -109,7 +109,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.4/connectors/visit-services.png"
+src="/images/v1.4/connectors/visit-services-page.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -128,7 +128,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.4/connectors/create-service.png"
+src="/images/v1.4/connectors/create-new-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Storage Services page" /%}
 
