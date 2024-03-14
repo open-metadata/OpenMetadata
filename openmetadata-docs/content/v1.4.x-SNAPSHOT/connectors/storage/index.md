@@ -7,7 +7,7 @@ slug: /connectors/storage
 
 This is the supported list of connectors for Storage Services:
 
-{% partial file="/v1.3/connectors/storage/connectors-list.md" /%}
+{% partial file="/v1.4/connectors/storage/connectors-list.md" /%}
 
 If you have a request for a new connector, don't hesitate to reach out in [Slack](https://slack.open-metadata.org/) or
 open a [feature request](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in our GitHub repo.

@@ -127,7 +127,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 ## Storage Services
 
-{% partial file="/v1.3/connectors/storage/connectors-list.md" /%}
+{% partial file="/v1.4/connectors/storage/connectors-list.md" /%}
 
 ## Metadata Services
 
