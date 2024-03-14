@@ -16,6 +16,7 @@ import {
   login,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { BASE_URL, LOGIN_ERROR_MESSAGE } from '../../constants/constants';
 
 const CREDENTIALS = {
@@ -29,6 +30,19 @@ const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
 
 describe('Login flow should work properly', { tags: 'Settings' }, () => {
+  after(() => {
+    cy.login();
+
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
+  });
+
   it('Signup and Login with signed up credentials', () => {
     interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     interceptURL('POST', '/api/v1/users/checkEmailInUse', 'createUser');

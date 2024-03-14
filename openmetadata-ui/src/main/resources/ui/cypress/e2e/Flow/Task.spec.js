@@ -26,6 +26,7 @@ import {
   verifyTaskDetails,
 } from '../../common/TaskUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { DATA_ASSETS } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
@@ -44,7 +45,7 @@ describe('Task flow should work', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       createEntityTable({
         token,
@@ -57,7 +58,7 @@ describe('Task flow should work', { tags: 'DataAssets' }, () => {
   after(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       hardDeleteService({
         token,

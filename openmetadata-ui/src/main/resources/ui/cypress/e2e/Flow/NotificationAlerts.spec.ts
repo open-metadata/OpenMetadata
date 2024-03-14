@@ -36,6 +36,7 @@ import {
   createSingleLevelEntity,
   hardDeleteService,
 } from '../../common/EntityUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import {
   ALERT_DESCRIPTION,
   ALERT_NAME,
@@ -76,7 +77,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Create a dashboard
         createSingleLevelEntity({
@@ -109,7 +110,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         hardDeleteService({
           token,

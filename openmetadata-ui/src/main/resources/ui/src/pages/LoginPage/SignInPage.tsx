@@ -25,14 +25,14 @@ import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import loginBG from '../../assets/img/login-bg.png';
 import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
 import LoginButton from '../../components/common/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/settings/settings';
-import localState from '../../utils/LocalStorageUtils';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
@@ -41,8 +41,13 @@ const SignInPage = () => {
   const [form] = Form.useForm();
 
   const history = useHistory();
-  const { authConfig, onLoginHandler, onLogoutHandler, isAuthenticated } =
-    useAuthContext();
+  const {
+    authConfig,
+    onLoginHandler,
+    onLogoutHandler,
+    isAuthenticated,
+    getOidcToken,
+  } = useApplicationStore();
 
   const { t } = useTranslation();
 
@@ -63,7 +68,7 @@ const SignInPage = () => {
   const { handleLogin, loginError } = useBasicAuth();
 
   const isTokenExpired = () => {
-    const token = localState.getOidcToken();
+    const token = getOidcToken();
     if (token) {
       try {
         const { exp } = jwtDecode<JwtPayload>(token);

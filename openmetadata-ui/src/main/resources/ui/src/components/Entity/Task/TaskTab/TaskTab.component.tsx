@@ -68,6 +68,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
@@ -95,7 +96,6 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV1 from '../../../ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
 import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import AssigneeList from '../../../common/AssigneeList/AssigneeList';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -114,7 +114,7 @@ export const TaskTab = ({
 }: TaskTabProps) => {
   const history = useHistory();
   const [assigneesForm] = useForm();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const markdownRef = useRef<EditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();

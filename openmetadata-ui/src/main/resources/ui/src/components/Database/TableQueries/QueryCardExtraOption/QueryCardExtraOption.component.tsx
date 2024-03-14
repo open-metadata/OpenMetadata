@@ -25,9 +25,9 @@ import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
 import { AxiosError } from 'axios';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { deleteQuery } from '../../../../rest/queryAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import './query-card-extra-option.style.less';
 
@@ -39,7 +39,7 @@ const QueryCardExtraOption = ({
   afterDeleteAction,
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState<QueryVoteType | null>(null);

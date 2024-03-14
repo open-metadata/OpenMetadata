@@ -16,6 +16,7 @@ import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { SERVICE_TYPE } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import { ML_MODEL_SERVICE } from '../../constants/EntityConstant';
+import { getToken } from '../Utils/LocalStorage';
 import EntityClass from './EntityClass';
 
 class MlModelServiceClass extends EntityClass {
@@ -49,7 +50,7 @@ class MlModelServiceClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
 
       createSingleLevelEntity({
         ...ML_MODEL_SERVICE,

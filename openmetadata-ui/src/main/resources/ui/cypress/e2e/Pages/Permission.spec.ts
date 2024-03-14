@@ -22,6 +22,7 @@ import {
   createEntityTableViaREST,
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE, USER_DETAILS } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
@@ -179,7 +180,7 @@ const createViewBasicRoleViaREST = ({ token }) => {
 const preRequisite = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     createViewBasicRoleViaREST({
       token,
     });
@@ -234,7 +235,7 @@ const preRequisite = () => {
 const cleanUp = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     hardDeleteService({
       token,
       serviceFqn: DATABASE_SERVICE.service.name,
@@ -307,7 +308,7 @@ const updatePolicy = (
 ) => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     cy.request({
       method: 'PATCH',
       url: `/api/v1/policies/${policy.id}`,

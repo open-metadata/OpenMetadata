@@ -23,6 +23,7 @@ import {
   removeAndCheckWidget,
   saveLayout,
 } from '../../common/CustomizeLandingPageUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { PERSONA_DETAILS } from '../../constants/EntityConstant';
 
 describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
@@ -30,7 +31,7 @@ describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // Fetch logged in user details to get user id
       cy.request({

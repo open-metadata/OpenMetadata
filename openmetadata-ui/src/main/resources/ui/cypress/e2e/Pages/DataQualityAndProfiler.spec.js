@@ -30,6 +30,7 @@ import {
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
 import {
   API_SERVICE,
@@ -131,7 +132,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
 
         createEntityTable({
           token,
@@ -166,7 +167,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
         cy.request({
           method: 'DELETE',
           url: `/api/v1/dataQuality/testCases/${testCaseId}?hardDelete=true&recursive=false`,

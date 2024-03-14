@@ -16,6 +16,7 @@ import {
   deleteEntityViaREST,
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { DATA_ASSETS, uuid } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
@@ -164,7 +165,7 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
     cy.login();
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       createEntityTableViaREST({
         token,
@@ -233,7 +234,7 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
     cy.login();
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
       deleteEntityViaREST({
         token,
         endPoint: EntityType.DatabaseService,

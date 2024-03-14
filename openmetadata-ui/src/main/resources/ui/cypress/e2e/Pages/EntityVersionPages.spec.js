@@ -21,6 +21,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { visitEntityDetailsVersionPage } from '../../common/VersionUtils';
@@ -37,7 +38,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
       cy.request({
         method: 'PUT',
         url: `/api/v1/domains`,
@@ -52,7 +53,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
   after(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
       cy.request({
         method: 'DELETE',
         url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
@@ -72,7 +73,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
         before(() => {
           cy.login();
           cy.getAllLocalStorage().then((data) => {
-            const token = Object.values(data)[0].oidcIdToken;
+            const token = getToken(data);
             cy.request({
               method: 'PUT',
               url: `/api/v1/${entityDetails.entity}`,
@@ -345,7 +346,7 @@ describe('Version page tests for data assets', { tags: 'DataAssets' }, () => {
 
         after(() => {
           cy.getAllLocalStorage().then((data) => {
-            const token = Object.values(data)[0].oidcIdToken;
+            const token = getToken(data);
             cy.request({
               method: 'DELETE',
               url: `/api/v1/${entityDetails.entity}/${entityId}`,

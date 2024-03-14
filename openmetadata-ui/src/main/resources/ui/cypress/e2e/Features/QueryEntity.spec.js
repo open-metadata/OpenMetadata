@@ -22,6 +22,7 @@ import {
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { DATA_ASSETS } from '../../constants/constants';
 import {
   DATABASE_SERVICE,
@@ -55,7 +56,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       createEntityTable({
         token,
@@ -70,7 +71,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
   after(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       hardDeleteService({
         token,

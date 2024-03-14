@@ -19,7 +19,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -36,6 +35,7 @@ import {
 import { Chart } from '../../../generated/entity/data/chart';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import { getEntityDetailLink } from '../../../utils/CommonUtils';
@@ -63,7 +63,7 @@ const UpdateTag = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
