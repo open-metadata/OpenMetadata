@@ -103,6 +103,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -606,6 +607,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   void patchWrongDomainId(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsDomain);
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+    // Data Product domain cannot be modified see DataProductRepository.restorePatchAttributes
+    Assumptions.assumeTrue(!(entity.getEntityReference().getType().equals(DATA_PRODUCT)));
 
     // Add random domain reference
     EntityReference domainReference =
