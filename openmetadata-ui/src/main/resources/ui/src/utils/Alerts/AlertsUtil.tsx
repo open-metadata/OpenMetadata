@@ -230,6 +230,13 @@ const getUserOptions = async (searchText: string) => {
   });
 };
 
+const getUserBotOptions = async (searchText: string) => {
+  return searchEntity({
+    searchText,
+    searchIndex: SearchIndex.USER,
+  });
+};
+
 const getTeamOptions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEAM });
 };
@@ -546,7 +553,7 @@ export const getFieldByArgumentType = (
               },
             ]}>
             <AsyncSelect
-              api={getUserOptions}
+              api={getUserBotOptions}
               className="w-full"
               data-testid="user-name-select"
               mode="multiple"
