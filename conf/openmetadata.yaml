@@ -186,6 +186,7 @@ authenticationConfiguration:
     responseType: ${OIDC_RESPONSE_TYPE:-"code"}
     disablePkce: ${OIDC_DISABLE_PKCE:-true}
     callbackUrl: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
+    serverUrl: ${OIDC_SERVER_URL:-"http://localhost:8585"}
     clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}

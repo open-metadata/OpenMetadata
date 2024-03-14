@@ -65,6 +65,10 @@
       "description": "Tenant in case of Azure.",
       "type": "string"
     },
+    "serverUrl": {
+      "description": "Server Url.",
+      "type": "string"
+    },
     "callbackUrl": {
       "description": "Callback Url.",
       "type": "string"

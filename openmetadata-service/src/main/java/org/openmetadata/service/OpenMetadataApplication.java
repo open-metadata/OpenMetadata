@@ -150,7 +150,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize HTTP and JDBI timers
     MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
 
-    this.jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
 
     // initialize Search Repository, all repositories use SearchRepository this line should always
@@ -260,7 +260,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               .addServlet(
                   "saml_acs",
                   new AuthCallbackServlet(
-                      oidcClient, config.getAuthenticationConfiguration().getJwtPrincipalClaims()));
+                      oidcClient,
+                      config.getAuthenticationConfiguration().getOidcConfiguration().getServerUrl(),
+                      config.getAuthenticationConfiguration().getJwtPrincipalClaims()));
       authCallback.addMapping("/callback");
     }
   }

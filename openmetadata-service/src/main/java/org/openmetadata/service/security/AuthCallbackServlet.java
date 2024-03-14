@@ -51,10 +51,13 @@ public class AuthCallbackServlet extends HttpServlet {
   private final OidcClient client;
   private final ClientAuthentication clientAuthentication;
   private final List<String> claimsOrder;
+  private final String serverUrl;
 
-  public AuthCallbackServlet(OidcClient oidcClient, List<String> claimsOrder) {
+  public AuthCallbackServlet(OidcClient oidcClient, String serverUrl, List<String> claimsOrder) {
+    CommonHelper.assertNotBlank("ServerUrl", serverUrl);
     this.client = oidcClient;
     this.claimsOrder = claimsOrder;
+    this.serverUrl = serverUrl;
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
   }
 
@@ -69,8 +72,7 @@ public class AuthCallbackServlet extends HttpServlet {
       if (response instanceof AuthenticationErrorResponse authenticationErrorResponse) {
         LOG.error(
             "Bad authentication response, error={}", authenticationErrorResponse.getErrorObject());
-        getErrorMessage(resp, new TechnicalException("Bad authentication response"));
-        return;
+        throw new TechnicalException("Bad authentication response");
       }
 
       LOG.debug("Authentication response successful");
@@ -189,7 +191,7 @@ public class AuthCallbackServlet extends HttpServlet {
     String url =
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
-            "http://localhost:8585", credentials.getIdToken().getParsedString(), email, userName);
+            serverUrl, credentials.getIdToken().getParsedString(), email, userName);
     response.sendRedirect(url);
   }
 
