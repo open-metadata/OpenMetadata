@@ -16,6 +16,7 @@ import {
   interceptURL,
   signupAndLogin,
   toastNotification,
+  uuid,
   verifyMultipleResponseStatusCode,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -43,8 +44,7 @@ import {
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GLOSSARY_OWNER_LINK_TEST_ID } from '../../constants/glossary.constant';
 
-// const userName = `test_dataconsumer${uuid()}`;
-const userName = 'test_dataconsumer843184';
+const userName = `test_dataconsumer${uuid()}`;
 
 const CREDENTIALS = {
   firstName: 'Cypress',
