@@ -23,6 +23,7 @@ import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.s
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { hasEditAccess } from '../../../../../utils/CommonUtils';
+import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import { TeamsHeadingLabelProps } from '../team.interface';
@@ -82,14 +83,16 @@ const TeamsHeadingLabel = ({
   };
 
   const handleClose = useCallback(() => {
-    setHeading(currentTeam ? currentTeam.displayName : '');
+    setHeading(currentTeam ? getEntityName(currentTeam) : '');
     setIsHeadingEditing(false);
-  }, [currentTeam.displayName]);
+  }, [currentTeam]);
 
   const teamHeadingRender = useMemo(
     () =>
       isHeadingEditing ? (
-        <Space>
+        // Used div to stop click propagation event anywhere in the component to parent
+        // TeamDetailsV1 component collapsible panel
+        <Space onClick={(e) => e.stopPropagation()}>
           <Input
             className="w-48"
             data-testid="team-name-input"

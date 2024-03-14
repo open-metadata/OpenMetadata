@@ -902,7 +902,10 @@ const TeamDetailsV1 = ({
           ghost
           data-testid="leave-team-button"
           type="primary"
-          onClick={() => deleteUserHandler(currentUser.id, true)}>
+          onClick={(e) => {
+            e.stopPropagation();
+            deleteUserHandler(currentUser.id, true);
+          }}>
           {t('label.leave-team')}
         </Button>
       ) : (
@@ -1115,11 +1118,9 @@ const TeamDetailsV1 = ({
           <Collapse
             accordion
             bordered={false}
-            className="header-collapse-custom-collapse"
-            expandIconPosition="end">
+            className="header-collapse-custom-collapse">
             <Collapse.Panel
               className="header-collapse-custom-panel"
-              collapsible="icon"
               data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">
