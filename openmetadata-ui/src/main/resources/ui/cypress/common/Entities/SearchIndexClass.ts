@@ -22,7 +22,7 @@ import EntityClass from './EntityClass';
 class SearchIndexClass extends EntityClass {
   constructor() {
     const topicName = `cypress-search-index-${Date.now()}`;
-    super(topicName, SEARCH_INDEX_DETAILS, EntityType.SeachIndex);
+    super(topicName, SEARCH_INDEX_DETAILS, EntityType.SearchIndex);
 
     this.name = 'SearchIndex';
   }
