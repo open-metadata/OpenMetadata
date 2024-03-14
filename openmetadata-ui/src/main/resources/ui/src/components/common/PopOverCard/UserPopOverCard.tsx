@@ -32,8 +32,8 @@ import {
   getUserPath,
   TERM_ADMIN,
 } from '../../../constants/constants';
-import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
@@ -43,7 +43,7 @@ import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 const UserTeams = React.memo(({ userName }: { userName: string }) => {
-  const { userProfilePics } = useApplicationConfigContext();
+  const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const teams = getNonDeletedTeams(userData?.teams ?? []);
 
@@ -70,7 +70,7 @@ const UserTeams = React.memo(({ userName }: { userName: string }) => {
 });
 
 const UserRoles = React.memo(({ userName }: { userName: string }) => {
-  const { userProfilePics } = useApplicationConfigContext();
+  const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const roles = userData?.roles;
   const isAdmin = userData?.isAdmin;
@@ -116,7 +116,7 @@ const PopoverContent = React.memo(
       name: userName,
       isTeam,
     });
-    const { updateUserProfilePics } = useApplicationConfigContext();
+    const { updateUserProfilePics } = useApplicationStore();
     const [loading, setLoading] = useState(false);
 
     const teamDetails = get(user, 'teams', null);

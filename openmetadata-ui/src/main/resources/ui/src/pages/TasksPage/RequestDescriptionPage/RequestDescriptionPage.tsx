@@ -19,7 +19,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -34,6 +33,7 @@ import {
   TaskType,
 } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -55,7 +55,7 @@ import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
