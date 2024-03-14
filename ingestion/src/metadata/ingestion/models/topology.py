@@ -258,7 +258,7 @@ class TopologyContextManager:
         # Due to our code strucutre, the first time the ContextManager is called will be within the MainThread.
         # We can leverage this to guarantee we keep track of the MainThread ID.
         self.main_thread = self.get_current_thread_id()
-        self.contexts: Dict[str, TopologyContext] = {
+        self.contexts: Dict[int, TopologyContext] = {
             self.main_thread: TopologyContext.create(topology)
         }
 
@@ -269,12 +269,12 @@ class TopologyContextManager:
         self.threads = threads or 0
 
     def get_current_thread_id(self):
-        return str(threading.get_ident())
+        return threading.get_ident()
 
     def get_global(self) -> TopologyContext:
         return self.contexts[self.main_thread]
 
-    def get(self, thread_id: Optional[str] = None) -> TopologyContext:
+    def get(self, thread_id: Optional[int] = None) -> TopologyContext:
         """Returns the TopologyContext of a given thread."""
         if thread_id:
             return self.contexts[thread_id]
@@ -283,14 +283,14 @@ class TopologyContextManager:
 
         return self.contexts[thread_id]
 
-    def pop(self, thread_id: Optional[str] = None):
+    def pop(self, thread_id: Optional[int] = None):
         """Cleans the TopologyContext of a given thread in order to lower the Memory Profile."""
         if not thread_id:
             self.contexts.pop(self.get_current_thread_id())
         else:
             self.contexts.pop(thread_id)
 
-    def copy_from(self, parent_thread_id: str):
+    def copy_from(self, parent_thread_id: int):
         """Copies the TopologyContext from a given Thread to the new thread TopologyContext."""
         thread_id = self.get_current_thread_id()
 

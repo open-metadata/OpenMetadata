@@ -14,6 +14,7 @@ ExecutionTimeTracker implementation to help track the execution time of differen
 of the code.
 """
 import threading
+from copy import deepcopy
 from functools import wraps
 from time import perf_counter
 from typing import List, Optional
@@ -36,13 +37,22 @@ class ExecutionTimeTrackerContext(BaseModel):
 
 
 class ExecutionTimeTrackerContextMap(metaclass=Singleton):
-    def __init__(self, main_thread_id: int):
+    """Responsible for managing the ExecutionTimeTracker on different threads."""
+
+    def __init__(self):
+        """Initializes the map."""
         self.map: dict[int, List[ExecutionTimeTrackerContext]] = {}
-        self.main_thread_id = main_thread_id
+
+    def copy_from_parent(self, parent_thread_id: int, thread_id: Optional[int] = None):
+        """Copy the ExecutionTimeTrackerContext from Parent."""
+        thread_id = thread_id or threading.get_ident()
+
+        self.map[thread_id] = deepcopy(self.map.get(parent_thread_id, []))
 
     def get_last_stored_context_level(
         self, thread_id: Optional[int] = None
     ) -> Optional[str]:
+        """Gets the last stored context level for a given thread."""
         thread_id = thread_id or threading.get_ident()
 
         stored_context = [
@@ -56,20 +66,26 @@ class ExecutionTimeTrackerContextMap(metaclass=Singleton):
     def append(
         self, context: ExecutionTimeTrackerContext, thread_id: Optional[int] = None
     ):
+        """Appends a new context level for a given thread."""
         thread_id = thread_id or threading.get_ident()
         self.map.setdefault(thread_id, []).append(context)
 
     def pop(self, thread_id: Optional[int] = None) -> ExecutionTimeTrackerContext:
+        """Removes the information of a given thread."""
         thread_id = thread_id or threading.get_ident()
         return self.map.get(thread_id, []).pop()
 
 
 class ExecutionTimeTrackerState(metaclass=Singleton):
+    """Tracks the ExecutionTime State across multiple threads."""
+
     def __init__(self):
+        """Initializes the state and the lock."""
         self.state = {}
         self.lock = threading.Lock()
 
     def add(self, context: ExecutionTimeTrackerContext, elapsed: float):
+        """Updates the State."""
         with self.lock:
             self.state[context.name] = self.state.get(context.name, 0) + elapsed
 
@@ -100,31 +116,12 @@ class ExecutionTimeTracker(metaclass=Singleton):
             state: Keeps track of the global state for the Execution Time Tracker.
         """
         self.enabled: bool = enabled
-        # self.context: List[ExecutionTimeTrackerContext] = []
-        # self.state: Dict[str, float] = {}
 
-        self.context_map = ExecutionTimeTrackerContextMap(threading.get_ident())
+        self.context_map = ExecutionTimeTrackerContextMap()
         self.state = ExecutionTimeTrackerState()
 
         self.new_context = ""
         self.store = True
-
-    # @property
-    # def last_stored_context_level(self) -> Optional[str]:
-    #     """Returns the last stored context level.
-    #
-    #     In order to provide better logs and keep track where in the code the time is being
-    #     measured we keep track of nested contexts.
-    #
-    #     If a given context is not stored it will only log to debug but won't be part of the
-    #     global state.
-    #     """
-    #     stored_context = [context for context in self.context if context.stored]
-    #
-    #     if stored_context:
-    #         return stored_context[-1].name
-    #
-    #     return None
 
     def __call__(self, context: str, store: bool = True):
         """At every point we open a new Context Manager we can pass the current 'context' and
@@ -151,8 +148,6 @@ class ExecutionTimeTracker(metaclass=Singleton):
         ExecutionTimeTrackerContext to the list.
         """
         if self.enabled:
-            # print(self.new_context)
-            # print(self.context_map.map)
             self.context_map.append(
                 ExecutionTimeTrackerContext(
                     name=self.new_context, start=perf_counter(), stored=self.store
@@ -166,9 +161,6 @@ class ExecutionTimeTracker(metaclass=Singleton):
             stop = perf_counter()
             context = self.context_map.pop()
 
-            # print(context)
-            # print(self.context_map.map)
-
             if not context:
                 return
 
@@ -180,10 +172,6 @@ class ExecutionTimeTracker(metaclass=Singleton):
 
             if context.stored:
                 self.state.add(context, elapsed)
-
-    # def _save(self, context: ExecutionTimeTrackerContext, elapsed: float):
-    #     """Small utility to save the new measure to the global accumulator."""
-    #     self.state[context.name] = self.state.get(context.name, 0) + elapsed
 
 
 def calculate_execution_time(context: Optional[str] = None, store: bool = True):

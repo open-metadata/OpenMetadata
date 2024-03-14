@@ -41,6 +41,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.execution_time_tracker import ExecutionTimeTrackerContextMap
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.source_hash import generate_source_hash
 
@@ -180,11 +181,12 @@ class TopologyRunnerMixin(Generic[C]):
         node: TopologyNode,
         node_entities: List[Any],
         child_nodes: List[TopologyNode],
-        parent_thread_id: str,
+        parent_thread_id: int,
     ):
         """Multithread processing of a Node Entity"""
         # Generates a new context based on the parent thread.
         self.context.copy_from(parent_thread_id)
+        ExecutionTimeTrackerContextMap().copy_from_parent(parent_thread_id)
 
         for node_entity in node_entities:
             # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
