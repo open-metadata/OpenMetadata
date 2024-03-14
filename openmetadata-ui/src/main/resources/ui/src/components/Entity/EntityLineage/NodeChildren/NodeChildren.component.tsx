@@ -142,7 +142,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const renderRecord = useCallback(
     (record: Column) => {
       return (
-        <Collapse defaultActiveKey={record.fullyQualifiedName}>
+        <Collapse
+          destroyInactivePanel
+          defaultActiveKey={record.fullyQualifiedName}>
           <Panel
             header={getEntityName(record)}
             key={record.fullyQualifiedName ?? ''}>

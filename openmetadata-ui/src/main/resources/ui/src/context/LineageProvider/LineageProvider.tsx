@@ -67,6 +67,7 @@ import {
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { PipelineStatus } from '../../generated/entity/data/pipeline';
 import {
+  ColumnLineage,
   EntityReference,
   LineageDetails,
 } from '../../generated/type/entityLineage';
@@ -675,8 +676,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           targetNode.data.node
         );
 
+        let updatedColumns: ColumnLineage[] = [];
+
         if (columnConnection && currentEdge) {
-          const updatedColumns = getUpdatedColumnsFromEdge(params, currentEdge);
+          updatedColumns = getUpdatedColumnsFromEdge(params, currentEdge);
 
           const lineageDetails: LineageDetails = {
             pipeline: currentEdge.pipeline,
@@ -686,7 +689,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           };
           lineageDetails.columnsLineage = updatedColumns;
           newEdgeWithoutFqn.edge.lineageDetails = lineageDetails;
-          currentEdge.columns = updatedColumns; // update current edge with new columns
         }
 
         addLineageHandler(newEdgeWithoutFqn)
@@ -706,6 +708,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             const allEdges = isUndefined(currentEdge)
               ? [...(entityLineage.edges ?? []), newEdgeWithFqn.edge]
               : entityLineage.edges ?? [];
+
+            if (currentEdge && columnConnection) {
+              currentEdge.columns = updatedColumns; // update current edge with new columns
+            }
 
             setEntityLineage((pre) => {
               const newData = {
