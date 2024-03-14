@@ -75,7 +75,7 @@ public class AppRepository extends EntityRepository<App> {
     User botUser;
     Bot bot;
     try {
-      botUser = userRepository.findByName(botName, Include.NON_DELETED);
+      botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
     } catch (EntityNotFoundException ex) {
       // Get Bot Role
       EntityReference roleRef =
@@ -164,12 +164,12 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
-  public final List<AppRunRecord> listAll() {
+  public final List<App> listAll() {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfterWithOffset(Integer.MAX_VALUE, 0);
-    List<AppRunRecord> entities = new ArrayList<>();
+    List<App> entities = new ArrayList<>();
     for (String json : jsons) {
-      AppRunRecord entity = JsonUtils.readValue(json, AppRunRecord.class);
+      App entity = JsonUtils.readValue(json, App.class);
       entities.add(entity);
     }
     return entities;

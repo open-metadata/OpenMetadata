@@ -21,11 +21,11 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { TableProfilerTab } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import SingleColumnProfile from '../../components/Database/TableProfiler/SingleColumnProfile';
-import TableProfilerChart from '../../components/Database/TableProfiler/TableProfilerChart/TableProfilerChart';
+import SingleColumnProfile from '../../components/Database/Profiler/TableProfiler/SingleColumnProfile';
+import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
-import { getTableTabPath } from '../../constants/constants';
+import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
@@ -59,7 +59,11 @@ const AddCustomMetricPage = () => {
           ...getEntityBreadcrumbs(table, EntityType.TABLE),
           {
             name: getEntityName(table),
-            url: getTableTabPath(entityFqn, EntityTabs.PROFILER),
+            url: getEntityDetailsPath(
+              EntityType.TABLE,
+              entityFqn,
+              EntityTabs.PROFILER
+            ),
           },
           {
             name: t('label.add-entity-metric', {
@@ -94,14 +98,20 @@ const AddCustomMetricPage = () => {
   const handleBackClick = () => {
     if (isColumnMetric) {
       history.push({
-        pathname: getTableTabPath(entityFqn, EntityTabs.PROFILER),
+        pathname: getEntityDetailsPath(
+          EntityType.TABLE,
+          entityFqn,
+          EntityTabs.PROFILER
+        ),
         search: QueryString.stringify({
           activeTab: TableProfilerTab.COLUMN_PROFILE,
           activeColumnFqn,
         }),
       });
     } else {
-      history.push(getTableTabPath(entityFqn, EntityTabs.PROFILER));
+      history.push(
+        getEntityDetailsPath(EntityType.TABLE, entityFqn, EntityTabs.PROFILER)
+      );
     }
   };
 

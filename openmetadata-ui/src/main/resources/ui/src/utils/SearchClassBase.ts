@@ -76,7 +76,7 @@ class SearchClassBase {
       [EntityType.TOPIC]: SearchIndex.TOPIC,
       [EntityType.CONTAINER]: SearchIndex.CONTAINER,
       [EntityType.TAG]: SearchIndex.TAG,
-      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
+      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY_TERM,
       [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
       [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
       [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
@@ -117,7 +117,7 @@ class SearchClassBase {
         value: SearchIndex.DASHBOARD_DATA_MODEL,
         label: i18n.t('label.data-model'),
       },
-      { value: SearchIndex.GLOSSARY, label: i18n.t('label.glossary') },
+      { value: SearchIndex.GLOSSARY_TERM, label: i18n.t('label.glossary') },
       { value: SearchIndex.TAG, label: i18n.t('label.tag') },
       { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
       { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
@@ -203,8 +203,8 @@ class SearchClassBase {
         path: 'searchIndexes',
         icon: SearchOutlined,
       },
-      [SearchIndex.GLOSSARY]: {
-        label: i18n.t('label.glossary-plural'),
+      [SearchIndex.GLOSSARY_TERM]: {
+        label: i18n.t('label.glossary-term-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'glossaries',
@@ -257,7 +257,7 @@ class SearchClassBase {
         return [...COMMON_DROPDOWN_ITEMS];
       case SearchIndex.DASHBOARD_DATA_MODEL:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
-      case SearchIndex.GLOSSARY:
+      case SearchIndex.GLOSSARY_TERM:
         return [...GLOSSARY_DROPDOWN_ITEMS];
       case SearchIndex.TAG:
         return [...TAG_DROPDOWN_ITEMS];

@@ -53,7 +53,7 @@ from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
-from metadata.utils.helpers import calculate_execution_time
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -196,7 +196,10 @@ class Profiler(Generic[TMetric]):
             CreateTableProfileRequest:
         """
         for attrs, val in profile.tableProfile:
-            if attrs not in {"timestamp", "profileSample", "profileSampleType"} and val:
+            if (
+                attrs not in {"timestamp", "profileSample", "profileSampleType"}
+                and val is not None
+            ):
                 return
 
         for col_element in profile.columnProfile:
@@ -550,7 +553,7 @@ class Profiler(Generic[TMetric]):
 
         return table_profile
 
-    @calculate_execution_time
+    @calculate_execution_time(store=False)
     def generate_sample_data(self) -> Optional[TableData]:
         """Fetch and ingest sample data
 

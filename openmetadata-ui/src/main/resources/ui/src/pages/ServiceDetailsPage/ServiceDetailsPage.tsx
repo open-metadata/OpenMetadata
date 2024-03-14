@@ -321,6 +321,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (id: string, displayName: string) => {
       try {
         const data = await triggerIngestionPipelineById(id);
+        showSuccessToast(t('message.pipeline-trigger-success-message'));
 
         updateCurrentSelectedIngestion(id, data, 'pipelineStatuses');
       } catch (err) {
@@ -614,7 +615,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [serviceCategory, decodedServiceFQN, getOtherDetails, isMetadataService]);
+  }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
   useEffect(() => {
     getOtherDetails();

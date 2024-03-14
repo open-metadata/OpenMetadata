@@ -48,7 +48,7 @@ WORKDIR /home/
 COPY <my-organization-certs> .
 RUN update-ca-certificates
 ```
-where `docker.getcollate.io/openmetadata/server:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/server:1.3.0`.
+where `docker.getcollate.io/openmetadata/server:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/server:1.3.1`.
 This image needs to be built and published to the container registry of your choice.
 
 ### 2. Update your openmetadata helm values yaml
@@ -95,7 +95,7 @@ COPY setup.py .
 RUN pip install --no-deps .
 ```
   
-where `docker.getcollate.io/openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/ingestion:1.3.0`.
+where `docker.getcollate.io/openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/ingestion:1.3.1`.
 This image needs to be built and published to the container registry of your choice.
 
 ### 2. Update the airflow in openmetadata dependencies values YAML

@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -53,6 +54,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getAllRowKeysByKeyName,
   getFilterIcon,
   getTableExpandableConfig,
   makeData,
@@ -80,7 +82,6 @@ const SchemaTable = ({
   isReadOnly = false,
   onThreadLinkSelect,
   tableConstraints,
-  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
@@ -119,6 +120,12 @@ const SchemaTable = ({
   const data = React.useMemo(
     () => makeData(searchedColumns),
     [searchedColumns]
+  );
+
+  const nestedTableFqnKeys = useMemo(
+    () =>
+      getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName'),
+    [tableColumns]
   );
 
   useEffect(() => {
@@ -278,7 +285,7 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = ({ displayName }: EntityName) => {
+  const handleEditDisplayName = async ({ displayName }: EntityName) => {
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
@@ -290,9 +297,8 @@ const SchemaTable = ({
         field: 'displayName',
         columns: tableCols,
       });
-      onUpdate(tableCols).then(() => {
-        setEditColumnDisplayName(undefined);
-      });
+      await onUpdate(tableCols);
+      setEditColumnDisplayName(undefined);
     } else {
       setEditColumnDisplayName(undefined);
     }
@@ -343,18 +349,26 @@ const SchemaTable = ({
               ) : null}
               {(tablePermissions?.EditAll ||
                 tablePermissions?.EditDisplayName) && (
-                <Button
-                  className="cursor-pointer hover-cell-icon w-fit-content"
-                  data-testid="edit-displayName-button"
-                  style={{
-                    color: DE_ACTIVE_COLOR,
-                    padding: 0,
-                    border: 'none',
-                    background: 'transparent',
-                  }}
-                  onClick={() => handleEditDisplayNameClick(record)}>
-                  <IconEdit />
-                </Button>
+                <Tooltip
+                  placement="right"
+                  title={t('label.edit-entity', {
+                    entity: t('label.display-name'),
+                  })}>
+                  <Button
+                    className="cursor-pointer hover-cell-icon w-fit-content"
+                    data-testid="edit-displayName-button"
+                    style={{
+                      color: DE_ACTIVE_COLOR,
+                      padding: 0,
+                      border: 'none',
+                      background: 'transparent',
+                    }}
+                    onClick={() => handleEditDisplayNameClick(record)}>
+                    <IconEdit
+                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                    />
+                  </Button>
+                </Tooltip>
               )}
             </div>
           );
@@ -377,21 +391,6 @@ const SchemaTable = ({
         width: 320,
         render: renderDescription,
       },
-      ...(tablePartitioned
-        ? [
-            {
-              title: t('label.partitioned'),
-              dataIndex: 'name',
-              key: 'name',
-              accessor: 'name',
-              width: 120,
-              render: (columnName: string) =>
-                tablePartitioned?.columns?.includes(columnName)
-                  ? t('label.partitioned')
-                  : t('label.non-partitioned'),
-            },
-          ]
-        : []),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
@@ -459,10 +458,8 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    setExpandedRowKeys(() =>
-      data.map((value) => value?.fullyQualifiedName ?? '')
-    );
-  }, [data]);
+    setExpandedRowKeys(nestedTableFqnKeys);
+  }, [searchText]);
 
   return (
     <>

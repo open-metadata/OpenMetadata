@@ -18,26 +18,20 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
-
 import { EntityField } from '../../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  CustomProperty,
-  Type,
-} from '../../../generated/entity/type';
-import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-
-import { getEntityDetailLink, Transi18next } from '../../../utils/CommonUtils';
-
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ChangeDescription, Type } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -63,7 +57,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
-  maxDataCap = 5,
+  maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
@@ -172,8 +166,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             extension={extensionObject.extensionObject}
             hasEditPermissions={hasEditAccess}
             isVersionView={isVersionView}
-            propertyName={record.name}
-            propertyType={record.propertyType}
+            property={record}
             versionDataKeys={extensionObject.addedKeysList}
             onExtensionUpdate={onExtensionUpdate}
           />
@@ -187,6 +180,34 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     extensionObject,
     isVersionView,
     onExtensionUpdate,
+  ]);
+
+  const viewAllBtn = useMemo(() => {
+    const customProp = entityTypeDetail.customProperties ?? [];
+
+    if (
+      maxDataCap &&
+      customProp.length >= maxDataCap &&
+      entityDetails.fullyQualifiedName
+    ) {
+      return (
+        <Link
+          to={entityUtilClassBase.getEntityLink(
+            entityType,
+            entityDetails.fullyQualifiedName,
+            EntityTabs.CUSTOM_PROPERTIES
+          )}>
+          {t('label.view-all')}
+        </Link>
+      );
+    }
+
+    return null;
+  }, [
+    entityTypeDetail.customProperties,
+    entityType,
+    entityDetails,
+    maxDataCap,
   ]);
 
   useEffect(() => {
@@ -252,17 +273,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Typography.Text className="right-panel-label">
               {t('label.custom-property-plural')}
             </Typography.Text>
-            {(entityTypeDetail.customProperties ?? []).length >= maxDataCap &&
-              entityDetails.fullyQualifiedName && (
-                <Link
-                  to={getEntityDetailLink(
-                    entityType,
-                    entityDetails.fullyQualifiedName,
-                    EntityTabs.CUSTOM_PROPERTIES
-                  )}>
-                  {t('label.view-all')}
-                </Link>
-              )}
+            {viewAllBtn}
           </div>
           <Table
             bordered

@@ -28,7 +28,8 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -319,15 +320,21 @@ class SnowflakeSource(
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         cluster_key = self.partition_details.get(f"{schema_name}.{table_name}")
         if cluster_key:
             partition_columns = self.parse_column_name_from_expr(cluster_key)
             partition_details = TablePartition(
-                columns=self.__fix_partition_column_case(
-                    table_name, schema_name, inspector, partition_columns
-                ),
-                intervalType=IntervalType.COLUMN_VALUE,
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=column,
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                    for column in self.__fix_partition_column_case(
+                        table_name, schema_name, inspector, partition_columns
+                    )
+                ]
             )
             return True, partition_details
         return False, None

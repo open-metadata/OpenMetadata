@@ -16,11 +16,21 @@ import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
-import { SubscriptionType } from '../../generated/events/eventSubscription';
+import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
+import {
+  SubscriptionCategory,
+  SubscriptionType,
+} from '../../generated/events/eventSubscription';
+import {
+  mockExternalDestinationOptions,
+  mockNonTaskInternalDestinationOptions,
+  mockTaskInternalDestinationOptions,
+} from '../../mocks/AlertUtil.mock';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
   getDisplayNameForEntities,
+  getFilteredDestinationOptions,
   getFunctionDisplayName,
   listLengthValidator,
 } from './AlertsUtil';
@@ -137,5 +147,69 @@ describe('AlertsUtil tests', () => {
     expect(getDisplayNameForEntities('mlmodel')).toBe('label.ml-model');
 
     expect(getDisplayNameForEntities('unknown')).toBe('Unknown');
+  });
+
+  it('getFilteredDestinationOptions should return all options for external tab key', () => {
+    const resultTask = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.external,
+      'task'
+    );
+
+    const resultTable = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.external,
+      'table'
+    );
+
+    [resultTask, resultTable].forEach((results) => {
+      expect(results).toHaveLength(5);
+
+      results.map((result) =>
+        expect(
+          mockExternalDestinationOptions.includes(
+            result.value as SubscriptionType
+          )
+        ).toBeTruthy()
+      );
+    });
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for "task" source', () => {
+    const resultTask = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'task'
+    );
+
+    expect(resultTask).toHaveLength(2);
+
+    resultTask.map((result) =>
+      expect(
+        mockTaskInternalDestinationOptions.includes(
+          result.value as SubscriptionCategory
+        )
+      ).toBeTruthy()
+    );
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for non "task" source', () => {
+    const resultContainer = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'container'
+    );
+    const resultTestSuite = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'testSuite'
+    );
+
+    [resultContainer, resultTestSuite].forEach((results) => {
+      expect(results).toHaveLength(5);
+
+      results.map((result) =>
+        expect(
+          mockNonTaskInternalDestinationOptions.includes(
+            result.value as SubscriptionCategory
+          )
+        ).toBeTruthy()
+      );
+    });
   });
 });

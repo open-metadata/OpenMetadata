@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Popover, Space, Tabs, Typography } from 'antd';
+import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
 import { isEmpty, noop, toString } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -136,8 +136,8 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const handleUpdate = (updateItems: EntityReference[]) => {
-    onUpdate(
+  const handleUpdate = async (updateItems: EntityReference[]) => {
+    await onUpdate(
       isEmpty(updateItems)
         ? undefined
         : {
@@ -147,6 +147,7 @@ export const UserTeamSelectableList = ({
             displayName: updateItems[0].displayName,
           }
     );
+
     setPopupVisible(false);
   };
 
@@ -187,6 +188,8 @@ export const UserTeamSelectableList = ({
       }
     }
   };
+
+  const openPopover = useCallback(() => setPopupVisible(true), []);
 
   useEffect(() => {
     fetchCount();
@@ -267,14 +270,22 @@ export const UserTeamSelectableList = ({
       onOpenChange={setPopupVisible}>
       {children ??
         (hasPermission && (
-          <Button
-            className="flex-center p-0"
-            data-testid="edit-owner"
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setPopupVisible(true)}
-          />
+          <Tooltip
+            title={
+              !popupVisible &&
+              t('label.edit-entity', {
+                entity: t('label.owner'),
+              })
+            }>
+            <Button
+              className="flex-center p-0"
+              data-testid="edit-owner"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={openPopover}
+            />
+          </Tooltip>
         ))}
     </Popover>
   );

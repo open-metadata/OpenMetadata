@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
@@ -21,7 +21,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
   TAG_CONSTANT,
@@ -273,13 +273,18 @@ const TagsContainerV2 = ({
             <Row gutter={12}>
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
                 <Col>
-                  <EditIcon
-                    className="cursor-pointer align-middle"
-                    color={DE_ACTIVE_COLOR}
-                    data-testid="edit-button"
-                    width="14px"
-                    onClick={handleAddClick}
-                  />
+                  <Tooltip
+                    title={t('label.edit-entity', {
+                      entity: t('label.tag-plural'),
+                    })}>
+                    <EditIcon
+                      className="cursor-pointer align-middle"
+                      color={DE_ACTIVE_COLOR}
+                      data-testid="edit-button"
+                      width="14px"
+                      onClick={handleAddClick}
+                    />
+                  </Tooltip>
                 </Col>
               )}
               {showTaskHandler && (
@@ -308,15 +313,21 @@ const TagsContainerV2 = ({
   const editTagButton = useMemo(
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
-        <EditIcon
-          className="hover-cell-icon cursor-pointer align-middle"
-          data-testid="edit-button"
-          height={14}
-          name={t('label.edit')}
-          style={{ color: DE_ACTIVE_COLOR }}
-          width={14}
-          onClick={handleAddClick}
-        />
+        <Tooltip
+          title={t('label.edit-entity', {
+            entity: t('label.tag-plural'),
+          })}>
+          <Button
+            className="hover-cell-icon cursor-pointer align-middle p-0"
+            data-testid="edit-button"
+            style={{
+              color: DE_ACTIVE_COLOR,
+            }}
+            type="text"
+            onClick={handleAddClick}>
+            <EditIcon {...ICON_DIMENSION} />
+          </Button>
+        </Tooltip>
       ) : null,
     [permission, tags, tagType, handleAddClick]
   );

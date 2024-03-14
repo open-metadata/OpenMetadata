@@ -33,7 +33,8 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -251,7 +252,9 @@ class BigquerySource(
             test_connection_fn(
                 self.metadata, inspector_details.engine, self.service_connection
             )
-            if os.environ[GOOGLE_CREDENTIALS]:
+            # GOOGLE_CREDENTIALS may not have been set,
+            # to avoid key error, we use `get` for dict
+            if os.environ.get(GOOGLE_CREDENTIALS):
                 self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
 
     def query_table_names_and_types(
@@ -442,7 +445,8 @@ class BigquerySource(
         inspector_details = get_inspector_details(
             database_name=database_name, service_connection=self.service_connection
         )
-        self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
+        if os.environ.get(GOOGLE_CREDENTIALS):
+            self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
@@ -495,7 +499,7 @@ class BigquerySource(
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
         """
@@ -504,30 +508,38 @@ class BigquerySource(
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
                 table_partition = TablePartition(
-                    interval=str(table.time_partitioning.type_),
-                    intervalType=IntervalType.TIME_UNIT.value,
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=table.time_partitioning.field,
+                            interval=str(table.time_partitioning.type_),
+                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                        )
+                    ]
                 )
-                table_partition.columns = [table.time_partitioning.field]
                 return True, table_partition
-
             return True, TablePartition(
-                interval=str(table.time_partitioning.type_),
-                intervalType=IntervalType.INGESTION_TIME.value,
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="_PARTITIONTIME"
+                        if table.time_partitioning.type_ == "HOUR"
+                        else "_PARTITIONDATE",
+                        interval=str(table.time_partitioning.type_),
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME,
+                    )
+                ]
             )
         if table.range_partitioning:
-            table_partition = TablePartition(
-                intervalType=IntervalType.INTEGER_RANGE.value,
+            table_partition = PartitionColumnDetails(
+                columnName=table.range_partitioning.field,
+                intervalType=PartitionIntervalTypes.INTEGER_RANGE,
+                interval=None,
             )
             if hasattr(table.range_partitioning, "range_") and hasattr(
                 table.range_partitioning.range_, "interval"
             ):
                 table_partition.interval = table.range_partitioning.range_.interval
-            if (
-                hasattr(table.range_partitioning, "field")
-                and table.range_partitioning.field
-            ):
-                table_partition.columns = [table.range_partitioning.field]
-            return True, table_partition
+            table_partition.columnName = table.range_partitioning.field
+            return True, TablePartition(columns=[table_partition])
         return False, None
 
     def clean_raw_data_type(self, raw_data_type):

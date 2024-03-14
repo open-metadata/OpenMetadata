@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space, Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -21,6 +22,7 @@ import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/exter
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import {
   DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
   SUCCESS_COLOR,
   TEXT_BODY_COLOR,
@@ -47,7 +49,7 @@ interface GlossaryTermReferencesProps {
   isVersionView?: boolean;
   glossaryTerm: GlossaryTerm;
   permissions: OperationPermission;
-  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
+  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
 }
 
 const GlossaryTermReferences = ({
@@ -74,7 +76,7 @@ const GlossaryTermReferences = ({
           references: updatedRef,
         };
 
-        onGlossaryTermUpdate(updatedGlossaryTerm);
+        await onGlossaryTermUpdate(updatedGlossaryTerm);
         if (updateState) {
           setReferences(updatedRef);
         }
@@ -83,10 +85,6 @@ const GlossaryTermReferences = ({
     } catch (error) {
       // Added catch block to prevent uncaught promise
     }
-  };
-
-  const onReferenceModalSave = (values: TermReference[]) => {
-    handleReferencesSave(values);
   };
 
   useEffect(() => {
@@ -123,10 +121,11 @@ const GlossaryTermReferences = ({
               rel="noopener noreferrer"
               target="_blank">
               <div className="d-flex items-center">
-                <ExternalLinkIcon
+                <Icon
                   className="m-r-xss"
-                  color={iconColor}
-                  width="12px"
+                  component={ExternalLinkIcon}
+                  data-testid="external-link-icon"
+                  style={{ ...ICON_DIMENSION, color: iconColor }}
                 />
                 <span className={textClassName}>{ref.name}</span>
               </div>
@@ -198,7 +197,9 @@ const GlossaryTermReferences = ({
               <Tooltip
                 title={
                   permissions.EditAll
-                    ? t('label.edit')
+                    ? t('label.edit-entity', {
+                        entity: t('label.reference-plural'),
+                      })
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
@@ -246,9 +247,7 @@ const GlossaryTermReferences = ({
         onClose={() => {
           setIsViewMode(true);
         }}
-        onSave={(values: TermReference[]) => {
-          onReferenceModalSave(values);
-        }}
+        onSave={handleReferencesSave}
       />
     </div>
   );

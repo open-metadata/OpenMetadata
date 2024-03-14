@@ -43,6 +43,10 @@ jest.mock('../../rest/tableAPI', () => ({
   restoreTable: jest.fn(),
 }));
 
+jest.mock('../../rest/suggestionsAPI', () => ({
+  getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+}));
+
 jest.mock('../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
@@ -113,9 +117,12 @@ jest.mock('../../components/Database/SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaTab</p>);
 });
 
-jest.mock('../../components/Database/TableProfiler/TableProfiler', () => {
-  return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
-});
+jest.mock(
+  '../../components/Database/Profiler/TableProfiler/TableProfiler',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
+  }
+);
 
 jest.mock('../../components/Database/TableQueries/TableQueries', () => {
   return jest.fn().mockImplementation(() => <p>testTableQueries</p>);
@@ -151,6 +158,25 @@ jest.mock(
     })),
     __esModule: true,
     default: 'ActivityFeedProvider',
+  })
+);
+
+jest.mock(
+  '../../components/Suggestions/SuggestionsProvider/SuggestionsProvider',
+  () => ({
+    useSuggestionsContext: jest.fn().mockImplementation(() => ({
+      suggestions: [],
+      suggestionsByUser: new Map(),
+      selectedUserSuggestions: [],
+      entityFqn: 'fqn',
+      loading: false,
+      allSuggestionsUsers: [],
+      onUpdateActiveUser: jest.fn(),
+      fetchSuggestions: jest.fn(),
+      acceptRejectSuggestion: jest.fn(),
+    })),
+    __esModule: true,
+    default: 'SuggestionsProvider',
   })
 );
 
@@ -218,7 +244,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
-      fields: `${COMMON_API_FIELDS}`,
+      fields: `${COMMON_API_FIELDS},usageSummary`,
     });
   });
 

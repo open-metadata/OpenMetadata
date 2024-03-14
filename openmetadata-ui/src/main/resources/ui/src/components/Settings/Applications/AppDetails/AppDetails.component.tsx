@@ -40,8 +40,12 @@ import { ReactComponent as IconExternalLink } from '../../../../assets/svg/exter
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { APP_UI_SCHEMA } from '../../../../constants/Applications.constant';
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+
+import Icon from '@ant-design/icons/lib/components/Icon';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
@@ -82,15 +86,21 @@ const AppDetails = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
-  const [isLoading, setIsLoading] = useState(true);
   const [appData, setAppData] = useState<App>();
   const [showActions, setShowActions] = useState(false);
   const [showDeleteModel, setShowDeleteModel] = useState(false);
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
   const [action, setAction] = useState<AppAction | null>(null);
+  const [loadingState, setLoadingState] = useState<Record<string, boolean>>({
+    isFetchLoading: true,
+    isDeployLoading: false,
+    isRunLoading: false,
+    isSaveLoading: false,
+  });
+  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
-    setIsLoading(true);
+    setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
     try {
       const data = await getApplicationByName(fqn, {
         fields: 'owner,pipelines',
@@ -104,9 +114,9 @@ const AppDetails = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setLoadingState((prev) => ({ ...prev, isFetchLoading: false }));
     }
-  }, [fqn]);
+  }, [fqn, setLoadingState]);
 
   const onBrowseAppsClick = () => {
     history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
@@ -132,6 +142,7 @@ const AppDetails = () => {
 
   const onConfirmAction = useCallback(async () => {
     try {
+      setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       if (action === AppAction.ENABLE) {
         handleRestore();
       } else {
@@ -150,8 +161,10 @@ const AppDetails = () => {
       }
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
     }
-  }, [appData, action]);
+  }, [appData, action, setLoadingState]);
 
   const manageButtonContent: ItemType[] = [
     ...(appData?.deleted
@@ -228,6 +241,7 @@ const AppDetails = () => {
 
   const onConfigSave = async (data: IChangeEvent) => {
     if (appData) {
+      setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       const updatedFormData = formatFormDataForSubmit(data.formData);
       const updatedData = {
         ...appData,
@@ -248,6 +262,8 @@ const AppDetails = () => {
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setLoadingState((prev) => ({ ...prev, isSaveLoading: false }));
       }
     }
   };
@@ -280,6 +296,7 @@ const AppDetails = () => {
 
   const onDemandTrigger = async () => {
     try {
+      setLoadingState((prev) => ({ ...prev, isRunLoading: true }));
       await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
       showSuccessToast(
         t('message.application-action-successfully', {
@@ -288,11 +305,14 @@ const AppDetails = () => {
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingState((prev) => ({ ...prev, isRunLoading: false }));
     }
   };
 
   const onDeployTrigger = async () => {
     try {
+      setLoadingState((prev) => ({ ...prev, isDeployLoading: true }));
       await deployApp(appData?.fullyQualifiedName ?? '');
       showSuccessToast(
         t('message.application-action-successfully', {
@@ -302,6 +322,8 @@ const AppDetails = () => {
       fetchAppDetails();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingState((prev) => ({ ...prev, isDeployLoading: false }));
     }
   };
 
@@ -320,13 +342,15 @@ const AppDetails = () => {
               children: (
                 <div className="p-lg">
                   <FormBuilder
+                    hideCancelButton
                     useSelectWidget
                     cancelText={t('label.back')}
                     formData={appData.appConfiguration}
+                    isLoading={loadingState.isSaveLoading}
                     okText={t('label.submit')}
                     schema={jsonSchema}
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                    uiSchema={APP_UI_SCHEMA}
+                    uiSchema={UiSchema}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}
@@ -348,6 +372,10 @@ const AppDetails = () => {
             {appData && (
               <AppSchedule
                 appData={appData}
+                loading={{
+                  isRunLoading: loadingState.isRunLoading,
+                  isDeployLoading: loadingState.isDeployLoading,
+                }}
                 onDemandTrigger={onDemandTrigger}
                 onDeployTrigger={onDeployTrigger}
                 onSave={onAppScheduleSave}
@@ -376,7 +404,7 @@ const AppDetails = () => {
           ]
         : []),
     ];
-  }, [appData, jsonSchema]);
+  }, [appData, jsonSchema, loadingState]);
 
   const actionText = useMemo(() => {
     switch (action) {
@@ -395,7 +423,7 @@ const AppDetails = () => {
     fetchAppDetails();
   }, [fqn]);
 
-  if (isLoading) {
+  if (loadingState.isFetchLoading) {
     return <Loader />;
   }
 
@@ -430,7 +458,11 @@ const AppDetails = () => {
               placement="bottomRight"
               trigger={['click']}
               onOpenChange={setShowActions}>
-              <Tooltip placement="right">
+              <Tooltip
+                placement="topRight"
+                title={t('label.manage-entity', {
+                  entity: t('label.application'),
+                })}>
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
@@ -475,7 +507,7 @@ const AppDetails = () => {
 
                 {appData?.developerUrl && (
                   <div className="flex-center gap-2">
-                    <IconExternalLink width={12} />
+                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
                     <Typography.Link
                       className="text-xs"
                       href={appData?.developerUrl}
@@ -506,6 +538,7 @@ const AppDetails = () => {
         cancelText={t('label.cancel')}
         confirmText={t('label.ok')}
         header={t('message.are-you-sure')}
+        isLoading={loadingState.isSaveLoading}
         visible={showDeleteModel}
         onCancel={() => setShowDeleteModel(false)}
         onConfirm={onConfirmAction}

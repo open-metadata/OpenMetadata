@@ -26,6 +26,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
   Status,
@@ -153,8 +154,8 @@ const GlossaryTermsV1 = ({
     [glossaryTerm, handleGlossaryTermUpdate]
   );
 
-  const onTermUpdate = async (data: GlossaryTerm) => {
-    await handleGlossaryTermUpdate(data);
+  const onTermUpdate = async (data: GlossaryTerm | Glossary) => {
+    await handleGlossaryTermUpdate(data as GlossaryTerm);
     getEntityFeedCount();
   };
 
@@ -170,7 +171,7 @@ const GlossaryTermsV1 = ({
             permissions={permissions}
             selectedData={glossaryTerm}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
+            onUpdate={onTermUpdate}
           />
         ),
       },
@@ -334,7 +335,7 @@ const GlossaryTermsV1 = ({
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModelVisible(true)}
             onDelete={handleGlossaryTermDelete}
-            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
+            onUpdate={onTermUpdate}
           />
         </Col>
 

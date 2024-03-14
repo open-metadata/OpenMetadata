@@ -46,6 +46,7 @@ const TeamsInfo = ({
 
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { currentUser } = useAuthContext();
 
@@ -73,12 +74,15 @@ const TeamsInfo = ({
 
   const onEmailSave = async (data: { email: string }) => {
     if (currentTeam) {
+      setIsLoading(true);
+
       const updatedData: Team = {
         ...currentTeam,
         email: isEmpty(data.email) ? undefined : data.email,
       };
 
       await updateTeamHandler(updatedData);
+      setIsLoading(false);
     }
     setIsEmailEdit(false);
   };
@@ -160,6 +164,7 @@ const TeamsInfo = ({
                 <Button
                   className="h-8 p-x-xss"
                   data-testid="cancel-edit-email"
+                  disabled={isLoading}
                   size="small"
                   type="primary"
                   onClick={() => setIsEmailEdit(false)}>
@@ -169,6 +174,7 @@ const TeamsInfo = ({
                   className="h-8 p-x-xss"
                   data-testid="save-edit-email"
                   htmlType="submit"
+                  loading={isLoading}
                   size="small"
                   type="primary">
                   <CheckOutlined />
@@ -183,7 +189,6 @@ const TeamsInfo = ({
             </Typography.Text>
             {hasEditPermission && (
               <Tooltip
-                placement="right"
                 title={
                   hasEditPermission
                     ? t('label.edit-entity', {
@@ -204,7 +209,7 @@ const TeamsInfo = ({
         )}
       </Space>
     ),
-    [email, isEmailEdit, hasEditPermission]
+    [email, isEmailEdit, hasEditPermission, isLoading]
   );
 
   const teamTypeElement = useMemo(() => {
@@ -235,23 +240,28 @@ const TeamsInfo = ({
             </Typography.Text>
 
             {hasEditPermission && (
-              <Icon
-                className={classNames('vertical-middle m-l-xs', {
-                  'opacity-50': isGroupType,
-                })}
-                data-testid="edit-team-type-icon"
-                title={
-                  isGroupType
-                    ? t('message.group-team-type-change-message')
-                    : t('label.edit-entity', {
-                        entity: t('label.team-type'),
-                      })
-                }
-                onClick={
-                  isGroupType ? undefined : () => setShowTypeSelector(true)
-                }>
-                <EditIcon />
-              </Icon>
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.team-type'),
+                })}>
+                <Icon
+                  className={classNames('vertical-middle m-l-xs', {
+                    'opacity-50': isGroupType,
+                  })}
+                  data-testid="edit-team-type-icon"
+                  title={
+                    isGroupType
+                      ? t('message.group-team-type-change-message')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
+                  }
+                  onClick={
+                    isGroupType ? undefined : () => setShowTypeSelector(true)
+                  }>
+                  <EditIcon />
+                </Icon>
+              </Tooltip>
             )}
           </>
         )}

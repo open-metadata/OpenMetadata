@@ -26,7 +26,7 @@ import {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
-import { getTableTabPath } from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
@@ -54,8 +54,8 @@ import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { TableProfilerTab } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import SingleColumnProfile from '../../Database/TableProfiler/SingleColumnProfile';
-import TableProfilerChart from '../../Database/TableProfiler/TableProfilerChart/TableProfilerChart';
+import SingleColumnProfile from '../../Database/Profiler/TableProfiler/SingleColumnProfile';
+import TableProfilerChart from '../../Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import IngestionStepper from '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { AddDataQualityTestProps } from './AddDataQualityTest.interface';
 import RightPanel from './components/RightPanel';
@@ -84,7 +84,8 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getTableTabPath(
+        url: getEntityDetailsPath(
+          EntityType.TABLE,
           table.fullyQualifiedName ?? '',
           EntityTabs.PROFILER
         ),
@@ -111,7 +112,8 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const handleRedirection = () => {
     history.push({
-      pathname: getTableTabPath(
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
         table.fullyQualifiedName ?? '',
         EntityTabs.PROFILER
       ),

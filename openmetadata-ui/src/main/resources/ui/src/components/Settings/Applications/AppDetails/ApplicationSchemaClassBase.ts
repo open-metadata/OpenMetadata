@@ -15,6 +15,9 @@ class ApplicationSchemaClassBase {
   public importSchema(fqn: string) {
     return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
   }
+  public getJSONUISchema() {
+    return {};
+  }
 }
 
 const applicationSchemaClassBase = new ApplicationSchemaClassBase();

@@ -26,10 +26,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationSchemaClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
-import {
-  APP_UI_SCHEMA,
-  STEPS_FOR_APP_INSTALL,
-} from '../../constants/Applications.constant';
+import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
@@ -57,9 +54,11 @@ const AppInstall = () => {
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
 
   const stepperList = useMemo(
     () =>
@@ -115,6 +114,7 @@ const AppInstall = () => {
 
   const onSubmit = async (repeatFrequency: string) => {
     try {
+      setIsSavingLoading(true);
       const data: CreateAppRequest = {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
@@ -132,6 +132,8 @@ const AppInstall = () => {
       goToAppPage();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingLoading(false);
     }
   };
 
@@ -173,7 +175,7 @@ const AppInstall = () => {
               okText={t('label.submit')}
               schema={jsonSchema}
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-              uiSchema={APP_UI_SCHEMA}
+              uiSchema={UiSchema}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
@@ -187,6 +189,7 @@ const AppInstall = () => {
             <TestSuiteScheduler
               includePeriodOptions={initialOptions}
               initialData={initialValue}
+              isLoading={isSavingLoading}
               onCancel={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
@@ -197,7 +200,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, initialOptions]);
+  }, [activeServiceStep, appData, jsonSchema, initialOptions, isSavingLoading]);
 
   useEffect(() => {
     fetchAppDetails();

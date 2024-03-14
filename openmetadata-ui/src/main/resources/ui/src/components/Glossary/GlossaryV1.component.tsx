@@ -60,7 +60,6 @@ import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const GlossaryV1 = ({
   isGlossaryActive,
-  deleteStatus = 'initial',
   selectedData,
   onGlossaryTermUpdate,
   updateGlossary,
@@ -175,12 +174,12 @@ const GlossaryV1 = ({
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const { id } = selectedData;
     if (isGlossaryActive) {
-      onGlossaryDelete(id);
+      await onGlossaryDelete(id);
     } else {
-      onGlossaryTermDelete(id);
+      await onGlossaryTermDelete(id);
     }
     setIsDelete(false);
   };
@@ -322,7 +321,7 @@ const GlossaryV1 = ({
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
     } else {
-      handleGlossaryTermAdd(formData);
+      await handleGlossaryTermAdd(formData);
     }
   };
 
@@ -396,7 +395,6 @@ const GlossaryV1 = ({
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
           entityType="Glossary"
-          loadingState={deleteStatus}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
