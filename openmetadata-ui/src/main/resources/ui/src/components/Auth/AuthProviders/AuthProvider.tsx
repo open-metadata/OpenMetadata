@@ -27,7 +27,6 @@ import { isEmpty, isNil, isNumber } from 'lodash';
 import Qs from 'qs';
 import React, {
   ComponentType,
-  createContext,
   ReactNode,
   useCallback,
   useEffect,
@@ -88,8 +87,6 @@ interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
 }
-
-export const AuthContext = createContext({});
 
 const cookieStorage = new CookieStorage();
 
@@ -670,11 +667,7 @@ export const AuthProvider = ({
     !authConfig ||
     (authConfig.provider === AuthProviderEnum.Azure && !msalInstance);
 
-  return (
-    <AuthContext.Provider value={{}}>
-      {isLoading ? <Loader fullScreen /> : getProtectedApp()}
-    </AuthContext.Provider>
-  );
+  return <>{isLoading ? <Loader fullScreen /> : getProtectedApp()}</>;
 };
 
 export default AuthProvider;

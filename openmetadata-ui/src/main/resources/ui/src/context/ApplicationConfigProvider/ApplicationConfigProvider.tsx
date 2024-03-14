@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
-import React, { createContext, FC, ReactNode, useEffect } from 'react';
+import React, { FC, ReactNode, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { LoginConfiguration } from '../../generated/configuration/loginConfiguration';
@@ -48,8 +48,6 @@ export interface UserProfileMap {
   user?: User;
   status: UserProfileLoadingStatus;
 }
-
-export const ApplicationConfigContext = createContext({});
 
 interface ApplicationConfigProviderProps {
   children: ReactNode;
@@ -96,11 +94,7 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }
   }, [applicationConfig]);
 
-  return (
-    <ApplicationConfigContext.Provider value={{}}>
-      {children}
-    </ApplicationConfigContext.Provider>
-  );
+  return <>{children}</>;
 };
 
 export default ApplicationConfigProvider;
