@@ -73,13 +73,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 ## Metadata Services
 
-{% connectorsListContainer %}
-
-{% connectorInfoCard name="Amundsen" stage="PROD" href="/connectors/metadata/amundsen" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Atlas" stage="PROD" href="/connectors/metadata/atlas" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Alation" stage="PROD" href="/connectors/metadata/alation" platform="OpenMetadata" / %}
-
-{% /connectorsListContainer %}
+{% partial file="/v1.3/connectors/metadata/connectors-list.md" /%}
 
 
 ## Search Services
