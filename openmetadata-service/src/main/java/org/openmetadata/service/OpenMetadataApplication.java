@@ -25,6 +25,7 @@ import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
+import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
@@ -52,6 +53,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.http.pathmap.ServletPathSpec;
+import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
@@ -247,6 +249,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .equals(ClientType.CONFIDENTIAL)) {
       CommonHelper.assertNotNull(
           "OidcConfiguration", config.getAuthenticationConfiguration().getOidcConfiguration());
+
+      // Set up a Session Manager
+      MutableServletContextHandler contextHandler = environment.getApplicationContext();
+      if (contextHandler.getSessionHandler() == null) {
+        contextHandler.setSessionHandler(new SessionHandler());
+      }
+
+      // Register Servlets
       OidcClient oidcClient =
           tryCreateOidcClient(config.getAuthenticationConfiguration().getOidcConfiguration());
       oidcClient.setCallbackUrl(
