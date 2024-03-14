@@ -20,18 +20,18 @@ import { useHistory } from 'react-router-dom';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
+import Loader from '../../../components/common/Loader/Loader';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
-import Loader from '../../../components/Loader/Loader';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { UsersTab } from '../../../components/Users/UsersTab/UsersTabs.component';
+import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
@@ -222,7 +222,7 @@ export const PersonaDetailsPage = () => {
                 selectedUsers={personaDetails.users ?? []}
                 onUpdate={(users) => handlePersonaUpdate({ users })}>
                 <Button
-                  data-testid="add-user-button"
+                  data-testid="add-persona-button"
                   size="small"
                   type="primary">
                   {t('label.add-entity', { entity: t('label.user') })}

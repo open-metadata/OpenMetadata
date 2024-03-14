@@ -36,7 +36,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/AddDataQualityTest/components/TestSuiteScheduler',
+  '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler',
   () =>
     jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
       <>
@@ -48,14 +48,15 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Applications/AppDetails/ApplicationSchemaClassBase',
+  '../../components/Settings/Applications/AppDetails/ApplicationSchemaClassBase',
   () => ({
     importSchema: jest.fn().mockResolvedValue({}),
+    getJSONUISchema: jest.fn().mockReturnValue({}),
   })
 );
 
 jest.mock(
-  '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component',
+  '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component',
   () =>
     jest.fn().mockImplementation(({ onSave, onCancel }) => (
       <>
@@ -80,11 +81,12 @@ jest.mock('../../components/common/FormBuilder/FormBuilder', () =>
   ))
 );
 
-jest.mock('../../components/IngestionStepper/IngestionStepper.component', () =>
-  jest.fn().mockImplementation(() => <div>IngestionStepper</div>)
+jest.mock(
+  '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
+  () => jest.fn().mockImplementation(() => <div>IngestionStepper</div>)
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 

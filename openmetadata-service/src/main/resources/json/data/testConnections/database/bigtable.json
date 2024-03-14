@@ -20,7 +20,7 @@
       {
         "name": "ReadRows",
         "description": "Validate that we can read rows with the given credentials.",
-        "errorMessage": "Failed to read rows from BigTable, please validate to the credentials of service account"
+        "errorMessage": "Failed to read rows from BigTable, please validate to the credentials of service account",
         "shortCircuit": true,
         "mandatory": true
       }

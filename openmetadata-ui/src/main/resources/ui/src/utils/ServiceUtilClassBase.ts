@@ -12,7 +12,6 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { SearchSuggestions } from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -60,6 +59,7 @@ import {
   MSSQL,
   MYSQL,
   NIFI,
+  OPENLINEAGE,
   OPEN_SEARCH,
   ORACLE,
   PINOT,
@@ -89,6 +89,7 @@ import {
   UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
+import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -107,6 +108,7 @@ class ServiceUtilClassBase {
     StorageServiceType.Adls,
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
+    StorageServiceType.Gcs,
   ];
 
   protected updateUnsupportedServices(types: string[]) {
@@ -334,6 +336,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.DatabricksPipeline:
         return DATABRICK;
+
+      case PipelineServiceType.OpenLineage:
+        return OPENLINEAGE;
 
       case MlModelServiceType.Mlflow:
         return MLFLOW;

@@ -12,19 +12,19 @@
  */
 
 import { t } from 'i18next';
-import { map, values } from 'lodash';
+import { capitalize, map, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
   DataType,
-  PartitionIntervalType,
+  PartitionIntervalTypes,
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import { EntityType } from '../generated/tests/testDefinition';
+import { TestCaseType } from '../rest/testAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -346,18 +346,19 @@ export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
 ];
 
 export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
-  [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
-  [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
-  [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
-  [PartitionIntervalType.ColumnValue]: [DataType.Varchar, DataType.String],
-};
+  [PartitionIntervalTypes.IngestionTime]:
+    SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalTypes.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalTypes.IntegerRange]: [DataType.Int, DataType.Bigint],
+  [PartitionIntervalTypes.ColumnValue]: [DataType.Varchar, DataType.String],
+} as Record<PartitionIntervalTypes, DataType[]>;
 
-export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(
-  (value) => ({
-    value,
-    label: value,
-  })
-);
+export const INTERVAL_TYPE_OPTIONS = Object.keys(
+  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL
+).map((value) => ({
+  value,
+  label: value,
+}));
 export const INTERVAL_UNIT_OPTIONS = Object.values(PartitionIntervalUnit).map(
   (value) => ({
     value,
@@ -392,17 +393,13 @@ export const PROFILER_MODAL_LABEL_STYLE = {
 };
 
 export const TIME_BASED_PARTITION = [
-  PartitionIntervalType.IngestionTime,
-  PartitionIntervalType.TimeUnit,
+  PartitionIntervalTypes.IngestionTime,
+  PartitionIntervalTypes.TimeUnit,
 ];
 
 export const TEST_CASE_TYPE_OPTION = [
-  {
-    label: t('label.all'),
-    value: '',
-  },
-  ...map(EntityType, (value, key) => ({
-    label: key,
+  ...map(TestCaseType, (value) => ({
+    label: capitalize(value),
     value: value,
   })),
 ];

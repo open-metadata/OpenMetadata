@@ -20,11 +20,12 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ButtonSkeleton from '../../components/common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import TestEmail from '../../components/TestEmail/TestEmail.component';
+import TestEmail from '../../components/Settings/Email/TestEmail/TestEmail.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -170,18 +171,22 @@ function EmailConfigSettingsPage() {
                 </Button>
               )}
 
-              <Button
-                className="m-l-md"
-                icon={
-                  !isUndefined(emailConfigValues) && (
-                    <Icon component={IconEdit} size={12} />
-                  )
-                }
-                onClick={handleEditClick}>
-                {isUndefined(emailConfigValues)
-                  ? t('label.add')
-                  : t('label.edit')}
-              </Button>
+              {loading ? (
+                <ButtonSkeleton />
+              ) : (
+                <Button
+                  className="m-l-md"
+                  icon={
+                    !isUndefined(emailConfigValues) && (
+                      <Icon component={IconEdit} size={12} />
+                    )
+                  }
+                  onClick={handleEditClick}>
+                  {isUndefined(emailConfigValues)
+                    ? t('label.add')
+                    : t('label.edit')}
+                </Button>
+              )}
             </Col>
           </Row>
         </Col>

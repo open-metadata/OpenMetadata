@@ -33,7 +33,7 @@ import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
-import Loader from '../Loader/Loader';
+import Loader from '../common/Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { getFilters, tabsInfo } from './NotificationBox.utils';
@@ -50,7 +50,6 @@ const NotificationBox = ({
   const { currentUser } = useAuthContext();
   const [notifications, setNotifications] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const [viewAllPath, setViewAllPath] = useState<string>(
     getUserPath(
       currentUser?.name as string,

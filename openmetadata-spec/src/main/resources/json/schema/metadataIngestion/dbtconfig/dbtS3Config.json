@@ -6,6 +6,12 @@
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config",
   "type": "object",
   "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": ["s3"],
+      "default": "s3"
+    },
     "dbtSecurityConfig": {
       "title": "DBT S3 Security Config",
       "$ref": "../../security/credentials/awsCredentials.json"
@@ -30,5 +36,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtSecurityConfig"]
+  "required": ["dbtSecurityConfig", "dbtConfigType"]
 }

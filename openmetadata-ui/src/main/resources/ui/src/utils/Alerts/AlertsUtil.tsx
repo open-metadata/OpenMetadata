@@ -22,8 +22,10 @@ import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
-import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import {
+  DESTINATION_DROPDOWN_TABS,
+  DESTINATION_SOURCE_ITEMS,
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
@@ -225,6 +227,13 @@ const getUserOptions = async (searchText: string) => {
     searchText,
     searchIndex: SearchIndex.USER,
     filters: 'isBot:false',
+  });
+};
+
+const getUserBotOptions = async (searchText: string) => {
+  return searchEntity({
+    searchText,
+    searchIndex: SearchIndex.USER,
   });
 };
 
@@ -526,6 +535,7 @@ export const getFieldByArgumentType = (
       break;
 
     case 'updateByUserList':
+    case 'userList':
       field = (
         <Col key="user-select" span={12}>
           <Form.Item
@@ -543,7 +553,7 @@ export const getFieldByArgumentType = (
               },
             ]}>
             <AsyncSelect
-              api={getUserOptions}
+              api={getUserBotOptions}
               className="w-full"
               data-testid="user-name-select"
               mode="multiple"
@@ -899,4 +909,49 @@ export const handleAlertSave = async ({
       );
     }
   }
+};
+
+export const getFilteredDestinationOptions = (
+  key: keyof typeof DESTINATION_SOURCE_ITEMS,
+  selectedSource: string
+) => {
+  // Get options based on destination type key ("Internal" OR "External").
+  const newOptions = DESTINATION_SOURCE_ITEMS[key];
+
+  const isInternalOptions = isEqual(key, DESTINATION_DROPDOWN_TABS.internal);
+
+  // Logic to filter the options based on destination type and selected source.
+  const filteredOptions = newOptions.filter((option) => {
+    // If the destination type is external, always show all options.
+    if (!isInternalOptions) {
+      return true;
+    }
+
+    // Logic to filter options for destination type "Internal"
+
+    // Show all options except "Assignees" and "Mentions" for all sources.
+    let shouldShowOption =
+      option.value !== SubscriptionCategory.Assignees &&
+      option.value !== SubscriptionCategory.Mentions;
+
+    // Only show "Owners" and "Assignees" options for "Task" source.
+    if (selectedSource === 'task') {
+      shouldShowOption = [
+        SubscriptionCategory.Owners,
+        SubscriptionCategory.Assignees,
+      ].includes(option.value as SubscriptionCategory);
+    }
+
+    // Only show "Owners" and "Mentions" options for "Conversation" source.
+    if (selectedSource === 'conversation') {
+      shouldShowOption = [
+        SubscriptionCategory.Owners,
+        SubscriptionCategory.Mentions,
+      ].includes(option.value as SubscriptionCategory);
+    }
+
+    return shouldShowOption;
+  });
+
+  return filteredOptions;
 };

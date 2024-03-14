@@ -50,19 +50,19 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import {
   getCountBadge,
-  getEntityDetailLink,
   getFeedCounts,
   Transi18next,
 } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityUserLink,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import Loader from '../../Loader/Loader';
-import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import '../../Widgets/FeedsWidget/feeds-widget.less';
+import Loader from '../../common/Loader/Loader';
+import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
+import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -134,7 +134,12 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+      entityUtilClassBase.getEntityLink(
+        entityType,
+        fqn,
+        EntityTabs.ACTIVITY_FEED,
+        subTab
+      )
     );
     setActiveThread();
   };

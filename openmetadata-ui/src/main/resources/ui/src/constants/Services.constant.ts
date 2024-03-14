@@ -54,6 +54,7 @@ import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
+import openlineage from '../assets/img/service-icon-openlineage.svg';
 import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -168,6 +169,7 @@ export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
 export const SAS = sas;
+export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
 
 export const AIRFLOW = airflow;
@@ -381,10 +383,12 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
+  DatabaseServiceType.BigTable,
   DatabaseServiceType.SAS,
   DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
   PipelineServiceType.Spark,
+  PipelineServiceType.OpenLineage,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
   DatabaseServiceType.Greenplum,

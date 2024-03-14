@@ -130,6 +130,11 @@
         "type": "string"
       },
       "uniqueItems": true
+    },
+    "systemApp": {
+      "description": "If the app is a system app, it cannot be uninstalled.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

@@ -372,7 +372,7 @@ const getCommonQueryBuilderFields = (
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: entitySearchIndex ?? [
-            (SearchIndex.TAG, SearchIndex.GLOSSARY),
+            (SearchIndex.TAG, SearchIndex.GLOSSARY_TERM),
           ],
           entityField: EntityFields.TAG,
         }),

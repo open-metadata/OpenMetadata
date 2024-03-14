@@ -12,7 +12,6 @@
  */
 import {
   interceptURL,
-  login,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -295,13 +294,13 @@ const cleanUp = () => {
   });
 };
 
-describe('My Data page', () => {
+describe('My Data page', { tags: 'DataAssets' }, () => {
   before(prepareData);
   after(cleanUp);
 
   it('Verify my data widget', () => {
     // login with newly created user
-    login(user1.email, user1.password);
+    cy.login(user1.email, user1.password);
     cy.get('[data-testid="my-data-widget"]').scrollIntoView();
 
     // verify total count
@@ -320,7 +319,7 @@ describe('My Data page', () => {
 
   it('Verify following widget', () => {
     // login with newly created user
-    login(user1.email, user1.password);
+    cy.login(user1.email, user1.password);
     cy.get('[data-testid="following-widget"]').scrollIntoView();
 
     // verify total count
@@ -336,7 +335,7 @@ describe('My Data page', () => {
 
   it('Verify user as owner feed widget', () => {
     // login with newly created user
-    login(user2.email, user2.password);
+    cy.login(user2.email, user2.password);
     cy.get('[data-testid="no-data-placeholder-container"]')
       .scrollIntoView()
       .should(
@@ -365,7 +364,7 @@ describe('My Data page', () => {
 
   it('Verify team as owner feed widget', () => {
     // login with newly created user
-    login(user1.email, user1.password);
+    cy.login(user1.email, user1.password);
 
     Object.entries(entities).forEach(([key, value]) => {
       updateOwnerAndVerify({

@@ -15,6 +15,60 @@ import { getByTestId, getByText, render } from '@testing-library/react';
 import React from 'react';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
+jest.mock('./AssignErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="no-data-placeholder">AssignErrorPlaceHolder</div>
+    ),
+}));
+
+jest.mock('./CreateErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="no-data-placeholder">AssignErrorPlaceHolder</div>
+    ),
+}));
+
+jest.mock('./CustomNoDataPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="no-data-placeholder">AssignErrorPlaceHolder</div>
+    ),
+}));
+
+jest.mock('./FilterErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="no-data-placeholder">AssignErrorPlaceHolder</div>
+    ),
+}));
+
+jest.mock('./NoDataPlaceholder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <div data-testid="no-data-placeholder">{children}</div>
+    )),
+}));
+
+jest.mock('./PermissionErrorPlaceholder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="no-data-placeholder">AssignErrorPlaceHolder</div>
+    ),
+}));
+
 describe('Test Error place holder Component', () => {
   it('Component should render', () => {
     const { container } = render(
@@ -24,7 +78,7 @@ describe('Test Error place holder Component', () => {
     );
 
     expect(getByTestId(container, 'no-data-placeholder')).toBeInTheDocument();
-    expect(getByTestId(container, 'no-data-image')).toBeInTheDocument();
+
     expect(getByText(container, 'Children1')).toBeInTheDocument();
   });
 });

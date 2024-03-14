@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
-import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -35,7 +34,7 @@ import { UserSelectableListProps } from './UserSelectableList.interface';
 export const UserSelectableList = ({
   hasPermission,
   selectedUsers = [],
-  onUpdate = noop,
+  onUpdate,
   children,
   popoverProps,
   multiSelect = true,
@@ -100,11 +99,11 @@ export const UserSelectableList = ({
   };
 
   const handleUpdate = useCallback(
-    (users: EntityReference[]) => {
+    async (users: EntityReference[]) => {
       if (multiSelect) {
-        (onUpdate as (users: EntityReference[]) => void)(users);
+        await (onUpdate as (users: EntityReference[]) => Promise<void>)(users);
       } else {
-        (onUpdate as (users: EntityReference) => void)(users[0]);
+        await (onUpdate as (users: EntityReference) => Promise<void>)(users[0]);
       }
       setPopupVisible(false);
     },

@@ -17,19 +17,20 @@ import { I18nextProvider } from 'react-i18next';
 import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import ApplicationConfigProvider from './components/ApplicationConfigProvider/ApplicationConfigProvider';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
-import DirectionProvider from './components/DirectionProvider/DirectionProvider';
+import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
-import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
-import PermissionProvider from './components/PermissionProvider/PermissionProvider';
-import TourProvider from './components/TourProvider/TourProvider';
+import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
-import WebSocketProvider from './components/WebSocketProvider/WebSocketProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
+import ApplicationConfigProvider from './context/ApplicationConfigProvider/ApplicationConfigProvider';
+import DirectionProvider from './context/DirectionProvider/DirectionProvider';
+import GlobalSearchProvider from './context/GlobalSearchProvider/GlobalSearchProvider';
+import PermissionProvider from './context/PermissionProvider/PermissionProvider';
+import TourProvider from './context/TourProvider/TourProvider';
+import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
@@ -49,11 +50,13 @@ const App: FC = () => {
                           <PermissionProvider>
                             <WebSocketProvider>
                               <GlobalSearchProvider>
-                                <DomainProvider>
-                                  <EntityExportModalProvider>
-                                    <AppRouter />
-                                  </EntityExportModalProvider>
-                                </DomainProvider>
+                                <ApplicationsProvider>
+                                  <DomainProvider>
+                                    <EntityExportModalProvider>
+                                      <AppRouter />
+                                    </EntityExportModalProvider>
+                                  </DomainProvider>
+                                </ApplicationsProvider>
                               </GlobalSearchProvider>
                             </WebSocketProvider>
                           </PermissionProvider>

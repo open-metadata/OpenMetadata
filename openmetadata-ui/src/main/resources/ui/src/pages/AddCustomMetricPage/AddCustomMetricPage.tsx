@@ -16,16 +16,16 @@ import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import CustomMetricForm from '../../components/CustomMetricForm/CustomMetricForm.component';
-import Loader from '../../components/Loader/Loader';
-import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
-import SingleColumnProfile from '../../components/TableProfiler/Component/SingleColumnProfile';
-import TableProfilerChart from '../../components/TableProfiler/Component/TableProfilerChart';
-import { getTableTabPath } from '../../constants/constants';
+import { TableProfilerTab } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import SingleColumnProfile from '../../components/Database/Profiler/TableProfiler/SingleColumnProfile';
+import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
+import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
+import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
+import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
@@ -59,7 +59,11 @@ const AddCustomMetricPage = () => {
           ...getEntityBreadcrumbs(table, EntityType.TABLE),
           {
             name: getEntityName(table),
-            url: getTableTabPath(entityFqn, EntityTabs.PROFILER),
+            url: getEntityDetailsPath(
+              EntityType.TABLE,
+              entityFqn,
+              EntityTabs.PROFILER
+            ),
           },
           {
             name: t('label.add-entity-metric', {
@@ -94,14 +98,20 @@ const AddCustomMetricPage = () => {
   const handleBackClick = () => {
     if (isColumnMetric) {
       history.push({
-        pathname: getTableTabPath(entityFqn, EntityTabs.PROFILER),
+        pathname: getEntityDetailsPath(
+          EntityType.TABLE,
+          entityFqn,
+          EntityTabs.PROFILER
+        ),
         search: QueryString.stringify({
           activeTab: TableProfilerTab.COLUMN_PROFILE,
           activeColumnFqn,
         }),
       });
     } else {
-      history.push(getTableTabPath(entityFqn, EntityTabs.PROFILER));
+      history.push(
+        getEntityDetailsPath(EntityType.TABLE, entityFqn, EntityTabs.PROFILER)
+      );
     }
   };
 

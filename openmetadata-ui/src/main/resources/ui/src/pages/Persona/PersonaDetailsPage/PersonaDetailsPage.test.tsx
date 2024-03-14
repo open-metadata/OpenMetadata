@@ -101,7 +101,7 @@ jest.mock(
       .mockImplementation(() => <div>NoDataPlaceholder.component</div>);
   }
 );
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockResolvedValue({
       Create: true,
@@ -126,7 +126,7 @@ describe('PersonaDetailsPage', () => {
     expect(
       await screen.findByText('DescriptionV1.component')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('add-user-button')).toBeInTheDocument();
+    expect(await screen.findByTestId('add-persona-button')).toBeInTheDocument();
   });
 
   it('NoDataPlaceholder', async () => {

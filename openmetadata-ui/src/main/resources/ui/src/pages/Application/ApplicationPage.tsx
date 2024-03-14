@@ -16,7 +16,6 @@ import { isEmpty, uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -24,6 +23,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -163,8 +163,8 @@ const ApplicationPage = () => {
       </Row>
       <Row className="page-container m-t-lg">
         {isLoading &&
-          [1, 2].map((key) => (
-            <Col key={key} span={12}>
+          [1, 2, 3].map((key) => (
+            <Col key={key} span={8}>
               <Card className="w-400">
                 <Skeleton active paragraph title />
               </Card>

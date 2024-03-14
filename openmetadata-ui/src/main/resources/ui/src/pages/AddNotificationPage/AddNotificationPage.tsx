@@ -17,10 +17,10 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
@@ -46,9 +46,9 @@ import {
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabilityPage.interface';
+import AlertFormSourceItem from '../AddObservabilityPage/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from '../AddObservabilityPage/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './add-alerts-page.styles.less';
 
 const AddNotificationPage = () => {
@@ -251,7 +251,7 @@ const AddNotificationPage = () => {
                         </Form.Item>
                       </Col>
                       <Col span={24}>
-                        <ObservabilityFormTriggerItem
+                        <AlertFormSourceItem
                           filterResources={entityFunctions}
                         />
                       </Col>

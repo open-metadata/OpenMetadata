@@ -40,7 +40,7 @@ const OWNER2 = 'Cynthia Meyer';
 const TEAM_OWNER_1 = 'Marketplace';
 const TEAM_OWNER_2 = 'DevOps';
 
-describe('Entity detail page', () => {
+describe('Entity detail page', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
 

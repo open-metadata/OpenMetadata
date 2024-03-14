@@ -22,8 +22,8 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
-import Reactions from '../../../Reactions/Reactions';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
+import Reactions from '../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
 
 const FeedCardBody: FC<FeedBodyProp> = ({

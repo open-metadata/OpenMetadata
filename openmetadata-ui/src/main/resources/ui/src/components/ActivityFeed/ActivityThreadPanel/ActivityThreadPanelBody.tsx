@@ -33,7 +33,7 @@ import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../Loader/Loader';
+import Loader from '../../common/Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -278,7 +278,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         ) : (
           <Fragment>
-            {showNewConversation || isEqual(threads.length, 0) ? (
+            {showNewConversation ||
+            (isEqual(threads.length, 0) && !isThreadLoading) ? (
               <>
                 {isConversationType && (
                   <Space className="w-full" direction="vertical">
@@ -293,7 +294,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     />
                   </Space>
                 )}
-                {(isAnnouncementType || isTaskType) && (
+                {(isAnnouncementType || isTaskType) && !isThreadLoading && (
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>

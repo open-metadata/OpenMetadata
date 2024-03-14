@@ -20,10 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -35,7 +35,7 @@ import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
@@ -127,7 +127,7 @@ const RequestTag = () => {
           })
         );
         history.push(
-          getEntityDetailLink(
+          entityUtilClassBase.getEntityLink(
             entityType,
             entityFQN,
             EntityTabs.ACTIVITY_FEED,
