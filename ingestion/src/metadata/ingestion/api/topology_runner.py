@@ -33,7 +33,6 @@ from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     Queue,
-    QueueItem,
     ServiceTopology,
     TopologyContextManager,
     TopologyNode,
@@ -78,40 +77,17 @@ class TopologyRunnerMixin(Generic[C]):
         node_producer = getattr(self, node.producer)
         child_nodes = self._get_child_nodes(node)
 
-        # node_entities = node_producer()
         node_entities = list(node_producer() or [])
         node_entities_length = len(node_entities)
 
         if node_entities_length == 0:
             return
-        # elif node_entities_length < 1000:
-        #     yield from self._process_node(node)
         else:
-            # node_entity = node_entities.pop(0)
-            #
-            # for stage in node.stages:
-            #     yield from self._process_stage(
-            #         stage=stage, node_entity=node_entity, child_nodes=child_nodes
-            #     )
-            #
-            # # Once we are done processing all the stages,
-            # for stage in node.stages:
-            #     if stage.clear_context:
-            #         self.context.get().clear_stage(stage=stage)
-            #
-            # # process all children from the node being run
-            # yield from self.process_nodes(child_nodes)
-            #
-            # chunksize = int(math.ceil(node_entities_length - 1 / threads))
-            # chunks = [node_entities[i:i+chunksize] for i in range(0, node_entities_length - 1, chunksize)]
-
             chunksize = int(math.ceil(node_entities_length / threads))
-            chunks = [node_entities[i:i+chunksize] for i in range(0, node_entities_length , chunksize)]
-
-            # has_input = True
-            # pending_results = []
-            #
-            # thread_pool = ThreadPoolExecutor(threads)
+            chunks = [
+                node_entities[i : i + chunksize]
+                for i in range(0, node_entities_length, chunksize)
+            ]
 
             thread_pool = ThreadPoolExecutor(max_workers=threads)
 
@@ -121,7 +97,7 @@ class TopologyRunnerMixin(Generic[C]):
                     node,
                     chunk,
                     child_nodes,
-                    self.context.get_current_thread_id()
+                    self.context.get_current_thread_id(),
                 )
                 for chunk in chunks
             ]
@@ -140,40 +116,6 @@ class TopologyRunnerMixin(Generic[C]):
                             futures.pop(i)
 
                 time.sleep(0.01)
-
-        # while True:
-        #     # While we have free threads and input, we spawn new threads
-        #     while has_input and len(pending_results) < threads:
-        #         try:
-        #             node_entity = next(node_entities)
-        #             pending_results.append(
-        #                 thread_pool.submit(
-        #                     self._multithread_process_entity,
-        #                     node,
-        #                     node_entity,
-        #                     child_nodes,
-        #                     self.context.get_current_thread_id(),
-        #                 )
-        #             )
-        #         except StopIteration:
-        #             has_input = False
-        #
-        #     # If all the threads are already finished and we don't have any input we break the loop.
-        #     if not (pending_results or has_input):
-        #         break
-        #
-        #     # If we have tasks ready, get the result and pop them from the tracking list.
-        #     for i, task in enumerate(pending_results):
-        #         if task.done():
-        #             task.result()
-        #             pending_results.pop(i)
-        #
-        #     # Whenever there are items ready to continue the Processing flow in the Queue
-        #     # we are yielding them all
-        #     if self.queue.has_tasks():
-        #         yield from self.queue.process()
-        #
-        #     time.sleep(0.01)
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
         """Processing of a Node in a single thread."""
@@ -226,7 +168,6 @@ class TopologyRunnerMixin(Generic[C]):
             # to process. Each of the internal stages will sink result to OM API.
             # E.g., in the DB topology, at the Table TopologyNode, the node_entity
             # will be each `table`
-            # if node.producer == "get_tables_name_and_type" or node.producer == "get_database_schema_names":
             if node.threads and self.context.threads > 1:
                 yield from self._multithread_process_node(node, self.context.threads)
             else:
@@ -240,34 +181,18 @@ class TopologyRunnerMixin(Generic[C]):
         node_entities: List[Any],
         child_nodes: List[TopologyNode],
         parent_thread_id: str,
-    ) -> str:
+    ):
         """Multithread processing of a Node Entity"""
-
         # Generates a new context based on the parent thread.
         self.context.copy_from(parent_thread_id)
-        thread_id = self.context.get_current_thread_id()
 
         for node_entity in node_entities:
             # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
             for stage in node.stages:
-                stage_results = self._process_stage(
+                for stage_result in self._process_stage(
                     stage=stage, node_entity=node_entity, child_nodes=child_nodes
-                )
-
-                # for result in self._process_stage(...):
-                    # self.queue.add(result)
-                while True:
-                    # If the result wasn't processed yet we wait to guarantee the stages are being processed sequencially.
-                    # if self.queue.has_tasks(thread_id):
-                    #     time.sleep(0.01)
-                    #
-                    # else:
-                        try:
-                            self.queue.add(
-                                QueueItem(thread_id=thread_id, item=next(stage_results))
-                            )
-                        except StopIteration:
-                            break
+                ):
+                    self.queue.put(stage_result)
 
             # After all the stages are done, we clear the context if needed.
             for stage in node.stages:
@@ -275,24 +200,12 @@ class TopologyRunnerMixin(Generic[C]):
                     self.context.get().clear_stage(stage=stage)
 
             # If the Entity has child nodes that need processing we proceed to processing them with the same logic as above.
-            if child_nodes:
-                children_result = self.process_nodes(child_nodes)
 
-                while True:
-                    # if self.queue.has_tasks(thread_id):
-                    #     time.sleep(0.01)
-
-                    # else:
-                        try:
-                            self.queue.add(
-                                QueueItem(thread_id=thread_id, item=next(children_result))
-                            )
-                        except StopIteration:
-                            break
+            for child_result in self.process_nodes(child_nodes):
+                self.queue.put(child_result)
 
         # Finally we pop the context and finish the thread
-        self.context.pop(thread_id)
-        return thread_id
+        self.context.pop()
 
     def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:
         """Compute children nodes if any"""

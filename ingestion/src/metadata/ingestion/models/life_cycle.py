@@ -12,6 +12,7 @@
 Custom models for life cycle
 """
 from typing import Type
+
 from pydantic import BaseModel
 
 from metadata.generated.schema.type.lifeCycle import LifeCycle

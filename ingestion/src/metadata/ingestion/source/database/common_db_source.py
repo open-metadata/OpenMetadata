@@ -63,10 +63,12 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator, calculate_execution_time
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
-import threading
 
 logger = ingestion_logger()
 
@@ -112,7 +114,7 @@ class CommonDbSourceService(
         self.test_connection()
 
         self._connection = None  # Lazy init as well
-        self._connection_map = {} # Lazy init as well
+        self._connection_map = {}  # Lazy init as well
         self._inspector = None
         self._inspector_map = {}
         self.table_constraints = None
@@ -135,7 +137,7 @@ class CommonDbSourceService(
         self.engine = get_connection(new_service_connection)
         # self.inspector = inspect(self.engine)
         # self._connection = None  # Lazy init as well
-        self._connection_map = {} # Lazy init as well
+        self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
         self._inspector = None
 
@@ -579,7 +581,6 @@ class CommonDbSourceService(
                 table_constraints = foreign_table_constraints
         return table_constraints
 
-
     @property
     def connection(self) -> Connection:
         """
@@ -600,7 +601,6 @@ class CommonDbSourceService(
         #     self._connection = self.engine.connect()
         #
         # return self._connection
-
 
     @property
     def inspector(self) -> Inspector:

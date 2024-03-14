@@ -283,9 +283,12 @@ class TopologyContextManager:
 
         return self.contexts[thread_id]
 
-    def pop(self, thread_id: str):
+    def pop(self, thread_id: Optional[str] = None):
         """Cleans the TopologyContext of a given thread in order to lower the Memory Profile."""
-        self.contexts.pop(thread_id)
+        if not thread_id:
+            self.contexts.pop(self.get_current_thread_id())
+        else:
+            self.contexts.pop(thread_id)
 
     def copy_from(self, parent_thread_id: str):
         """Copies the TopologyContext from a given Thread to the new thread TopologyContext."""
@@ -297,27 +300,14 @@ class TopologyContextManager:
         )
 
 
-class QueueItem(BaseModel):
-    """Small DataClass to model a QueueItem."""
-
-    thread_id: str
-    item: Any
-
-
 class Queue:
-    """Small Queue implementation on top of queue.Queue to be able to keep a flag for the threads with
-    task on the queue."""
+    """Small Queue wrapper"""
 
     def __init__(self):
         self._queue = queue.Queue()
-        self._task_map: Dict[str, bool] = {}
 
-    def has_tasks(self, thread_id: Optional[str] = None) -> bool:
-        """If it received a thread_id checks if the Thread is waiting for a task through the 'task_map'
-        If not, checks that the Queue is not empty."""
-        if thread_id:
-            return self._task_map.get(thread_id, False)
-
+    def has_tasks(self) -> bool:
+        """Checks that the Queue is not Empty."""
         return not self._queue.empty()
 
     def process(self) -> Any:
@@ -325,16 +315,13 @@ class Queue:
         while True:
             try:
                 item = self._queue.get_nowait()
-                yield item.item
-                self._task_map[item.thread_id] = False
+                yield item
                 self._queue.task_done()
             except queue.Empty:
                 break
 
-    def add(self, item: QueueItem):
-        """Adds a new item to the Queue while tracking the Thread awaiting for it to be processed
-        through the 'task_map'."""
-        self._task_map[item.thread_id] = True
+    def put(self, item: Any):
+        """Puts new item in the Queue."""
         self._queue.put(item)
 
 

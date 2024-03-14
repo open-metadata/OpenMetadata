@@ -14,10 +14,7 @@ Check queue operations
 """
 from unittest import TestCase
 
-from metadata.ingestion.models.topology import Queue, QueueItem
-
-MAIN_THREAD = "1"
-OTHER_THREAD = "2"
+from metadata.ingestion.models.topology import Queue
 
 
 class QueueTest(TestCase):
@@ -31,22 +28,13 @@ class QueueTest(TestCase):
         """Asserts Queue works as expected"""
         # Assert it returns False when Queue is Empty
         self.assertFalse(self.queue.has_tasks())
-
-        # Assert it returns False when ThreadID doesn't exist/has no tasks
-        self.assertFalse(self.queue.has_tasks(MAIN_THREAD))
         # ------------------------------------------------------------------
 
         # Create a new QueueItem and add it to the queue
-        self.queue.add(QueueItem(thread_id=MAIN_THREAD, item=1))
+        self.queue.put(1)
 
         # Assert it returns True since the Queue is not Empty
         self.assertTrue(self.queue.has_tasks())
-
-        # Assert it returns True for the Thread that has an item
-        self.assertTrue(self.queue.has_tasks(MAIN_THREAD))
-
-        # Assert it returns False for a Thread without items on the Queue
-        self.assertFalse(self.queue.has_tasks(OTHER_THREAD))
 
     def test_process(self):
         """Asserts Queue Process process all the items."""
@@ -55,20 +43,18 @@ class QueueTest(TestCase):
         self.assertFalse(self.queue.has_tasks())
 
         items = [
-            {"thread": MAIN_THREAD, "item": 0},
-            {"thread": MAIN_THREAD, "item": 1},
-            {"thread": OTHER_THREAD, "item": 2},
-            {"thread": MAIN_THREAD, "item": 3},
-            {"thread": OTHER_THREAD, "item": 4},
+            0,
+            1,
+            2,
+            3,
+            4,
         ]
 
         for item in items:
-            self.queue.add(QueueItem(thread_id=item["thread"], item=item["item"]))
+            self.queue.put(item)
 
         # Assert Queue has tasks
         self.assertTrue(self.queue.has_tasks())
-        self.assertTrue(self.queue.has_tasks(MAIN_THREAD))
-        self.assertTrue(self.queue.has_tasks(OTHER_THREAD))
 
         # Process Items
         queued_items = self.queue.process()
@@ -82,8 +68,6 @@ class QueueTest(TestCase):
 
         # Assert Queue is empty
         self.assertFalse(self.queue.has_tasks())
-        self.assertFalse(self.queue.has_tasks(MAIN_THREAD))
-        self.assertFalse(self.queue.has_tasks(OTHER_THREAD))
 
         # Assert Queue returned all values
         self.assertEqual(results, [0, 1, 2, 3, 4])

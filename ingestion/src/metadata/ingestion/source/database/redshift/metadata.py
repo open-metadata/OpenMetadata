@@ -16,7 +16,7 @@ import re
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from sqlalchemy import inspect, sql
+from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
@@ -81,8 +81,11 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureMixin,
 )
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.filters import filter_by_database
-from metadata.utils.execution_time_tracker import calculate_execution_time, calculate_execution_time_generator
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments

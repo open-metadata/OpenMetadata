@@ -569,13 +569,20 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.bq_source.inspector = types.SimpleNamespace()
-        self.bq_source.inspector.get_pk_constraint = lambda table_name, schema: []
-        self.bq_source.inspector.get_unique_constraints = (
-            lambda table_name, schema_name: []
-        )
-        self.bq_source.inspector.get_foreign_keys = lambda table_name, schema: []
-        self.bq_source.inspector.get_columns = lambda table_name, schema, db_name: []
+        self.thread_id = self.bq_source.context.get_current_thread_id()
+        self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_pk_constraint = lambda table_name, schema: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_unique_constraints = lambda table_name, schema_name: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_foreign_keys = lambda table_name, schema: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_columns = lambda table_name, schema, db_name: []
 
     def test_source_url(self):
         self.assertEqual(

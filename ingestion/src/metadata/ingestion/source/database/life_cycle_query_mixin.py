@@ -92,14 +92,14 @@ class LifeCycleQueryMixin:
 
         return queries_dict
 
-    def get_life_cycle_data(self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str):
+    def get_life_cycle_data(
+        self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str
+    ):
         """
         Get the life cycle data
         """
         try:
-            life_cycle_data = self.life_cycle_query_dict(query=query).get(
-                entity_name
-            )
+            life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
                 life_cycle = LifeCycle(
                     created=AccessDetails(
@@ -109,7 +109,9 @@ class LifeCycleQueryMixin:
                     )
                 )
                 yield Either(
-                    right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle)
+                    right=OMetaLifeCycleData(
+                        entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle
+                    )
                 )
         except Exception as exc:
             yield Either(

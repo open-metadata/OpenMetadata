@@ -13,16 +13,16 @@
 ExecutionTimeTracker implementation to help track the execution time of different parts
 of the code.
 """
+import threading
 from functools import wraps
 from time import perf_counter
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import utils_logger
 from metadata.utils.singleton import Singleton
-import threading
 
 logger = utils_logger()
 
@@ -40,16 +40,22 @@ class ExecutionTimeTrackerContextMap(metaclass=Singleton):
         self.map: dict[int, List[ExecutionTimeTrackerContext]] = {}
         self.main_thread_id = main_thread_id
 
-    def get_last_stored_context_level(self, thread_id: Optional[int] = None) -> Optional[str]:
+    def get_last_stored_context_level(
+        self, thread_id: Optional[int] = None
+    ) -> Optional[str]:
         thread_id = thread_id or threading.get_ident()
 
-        stored_context = [context for context in self.map.get(thread_id, {}) if context.stored]
+        stored_context = [
+            context for context in self.map.get(thread_id, {}) if context.stored
+        ]
 
         if stored_context:
             return stored_context[-1].name
         return None
 
-    def append(self, context: ExecutionTimeTrackerContext, thread_id: Optional[int] = None):
+    def append(
+        self, context: ExecutionTimeTrackerContext, thread_id: Optional[int] = None
+    ):
         thread_id = thread_id or threading.get_ident()
         self.map.setdefault(thread_id, []).append(context)
 
@@ -130,7 +136,11 @@ class ExecutionTimeTracker(metaclass=Singleton):
             store: If True, it will take part of the global state. Otherwise it will only log to debug.
         """
         self.new_context = ".".join(
-            [part for part in [self.context_map.get_last_stored_context_level(), context] if part]
+            [
+                part
+                for part in [self.context_map.get_last_stored_context_level(), context]
+                if part
+            ]
         )
         self.store = store
 

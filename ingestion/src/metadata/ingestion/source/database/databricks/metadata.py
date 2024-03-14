@@ -491,7 +491,9 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         Method to yield schema tags
         """
         try:
-            schema_tags = self.schema_tags.get((self.context.get().database, schema_name), [])
+            schema_tags = self.schema_tags.get(
+                (self.context.get().database, schema_name), []
+            )
             for tag_name, tag_value in schema_tags:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn.build(
@@ -522,7 +524,12 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
         table_name, _ = table_name_and_type
         try:
             table_tags = self.table_tags.get(
-                (self.context.get().database, self.context.get().database_schema, table_name), []
+                (
+                    self.context.get().database,
+                    self.context.get().database_schema,
+                    table_name,
+                ),
+                [],
             )
             for tag_name, tag_value in table_tags:
                 yield from get_ometa_tag_and_classification(
@@ -541,7 +548,12 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                 )
 
             column_tags = self.column_tags.get(
-                (self.context.get().database, self.context.get().database_schema, table_name), {}
+                (
+                    self.context.get().database,
+                    self.context.get().database_schema,
+                    table_name,
+                ),
+                {},
             )
             for column_name, tags in column_tags.items():
                 for tag_name, tag_value in tags or []:

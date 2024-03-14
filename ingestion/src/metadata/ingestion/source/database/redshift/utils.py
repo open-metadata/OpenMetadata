@@ -33,8 +33,8 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_TABLE_COMMENTS,
 )
-from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 
 sa_version = Version(sa.__version__)
 
