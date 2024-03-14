@@ -45,7 +45,6 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 {% partial file="/v1.3/connectors/pipeline/connectors-list.md" /%}
 
-
 ## ML Model Services
 
 {% partial file="/v1.3/connectors/ml-model/connectors-list.md" /%}
@@ -57,7 +56,6 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 ## Metadata Services
 
 {% partial file="/v1.3/connectors/metadata/connectors-list.md" /%}
-
 
 ## Search Services
 

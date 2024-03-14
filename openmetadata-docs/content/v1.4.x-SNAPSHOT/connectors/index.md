@@ -45,7 +45,6 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 {% partial file="/v1.4/connectors/pipeline/connectors-list.md" /%}
 
-
 ## ML Model Services
 
 {% partial file="/v1.4/connectors/ml-model/connectors-list.md" /%}
