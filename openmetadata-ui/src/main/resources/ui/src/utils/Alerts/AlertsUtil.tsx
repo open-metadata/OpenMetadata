@@ -553,7 +553,11 @@ export const getFieldByArgumentType = (
               },
             ]}>
             <AsyncSelect
-              api={getUserBotOptions}
+              api={
+                argument === 'updateByUserList'
+                  ? getUserBotOptions // For updateByUserList, we need to show bot users as well
+                  : getUserOptions // For userList, which is an argument for `conversation` filters we need to show only non-bot users
+              }
               className="w-full"
               data-testid="user-name-select"
               mode="multiple"
