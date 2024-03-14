@@ -58,11 +58,6 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 {% partial file="/v1.4/connectors/metadata/connectors-list.md" /%}
 
-
 ## Search Services
 
-{% connectorsListContainer %}
-
-{% connectorInfoCard name="Elasticsearch" stage="PROD" href="/connectors/search/elasticsearch" platform="OpenMetadata" / %}
-
-{% /connectorsListContainer %}
+{% partial file="/v1.4/connectors/search/connectors-list.md" /%}
