@@ -3,7 +3,10 @@ package org.openmetadata.service.security;
 import static org.openmetadata.service.security.SecurityUtil.getClientAuthentication;
 import static org.openmetadata.service.security.SecurityUtil.getErrorMessage;
 
+import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant;
 import com.nimbusds.oauth2.sdk.AuthorizationGrant;
@@ -27,6 +30,7 @@ import com.nimbusds.openid.connect.sdk.OIDCTokenResponse;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
+import com.nimbusds.openid.connect.sdk.validators.BadJWTExceptions;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -93,6 +97,9 @@ public class AuthCallbackServlet extends HttpServlet {
       // Verfiy Response , Create Request And Get Token
       validateAndSendTokenRequest(req, credentials, computedCallbackUrl);
 
+      // Validate Nonce
+      validateNonceIfRequired(req, credentials.getIdToken().getJWTClaimsSet());
+
       // Redirect
       sendRedirectWithToken(resp, credentials);
     } catch (Exception e) {
@@ -119,6 +126,32 @@ public class AuthCallbackServlet extends HttpServlet {
     }
 
     return credentials;
+  }
+
+  private void validateNonceIfRequired(HttpServletRequest req, JWTClaimsSet claimsSet)
+      throws BadJOSEException {
+    if (client.getConfiguration().isUseNonce()) {
+      String expectedNonce =
+          (String) req.getSession().getAttribute(client.getNonceSessionAttributeName());
+      if (CommonHelper.isNotBlank(expectedNonce)) {
+        String tokenNonce;
+        try {
+          tokenNonce = claimsSet.getStringClaim("nonce");
+        } catch (java.text.ParseException var10) {
+          throw new BadJWTException("Invalid JWT nonce (nonce) claim: " + var10.getMessage());
+        }
+
+        if (tokenNonce == null) {
+          throw BadJWTExceptions.MISSING_NONCE_CLAIM_EXCEPTION;
+        }
+
+        if (!expectedNonce.equals(tokenNonce)) {
+          throw new BadJWTException("Unexpected JWT nonce (nonce) claim: " + tokenNonce);
+        }
+      } else {
+        throw new TechnicalException("Missing nonce parameter from Session.");
+      }
+    }
   }
 
   private void validateStateIfRequired(
