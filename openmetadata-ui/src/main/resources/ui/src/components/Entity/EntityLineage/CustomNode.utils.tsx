@@ -172,7 +172,7 @@ export const getColumnContent = (
         fullyQualifiedName
       )}
       {getConstraintIcon({
-        constraint: (column as Column).constraint,
+        constraint: column.constraint,
       })}
       <p className="p-xss">{getEntityName(column)}</p>
     </div>

@@ -27,7 +27,6 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
@@ -133,9 +132,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   alt={entity.serviceType}
                   className="m-r-xs"
                   height="16px"
-                  src={serviceUtilClassBase.getServiceTypeLogo(
-                    entity as SearchSourceAlias
-                  )}
+                  src={serviceUtilClassBase.getServiceTypeLogo(entity)}
                   width="16px"
                 />
                 <div className="flex-1 text-left">
