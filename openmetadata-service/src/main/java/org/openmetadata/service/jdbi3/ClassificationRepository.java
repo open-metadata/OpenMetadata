@@ -121,9 +121,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      // TODO mutuallyExclusive from false to true?
       recordChange(
-          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+          "mutuallyExclusive", original.getMutuallyExclusive(), original.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
