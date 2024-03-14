@@ -127,14 +127,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 ## Storage Services
 
-{% connectorsListContainer %}
-
-{% connectorInfoCard name="S3" stage="PROD" href="/connectors/storage/s3" platform="OpenMetadata" / %}
-{% connectorInfoCard name="ADLS" stage="PROD" href="/connectors/storage/adls" platform="Collate" / %}
-{% connectorInfoCard name="GCS" stage="PROD" href="/connectors/storage/gcs" platform="Collate" / %}
-
-{% /connectorsListContainer %}
-
+{% partial file="/v1.3/connectors/storage/connectors-list.md" /%}
 
 ## Metadata Services
 
