@@ -115,7 +115,7 @@
     <!-- Upgrading to spring version 6.x requires Java 17 -->
     <spring.version>5.3.28</spring.version>
     <log4j.version>2.21.0</log4j.version>
-    <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
+    <org.junit.jupiter.version>5.10.1</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.3</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.1</antlr.version>
