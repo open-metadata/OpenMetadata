@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import React, { FC } from 'react';
+import { isEmpty } from 'lodash';
+import React, { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { Router } from 'react-router-dom';
+import { Router, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import AppRouter from './components/AppRouter/AppRouter';
@@ -25,16 +26,56 @@ import { EntityExportModalProvider } from './components/Entity/EntityExportModal
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
-import ApplicationConfigProvider from './context/ApplicationConfigProvider/ApplicationConfigProvider';
 import DirectionProvider from './context/DirectionProvider/DirectionProvider';
 import GlobalSearchProvider from './context/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
+import { useApplicationStore } from './hooks/useApplicationStore';
+import { getCustomLogoConfig } from './rest/settingConfigAPI';
+import { isProtectedRoute } from './utils/AuthProvider.util';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
 const App: FC = () => {
+  const location = useLocation();
+  const { applicationConfig, setApplicationConfig, setUrlPathName } =
+    useApplicationStore();
+
+  useEffect(() => {
+    if (isProtectedRoute(location.pathname)) {
+      setUrlPathName(location.pathname);
+    }
+  }, [location.pathname]);
+
+  const fetchApplicationConfig = async () => {
+    try {
+      const data = await getCustomLogoConfig();
+
+      setApplicationConfig({
+        ...data,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchApplicationConfig();
+  }, []);
+
+  useEffect(() => {
+    const faviconHref = isEmpty(applicationConfig?.customFaviconUrlPath)
+      ? '/favicon.png'
+      : applicationConfig?.customFaviconUrlPath ?? '/favicon.png';
+    const link = document.querySelector('link[rel~="icon"]');
+
+    if (link) {
+      link.setAttribute('href', faviconHref);
+    }
+  }, [applicationConfig]);
+
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
@@ -42,29 +83,27 @@ const App: FC = () => {
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
               <DirectionProvider>
-                <ApplicationConfigProvider>
-                  <AuthProvider childComponentType={AppRouter}>
-                    <TourProvider>
-                      <HelmetProvider>
-                        <WebAnalyticsProvider>
-                          <PermissionProvider>
-                            <WebSocketProvider>
-                              <GlobalSearchProvider>
-                                <ApplicationsProvider>
-                                  <DomainProvider>
-                                    <EntityExportModalProvider>
-                                      <AppRouter />
-                                    </EntityExportModalProvider>
-                                  </DomainProvider>
-                                </ApplicationsProvider>
-                              </GlobalSearchProvider>
-                            </WebSocketProvider>
-                          </PermissionProvider>
-                        </WebAnalyticsProvider>
-                      </HelmetProvider>
-                    </TourProvider>
-                  </AuthProvider>
-                </ApplicationConfigProvider>
+                <AuthProvider childComponentType={AppRouter}>
+                  <TourProvider>
+                    <HelmetProvider>
+                      <WebAnalyticsProvider>
+                        <PermissionProvider>
+                          <WebSocketProvider>
+                            <GlobalSearchProvider>
+                              <ApplicationsProvider>
+                                <DomainProvider>
+                                  <EntityExportModalProvider>
+                                    <AppRouter />
+                                  </EntityExportModalProvider>
+                                </DomainProvider>
+                              </ApplicationsProvider>
+                            </GlobalSearchProvider>
+                          </WebSocketProvider>
+                        </PermissionProvider>
+                      </WebAnalyticsProvider>
+                    </HelmetProvider>
+                  </TourProvider>
+                </AuthProvider>
               </DirectionProvider>
             </ErrorBoundary>
           </I18nextProvider>
