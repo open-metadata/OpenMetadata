@@ -33,12 +33,17 @@ import {
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/entity/type';
 import {
   CustomProperty,
   EnumConfig,
 } from '../../../generated/type/customProperty';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
@@ -78,7 +83,14 @@ export const PropertyValue: FC<Props> = ({
     setShowInput(false);
   };
 
-  const onInputSave = async (updatedValue: string | number | string[]) => {
+  const onInputSave = async (
+    updatedValue:
+      | string
+      | number
+      | string[]
+      | EntityReference
+      | EntityReference[]
+  ) => {
     const isEnum = propertyType.name === 'enum';
     const isArrayType = isArray(updatedValue);
     const enumValue = isArrayType ? updatedValue : [updatedValue];
@@ -501,6 +513,93 @@ export const PropertyValue: FC<Props> = ({
                   options={{
                     readOnly: false,
                   }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'entityReference':
+      case 'entityReferenceList': {
+        const mode =
+          propertyType.name === 'entityReferenceList' ? 'multiple' : undefined;
+
+        const index = (property.customPropertyConfig?.config as string[]) ?? [];
+
+        let initialOptions: DataAssetOption[] = [];
+        let initialValue: string[] | string | undefined;
+
+        if (!isUndefined(value)) {
+          if (isArray(value)) {
+            initialOptions = value.map((item) => {
+              return {
+                displayName: getEntityName(item),
+                reference: item,
+                label: getEntityName(item),
+                value: item.id,
+              };
+            });
+
+            initialValue = value.map((item) => item.id);
+          } else {
+            initialOptions = [
+              {
+                displayName: getEntityName(value),
+                reference: value,
+                label: getEntityName(value),
+                value: value.id,
+              },
+            ];
+
+            initialValue = value.id;
+          }
+        }
+
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'entity-reference-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="entity-reference-form"
+              initialValues={{
+                entityReference: initialValue,
+              }}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={(values: {
+                entityReference: DataAssetOption | DataAssetOption[];
+              }) => {
+                if (isArray(values.entityReference)) {
+                  onInputSave(
+                    values.entityReference.map((item) => item.reference)
+                  );
+                } else {
+                  onInputSave(values.entityReference.reference);
+                }
+              }}>
+              <Form.Item
+                name="entityReference"
+                rules={[
+                  {
+                    required: true,
+                  },
+                ]}
+                style={{ marginBottom: '0px', minWidth: '250px' }}>
+                <DataAssetAsyncSelectList
+                  initialOptions={initialOptions}
+                  mode={mode}
+                  placeholder={
+                    mode === 'multiple'
+                      ? 'Select Entity Reference List'
+                      : 'Select Entity Reference'
+                  }
+                  searchIndex={index.join(',') as SearchIndex}
                 />
               </Form.Item>
             </Form>
