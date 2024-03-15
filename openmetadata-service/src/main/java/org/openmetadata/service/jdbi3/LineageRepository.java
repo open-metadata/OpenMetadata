@@ -196,28 +196,28 @@ public class LineageRepository {
 
   private void validateChildren(String columnFQN, EntityReference entityReference) {
     switch (entityReference.getType()) {
-      case "table" -> {
+      case TABLE -> {
         Table table =
             Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
       }
-      case "topic" -> {
+      case TOPIC -> {
         Topic topic =
             Entity.getEntity(TOPIC, entityReference.getId(), "messageSchema", Include.NON_DELETED);
         ColumnUtil.validateFieldFQN(topic.getMessageSchema().getSchemaFields(), columnFQN);
       }
-      case "container" -> {
+      case CONTAINER -> {
         Container container =
             Entity.getEntity(CONTAINER, entityReference.getId(), "dataModel", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(container.getDataModel().getColumns(), columnFQN);
       }
-      case "dashboardDataModel" -> {
+      case DASHBOARD_DATA_MODEL -> {
         DashboardDataModel dashboardDataModel =
             Entity.getEntity(
                 DASHBOARD_DATA_MODEL, entityReference.getId(), "columns", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(dashboardDataModel.getColumns(), columnFQN);
       }
-      case "dashboard" -> {
+      case DASHBOARD -> {
         Dashboard dashboard =
             Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
         dashboard.getCharts().stream()
@@ -228,7 +228,7 @@ public class LineageRepository {
                     new IllegalArgumentException(
                         CatalogExceptionMessage.invalidFieldName("chart", columnFQN)));
       }
-      case "mlmodel" -> {
+      case MLMODEL -> {
         MlModel mlModel =
             Entity.getEntity(MLMODEL, entityReference.getId(), "", Include.NON_DELETED);
         mlModel.getMlFeatures().stream()
