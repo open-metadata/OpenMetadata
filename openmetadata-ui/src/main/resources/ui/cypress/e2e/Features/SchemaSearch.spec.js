@@ -15,6 +15,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const schemaNames = ['sales', 'admin', 'anonymous', 'dip', 'gsmadmin_internal'];
@@ -27,53 +28,55 @@ describe('Schema search', { tags: 'DataAssets' }, () => {
   });
 
   it('Prerequisite', () => {
-    const token = localStorage.getItem('oidcIdToken');
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/services/databaseServices`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: {
-        name: serviceName,
-        serviceType: 'Mysql',
-        connection: {
-          config: {
-            type: 'Mysql',
-            scheme: 'mysql+pymysql',
-            username: 'test',
-            authType: { password: 'test' },
-            hostPort: 'test',
-            supportsMetadataExtraction: true,
-            supportsDBTExtraction: true,
-            supportsProfiler: true,
-            supportsQueryComment: true,
-          },
-        },
-      },
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-
-      const service = response.body.fullyQualifiedName;
-      serviceId = response.body.id;
-
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
       cy.request({
         method: 'POST',
-        url: `/api/v1/databases`,
+        url: `/api/v1/services/databaseServices`,
         headers: { Authorization: `Bearer ${token}` },
         body: {
-          name: 'default',
-          service,
+          name: serviceName,
+          serviceType: 'Mysql',
+          connection: {
+            config: {
+              type: 'Mysql',
+              scheme: 'mysql+pymysql',
+              username: 'test',
+              authType: { password: 'test' },
+              hostPort: 'test',
+              supportsMetadataExtraction: true,
+              supportsDBTExtraction: true,
+              supportsProfiler: true,
+              supportsQueryComment: true,
+            },
+          },
         },
       }).then((response) => {
-        const database = response.body.fullyQualifiedName;
-        schemaNames.map((schema) => {
-          cy.request({
-            method: 'POST',
-            url: `/api/v1/databaseSchemas`,
-            headers: { Authorization: `Bearer ${token}` },
-            body: {
-              name: schema,
-              database,
-            },
+        expect(response.status).to.eq(201);
+
+        const service = response.body.fullyQualifiedName;
+        serviceId = response.body.id;
+
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/databases`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            name: 'default',
+            service,
+          },
+        }).then((response) => {
+          const database = response.body.fullyQualifiedName;
+          schemaNames.map((schema) => {
+            cy.request({
+              method: 'POST',
+              url: `/api/v1/databaseSchemas`,
+              headers: { Authorization: `Bearer ${token}` },
+              body: {
+                name: schema,
+                database,
+              },
+            });
           });
         });
       });
@@ -133,14 +136,15 @@ describe('Schema search', { tags: 'DataAssets' }, () => {
   });
 
   it('Cleanup', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/services/databaseServices/${serviceId}?hardDelete=true&recursive=true`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/services/databaseServices/${serviceId}?hardDelete=true&recursive=true`,
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+      });
     });
   });
 });

@@ -23,6 +23,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { verifyKpiChart } from '../../common/DataInsightUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -44,14 +45,17 @@ const deleteKpiRequest = () => {
   cy.wait('@getKpi').then(({ response }) => {
     const data = response.body.data;
     if (data.length > 0) {
-      const token = localStorage.getItem('oidcIdToken');
-      data.forEach((element) => {
-        cy.request({
-          method: 'DELETE',
-          url: `/api/v1/kpi/${element.id}?hardDelete=true&recursive=false`,
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((response) => {
-          expect(response.status).to.eq(200);
+      cy.getAllLocalStorage().then((storageData) => {
+        const token = getToken(storageData);
+
+        data.forEach((element) => {
+          cy.request({
+            method: 'DELETE',
+            url: `/api/v1/kpi/${element.id}?hardDelete=true&recursive=false`,
+            headers: { Authorization: `Bearer ${token}` },
+          }).then((response) => {
+            expect(response.status).to.eq(200);
+          });
         });
       });
       cy.reload();

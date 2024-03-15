@@ -28,6 +28,7 @@ import { deleteGlossary } from '../../common/GlossaryUtils';
 import { dragAndDropElement } from '../../common/Utils/DragAndDrop';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { confirmationDragAndDropGlossary } from '../../common/Utils/Glossary';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
@@ -688,14 +689,16 @@ const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
 };
 
 const deleteUser = () => {
-  const token = localStorage.getItem('oidcIdToken');
+  cy.getAllLocalStorage().then((storageData) => {
+    const token = getToken(storageData);
 
-  cy.request({
-    method: 'DELETE',
-    url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
-    expect(response.status).to.eq(200);
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
   });
 };
 
