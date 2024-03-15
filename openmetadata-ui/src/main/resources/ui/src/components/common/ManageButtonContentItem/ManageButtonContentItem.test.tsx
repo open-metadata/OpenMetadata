@@ -12,13 +12,14 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { act } from 'react-test-renderer';
 import { ReactComponent as Icon } from '../../../assets/svg/teams-grey.svg';
 import { ManageButtonItemLabel } from './ManageButtonContentItem.component';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
 const mockProps: MangeButtonItemLabelProps = {
   name: 'export',
-  Icon: Icon,
+  icon: Icon,
   description: 'description',
   id: 'export',
 };
@@ -40,5 +41,16 @@ describe('ManageButtonContentItem component', () => {
     expect(
       await screen.findByTestId(`${mockProps.id}-description`)
     ).toBeInTheDocument();
+  });
+
+  it('should call onClick for clicking on item', async () => {
+    const mockClick = jest.fn();
+    render(<ManageButtonItemLabel {...mockProps} onClick={mockClick} />);
+
+    await act(async () => {
+      screen.getByTestId(`${mockProps.id}`).click();
+    });
+
+    expect(mockClick).toHaveBeenCalled();
   });
 });

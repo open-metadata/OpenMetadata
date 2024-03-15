@@ -123,10 +123,10 @@ const ManageButton: FC<ManageButtonProps> = ({
             label: (
               <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
                 <ManageButtonItemLabel
-                  Icon={IconRestore}
                   description={t('message.restore-action-description', {
                     entityType,
                   })}
+                  icon={IconRestore}
                   id="restore-button"
                   name={t('label.restore')}
                 />
@@ -148,8 +148,8 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={IconAnnouncementsBlack}
                 description={t('message.announcement-action-description')}
+                icon={IconAnnouncementsBlack}
                 id="announcement-button"
                 name={t('label.announcement-plural')}
               />
@@ -168,10 +168,10 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={EditIcon}
                 description={t('message.update-displayName-entity', {
                   entity: entityName,
                 })}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -190,11 +190,11 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={IconSetting}
                 description={
                   deleteButtonDescription ??
                   t('message.update-profiler-settings')
                 }
+                icon={IconSetting}
                 id="profiler-setting-button"
                 name={t('label.profiler-setting-plural')}
               />
@@ -212,13 +212,13 @@ const ManageButton: FC<ManageButtonProps> = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={IconDelete}
                 description={
                   deleteButtonDescription ??
                   t('message.delete-entity-type-action-description', {
                     entityType,
                   })
                 }
+                icon={IconDelete}
                 id="delete-button"
                 name={t('label.delete')}
               />

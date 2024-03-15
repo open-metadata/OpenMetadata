@@ -488,10 +488,10 @@ const TeamDetailsV1 = ({
       {
         label: (
           <ManageButtonItemLabel
-            Icon={ExportIcon}
             description={t('message.export-entity-help', {
               entity: t('label.team-lowercase'),
             })}
+            icon={ExportIcon}
             id="export"
             name={t('label.export')}
           />
@@ -506,10 +506,10 @@ const TeamDetailsV1 = ({
       options.push({
         label: (
           <ManageButtonItemLabel
-            Icon={ImportIcon}
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
+            icon={ImportIcon}
             id="import-button"
             name={t('label.import')}
           />
@@ -530,8 +530,8 @@ const TeamDetailsV1 = ({
             {
               label: (
                 <ManageButtonItemLabel
-                  Icon={IconRestore}
                   description={t('message.restore-deleted-team')}
+                  icon={IconRestore}
                   id="restore-team-dropdown"
                   name={t('label.restore-entity', {
                     entity: t('label.team'),
@@ -549,8 +549,8 @@ const TeamDetailsV1 = ({
             {
               label: (
                 <ManageButtonItemLabel
-                  Icon={IconOpenLock}
                   description={t('message.access-to-collaborate')}
+                  icon={IconOpenLock}
                   id="open-group-dropdown"
                   name={
                     <Row>

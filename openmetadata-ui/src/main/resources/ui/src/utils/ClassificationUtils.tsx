@@ -223,12 +223,12 @@ export const getClassificationExtraDropdownContent = (
         {
           label: (
             <ManageButtonItemLabel
-              Icon={IconDisableTag}
               description={
                 isClassificationDisabled
                   ? t('message.enable-classification-description')
                   : t('message.disable-classification-description')
               }
+              icon={IconDisableTag}
               id="enable-disable"
               name={
                 isClassificationDisabled

@@ -18,10 +18,12 @@ import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 export const ManageButtonItemLabel = ({
   name,
   onClick,
-  Icon,
+  icon,
   description,
   id,
 }: MangeButtonItemLabelProps) => {
+  const Icon = icon;
+
   return (
     <Row className="cursor-pointer" data-testid={id} onClick={onClick}>
       <Col className="self-center" data-testid={`${id}-icon`} span={3}>

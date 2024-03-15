@@ -54,6 +54,7 @@ import {
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Style } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   exportGlossaryInCSVFormat,
@@ -71,8 +72,6 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -271,10 +270,10 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={ExportIcon}
                 description={t('message.export-entity-help', {
                   entity: t('label.glossary-term-lowercase-plural'),
                 })}
+                icon={ExportIcon}
                 id="export-button"
                 name={t('label.export')}
               />
@@ -289,10 +288,10 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={ImportIcon}
                 description={t('message.import-entity-help', {
                   entity: t('label.glossary-term-lowercase'),
                 })}
+                icon={ImportIcon}
                 id="import-button"
                 name={t('label.import')}
               />
@@ -311,12 +310,12 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={EditIcon}
                 description={t('message.rename-entity', {
                   entity: isGlossary
                     ? t('label.glossary')
                     : t('label.glossary-term'),
                 })}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -335,10 +334,10 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={StyleIcon}
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.glossary-term'),
                 })}
+                icon={StyleIcon}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -357,7 +356,6 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={IconDelete}
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
@@ -366,6 +364,7 @@ const GlossaryHeader = ({
                       : t('label.glossary-term'),
                   }
                 )}
+                icon={IconDelete}
                 id="delete-button"
                 name={t('label.delete')}
               />

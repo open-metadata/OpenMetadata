@@ -15,7 +15,7 @@ import { ReactNode } from 'react';
 export interface MangeButtonItemLabelProps {
   name: ReactNode;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
-  Icon: SvgComponent;
+  icon: SvgComponent;
   description: string;
   id: string;
 }

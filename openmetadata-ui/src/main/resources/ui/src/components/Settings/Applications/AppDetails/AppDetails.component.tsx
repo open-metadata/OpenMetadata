@@ -168,10 +168,10 @@ const AppDetails = () => {
           {
             label: (
               <ManageButtonItemLabel
-                Icon={IconRestore}
                 description={t('message.restore-action-description', {
                   entityType: getEntityName(appData),
                 })}
+                icon={IconRestore}
                 id="restore-button"
                 name={t('label.restore')}
               />
@@ -189,10 +189,10 @@ const AppDetails = () => {
           {
             label: (
               <ManageButtonItemLabel
-                Icon={StopOutlined as SvgComponent}
                 description={t('message.disable-app', {
                   app: getEntityName(appData),
                 })}
+                icon={StopOutlined as SvgComponent}
                 id="disable-button"
                 name={t('label.disable')}
               />
@@ -208,10 +208,10 @@ const AppDetails = () => {
     {
       label: (
         <ManageButtonItemLabel
-          Icon={DeleteIcon}
           description={t('message.uninstall-app', {
             app: getEntityName(appData),
           })}
+          icon={DeleteIcon}
           id="uninstall-button"
           name={t('label.uninstall')}
         />

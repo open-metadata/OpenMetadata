@@ -320,10 +320,10 @@ const AssetsTabs = forwardRef(
       {
         label: (
           <ManageButtonItemLabel
-            Icon={DeleteIcon}
             description={t('message.delete-asset-from-entity-type', {
               entityType: entityTypeString,
             })}
+            icon={DeleteIcon}
             id="delete-button"
             name={t('label.delete')}
           />

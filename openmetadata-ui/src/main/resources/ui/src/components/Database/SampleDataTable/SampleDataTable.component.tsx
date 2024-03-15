@@ -153,10 +153,10 @@ const SampleDataTable = ({
     {
       label: (
         <ManageButtonItemLabel
-          Icon={IconDelete}
           description={t('message.delete-entity-type-action-description', {
             entityType: t('label.sample-data'),
           })}
+          icon={IconDelete}
           id="delete-button"
           name={t('label.delete')}
         />

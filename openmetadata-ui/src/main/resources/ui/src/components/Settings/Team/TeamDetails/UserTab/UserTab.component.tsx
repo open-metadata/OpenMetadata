@@ -245,10 +245,10 @@ export const UserTab = ({
       {
         label: (
           <ManageButtonItemLabel
-            Icon={ExportIcon}
             description={t('message.export-entity-help', {
               entity: t('label.user-lowercase'),
             })}
+            icon={ExportIcon}
             id="export"
             name={t('label.export')}
           />
@@ -262,10 +262,10 @@ export const UserTab = ({
       option.push({
         label: (
           <ManageButtonItemLabel
-            Icon={ImportIcon}
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
+            icon={ImportIcon}
             id="import-button"
             name={t('label.import')}
           />

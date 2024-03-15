@@ -246,10 +246,10 @@ const DataProductsDetailsPage = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={EditIcon}
                 description={t('message.rename-entity', {
                   entity: t('label.data-product'),
                 })}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -268,10 +268,10 @@ const DataProductsDetailsPage = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={StyleIcon}
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.data-product'),
                 })}
+                icon={StyleIcon}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -290,13 +290,13 @@ const DataProductsDetailsPage = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={DeleteIcon}
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
                     entityType: t('label.data-product'),
                   }
                 )}
+                icon={DeleteIcon}
                 id="delete-button"
                 name={t('label.delete')}
               />

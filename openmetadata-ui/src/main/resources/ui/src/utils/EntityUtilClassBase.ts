@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import {
   getEditWebhookPath,
@@ -282,7 +283,7 @@ class EntityUtilClassBase {
     }
   }
 
-  public getManageExtraOptions(entityType: string, _: string) {
+  public getManageExtraOptions(entityType: string, _: string): ItemType[] {
     switch (entityType) {
       case EntityType.TABLE: {
         return [];

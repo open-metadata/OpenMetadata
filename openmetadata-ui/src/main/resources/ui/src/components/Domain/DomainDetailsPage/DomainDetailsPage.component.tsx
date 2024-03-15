@@ -358,10 +358,10 @@ const DomainDetailsPage = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={EditIcon}
                 description={t('message.rename-entity', {
                   entity: t('label.domain'),
                 })}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -380,10 +380,10 @@ const DomainDetailsPage = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={StyleIcon}
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.domain'),
                 })}
+                icon={StyleIcon}
                 id="edit-style-button"
                 name={t('label.style')}
               />
@@ -402,13 +402,13 @@ const DomainDetailsPage = ({
           {
             label: (
               <ManageButtonItemLabel
-                Icon={DeleteIcon}
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
                     entityType: t('label.domain'),
                   }
                 )}
+                icon={DeleteIcon}
                 id="delete-button"
                 name={t('label.delete')}
               />
