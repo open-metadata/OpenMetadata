@@ -12,7 +12,6 @@
 Pydantic definition for storing entities for patching 
 """
 import json
-import logging
 from typing import Dict, List, Optional
 
 import jsonpatch
@@ -21,8 +20,6 @@ from pydantic import BaseModel
 from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.utils import model_str
-
-logger = logging.getLogger("metadata")
 
 
 class PatchRequest(BaseModel):
@@ -230,35 +227,32 @@ def _sort_array_entity_fields(
     """
     Sort the array entity fields to make sure the order is consistent
     """
-    try:
-        for field in array_entity_fields or []:
-            if hasattr(destination, field) and hasattr(source, field):
-                destination_attributes = getattr(destination, field)
-                source_attributes = getattr(source, field)
+    for field in array_entity_fields or []:
+        if hasattr(destination, field) and hasattr(source, field):
+            destination_attributes = getattr(destination, field)
+            source_attributes = getattr(source, field)
 
-                # Create a dictionary of destination attributes for easy lookup
-                destination_dict = {
-                    model_str(attr.name): attr for attr in destination_attributes
-                }
+            # Create a dictionary of destination attributes for easy lookup
+            destination_dict = {
+                model_str(attr.name): attr for attr in destination_attributes
+            }
 
-                updated_attributes = []
-                for source_attr in source_attributes or []:
-                    # Update the destination attribute with the source attribute
-                    destination_attr = destination_dict.get(model_str(source_attr.name))
-                    if destination_attr:
-                        updated_attributes.append(
-                            source_attr.copy(update=destination_attr.__dict__)
-                        )
-                        # Remove the updated attribute from the destination dictionary
-                        del destination_dict[model_str(source_attr.name)]
-                    else:
-                        updated_attributes.append(None)
+            updated_attributes = []
+            for source_attr in source_attributes or []:
+                # Update the destination attribute with the source attribute
+                destination_attr = destination_dict.get(model_str(source_attr.name))
+                if destination_attr:
+                    updated_attributes.append(
+                        source_attr.copy(update=destination_attr.__dict__)
+                    )
+                    # Remove the updated attribute from the destination dictionary
+                    del destination_dict[model_str(source_attr.name)]
+                else:
+                    updated_attributes.append(None)
 
-                # Combine the updated attributes with the remaining destination attributes
-                final_attributes = updated_attributes + list(destination_dict.values())
-                setattr(destination, field, final_attributes)
-    except Exception as exc:
-        logger.warning(f"Unable to sort fields due to: {exc}")
+            # Combine the updated attributes with the remaining destination attributes
+            final_attributes = updated_attributes + list(destination_dict.values())
+            setattr(destination, field, final_attributes)
 
 
 def _determine_restricted_operation(
