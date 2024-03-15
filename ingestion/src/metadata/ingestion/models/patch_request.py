@@ -258,7 +258,7 @@ def _sort_array_entity_fields(
                 final_attributes = updated_attributes + list(destination_dict.values())
                 setattr(destination, field, final_attributes)
     except Exception as exc:
-        logger.error(f"Unable to sort fields due to: {exc}")
+        logger.warning(f"Unable to sort fields due to: {exc}")
 
 
 def _determine_restricted_operation(
