@@ -90,6 +90,7 @@ export const PropertyValue: FC<Props> = ({
       | string[]
       | EntityReference
       | EntityReference[]
+      | { start: number; end: number }
   ) => {
     const isEnum = propertyType.name === 'enum';
     const isArrayType = isArray(updatedValue);
@@ -369,11 +370,6 @@ export const PropertyValue: FC<Props> = ({
         );
       }
       case 'timeInterval': {
-        const timeInterval = JSON.parse(value ?? '{}') as {
-          start?: number;
-          end?: number;
-        };
-
         return (
           <InlineEdit
             isLoading={isLoading}
@@ -387,19 +383,15 @@ export const PropertyValue: FC<Props> = ({
             <Form
               id="timeInterval-form"
               initialValues={{
-                start: timeInterval.start
-                  ? timeInterval.start.toString()
-                  : undefined,
-                end: timeInterval.end ? timeInterval.end.toString() : undefined,
+                start: value?.start ? value.start?.toString() : undefined,
+                end: value?.end ? value.end?.toString() : undefined,
               }}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
-                onInputSave(
-                  JSON.stringify({
-                    start: toNumber(values.start),
-                    end: toNumber(values.end),
-                  })
-                );
+                onInputSave({
+                  start: toNumber(values.start),
+                  end: toNumber(values.end),
+                });
               }}>
               <Form.Item
                 name="start"
