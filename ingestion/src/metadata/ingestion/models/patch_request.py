@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
+from metadata.ingestion.ometa.utils import model_str
 
 
 class PatchRequest(BaseModel):
@@ -138,12 +139,15 @@ ALLOWED_COMMON_PATCH_FIELDS = {
 
 RESTRICT_UPDATE_LIST = ["description", "tags", "owner"]
 
+ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
+
 
 def build_patch(
     source: T,
     destination: T,
     allowed_fields: Optional[Dict] = None,
     restrict_update_fields: Optional[List] = None,
+    array_entity_fields: Optional[List] = None,
 ) -> Optional[jsonpatch.JsonPatch]:
     """
     Given an Entity type and Source entity and Destination entity,
@@ -162,6 +166,13 @@ def build_patch(
     # remove change descriptions from entities
     source = _remove_change_description(source)
     destination = _remove_change_description(destination)
+
+    if array_entity_fields:
+        _sort_array_entity_fields(
+            source=source,
+            destination=destination,
+            array_entity_fields=array_entity_fields,
+        )
 
     # Get the difference between source and destination
     if allowed_fields:
@@ -192,20 +203,61 @@ def build_patch(
     # for a user editable fields like descriptions, tags we only want to support "add" operation in patch
     # we will remove the other operations for replace, remove from here
     if restrict_update_fields:
-        patch.patch = [
-            patch_ops
-            for patch_ops in patch.patch
+        patch_ops_list = []
+        for patch_ops in patch.patch or []:
             if _determine_restricted_operation(
-                patch_ops=patch_ops,
-                restrict_update_fields=restrict_update_fields,
-            )
-        ]
-
+                patch_ops=patch_ops, restrict_update_fields=restrict_update_fields
+            ):
+                if (
+                    patch_ops.get("op") == PatchOperation.REPLACE.value
+                    and patch_ops.get("value") is None
+                ):
+                    patch_ops["op"] = PatchOperation.REMOVE.value
+                    del patch_ops["value"]
+                patch_ops_list.append(patch_ops)
+        patch.patch = patch_ops_list
     return patch
 
 
+def _sort_array_entity_fields(
+    source: T,
+    destination: T,
+    array_entity_fields: Optional[List] = None,
+):
+    """
+    Sort the array entity fields to make sure the order is consistent
+    """
+    for field in array_entity_fields or []:
+        if hasattr(destination, field) and hasattr(source, field):
+            destination_attributes = getattr(destination, field)
+            source_attributes = getattr(source, field)
+
+            # Create a dictionary of destination attributes for easy lookup
+            destination_dict = {
+                model_str(attr.name): attr for attr in destination_attributes
+            }
+
+            updated_attributes = []
+            for source_attr in source_attributes or []:
+                # Update the destination attribute with the source attribute
+                destination_attr = destination_dict.get(model_str(source_attr.name))
+                if destination_attr:
+                    updated_attributes.append(
+                        source_attr.copy(update=destination_attr.__dict__)
+                    )
+                    # Remove the updated attribute from the destination dictionary
+                    del destination_dict[model_str(source_attr.name)]
+                else:
+                    updated_attributes.append(None)
+
+            # Combine the updated attributes with the remaining destination attributes
+            final_attributes = updated_attributes + list(destination_dict.values())
+            setattr(destination, field, final_attributes)
+
+
 def _determine_restricted_operation(
-    patch_ops: Dict, restrict_update_fields: Optional[List] = None
+    patch_ops: Dict,
+    restrict_update_fields: Optional[List] = None,
 ) -> bool:
     """
     Only retain add operation for restrict_update_fields fields

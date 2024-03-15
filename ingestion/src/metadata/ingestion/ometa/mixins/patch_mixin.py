@@ -119,6 +119,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         destination: T,
         allowed_fields: Optional[Dict] = None,
         restrict_update_fields: Optional[List] = None,
+        array_entity_fields: Optional[List] = None,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -140,6 +141,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 destination=destination,
                 allowed_fields=allowed_fields,
                 restrict_update_fields=restrict_update_fields,
+                array_entity_fields=array_entity_fields,
             )
 
             if not patch:
