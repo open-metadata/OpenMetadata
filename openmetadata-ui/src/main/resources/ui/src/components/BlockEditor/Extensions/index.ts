@@ -124,6 +124,7 @@ export const extensions = [
       class: 'om-table',
       'data-om-table': 'om-table',
     },
+    resizable: true,
   }),
   TableRow.configure({
     HTMLAttributes: {

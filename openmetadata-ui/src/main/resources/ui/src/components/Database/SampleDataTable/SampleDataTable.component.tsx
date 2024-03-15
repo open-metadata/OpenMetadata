@@ -34,6 +34,7 @@ import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
@@ -43,7 +44,6 @@ import {
   Transi18next,
 } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -63,7 +63,7 @@ const SampleDataTable = ({
   permissions,
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);

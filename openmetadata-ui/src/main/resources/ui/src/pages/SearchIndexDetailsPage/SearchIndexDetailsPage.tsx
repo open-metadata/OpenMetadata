@@ -24,7 +24,6 @@ import ActivityFeedProvider, {
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -58,6 +57,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
@@ -89,7 +89,7 @@ function SearchIndexDetailsPage() {
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
   const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();

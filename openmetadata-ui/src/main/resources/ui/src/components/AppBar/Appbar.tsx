@@ -21,6 +21,7 @@ import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   extractDetailsFromToken,
   isProtectedRoute,
@@ -28,7 +29,6 @@ import {
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';
 
@@ -40,7 +40,8 @@ const Appbar: React.FC = (): JSX.Element => {
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthenticated, onLogoutHandler } = useAuthContext();
+  const { isAuthenticated, onLogoutHandler, getOidcToken } =
+    useApplicationStore();
 
   const { searchCriteria } = useGlobalSearchProvider();
 
@@ -126,7 +127,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ) {
         return;
       }
-      const { isExpired, exp } = extractDetailsFromToken();
+      const { isExpired, exp } = extractDetailsFromToken(getOidcToken());
       if (!document.hidden && isExpired) {
         exp && toast.info(t('message.session-expired'));
         onLogoutHandler();

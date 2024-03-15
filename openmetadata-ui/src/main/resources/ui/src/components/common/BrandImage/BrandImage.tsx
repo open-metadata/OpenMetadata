@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import React, { FC, useMemo } from 'react';
-import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
 
 interface BrandImageProps {
@@ -39,8 +39,9 @@ const BrandImage: FC<BrandImageProps> = ({
     []
   );
 
+  const { applicationConfig } = useApplicationStore();
   const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
-    useApplicationConfigContext();
+    applicationConfig ?? {};
 
   const logoSource = isMonoGram
     ? customMonogramUrlPath || MonoGram

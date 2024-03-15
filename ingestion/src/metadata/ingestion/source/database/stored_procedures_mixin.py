@@ -138,7 +138,7 @@ class StoredProcedureMixin(ABC):
             return True
 
         if query_type == "INSERT" and re.search(
-            "^.*insert.*into.*select.*$", query_text, re.IGNORECASE
+            "^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE
         ):
             return True
 

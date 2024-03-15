@@ -26,7 +26,8 @@ import { searchData } from '../../../rest/miscAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -42,7 +43,7 @@ export const UserSelectableList = ({
 }: UserSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {

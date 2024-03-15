@@ -231,6 +231,16 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 params={"service": self.context.get().pipeline_service},
             )
 
+    def get_db_service_names(self) -> List[str]:
+        """
+        Get the list of db service names
+        """
+        return (
+            self.source_config.lineageInformation.dbServiceNames or []
+            if self.source_config.lineageInformation
+            else []
+        )
+
     def prepare(self):
         """
         Method to implement any required logic before starting the ingestion process
