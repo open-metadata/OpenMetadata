@@ -41,7 +41,6 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
-from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
