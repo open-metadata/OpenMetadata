@@ -139,7 +139,7 @@ const QueryCardExtraOption = ({
           data-testid="up-vote-btn"
           icon={
             voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpFilled color="#008376" height={15} width={15} />
+              <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
               <ThumbsUpOutline height={15} width={15} />
             )
@@ -158,8 +158,7 @@ const QueryCardExtraOption = ({
           icon={
             voteStatus === QueryVoteType.votedDown ? (
               <ThumbsUpFilled
-                className="rotate-inverse"
-                color="#E7B85D"
+                className="rotate-inverse text-warning-7"
                 height={15}
                 width={15}
               />
