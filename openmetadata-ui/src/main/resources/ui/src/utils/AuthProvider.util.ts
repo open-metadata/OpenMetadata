@@ -25,7 +25,7 @@ import {
   AuthenticationConfigurationWithScope,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { oidcTokenKey, ROUTES } from '../constants/constants';
+import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
@@ -288,9 +288,7 @@ export const getUrlPathnameExpiryAfterRoute = () => {
  * @timeoutExpiry time in ms for try to silent sign-in
  * @returns exp, isExpired, diff, timeoutExpiry
  */
-export const extractDetailsFromToken = () => {
-  const token = localStorage.getItem(oidcTokenKey) || '';
-
+export const extractDetailsFromToken = (token: string) => {
   if (token) {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);

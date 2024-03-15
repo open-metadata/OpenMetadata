@@ -115,6 +115,10 @@ SNOWFLAKE_GET_DATABASE_COMMENTS = """
 select DATABASE_NAME,COMMENT from information_schema.databases
 """
 
+SNOWFLAKE_GET_EXTERNAL_LOCATIONS = """
+SHOW EXTERNAL TABLES IN DATABASE "{database_name}"
+"""
+
 SNOWFLAKE_TEST_FETCH_TAG = """
 select TAG_NAME from snowflake.account_usage.tag_references limit 1
 """

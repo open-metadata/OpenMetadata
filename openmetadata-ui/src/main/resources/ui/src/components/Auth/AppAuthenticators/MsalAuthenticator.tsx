@@ -26,8 +26,8 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useMutex } from 'react-context-mutex';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
-import localState from '../../../utils/LocalStorageUtils';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -45,6 +45,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
     ref
   ) => {
+    const { setOidcToken, getOidcToken } = useApplicationStore();
     const { instance, accounts, inProgress } = useMsal();
     const account = useAccount(accounts[0] || {});
     const MutexRunner = useMutex();
@@ -87,7 +88,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         },
       };
 
-      localState.setOidcToken(idToken);
+      setOidcToken(idToken);
 
       return user;
     };
@@ -128,7 +129,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     useEffect(() => {
-      const oidcUserToken = localState.getOidcToken();
+      const oidcUserToken = getOidcToken();
       if (
         !oidcUserToken &&
         inProgress === InteractionStatus.None &&

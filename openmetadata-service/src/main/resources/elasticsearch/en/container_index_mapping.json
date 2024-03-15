@@ -97,6 +97,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "fullPath": {
+        "type": "keyword"
+      },
       "lineage": {
         "type" : "object"
       },

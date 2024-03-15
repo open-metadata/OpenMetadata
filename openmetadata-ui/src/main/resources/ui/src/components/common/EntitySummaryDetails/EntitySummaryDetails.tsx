@@ -27,7 +27,8 @@ import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './entity-summary-details.style.less';
 
@@ -57,7 +58,7 @@ const InfoIcon = ({
 const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const displayVal = data.placeholderText || data.value;
 
   const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
