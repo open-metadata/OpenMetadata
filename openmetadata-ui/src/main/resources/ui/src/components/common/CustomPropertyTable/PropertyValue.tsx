@@ -12,20 +12,34 @@
  */
 
 import Icon from '@ant-design/icons';
-import { DatePicker, Form, Select, Tooltip, Typography } from 'antd';
+import {
+  DatePicker,
+  Form,
+  Input,
+  Select,
+  TimePicker,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isArray, isEmpty, isUndefined, noop, toNumber, toUpper } from 'lodash';
 import moment, { Moment } from 'moment';
 import React, { FC, Fragment, useState } from 'react';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  VALIDATION_MESSAGES,
+} from '../../../constants/constants';
+import { CSMode } from '../../../enums/codemirror.enum';
 import { Table } from '../../../generated/entity/data/table';
 import {
   CustomProperty,
   EnumConfig,
 } from '../../../generated/type/customProperty';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
@@ -91,11 +105,16 @@ export const PropertyValue: FC<Props> = ({
     switch (propertyType.name) {
       case 'string':
       case 'integer':
+      case 'number':
         return (
           <PropertyInput
             isLoading={isLoading}
             propertyName={propertyName}
-            type={propertyType.name === 'integer' ? 'number' : 'text'}
+            type={
+              ['integer', 'number'].includes(propertyType.name)
+                ? 'number'
+                : 'text'
+            }
             value={value}
             onCancel={onHideInput}
             onSave={onInputSave}
@@ -206,6 +225,282 @@ export const PropertyValue: FC<Props> = ({
                   format={format}
                   showTime={propertyType.name === 'dateTime'}
                   style={{ width: '250px' }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'time': {
+        const format = 'HH:mm:ss';
+
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'time-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="time-form"
+              initialValues={{
+                time: value ? moment(value, format) : undefined,
+              }}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={(values: { time: Moment }) => {
+                onInputSave(values.time.format(format));
+              }}>
+              <Form.Item
+                name="time"
+                rules={[
+                  {
+                    required: true,
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}>
+                <TimePicker
+                  data-testid="time-picker"
+                  disabled={isLoading}
+                  style={{ width: '250px' }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'email': {
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'email-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="email-form"
+              initialValues={{
+                email: value,
+              }}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={(values: { email: string }) => {
+                onInputSave(values.email);
+              }}>
+              <Form.Item
+                name="email"
+                rules={[
+                  {
+                    required: true,
+                    min: 6,
+                    max: 127,
+                    type: 'email',
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}>
+                <Input
+                  data-testid="email-input"
+                  disabled={isLoading}
+                  style={{ width: '250px' }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'timestamp': {
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'timestamp-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="timestamp-form"
+              initialValues={{
+                timestamp: value,
+              }}
+              layout="vertical"
+              onFinish={(values: { timestamp: string }) => {
+                onInputSave(toNumber(values.timestamp));
+              }}>
+              <Form.Item
+                help="Timestamp in Unix epoch time milliseconds."
+                name="timestamp"
+                rules={[
+                  {
+                    required: true,
+                    pattern: /^\d{13}$/,
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}>
+                <Input
+                  data-testid="timestamp-input"
+                  disabled={isLoading}
+                  style={{ width: '250px' }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'timeInterval': {
+        const timeInterval = JSON.parse(value ?? '{}') as {
+          start?: number;
+          end?: number;
+        };
+
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'timeInterval-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="timeInterval-form"
+              initialValues={{
+                start: timeInterval.start
+                  ? timeInterval.start.toString()
+                  : undefined,
+                end: timeInterval.end ? timeInterval.end.toString() : undefined,
+              }}
+              layout="vertical"
+              onFinish={(values: { start: string; end: string }) => {
+                onInputSave(
+                  JSON.stringify({
+                    start: toNumber(values.start),
+                    end: toNumber(values.end),
+                  })
+                );
+              }}>
+              <Form.Item
+                name="start"
+                rules={[
+                  {
+                    required: true,
+                    pattern: /^\d{13}$/,
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}>
+                <Input
+                  data-testid="start-input"
+                  disabled={isLoading}
+                  placeholder="Start"
+                  style={{ width: '250px' }}
+                />
+              </Form.Item>
+              <Form.Item
+                name="end"
+                rules={[
+                  {
+                    required: true,
+                    pattern: /^\d{13}$/,
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}>
+                <Input
+                  data-testid="end-input"
+                  disabled={isLoading}
+                  placeholder="End"
+                  style={{ width: '250px' }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'duration': {
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'duration-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="duration-form"
+              initialValues={{
+                duration: value,
+              }}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={(values: { duration: string }) => {
+                onInputSave(values.duration);
+              }}>
+              <Form.Item
+                name="duration"
+                rules={[
+                  {
+                    required: true,
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}>
+                <Input
+                  data-testid="duration-input"
+                  disabled={isLoading}
+                  style={{ width: '250px' }}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+      case 'sqlQuery': {
+        return (
+          <InlineEdit
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: 'sqlQuery-form',
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id="sqlQuery-form"
+              initialValues={{
+                sqlQuery: value,
+              }}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={(values: { sqlQuery: string }) => {
+                onInputSave(values.sqlQuery);
+              }}>
+              <Form.Item
+                name="sqlQuery"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: t('label.sql-uppercase-query'),
+                    }),
+                  },
+                ]}
+                style={{ marginBottom: '0px' }}
+                trigger="onChange">
+                <SchemaEditor
+                  className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                  mode={{ name: CSMode.SQL }}
+                  options={{
+                    readOnly: false,
+                  }}
                 />
               </Form.Item>
             </Form>
