@@ -319,6 +319,7 @@ export const PropertyValue: FC<Props> = ({
                 <Input
                   data-testid="email-input"
                   disabled={isLoading}
+                  placeholder="john@doe.com"
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -359,6 +360,7 @@ export const PropertyValue: FC<Props> = ({
                 <Input
                   data-testid="timestamp-input"
                   disabled={isLoading}
+                  placeholder="Unix epoch time in milliseconds"
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -411,7 +413,7 @@ export const PropertyValue: FC<Props> = ({
                 <Input
                   data-testid="start-input"
                   disabled={isLoading}
-                  placeholder="Start"
+                  placeholder="Start time in Unix epoch time milliseconds"
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -427,7 +429,7 @@ export const PropertyValue: FC<Props> = ({
                 <Input
                   data-testid="end-input"
                   disabled={isLoading}
-                  placeholder="End"
+                  placeholder="End time in Unix epoch time milliseconds"
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -467,6 +469,7 @@ export const PropertyValue: FC<Props> = ({
                 <Input
                   data-testid="duration-input"
                   disabled={isLoading}
+                  placeholder='Duration in ISO 8601 format "PnYnMnDTnHnMnS"'
                   style={{ width: '250px' }}
                 />
               </Form.Item>
