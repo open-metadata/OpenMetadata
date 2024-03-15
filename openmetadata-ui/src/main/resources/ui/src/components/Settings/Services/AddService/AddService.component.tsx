@@ -29,6 +29,7 @@ import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
 import {
@@ -41,7 +42,6 @@ import {
   getServiceType,
 } from '../../../../utils/ServiceUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -69,7 +69,7 @@ const AddService = ({
   handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { fetchAirflowStatus } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(

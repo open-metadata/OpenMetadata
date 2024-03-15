@@ -13,13 +13,13 @@
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import IconTeams from '../../assets/svg/teams-grey.svg';
-import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
+import { useApplicationStore } from '../useApplicationStore';
 
 let userProfilePicsLoading: string[] = [];
 
@@ -32,8 +32,7 @@ export const useUserProfile = ({
   name: string;
   isTeam?: boolean;
 }): [string | null, boolean, User | undefined] => {
-  const { userProfilePics, updateUserProfilePics } =
-    useApplicationConfigContext();
+  const { userProfilePics, updateUserProfilePics } = useApplicationStore();
 
   const user = userProfilePics[name];
   const [profilePic, setProfilePic] = useState(

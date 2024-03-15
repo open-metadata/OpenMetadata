@@ -29,7 +29,8 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -47,7 +48,7 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const selectedOwner = Form.useWatch<EntityReference | undefined>(
     'owner',
