@@ -15,13 +15,14 @@ Factory class for creating sampler objects
 
 from typing import Union
 
-from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import DynamoDBConnection
-
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,

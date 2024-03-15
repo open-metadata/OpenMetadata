@@ -9,11 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MongoDB adaptor for the NoSQL profiler.
+DyanmoDB adaptor for the NoSQL profiler.
 """
-from typing import TYPE_CHECKING, List, Dict
+from typing import TYPE_CHECKING, Dict, List
 
-from metadata.generated.schema.entity.data.table import Table, Column
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 
 if TYPE_CHECKING:

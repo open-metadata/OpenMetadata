@@ -15,8 +15,6 @@ Factory class for creating profiler interface objects
 
 from typing import cast
 
-from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import DynamoDBConnection
-
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -28,6 +26,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
+)
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
