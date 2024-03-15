@@ -31,7 +31,7 @@ const InlineEdit = ({
       className={classNames(className, 'w-full')}
       data-testid="inline-edit-container"
       direction={direction}
-      // Used div to stop click propagation event anywhere in the component to parent
+      // Used onClick to stop click propagation event anywhere in the component to parent
       // TeamDetailsV1 and User.component collapsible panel.
       onClick={(e) => e.stopPropagation()}>
       {children}

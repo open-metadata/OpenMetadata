@@ -903,6 +903,7 @@ const TeamDetailsV1 = ({
           data-testid="leave-team-button"
           type="primary"
           onClick={(e) => {
+            // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);
           }}>

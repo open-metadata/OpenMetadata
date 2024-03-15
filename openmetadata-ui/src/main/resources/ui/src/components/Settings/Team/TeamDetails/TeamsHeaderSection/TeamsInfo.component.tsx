@@ -140,7 +140,7 @@ const TeamsInfo = ({
         {isEmailEdit ? (
           <Form
             initialValues={{ email }}
-            //  Used div to stop click propagation event anywhere in the form to parent
+            //  Used onClick stop click propagation event anywhere in the form to parent
             //  TeamsDetailV1 collapsible panel
             onClick={(e) => e.stopPropagation()}
             onFinish={onEmailSave}>
@@ -207,6 +207,7 @@ const TeamsInfo = ({
                   data-testid="edit-email"
                   style={{ fontSize: '16px' }}
                   onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     setIsEmailEdit(true);
                   }}
@@ -265,6 +266,7 @@ const TeamsInfo = ({
                         })
                   }
                   onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     if (isGroupType) {
                       return;

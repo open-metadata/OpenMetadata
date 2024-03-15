@@ -152,6 +152,7 @@ const UserProfileDetails = ({
                 data-testid="edit-displayName"
                 {...ICON_DIMENSION}
                 onClick={(e) => {
+                  // Used to stop click propagation event to parent User.component collapsible panel
                   e.stopPropagation();
                   setIsDisplayNameEdit(true);
                 }}
@@ -179,6 +180,7 @@ const UserProfileDetails = ({
           data-testid="change-password-button"
           type="primary"
           onClick={(e) => {
+            // Used to stop click propagation event to parent User.component collapsible panel
             e.stopPropagation();
             setIsChangePassword(true);
           }}>

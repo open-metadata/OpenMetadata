@@ -90,7 +90,7 @@ const TeamsHeadingLabel = ({
   const teamHeadingRender = useMemo(
     () =>
       isHeadingEditing ? (
-        // Used div to stop click propagation event anywhere in the component to parent
+        // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel
         <Space onClick={(e) => e.stopPropagation()}>
           <Input
@@ -159,6 +159,7 @@ const TeamsHeadingLabel = ({
                   disabled={!hasEditDisplayNamePermission}
                   style={{ fontSize: '16px' }}
                   onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     setIsHeadingEditing(true);
                   }}

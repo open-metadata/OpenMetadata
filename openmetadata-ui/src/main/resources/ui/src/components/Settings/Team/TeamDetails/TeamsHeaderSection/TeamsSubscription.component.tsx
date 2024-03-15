@@ -95,6 +95,7 @@ const TeamsSubscription = ({
                 data-testid="edit-team-subscription"
                 width={14}
                 onClick={(e) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                   e.stopPropagation();
                   setEditSubscription(true);
                 }}
@@ -163,6 +164,7 @@ const TeamsSubscription = ({
             data-testid="edit-team-subscription"
             {...ICON_DIMENSION}
             onClick={(e) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
               e.stopPropagation();
               setEditSubscription(true);
             }}
