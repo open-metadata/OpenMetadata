@@ -91,8 +91,6 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         """
 
     def post_init(self) -> None:
-        # self.validate()
-
         # Pick up the service connection from the API if needed
         self._retrieve_service_connection_if_needed(self.service_type)
 
@@ -204,21 +202,3 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
-
-    def validate(self):
-        try:
-            if (
-                not self.config.source.serviceConnection.__root__.config.supportsProfiler
-            ):
-                raise AttributeError()
-        except AttributeError:
-            if ProfilerProcessorConfig.parse_obj(
-                self.config.processor.dict().get("config")
-            ).ignoreValidation:
-                logger.debug(
-                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
-                )
-                return
-            raise WorkflowExecutionError(
-                f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
-            )
