@@ -46,9 +46,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
-from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -719,7 +719,7 @@ class SnowflakeSource(
                 )
         else:
             yield from super().mark_tables_as_deleted()
-            
+
     def yield_external_table_lineage(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[AddLineageRequest]:
