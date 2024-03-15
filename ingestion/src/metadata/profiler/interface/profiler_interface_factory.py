@@ -15,6 +15,8 @@ Factory class for creating profiler interface objects
 
 from typing import cast
 
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import DynamoDBConnection
+
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -104,5 +106,6 @@ profilers = {
     DatabricksConnection.__name__: DatabricksProfilerInterface,
     Db2Connection.__name__: DB2ProfilerInterface,
     MongoDBConnection.__name__: NoSQLProfilerInterface,
+    DynamoDBConnection.__name__: NoSQLProfilerInterface,
 }
 profiler_interface_factory.register_many(profilers)

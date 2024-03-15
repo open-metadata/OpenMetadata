@@ -15,6 +15,8 @@ Factory class for creating sampler objects
 
 from typing import Union
 
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import DynamoDBConnection
+
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -64,3 +66,4 @@ sampler_factory_.register(BigQueryConnection.__name__, BigQuerySampler)
 sampler_factory_.register(DatalakeConnection.__name__, DatalakeSampler)
 sampler_factory_.register(TrinoConnection.__name__, TrinoSampler)
 sampler_factory_.register(MongoDBConnection.__name__, NoSQLSampler)
+sampler_factory_.register(DynamoDBConnection.__name__, NoSQLSampler)
