@@ -24,14 +24,12 @@ from sqlparse.sql import Function, Identifier
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     PartitionColumnDetails,
     PartitionIntervalTypes,
-    Table,
     TablePartition,
     TableType,
 )
@@ -45,8 +43,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -55,6 +51,9 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
 )
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
@@ -134,7 +133,11 @@ SnowflakeDialect.get_columns = get_columns
 
 
 class SnowflakeSource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+    LifeCycleQueryMixin,
+    StoredProcedureMixin,
+    CommonDbSourceService,
+    MultiDBSource,
+    ExternalTableLineageMixin,
 ):
     """
     Implements the necessary methods to extract
@@ -627,52 +630,7 @@ class SnowflakeSource(
 
         return queries_dict
 
-    def yield_external_table_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[AddLineageRequest]:
-        """
-        Yield external table lineage
-        """
-        table_name, table_type = table_name_and_type
-        location = self.external_location_map.get(
-            (self.context.database, self.context.database_schema, table_name)
+    def get_external_table_location(self):
+        return self.external_location_map.get(
+            (self.context.database, self.context.database_schema, self.context.table)
         )
-        if table_type == TableType.External and location:
-            location_entity = self.metadata.es_search_container_by_path(
-                full_path=location
-            )
-
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=self.context.database_schema,
-                table_name=table_name,
-                skip_es_search=True,
-            )
-            table_entity = self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=table_fqn,
-            )
-
-            if (
-                location_entity
-                and location_entity[0]
-                and table_entity
-                and table_entity[0]
-            ):
-                yield Either(
-                    right=AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=location_entity[0].id,
-                                type="container",
-                            ),
-                            toEntity=EntityReference(
-                                id=table_entity[0].id,
-                                type="table",
-                            ),
-                        )
-                    )
-                )
