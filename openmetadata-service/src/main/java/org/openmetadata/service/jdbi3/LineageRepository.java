@@ -13,6 +13,12 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.Entity.CONTAINER;
+import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
@@ -191,24 +197,29 @@ public class LineageRepository {
   private void validateChildren(String columnFQN, EntityReference entityReference) {
     switch (entityReference.getType()) {
       case "table" -> {
-        Table table = dao.tableDAO().findEntityById(entityReference.getId());
+        Table table =
+            Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
       }
       case "topic" -> {
-        Topic topic = dao.topicDAO().findEntityById(entityReference.getId());
+        Topic topic =
+            Entity.getEntity(TOPIC, entityReference.getId(), "messageSchema", Include.NON_DELETED);
         ColumnUtil.validateFieldFQN(topic.getMessageSchema().getSchemaFields(), columnFQN);
       }
       case "container" -> {
-        Container container = dao.containerDAO().findEntityById(entityReference.getId());
+        Container container =
+            Entity.getEntity(CONTAINER, entityReference.getId(), "dataModel", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(container.getDataModel().getColumns(), columnFQN);
       }
       case "dashboardDataModel" -> {
         DashboardDataModel dashboardDataModel =
-            dao.dashboardDataModelDAO().findEntityById(entityReference.getId());
+            Entity.getEntity(
+                DASHBOARD_DATA_MODEL, entityReference.getId(), "columns", Include.NON_DELETED);
         ColumnUtil.validateColumnFQN(dashboardDataModel.getColumns(), columnFQN);
       }
       case "dashboard" -> {
-        Dashboard dashboard = dao.dashboardDAO().findEntityById(entityReference.getId());
+        Dashboard dashboard =
+            Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
         dashboard.getCharts().stream()
             .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
             .findAny()
@@ -218,7 +229,8 @@ public class LineageRepository {
                         CatalogExceptionMessage.invalidFieldName("chart", columnFQN)));
       }
       case "mlmodel" -> {
-        MlModel mlModel = dao.mlModelDAO().findEntityById(entityReference.getId());
+        MlModel mlModel =
+            Entity.getEntity(MLMODEL, entityReference.getId(), "", Include.NON_DELETED);
         mlModel.getMlFeatures().stream()
             .filter(f -> f.getFullyQualifiedName().equals(columnFQN))
             .findAny()

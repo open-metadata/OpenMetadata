@@ -44,12 +44,14 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateContainer;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
@@ -66,6 +68,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
 import org.openmetadata.service.resources.mlmodels.MlModelResourceTest;
@@ -87,6 +90,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   private static Topic TOPIC;
   private static Container CONTAINER;
   private static MlModel ML_MODEL;
+
+  private static Dashboard DASHBOARD;
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -121,6 +126,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     CreateMlModel createMlModel =
         mlModelResourceTest.createRequest(test).withMlFeatures(MlModelResourceTest.ML_FEATURES);
     ML_MODEL = mlModelResourceTest.createEntity(createMlModel, ADMIN_AUTH_HEADERS);
+    DashboardResourceTest dashboardResourceTest1 = new DashboardResourceTest();
+    CreateDashboard createDashboard = dashboardResourceTest1.createRequest(test);
+    DASHBOARD = dashboardResourceTest1.createEntity(createDashboard, ADMIN_AUTH_HEADERS);
   }
 
   @Order(1)
@@ -417,6 +425,18 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
         () -> addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format("Invalid feature name %s", m3f3));
+
+    LineageDetails tableToDashboard = new LineageDetails();
+    String c1d1 = DASHBOARD.getCharts().get(0).getFullyQualifiedName();
+    String c2d1 = DASHBOARD.getCharts().get(1).getFullyQualifiedName();
+
+    List<ColumnLineage> tableToDashboardLineage = tableToDashboard.getColumnsLineage();
+    tableToDashboardLineage.add(
+        new ColumnLineage().withFromColumns(List.of(f1t1)).withToColumn(c1d1));
+    tableToDashboardLineage.add(
+        new ColumnLineage().withFromColumns(List.of(f2t2)).withToColumn(c2d1));
+    addEdge(TABLE_DATA_MODEL_LINEAGE, DASHBOARD, tableToDashboard, ADMIN_AUTH_HEADERS);
+
     deleteEdgeByName(
         TOPIC.getEntityReference().getType(),
         TOPIC.getFullyQualifiedName(),
