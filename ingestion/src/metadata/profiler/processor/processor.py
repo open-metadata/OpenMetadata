@@ -12,7 +12,7 @@
 Profiler Processor Step
 """
 import traceback
-from typing import cast
+from typing import Optional, cast
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -82,7 +82,9 @@ class ProfilerProcessor(Processor):
         return Either()
 
     @classmethod
-    def create(cls, config_dict: dict, _: OpenMetadata) -> "Step":
+    def create(
+        cls, config_dict: dict, _: OpenMetadata, pipeline_name: Optional[str] = None
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config)
 
