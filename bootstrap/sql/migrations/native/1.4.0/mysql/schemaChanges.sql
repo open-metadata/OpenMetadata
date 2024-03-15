@@ -52,3 +52,8 @@ ALTER TABLE user_entity ADD INDEX index_user_entity_deleted(nameHash, deleted);
 ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_index(appId);
 ALTER TABLE suggestions ADD INDEX index_suggestions_type(suggestionType);
 ALTER TABLE suggestions ADD INDEX index_suggestions_status(status);
+
+-- Add the supportsProfiler field to the DynamoDB connection configuration
+UPDATE dbservice_entity
+SET json = JSON_INSERT(json, '$.connection.config.supportsProfiler', TRUE)
+WHERE serviceType = 'DynamoDB';

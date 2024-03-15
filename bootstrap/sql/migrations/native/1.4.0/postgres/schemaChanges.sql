@@ -53,3 +53,8 @@ CREATE INDEX index_user_entity_deleted ON user_entity (nameHash, deleted);
 CREATE INDEX apps_extension_time_series_index ON apps_extension_time_series (appId);
 CREATE INDEX index_suggestions_type ON suggestions (suggestionType);
 CREATE INDEX index_suggestions_status ON suggestions (status);
+
+-- Add the supportsProfiler field to the DynamoDB connection configuration
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb, '{connection,config,supportsProfiler}', 'true'::jsonb) 
+WHERE serviceType = 'DynamoDB';
