@@ -24,6 +24,7 @@ import {
 } from 'reactflow';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import './custom-node.less';
@@ -43,6 +44,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     nodes,
     edges,
     upstreamDownstreamData,
+    activeLayer,
     onNodeCollapse,
     removeNodeHandler,
     loadChildNodesHandler,
@@ -263,7 +265,9 @@ const CustomNodeV1 = (props: NodeProps) => {
       {getHandle()}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
-        <NodeChildren isConnectable={isConnectable} node={node} />
+        {activeLayer === LineageLayerView.COLUMN && (
+          <NodeChildren isConnectable={isConnectable} node={node} />
+        )}
       </div>
     </div>
   );
