@@ -196,7 +196,9 @@ class PowerbiSource(DashboardServiceSource):
         return groups or None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: PowerBIConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PowerBIConnection):

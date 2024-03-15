@@ -68,7 +68,12 @@ class AppRunner(Step, ABC):
         """App logic to execute"""
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         config = OpenMetadataApplicationConfig.parse_obj(config_dict)
         return cls(config=config, metadata=metadata)
 

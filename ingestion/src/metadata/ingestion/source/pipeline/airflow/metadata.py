@@ -111,7 +111,9 @@ class AirflowSource(PipelineServiceSource):
         self._session = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata) -> "AirflowSource":
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ) -> "AirflowSource":
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirflowConnection):

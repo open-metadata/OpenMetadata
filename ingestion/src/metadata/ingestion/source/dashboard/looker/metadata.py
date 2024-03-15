@@ -174,7 +174,12 @@ class LookerSource(DashboardServiceSource):
         self._added_lineage: Optional[Dict] = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "LookerSource":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "LookerSource":
         config = WorkflowSource.parse_obj(config_dict)
         connection: LookerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, LookerConnection):

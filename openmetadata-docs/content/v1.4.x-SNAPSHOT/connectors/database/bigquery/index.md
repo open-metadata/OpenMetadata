@@ -18,6 +18,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+    - [Incremental Extraction](/connectors/ingestion/workflows/metadata/incremental-extraction/bigquery)
 - [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)

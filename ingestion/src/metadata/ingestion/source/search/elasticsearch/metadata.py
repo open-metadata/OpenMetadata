@@ -56,7 +56,9 @@ class ElasticsearchSource(SearchServiceSource):
         self.client: Elasticsearch = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: ElasticsearchConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ElasticsearchConnection):

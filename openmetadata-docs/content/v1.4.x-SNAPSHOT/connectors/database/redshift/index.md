@@ -17,6 +17,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+    - [Incremental Extraction](/connectors/ingestion/workflows/metadata/incremental-extraction/redshift)
 - [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)

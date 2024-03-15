@@ -788,6 +788,15 @@ site_menu:
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns / Database
     url: /connectors/ingestion/workflows/metadata/filter-patterns/database
 
+  - category: Connectors / Ingestion / Workflows/ Metadata / Incremental Extraction
+    url: /connectors/ingestion/workflows/metadata/incremental-extraction
+  - category: Connectors / Ingestion / Workflows/ Metadata / Incremental Extraction / BigQuery
+    url: /connectors/ingestion/workflows/metadata/incremental-extraction/bigquery
+  - category: Connectors / Ingestion / Workflows/ Metadata / Incremental Extraction / Redshift
+    url: /connectors/ingestion/workflows/metadata/incremental-extraction/redshift
+  - category: Connectors / Ingestion / Workflows/ Metadata / Incremental Extraction / Snowflake
+    url: /connectors/ingestion/workflows/metadata/incremental-extraction/snowflake
+
   - category: Connectors / Ingestion / Workflows / Usage
     url: /connectors/ingestion/workflows/usage
   - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs

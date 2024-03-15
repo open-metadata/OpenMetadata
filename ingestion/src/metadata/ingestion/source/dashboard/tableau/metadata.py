@@ -88,7 +88,12 @@ class TableauSource(DashboardServiceSource):
     client: TableauClient
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: TableauConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, TableauConnection):

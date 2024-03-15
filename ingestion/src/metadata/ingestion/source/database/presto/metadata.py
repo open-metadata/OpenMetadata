@@ -15,7 +15,7 @@ Presto source module
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable
+from typing import Iterable, Optional
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
 from sqlalchemy import inspect, types, util
@@ -118,7 +118,9 @@ class PrestoSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: PrestoConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PrestoConnection):

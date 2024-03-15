@@ -42,6 +42,10 @@ If the owner's name is openmetadata, you need to enter `openmetadata@domain.com`
 - **Include Owner(toggle)**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
+- **Incremental (Beta)**: Use Incremental Metadata Extraction after the first execution. This is done by getting the changed tables instead of all of them. **Only Available for BigQuery, Redshift and Snowflake**
+    - **Enabled**: If `True`, enables Metadata Extraction to be Incremental.
+    - **lookback Days**: Number of days to search back for a successful pipeline run. The timestamp of the last found successful pipeline run will be used as a base to search for updated entities.
+    - **Safety Margin Days**: Number of days to add to the last successful pipeline run timestamp to search for updated entities.
 
 Note that the right-hand side panel in the OpenMetadata UI will also share useful documentation when configuring the ingestion.
 

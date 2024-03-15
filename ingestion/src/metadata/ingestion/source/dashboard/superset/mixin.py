@@ -70,7 +70,12 @@ class SupersetSourceMixin(DashboardServiceSource):
         self.all_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: SupersetConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SupersetConnection):

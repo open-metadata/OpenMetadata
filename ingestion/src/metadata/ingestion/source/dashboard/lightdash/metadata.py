@@ -50,7 +50,9 @@ class LightdashSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: LightdashConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, LightdashConnection):

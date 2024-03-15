@@ -15,7 +15,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import os
 import traceback
-from typing import Any, Iterable, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -117,7 +117,9 @@ class DatalakeSource(DatabaseServiceSource):
         self.reader = get_reader(config_source=self.config_source, client=self.client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatalakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatalakeConnection):

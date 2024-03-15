@@ -11,6 +11,8 @@
 """
 Kafka source ingestion
 """
+from typing import Optional
+
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
@@ -24,7 +26,9 @@ from metadata.ingestion.source.messaging.common_broker_source import CommonBroke
 
 class KafkaSource(CommonBrokerSource):
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: KafkaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, KafkaConnection):

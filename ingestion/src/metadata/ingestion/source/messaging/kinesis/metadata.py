@@ -62,13 +62,19 @@ class KinesisSource(MessagingServiceSource):
     topics metadata from Kinesis Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.kinesis = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: KinesisConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, KinesisConnection):
