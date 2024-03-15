@@ -500,7 +500,7 @@ export const PropertyValue: FC<Props> = ({
                     }),
                   },
                 ]}
-                style={{ marginBottom: '0px' }}
+                style={{ marginBottom: '0px', minWidth: '250px' }}
                 trigger="onChange">
                 <SchemaEditor
                   className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
@@ -627,6 +627,18 @@ export const PropertyValue: FC<Props> = ({
           <Typography.Text className="break-all" data-testid="value">
             {isArray(value) ? value.join(', ') : value}
           </Typography.Text>
+        );
+
+      case 'sqlQuery':
+        return (
+          <SchemaEditor
+            className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+            mode={{ name: CSMode.SQL }}
+            options={{
+              readOnly: true,
+            }}
+            value={value ?? ''}
+          />
         );
 
       case 'string':
