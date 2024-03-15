@@ -112,8 +112,10 @@ export const PersonaSelectableList = ({
   }
 
   return (
-    // Used div to stop click propagation event anywhere in the form to parent User.component collapsible panel
-    <div onClick={(e) => e.stopPropagation()}>
+    // Used Button to stop click propagation event anywhere in the form to parent User.component collapsible panel
+    <Button
+      className="remove-button-default-styling"
+      onClick={(e) => e.stopPropagation()}>
       <Popover
         destroyTooltipOnHide
         content={
@@ -151,6 +153,6 @@ export const PersonaSelectableList = ({
           </Tooltip>
         )}
       </Popover>
-    </div>
+    </Button>
   );
 };

@@ -263,9 +263,11 @@ const ManageButton: FC<ManageButtonProps> = ({
   return (
     <>
       {items.length ? (
-        // Used div to stop click propagation event in the
+        // Used Button to stop click propagation event in the
         // TeamDetailsV1 and User.component collapsible panel.
-        <div onClick={(e) => e.stopPropagation()}>
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
             dropdownRender={renderDropdownContainer}
@@ -287,7 +289,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               </Button>
             </Tooltip>
           </Dropdown>
-        </div>
+        </Button>
       ) : (
         <></>
       )}

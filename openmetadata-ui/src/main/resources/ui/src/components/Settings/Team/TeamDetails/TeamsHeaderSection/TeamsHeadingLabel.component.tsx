@@ -158,7 +158,10 @@ const TeamsHeadingLabel = ({
                   data-testid="edit-team-name"
                   disabled={!hasEditDisplayNamePermission}
                   style={{ fontSize: '16px' }}
-                  onClick={() => setIsHeadingEditing(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsHeadingEditing(true);
+                  }}
                 />
               </Tooltip>
             )}

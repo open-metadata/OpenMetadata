@@ -108,9 +108,11 @@ const DomainSelectableList = ({
   );
 
   return (
-    // Used div to stop click propagation event anywhere in the component to parent
+    // Used Button to stop click propagation event anywhere in the component to parent
     // TeamDetailV1 collapsible panel
-    <div onClick={(e) => e.stopPropagation()}>
+    <Button
+      className="remove-button-default-styling"
+      onClick={(e) => e.stopPropagation()}>
       <Popover
         destroyTooltipOnHide
         content={
@@ -173,7 +175,7 @@ const DomainSelectableList = ({
           </Tooltip>
         )}
       </Popover>
-    </div>
+    </Button>
   );
 };
 

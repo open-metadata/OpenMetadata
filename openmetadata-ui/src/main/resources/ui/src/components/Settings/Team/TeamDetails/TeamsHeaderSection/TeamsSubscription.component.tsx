@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -162,8 +171,10 @@ const TeamsSubscription = ({
       )}
 
       {editSubscription && (
-        // Used div to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
-        <div onClick={(e) => e.stopPropagation()}>
+        // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
           <Modal
             centered
             open
@@ -218,7 +229,7 @@ const TeamsSubscription = ({
               </Form.Item>
             </Form>
           </Modal>
-        </div>
+        </Button>
       )}
     </Space>
   );

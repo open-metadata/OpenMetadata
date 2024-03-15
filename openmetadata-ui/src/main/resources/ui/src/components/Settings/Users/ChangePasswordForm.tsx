@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Modal } from 'antd';
+import { Button, Form, Input, Modal } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
@@ -38,9 +38,11 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
   const newPassword = Form.useWatch('newPassword', form);
 
   return (
-    // Used div to stop click propagation event anywhere in the component to parent
+    // Used Button to stop click propagation event anywhere in the component to parent
     // Users.Component collapsible panel
-    <div onClick={(e) => e.stopPropagation()}>
+    <Button
+      className="remove-button-default-styling"
+      onClick={(e) => e.stopPropagation()}>
       <Modal
         centered
         closable={false}
@@ -130,7 +132,7 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </Button>
   );
 };
 
