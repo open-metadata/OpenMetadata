@@ -8,6 +8,19 @@ ALTER TABLE query_entity ADD COLUMN checksum varchar(32) GENERATED ALWAYS AS (js
 
 UPDATE query_entity SET json = jsonb_set(json::jsonb, '{checksum}', MD5(json->'connection'));
 
+
+-- Restructure dbServiceNames in ingestion_pipeline_entity
+update ingestion_pipeline_entity ipe set json = JSONB_SET(
+    json::jsonb #- '{sourceConfig,config,dbServiceNames}',
+    '{sourceConfig,config,lineageInformation}',
+    jsonb_build_object(
+        'dbServiceNames',
+        json#>'{sourceConfig,config,dbServiceNames}'
+    )
+)
+WHERE (json#>'{sourceConfig,config,type}')::varchar(255) IN ('"DashboardMetadata"', '"PipelineMetadata"') 
+and json#>'{sourceConfig,config,dbServiceNames}' is not null;
+
 CREATE INDEX index_chart_entity_deleted ON chart_entity (fqnHash, deleted);
 CREATE INDEX index_dashboard_data_model_entity_deleted ON dashboard_data_model_entity (fqnHash, deleted);
 CREATE INDEX index_dashboard_entity_deleted ON dashboard_entity (fqnHash, deleted);
@@ -53,3 +66,4 @@ CREATE INDEX index_user_entity_deleted ON user_entity (nameHash, deleted);
 CREATE INDEX apps_extension_time_series_index ON apps_extension_time_series (appId);
 CREATE INDEX index_suggestions_type ON suggestions (suggestionType);
 CREATE INDEX index_suggestions_status ON suggestions (status);
+

@@ -3,9 +3,10 @@
     config:
       type: DashboardMetadata
       overrideOwner: True
-      # dbServiceNames:
-      #   - service1
-      #   - service2
+      # lineageInformation:
+      #   dbServiceNames:
+      #     - service1
+      #     - service2
       # dashboardFilterPattern:
       #   includes:
       #     - dashboard1

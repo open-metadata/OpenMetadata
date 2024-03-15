@@ -25,6 +25,7 @@ from sqlparse.sql import Function, Identifier
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
@@ -46,6 +47,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.ingestion.api.delete import delete_entity_by_name
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -73,6 +76,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_CURRENT_ACCOUNT,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
+    SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
@@ -153,6 +157,7 @@ class SnowflakeSource(
         self.partition_details = {}
         self.schema_desc_map = {}
         self.database_desc_map = {}
+        self.external_location_map = {}
 
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
@@ -227,15 +232,27 @@ class SnowflakeSource(
                 ] = row.CLUSTERING_KEY
 
     def set_schema_description_map(self) -> None:
+        self.schema_desc_map.clear()
         results = self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS).all()
         for row in results:
             self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
 
     def set_database_description_map(self) -> None:
+        self.database_desc_map.clear()
         if not self.database_desc_map:
             results = self.engine.execute(SNOWFLAKE_GET_DATABASE_COMMENTS).all()
             for row in results:
                 self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
+
+    def set_external_location_map(self, database_name: str) -> None:
+        self.external_location_map.clear()
+        results = self.engine.execute(
+            SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
+        ).all()
+        self.external_location_map = {
+            (row.database_name, row.schema_name, row.name): row.location
+            for row in results
+        }
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """
@@ -266,6 +283,7 @@ class SnowflakeSource(
             self.set_partition_details()
             self.set_schema_description_map()
             self.set_database_description_map()
+            self.set_external_location_map(configured_db)
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
@@ -291,6 +309,7 @@ class SnowflakeSource(
                     self.set_partition_details()
                     self.set_schema_description_map()
                     self.set_database_description_map()
+                    self.set_external_location_map(new_database)
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -700,3 +719,53 @@ class SnowflakeSource(
                 )
         else:
             yield from super().mark_tables_as_deleted()
+            
+    def yield_external_table_lineage(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[AddLineageRequest]:
+        """
+        Yield external table lineage
+        """
+        table_name, table_type = table_name_and_type
+        location = self.external_location_map.get(
+            (self.context.database, self.context.database_schema, table_name)
+        )
+        if table_type == TableType.External and location:
+            location_entity = self.metadata.es_search_container_by_path(
+                full_path=location
+            )
+
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
+                schema_name=self.context.database_schema,
+                table_name=table_name,
+                skip_es_search=True,
+            )
+            table_entity = self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=table_fqn,
+            )
+
+            if (
+                location_entity
+                and location_entity[0]
+                and table_entity
+                and table_entity[0]
+            ):
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=location_entity[0].id,
+                                type="container",
+                            ),
+                            toEntity=EntityReference(
+                                id=table_entity[0].id,
+                                type="table",
+                            ),
+                        )
+                    )
+                )
