@@ -47,7 +47,10 @@ import {
 import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
+import {
+  AuthenticationConfiguration,
+  ClientType,
+} from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
@@ -82,6 +85,7 @@ import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
 import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
 import Auth0Callback from '../AppCallbacks/Auth0Callback/Auth0Callback';
+import { ConfidentialCallback } from '../AppCallbacks/ConfidentialCallback/ConfidentialCallback';
 import {
   AuthenticationConfigurationWithScope,
   AuthenticatorRef,
@@ -145,9 +149,16 @@ export const AuthProvider = ({
     [authConfig]
   );
 
+  const clientType = authConfig?.clientType ?? ClientType.Public;
+
   const onLoginHandler = () => {
     setLoading(true);
-    authenticatorRef.current?.invokeLogin();
+
+    if (clientType === ClientType.Public) {
+      authenticatorRef.current?.invokeLogin();
+    } else {
+      window.location.assign('api/v1/auth/login');
+    }
 
     resetWebAnalyticSession();
   };
@@ -368,11 +379,12 @@ export const AuthProvider = ({
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
-          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
+          if (!matchUserDetails(res, updatedUserData, ['email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
             setCurrentUser(res);
           }
+
           handledVerifiedUser();
           // Start expiry timer on successful login
           startTokenExpiryTimer();
@@ -556,6 +568,9 @@ export const AuthProvider = ({
   };
 
   const getCallBackComponent = () => {
+    if (clientType === ClientType.Confidential) {
+      return ConfidentialCallback;
+    }
     switch (authConfig?.provider) {
       case AuthProviderEnum.Okta: {
         return LoginCallback;
@@ -685,6 +700,7 @@ export const AuthProvider = ({
     loading,
     setLoadingIndicator,
     handleSuccessfulLogin,
+    handleFailedLogin,
     updateAxiosInterceptors: initializeAxiosInterceptors,
     jwtPrincipalClaims,
     updateCurrentUser: setCurrentUser,

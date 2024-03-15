@@ -29,6 +29,7 @@ import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
 import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
+import { ConfidentialCallback } from '../AppCallbacks/ConfidentialCallback/ConfidentialCallback';
 import { useAuthContext } from '../AuthProviders/AuthProvider';
 import {
   AuthenticatorRef,
@@ -146,6 +147,12 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               </>
             )}
           />
+          <Route
+            exact
+            component={ConfidentialCallback}
+            path={ROUTES.AUTH_CALLBACK}
+          />
+
           <Route
             path={ROUTES.SILENT_CALLBACK}
             render={() => (

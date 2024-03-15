@@ -18,6 +18,7 @@ import { useAnalytics } from 'use-analytics';
 import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
+import { ClientType } from '../../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../../generated/settings/settings';
 import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
@@ -61,6 +62,7 @@ const AppRouter = () => {
     getCallBackComponent,
   } = useAuthContext();
 
+  const clientType = authConfig?.clientType;
   const callbackComponent = getCallBackComponent();
   const oidcProviders = [
     AuthProvider.Google,
@@ -128,7 +130,14 @@ const AppRouter = () => {
       <Switch>
         <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
         {callbackComponent ? (
-          <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+          <Route
+            component={callbackComponent}
+            path={
+              clientType === ClientType.Confidential
+                ? ROUTES.AUTH_CALLBACK
+                : ROUTES.CALLBACK
+            }
+          />
         ) : null}
         <Route component={SamlCallback} path={ROUTES.SAML_CALLBACK} />
         <Route exact path={ROUTES.HOME}>
