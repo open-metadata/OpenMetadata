@@ -206,12 +206,12 @@ public class SuggestionsResource {
   @Path("/{id}/accept")
   @Operation(
       operationId = "acceptSuggestion",
-      summary = "Close a task",
-      description = "Close a task without making any changes to the entity.",
+      summary = "Accept a Suggestion",
+      description = "Accept a Suggestion and apply the changes to the entity.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The task thread.",
+            description = "The suggestion.",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -257,6 +257,43 @@ public class SuggestionsResource {
         suggestion, SuggestionStatus.Rejected, securityContext);
     return dao.rejectSuggestion(uriInfo, suggestion, securityContext.getUserPrincipal().getName())
         .toResponse();
+  }
+
+  // TODO: Accept / Reject all or nothing. Single Transaction
+  @PUT
+  @Path("{entityFQN}/accept-all/{userId}")
+  @Operation(
+      operationId = "acceptAllSuggestion",
+      summary = "Accept all Suggestions from a user and an Entity",
+      description = "Accept a Suggestion and apply the changes to the entity.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "The suggestion.",
+              content =
+              @Content(
+                  mediaType = "application/json",
+                  schema = @Schema(implementation = Suggestion.class))),
+          @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response acceptAllSuggestions(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "user id", schema = @Schema(type = "string"))
+      @PathParam("userId")
+      UUID userId,
+      @Parameter(description = "fullyQualifiedName of entity", schema = @Schema(type = "string"))
+      @PathParam("entityFQN")
+      String entityFQN) {
+    SuggestionFilter filter =
+        SuggestionFilter.builder()
+            .suggestionStatus(SuggestionStatus.Open)
+            .entityFQN(entityFQN)
+            .createdBy(userId)
+            .build();
+    List<Suggestion> suggestions = dao.listAll(filter);
+//    return dao.acceptAllSuggestions(uriInfo, suggestions, securityContext, authorizer);
+    return Response.ok().build();
   }
 
   @PUT

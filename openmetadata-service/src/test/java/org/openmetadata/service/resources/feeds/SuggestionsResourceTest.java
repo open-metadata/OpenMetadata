@@ -57,6 +57,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -450,6 +451,11 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
       throws HttpResponseException {
     return listSuggestions(entityFQN, limit, authHeaders, null, null, null, before, after);
   }
+
+//  public List<RestUtil.PutResponse<Suggestion>> acceptAllSuggestions(String entityFQN, UUID userId, Map<String, String> authHeaders) throws HttpResponseException {
+//    WebTarget target = getResource("suggestions/" + entityFQN + "/accept-all/" + userId);
+//    return TestUtils.put(target, RestUtil.PutResponse.class, authHeaders);
+//  }
 
   public Suggestion createAndCheck(CreateSuggestion create, Map<String, String> authHeaders)
       throws HttpResponseException {
