@@ -152,7 +152,7 @@ class OpenlineageSource(PipelineServiceSource):
         :return: fully qualified name of a Table in Open Metadata
         """
         result = None
-        services = self.source_config.dbServiceNames
+        services = self.get_db_service_names()
         for db_service in services:
             result = fqn.build(
                 metadata=self.metadata,
@@ -176,7 +176,7 @@ class OpenlineageSource(PipelineServiceSource):
         :return: fully qualified name of a DatabaseSchema in Open Metadata
         """
         result = None
-        services = self.source_config.dbServiceNames
+        services = self.get_db_service_names()
 
         for db_service in services:
             result = fqn.build(

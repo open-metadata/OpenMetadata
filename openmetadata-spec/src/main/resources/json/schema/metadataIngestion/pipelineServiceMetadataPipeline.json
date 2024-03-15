@@ -35,12 +35,19 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Pipeline Filter Pattern"
     },
-    "dbServiceNames": {
-      "title": "Database Service Names List",
-      "description": "List of Database Service Names for creation of lineage",
-      "type": "array",
-      "items": {
-        "type": "string"
+    "lineageInformation": {
+      "description": "Details required to generate Lineage",
+      "type": "object",
+      "title": "Lineage Information",
+      "properties": {
+        "dbServiceNames": {
+          "title": "Database Service Names List",
+          "description": "List of Database Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "markDeletedPipelines": {

@@ -225,9 +225,10 @@ source:
       markDeletedDashboards: True
       includeTags: True
       includeDataModels: True
-      # dbServiceNames:
-      #   - service1
-      #   - service2
+      # lineageInformation:
+      #   dbServiceNames:
+      #     - service1
+      #     - service2
       # dashboardFilterPattern:
       #   includes:
       #     - dashboard1

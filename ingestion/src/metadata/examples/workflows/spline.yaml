@@ -9,9 +9,10 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
-      dbServiceNames:
-      - local_databricks
-      - local_postgres_empty1
+      lineageInformation:
+        dbServiceNames:
+        - local_databricks
+        - local_postgres_empty1
 
       pipelineFilterPattern:
         includes:

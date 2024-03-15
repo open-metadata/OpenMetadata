@@ -40,7 +40,9 @@ const MOCK_WORKFLOW_DATA = {
     includes: [],
     excludes: [],
   },
-  dbServiceNames: [],
+  lineageInformation: {
+    dbServiceNames: [],
+  },
   includeOwners: false,
   markDeletedDashboards: true,
   markDeletedDataModels: true,
@@ -49,7 +51,9 @@ const MOCK_WORKFLOW_DATA = {
 } as Pipeline;
 
 const MOCK_CLEANED_WORKFLOW_DATA = {
-  dbServiceNames: [],
+  lineageInformation: {
+    dbServiceNames: [],
+  },
   includeDataModels: true,
   includeOwners: false,
   includeTags: true,
