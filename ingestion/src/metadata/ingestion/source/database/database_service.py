@@ -171,6 +171,11 @@ class DatabaseServiceTopology(ServiceTopology):
                 use_cache=True,
             ),
             NodeStage(
+                type_=AddLineageRequest,
+                processor="yield_external_table_lineage",
+                nullable=True,
+            ),
+            NodeStage(
                 type_=OMetaLifeCycleData,
                 processor="yield_life_cycle_data",
                 nullable=True,
@@ -576,6 +581,11 @@ class DatabaseServiceSource(
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
         Get the life cycle data of the table
+        """
+
+    def yield_external_table_lineage(self, _) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process external table lineage
         """
 
     def test_connection(self) -> None:

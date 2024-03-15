@@ -29,6 +29,7 @@ import {
 import { EntityReference } from '../../../../../generated/entity/type';
 import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { changePassword } from '../../../../../rest/auth-API';
 import { getEntityName } from '../../../../../utils/EntityUtils';
@@ -36,7 +37,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
@@ -52,7 +52,7 @@ const UserProfileDetails = ({
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
-  const { authConfig, currentUser } = useAuthContext();
+  const { authConfig, currentUser } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
