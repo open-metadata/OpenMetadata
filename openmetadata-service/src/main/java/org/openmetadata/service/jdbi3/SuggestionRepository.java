@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
@@ -32,6 +31,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -164,11 +164,12 @@ public class SuggestionRepository {
       this.entity = entity;
     }
 
-    public EntityInterface acceptSuggestions(Suggestion suggestion, EntityInterface entity) {
-      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(suggestion.getEntityLink());
+    public EntityInterface acceptSuggestion(Suggestion suggestion, EntityInterface entity) {
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(suggestion.getEntityLink());
       if (entityLink.getFieldName() != null) {
         return repository.applySuggestion(
-              entity, entityLink.getFullyQualifiedFieldValue(), suggestion);
+            entity, entityLink.getFullyQualifiedFieldValue(), suggestion);
       } else {
         if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
           List<TagLabel> tags = new ArrayList<>(entity.getTags());
@@ -179,7 +180,7 @@ public class SuggestionRepository {
           entity.setDescription(suggestion.getDescription());
           return entity;
         } else {
-          throw new WebApplicationException("Invalid suggestion Type");
+          throw new SuggestionException("Invalid suggestion Type");
         }
       }
     }
@@ -192,6 +193,19 @@ public class SuggestionRepository {
       Authorizer authorizer) {
     acceptSuggestion(suggestion, securityContext, authorizer);
     Suggestion updatedHref = SuggestionsResource.addHref(uriInfo, suggestion);
+    return new RestUtil.PutResponse<>(Response.Status.OK, updatedHref, SUGGESTION_ACCEPTED);
+  }
+
+  public RestUtil.PutResponse<List<Suggestion>> acceptSuggestionList(
+      UriInfo uriInfo,
+      List<Suggestion> suggestions,
+      SecurityContext securityContext,
+      Authorizer authorizer) {
+    acceptSuggestionList(suggestions, securityContext, authorizer);
+    List<Suggestion> updatedHref =
+        suggestions.stream()
+            .map(suggestion -> SuggestionsResource.addHref(uriInfo, suggestion))
+            .collect(Collectors.toList());
     return new RestUtil.PutResponse<>(Response.Status.OK, updatedHref, SUGGESTION_ACCEPTED);
   }
 
@@ -208,7 +222,7 @@ public class SuggestionRepository {
     String origJson = JsonUtils.pojoToJson(entity);
     SuggestionWorkflow suggestionWorkflow = repository.getSuggestionWorkflow(repository, entity);
 
-    EntityInterface updatedEntity = suggestionWorkflow.acceptSuggestions(suggestion, entity);
+    EntityInterface updatedEntity = suggestionWorkflow.acceptSuggestion(suggestion, entity);
     String updatedEntityJson = JsonUtils.pojoToJson(updatedEntity);
 
     // Patch the entity with the updated suggestions
@@ -224,12 +238,86 @@ public class SuggestionRepository {
     update(suggestion, user);
   }
 
+  protected void acceptSuggestionList(
+      List<Suggestion> suggestions, SecurityContext securityContext, Authorizer authorizer) {
+    String user = securityContext.getUserPrincipal().getName();
+
+    // Entity being updated
+    EntityInterface entity = null;
+    EntityRepository<?> repository = null;
+    String origJson = null;
+    SuggestionWorkflow suggestionWorkflow = null;
+    SuggestionType suggestionType = getTypeFromSuggestions(suggestions);
+
+    for (Suggestion suggestion : suggestions) {
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(suggestion.getEntityLink());
+
+      // Validate all suggestions indeed talk about the same entity
+      if (entity == null) {
+        // Initialize the Entity and the Repository
+        entity =
+            Entity.getEntity(
+                entityLink, suggestionType == SuggestionType.SuggestTagLabel ? "tags" : "", ALL);
+        repository = Entity.getEntityRepository(entityLink.getEntityType());
+        origJson = JsonUtils.pojoToJson(entity);
+        suggestionWorkflow = repository.getSuggestionWorkflow(repository, entity);
+      } else if (!entity.getFullyQualifiedName().equals(entityLink.getEntityFQN())) {
+        throw new SuggestionException("All suggestions must be for the same entity");
+      }
+      // update entity with the suggestion
+      entity = suggestionWorkflow.acceptSuggestion(suggestion, entity);
+    }
+
+    // Patch the entity with the updated suggestions
+    String updatedEntityJson = JsonUtils.pojoToJson(entity);
+    JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+
+    OperationContext operationContext = new OperationContext(repository.getEntityType(), patch);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        new ResourceContext<>(repository.getEntityType(), entity.getId(), null));
+    repository.patch(null, entity.getId(), user, patch);
+
+    // Only mark the suggestions as accepted after the entity has been successfully updated
+    for (Suggestion suggestion : suggestions) {
+      suggestion.setStatus(SuggestionStatus.Accepted);
+      update(suggestion, user);
+    }
+  }
+
+  /**
+   * When preparing the entity we need to decide if we need to fetch the tags at all.
+   * We'll validate all the suggestions and if one needs tags, we'll get them.
+   */
+  private SuggestionType getTypeFromSuggestions(List<Suggestion> suggestions) {
+    SuggestionType suggestionType = SuggestionType.SuggestDescription;
+    for (Suggestion suggestion : suggestions) {
+      if (suggestion.getType() == SuggestionType.SuggestTagLabel) {
+        suggestionType = SuggestionType.SuggestTagLabel;
+        break;
+      }
+    }
+    return suggestionType;
+  }
+
   public RestUtil.PutResponse<Suggestion> rejectSuggestion(
       UriInfo uriInfo, Suggestion suggestion, String user) {
     suggestion.setStatus(SuggestionStatus.Rejected);
     update(suggestion, user);
     Suggestion updatedHref = SuggestionsResource.addHref(uriInfo, suggestion);
     return new RestUtil.PutResponse<>(Response.Status.OK, updatedHref, SUGGESTION_REJECTED);
+  }
+
+  public RestUtil.PutResponse<List<Suggestion>> rejectSuggestionList(
+      UriInfo uriInfo, List<Suggestion> suggestions, String user) {
+    for (Suggestion suggestion : suggestions) {
+      suggestion.setStatus(SuggestionStatus.Rejected);
+      update(suggestion, user);
+      SuggestionsResource.addHref(uriInfo, suggestion);
+    }
+    return new RestUtil.PutResponse<>(Response.Status.OK, suggestions, SUGGESTION_REJECTED);
   }
 
   public void checkPermissionsForUpdateSuggestion(
@@ -332,20 +420,7 @@ public class SuggestionRepository {
   }
 
   public final List<Suggestion> listAll(SuggestionFilter filter) {
-    ResultList<Suggestion> suggestionList = listAfter(filter, Integer.MAX_VALUE, "");
+    ResultList<Suggestion> suggestionList = listAfter(filter, Integer.MAX_VALUE - 1, "");
     return suggestionList.getData();
-  }
-
-  public final List<RestUtil.PutResponse<Suggestion>> acceptAllSuggestions(UriInfo uriInfo,List<Suggestion> suggestions, SecurityContext securityContext, Authorizer authorizer) {
-    return suggestions.stream().map(
-        suggestion -> {
-          try {
-            checkPermissionsForAcceptOrRejectSuggestion(suggestion, SuggestionStatus.Accepted, securityContext);
-            return acceptSuggestion(uriInfo, suggestion, securityContext, authorizer);
-          } catch (AuthorizationException e) {
-            return new RestUtil.PutResponse<>(Response.Status.FORBIDDEN, suggestion, SUGGESTION_REJECTED);
-          }
-        }
-    ).collect(Collectors.toList());
   }
 }

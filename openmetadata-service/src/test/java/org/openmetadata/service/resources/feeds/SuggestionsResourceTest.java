@@ -57,7 +57,6 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -375,6 +374,66 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     assertEquals(SuggestionStatus.Rejected, suggestion2.getStatus());
   }
 
+  @Test
+  @Order(3)
+  void put_acceptAllSuggestions_200() throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // Add another suggestion
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // And now update tags
+    create = createTagSuggestion().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(3, suggestionList.getData().size());
+
+    acceptAllSuggestions(TABLE.getFullyQualifiedName(), USER.getId(), USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+  }
+
+  @Test
+  @Order(4)
+  void put_rejectAllSuggestions_200() throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // Add another suggestion
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // And now update tags
+    create = createTagSuggestion().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(3, suggestionList.getData().size());
+
+    rejectAllSuggestions(TABLE.getFullyQualifiedName(), USER.getId(), USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+  }
+
   public Suggestion createSuggestion(CreateSuggestion create, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getResource("suggestions"), create, Suggestion.class, authHeaders);
@@ -452,10 +511,21 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     return listSuggestions(entityFQN, limit, authHeaders, null, null, null, before, after);
   }
 
-//  public List<RestUtil.PutResponse<Suggestion>> acceptAllSuggestions(String entityFQN, UUID userId, Map<String, String> authHeaders) throws HttpResponseException {
-//    WebTarget target = getResource("suggestions/" + entityFQN + "/accept-all/" + userId);
-//    return TestUtils.put(target, RestUtil.PutResponse.class, authHeaders);
-//  }
+  public void acceptAllSuggestions(String entityFQN, UUID userId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("suggestions/accept-all");
+    target = entityFQN != null ? target.queryParam("entityFQN", entityFQN) : target;
+    target = userId != null ? target.queryParam("userId", userId) : target;
+    TestUtils.put(target, null, Response.Status.OK, authHeaders);
+  }
+
+  public void rejectAllSuggestions(String entityFQN, UUID userId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("suggestions/reject-all");
+    target = entityFQN != null ? target.queryParam("entityFQN", entityFQN) : target;
+    target = userId != null ? target.queryParam("userId", userId) : target;
+    TestUtils.put(target, null, Response.Status.OK, authHeaders);
+  }
 
   public Suggestion createAndCheck(CreateSuggestion create, Map<String, String> authHeaders)
       throws HttpResponseException {
