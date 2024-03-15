@@ -36,6 +36,7 @@ import {
   createEntityTableViaREST,
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import {
   DATA_ASSETS,
   ENTITIES,
@@ -627,7 +628,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       cy.login();
 
       cy.getAllLocalStorage().then((data) => {
-        token = toString(Object.values(data)[0].oidcIdToken);
+        token = getToken(data);
         createEntityTableViaREST({
           token,
           ...DATABASE_SERVICE,

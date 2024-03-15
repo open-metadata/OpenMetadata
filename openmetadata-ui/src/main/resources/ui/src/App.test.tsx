@@ -14,8 +14,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import App from './App';
-import { AuthContext } from './components/Auth/AuthProviders/AuthProvider';
-import { IAuthContext } from './components/Auth/AuthProviders/AuthProvider.interface';
+import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 
 jest.mock('./components/AppRouter/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
@@ -34,9 +33,9 @@ jest.mock('./components/Auth/AuthProviders/AuthProvider', () => {
 
 it('renders learn react link', () => {
   const { getAllByTestId } = render(
-    <AuthContext.Provider value={{} as IAuthContext}>
+    <AuthProvider childComponentType={App}>
       <App />
-    </AuthContext.Provider>
+    </AuthProvider>
   );
   const linkElement = getAllByTestId(/content-wrapper/i);
   linkElement.map((elm) => expect(elm).toBeInTheDocument());
