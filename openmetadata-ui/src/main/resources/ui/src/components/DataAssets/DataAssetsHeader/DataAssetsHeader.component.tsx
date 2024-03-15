@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -438,13 +438,7 @@ export const DataAssetsHeader = ({
                   <Tooltip title={t('label.open-task-plural')}>
                     <Button
                       className="w-16 p-0"
-                      icon={
-                        <Icon
-                          className="vertical-align-text-top"
-                          component={TaskOpenIcon}
-                          style={DATA_ASSET_ICON_DIMENSION}
-                        />
-                      }
+                      icon={<Icon component={TaskOpenIcon} />}
                       onClick={handleOpenTaskClick}>
                       <Typography.Text>{openTaskCount}</Typography.Text>
                     </Button>
@@ -455,13 +449,7 @@ export const DataAssetsHeader = ({
                   <Button
                     className="w-16 p-0"
                     data-testid="version-button"
-                    icon={
-                      <Icon
-                        className="vertical-align-text-top"
-                        component={VersionIcon}
-                        style={DATA_ASSET_ICON_DIMENSION}
-                      />
-                    }
+                    icon={<Icon component={VersionIcon} />}
                     onClick={onVersionClick}>
                     <Typography.Text>{version}</Typography.Text>
                   </Button>
@@ -479,9 +467,7 @@ export const DataAssetsHeader = ({
                       disabled={deleted}
                       icon={
                         <Icon
-                          className="vertical-align-text-top"
                           component={isFollowing ? StarFilledIcon : StarIcon}
-                          style={DATA_ASSET_ICON_DIMENSION}
                         />
                       }
                       loading={isFollowingLoading}
@@ -495,14 +481,7 @@ export const DataAssetsHeader = ({
                   placement="topRight"
                   title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
-                    className="flex-center"
-                    icon={
-                      <Icon
-                        className="vertical-align-text-top"
-                        component={ShareIcon}
-                        style={DATA_ASSET_ICON_DIMENSION}
-                      />
-                    }
+                    icon={<Icon component={ShareIcon} />}
                     onClick={handleShareButtonClick}
                   />
                 </Tooltip>
