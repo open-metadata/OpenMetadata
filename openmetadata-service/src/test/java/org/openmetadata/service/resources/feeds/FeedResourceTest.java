@@ -129,6 +129,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static List<Column> COLUMNS;
   public static User USER;
   public static String USER_LINK;
+  public static User BOT_USER;
   public static Map<String, String> USER_AUTH_HEADERS;
   public static User USER2;
   public static Map<String, String> USER2_AUTH_HEADERS;
@@ -156,6 +157,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     USER2 =
         userResourceTest.createEntity(userResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
     USER2_AUTH_HEADERS = authHeaders(USER2.getName());
+
+    BOT_USER = userResourceTest.createUser("bot_user", true);
 
     CreateTable createTable =
         TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
@@ -1402,6 +1405,71 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         () -> patchPost(THREAD.getId(), NON_EXISTENT_ENTITY, "{}", new Post(), USER_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("Post", NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  void post_createTaskByBotUser_400() {
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+
+    assertResponse(
+        () ->
+            createTaskThread(
+                BOT_USER.getName(),
+                about,
+                USER.getEntityReference(),
+                "old",
+                "new",
+                RequestDescription,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Task cannot be created by bot only by user or teams");
+  }
+
+  @Test
+  void post_assignTaskToBotUser_400() {
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+
+    assertResponse(
+        () ->
+            createTaskThread(
+                USER.getName(),
+                about,
+                BOT_USER.getEntityReference(),
+                "old",
+                "new",
+                RequestDescription,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Assignees can not be bot");
+  }
+
+  @Test
+  void patch_reassignTaskToBotUser_400() throws IOException {
+    String about =
+        String.format(
+            "<#E::%s::%s::columns::%s::description>",
+            Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+
+    Thread thread =
+        createTaskThread(
+            TEST_USER_NAME,
+            about,
+            USER.getEntityReference(),
+            "old",
+            "new",
+            RequestDescription,
+            ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(thread);
+    TaskDetails upadtedAssigneeTaskDetails =
+        new TaskDetails().withAssignees(List.of(BOT_USER.getEntityReference()));
+
+    // update assignees or reassign task to bot user
+    thread.withTask(upadtedAssigneeTaskDetails);
+    assertResponse(
+        () -> patchThreadAndCheck(thread, originalJson, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Assignees can not be bot");
   }
 
   public Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
