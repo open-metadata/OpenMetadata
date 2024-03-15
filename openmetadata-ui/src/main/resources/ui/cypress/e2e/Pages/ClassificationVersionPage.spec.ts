@@ -13,6 +13,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitClassificationPage } from '../../common/TagUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import {
   NEW_CLASSIFICATION_FOR_VERSION_TEST,
   NEW_CLASSIFICATION_PATCH_PAYLOAD,
@@ -45,28 +46,30 @@ describe(
     });
 
     it('Prerequisites for classification version page tests', () => {
-      const token = localStorage.getItem('oidcIdToken');
-
-      cy.request({
-        method: 'PUT',
-        url: `/api/v1/classifications`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: NEW_CLASSIFICATION_FOR_VERSION_TEST,
-      }).then((response) => {
-        expect(response.status).to.eq(201);
-
-        classificationId = response.body.id;
+      cy.getAllLocalStorage().then((data) => {
+        const token = getToken(data);
 
         cy.request({
-          method: 'PATCH',
-          url: `/api/v1/classifications/${classificationId}`,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json-patch+json',
-          },
-          body: NEW_CLASSIFICATION_PATCH_PAYLOAD,
+          method: 'PUT',
+          url: `/api/v1/classifications`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: NEW_CLASSIFICATION_FOR_VERSION_TEST,
         }).then((response) => {
-          expect(response.status).to.eq(200);
+          expect(response.status).to.eq(201);
+
+          classificationId = response.body.id;
+
+          cy.request({
+            method: 'PATCH',
+            url: `/api/v1/classifications/${classificationId}`,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json-patch+json',
+            },
+            body: NEW_CLASSIFICATION_PATCH_PAYLOAD,
+          }).then((response) => {
+            expect(response.status).to.eq(200);
+          });
         });
       });
     });
