@@ -15,12 +15,13 @@ Source connection handler
 from typing import Optional, Union
 from urllib.parse import quote_plus
 
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import URL, Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    Authentication,
     AzureSQLConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
@@ -40,13 +41,28 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
     Build the connection URL
     """
 
+    if connection.authenticationMode:
+        connection_string = f"Driver={connection.driver};Server={connection.hostPort};Database={connection.database};"
+
+        if (
+            connection.authenticationMode.Authentication
+            == Authentication.ActiveDirectoryPassword
+        ):
+            connection_string += f"Uid={connection.username};Pwd={connection.password};"
+
+        connection_string += f"Encrypt={connection.authenticationMode.Encrypt};TrustServerCertificate={connection.authenticationMode.Trust_Server_Certificate};Connection Timeout={connection.authenticationMode.Connection_Timeout};Authentication={connection.authenticationMode.Authentication};"
+
+        connection_url = URL.create(
+            "mssql+pyodbc", query={"odbc_connect": connection_string}
+        )
+        return connection_url
     url = f"{connection.scheme.value}://"
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
         url += (
             f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
+            if connection.password
             else ""
         )
         url += "@"
@@ -54,12 +70,13 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
     url += f"{connection.hostPort}"
     url += f"/{quote_plus(connection.database)}" if connection.database else ""
     url += f"?driver={quote_plus(connection.driver)}"
+
     options = get_connection_options_dict(connection)
     if options:
         if not connection.database:
             url += "/"
         params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+            f"{key}={quote_plus(value)}" for key, value in options.items() if value
         )
         url = f"{url}?{params}"
 

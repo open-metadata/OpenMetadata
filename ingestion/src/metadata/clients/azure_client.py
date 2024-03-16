@@ -33,19 +33,34 @@ class AzureClient:
     def create_client(
         self,
     ):
-        from azure.identity import ClientSecretCredential, DefaultAzureCredential
+        from azure.identity import (
+            ClientSecretCredential,
+            DefaultAzureCredential,
+            UsernamePasswordCredential,
+        )
 
         try:
             if (
-                self.credentials.tenantId
-                and self.credentials.clientId
-                and self.credentials.clientSecret
+                getattr(self.credentials, "tenantId", None)
+                and getattr(self.credentials, "clientId", None)
+                and getattr(self.credentials, "clientSecret", None)
             ):
                 logger.info("Using Client Secret Credentials")
                 return ClientSecretCredential(
                     tenant_id=self.credentials.tenantId,
                     client_id=self.credentials.clientId,
                     client_secret=self.credentials.clientSecret.get_secret_value(),
+                )
+            elif (
+                getattr(self.credentials, "username", None)
+                and getattr(self.credentials, "password", None)
+                and getattr(self.credentials, "clientId", None)
+            ):
+                logger.info("Using Username Password Credentials")
+                return UsernamePasswordCredential(
+                    username=self.credentials.username,
+                    password=self.credentials.password,
+                    client_id=self.credentials.clientId,
                 )
             else:
                 logger.info("Using Default Azure Credentials")
@@ -79,3 +94,13 @@ class AzureClient:
         except Exception as e:
             logger.error(f"Error creating Secret Client: {e}")
             raise e
+
+
+# from unittest.mock import Mock
+# from azure.identity import ClientSecretCredential
+
+# def test_client_secret_credential():
+#     mock_send = Mock(return_value=mock_response(json_payload=token_payload))
+#     transport = Mock(send=wrap_in_future(mock_send))
+#     scope = "scope"
+#     credential = ClientSecretCredential("tenant-id", "client-id", "secret", transport=transport)
