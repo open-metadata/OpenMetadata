@@ -97,23 +97,36 @@ def build_google_credentials_dict(
     :param gcp_values: GCP credentials
     :return: Dictionary with credentials
     """
-    private_key_str = gcp_values.privateKey.get_secret_value()
-    # adding the replace string here to escape line break if passed from env
-    private_key_str = private_key_str.replace("\\n", "\n")
-    validate_private_key(private_key_str)
+    if gcp_values.type == "service_account":
+        private_key_str = gcp_values.privateKey.get_secret_value()
+        # adding the replace string here to escape line break if passed from env
+        private_key_str = private_key_str.replace("\\n", "\n")
+        validate_private_key(private_key_str)
 
-    return {
-        "type": gcp_values.type,
-        "project_id": gcp_values.projectId.__root__,
-        "private_key_id": gcp_values.privateKeyId,
-        "private_key": private_key_str,
-        "client_email": gcp_values.clientEmail,
-        "client_id": gcp_values.clientId,
-        "auth_uri": str(gcp_values.authUri),
-        "token_uri": str(gcp_values.tokenUri),
-        "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
-        "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
-    }
+        return {
+            "type": gcp_values.type,
+            "project_id": gcp_values.projectId.__root__,
+            "private_key_id": gcp_values.privateKeyId,
+            "private_key": private_key_str,
+            "client_email": gcp_values.clientEmail,
+            "client_id": gcp_values.clientId,
+            "auth_uri": str(gcp_values.authUri),
+            "token_uri": str(gcp_values.tokenUri),
+            "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
+            "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
+        }
+    if gcp_values.type == "external_account":
+        return {
+            "type": gcp_values.type,
+            "audience": gcp_values.audience,
+            "subject_token_type": gcp_values.subjectTokenType,
+            "token_url": gcp_values.tokenURL,
+            "credential_source": gcp_values.credentialSource,
+        }
+
+    raise InvalidGcpConfigException(
+        f"Error not support credential type {gcp_values.type}"
+    )
 
 
 def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
