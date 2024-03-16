@@ -319,6 +319,16 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
                     )
 
+    def get_db_service_names(self) -> List[str]:
+        """
+        Get the list of db service names
+        """
+        return (
+            self.source_config.lineageInformation.dbServiceNames or []
+            if self.source_config.lineageInformation
+            else []
+        )
+
     def yield_dashboard_lineage(
         self, dashboard_details: Any
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -330,7 +340,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         yield from self.yield_datamodel_dashboard_lineage() or []
 
-        for db_service_name in self.source_config.dbServiceNames or []:
+        db_service_names = self.get_db_service_names()
+
+        for db_service_name in db_service_names or []:
             yield from self.yield_dashboard_lineage_details(
                 dashboard_details, db_service_name
             ) or []

@@ -11,7 +11,8 @@
 """
 BigQuery models
 """
-from typing import Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +20,8 @@ from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+TableName = str
 
 STORED_PROC_LANGUAGE_MAP = {
     "SQL": Language.SQL,
@@ -34,3 +37,19 @@ class BigQueryStoredProcedure(BaseModel):
     language: Optional[str] = Field(
         None, description="Will only be informed for non-SQL routines."
     )
+
+
+class BigQueryTable(BaseModel):
+    name: TableName
+    timestamp: datetime
+    deleted: bool
+
+
+class BigQueryTableMap(BaseModel):
+    table_map: Dict[TableName, BigQueryTable]
+
+    def get_deleted(self) -> List[TableName]:
+        return [name for name, table in self.table_map.items() if table.deleted]
+
+    def get_not_deleted(self) -> List[TableName]:
+        return [name for name, table in self.table_map.items() if not table.deleted]

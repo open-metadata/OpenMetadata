@@ -35,7 +35,7 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
-import { useApplicationConfigContext } from '../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
 import {
   HTMLToMarkdown,
@@ -75,7 +75,8 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
-    const { userProfilePics } = useApplicationConfigContext();
+
+    const { userProfilePics } = useApplicationStore();
 
     const userSuggestionRenderer = async (
       searchTerm: string,

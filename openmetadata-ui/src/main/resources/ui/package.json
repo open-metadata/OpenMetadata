@@ -129,7 +129,8 @@
     "socket.io-client": "^4.5.1",
     "styled-components": "^6.1.8",
     "turndown": "^7.1.2",
-    "use-analytics": "^0.0.5"
+    "use-analytics": "^0.0.5",
+    "zustand": "^4.5.0"
   },
   "browserslist": {
     "production": [

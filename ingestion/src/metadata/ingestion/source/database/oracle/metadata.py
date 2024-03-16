@@ -104,7 +104,9 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: OracleConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, OracleConnection):

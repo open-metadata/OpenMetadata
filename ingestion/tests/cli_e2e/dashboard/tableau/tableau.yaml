@@ -15,8 +15,9 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
-      dbServiceNames:
-      - local_redshift_tableau
+      lineageInformation:
+        dbServiceNames:
+        - local_redshift_tableau
 sink:
   type: metadata-rest
   config: {}
