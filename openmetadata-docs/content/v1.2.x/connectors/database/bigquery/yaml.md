@@ -127,7 +127,7 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
 
 **1.** Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
 
-  - **type**: Credentials Type is the type of the account, for a service account the value of this field is `service_account`. To fetch this key, look for the value associated with the `type` key in the service account key file.
+  - **type**: Supported values are service_account and external_account.For service accounts, the value of this field is service_account.For external identities, the value of this field is external_account.
   - **projectId**: A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file. You can also pass multiple project id to ingest metadata from different BigQuery projects into one service.
   - **privateKeyId**: This is a unique identifier for the private key associated with the service account. To fetch this key, look for the value associated with the `private_key_id` key in the service account file.
   - **privateKey**: This is the private key associated with the service account that is used to authenticate and authorize access to BigQuery. To fetch this key, look for the value associated with the `private_key` key in the service account file.
@@ -136,7 +136,11 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
   - **authUri**: This is the URI for the authorization server. To fetch this key, look for the value associated with the `auth_uri` key in the service account key file. The default value to Auth URI is https://accounts.google.com/o/oauth2/auth.
   - **tokenUri**: The Google Cloud Token URI is a specific endpoint used to obtain an OAuth 2.0 access token from the Google Cloud IAM service. This token allows you to authenticate and access various Google Cloud resources and APIs that require authorization. To fetch this key, look for the value associated with the `token_uri` key in the service account credentials file. Default Value to Token URI is https://oauth2.googleapis.com/token.
   - **authProviderX509CertUrl**: This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the `auth_provider_x509_cert_url` key in the service account key file. The Default value for Auth Provider X509Cert URL is https://www.googleapis.com/oauth2/v1/certs
-  - **clientX509CertUrl**: This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the `client_x509_cert_url` key in the service account key  file.
+  - **clientX509CertUrl**: This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the `client_x509_cert_url` key in the service account key file.
+  - **audience**: This is the Google Security Token Service audience which contains the resource name for the workload identity pool and the provider identifier in that pool.
+  - **subjectTokenType**: This is Google Security Token Service subject token type based on the OAuth 2.0 token exchange spec.Required when using type external_account.
+  - **tokenURL**: This is Google Security Token Service token exchange endpoint.Required when using type external_account.
+  - **credentialSource**: This object defines the mechanism used to retrieve the external credential from the local environment so that it can be exchanged for a GCP access token via the STS endpoint.
 
 **2.**  Passing a local file path that contains the credentials:
   - **gcpCredentialsPath**
