@@ -248,7 +248,7 @@ REDSHIFT_GET_ALL_RELATIONS = """
         AS "diststyle",
         c.relowner AS "owner_id",
         u.usename AS "owner_name",
-        TRIM(TRAILING ';' FROM 
+        TRIM(TRAILING ';' FROM
         'create view ' || n.nspname || '.' || c.relname || ' as ' ||pg_catalog.pg_get_viewdef(c.oid, true))
         AS "view_definition",
         pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
@@ -345,7 +345,7 @@ select
 from SP_HISTORY sp
   join Q_HISTORY q
     on sp.procedure_session_id = q.query_session_id
-   and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time 
+   and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time
    and q.query_end_time between sp.procedure_start_time and sp.procedure_end_time
 order by procedure_start_time DESC
     """
@@ -360,3 +360,18 @@ where o.schema = '{schema_name}'
 and o.database = '{database_name}'
 """
 )
+
+REDSHIFT_TABLE_CHANGES_QUERY = """
+SELECT
+    query_text
+FROM SYS_QUERY_HISTORY
+WHERE status = 'success'
+  AND (
+    query_type = 'DDL' OR
+    (query_type = 'UTILITY' AND query_text ilike '%%COMMENT ON%%') OR
+    (query_type = 'CTAS' AND query_text ilike '%%CREATE TABLE%%')
+  )
+  and database_name = '{database}'
+  and end_time >= '{start_date}'
+ORDER BY end_time DESC
+"""

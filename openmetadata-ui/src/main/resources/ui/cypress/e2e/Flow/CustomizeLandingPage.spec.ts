@@ -85,20 +85,22 @@ describe('Customize Landing Page Flow', { tags: 'Settings' }, () => {
 
   after(() => {
     cy.login();
-    const token = localStorage.getItem('oidcIdToken');
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
 
-    // Delete created user
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/personas/${testData.persona.id}`,
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/personas/${testData.persona.id}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    // Delete created landing page config doc
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/docStore/${testData.docStoreData.id}`,
-      headers: { Authorization: `Bearer ${token}` },
+      // Delete created landing page config doc
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/docStore/${testData.docStoreData.id}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
     });
   });
 
