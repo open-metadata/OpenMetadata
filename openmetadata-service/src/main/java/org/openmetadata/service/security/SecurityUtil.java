@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jwt.JWT;
 import com.nimbusds.oauth2.sdk.auth.ClientAuthentication;
 import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
@@ -27,13 +28,18 @@ import com.nimbusds.oauth2.sdk.auth.ClientSecretPost;
 import com.nimbusds.oauth2.sdk.auth.PrivateKeyJWT;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
+import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivateKey;
+import java.text.ParseException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
@@ -51,6 +57,7 @@ import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.AzureAd2OidcConfiguration;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
+import org.pac4j.oidc.credentials.OidcCredentials;
 
 @Slf4j
 public final class SecurityUtil {
@@ -182,6 +189,8 @@ public final class SecurityUtil {
         oidcClient = new AzureAd2Client(azureAdConfiguration);
       } else if ("google".equalsIgnoreCase(type)) {
         oidcClient = new GoogleOidcClient(configuration);
+        // Google needs it as param
+        oidcClient.getConfiguration().getCustomParams().put("access_type", "offline");
       } else {
         oidcClient = new OidcClient(configuration);
       }
@@ -298,5 +307,46 @@ public final class SecurityUtil {
         .println(
             String.format(
                 "<p> [Auth Callback Servlet] Failed in Auth Login : %s </p>", e.getMessage()));
+  }
+
+  public static void sendRedirectWithToken(
+      HttpServletResponse response,
+      OidcCredentials credentials,
+      String serverUrl,
+      List<String> claimsOrder)
+      throws ParseException, IOException {
+    JWT jwt = credentials.getIdToken();
+    Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.putAll(jwt.getJWTClaimsSet().getClaims());
+    String preferredJwtClaim =
+        claimsOrder.stream()
+            .filter(claims::containsKey)
+            .findFirst()
+            .map(claims::get)
+            .map(String.class::cast)
+            .orElseThrow(
+                () ->
+                    new AuthenticationException(
+                        "Invalid JWT token, none of the following claims are present "
+                            + claimsOrder));
+
+    String email = (String) jwt.getJWTClaimsSet().getClaim("email");
+    String userName;
+    if (preferredJwtClaim.contains("@")) {
+      userName = preferredJwtClaim.split("@")[0];
+    } else {
+      userName = preferredJwtClaim;
+    }
+
+    String url =
+        String.format(
+            "%s/auth/callback?id_token=%s&email=%s&name=%s",
+            serverUrl, credentials.getIdToken().getParsedString(), email, userName);
+    response.sendRedirect(url);
+  }
+
+  public static boolean isCredentialsExpired(OidcCredentials credentials) throws ParseException {
+    Date expiration = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
+    return expiration != null && expiration.toInstant().isBefore(Instant.now().plusSeconds(30));
   }
 }

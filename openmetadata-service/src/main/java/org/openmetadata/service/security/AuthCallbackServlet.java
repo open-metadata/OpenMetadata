@@ -1,7 +1,9 @@
 package org.openmetadata.service.security;
 
+import static org.openmetadata.service.security.AuthLoginServlet.OIDC_CREDENTIAL_PROFILE;
 import static org.openmetadata.service.security.SecurityUtil.getClientAuthentication;
 import static org.openmetadata.service.security.SecurityUtil.getErrorMessage;
+import static org.openmetadata.service.security.SecurityUtil.sendRedirectWithToken;
 
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jwt.JWT;
@@ -38,7 +40,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -94,14 +95,15 @@ public class AuthCallbackServlet extends HttpServlet {
       // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
 
-      // Verify Response , Create Request And Get Token
+      // Validations
       validateAndSendTokenRequest(req, credentials, computedCallbackUrl);
-
-      // Validate Nonce
       validateNonceIfRequired(req, credentials.getIdToken().getJWTClaimsSet());
 
+      // Put Credentials in Session
+      req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+
       // Redirect
-      sendRedirectWithToken(resp, credentials);
+      sendRedirectWithToken(resp, credentials, serverUrl, claimsOrder);
     } catch (Exception e) {
       getErrorMessage(resp, e);
     }
@@ -194,38 +196,6 @@ public class AuthCallbackServlet extends HttpServlet {
                   oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier));
       executeTokenRequest(request, oidcCredentials);
     }
-  }
-
-  private void sendRedirectWithToken(HttpServletResponse response, OidcCredentials credentials)
-      throws IOException, java.text.ParseException {
-    JWT jwt = credentials.getIdToken();
-    Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    claims.putAll(jwt.getJWTClaimsSet().getClaims());
-    String preferredJwtClaim =
-        claimsOrder.stream()
-            .filter(claims::containsKey)
-            .findFirst()
-            .map(claims::get)
-            .map(String.class::cast)
-            .orElseThrow(
-                () ->
-                    new AuthenticationException(
-                        "Invalid JWT token, none of the following claims are present "
-                            + claimsOrder));
-
-    String email = (String) jwt.getJWTClaimsSet().getClaim("email");
-    String userName;
-    if (preferredJwtClaim.contains("@")) {
-      userName = preferredJwtClaim.split("@")[0];
-    } else {
-      userName = preferredJwtClaim;
-    }
-
-    String url =
-        String.format(
-            "%s?id_token=%s&email=%s&name=%s",
-            serverUrl, credentials.getIdToken().getParsedString(), email, userName);
-    response.sendRedirect(url);
   }
 
   protected Map<String, List<String>> retrieveParameters(HttpServletRequest request) {
