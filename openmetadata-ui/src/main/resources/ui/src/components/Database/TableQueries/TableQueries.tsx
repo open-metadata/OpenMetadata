@@ -14,14 +14,17 @@
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE, PAGE_SIZE_BASE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
+  QUERY_PAGE_DEFAULT_TAGS_FILTER,
   QUERY_PAGE_ERROR_STATE,
   QUERY_PAGE_LOADING_STATE,
 } from '../../../constants/Query.constant';
@@ -31,6 +34,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
@@ -41,8 +45,10 @@ import {
   patchQueries,
   updateQueryVote,
 } from '../../../rest/queryAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
+  createQueryFilter,
   parseSearchParams,
   stringifySearchParams,
 } from '../../../utils/Query/QueryUtils';
@@ -52,8 +58,14 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import SearchDropdown from '../../SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
-import { QueryVote, TableQueriesProp } from './TableQueries.interface';
+import {
+  QueryVote,
+  TableQueriesProp,
+  TagsFilterType,
+} from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 const TableQueries: FC<TableQueriesProp> = ({
@@ -78,6 +90,10 @@ const TableQueries: FC<TableQueriesProp> = ({
   const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [tagsFilter, setTagsFilter] = useState<TagsFilterType>(
+    QUERY_PAGE_DEFAULT_TAGS_FILTER
+  );
+  const [isTagsLoading, setIsTagsLoading] = useState(false);
 
   const {
     currentPage,
@@ -87,7 +103,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging();
+  } = usePaging(PAGE_SIZE);
 
   const { getEntityPermission, permissions } = usePermissionProvider();
 
@@ -156,6 +172,28 @@ const TableQueries: FC<TableQueriesProp> = ({
       showErrorToast(error as AxiosError);
     }
   };
+
+  const setQueryData = (
+    queries: Query[],
+    params?: ListQueriesParams,
+    activePage?: number
+  ) => {
+    setIsError(QUERY_PAGE_ERROR_STATE);
+    setTableQueries(queries);
+    const selectedQueryData = searchParams.query
+      ? queries.find((query) => query.id === searchParams.query) || queries[0]
+      : queries[0];
+    setSelectedQuery(selectedQueryData);
+    history.push({
+      search: stringifySearchParams({
+        tableId,
+        after: params?.after,
+        query: selectedQueryData.id,
+        queryFrom: activePage,
+      }),
+    });
+  };
+
   const fetchTableQuery = async (
     params?: ListQueriesParams,
     activePage?: number
@@ -171,34 +209,14 @@ const TableQueries: FC<TableQueriesProp> = ({
       if (queries.length === 0) {
         setIsError((pre) => ({ ...pre, page: true }));
       } else {
-        setTableQueries(queries);
-        const selectedQueryData = searchParams.query
-          ? queries.find((query) => query.id === searchParams.query) ||
-            queries[0]
-          : queries[0];
-        setSelectedQuery(selectedQueryData);
         handlePagingChange(paging);
-        history.push({
-          search: stringifySearchParams({
-            tableId,
-            after: params?.after,
-            query: selectedQueryData.id,
-            queryFrom: activePage,
-          }),
-        });
+        setQueryData(queries, params, activePage);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsError((pre) => ({ ...pre, page: true }));
     } finally {
       setIsLoading((pre) => ({ ...pre, query: false }));
-    }
-  };
-
-  const pagingHandler = ({ cursorType, currentPage }: PagingHandlerParams) => {
-    if (cursorType) {
-      fetchTableQuery({ [cursorType]: paging[cursorType] }, currentPage);
-      handlePageChange(currentPage);
     }
   };
 
@@ -215,10 +233,120 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
+  const fetchFilteredQueries = async ({
+    tags,
+    pageNumber = 1,
+  }: {
+    tags: SearchDropdownOption[];
+    pageNumber?: number;
+  }) => {
+    setIsLoading((pre) => ({ ...pre, query: true }));
+    try {
+      const response = await searchQuery({
+        query: WILD_CARD_CHAR,
+        queryFilter: createQueryFilter(tableId, tags),
+        pageNumber: pageNumber,
+        pageSize: pageSize,
+        searchIndex: SearchIndex.QUERY,
+      });
+
+      const queries = response.hits.hits.map((hit) => hit._source);
+      if (isEmpty(queries)) {
+        setSelectedQuery(undefined);
+        setIsError((pre) => ({ ...pre, search: true }));
+      } else {
+        handlePagingChange({ total: response.hits.total.value });
+        setQueryData(queries);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setSelectedQuery(undefined);
+      handlePagingChange({ total: 0 });
+      setIsError((pre) => ({ ...pre, search: true }));
+    } finally {
+      setIsLoading((pre) => ({ ...pre, query: false }));
+    }
+  };
+
+  const fetchTags = async (searchText = WILD_CARD_CHAR) => {
+    const response = await searchQuery({
+      query: searchText,
+      filters: 'disabled:false AND !classification.name:Tier',
+      pageNumber: 1,
+      pageSize: PAGE_SIZE_BASE,
+      searchIndex: SearchIndex.TAG,
+    });
+    const options = response.hits.hits.map((hit) => ({
+      key: hit._source.fullyQualifiedName ?? hit._source.name,
+      label: hit._source.name,
+    }));
+
+    return options;
+  };
+
+  const handleTagsSearch = async (searchText: string) => {
+    if (isEmpty(searchText)) {
+      setTagsFilter((pre) => ({ ...pre, options: pre.initialTags }));
+
+      return;
+    }
+
+    setIsTagsLoading(true);
+    try {
+      const options = await fetchTags(searchText);
+      setTagsFilter((pre) => ({ ...pre, options }));
+    } catch (error) {
+      setTagsFilter((pre) => ({ ...pre, options: [] }));
+    } finally {
+      setIsTagsLoading(false);
+    }
+  };
+
+  const getInitialTagsOptions = async () => {
+    if (!isEmpty(tagsFilter.initialTags)) {
+      setTagsFilter((pre) => ({ ...pre, options: pre.initialTags }));
+
+      return;
+    }
+    setIsTagsLoading(true);
+    try {
+      const options = await fetchTags();
+      setTagsFilter((pre) => ({ ...pre, options, initialTags: options }));
+    } catch (error) {
+      setTagsFilter((pre) => ({ ...pre, options: [], initialTags: [] }));
+    } finally {
+      setIsTagsLoading(false);
+    }
+  };
+
+  const handleTagsFilterChange = (selected: SearchDropdownOption[]) => {
+    setTagsFilter((pre) => ({ ...pre, selected }));
+    if (isEmpty(selected)) {
+      fetchTableQuery();
+    } else {
+      fetchFilteredQueries({ tags: selected });
+    }
+  };
+
+  const pagingHandler = ({ cursorType, currentPage }: PagingHandlerParams) => {
+    if (cursorType) {
+      fetchTableQuery({ [cursorType]: paging[cursorType] }, currentPage);
+    } else if (!isEmpty(tagsFilter.selected)) {
+      fetchFilteredQueries({
+        tags: tagsFilter.selected,
+        pageNumber: currentPage,
+      });
+    }
+    handlePageChange(currentPage);
+  };
+
   useEffect(() => {
     setIsLoading((pre) => ({ ...pre, page: true }));
     if (tableId && !isTableDeleted) {
-      fetchTableQuery({ after: searchParams?.after }).finally(() => {
+      const apiCall = isEmpty(tagsFilter.selected)
+        ? fetchTableQuery({ after: searchParams?.after })
+        : fetchFilteredQueries({ tags: tagsFilter.selected });
+      apiCall.finally(() => {
         setIsLoading((pre) => ({ ...pre, page: false }));
       });
     } else {
@@ -306,39 +434,62 @@ const TableQueries: FC<TableQueriesProp> = ({
   );
 
   return (
-    <Row gutter={8} id="tablequeries" wrap={false}>
+    <Row className="m-b-md" gutter={8} id="tablequeries" wrap={false}>
       <Col flex="auto">
         <Row
           className="p-x-md m-t-md"
           data-testid="queries-container"
           gutter={[8, 16]}>
           <Col span={24}>
-            <Space className="justify-end w-full">{addButton}</Space>
+            <Space className="justify-between w-full">
+              <div>
+                <SearchDropdown
+                  hideCounts
+                  isSuggestionsLoading={isTagsLoading}
+                  label="Tags"
+                  options={tagsFilter.options}
+                  searchKey="tags"
+                  selectedKeys={tagsFilter.selected}
+                  onChange={handleTagsFilterChange}
+                  onGetInitialOptions={getInitialTagsOptions}
+                  onSearch={handleTagsSearch}
+                />
+              </div>
+              {addButton}
+            </Space>
           </Col>
 
-          {isLoading.query ? <Loader /> : queryTabBody}
-
-          <Col span={24}>
-            {showPagination && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={pagingHandler}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
-          </Col>
+          {isLoading.query ? (
+            <Loader />
+          ) : (
+            <>
+              {queryTabBody}
+              <Col span={24}>
+                {showPagination && (
+                  <NextPrevious
+                    currentPage={currentPage}
+                    isNumberBased={!isEmpty(tagsFilter.selected)}
+                    pageSize={pageSize}
+                    paging={paging}
+                    pagingHandler={pagingHandler}
+                    onShowSizeChange={handlePageSizeChange}
+                  />
+                )}
+              </Col>
+            </>
+          )}
         </Row>
       </Col>
       <Col flex="400px">
         {selectedQuery && (
-          <TableQueryRightPanel
-            isLoading={isLoading.rightPanel}
-            permission={queryPermissions}
-            query={selectedQuery}
-            onQueryUpdate={handleQueryUpdate}
-          />
+          <div className="sticky top-0">
+            <TableQueryRightPanel
+              isLoading={isLoading.rightPanel}
+              permission={queryPermissions}
+              query={selectedQuery}
+              onQueryUpdate={handleQueryUpdate}
+            />
+          </div>
         )}
       </Col>
     </Row>

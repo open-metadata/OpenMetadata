@@ -19,8 +19,8 @@ import {
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 
 export const createQueryFilter = (
-  allFilter: SearchDropdownOption[],
-  tableId: string
+  tableId: string,
+  tags: SearchDropdownOption[] = []
 ): QuerySearchFilterType => {
   const filter = {
     query: {
@@ -28,8 +28,8 @@ export const createQueryFilter = (
         must: [
           {
             bool: {
-              should: allFilter.map((data) => ({
-                term: { 'owner.id': data.key },
+              should: tags.map((data) => ({
+                term: { 'tags.tagFQN': data.key },
               })),
             },
           },

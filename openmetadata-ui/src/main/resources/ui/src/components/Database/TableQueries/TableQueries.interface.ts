@@ -33,6 +33,12 @@ export interface TableQueriesProp {
   tableId: string;
 }
 
+export type TagsFilterType = {
+  initialTags: SearchDropdownOption[];
+  options: SearchDropdownOption[];
+  selected: SearchDropdownOption[];
+};
+
 export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   isExpanded: boolean;
   query: Query;
@@ -68,7 +74,7 @@ export type QuerySearchParams = {
 
 export type QuerySearchShouldFilterType = {
   term: {
-    'owner.id': string;
+    'tags.tagFQN': string;
   };
 };
 export type QuerySearchMustFilterType = {
