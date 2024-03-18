@@ -112,7 +112,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
       // Create an On Demand DAO
       CollectionDAO dao = Entity.getCollectionDAO();
       searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
-      ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, dao, searchRepository);
 
       // Get Create App Requests

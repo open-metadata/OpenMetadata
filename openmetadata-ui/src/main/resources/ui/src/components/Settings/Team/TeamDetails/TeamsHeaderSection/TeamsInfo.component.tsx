@@ -138,7 +138,12 @@ const TeamsInfo = ({
           'label.email'
         )} :`}</Typography.Text>
         {isEmailEdit ? (
-          <Form initialValues={{ email }} onFinish={onEmailSave}>
+          <Form
+            initialValues={{ email }}
+            //  Used onClick stop click propagation event anywhere in the form to parent
+            //  TeamsDetailV1 collapsible panel
+            onClick={(e) => e.stopPropagation()}
+            onFinish={onEmailSave}>
             <Space align="baseline">
               <Form.Item
                 className="m-b-0"
@@ -201,7 +206,11 @@ const TeamsInfo = ({
                   component={EditIcon}
                   data-testid="edit-email"
                   style={{ fontSize: '16px' }}
-                  onClick={() => setIsEmailEdit(true)}
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    setIsEmailEdit(true);
+                  }}
                 />
               </Tooltip>
             )}
@@ -256,9 +265,14 @@ const TeamsInfo = ({
                           entity: t('label.team-type'),
                         })
                   }
-                  onClick={
-                    isGroupType ? undefined : () => setShowTypeSelector(true)
-                  }>
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    if (isGroupType) {
+                      return;
+                    }
+                    setShowTypeSelector(true);
+                  }}>
                   <EditIcon />
                 </Icon>
               </Tooltip>
