@@ -16,15 +16,20 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
+import { useHistory } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
 import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../AuthProviders/AuthProvider';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
-    const { setIsAuthenticated } = useAuthContext();
+    const { setIsAuthenticated, setIsSigningIn } = useAuthContext();
+    const history = useHistory();
 
     const handleLogin = () => {
+      setIsAuthenticated(false);
+      setIsSigningIn(true);
       window.location.assign('api/v1/auth/login');
     };
 
@@ -33,6 +38,7 @@ export const GenericAuthenticator = forwardRef(
 
       localState.removeOidcToken();
       setIsAuthenticated(false);
+      history.push(ROUTES.SIGNIN);
     };
 
     const handleSilentSignIn = async () => {

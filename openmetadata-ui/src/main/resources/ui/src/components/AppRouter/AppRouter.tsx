@@ -54,13 +54,8 @@ const AppRouter = () => {
   // web analytics instance
   const analytics = useAnalytics();
 
-  const {
-    authConfig,
-    isAuthenticated,
-    loading,
-    isSigningIn,
-    getCallBackComponent,
-  } = useAuthContext();
+  const { authConfig, isAuthenticated, loading, getCallBackComponent } =
+    useAuthContext();
 
   const clientType = authConfig?.clientType;
   const callbackComponent = getCallBackComponent();
@@ -121,7 +116,7 @@ const AppRouter = () => {
     return <Redirect to={ROUTES.SIGNIN} />;
   }
 
-  if (isOidcProvider || isAuthenticated) {
+  if ((isOidcProvider || isAuthenticated) && clientType === ClientType.Public) {
     return <AppContainer />;
   }
 
@@ -130,28 +125,12 @@ const AppRouter = () => {
       <Switch>
         <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
         {callbackComponent ? (
-          <Route
-            component={callbackComponent}
-            path={
-              clientType === ClientType.Confidential
-                ? ROUTES.AUTH_CALLBACK
-                : ROUTES.CALLBACK
-            }
-          />
+          <Route component={callbackComponent} path={ROUTES.CALLBACK} />
         ) : null}
         <Route
           component={SamlCallback}
           path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
         />
-        <Route exact path={ROUTES.HOME}>
-          {!isAuthenticated && !isSigningIn ? (
-            <>
-              <Redirect to={ROUTES.SIGNIN} />
-            </>
-          ) : (
-            <Redirect to={ROUTES.MY_DATA} />
-          )}
-        </Route>
 
         {isBasicAuthProvider && (
           <>
