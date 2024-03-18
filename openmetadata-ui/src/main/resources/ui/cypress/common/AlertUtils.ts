@@ -223,6 +223,9 @@ export const addInternalDestination = (
         .click();
       interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
       cy.get(
+        `[data-testid="team-user-select-dropdown-${destinationNumber}"]`
+      ).should('be.visible');
+      cy.get(
         `[data-testid="team-user-select-dropdown-${destinationNumber}"] [data-testid="search-input"]`
       )
         .click()
