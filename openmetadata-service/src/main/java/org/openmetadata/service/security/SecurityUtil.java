@@ -29,7 +29,6 @@ import com.nimbusds.oauth2.sdk.auth.ClientSecretPost;
 import com.nimbusds.oauth2.sdk.auth.PrivateKeyJWT;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
-import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivateKey;
@@ -358,7 +357,7 @@ public final class SecurityUtil {
       HttpServletRequest request, OidcClient client) throws ParseException {
     OidcCredentials credentials =
         (OidcCredentials) request.getSession().getAttribute(OIDC_CREDENTIAL_PROFILE);
-    if (credentials != null) {
+    if (credentials != null && credentials.getRefreshToken() != null) {
       removeOrRenewOidcCredentials(request, client, credentials);
       return Optional.of(credentials);
     }
@@ -371,15 +370,9 @@ public final class SecurityUtil {
     boolean profilesUpdated = false;
     if (SecurityUtil.isCredentialsExpired(credentials)) {
       LOG.debug("Expired credentials found, trying to renew.");
-      RefreshToken refreshToken = credentials.getRefreshToken();
-      if (refreshToken != null) {
-        profilesUpdated = true;
-        OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
-        authenticator.refresh(credentials);
-      } else {
-        LOG.error("No refresh token found in credentials.");
-        throw new TechnicalException("No refresh token found in credentials.");
-      }
+      profilesUpdated = true;
+      OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
+      authenticator.refresh(credentials);
     }
     if (profilesUpdated) {
       request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
