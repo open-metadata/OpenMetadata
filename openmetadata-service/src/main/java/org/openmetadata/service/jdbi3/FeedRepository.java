@@ -304,7 +304,6 @@ public class FeedRepository {
   private Thread createThread(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
     if (thread.getType() == ThreadType.Task) {
-      validateTaskByNonBotUser(thread);
       validateAssignee(thread);
       thread.getTask().withId(getNextTaskId());
     } else if (thread.getType() == ThreadType.Announcement) {
@@ -838,18 +837,15 @@ public class FeedRepository {
     }
   }
 
-  private void validateTaskByNonBotUser(Thread thread) {
-    if (thread != null && ThreadType.Task.equals(thread.getType())) {
-      String userName = thread.getCreatedBy();
-      User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
-      if (Boolean.TRUE.equals(user.getIsBot())) {
-        throw new IllegalArgumentException("Task cannot be created by bot only by user or teams");
-      }
-    }
-  }
-
   private void validateAssignee(Thread thread) {
     if (thread != null && ThreadType.Task.equals(thread.getType())) {
+      String createdByUserName = thread.getCreatedBy();
+      User createdByUser =
+          Entity.getEntityByName(USER, createdByUserName, TEAMS_FIELD, NON_DELETED);
+      if (Boolean.TRUE.equals(createdByUser.getIsBot())) {
+        throw new IllegalArgumentException("Task cannot be created by bot only by user or teams");
+      }
+
       List<EntityReference> assignees = thread.getTask().getAssignees();
 
       // Assignees can only be user or teams
