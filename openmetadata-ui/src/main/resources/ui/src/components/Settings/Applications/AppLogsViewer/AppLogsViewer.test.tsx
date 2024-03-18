@@ -58,7 +58,7 @@ const mockProps1 = {
       },
     },
     scheduleInfo: {
-      scheduleType: ScheduleTimeline.Custom,
+      scheduleTimeline: ScheduleTimeline.Custom,
       cronExpression: '0 0 0 1/1 * ? *',
     },
     id: '6e4d3dcf-238d-4874-b4e4-dd863ede6544-OnDemand-1706871884587',
