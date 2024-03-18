@@ -28,6 +28,9 @@ public class ApplicationHandler {
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
+    if (instance != null) {
+      return;
+    }
     instance = new ApplicationHandler(config);
   }
 
