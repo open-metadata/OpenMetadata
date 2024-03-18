@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Tuple
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
@@ -44,9 +44,9 @@ class ExternalTableLineageMixin(ABC):
         """
         Yield external table lineage
         """
-        table_name, table_type = table_name_and_type
+        table_name, _ = table_name_and_type
         location = self.get_external_table_location()
-        if table_type == TableType.External and location:
+        if location:
             try:
                 location_entity = self.metadata.es_search_container_by_path(
                     full_path=location

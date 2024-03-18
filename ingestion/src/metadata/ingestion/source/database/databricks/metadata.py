@@ -596,7 +596,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 elif data[0] and data[0].strip() == "Location":
                     self.external_location_map[
                         (self.context.database, schema_name, table_name)
-                    ] = (data[1] if data and data[1] else None)
+                    ] = (
+                        data[1]
+                        if data and data[1] and not data[1].startswith("dbfs")
+                        else None
+                    )
 
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
