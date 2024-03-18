@@ -139,7 +139,10 @@ const AppRouter = () => {
             }
           />
         ) : null}
-        <Route component={SamlCallback} path={ROUTES.SAML_CALLBACK} />
+        <Route
+          component={SamlCallback}
+          path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
+        />
         <Route exact path={ROUTES.HOME}>
           {!isAuthenticated && !isSigningIn ? (
             <>

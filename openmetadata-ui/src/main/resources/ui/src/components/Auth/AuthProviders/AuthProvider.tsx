@@ -80,12 +80,12 @@ import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
+import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator';
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
 import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
 import Auth0Callback from '../AppCallbacks/Auth0Callback/Auth0Callback';
-import { ConfidentialCallback } from '../AppCallbacks/ConfidentialCallback/ConfidentialCallback';
 import {
   AuthenticationConfigurationWithScope,
   AuthenticatorRef,
@@ -154,19 +154,15 @@ export const AuthProvider = ({
   const onLoginHandler = () => {
     setLoading(true);
 
-    if (clientType === ClientType.Public) {
-      authenticatorRef.current?.invokeLogin();
-    } else {
-      window.location.assign('api/v1/auth/login');
-    }
+    authenticatorRef.current?.invokeLogin();
 
     resetWebAnalyticSession();
   };
 
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
-    authenticatorRef.current?.invokeLogout();
 
+    authenticatorRef.current?.invokeLogout();
     // reset the user details on logout
     setCurrentUser({} as User);
 
@@ -568,9 +564,6 @@ export const AuthProvider = ({
   };
 
   const getCallBackComponent = () => {
-    if (clientType === ClientType.Confidential) {
-      return ConfidentialCallback;
-    }
     switch (authConfig?.provider) {
       case AuthProviderEnum.Okta: {
         return LoginCallback;
@@ -585,6 +578,13 @@ export const AuthProvider = ({
   };
 
   const getProtectedApp = () => {
+    if (clientType === ClientType.Confidential) {
+      return (
+        <GenericAuthenticator ref={authenticatorRef}>
+          {children}
+        </GenericAuthenticator>
+      );
+    }
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {

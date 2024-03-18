@@ -25,10 +25,11 @@
 
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Redirect, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
-import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import Loader from '../../components/common/Loader/Loader';
+import localState from '../../utils/LocalStorageUtils';
 
 const SamlCallback = () => {
   const { handleSuccessfulLogin } = useAuthContext();
@@ -42,7 +43,7 @@ const SamlCallback = () => {
     const name = params.get('name');
     const email = params.get('email');
     if (idToken) {
-      localStorage.setItem(oidcTokenKey, idToken);
+      localState.setOidcToken(idToken);
       const oidcUser: OidcUser = {
         id_token: idToken,
         scope: '',
@@ -61,7 +62,7 @@ const SamlCallback = () => {
   return (
     <>
       <div data-testid="redirect-message">{t('message.redirect-message')}</div>
-      <Redirect to={ROUTES.HOME} />
+      <Loader fullScreen />
     </>
   );
 };
