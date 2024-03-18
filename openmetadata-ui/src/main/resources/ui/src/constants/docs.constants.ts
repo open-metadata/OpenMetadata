@@ -49,7 +49,7 @@ export const ROLE_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role';
 
 export const DATA_INSIGHT_DOCS =
-  'https://docs.open-metadata.org/features/data-insight';
+  'https://docs.open-metadata.org/how-to-guides/data-insights';
 
 export const INGESTION_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows';
@@ -58,19 +58,19 @@ export const USAGE_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/usage';
 
 export const LOCAL_DEPLOYMENT =
-  'https://docs.open-metadata.org/quick-start/local-deployment';
+  'https://docs.open-metadata.org/quick-start/local-docker-deployment';
 
 export const OMD_SLACK_LINK =
   'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
 
 export const DATA_INSIGHTS_PIPELINE_DOCS =
-  'https://docs.open-metadata.org/features/data-insight#data-insights';
+  'https://docs.open-metadata.org/how-to-guides/data-insights/ingestion';
 
 export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection';
 
 export const ALERTS_DOCS =
-  'https://docs.open-metadata.org/features/alerts-notifications';
+  'https://docs.open-metadata.org/how-to-guides/admin-guide/alerts';
 
 export const TAGS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
