@@ -1231,7 +1231,7 @@ public class TableRepository extends EntityRepository<Table> {
       addRecord(csvFile, recordList, table.getColumns().get(0), false);
 
       for (int i = 1; i < entity.getColumns().size(); i++) {
-        addRecord(csvFile, new ArrayList<>(), table.getColumns().get(1), true);
+        addRecord(csvFile, new ArrayList<>(), table.getColumns().get(i), true);
       }
     }
 
