@@ -44,6 +44,7 @@ export const LINEAGE_ITEMS = [
     fqn: 'sample_kafka.shop_products',
     entityType: 'Topic',
     searchIndex: SEARCH_INDEX.topics,
+    columns: ['sample_kafka.shop_products.Shop.shop_id'],
   },
   {
     term: 'forecast_sales',
@@ -52,14 +53,16 @@ export const LINEAGE_ITEMS = [
     entityType: 'ML Model',
     fqn: 'mlflow_svc.forecast_sales',
     searchIndex: SEARCH_INDEX.mlmodels,
+    columns: [],
   },
   {
-    term: 'media',
+    term: 'transactions',
     entity: DATA_ASSETS.containers,
     serviceName: 's3_storage_sample',
     entityType: 'Container',
-    fqn: 's3_storage_sample.departments.media',
+    fqn: 's3_storage_sample.transactions',
     searchIndex: SEARCH_INDEX.containers,
+    columns: ['s3_storage_sample.transactions.transaction_id'],
   },
   {
     term: 'customers',
@@ -68,6 +71,7 @@ export const LINEAGE_ITEMS = [
     entityType: 'Dashboard',
     fqn: 'sample_looker.customers',
     searchIndex: SEARCH_INDEX.dashboards,
+    columns: ['sample_looker.chart_1'],
   },
 ];
 

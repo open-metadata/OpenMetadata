@@ -13,6 +13,7 @@
 
 import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Source } from '../generated/type/entityLineage';
 
@@ -86,3 +87,12 @@ export const LINEAGE_SOURCE: { [key in Source]: string } = {
   [Source.OpenLineage]: 'OpenLineage',
   [Source.ExternalTableLineage]: 'External Table Lineage',
 };
+
+export const LINEAGE_COLUMN_NODE_SUPPORTED = [
+  EntityType.TABLE,
+  EntityType.DASHBOARD,
+  EntityType.MLMODEL,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.CONTAINER,
+  EntityType.TOPIC,
+];

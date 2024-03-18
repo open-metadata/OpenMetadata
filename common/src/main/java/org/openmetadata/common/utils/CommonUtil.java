@@ -17,6 +17,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -206,5 +207,25 @@ public final class CommonUtil {
       LOG.error("Error creating URI ", e);
     }
     return null;
+  }
+
+  public static <T> boolean findChildren(List<?> list, String methodName, String fqn) {
+    if (list == null || list.isEmpty()) return false;
+    try {
+      Method getChildren = list.get(0).getClass().getMethod(methodName);
+      Method getFQN = list.get(0).getClass().getMethod("getFullyQualifiedName");
+      return list.stream()
+          .anyMatch(
+              o -> {
+                try {
+                  return getFQN.invoke(o).equals(fqn)
+                      || findChildren((List<?>) getChildren.invoke(o), methodName, fqn);
+                } catch (Exception e) {
+                  return false;
+                }
+              });
+    } catch (Exception e) {
+      return false;
+    }
   }
 }

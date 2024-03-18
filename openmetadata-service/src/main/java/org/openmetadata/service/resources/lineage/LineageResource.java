@@ -273,6 +273,53 @@ public class LineageResource {
     return Response.status(Status.OK).build();
   }
 
+  @DELETE
+  @Path("/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
+  @Operation(
+      operationId = "deleteLineageEdgeByName",
+      summary = "Delete a lineage edge by FQNs",
+      description =
+          "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {fromFQN} is not found")
+      })
+  public Response deleteLineageByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("fromEntity")
+          String fromEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("fromFQN")
+          String fromFQN,
+      @Parameter(
+              description = "Entity type for downstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("toEntity")
+          String toEntity,
+      @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
+          @PathParam("toFQN")
+          String toFQN) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
+    boolean deleted = dao.deleteLineageByFQN(fromEntity, fromFQN, toEntity, toFQN);
+    if (!deleted) {
+      return Response.status(NOT_FOUND)
+          .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
+          .build();
+    }
+    return Response.status(Status.OK).build();
+  }
+
   private EntityLineage addHref(UriInfo uriInfo, EntityLineage lineage) {
     Entity.withHref(uriInfo, lineage.getEntity());
     Entity.withHref(uriInfo, lineage.getNodes());

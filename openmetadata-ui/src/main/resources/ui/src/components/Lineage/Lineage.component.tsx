@@ -118,7 +118,7 @@ const Lineage = ({
   // considerably. So added an init state for showing loader.
   return (
     <Card
-      className="lineage-card card-body-full w-auto border-none"
+      className="lineage-card card-body-full w-auto border-none card-padding-0"
       data-testid="lineage-details">
       {isFullScreen && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
