@@ -88,8 +88,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.AIDetails;
 import org.openmetadata.schema.type.AnnouncementDetails;
+import org.openmetadata.schema.type.ChatbotDetails;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -944,25 +944,25 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withFrom(USER.getName())
             .withMessage("message")
             .withAbout(about)
-            .withType(ThreadType.AI);
+            .withType(ThreadType.Chatbot);
     Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(thread);
 
-    Thread updated = thread.withAi(new AIDetails().withQuery("query"));
+    Thread updated = thread.withChatbot(new ChatbotDetails().withQuery("query"));
     Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
 
     assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
     assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
-    assertEquals("query", patched.getAi().getQuery());
+    assertEquals("query", patched.getChatbot().getQuery());
 
     // Patch again to update the query
     String originalJson2 = JsonUtils.pojoToJson(patched);
-    Thread updated2 = patched.withAi(new AIDetails().withQuery("query2"));
+    Thread updated2 = patched.withChatbot(new ChatbotDetails().withQuery("query2"));
     Thread patched2 = patchThreadAndCheck(updated2, originalJson2, TEST_AUTH_HEADERS);
 
     assertNotEquals(patched2.getUpdatedAt(), patched.getUpdatedAt());
     assertEquals(TEST_USER_NAME, patched2.getUpdatedBy());
-    assertEquals("query2", patched2.getAi().getQuery());
+    assertEquals("query2", patched2.getChatbot().getQuery());
   }
 
   @Test
@@ -1602,7 +1602,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         null,
         null,
         null,
-        ThreadType.AI.toString(),
+        ThreadType.Chatbot.toString(),
         null,
         null,
         null,

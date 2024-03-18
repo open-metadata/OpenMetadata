@@ -935,10 +935,10 @@ public class FeedRepository {
                 || !Objects.equals(
                     original.getAnnouncement().getEndTime(),
                     updated.getAnnouncement().getEndTime())))
-        || (original.getAi() == null && updated.getAi() != null)
-        || (original.getAi() != null
-            && updated.getAi() != null
-            && !original.getAi().getQuery().equals(updated.getAi().getQuery()))
+        || (original.getChatbot() == null && updated.getChatbot() != null)
+        || (original.getChatbot() != null
+            && updated.getChatbot() != null
+            && !original.getChatbot().getQuery().equals(updated.getChatbot().getQuery()))
         || (original.getTask() != null
             && (original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
                 || !original
