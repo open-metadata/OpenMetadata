@@ -96,6 +96,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
 import org.openmetadata.service.security.AuthLoginServlet;
+import org.openmetadata.service.security.AuthLogoutServlet;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -268,12 +269,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           environment
               .servlets()
               .addServlet(
-                  "saml_acs",
+                  "auth_callback",
                   new AuthCallbackServlet(
                       oidcClient,
                       config.getAuthenticationConfiguration().getOidcConfiguration().getServerUrl(),
                       config.getAuthenticationConfiguration().getJwtPrincipalClaims()));
       authCallback.addMapping("/callback");
+
+      ServletRegistration.Dynamic authLogout =
+          environment
+              .servlets()
+              .addServlet(
+                  "auth_logout",
+                  new AuthLogoutServlet(
+                      config
+                          .getAuthenticationConfiguration()
+                          .getOidcConfiguration()
+                          .getServerUrl()));
+      authLogout.addMapping("/api/v1/auth/logout");
     }
   }
 
