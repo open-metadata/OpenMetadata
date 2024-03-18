@@ -54,11 +54,11 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.incremental_metadata_extraction import (
-    IncrementalConfig,
-)
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
+)
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
 )
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
