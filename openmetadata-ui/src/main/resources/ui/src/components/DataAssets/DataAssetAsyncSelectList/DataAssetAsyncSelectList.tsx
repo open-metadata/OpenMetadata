@@ -134,6 +134,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
           <Space>
             <ProfilePicture
               className="d-flex"
+              isTeam={reference.type === EntityType.TEAM}
               name={option.name ?? ''}
               type="circle"
               width="24"

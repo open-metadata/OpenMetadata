@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import {
+  Button,
   DatePicker,
   Form,
   Input,
@@ -26,6 +27,7 @@ import { t } from 'i18next';
 import { isArray, isEmpty, isUndefined, noop, toNumber, toUpper } from 'lodash';
 import moment, { Moment } from 'moment';
 import React, { FC, Fragment, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
@@ -40,14 +42,18 @@ import {
   CustomProperty,
   EnumConfig,
 } from '../../../generated/type/customProperty';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
+import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
@@ -640,8 +646,98 @@ export const PropertyValue: FC<Props> = ({
             value={value ?? ''}
           />
         );
-      case 'entityReference':
-      case 'entityReferenceList':
+      case 'entityReferenceList': {
+        const entityReferences = (value as EntityReference[]) ?? [];
+
+        return (
+          <div className="entity-list-body">
+            {entityReferences.map((item) => {
+              return (
+                <div
+                  className="entity-reference-list-item flex items-center justify-between"
+                  data-testid={getEntityName(item)}
+                  key={item.id}>
+                  <div className="d-flex items-center">
+                    <Link
+                      to={entityUtilClassBase.getEntityLink(
+                        item.type,
+                        item.fullyQualifiedName as string
+                      )}>
+                      <Button
+                        className="entity-button flex-center p-0 m--ml-1"
+                        icon={
+                          <div className="entity-button-icon m-r-xs">
+                            {['user', 'team'].includes(item.type) ? (
+                              <ProfilePicture
+                                className="d-flex"
+                                isTeam={item.type === 'team'}
+                                name={item.name ?? ''}
+                                type="circle"
+                                width="18"
+                              />
+                            ) : (
+                              getEntityIcon(item.type)
+                            )}
+                          </div>
+                        }
+                        type="text">
+                        <Typography.Text
+                          className="text-left text-xs"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item)}
+                        </Typography.Text>
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      case 'entityReference': {
+        const item = value as EntityReference;
+
+        if (isUndefined(item)) {
+          return null;
+        }
+
+        return (
+          <div className="d-flex items-center">
+            <Link
+              to={entityUtilClassBase.getEntityLink(
+                item.type,
+                item.fullyQualifiedName as string
+              )}>
+              <Button
+                className="entity-button flex-center p-0 m--ml-1"
+                icon={
+                  <div className="entity-button-icon m-r-xs">
+                    {['user', 'team'].includes(item.type) ? (
+                      <ProfilePicture
+                        className="d-flex"
+                        isTeam={item.type === 'team'}
+                        name={item.name ?? ''}
+                        type="circle"
+                        width="18"
+                      />
+                    ) : (
+                      getEntityIcon(item.type)
+                    )}
+                  </div>
+                }
+                type="text">
+                <Typography.Text
+                  className="text-left text-xs"
+                  ellipsis={{ tooltip: true }}>
+                  {getEntityName(item)}
+                </Typography.Text>
+              </Button>
+            </Link>
+          </div>
+        );
+      }
       case 'timeInterval':
         return (
           <Typography.Text className="break-all" data-testid="value">
