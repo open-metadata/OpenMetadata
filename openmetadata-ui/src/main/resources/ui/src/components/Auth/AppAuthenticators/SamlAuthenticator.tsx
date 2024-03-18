@@ -29,11 +29,11 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { oidcTokenKey } from '../../../constants/constants';
 import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -43,7 +43,8 @@ interface Props {
 
 const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, authConfig } = useAuthContext();
+    const { setIsAuthenticated, authConfig, getOidcToken } =
+      useApplicationStore();
     const config = authConfig?.samlConfiguration as SamlSSOClientConfig;
 
     const login = async () => {
@@ -55,7 +56,7 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = () => {
-      const token = localStorage.getItem(oidcTokenKey);
+      const token = getOidcToken();
       if (token) {
         postSamlLogout({ token })
           .then(() => {

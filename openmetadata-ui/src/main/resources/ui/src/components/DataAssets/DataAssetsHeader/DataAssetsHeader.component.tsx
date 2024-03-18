@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -54,7 +54,8 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -107,7 +108,11 @@ export const ExtraInfoLink = ({
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
-      <IconExternalLink className="m-l-xss " width={14} />{' '}
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
     </div>
   </>
 );
@@ -133,7 +138,7 @@ export const DataAssetsHeader = ({
   onUpdateRetentionPeriod,
   extraDropdownContent,
 }: DataAssetsHeaderProps) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
@@ -433,13 +438,7 @@ export const DataAssetsHeader = ({
                   <Tooltip title={t('label.open-task-plural')}>
                     <Button
                       className="w-16 p-0"
-                      icon={
-                        <Icon
-                          className="vertical-align-text-top"
-                          component={TaskOpenIcon}
-                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
-                        />
-                      }
+                      icon={<Icon component={TaskOpenIcon} />}
                       onClick={handleOpenTaskClick}>
                       <Typography.Text>{openTaskCount}</Typography.Text>
                     </Button>
@@ -450,13 +449,7 @@ export const DataAssetsHeader = ({
                   <Button
                     className="w-16 p-0"
                     data-testid="version-button"
-                    icon={
-                      <Icon
-                        className="vertical-align-text-top"
-                        component={VersionIcon}
-                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
-                      />
-                    }
+                    icon={<Icon component={VersionIcon} />}
                     onClick={onVersionClick}>
                     <Typography.Text>{version}</Typography.Text>
                   </Button>
@@ -474,9 +467,7 @@ export const DataAssetsHeader = ({
                       disabled={deleted}
                       icon={
                         <Icon
-                          className="vertical-align-text-top"
                           component={isFollowing ? StarFilledIcon : StarIcon}
-                          style={{ ...DATA_ASSET_ICON_DIMENSION }}
                         />
                       }
                       loading={isFollowingLoading}
@@ -490,14 +481,7 @@ export const DataAssetsHeader = ({
                   placement="topRight"
                   title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
-                    className="flex-center"
-                    icon={
-                      <Icon
-                        className="vertical-align-text-top"
-                        component={ShareIcon}
-                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
-                      />
-                    }
+                    icon={<Icon component={ShareIcon} />}
                     onClick={handleShareButtonClick}
                   />
                 </Tooltip>

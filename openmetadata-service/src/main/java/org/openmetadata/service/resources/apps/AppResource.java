@@ -66,6 +66,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -111,7 +112,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
       // Create an On Demand DAO
       CollectionDAO dao = Entity.getCollectionDAO();
       searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
-      ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, dao, searchRepository);
 
       // Get Create App Requests
@@ -596,6 +596,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           JsonPatch patch)
       throws SchedulerException {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    if (app.getSystemApp()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
+    }
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
@@ -651,6 +655,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "System entity {name} of type SystemApp can not be deleted."),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
   public Response delete(
@@ -664,6 +671,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
+    if (app.getSystemApp()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
+    }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
@@ -677,6 +688,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
       description = "Delete a App by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "System entity {name} of type SystemApp can not be deleted."),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
   public Response delete(
@@ -689,6 +703,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    if (app.getSystemApp()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
+    }
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     // Remove from repository
@@ -955,7 +973,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures())
             .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
-            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration());
+            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
+            .withSystemApp(marketPlaceDefinition.getSystemApp());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());

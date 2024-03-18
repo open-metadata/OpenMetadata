@@ -31,8 +31,8 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
     newUser: {
       name: '',

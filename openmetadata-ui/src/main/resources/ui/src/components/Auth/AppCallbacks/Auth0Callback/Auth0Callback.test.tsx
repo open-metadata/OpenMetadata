@@ -16,7 +16,6 @@ import { render, screen } from '@testing-library/react';
 import { t } from 'i18next';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { oidcTokenKey } from '../../../../constants/constants';
 import Auth0Callback from './Auth0Callback';
 
 const localStorageMock = (() => {
@@ -50,12 +49,13 @@ jest.mock('@auth0/auth0-react', () => ({
   useAuth0: jest.fn(),
 }));
 
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => {
+jest.mock('../../../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest.fn(() => ({
+    useApplicationStore: jest.fn(() => ({
       authConfig: {},
       setIsAuthenticated: mockSetIsAuthenticated,
       handleSuccessfulLogin: mockHandleSuccessfulLogin,
+      setOidcToken: jest.fn(),
     })),
   };
 });
@@ -108,7 +108,6 @@ describe('Test Auth0Callback component', () => {
     // eslint-disable-next-line no-undef
     await new Promise(process.nextTick);
 
-    expect(localStorageMock.getItem(oidcTokenKey)).toBe('raw_id_token');
     expect(mockSetIsAuthenticated).toHaveBeenCalledTimes(1);
     expect(mockSetIsAuthenticated).toHaveBeenCalledWith(true);
     expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);

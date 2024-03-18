@@ -23,7 +23,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
@@ -37,6 +36,8 @@ import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -63,7 +64,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
   const [loading, setLoading] = useState(false);
