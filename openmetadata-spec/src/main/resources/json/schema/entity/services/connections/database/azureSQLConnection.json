@@ -144,6 +144,7 @@
   "additionalProperties": false,
   "required": [
     "hostPort",
-    "database"
+    "database",
+    "username"
   ]
 }
