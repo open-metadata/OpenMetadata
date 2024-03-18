@@ -407,6 +407,14 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             null);
     // We still have the tag suggestion open, since we only accepted the descriptions
     assertEquals(1, suggestionList.getPaging().getTotal());
+
+    // Now we accept the pending one
+    acceptAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestTagLabel,
+        USER_AUTH_HEADERS);
+    assertEquals(0, suggestionList.getPaging().getTotal());
   }
 
   @Test
