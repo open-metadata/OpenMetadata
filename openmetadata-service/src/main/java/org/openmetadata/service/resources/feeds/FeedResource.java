@@ -590,6 +590,7 @@ public class FeedResource {
         .withType(create.getType())
         .withTask(getTaskDetails(create.getTaskDetails()))
         .withAnnouncement(create.getAnnouncementDetails())
+        .withChatbot(create.getChatbotDetails())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }
