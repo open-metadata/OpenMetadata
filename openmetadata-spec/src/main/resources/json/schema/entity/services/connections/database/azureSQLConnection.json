@@ -67,6 +67,15 @@
       "title": "Authentication Mode",
       "description": "This parameter determines the mode of authentication for connecting to AzureSQL using ODBC. If 'Active Directory Password' is selected, you need to provide the password. If 'Active Directory Integrated' is selected, password is not required as it uses the logged-in user's credentials. This mode is useful for establishing secure and seamless connections with AzureSQL.",
       "properties": {
+        "authentication": {
+          "title": "Authentication",
+          "description": "Authentication from Connection String for AzureSQL.",
+          "type": "string",
+          "enum": [
+            "ActiveDirectoryIntegrated",
+            "ActiveDirectoryPassword"
+          ]
+        },
         "encrypt": {
           "title": "Encrypt",
           "description": "Encrypt from Connection String for AzureSQL.",
@@ -81,15 +90,6 @@
           "title": "Connection Timeout",
           "description": "Connection Timeout from Connection String for AzureSQL.",
           "type": "integer"
-        },
-        "authentication": {
-          "title": "Authentication",
-          "description": "Authentication from Connection String for AzureSQL.",
-          "type": "string",
-          "enum": [
-            "ActiveDirectoryIntegrated",
-            "ActiveDirectoryPassword"
-          ]
         }
       },
       "required": [
