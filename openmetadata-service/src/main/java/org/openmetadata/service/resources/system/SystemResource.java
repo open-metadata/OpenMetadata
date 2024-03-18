@@ -45,8 +45,6 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
-import org.openmetadata.service.migration.MigrationValidationClient;
-import org.openmetadata.service.migration.MigrationValidationFactory;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
@@ -66,7 +64,6 @@ public class SystemResource {
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
   private PipelineServiceClient pipelineServiceClient;
-  private MigrationValidationClient migrationValidationClient;
   private JwtFilter jwtFilter;
 
   public SystemResource(Authorizer authorizer) {
@@ -79,7 +76,6 @@ public class SystemResource {
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
-    this.migrationValidationClient = MigrationValidationFactory.getMigrationValidationClient();
 
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
@@ -320,7 +316,6 @@ public class SystemResource {
                     schema = @Schema(implementation = ServicesCount.class)))
       })
   public ValidationResponse validate() {
-    return systemRepository.validateSystem(
-        applicationConfig, pipelineServiceClient, jwtFilter, migrationValidationClient);
+    return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
   }
 }

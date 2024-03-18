@@ -42,6 +42,7 @@ public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
+  private final MigrationValidationClient migrationValidationClient;
 
   private enum ValidationStepDescription {
     DATABASE("Validate that we can properly run a query against the configured database."),
@@ -62,6 +63,7 @@ public class SystemRepository {
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
     Entity.setSystemRepository(this);
+    migrationValidationClient = MigrationValidationClient.getInstance();
   }
 
   public EntitiesCount getAllEntitiesCount(ListFilter filter) {
@@ -240,8 +242,7 @@ public class SystemRepository {
   public ValidationResponse validateSystem(
       OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClient pipelineServiceClient,
-      JwtFilter jwtFilter,
-      MigrationValidationClient migrationValidationClient) {
+      JwtFilter jwtFilter) {
     ValidationResponse validation = new ValidationResponse();
 
     validation.setDatabase(getDatabaseValidation());

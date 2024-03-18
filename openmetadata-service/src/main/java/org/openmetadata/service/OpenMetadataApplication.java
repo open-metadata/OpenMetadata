@@ -79,7 +79,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.Migration;
-import org.openmetadata.service.migration.MigrationValidationFactory;
+import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
@@ -88,7 +88,6 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
@@ -152,8 +151,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // before initializing repository
     new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
-    MigrationValidationFactory.createMigrationValidationClient(
-        catalogConfig.getMigrationConfiguration(), jdbi.onDemand(MigrationDAO.class));
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
 
@@ -164,9 +162,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // init Secret Manager
-    final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(
-            catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
+    SecretsManagerFactory.createSecretsManager(
+        catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker();

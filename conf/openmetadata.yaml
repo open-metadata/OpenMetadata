@@ -151,7 +151,6 @@ migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
   extensionPath: ""
-  migrationValidationClass: ${MIGRATION_VALIDATION_CLASS:-"org.openmetadata.service.migration.OpenMetadataMigrationValidation"}
 
 # Authorizer Configuration
 authorizerConfiguration:
