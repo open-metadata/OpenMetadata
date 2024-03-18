@@ -370,7 +370,10 @@ export const verifyAlertDetails = (
       // Check Destination type
       cy.get(
         `[data-testid="destination-${destination.category}"] [data-testid="destination-type"]`
-      ).should('contain', startCase(destination.type));
+      ).should(
+        'contain',
+        destination.type === 'Generic' ? 'Webhook' : startCase(destination.type)
+      );
 
       if (!isEmpty(destination.config?.receivers)) {
         // Check Destination receivers

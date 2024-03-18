@@ -60,10 +60,13 @@ describe(
     const data = {
       testCase: {},
       testSuite: {},
-      pipelineService: {},
+      pipelineService: {
+        id: '',
+      },
       ingestionPipeline: {},
       user: {
         displayName: '',
+        id: '',
       },
       domain: {
         name: '',
@@ -335,9 +338,9 @@ describe(
           .click();
       });
 
-      addInternalDestination(1, 'Owners', 'G Chat');
+      addInternalDestination(0, 'Owners', 'G Chat');
       addInternalDestination(
-        2,
+        1,
         'Teams',
         'Slack',
         'Team-select',

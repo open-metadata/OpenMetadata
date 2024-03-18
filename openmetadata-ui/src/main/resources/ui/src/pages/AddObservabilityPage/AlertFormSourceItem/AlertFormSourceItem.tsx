@@ -66,7 +66,10 @@ function AlertFormSourceItem({
   );
 
   const handleSourceChange = (value: string) => {
+    // Reset the filters, triggers and destination on change of source,
+    // since the options for above are source specific.
     form.setFieldValue('input', {});
+    form.setFieldValue('destinations', []);
     setSelectedResource([value]);
     form.setFieldValue('resources', [value]);
   };
