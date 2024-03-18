@@ -236,7 +236,7 @@ class BigquerySource(
         self.test_connection = self._test_connection
         self.test_connection()
 
-        self.context.deleted_tables = []
+        self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
         self.incremental_table_processor: Optional[
             BigQueryIncrementalTableProcessor
@@ -309,13 +309,13 @@ class BigquerySource(
                 start_date=self.incremental.start_datetime_utc,
             )
 
-            self.context.deleted_tables.extend(
+            self.context.get_global().deleted_tables.extend(
                 [
                     fqn.build(
                         metadata=self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
                         schema_name=schema_name,
                         table_name=table_name,
                     )
@@ -361,13 +361,13 @@ class BigquerySource(
             #     start_date=self.incremental.start_datetime_utc
             # )
             #
-            # self.context.deleted_tables.extend(
+            # self.context.get_global().deleted_tables.extend(
             #     [
             #         fqn.build(
             #             metadata=self.metadata,
             #             entity_type=Table,
-            #             service_name=self.context.database_service,
-            #             database_name=self.context.database,
+            #             service_name=self.context.get().database_service,
+            #             database_name=self.context.get().database,
             #             schema_name=schema_name,
             #             table_name=table_name
             #         )
@@ -799,19 +799,19 @@ class BigquerySource(
         Use the current inspector to mark tables as deleted
         """
         if self.incremental.enabled:
-            if not self.context.__dict__.get("database"):
+            if not self.context.get().__dict__.get("database"):
                 raise ValueError(
                     "No Database found in the context. We cannot run the table deletion."
                 )
 
             if self.source_config.markDeletedTables:
                 logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
                 )
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.deleted_tables,
+                    entity_names=self.context.get_global().deleted_tables,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                 )
         else:
