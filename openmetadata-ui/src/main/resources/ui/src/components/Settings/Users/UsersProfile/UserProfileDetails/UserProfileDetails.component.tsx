@@ -151,7 +151,11 @@ const UserProfileDetails = ({
                 color={DE_ACTIVE_COLOR}
                 data-testid="edit-displayName"
                 {...ICON_DIMENSION}
-                onClick={() => setIsDisplayNameEdit(true)}
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent User.component collapsible panel
+                  e.stopPropagation();
+                  setIsDisplayNameEdit(true);
+                }}
               />
             </Tooltip>
           )}
@@ -175,7 +179,11 @@ const UserProfileDetails = ({
           className="w-full text-xs"
           data-testid="change-password-button"
           type="primary"
-          onClick={() => setIsChangePassword(true)}>
+          onClick={(e) => {
+            // Used to stop click propagation event to parent User.component collapsible panel
+            e.stopPropagation();
+            setIsChangePassword(true);
+          }}>
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
           })}

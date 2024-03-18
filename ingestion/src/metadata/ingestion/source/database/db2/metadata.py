@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Db2 source module"""
 import traceback
+from typing import Optional
 
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
@@ -47,7 +48,9 @@ class Db2Source(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: Db2Connection = config.serviceConnection.__root__.config
         if not isinstance(connection, Db2Connection):
