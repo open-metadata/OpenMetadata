@@ -640,9 +640,24 @@ export const PropertyValue: FC<Props> = ({
             value={value ?? ''}
           />
         );
+      case 'entityReference':
+      case 'entityReferenceList':
+      case 'timeInterval':
+        return (
+          <Typography.Text className="break-all" data-testid="value">
+            {JSON.stringify(value ?? '{}', null, 2)}
+          </Typography.Text>
+        );
 
       case 'string':
       case 'integer':
+      case 'number':
+      case 'date':
+      case 'dateTime':
+      case 'time':
+      case 'email':
+      case 'timestamp':
+      case 'duration':
       default:
         return (
           <Typography.Text className="break-all" data-testid="value">
