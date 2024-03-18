@@ -97,6 +97,7 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
 import org.openmetadata.service.security.AuthLoginServlet;
 import org.openmetadata.service.security.AuthLogoutServlet;
+import org.openmetadata.service.security.AuthRefreshServlet;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -263,7 +264,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       oidcClient.setCallbackUrl(
           config.getAuthenticationConfiguration().getOidcConfiguration().getCallbackUrl());
       ServletRegistration.Dynamic authLogin =
-          environment.servlets().addServlet("oauth_login", new AuthLoginServlet(oidcClient));
+          environment
+              .servlets()
+              .addServlet(
+                  "oauth_login",
+                  new AuthLoginServlet(
+                      oidcClient,
+                      config.getAuthenticationConfiguration().getOidcConfiguration().getServerUrl(),
+                      config.getAuthenticationConfiguration().getJwtPrincipalClaims()));
       authLogin.addMapping("/api/v1/auth/login");
       ServletRegistration.Dynamic authCallback =
           environment
@@ -287,6 +295,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                           .getOidcConfiguration()
                           .getServerUrl()));
       authLogout.addMapping("/api/v1/auth/logout");
+
+      ServletRegistration.Dynamic refreshServlet =
+          environment.servlets().addServlet("auth_refresh", new AuthRefreshServlet(oidcClient));
+      refreshServlet.addMapping("/api/v1/auth/refresh");
     }
   }
 

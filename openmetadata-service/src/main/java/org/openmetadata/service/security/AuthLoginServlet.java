@@ -1,18 +1,19 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.service.security.SecurityUtil.getErrorMessage;
+import static org.openmetadata.service.security.SecurityUtil.getUserCredentialsFromSession;
+import static org.openmetadata.service.security.SecurityUtil.sendRedirectWithToken;
 
 import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
-import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.Nonce;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -21,41 +22,32 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.auth.JwtResponse;
-import org.openmetadata.service.util.JsonUtils;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.credentials.OidcCredentials;
-import org.pac4j.oidc.credentials.authenticator.OidcAuthenticator;
 
 @WebServlet("/api/v1/auth/login")
 @Slf4j
 public class AuthLoginServlet extends HttpServlet {
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   private final OidcClient client;
+  private final List<String> claimsOrder;
+  private final String serverUrl;
 
-  public AuthLoginServlet(OidcClient oidcClient) {
+  public AuthLoginServlet(OidcClient oidcClient, String serverUrl, List<String> claimsOrder) {
     this.client = oidcClient;
+    this.serverUrl = serverUrl;
+    this.claimsOrder = claimsOrder;
   }
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
     try {
-      Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req);
+      Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req, client);
       if (credentials.isPresent()) {
-        JwtResponse jwtResponse = new JwtResponse();
-        jwtResponse.setAccessToken(credentials.get().getIdToken().getParsedString());
-        jwtResponse.setExpiryDuration(
-            credentials
-                .get()
-                .getIdToken()
-                .getJWTClaimsSet()
-                .getExpirationTime()
-                .toInstant()
-                .getEpochSecond());
-        writeJsonResponse(resp, JsonUtils.pojoToJson(jwtResponse));
+        sendRedirectWithToken(resp, credentials.get(), serverUrl, claimsOrder);
       } else {
         Map<String, String> params = buildParams();
 
@@ -132,38 +124,6 @@ public class AuthLoginServlet extends HttpServlet {
     return client.getConfiguration().getProviderMetadata().getAuthorizationEndpointURI().toString()
         + '?'
         + queryString;
-  }
-
-  private Optional<OidcCredentials> getUserCredentialsFromSession(HttpServletRequest request)
-      throws ParseException {
-    OidcCredentials credentials =
-        (OidcCredentials) request.getSession().getAttribute(OIDC_CREDENTIAL_PROFILE);
-    if (credentials != null) {
-      removeOrRenewOidcCredentials(request, credentials);
-      return Optional.of(credentials);
-    }
-    return Optional.empty();
-  }
-
-  private void removeOrRenewOidcCredentials(HttpServletRequest request, OidcCredentials credentials)
-      throws ParseException {
-    boolean profilesUpdated = false;
-    if (SecurityUtil.isCredentialsExpired(credentials)) {
-      LOG.debug("Expired credentials found, trying to renew.");
-      RefreshToken refreshToken = credentials.getRefreshToken();
-      if (refreshToken != null) {
-        profilesUpdated = true;
-        OidcAuthenticator authenticator =
-            new OidcAuthenticator(client.getConfiguration(), this.client);
-        authenticator.refresh(credentials);
-      } else {
-        LOG.error("No refresh token found in credentials.");
-        throw new RuntimeException("No refresh token found in credentials.");
-      }
-    }
-    if (profilesUpdated) {
-      request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-    }
   }
 
   public static void writeJsonResponse(HttpServletResponse response, String message)

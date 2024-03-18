@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.service.security.AuthLoginServlet.OIDC_CREDENTIAL_PROFILE;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
 
@@ -28,6 +29,7 @@ import com.nimbusds.oauth2.sdk.auth.ClientSecretPost;
 import com.nimbusds.oauth2.sdk.auth.PrivateKeyJWT;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivateKey;
@@ -40,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
@@ -58,6 +61,7 @@ import org.pac4j.oidc.config.AzureAd2OidcConfiguration;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
 import org.pac4j.oidc.credentials.OidcCredentials;
+import org.pac4j.oidc.credentials.authenticator.OidcAuthenticator;
 
 @Slf4j
 public final class SecurityUtil {
@@ -348,5 +352,37 @@ public final class SecurityUtil {
   public static boolean isCredentialsExpired(OidcCredentials credentials) throws ParseException {
     Date expiration = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
     return expiration != null && expiration.toInstant().isBefore(Instant.now().plusSeconds(30));
+  }
+
+  public static Optional<OidcCredentials> getUserCredentialsFromSession(
+      HttpServletRequest request, OidcClient client) throws ParseException {
+    OidcCredentials credentials =
+        (OidcCredentials) request.getSession().getAttribute(OIDC_CREDENTIAL_PROFILE);
+    if (credentials != null) {
+      removeOrRenewOidcCredentials(request, client, credentials);
+      return Optional.of(credentials);
+    }
+    return Optional.empty();
+  }
+
+  private static void removeOrRenewOidcCredentials(
+      HttpServletRequest request, OidcClient client, OidcCredentials credentials)
+      throws ParseException {
+    boolean profilesUpdated = false;
+    if (SecurityUtil.isCredentialsExpired(credentials)) {
+      LOG.debug("Expired credentials found, trying to renew.");
+      RefreshToken refreshToken = credentials.getRefreshToken();
+      if (refreshToken != null) {
+        profilesUpdated = true;
+        OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
+        authenticator.refresh(credentials);
+      } else {
+        LOG.error("No refresh token found in credentials.");
+        throw new TechnicalException("No refresh token found in credentials.");
+      }
+    }
+    if (profilesUpdated) {
+      request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+    }
   }
 }
