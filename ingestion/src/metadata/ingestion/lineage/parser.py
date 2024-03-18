@@ -217,6 +217,11 @@ class LineageParser:
         """
         aliases = self.table_aliases
         values = identifier.value.split(".")
+
+        if len(values) > 4:
+            logger.debug(f"Invalid comparison element from identifier: {identifier}")
+            return None, None
+
         database_name, schema_name, table_or_alias, column_name = (
             [None] * (4 - len(values))
         ) + values
@@ -307,29 +312,39 @@ class LineageParser:
                 comparisons.append(sub)
 
         for comparison in comparisons:
-            if "." not in comparison.left.value or "." not in comparison.right.value:
-                logger.debug(f"Ignoring comparison {comparison}")
-                continue
+            try:
+                if (
+                    "." not in comparison.left.value
+                    or "." not in comparison.right.value
+                ):
+                    logger.debug(f"Ignoring comparison {comparison}")
+                    continue
 
-            table_left, column_left = self.get_comparison_elements(
-                identifier=comparison.left
-            )
-            table_right, column_right = self.get_comparison_elements(
-                identifier=comparison.right
-            )
+                table_left, column_left = self.get_comparison_elements(
+                    identifier=comparison.left
+                )
+                table_right, column_right = self.get_comparison_elements(
+                    identifier=comparison.right
+                )
 
-            if not table_left or not table_right:
-                logger.warning(f"Cannot find ingredients from {comparison}")
-                continue
+                if not table_left or not table_right:
+                    logger.warning(
+                        f"Can't extract table names when parsing JOIN information from {comparison}"
+                    )
+                    logger.debug(f"Query: {sql_statement}")
+                    continue
 
-            left_table_column = TableColumn(table=table_left, column=column_left)
-            right_table_column = TableColumn(table=table_right, column=column_right)
+                left_table_column = TableColumn(table=table_left, column=column_left)
+                right_table_column = TableColumn(table=table_right, column=column_right)
 
-            # We just send the info once, from Left -> Right.
-            # The backend will prepare the symmetric information.
-            self.stateful_add_table_joins(
-                join_data, left_table_column, right_table_column
-            )
+                # We just send the info once, from Left -> Right.
+                # The backend will prepare the symmetric information.
+                self.stateful_add_table_joins(
+                    join_data, left_table_column, right_table_column
+                )
+            except Exception as exc:
+                logger.debug(f"Cannot process comparison {comparison}: {exc}")
+                logger.debug(traceback.format_exc())
 
     @cached_property
     def table_joins(self) -> Dict[str, List[TableColumnJoin]]:
