@@ -267,7 +267,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@patchDescription', 200);
 
     // Validating the updated description
-    cy.get('[data-testid="description"] p').should(
+    cy.get('[data-testid="asset-description-container"] p').should(
       'contain',
       updatedDescription
     );

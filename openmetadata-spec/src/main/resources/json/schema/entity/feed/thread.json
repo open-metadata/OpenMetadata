@@ -109,7 +109,7 @@
       "javaType": "org.openmetadata.schema.type.ThreadType",
       "type": "string",
       "description": "Type of thread.",
-      "enum": ["Conversation", "Task", "Announcement"],
+      "enum": ["Conversation", "Task", "Announcement", "Chatbot"],
       "javaEnums": [
         {
           "name": "Conversation"
@@ -119,6 +119,9 @@
         },
         {
           "name": "Announcement"
+        },
+        {
+          "name": "Chatbot"
         }
       ],
       "default": "Conversation"
@@ -143,6 +146,17 @@
       },
       "required": ["startTime", "endTime"],
       "additionalProperties": false
+    },
+    "chatbotDetails": {
+      "javaType": "org.openmetadata.schema.type.ChatbotDetails",
+      "description": "Details about the Chatbot conversation. This is only applicable if thread is of type Chatbot.",
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "The query being discussed with the Chatbot",
+          "type": "string"
+        }
+      }
     },
     "post": {
       "javaType": "org.openmetadata.schema.type.Post",
@@ -245,6 +259,10 @@
     "announcement": {
       "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
       "$ref": "#/definitions/announcementDetails"
+    },
+    "chatbot": {
+      "description": "Details about the Chatbot conversation. This is only applicable if thread is of type Chatbot.",
+      "$ref": "#/definitions/chatbotDetails"
     }
   },
   "required": ["id", "about", "message"],
