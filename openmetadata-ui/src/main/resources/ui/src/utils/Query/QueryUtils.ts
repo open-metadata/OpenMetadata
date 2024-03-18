@@ -12,20 +12,21 @@
  */
 
 import Qs from 'qs';
-import {
-  QuerySearchFilterType,
-  QuerySearchParams,
-} from '../../components/Database/TableQueries/TableQueries.interface';
+import { QuerySearchParams } from '../../components/Database/TableQueries/TableQueries.interface';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 
-export const createQueryFilter = (
-  tableId: string,
-  tags: SearchDropdownOption[] = []
-): QuerySearchFilterType => {
-  const filter = {
-    query: {
-      bool: {
-        must: [
+export const createQueryFilter = ({
+  tableId,
+  tags,
+  timeRange,
+}: {
+  tableId: string;
+  tags?: SearchDropdownOption[];
+  timeRange?: { startTs: number; endTs: number };
+}) => {
+  const tagFilter =
+    tags && tags.length
+      ? [
           {
             bool: {
               should: tags.map((data) => ({
@@ -33,7 +34,27 @@ export const createQueryFilter = (
               })),
             },
           },
+        ]
+      : [];
+  const timeRangeFilter = timeRange
+    ? [
+        {
+          range: {
+            queryDate: {
+              gte: timeRange.startTs,
+              lte: timeRange.endTs,
+            },
+          },
+        },
+      ]
+    : [];
+  const filter = {
+    query: {
+      bool: {
+        must: [
           { term: { 'queryUsedIn.id': tableId } },
+          ...tagFilter,
+          ...timeRangeFilter,
         ],
       },
     },

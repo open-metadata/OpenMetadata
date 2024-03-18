@@ -11,7 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  CloseCircleOutlined,
+  SortAscendingOutlined,
+  SortDescendingOutlined,
+} from '@ant-design/icons';
+import {
+  Button,
+  Col,
+  DatePicker,
+  Pagination,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -20,28 +35,31 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE, PAGE_SIZE_BASE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  PAGE_SIZE_BASE,
+} from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
   QUERY_PAGE_DEFAULT_TAGS_FILTER,
   QUERY_PAGE_ERROR_STATE,
   QUERY_PAGE_LOADING_STATE,
+  QUERY_SORT_OPTIONS,
 } from '../../../constants/Query.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  getQueriesList,
   getQueryById,
-  ListQueriesParams,
   patchQueries,
   updateQueryVote,
 } from '../../../rest/queryAPI';
@@ -56,8 +74,7 @@ import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import SortingDropDown from '../../Explore/SortingDropDown';
 import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
@@ -82,7 +99,6 @@ const TableQueries: FC<TableQueriesProp> = ({
 
     return searchData;
   }, [location]);
-
   const [tableQueries, setTableQueries] = useState<Query[]>([]);
   const [isLoading, setIsLoading] = useState(QUERY_PAGE_LOADING_STATE);
   const [isError, setIsError] = useState(QUERY_PAGE_ERROR_STATE);
@@ -94,6 +110,18 @@ const TableQueries: FC<TableQueriesProp> = ({
     QUERY_PAGE_DEFAULT_TAGS_FILTER
   );
   const [isTagsLoading, setIsTagsLoading] = useState(false);
+  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
+  const [queryDateFilter, setQueryDateFilter] =
+    useState<{ startTs: number; endTs: number }>();
+  const [sortQuery, setSortQuery] = useState<{
+    field: string;
+    order: SORT_ORDER;
+  }>({ field: 'queryDate', order: SORT_ORDER.DESC });
+
+  const isAscSortOrder = useMemo(
+    () => sortQuery.order === SORT_ORDER.ASC,
+    [sortQuery.order]
+  );
 
   const {
     currentPage,
@@ -102,7 +130,6 @@ const TableQueries: FC<TableQueriesProp> = ({
     handlePageSizeChange,
     paging,
     handlePagingChange,
-    showPagination,
   } = usePaging(PAGE_SIZE);
 
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -173,53 +200,6 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const setQueryData = (
-    queries: Query[],
-    params?: ListQueriesParams,
-    activePage?: number
-  ) => {
-    setIsError(QUERY_PAGE_ERROR_STATE);
-    setTableQueries(queries);
-    const selectedQueryData = searchParams.query
-      ? queries.find((query) => query.id === searchParams.query) || queries[0]
-      : queries[0];
-    setSelectedQuery(selectedQueryData);
-    history.push({
-      search: stringifySearchParams({
-        tableId,
-        after: params?.after,
-        query: selectedQueryData.id,
-        queryFrom: activePage,
-      }),
-    });
-  };
-
-  const fetchTableQuery = async (
-    params?: ListQueriesParams,
-    activePage?: number
-  ) => {
-    setIsLoading((pre) => ({ ...pre, query: true }));
-    try {
-      const { data: queries, paging } = await getQueriesList({
-        ...params,
-        limit: pageSize,
-        entityId: tableId,
-        fields: 'owner,votes,tags,queryUsedIn,users',
-      });
-      if (queries.length === 0) {
-        setIsError((pre) => ({ ...pre, page: true }));
-      } else {
-        handlePagingChange(paging);
-        setQueryData(queries, params, activePage);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setIsError((pre) => ({ ...pre, page: true }));
-    } finally {
-      setIsLoading((pre) => ({ ...pre, query: false }));
-    }
-  };
-
   const handleSelectedQuery = (query: Query) => {
     if (query.id !== selectedQuery?.id) {
       setIsLoading((pre) => ({ ...pre, rightPanel: true }));
@@ -233,36 +213,67 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const fetchFilteredQueries = async ({
-    tags,
-    pageNumber = 1,
-  }: {
-    tags: SearchDropdownOption[];
+  const fetchFilteredQueries = async (data?: {
+    tags?: SearchDropdownOption[];
     pageNumber?: number;
+    timeRange?: { startTs: number; endTs: number };
+    sortField?: string;
+    sortOrder?: SORT_ORDER;
   }) => {
+    const {
+      tags,
+      pageNumber = INITIAL_PAGING_VALUE,
+      timeRange,
+      sortField = sortQuery.field,
+      sortOrder = sortQuery.order,
+    } = data ?? {};
+    const isFilterSelected = !isEmpty(tags) || !isUndefined(timeRange);
+
     setIsLoading((pre) => ({ ...pre, query: true }));
     try {
       const response = await searchQuery({
         query: WILD_CARD_CHAR,
-        queryFilter: createQueryFilter(tableId, tags),
+        queryFilter: createQueryFilter({ tableId, tags, timeRange }),
         pageNumber: pageNumber,
         pageSize: pageSize,
         searchIndex: SearchIndex.QUERY,
+        sortField,
+        sortOrder,
       });
 
       const queries = response.hits.hits.map((hit) => hit._source);
       if (isEmpty(queries)) {
         setSelectedQuery(undefined);
-        setIsError((pre) => ({ ...pre, search: true }));
+        setIsError((pre) => ({
+          ...pre,
+          ...(isFilterSelected ? { search: true } : { page: true }),
+        }));
       } else {
         handlePagingChange({ total: response.hits.total.value });
-        setQueryData(queries);
+        handlePageChange(pageNumber);
+        setIsError(QUERY_PAGE_ERROR_STATE);
+        setTableQueries(queries);
+        const selectedQueryData = searchParams.query
+          ? queries.find((query) => query.id === searchParams.query) ||
+            queries[0]
+          : queries[0];
+        setSelectedQuery(selectedQueryData);
+        history.push({
+          search: stringifySearchParams({
+            tableId,
+            query: selectedQueryData.id,
+            queryFrom: pageNumber,
+          }),
+        });
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setSelectedQuery(undefined);
       handlePagingChange({ total: 0 });
-      setIsError((pre) => ({ ...pre, search: true }));
+      setIsError((pre) => ({
+        ...pre,
+        ...(isFilterSelected ? { search: true } : { page: true }),
+      }));
     } finally {
       setIsLoading((pre) => ({ ...pre, query: false }));
     }
@@ -321,32 +332,60 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const handleTagsFilterChange = (selected: SearchDropdownOption[]) => {
     setTagsFilter((pre) => ({ ...pre, selected }));
-    if (isEmpty(selected)) {
-      fetchTableQuery();
+    fetchFilteredQueries({ tags: selected, timeRange: queryDateFilter });
+  };
+
+  const onDateChange: RangePickerProps['onChange'] = (values) => {
+    if (values) {
+      const startTs = values[0]?.startOf('day').valueOf();
+      const endTs = values[1]?.endOf('day').valueOf();
+
+      if (!isUndefined(startTs) && !isUndefined(endTs)) {
+        setQueryDateFilter({ startTs, endTs });
+        fetchFilteredQueries({
+          tags: tagsFilter.selected,
+          timeRange: { startTs, endTs },
+        });
+        setIsClickedCalendar(false);
+      }
     } else {
-      fetchFilteredQueries({ tags: selected });
+      setQueryDateFilter(undefined);
+      fetchFilteredQueries({ tags: tagsFilter.selected });
     }
   };
 
-  const pagingHandler = ({ cursorType, currentPage }: PagingHandlerParams) => {
-    if (cursorType) {
-      fetchTableQuery({ [cursorType]: paging[cursorType] }, currentPage);
-    } else if (!isEmpty(tagsFilter.selected)) {
-      fetchFilteredQueries({
-        tags: tagsFilter.selected,
-        pageNumber: currentPage,
-      });
-    }
-    handlePageChange(currentPage);
+  const pagingHandler = (currentPage: number) => {
+    fetchFilteredQueries({
+      pageNumber: currentPage,
+    });
+  };
+
+  const handleSortFieldChange = (value: string) => {
+    setSortQuery((pre) => ({ ...pre, field: value }));
+    fetchFilteredQueries({
+      tags: tagsFilter.selected,
+      timeRange: queryDateFilter,
+      sortField: value,
+    });
+  };
+
+  const handleSortOderChange = (order: SORT_ORDER) => {
+    setSortQuery((pre) => ({ ...pre, order }));
+    fetchFilteredQueries({
+      tags: tagsFilter.selected,
+      timeRange: queryDateFilter,
+      sortOrder: order,
+    });
   };
 
   useEffect(() => {
     setIsLoading((pre) => ({ ...pre, page: true }));
     if (tableId && !isTableDeleted) {
-      const apiCall = isEmpty(tagsFilter.selected)
-        ? fetchTableQuery({ after: searchParams?.after })
-        : fetchFilteredQueries({ tags: tagsFilter.selected });
-      apiCall.finally(() => {
+      fetchFilteredQueries({
+        pageNumber: searchParams.queryFrom
+          ? Number(searchParams.queryFrom)
+          : INITIAL_PAGING_VALUE,
+      }).finally(() => {
         setIsLoading((pre) => ({ ...pre, page: false }));
       });
     } else {
@@ -420,7 +459,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     tableQueries.map((query) => (
       <Col data-testid="query-card" key={query.id} span={24}>
         <QueryCard
-          afterDeleteAction={fetchTableQuery}
+          afterDeleteAction={fetchFilteredQueries}
           isExpanded={false}
           permission={queryPermissions}
           query={query}
@@ -442,20 +481,72 @@ const TableQueries: FC<TableQueriesProp> = ({
           gutter={[8, 16]}>
           <Col span={24}>
             <Space className="justify-between w-full">
-              <div>
+              <Space size={16}>
                 <SearchDropdown
                   hideCounts
                   isSuggestionsLoading={isTagsLoading}
-                  label="Tags"
+                  label={t('label.tag')}
                   options={tagsFilter.options}
-                  searchKey="tags"
+                  searchKey="tag"
                   selectedKeys={tagsFilter.selected}
                   onChange={handleTagsFilterChange}
                   onGetInitialOptions={getInitialTagsOptions}
                   onSearch={handleTagsSearch}
                 />
-              </div>
-              {addButton}
+                <Button
+                  className="p-x-0"
+                  type="text"
+                  onClick={() => {
+                    setIsClickedCalendar(true);
+                  }}>
+                  <span>
+                    <label>{t('label.created-date')}</label>
+                    <DatePicker.RangePicker
+                      allowClear
+                      showNow
+                      bordered={false}
+                      className="p-t-0"
+                      clearIcon={<CloseCircleOutlined />}
+                      data-testid="data-range-picker"
+                      open={isClickedCalendar}
+                      suffixIcon={null}
+                      onChange={onDateChange}
+                      onOpenChange={(isOpen) => {
+                        setIsClickedCalendar(isOpen);
+                      }}
+                    />
+                  </span>
+                </Button>
+              </Space>
+              <Space size={16}>
+                {addButton}
+                <SortingDropDown
+                  fieldList={QUERY_SORT_OPTIONS}
+                  handleFieldDropDown={handleSortFieldChange}
+                  sortField={sortQuery.field}
+                />
+                <Button
+                  className="p-0"
+                  data-testid="sort-order-button"
+                  type="text"
+                  onClick={() =>
+                    handleSortOderChange(
+                      isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                    )
+                  }>
+                  {isAscSortOrder ? (
+                    <SortAscendingOutlined
+                      className="text-base text-grey-muted"
+                      style={{ fontSize: '14px' }}
+                    />
+                  ) : (
+                    <SortDescendingOutlined
+                      className="text-base text-grey-muted"
+                      style={{ fontSize: '14px' }}
+                    />
+                  )}
+                </Button>
+              </Space>
             </Space>
           </Col>
 
@@ -465,16 +556,17 @@ const TableQueries: FC<TableQueriesProp> = ({
             <>
               {queryTabBody}
               <Col span={24}>
-                {showPagination && (
-                  <NextPrevious
-                    currentPage={currentPage}
-                    isNumberBased={!isEmpty(tagsFilter.selected)}
-                    pageSize={pageSize}
-                    paging={paging}
-                    pagingHandler={pagingHandler}
-                    onShowSizeChange={handlePageSizeChange}
-                  />
-                )}
+                <Pagination
+                  hideOnSinglePage
+                  showSizeChanger
+                  className="text-center m-b-sm"
+                  current={currentPage}
+                  pageSize={pageSize}
+                  pageSizeOptions={[10, 25, 50]}
+                  total={paging.total}
+                  onChange={pagingHandler}
+                  onShowSizeChange={handlePageSizeChange}
+                />
               </Col>
             </>
           )}
