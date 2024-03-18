@@ -50,7 +50,8 @@ def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -
         ):
             connection_string += f"Uid={connection.username};Pwd={connection.password};"
 
-        connection_string += f"Encrypt={connection.authenticationMode.Encrypt};TrustServerCertificate={connection.authenticationMode.Trust_Server_Certificate};Connection Timeout={connection.authenticationMode.Connection_Timeout};Authentication={connection.authenticationMode.Authentication};"
+        connection_string += f"Encrypt={connection.authenticationMode.encrypt};TrustServerCertificate={connection.authenticationMode.trustServerCertificate};"
+        connection_string += f"Connection Timeout={connection.authenticationMode.connectionTimeout};Authentication={connection.authenticationMode.authentication};"
 
         connection_url = URL.create(
             "mssql+pyodbc", query={"odbc_connect": connection_string}
