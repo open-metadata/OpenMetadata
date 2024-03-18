@@ -55,7 +55,9 @@ class MlflowSource(MlModelServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MlflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MlflowConnection):

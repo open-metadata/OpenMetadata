@@ -12,7 +12,7 @@
 Airbyte source to extract metadata
 """
 
-from typing import Iterable
+from typing import Iterable, Optional
 
 from pydantic import BaseModel
 
@@ -75,7 +75,9 @@ class AirbyteSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirbyteConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirbyteConnection):

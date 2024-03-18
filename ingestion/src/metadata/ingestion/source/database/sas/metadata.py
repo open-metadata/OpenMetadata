@@ -122,7 +122,12 @@ class SasSource(
         self.database_schemas = None
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         logger.info(f"running create {config_dict}")
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SASConnection = config.serviceConnection.__root__.config

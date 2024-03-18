@@ -70,7 +70,12 @@ class TableUsageStage(Stage):
         return "Table Usage"
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
         config = TableStageConfig.parse_obj(config_dict)
         return cls(config, metadata)
 
