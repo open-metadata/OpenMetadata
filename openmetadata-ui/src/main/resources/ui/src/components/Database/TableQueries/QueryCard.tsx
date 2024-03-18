@@ -38,6 +38,7 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { useFqn } from '../../../hooks/useFqn';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
+import queryClassBase from '../../../utils/QueryClassBase';
 import { getQueryPath } from '../../../utils/RouterUtils';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
@@ -59,6 +60,7 @@ const QueryCard: FC<QueryCardProp> = ({
   afterDeleteAction,
 }: QueryCardProp) => {
   const { t } = useTranslation();
+  const QueryExtras = queryClassBase.getQueryExtras();
   const { fqn: datasetFQN } = useFqn();
   const location = useLocation();
   const history = useHistory();
@@ -169,7 +171,7 @@ const QueryCard: FC<QueryCardProp> = ({
 
   return (
     <Row gutter={[0, 8]}>
-      <Col span={24}>
+      <Col span={isExpanded && QueryExtras ? 12 : 24}>
         <Card
           bordered={false}
           className={classNames(
@@ -284,6 +286,15 @@ const QueryCard: FC<QueryCardProp> = ({
           </Row>
         </Card>
       </Col>
+      {isExpanded && QueryExtras && (
+        <Col span={12}>
+          <Card
+            bordered={false}
+            className="h-full card-body-full card-padding-0">
+            <QueryExtras />
+          </Card>
+        </Col>
+      )}
     </Row>
   );
 };
