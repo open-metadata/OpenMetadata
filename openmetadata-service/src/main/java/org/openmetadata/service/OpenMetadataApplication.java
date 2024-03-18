@@ -66,6 +66,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -92,7 +93,6 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
@@ -170,9 +170,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // init Secret Manager
-    final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(
-            catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
+    SecretsManagerFactory.createSecretsManager(
+        catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker();
@@ -210,6 +209,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
+    ApplicationHandler.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
