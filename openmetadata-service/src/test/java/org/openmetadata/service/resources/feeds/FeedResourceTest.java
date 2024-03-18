@@ -1843,8 +1843,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withFrom(fromUser)
             .withMessage(message)
             .withAbout(about)
-            .withType(ThreadType.AI)
-            .withAiDetails(new AIDetails().withQuery(query));
+            .withType(ThreadType.Chatbot)
+            .withChatbotDetails(new ChatbotDetails().withQuery(query));
     return createAndCheck(create, authHeaders);
   }
 
