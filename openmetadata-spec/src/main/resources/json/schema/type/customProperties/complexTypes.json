@@ -10,7 +10,7 @@
       "properties": {
         "id": {
           "description": "Unique identifier that identifies an entity instance.",
-          "$ref": "../../type/basic.json#/definitions/uuid"
+          "$ref": "../basic.json#/definitions/uuid"
         },
         "type": {
           "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
@@ -26,7 +26,7 @@
         },
         "description": {
           "description": "Optional description of entity.",
-          "$ref": "../../type/basic.json#/definitions/markdown"
+          "$ref": "../basic.json#/definitions/markdown"
         },
         "displayName": {
           "description": "Display Name that identifies this entity.",
@@ -42,7 +42,7 @@
         },
         "href": {
           "description": "Link to the entity resource.",
-          "$ref": "../../type/basic.json#/definitions/href"
+          "$ref": "../basic.json#/definitions/href"
         }
       }
     },
@@ -56,7 +56,7 @@
           "properties": {
             "id": {
               "description": "Unique identifier that identifies an entity instance.",
-              "$ref": "../../type/basic.json#/definitions/uuid"
+              "$ref": "../basic.json#/definitions/uuid"
             },
             "type": {
               "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
@@ -72,7 +72,7 @@
             },
             "description": {
               "description": "Optional description of entity.",
-              "$ref": "../../type/basic.json#/definitions/markdown"
+              "$ref": "../basic.json#/definitions/markdown"
             },
             "displayName": {
               "description": "Display Name that identifies this entity.",
@@ -88,7 +88,7 @@
             },
             "href": {
               "description": "Link to the entity resource.",
-              "$ref": "../../type/basic.json#/definitions/href"
+              "$ref": "../basic.json#/definitions/href"
             }
           }
         }
