@@ -189,7 +189,13 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const openPopover = useCallback(() => setPopupVisible(true), []);
+  const openPopover = useCallback(
+    (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+      e.stopPropagation();
+      setPopupVisible(true);
+    },
+    []
+  );
 
   useEffect(() => {
     fetchCount();
@@ -260,6 +266,9 @@ export const UserTeamSelectableList = ({
           ]}
           size="small"
           onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
+          // Used div to stop click propagation event anywhere in the component to parent
+          // Users.component collapsible panel
+          onClick={(e) => e.stopPropagation()}
         />
       }
       open={popupVisible}

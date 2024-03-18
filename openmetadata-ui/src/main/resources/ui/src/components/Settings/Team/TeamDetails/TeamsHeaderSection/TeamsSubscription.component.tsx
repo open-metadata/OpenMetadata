@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -85,7 +94,11 @@ const TeamsSubscription = ({
                 color={DE_ACTIVE_COLOR}
                 data-testid="edit-team-subscription"
                 width={14}
-                onClick={() => setEditSubscription(true)}
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setEditSubscription(true);
+                }}
               />
             </Tooltip>
           </div>
@@ -102,7 +115,7 @@ const TeamsSubscription = ({
     }
 
     return cellItem(webhook[0], webhook[1]);
-  }, [subscription, hasEditPermission, setEditSubscription]);
+  }, [subscription, hasEditPermission]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
     setIsLoading(true);
@@ -150,66 +163,75 @@ const TeamsSubscription = ({
             color={DE_ACTIVE_COLOR}
             data-testid="edit-team-subscription"
             {...ICON_DIMENSION}
-            onClick={() => setEditSubscription(true)}
+            onClick={(e) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setEditSubscription(true);
+            }}
           />
         </Tooltip>
       )}
 
       {editSubscription && (
-        <Modal
-          centered
-          open
-          closable={false}
-          confirmLoading={isLoading}
-          maskClosable={false}
-          okButtonProps={{
-            form: 'subscription-form',
-            type: 'primary',
-            htmlType: 'submit',
-          }}
-          okText={t('label.confirm')}
-          title={t('label.add-entity', {
-            entity: t('label.subscription'),
-          })}
-          onCancel={() => setEditSubscription(false)}>
-          <Form
-            data-testid="subscription-modal"
-            form={form}
-            id="subscription-form"
-            layout="vertical"
-            onFinish={handleSave}>
-            <Form.Item label={t('label.webhook')} name="webhook">
-              <Select
-                options={SUBSCRIPTION_WEBHOOK_OPTIONS}
-                placeholder={t('label.select-field', {
-                  field: t('label.condition'),
-                })}
-              />
-            </Form.Item>
-            <Form.Item
-              label={t('label.endpoint')}
-              name="endpoint"
-              rules={[
-                {
-                  required: !isWebhookEmpty,
-                  message: t('label.field-required-plural', {
-                    field: t('label.endpoint'),
-                  }),
-                },
-                {
-                  type: 'url',
-                  message: t('message.endpoint-should-be-valid'),
-                },
-              ]}>
-              <Input
-                disabled={isWebhookEmpty}
-                placeholder={t('label.enter-entity-value', {
-                  entity: t('label.endpoint'),
-                })}
-              />
-            </Form.Item>
-          </Form>
-        </Modal>
+        // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
+          <Modal
+            centered
+            open
+            closable={false}
+            confirmLoading={isLoading}
+            maskClosable={false}
+            okButtonProps={{
+              form: 'subscription-form',
+              type: 'primary',
+              htmlType: 'submit',
+            }}
+            okText={t('label.confirm')}
+            title={t('label.add-entity', {
+              entity: t('label.subscription'),
+            })}
+            onCancel={() => setEditSubscription(false)}>
+            <Form
+              data-testid="subscription-modal"
+              form={form}
+              id="subscription-form"
+              layout="vertical"
+              onFinish={handleSave}>
+              <Form.Item label={t('label.webhook')} name="webhook">
+                <Select
+                  options={SUBSCRIPTION_WEBHOOK_OPTIONS}
+                  placeholder={t('label.select-field', {
+                    field: t('label.condition'),
+                  })}
+                />
+              </Form.Item>
+              <Form.Item
+                label={t('label.endpoint')}
+                name="endpoint"
+                rules={[
+                  {
+                    required: !isWebhookEmpty,
+                    message: t('label.field-required-plural', {
+                      field: t('label.endpoint'),
+                    }),
+                  },
+                  {
+                    type: 'url',
+                    message: t('message.endpoint-should-be-valid'),
+                  },
+                ]}>
+                <Input
+                  disabled={isWebhookEmpty}
+                  placeholder={t('label.enter-entity-value', {
+                    entity: t('label.endpoint'),
+                  })}
+                />
+              </Form.Item>
+            </Form>
+          </Modal>
+        </Button>
       )}
     </Space>
   );
