@@ -93,44 +93,4 @@ export const ENTITY_REFERENCE_OPTIONS = [
     value: 'team',
     label: 'Team',
   },
-  {
-    key: 'databaseService',
-    value: 'databaseService',
-    label: 'Database Service',
-  },
-  {
-    key: 'messagingService',
-    value: 'messagingService',
-    label: 'Messaging Service',
-  },
-  {
-    key: 'pipelineService',
-    value: 'pipelineService',
-    label: 'Pipeline Service',
-  },
-  {
-    key: 'dashboardService',
-    value: 'dashboardService',
-    label: 'Dashboard Service',
-  },
-  {
-    key: 'searchService',
-    value: 'searchService',
-    label: 'Search Service',
-  },
-  {
-    key: 'storageService',
-    value: 'storageService',
-    label: 'Storage Service',
-  },
-  {
-    key: 'metadataService',
-    value: 'metadataService',
-    label: 'Metadata Service',
-  },
-  {
-    key: 'mlModelService',
-    value: 'mlModelService',
-    label: 'MLmodel Service',
-  },
 ];
