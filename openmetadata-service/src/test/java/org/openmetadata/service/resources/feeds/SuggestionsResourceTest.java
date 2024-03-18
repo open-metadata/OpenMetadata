@@ -389,7 +389,11 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
     assertEquals(3, suggestionList.getData().size());
 
-    acceptAllSuggestions(TABLE.getFullyQualifiedName(), USER.getId(), USER_AUTH_HEADERS);
+    acceptAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
 
     suggestionList =
         listSuggestions(
@@ -401,7 +405,8 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             SuggestionStatus.Open.toString(),
             null,
             null);
-    assertEquals(0, suggestionList.getPaging().getTotal());
+    // We still have the tag suggestion open, since we only accepted the descriptions
+    assertEquals(1, suggestionList.getPaging().getTotal());
   }
 
   @Test
@@ -511,11 +516,16 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     return listSuggestions(entityFQN, limit, authHeaders, null, null, null, before, after);
   }
 
-  public void acceptAllSuggestions(String entityFQN, UUID userId, Map<String, String> authHeaders)
+  public void acceptAllSuggestions(
+      String entityFQN, UUID userId, SuggestionType suggestionType, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("suggestions/accept-all");
     target = entityFQN != null ? target.queryParam("entityFQN", entityFQN) : target;
     target = userId != null ? target.queryParam("userId", userId) : target;
+    target =
+        suggestionType != null
+            ? target.queryParam("suggestionType", suggestionType.toString())
+            : target;
     TestUtils.put(target, null, Response.Status.OK, authHeaders);
   }
 

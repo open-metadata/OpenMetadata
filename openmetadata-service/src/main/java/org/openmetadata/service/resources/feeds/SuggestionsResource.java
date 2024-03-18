@@ -284,12 +284,17 @@ public class SuggestionsResource {
           UUID userId,
       @Parameter(description = "fullyQualifiedName of entity", schema = @Schema(type = "string"))
           @QueryParam("entityFQN")
-          String entityFQN) {
+          String entityFQN,
+      @Parameter(description = "Suggestion type being accepted", schema = @Schema(type = "string"))
+          @QueryParam("suggestionType")
+          @DefaultValue("SuggestDescription")
+          SuggestionType suggestionType) {
     SuggestionFilter filter =
         SuggestionFilter.builder()
             .suggestionStatus(SuggestionStatus.Open)
             .entityFQN(entityFQN)
             .createdBy(userId)
+            .suggestionType(suggestionType)
             .build();
     List<Suggestion> suggestions = dao.listAll(filter);
     if (!nullOrEmpty(suggestions)) {
@@ -297,7 +302,9 @@ public class SuggestionsResource {
       Suggestion suggestion = dao.get(suggestions.get(0).getId());
       dao.checkPermissionsForAcceptOrRejectSuggestion(
           suggestion, SuggestionStatus.Rejected, securityContext);
-      return dao.acceptSuggestionList(uriInfo, suggestions, securityContext, authorizer);
+      dao.checkPermissionsForEditEntity(suggestion, suggestionType, securityContext, authorizer);
+      return dao.acceptSuggestionList(
+          uriInfo, suggestions, suggestionType, securityContext, authorizer);
     } else {
       // No suggestions found
       return new RestUtil.PutResponse<>(
@@ -328,12 +335,17 @@ public class SuggestionsResource {
           UUID userId,
       @Parameter(description = "fullyQualifiedName of entity", schema = @Schema(type = "string"))
           @QueryParam("entityFQN")
-          String entityFQN) {
+          String entityFQN,
+      @Parameter(description = "Suggestion type being rejected", schema = @Schema(type = "string"))
+          @QueryParam("suggestionType")
+          @DefaultValue("SuggestDescription")
+          SuggestionType suggestionType) {
     SuggestionFilter filter =
         SuggestionFilter.builder()
             .suggestionStatus(SuggestionStatus.Open)
             .entityFQN(entityFQN)
             .createdBy(userId)
+            .suggestionType(suggestionType)
             .build();
     List<Suggestion> suggestions = dao.listAll(filter);
     if (!nullOrEmpty(suggestions)) {

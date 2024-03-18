@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
@@ -28,6 +27,7 @@ import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
@@ -155,12 +155,10 @@ public class SuggestionRepository {
 
   @Getter
   public static class SuggestionWorkflow {
-    protected final EntityRepository<?> repository;
     // The workflow is applied to a specific entity at a time
     protected final EntityInterface entity;
 
-    SuggestionWorkflow(EntityRepository<?> repository, EntityInterface entity) {
-      this.repository = repository;
+    SuggestionWorkflow(EntityInterface entity) {
       this.entity = entity;
     }
 
@@ -168,6 +166,7 @@ public class SuggestionRepository {
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(suggestion.getEntityLink());
       if (entityLink.getFieldName() != null) {
+        EntityRepository<?> repository = Entity.getEntityRepository(entityLink.getEntityType());
         return repository.applySuggestion(
             entity, entityLink.getFullyQualifiedFieldValue(), suggestion);
       } else {
@@ -199,13 +198,14 @@ public class SuggestionRepository {
   public RestUtil.PutResponse<List<Suggestion>> acceptSuggestionList(
       UriInfo uriInfo,
       List<Suggestion> suggestions,
+      SuggestionType suggestionType,
       SecurityContext securityContext,
       Authorizer authorizer) {
-    acceptSuggestionList(suggestions, securityContext, authorizer);
+    acceptSuggestionList(suggestions, suggestionType, securityContext, authorizer);
     List<Suggestion> updatedHref =
         suggestions.stream()
             .map(suggestion -> SuggestionsResource.addHref(uriInfo, suggestion))
-            .collect(Collectors.toList());
+            .toList();
     return new RestUtil.PutResponse<>(Response.Status.OK, updatedHref, SUGGESTION_ACCEPTED);
   }
 
@@ -220,7 +220,7 @@ public class SuggestionRepository {
     EntityRepository<?> repository = Entity.getEntityRepository(entityLink.getEntityType());
     // Prepare the original JSON before updating the Entity, otherwise we get an empty patch
     String origJson = JsonUtils.pojoToJson(entity);
-    SuggestionWorkflow suggestionWorkflow = repository.getSuggestionWorkflow(repository, entity);
+    SuggestionWorkflow suggestionWorkflow = repository.getSuggestionWorkflow(entity);
 
     EntityInterface updatedEntity = suggestionWorkflow.acceptSuggestion(suggestion, entity);
     String updatedEntityJson = JsonUtils.pojoToJson(updatedEntity);
@@ -238,8 +238,12 @@ public class SuggestionRepository {
     update(suggestion, user);
   }
 
+  @Transaction
   protected void acceptSuggestionList(
-      List<Suggestion> suggestions, SecurityContext securityContext, Authorizer authorizer) {
+      List<Suggestion> suggestions,
+      SuggestionType suggestionType,
+      SecurityContext securityContext,
+      Authorizer authorizer) {
     String user = securityContext.getUserPrincipal().getName();
 
     // Entity being updated
@@ -247,7 +251,6 @@ public class SuggestionRepository {
     EntityRepository<?> repository = null;
     String origJson = null;
     SuggestionWorkflow suggestionWorkflow = null;
-    SuggestionType suggestionType = getTypeFromSuggestions(suggestions);
 
     for (Suggestion suggestion : suggestions) {
       MessageParser.EntityLink entityLink =
@@ -258,10 +261,12 @@ public class SuggestionRepository {
         // Initialize the Entity and the Repository
         entity =
             Entity.getEntity(
-                entityLink, suggestionType == SuggestionType.SuggestTagLabel ? "tags" : "", ALL);
+                entityLink,
+                suggestionType == SuggestionType.SuggestTagLabel ? "tags" : "",
+                NON_DELETED);
         repository = Entity.getEntityRepository(entityLink.getEntityType());
         origJson = JsonUtils.pojoToJson(entity);
-        suggestionWorkflow = repository.getSuggestionWorkflow(repository, entity);
+        suggestionWorkflow = repository.getSuggestionWorkflow(entity);
       } else if (!entity.getFullyQualifiedName().equals(entityLink.getEntityFQN())) {
         throw new SuggestionException("All suggestions must be for the same entity");
       }
@@ -287,21 +292,6 @@ public class SuggestionRepository {
     }
   }
 
-  /**
-   * When preparing the entity we need to decide if we need to fetch the tags at all.
-   * We'll validate all the suggestions and if one needs tags, we'll get them.
-   */
-  private SuggestionType getTypeFromSuggestions(List<Suggestion> suggestions) {
-    SuggestionType suggestionType = SuggestionType.SuggestDescription;
-    for (Suggestion suggestion : suggestions) {
-      if (suggestion.getType() == SuggestionType.SuggestTagLabel) {
-        suggestionType = SuggestionType.SuggestTagLabel;
-        break;
-      }
-    }
-    return suggestionType;
-  }
-
   public RestUtil.PutResponse<Suggestion> rejectSuggestion(
       UriInfo uriInfo, Suggestion suggestion, String user) {
     suggestion.setStatus(SuggestionStatus.Rejected);
@@ -310,6 +300,7 @@ public class SuggestionRepository {
     return new RestUtil.PutResponse<>(Response.Status.OK, updatedHref, SUGGESTION_REJECTED);
   }
 
+  @Transaction
   public RestUtil.PutResponse<List<Suggestion>> rejectSuggestionList(
       UriInfo uriInfo, List<Suggestion> suggestions, String user) {
     for (Suggestion suggestion : suggestions) {
@@ -362,6 +353,25 @@ public class SuggestionRepository {
       throw new AuthorizationException(
           CatalogExceptionMessage.suggestionOperationNotAllowed(userName, status.value()));
     }
+  }
+
+  public void checkPermissionsForEditEntity(
+      Suggestion suggestion,
+      SuggestionType suggestionType,
+      SecurityContext securityContext,
+      Authorizer authorizer) {
+    MessageParser.EntityLink entityLink =
+        MessageParser.EntityLink.parse(suggestion.getEntityLink());
+    EntityInterface entity = Entity.getEntity(entityLink, "", NON_DELETED);
+    // Check that the user has the right permissions to update the entity
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(
+            entityLink.getEntityType(),
+            suggestionType == SuggestionType.SuggestTagLabel
+                ? MetadataOperation.EDIT_TAGS
+                : MetadataOperation.EDIT_DESCRIPTION),
+        new ResourceContext<>(entityLink.getEntityType(), entity.getId(), null));
   }
 
   public int listCount(SuggestionFilter filter) {
