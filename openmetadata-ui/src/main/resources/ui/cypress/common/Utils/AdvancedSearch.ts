@@ -113,10 +113,23 @@ export const CONDITIONS_MUST_NOT = {
 };
 const ownerFullName = `${USER_CREDENTIALS.firstName}${USER_CREDENTIALS.lastName}`;
 
-export const FIELDS = {
+export type AdvancedSearchFieldDetails = {
+  name: string;
+  testId: string;
+  searchTerm1?: string;
+  searchCriteriaFirstGroup: string;
+  responseValueFirstGroup: string;
+  searchCriteriaSecondGroup: string;
+  responseValueSecondGroup: string;
+  owner?: boolean;
+  createTagName?: string;
+  isLocalSearch?: boolean;
+};
+
+export const FIELDS: Record<string, AdvancedSearchFieldDetails> = {
   Owner: {
     name: 'Owner',
-    testid: '[title="Owner"]',
+    testId: '[title="Owner"]',
     searchTerm1: ownerFullName,
     searchCriteriaFirstGroup: ownerFullName,
     responseValueFirstGroup: `"displayName":"${ownerFullName}"`,
@@ -126,7 +139,7 @@ export const FIELDS = {
   },
   Tags: {
     name: 'Tags',
-    testid: '[title="Tags"]',
+    testId: '[title="Tags"]',
     createTagName: 'Personal',
     searchCriteriaFirstGroup: 'PersonalData.Personal',
     responseValueFirstGroup: '"tagFQN":"PersonalData.Personal"',
@@ -135,7 +148,7 @@ export const FIELDS = {
   },
   Tiers: {
     name: 'Tier',
-    testid: '[title="Tier"]',
+    testId: '[title="Tier"]',
     searchCriteriaFirstGroup: 'Tier.Tier1',
     responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
     searchCriteriaSecondGroup: 'Tier.Tier2',
@@ -144,7 +157,7 @@ export const FIELDS = {
   },
   Service: {
     name: 'Service',
-    testid: '[title="Service"]',
+    testId: '[title="Service"]',
     searchCriteriaFirstGroup: 'sample_data',
     responseValueFirstGroup: `"name":"sample_data"`,
     searchCriteriaSecondGroup: DATABASE_SERVICE_DETAILS.name,
@@ -152,7 +165,7 @@ export const FIELDS = {
   },
   Database: {
     name: 'Database',
-    testid: '[title="Database"]',
+    testId: '[title="Database"]',
     searchCriteriaFirstGroup: 'ecommerce_db',
     responseValueFirstGroup: `"name":"ecommerce_db"`,
     searchCriteriaSecondGroup: DATABASE_DETAILS.name,
@@ -160,7 +173,7 @@ export const FIELDS = {
   },
   Database_Schema: {
     name: 'Database Schema',
-    testid: '[title="Database Schema"]',
+    testId: '[title="Database Schema"]',
     searchCriteriaFirstGroup: 'shopify',
     responseValueFirstGroup: `"name":"shopify"`,
     searchCriteriaSecondGroup: SCHEMA_DETAILS.name,
@@ -168,7 +181,7 @@ export const FIELDS = {
   },
   Column: {
     name: 'Column',
-    testid: '[title="Column"]',
+    testId: '[title="Column"]',
     searchCriteriaFirstGroup: 'cypress_first_name',
     responseValueFirstGroup: '"name":"cypress_first_name"',
     searchCriteriaSecondGroup: 'cypress_user_id',
@@ -246,7 +259,7 @@ export const goToAdvanceSearch = () => {
   cy.get('[data-testid="reset-btn"]').click();
 };
 
-export const checkmustPaths = (
+export const checkMustPaths = (
   condition: string,
   field: string,
   searchCriteria: string,
@@ -278,7 +291,7 @@ export const checkmustPaths = (
   });
 };
 
-export const checkmust_notPaths = (
+export const checkMust_notPaths = (
   condition,
   field,
   searchCriteria,
@@ -338,7 +351,19 @@ export const addTag = ({ tag, term, serviceName, entity }) => {
     .contains(tag);
 };
 
-export const checkAddGroupWithOperator = (
+type CheckAddGroupWithOperatorArgs = {
+  condition_1: string;
+  condition_2: string;
+  fieldId: string;
+  searchCriteria_1: string;
+  searchCriteria_2: string;
+  index_1: number;
+  index_2: number;
+  operatorIndex: number;
+  isLocalSearch?: boolean;
+};
+
+export const checkAddGroupWithOperator = ({
   condition_1,
   condition_2,
   fieldId,
@@ -347,12 +372,8 @@ export const checkAddGroupWithOperator = (
   index_1,
   index_2,
   operatorIndex,
-  filter_1,
-  filter_2,
-  response_1,
-  response_2,
-  isLocalSearch = false
-) => {
+  isLocalSearch = false,
+}: CheckAddGroupWithOperatorArgs) => {
   goToAdvanceSearch();
   // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector')
@@ -474,11 +495,25 @@ export const checkAddGroupWithOperator = (
     const resBody = JSON.stringify(response.body);
 
     expect(request.url).to.contain(encodeURI(searchCriteria_1));
-    expect(resBody).to.not.include(response_2);
+    expect(resBody).to.not.include(response);
   });
 };
 
-export const checkAddRuleWithOperator = (
+type CheckAddRuleWithOperatorArgs = {
+  condition_1: string;
+  condition_2: string;
+  fieldId: string;
+  searchCriteria_1: string;
+  searchCriteria_2: string;
+  index_1: number;
+  index_2: number;
+  operatorIndex: number;
+  filter_1: string;
+  filter_2: string;
+  response: string;
+};
+
+export const checkAddRuleWithOperator = ({
   condition_1,
   condition_2,
   fieldId,
@@ -489,9 +524,8 @@ export const checkAddRuleWithOperator = (
   operatorIndex,
   filter_1,
   filter_2,
-  response_1,
-  response_2
-) => {
+  response,
+}: CheckAddRuleWithOperatorArgs) => {
   goToAdvanceSearch();
   // Click on field dropdown
   cy.get('.rule--field').eq(index_1).should('be.visible').click();
@@ -584,7 +618,7 @@ export const checkAddRuleWithOperator = (
     'GET',
     `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${filter_1}*${encodeURI(
       searchCriteria_1
-    )}*${filter_2}*${encodeURI(response_2)}*`,
+    )}*${filter_2}*${encodeURI(response.replaceAll(' ', '+'))}*`,
     `search${searchCriteria_1}`
   );
 
@@ -595,13 +629,12 @@ export const checkAddRuleWithOperator = (
     const resBody = JSON.stringify(response.body);
 
     expect(request.url).to.contain(encodeURI(searchCriteria_1));
-    expect(resBody).to.not.include(response_2);
+    expect(resBody).to.not.include(response);
   });
 };
 
-export const advanceSearchPreRequests = (token: string) => {
+export const advanceSearchPreRequests = (testData, token: string) => {
   // Create Table hierarchy
-
   createEntityTable({
     token,
     ...ADVANCE_SEARCH_DATABASE_SERVICE,
@@ -614,111 +647,111 @@ export const advanceSearchPreRequests = (token: string) => {
     headers: { Authorization: `Bearer ${token}` },
     body: USER_CREDENTIALS,
   }).then((response) => {
-    USER_CREDENTIALS.id = response.body.id;
-  });
+    testData.userId = response.body.id;
 
-  // Add owner to table 1
-  cy.request({
-    method: 'GET',
-    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table1.databaseSchema}.${ADVANCE_SEARCH_TABLES.table1.name}`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
+    // Add owner to table 1
     cy.request({
-      method: 'PATCH',
-      url: `/api/v1/tables/${response.body.id}`,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json-patch+json',
-      },
-      body: [
-        {
-          op: 'add',
-          path: '/owner',
-          value: {
-            id: USER_CREDENTIALS.id,
-            type: 'user',
-          },
+      method: 'GET',
+      url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table1.databaseSchema}.${ADVANCE_SEARCH_TABLES.table1.name}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/tables/${response.body.id}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
         },
-      ],
+        body: [
+          {
+            op: 'add',
+            path: '/owner',
+            value: {
+              id: testData.userId,
+              type: 'user',
+            },
+          },
+        ],
+      });
     });
-  });
 
-  // Add Tier to table 2
-  cy.request({
-    method: 'GET',
-    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table2.databaseSchema}.${ADVANCE_SEARCH_TABLES.table2.name}`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
+    // Add Tier to table 2
     cy.request({
-      method: 'PATCH',
-      url: `/api/v1/tables/${response.body.id}`,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json-patch+json',
-      },
-      body: [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            name: 'Tier1',
-            tagFQN: 'Tier.Tier1',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
+      method: 'GET',
+      url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table2.databaseSchema}.${ADVANCE_SEARCH_TABLES.table2.name}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/tables/${response.body.id}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
         },
-        {
-          op: 'add',
-          path: '/tags/1',
-          value: {
-            name: 'SpecialCategory',
-            tagFQN: 'PersonalData.SpecialCategory',
-            labelType: 'Manual',
-            state: 'Confirmed',
+        body: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              name: 'Tier1',
+              tagFQN: 'Tier.Tier1',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
           },
-        },
-      ],
+          {
+            op: 'add',
+            path: '/tags/1',
+            value: {
+              name: 'SpecialCategory',
+              tagFQN: 'PersonalData.SpecialCategory',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+        ],
+      });
     });
-  });
 
-  // Add Tag to table 3
-  cy.request({
-    method: 'GET',
-    url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table3.databaseSchema}.${ADVANCE_SEARCH_TABLES.table3.name}`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
+    // Add Tag to table 3
     cy.request({
-      method: 'PATCH',
-      url: `/api/v1/tables/${response.body.id}`,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json-patch+json',
-      },
-      body: [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            tagFQN: 'PersonalData.Personal',
-            source: 'Classification',
-            name: 'Personal',
-            description:
-              'Data that can be used to directly or indirectly identify a person.',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
+      method: 'GET',
+      url: `/api/v1/tables/name/${ADVANCE_SEARCH_TABLES.table3.databaseSchema}.${ADVANCE_SEARCH_TABLES.table3.name}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/tables/${response.body.id}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
         },
-        {
-          op: 'add',
-          path: '/tags/1',
-          value: {
-            name: 'Tier2',
-            tagFQN: 'Tier.Tier2',
-            labelType: 'Manual',
-            state: 'Confirmed',
+        body: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              tagFQN: 'PersonalData.Personal',
+              source: 'Classification',
+              name: 'Personal',
+              description:
+                'Data that can be used to directly or indirectly identify a person.',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
           },
-        },
-      ],
+          {
+            op: 'add',
+            path: '/tags/1',
+            value: {
+              name: 'Tier2',
+              tagFQN: 'Tier.Tier2',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+        ],
+      });
     });
   });
 };
