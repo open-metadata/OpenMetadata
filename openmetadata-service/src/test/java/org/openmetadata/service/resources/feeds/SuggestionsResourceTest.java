@@ -414,6 +414,17 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
         USER.getId(),
         SuggestionType.SuggestTagLabel,
         USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
     assertEquals(0, suggestionList.getPaging().getTotal());
   }
 
@@ -432,7 +443,30 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
         listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
     assertEquals(3, suggestionList.getData().size());
 
-    rejectAllSuggestions(TABLE.getFullyQualifiedName(), USER.getId(), USER_AUTH_HEADERS);
+    rejectAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(1, suggestionList.getPaging().getTotal());
+
+    // Now we reject the pending one
+    rejectAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestTagLabel,
+        USER_AUTH_HEADERS);
 
     suggestionList =
         listSuggestions(
@@ -537,11 +571,16 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     TestUtils.put(target, null, Response.Status.OK, authHeaders);
   }
 
-  public void rejectAllSuggestions(String entityFQN, UUID userId, Map<String, String> authHeaders)
+  public void rejectAllSuggestions(
+      String entityFQN, UUID userId, SuggestionType suggestionType, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("suggestions/reject-all");
     target = entityFQN != null ? target.queryParam("entityFQN", entityFQN) : target;
     target = userId != null ? target.queryParam("userId", userId) : target;
+    target =
+        suggestionType != null
+            ? target.queryParam("suggestionType", suggestionType.toString())
+            : target;
     TestUtils.put(target, null, Response.Status.OK, authHeaders);
   }
 
