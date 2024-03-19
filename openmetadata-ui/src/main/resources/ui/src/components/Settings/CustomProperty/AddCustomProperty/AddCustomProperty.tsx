@@ -154,13 +154,9 @@ const AddCustomProperty = () => {
      * In CustomProperty the propertyType is type of entity reference, however from the form we
      * get propertyType as string
      */
-    /**
-     * In CustomProperty the customPropertyConfig is type of CustomPropertyConfig, however from the
-     * form we get customPropertyConfig as string[]
-     */
-    data: Exclude<CustomProperty, 'propertyType' | 'customPropertyConfig'> & {
+    data: Exclude<CustomProperty, 'propertyType'> & {
       propertyType: string;
-      customPropertyConfig: string[];
+      enumConfig: string[];
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
@@ -178,7 +174,7 @@ const AddCustomProperty = () => {
         customPropertyConfig = {
           config: {
             multiSelect: Boolean(data?.multiSelect),
-            values: data.customPropertyConfig,
+            values: data.enumConfig,
           },
         };
       }
@@ -201,6 +197,7 @@ const AddCustomProperty = () => {
             'multiSelect',
             'formatConfig',
             'entityReferenceConfig',
+            'enumConfig',
           ]),
           propertyType: {
             id: data.propertyType,
@@ -281,14 +278,14 @@ const AddCustomProperty = () => {
     },
   };
 
-  const customPropertyConfigTypeValueField: FieldProp = {
-    name: 'customPropertyConfig',
+  const enumConfigField: FieldProp = {
+    name: 'enumConfig',
     required: false,
     label: t('label.enum-value-plural'),
-    id: 'root/customPropertyConfig',
+    id: 'root/enumConfig',
     type: FieldTypes.SELECT,
     props: {
-      'data-testid': 'customPropertyConfig',
+      'data-testid': 'enumConfig',
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
     },
@@ -326,12 +323,6 @@ const AddCustomProperty = () => {
     },
     placeholder: t('label.format'),
     rules: [
-      {
-        required: true,
-        message: t('label.field-required', {
-          field: t('label.format'),
-        }),
-      },
       {
         validator: (_, value) => {
           if (!isValidDateFormat(value)) {
@@ -378,10 +369,7 @@ const AddCustomProperty = () => {
         {
           // Only show enum value field if the property type has enum config
           hasEnumConfig &&
-            generateFormFields([
-              customPropertyConfigTypeValueField,
-              multiSelectField,
-            ])
+            generateFormFields([enumConfigField, multiSelectField])
         }
         {
           // Only show format field if the property type has format config

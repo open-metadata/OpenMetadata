@@ -111,10 +111,9 @@ export const PropertyValue: FC<Props> = ({
     try {
       const updatedExtension = {
         ...(extension || {}),
-        [propertyName]:
-          propertyType.name === 'integer'
-            ? toNumber(updatedValue || 0)
-            : propertyValue,
+        [propertyName]: ['integer', 'number'].includes(propertyType.name ?? '')
+          ? toNumber(updatedValue || 0)
+          : propertyValue,
       };
 
       setIsLoading(true);
