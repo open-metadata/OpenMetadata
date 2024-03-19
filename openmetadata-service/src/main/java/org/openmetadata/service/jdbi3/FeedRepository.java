@@ -775,6 +775,7 @@ public class FeedRepository {
     if (updated.getTask() != null) {
       populateAssignees(updated);
       updated.getTask().getAssignees().sort(compareEntityReference);
+      validateAssignee(updated);
     }
 
     if (updated.getAnnouncement() != null) {
@@ -859,6 +860,13 @@ public class FeedRepository {
 
   private void validateAssignee(Thread thread) {
     if (thread != null && ThreadType.Task.equals(thread.getType())) {
+      String createdByUserName = thread.getCreatedBy();
+      User createdByUser =
+          Entity.getEntityByName(USER, createdByUserName, TEAMS_FIELD, NON_DELETED);
+      if (Boolean.TRUE.equals(createdByUser.getIsBot())) {
+        throw new IllegalArgumentException("Task cannot be created by bot only by user or teams");
+      }
+
       List<EntityReference> assignees = thread.getTask().getAssignees();
 
       // Assignees can only be user or teams
