@@ -238,27 +238,33 @@ const ManageButton: FC<ManageButtonProps> = ({
   return (
     <>
       {items.length ? (
-        <Dropdown
-          align={{ targetOffset: [-12, 0] }}
-          dropdownRender={renderDropdownContainer}
-          menu={{ items }}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Tooltip
-            placement="topRight"
-            title={t('label.manage-entity', {
-              entity: capitalize(entityType),
-            })}>
-            <Button
-              className={classNames('flex-center px-1.5', buttonClassName)}
-              data-testid="manage-button"
-              type="default">
-              <IconDropdown className="anticon self-center manage-dropdown-icon" />
-            </Button>
-          </Tooltip>
-        </Dropdown>
+        // Used Button to stop click propagation event in the
+        // TeamDetailsV1 and User.component collapsible panel.
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            align={{ targetOffset: [-12, 0] }}
+            dropdownRender={renderDropdownContainer}
+            menu={{ items }}
+            overlayClassName="manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Tooltip
+              placement="topRight"
+              title={t('label.manage-entity', {
+                entity: capitalize(entityType),
+              })}>
+              <Button
+                className={classNames('flex-center px-1.5', buttonClassName)}
+                data-testid="manage-button"
+                type="default">
+                <IconDropdown className="anticon self-center manage-dropdown-icon" />
+              </Button>
+            </Tooltip>
+          </Dropdown>
+        </Button>
       ) : (
         <></>
       )}

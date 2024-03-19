@@ -15,7 +15,6 @@ import React from 'react';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { mockUserData } from '../Settings/Users/mocks/User.mocks';
 import NavBar from './NavBar';
 
 const mockHandleSearchBoxOpen = jest.fn();
@@ -94,11 +93,6 @@ jest.mock(
       ),
   })
 );
-jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
-    currentUser: mockUserData,
-  })),
-}));
 jest.mock('react-router-dom', () => ({
   useLocation: jest
     .fn()

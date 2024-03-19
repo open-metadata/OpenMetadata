@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC } from 'react';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
@@ -27,8 +26,8 @@ import { EntityReference } from '../generated/entity/type';
 export interface HelperFunctions {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  getCallBackComponent: () => FC | null;
   handleSuccessfulLogin: (user: OidcUser) => void;
+  handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
 }
 

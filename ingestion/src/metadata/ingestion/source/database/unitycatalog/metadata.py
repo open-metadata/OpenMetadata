@@ -56,6 +56,9 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
+)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.database.unitycatalog.connection import get_connection
@@ -74,7 +77,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(
+    ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -95,6 +100,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         self.client = get_connection(self.service_connection)
         self.connection_obj = self.client
         self.table_constraints = []
+        self.context.storage_location = None
         self.test_connection()
 
     def get_configured_database(self) -> Optional[str]:
@@ -105,7 +111,9 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             yield catalog.name
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, UnityCatalogConnection):
@@ -282,7 +290,10 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
+        self.context.storage_location = None
         table = self.client.tables.get(self.context.table_data.full_name)
+        if table.storage_location and not table.storage_location.startswith("dbfs"):
+            self.context.storage_location = table.storage_location
         schema_name = self.context.database_schema
         db_name = self.context.database
         table_constraints = None
@@ -518,3 +529,6 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
 
     def close(self):
         """Nothing to close"""
+
+    def get_external_table_location(self):
+        return self.context.storage_location
