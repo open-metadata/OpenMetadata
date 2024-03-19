@@ -116,6 +116,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(TEST_CASE_RESULT_FIELD) ? test.getTestCaseResult() : null);
   }
 
+  @Override
+  public void clearSearchFields(Map<String, Object> json) {
+    json.remove("testPlatforms");
+  }
+
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
       String fqn, Long timestamp, JsonPatch patch) {
     TestCaseResult original =

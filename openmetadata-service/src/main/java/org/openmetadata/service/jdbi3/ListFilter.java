@@ -2,11 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.Getter;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -14,42 +11,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-public class ListFilter {
-  @Getter private final Include include;
-  protected final Map<String, String> queryParams = new HashMap<>();
-
+public class ListFilter extends Filter<ListFilter> {
   public ListFilter() {
-    this(Include.NON_DELETED);
+      this(Include.NON_DELETED);
   }
 
   public ListFilter(Include include) {
     this.include = include;
   }
 
-  public ListFilter addQueryParam(String name, String value) {
-    queryParams.put(name, value);
-    return this;
-  }
-
-  public ListFilter addQueryParam(String name, Boolean value) {
-    queryParams.put(name, String.valueOf(value));
-    return this;
-  }
-
-  public void removeQueryParam(String name) {
-    queryParams.remove(name);
-  }
-
-  public String getQueryParam(String name) {
-    return name.equals("include") ? include.value() : queryParams.get(name);
-  }
-
-  public String getCondition() {
-    return getCondition(null);
-  }
-
   public String getCondition(String tableName) {
-    ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition(tableName));
     conditions.add(getDatabaseCondition(tableName));
     conditions.add(getDatabaseSchemaCondition(tableName));

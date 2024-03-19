@@ -70,6 +70,8 @@ import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.script.Script;
 import es.org.elasticsearch.script.ScriptType;
+import es.org.elasticsearch.search.SearchHit;
+import es.org.elasticsearch.search.SearchHits;
 import es.org.elasticsearch.search.SearchModule;
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -463,6 +465,53 @@ public class ElasticSearchClient implements SearchClient {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(
             String.format("Failed to to find index %s", request.getIndex()));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+  }
+
+  @Override
+  public SearchResultListMapper listWithOffset(String filter, int limit, int offset, String index, String sortField, String sortType)
+  throws IOException {
+    List<Map<String, Object>> results = new ArrayList<>();
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    try {
+      XContentParser parser = XContentType.JSON
+              .xContent()
+              .createParser(
+                      xContentRegistry,
+                      LoggingDeprecationHandler.INSTANCE,
+                      filter);
+      QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(parser).query();
+      searchSourceBuilder.postFilter(queryFromXContent);
+    } catch (Exception e) {
+      throw new IOException("Failed to parse query filter", e);
+    }
+
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.from(offset);
+    searchSourceBuilder.size(limit);
+    if (sortField != null && sortType != null) {
+      searchSourceBuilder.sort(sortField, SortOrder.fromString(sortType));
+    }
+    try {
+      SearchResponse response = client
+                      .search(
+                              new es.org.elasticsearch.action.search.SearchRequest(index)
+                                      .source(searchSourceBuilder),
+                              RequestOptions.DEFAULT);
+      SearchHits searchHits = response.getHits();
+      SearchHit[] hits = searchHits.getHits();
+      Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
+      return new SearchResultListMapper(
+              results,
+              searchHits.getTotalHits().value
+      );
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+                String.format("Failed to to find index %s", index));
       } else {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }

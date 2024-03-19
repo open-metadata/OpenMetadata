@@ -145,6 +145,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -321,6 +323,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
   protected abstract void clearFields(T entity, Fields fields);
+
+  /**
+   * Clear the search fields in an entity. This is used for clearing the fields that are not
+   * part of the entity class itself
+   */
+  protected void clearSearchFields(Map<String, Object> json) {
+    // No-op
+  };
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
@@ -785,6 +795,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     clearFields(entity, fields);
   }
 
+  public final void clearSearchFieldsInternal(Map<String, Object> json) {
+    json.remove("fqnParts");
+    json.remove("entityType");
+    json.remove("suggest");
+    clearSearchFields(json);
+  }
+
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
@@ -972,6 +989,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntity(entity, false);
     }
+  }
+  public ResultList<T> listFromSearchWithOffset(
+          UriInfo uriInfo,
+          Fields fields,
+          SearchListFilter searchListFilter,
+          int limit,
+          int offset) throws IOException {
+    return listFromSearchWithOffset(
+            uriInfo, fields, searchListFilter, limit, offset, null, null
+    );
+  }
+
+  public ResultList<T> listFromSearchWithOffset(
+          UriInfo uriInfo,
+          Fields fields,
+          SearchListFilter searchListFilter,
+          int limit,
+          int offset,
+          String sortField,
+          String sortType
+  ) throws IOException {
+    List<T> entityList = new ArrayList<>();
+    Long total = 0L;
+
+    if (limit > 0) {
+      SearchClient.SearchResultListMapper results = searchRepository.listWithOffset(searchListFilter, limit, offset, entityType, sortField, sortType);
+      total = results.getTotal();
+      for (Map<String, Object> json : results.getResults()) {
+        clearSearchFieldsInternal(json); // clear search index fields
+        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+        setInheritedFields(entity, fields);
+        clearFieldsInternal(entity, fields);
+        entityList.add(withHref(uriInfo, entity));
+      }
+      return new ResultList<>(entityList, offset, limit, total.intValue());
+    }
+    throw new IOException("Limit should be greater than 0");
   }
 
   @Transaction
