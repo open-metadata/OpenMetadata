@@ -66,16 +66,16 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
     } catch (Exception ex) {
       Map<String, Object> failure = new HashMap<>();
-      failure.put("message", "TriggerFailed:"  + ex.getMessage());
+      failure.put("message", "TriggerFailed:" + ex.getMessage());
       failure.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      runRecord = new AppRunRecord()
+      runRecord =
+          new AppRunRecord()
               .withAppId(appID)
               .withRunType(AppRunType.Scheduled)
               .withStatus(AppRunRecord.Status.FAILED)
               .withStartTime(jobStartTime)
               .withTimestamp(jobStartTime)
-              .withFailureContext(
-                      new FailureContext().withAdditionalProperty("failure", failure));
+              .withFailureContext(new FailureContext().withAdditionalProperty("failure", failure));
     }
     // Insert new Record Run
     pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
