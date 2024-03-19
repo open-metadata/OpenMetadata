@@ -41,25 +41,25 @@ class AzureClient:
 
         try:
             if (
-                getattr(self.credentials, "tenantId", None)
+                getattr(self.credentials.azureAuthType, "tenantId", None)
                 and getattr(self.credentials, "clientId", None)
-                and getattr(self.credentials, "clientSecret", None)
+                and getattr(self.credentials.azureAuthType, "clientSecret", None)
             ):
                 logger.info("Using Client Secret Credentials")
                 return ClientSecretCredential(
-                    tenant_id=self.credentials.tenantId,
+                    tenant_id=self.credentials.azureAuthType.tenantId,
                     client_id=self.credentials.clientId,
-                    client_secret=self.credentials.clientSecret.get_secret_value(),
+                    client_secret=self.credentials.azureAuthType.clientSecret.get_secret_value(),
                 )
             elif (
-                getattr(self.credentials, "username", None)
-                and getattr(self.credentials, "password", None)
+                getattr(self.credentials.azureAuthType, "username", None)
+                and getattr(self.credentials.azureAuthType, "password", None)
                 and getattr(self.credentials, "clientId", None)
             ):
                 logger.info("Using Username Password Credentials")
                 return UsernamePasswordCredential(
-                    username=self.credentials.username,
-                    password=self.credentials.password,
+                    username=self.credentials.azureAuthType.username,
+                    password=self.credentials.azureAuthType.password,
                     client_id=self.credentials.clientId,
                 )
             else:
@@ -74,10 +74,12 @@ class AzureClient:
 
         try:
             logger.info("Creating Blob Service Client")
-            return BlobServiceClient(
-                account_url=f"https://{self.credentials.accountName}.blob.core.windows.net/",
-                credential=self.create_client(),
-            )
+            if self.credentials.accountName:
+                return BlobServiceClient(
+                    account_url=f"https://{self.credentials.accountName}.blob.core.windows.net/",
+                    credential=self.create_client(),
+                )
+            raise ValueError("Account Name is required to create Blob Service Client")
         except Exception as e:
             logger.error(f"Error creating Blob Service Client: {e}")
             raise e
@@ -86,11 +88,13 @@ class AzureClient:
         from azure.keyvault.secrets import SecretClient
 
         try:
-            logger.info("Creating Secret Client")
-            return SecretClient(
-                vault_url=f"https://{self.credentials.vaultName}.vault.azure.net/",
-                credential=self.create_client(),
-            )
+            if self.credentials.vaultName:
+                logger.info("Creating Secret Client")
+                return SecretClient(
+                    vault_url=f"https://{self.credentials.vaultName}.vault.azure.net/",
+                    credential=self.create_client(),
+                )
+            raise ValueError("Vault Name is required to create a Secret Client")
         except Exception as e:
             logger.error(f"Error creating Secret Client: {e}")
             raise e

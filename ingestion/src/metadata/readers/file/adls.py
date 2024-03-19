@@ -36,9 +36,9 @@ def return_azure_storage_options(config_source: AzureConfig) -> Dict[str, str]:
     """
     connection_args = config_source.securityConfig
     return {
-        "tenant_id": connection_args.tenantId,
+        "tenant_id": connection_args.azureAuthType.tenantId,
         "client_id": connection_args.clientId,
-        "client_secret": connection_args.clientSecret.get_secret_value(),
+        "client_secret": connection_args.azureAuthType.clientSecret.get_secret_value(),
     }
 
 
