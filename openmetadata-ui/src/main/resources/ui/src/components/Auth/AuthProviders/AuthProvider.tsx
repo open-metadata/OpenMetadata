@@ -420,7 +420,9 @@ export const AuthProvider = ({
     const currentPath = window.location.pathname;
 
     // Do not intercept requests from domains page
-    if (currentPath.includes('/domain')) {
+    if (
+      ['/domain', '/auth/logout', '/auth/refresh'].indexOf(currentPath) > -1
+    ) {
       return config;
     }
 
