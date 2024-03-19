@@ -70,7 +70,7 @@ const AppSchedule = ({
 
   const cronString = useMemo(() => {
     const cronExpression = (appData.appSchedule as AppScheduleClass)
-      .cronExpression;
+      ?.cronExpression;
     if (cronExpression) {
       return cronstrue.toString(cronExpression, {
         throwExceptionOnParseError: false,
