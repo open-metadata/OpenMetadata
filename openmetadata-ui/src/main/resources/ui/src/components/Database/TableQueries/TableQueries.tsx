@@ -295,7 +295,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     searchIndex: SearchIndex | SearchIndex[]
   ) => {
     const response = await searchQuery({
-      query: searchText,
+      query: `*${searchText}*`,
       filters,
       pageNumber: 1,
       pageSize: PAGE_SIZE_BASE,
