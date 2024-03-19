@@ -310,10 +310,11 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchTags = async (searchText = WILD_CARD_CHAR) => {
-    const filters = 'disabled:false AND !classification.name:Tier';
-    const searchIndex = SearchIndex.TAG;
-
-    return fetchOptions(searchText, filters, searchIndex);
+    return fetchOptions(
+      searchText,
+      'disabled:false AND !classification.name:Tier',
+      SearchIndex.TAG
+    );
   };
 
   const setTagsDefaultOption = () => {
@@ -364,10 +365,10 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchOwner = async (searchText = WILD_CARD_CHAR) => {
-    const filters = 'isBot:false';
-    const searchIndex = [SearchIndex.USER, SearchIndex.TEAM];
-
-    return fetchOptions(searchText, filters, searchIndex);
+    return fetchOptions(searchText, 'isBot:false', [
+      SearchIndex.USER,
+      SearchIndex.TEAM,
+    ]);
   };
 
   const setOwnerDefaultOption = () => {
