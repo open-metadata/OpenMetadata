@@ -24,9 +24,9 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isArray, isEmpty, isUndefined, noop, toNumber, toUpper } from 'lodash';
+import { isArray, isUndefined, noop, toNumber, toUpper } from 'lodash';
 import moment, { Moment } from 'moment';
-import React, { FC, Fragment, useState } from 'react';
+import React, { CSSProperties, FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import {
@@ -34,6 +34,7 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Table } from '../../../generated/entity/data/table';
@@ -57,13 +58,26 @@ import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
-  versionDataKeys?: string[];
-  isVersionView?: boolean;
   property: CustomProperty;
   extension: Table['extension'];
-  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
   hasEditPermissions: boolean;
+  versionDataKeys?: string[];
+  isVersionView?: boolean;
+  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
 }
+
+type TimeIntervalType = {
+  start: number;
+  end: number;
+};
+
+type PropertyValueType =
+  | string
+  | number
+  | string[]
+  | EntityReference
+  | EntityReference[]
+  | TimeIntervalType;
 
 export const PropertyValue: FC<Props> = ({
   isVersionView,
@@ -81,27 +95,19 @@ export const PropertyValue: FC<Props> = ({
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const onShowInput = () => {
-    setShowInput(true);
-  };
+  const onShowInput = () => setShowInput(true);
 
-  const onHideInput = () => {
-    setShowInput(false);
-  };
+  const onHideInput = () => setShowInput(false);
 
-  const onInputSave = async (
-    updatedValue:
-      | string
-      | number
-      | string[]
-      | EntityReference
-      | EntityReference[]
-      | { start: number; end: number }
-  ) => {
+  const onInputSave = async (updatedValue: PropertyValueType) => {
     const isEnum = propertyType.name === 'enum';
+
     const isArrayType = isArray(updatedValue);
+
     const enumValue = isArrayType ? updatedValue : [updatedValue];
+
     const propertyValue = isEnum ? enumValue : updatedValue;
+
     try {
       const updatedExtension = {
         ...(extension || {}),
@@ -110,7 +116,9 @@ export const PropertyValue: FC<Props> = ({
             ? toNumber(updatedValue || 0)
             : propertyValue,
       };
+
       setIsLoading(true);
+
       await onExtensionUpdate(updatedExtension);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -121,31 +129,39 @@ export const PropertyValue: FC<Props> = ({
   };
 
   const getPropertyInput = () => {
+    const commonStyle: CSSProperties = {
+      marginBottom: '0px',
+      minWidth: '250px',
+    };
     switch (propertyType.name) {
       case 'string':
       case 'integer':
-      case 'number':
+      case 'number': {
+        const inputType = ['integer', 'number'].includes(propertyType.name)
+          ? 'number'
+          : 'text';
+
         return (
           <PropertyInput
             isLoading={isLoading}
             propertyName={propertyName}
-            type={
-              ['integer', 'number'].includes(propertyType.name)
-                ? 'number'
-                : 'text'
-            }
+            type={inputType}
             value={value}
             onCancel={onHideInput}
             onSave={onInputSave}
           />
         );
-      case 'markdown':
+      }
+
+      case 'markdown': {
+        const header = t('label.edit-entity-name', {
+          entityType: t('label.property'),
+          entityName: propertyName,
+        });
+
         return (
           <ModalWithMarkdownEditor
-            header={t('label.edit-entity-name', {
-              entityType: t('label.property'),
-              entityName: propertyName,
-            })}
+            header={header}
             placeholder={t('label.enter-property-value')}
             value={value || ''}
             visible={showInput}
@@ -153,13 +169,21 @@ export const PropertyValue: FC<Props> = ({
             onSave={onInputSave}
           />
         );
+      }
+
       case 'enum': {
         const enumConfig = property.customPropertyConfig?.config as EnumConfig;
+
         const isMultiSelect = Boolean(enumConfig?.multiSelect);
+
         const options = enumConfig?.values?.map((option) => ({
           label: option,
           value: option,
         }));
+
+        const initialValues = {
+          enumValues: (isArray(value) ? value : [value]).filter(Boolean),
+        };
 
         return (
           <InlineEdit
@@ -173,9 +197,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="enum-form"
-              initialValues={{
-                enumValues: (isArray(value) ? value : [value]).filter(Boolean),
-              }}
+              initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { enumValues: string | string[] }) =>
                 onInputSave(values.enumValues)
@@ -190,23 +212,27 @@ export const PropertyValue: FC<Props> = ({
                     }),
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={commonStyle}>
                 <Select
                   data-testid="enum-select"
                   disabled={isLoading}
                   mode={isMultiSelect ? 'multiple' : undefined}
                   options={options}
                   placeholder={t('label.enum-value-plural')}
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
           </InlineEdit>
         );
       }
+
       case 'date':
       case 'dateTime': {
         const format = toUpper(property.customPropertyConfig?.config as string);
+
+        const initialValues = {
+          dateTimeValue: value ? moment(value, format) : undefined,
+        };
 
         return (
           <InlineEdit
@@ -220,9 +246,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="dateTime-form"
-              initialValues={{
-                dateTimeValue: value ? moment(value, format) : undefined,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { dateTimeValue: Moment }) => {
                 onInputSave(values.dateTimeValue.format(format));
@@ -237,7 +261,7 @@ export const PropertyValue: FC<Props> = ({
                     }),
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={commonStyle}>
                 <DatePicker
                   data-testid="date-time-picker"
                   disabled={isLoading}
@@ -250,8 +274,12 @@ export const PropertyValue: FC<Props> = ({
           </InlineEdit>
         );
       }
+
       case 'time': {
         const format = 'HH:mm:ss';
+        const initialValues = {
+          time: value ? moment(value, format) : undefined,
+        };
 
         return (
           <InlineEdit
@@ -265,9 +293,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="time-form"
-              initialValues={{
-                time: value ? moment(value, format) : undefined,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { time: Moment }) => {
@@ -280,7 +306,7 @@ export const PropertyValue: FC<Props> = ({
                     required: true,
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={commonStyle}>
                 <TimePicker
                   data-testid="time-picker"
                   disabled={isLoading}
@@ -291,7 +317,12 @@ export const PropertyValue: FC<Props> = ({
           </InlineEdit>
         );
       }
+
       case 'email': {
+        const initialValues = {
+          email: value,
+        };
+
         return (
           <InlineEdit
             isLoading={isLoading}
@@ -304,9 +335,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="email-form"
-              initialValues={{
-                email: value,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { email: string }) => {
@@ -322,19 +351,23 @@ export const PropertyValue: FC<Props> = ({
                     type: 'email',
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={commonStyle}>
                 <Input
                   data-testid="email-input"
                   disabled={isLoading}
                   placeholder="john@doe.com"
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
           </InlineEdit>
         );
       }
+
       case 'timestamp': {
+        const initialValues = {
+          timestamp: value,
+        };
+
         return (
           <InlineEdit
             isLoading={isLoading}
@@ -347,35 +380,39 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="timestamp-form"
-              initialValues={{
-                timestamp: value,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { timestamp: string }) => {
                 onInputSave(toNumber(values.timestamp));
               }}>
               <Form.Item
-                help="Timestamp in Unix epoch time milliseconds."
                 name="timestamp"
                 rules={[
                   {
                     required: true,
-                    pattern: /^\d{13}$/,
+                    pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={commonStyle}>
                 <Input
                   data-testid="timestamp-input"
                   disabled={isLoading}
-                  placeholder="Unix epoch time in milliseconds"
-                  style={{ width: '250px' }}
+                  placeholder={t('message.unix-epoch-time-in-ms', {
+                    prefix: '',
+                  })}
                 />
               </Form.Item>
             </Form>
           </InlineEdit>
         );
       }
+
       case 'timeInterval': {
+        const initialValues = {
+          start: value?.start ? value.start?.toString() : undefined,
+          end: value?.end ? value.end?.toString() : undefined,
+        };
+
         return (
           <InlineEdit
             isLoading={isLoading}
@@ -388,10 +425,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="timeInterval-form"
-              initialValues={{
-                start: value?.start ? value.start?.toString() : undefined,
-                end: value?.end ? value.end?.toString() : undefined,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
                 onInputSave({
@@ -404,15 +438,16 @@ export const PropertyValue: FC<Props> = ({
                 rules={[
                   {
                     required: true,
-                    pattern: /^\d{13}$/,
+                    pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={{ ...commonStyle, marginBottom: '16px' }}>
                 <Input
                   data-testid="start-input"
                   disabled={isLoading}
-                  placeholder="Start time in Unix epoch time milliseconds"
-                  style={{ width: '250px' }}
+                  placeholder={t('message.unix-epoch-time-in-ms', {
+                    prefix: 'Start',
+                  })}
                 />
               </Form.Item>
               <Form.Item
@@ -420,22 +455,28 @@ export const PropertyValue: FC<Props> = ({
                 rules={[
                   {
                     required: true,
-                    pattern: /^\d{13}$/,
+                    pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={commonStyle}>
                 <Input
                   data-testid="end-input"
                   disabled={isLoading}
-                  placeholder="End time in Unix epoch time milliseconds"
-                  style={{ width: '250px' }}
+                  placeholder={t('message.unix-epoch-time-in-ms', {
+                    prefix: 'End',
+                  })}
                 />
               </Form.Item>
             </Form>
           </InlineEdit>
         );
       }
+
       case 'duration': {
+        const initialValues = {
+          duration: value,
+        };
+
         return (
           <InlineEdit
             isLoading={isLoading}
@@ -448,9 +489,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="duration-form"
-              initialValues={{
-                duration: value,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { duration: string }) => {
@@ -463,19 +502,23 @@ export const PropertyValue: FC<Props> = ({
                     required: true,
                   },
                 ]}
-                style={{ marginBottom: '0px' }}>
+                style={commonStyle}>
                 <Input
                   data-testid="duration-input"
                   disabled={isLoading}
-                  placeholder='Duration in ISO 8601 format "PnYnMnDTnHnMnS"'
-                  style={{ width: '250px' }}
+                  placeholder={t('message.duration-in-iso-format')}
                 />
               </Form.Item>
             </Form>
           </InlineEdit>
         );
       }
+
       case 'sqlQuery': {
+        const initialValues = {
+          sqlQuery: value,
+        };
+
         return (
           <InlineEdit
             isLoading={isLoading}
@@ -488,9 +531,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="sqlQuery-form"
-              initialValues={{
-                sqlQuery: value,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { sqlQuery: string }) => {
@@ -506,7 +547,7 @@ export const PropertyValue: FC<Props> = ({
                     }),
                   },
                 ]}
-                style={{ marginBottom: '0px', minWidth: '250px' }}
+                style={commonStyle}
                 trigger="onChange">
                 <SchemaEditor
                   className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
@@ -520,6 +561,7 @@ export const PropertyValue: FC<Props> = ({
           </InlineEdit>
         );
       }
+
       case 'entityReference':
       case 'entityReferenceList': {
         const mode =
@@ -556,6 +598,10 @@ export const PropertyValue: FC<Props> = ({
           }
         }
 
+        const initialValues = {
+          entityReference: initialValue,
+        };
+
         return (
           <InlineEdit
             isLoading={isLoading}
@@ -568,9 +614,7 @@ export const PropertyValue: FC<Props> = ({
             onSave={noop}>
             <Form
               id="entity-reference-form"
-              initialValues={{
-                entityReference: initialValue,
-              }}
+              initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: {
@@ -591,14 +635,14 @@ export const PropertyValue: FC<Props> = ({
                     required: true,
                   },
                 ]}
-                style={{ marginBottom: '0px', minWidth: '250px' }}>
+                style={commonStyle}>
                 <DataAssetAsyncSelectList
                   initialOptions={initialOptions}
                   mode={mode}
                   placeholder={
                     mode === 'multiple'
-                      ? 'Select Entity Reference List'
-                      : 'Select Entity Reference'
+                      ? t('label.entity-reference')
+                      : t('label.entity-reference-plural')
                   }
                   searchIndex={index.join(',') as SearchIndex}
                 />
@@ -738,12 +782,21 @@ export const PropertyValue: FC<Props> = ({
           </div>
         );
       }
-      case 'timeInterval':
+      case 'timeInterval': {
+        const timeInterval = value as TimeIntervalType;
+
+        if (isUndefined(timeInterval)) {
+          return null;
+        }
+
         return (
           <Typography.Text className="break-all" data-testid="value">
-            {JSON.stringify(value ?? '{}', null, 2)}
+            {`StartTime: ${timeInterval.start}`}
+            <br />
+            {`EndTime: ${timeInterval.end}`}
           </Typography.Text>
         );
+      }
 
       case 'string':
       case 'integer':
@@ -765,24 +818,14 @@ export const PropertyValue: FC<Props> = ({
 
   const getValueElement = () => {
     const propertyValue = getPropertyValue();
-    const isInteger = propertyType.name === 'integer';
-    if (isInteger) {
-      return !isUndefined(value) ? (
-        propertyValue
-      ) : (
-        <span className="text-grey-muted" data-testid="no-data">
-          {t('message.no-data')}
-        </span>
-      );
-    } else {
-      return !isEmpty(value) ? (
-        propertyValue
-      ) : (
-        <span className="text-grey-muted" data-testid="no-data">
-          {t('message.no-data')}
-        </span>
-      );
-    }
+
+    return !isUndefined(value) ? (
+      propertyValue
+    ) : (
+      <span className="text-grey-muted" data-testid="no-data">
+        {t('message.no-data')}
+      </span>
+    );
   };
 
   return (
