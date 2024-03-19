@@ -26,13 +26,12 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import Loader from '../../components/common/Loader/Loader';
-import localState from '../../utils/LocalStorageUtils';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const SamlCallback = () => {
-  const { handleSuccessfulLogin } = useAuthContext();
+  const { handleSuccessfulLogin, setOidcToken } = useApplicationStore();
   const location = useLocation();
   const { t } = useTranslation();
 
@@ -43,7 +42,7 @@ const SamlCallback = () => {
     const name = params.get('name');
     const email = params.get('email');
     if (idToken) {
-      localState.setOidcToken(idToken);
+      setOidcToken(idToken);
       const oidcUser: OidcUser = {
         id_token: idToken,
         scope: '',

@@ -14,7 +14,7 @@ Glue pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -72,7 +72,9 @@ class GluepipelineSource(PipelineServiceSource):
         self.glue = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GluePipelineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GluePipelineConnection):

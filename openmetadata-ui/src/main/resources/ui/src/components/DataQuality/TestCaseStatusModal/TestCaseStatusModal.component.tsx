@@ -27,7 +27,8 @@ import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
@@ -39,7 +40,7 @@ export const TestCaseStatusModal = ({
   usersList,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);

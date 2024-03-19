@@ -17,8 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { ReactComponent as ThumbsDownFilled } from '../../../../assets/svg/thumbs-down-filled.svg';
-import { ReactComponent as ThumbsDownOutline } from '../../../../assets/svg/thumbs-down-outline.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../../assets/svg/thumbs-up-outline.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
@@ -27,10 +25,9 @@ import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
 import { AxiosError } from 'axios';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../../constants/constants';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { deleteQuery } from '../../../../rest/queryAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import './query-card-extra-option.style.less';
 
@@ -42,7 +39,7 @@ const QueryCardExtraOption = ({
   afterDeleteAction,
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState<QueryVoteType | null>(null);
@@ -142,9 +139,9 @@ const QueryCardExtraOption = ({
           data-testid="up-vote-btn"
           icon={
             voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpFilled {...DATA_ASSET_ICON_DIMENSION} />
+              <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
-              <ThumbsUpOutline {...DATA_ASSET_ICON_DIMENSION} />
+              <ThumbsUpOutline height={15} width={15} />
             )
           }
           loading={loading === QueryVoteType.votedUp}
@@ -160,9 +157,17 @@ const QueryCardExtraOption = ({
           data-testid="down-vote-btn"
           icon={
             voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsDownFilled {...DATA_ASSET_ICON_DIMENSION} />
+              <ThumbsUpFilled
+                className="rotate-inverse text-warning-7"
+                height={15}
+                width={15}
+              />
             ) : (
-              <ThumbsDownOutline {...DATA_ASSET_ICON_DIMENSION} />
+              <ThumbsUpOutline
+                className="rotate-inverse"
+                height={15}
+                width={15}
+              />
             )
           }
           loading={loading === QueryVoteType.votedDown}

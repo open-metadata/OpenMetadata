@@ -31,7 +31,8 @@ import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -43,7 +44,7 @@ const MyDataWidgetInternal = ({
   widgetKey,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SourceType[]>([]);
   const [totalOwnedAssetsCount, setTotalOwnedAssetsCount] = useState<number>(0);

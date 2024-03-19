@@ -24,6 +24,7 @@ import { deleteGlossary } from '../../common/GlossaryUtils';
 import { dragAndDropElement } from '../../common/Utils/DragAndDrop';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
 import { confirmationDragAndDropGlossary } from '../../common/Utils/Glossary';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
@@ -684,14 +685,16 @@ const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
 };
 
 const deleteUser = () => {
-  const token = localStorage.getItem('oidcIdToken');
+  cy.getAllLocalStorage().then((storageData) => {
+    const token = getToken(storageData);
 
-  cy.request({
-    method: 'DELETE',
-    url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((response) => {
-    expect(response.status).to.eq(200);
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${createdUserId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
   });
 };
 
@@ -915,14 +918,10 @@ describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
 
     cy.get('[data-testid="request-entity-tags"]').should('exist').click();
 
-    // set assignees for task
+    // check assignees for task which will be owner of the glossary term
     cy.get(
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
-    )
-      .click()
-      .type(userName);
-    cy.get(`[data-testid="${userName}"]`).click();
-    cy.clickOutside();
+    ).should('contain', 'admin');
 
     cy.get('[data-testid="tag-selector"]')
       .click()
