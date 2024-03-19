@@ -47,6 +47,17 @@
       <groupId>org.pac4j</groupId>
       <artifactId>pac4j-oidc</artifactId>
       <version>${pac4j.version}</version>
+      <exclusions>
+      <exclusion>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+      </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>net.minidev</groupId>
+      <artifactId>json-smart</artifactId>
+      <version>2.5.0</version>
     </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
@@ -309,7 +320,21 @@
       <artifactId>testcontainers</artifactId>
       <version>${org.testcontainers.version}</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-compress</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-compress -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.26.1</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>

@@ -14,14 +14,16 @@ import axiosClient from '.';
 
 const BASE_URL = '/auth';
 
+interface RenewTokenResponse {
+  accessToken: string;
+  refreshToken?: string;
+  tokenType: string;
+  // in seconds
+  expiryDuration: number;
+}
+
 export const renewToken = async () => {
-  const data = await axiosClient.get<{
-    accessToken: string;
-    refreshToken?: string;
-    tokenType: string;
-    // in seconds
-    expiryDuration: number;
-  }>(`${BASE_URL}/refresh`);
+  const data = await axiosClient.get<RenewTokenResponse>(`${BASE_URL}/refresh`);
 
   return data.data;
 };
