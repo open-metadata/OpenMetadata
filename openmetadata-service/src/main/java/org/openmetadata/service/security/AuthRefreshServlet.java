@@ -20,9 +20,11 @@ import org.pac4j.oidc.credentials.OidcCredentials;
 @Slf4j
 public class AuthRefreshServlet extends HttpServlet {
   private final OidcClient client;
+  private final String baseUrl;
 
-  public AuthRefreshServlet(OidcClient oidcClient) {
+  public AuthRefreshServlet(OidcClient oidcClient, String url) {
     this.client = oidcClient;
+    this.baseUrl = url;
   }
 
   @Override
@@ -42,7 +44,7 @@ public class AuthRefreshServlet extends HttpServlet {
                 .getEpochSecond());
         writeJsonResponse(resp, JsonUtils.pojoToJson(jwtResponse));
       } else {
-        throw new TechnicalException("No credentials found in session.");
+        resp.sendRedirect(String.format("%s/logout", baseUrl));
       }
     } catch (Exception e) {
       getErrorMessage(resp, new TechnicalException(e));

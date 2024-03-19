@@ -299,7 +299,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       authLogout.addMapping("/api/v1/auth/logout");
 
       ServletRegistration.Dynamic refreshServlet =
-          environment.servlets().addServlet("auth_refresh", new AuthRefreshServlet(oidcClient));
+          environment
+              .servlets()
+              .addServlet(
+                  "auth_refresh",
+                  new AuthRefreshServlet(
+                      oidcClient,
+                      config
+                          .getAuthenticationConfiguration()
+                          .getOidcConfiguration()
+                          .getServerUrl()));
       refreshServlet.addMapping("/api/v1/auth/refresh");
     }
   }
