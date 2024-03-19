@@ -617,7 +617,6 @@ const TableQueries: FC<TableQueriesProp> = ({
                 </Button>
               </Space>
               <Space size={16}>
-                {addButton}
                 <SortingDropDown
                   fieldList={QUERY_SORT_OPTIONS}
                   handleFieldDropDown={handleSortFieldChange}
@@ -644,6 +643,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                     />
                   )}
                 </Button>
+                {addButton}
               </Space>
             </Space>
           </Col>
@@ -660,6 +660,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                     showSizeChanger
                     className="text-center m-b-sm"
                     current={currentPage}
+                    data-testid="query-pagination"
                     pageSize={pageSize}
                     pageSizeOptions={[10, 25, 50]}
                     total={paging.total}
