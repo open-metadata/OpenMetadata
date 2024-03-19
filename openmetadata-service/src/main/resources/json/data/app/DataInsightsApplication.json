@@ -3,7 +3,7 @@
   "displayName": "Data Insights",
   "appConfiguration": {},
   "appSchedule": {
-    "scheduleType": "Custom",
+    "scheduleTimeline": "Custom",
     "cronExpression": "0 0 1/1 * *"
   }
 }

@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -51,7 +52,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     return new CreateApp()
         .withName(appMarketPlaceDefinition.getName())
         .withAppConfiguration(appMarketPlaceDefinition.getAppConfiguration())
-        .withAppSchedule(new AppSchedule().withScheduleType(AppSchedule.ScheduleTimeline.HOURLY));
+        .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
   }
 
   @Test

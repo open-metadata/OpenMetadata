@@ -97,7 +97,7 @@ export const mockApplicationData = {
   },
   pipelines: [],
   appSchedule: {
-    scheduleType: ScheduleTimeline.Custom,
+    scheduleTimeline: ScheduleTimeline.Custom,
     cronExpression: '0 0 0 1/1 * ? *',
   },
   appScreenshots: ['SearchIndexPic1.png'],

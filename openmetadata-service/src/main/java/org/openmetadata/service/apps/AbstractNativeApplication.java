@@ -13,6 +13,7 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
@@ -61,6 +62,11 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void install() {
+    // If the app does not have any Schedule Return without scheduling
+    if (app.getAppSchedule() != null
+        && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
+      return;
+    }
     if (app.getAppType() == AppType.Internal
         && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       scheduleInternal();

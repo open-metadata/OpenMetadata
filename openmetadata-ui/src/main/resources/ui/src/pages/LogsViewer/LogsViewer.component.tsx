@@ -295,7 +295,9 @@ const LogsViewer = () => {
 
     return {
       Type:
-        ingestionDetails?.pipelineType ?? scheduleClass?.scheduleType ?? '--',
+        ingestionDetails?.pipelineType ??
+        scheduleClass?.scheduleTimeline ??
+        '--',
       Schedule:
         ingestionDetails?.airflowConfig.scheduleInterval ??
         scheduleClass?.cronExpression ??

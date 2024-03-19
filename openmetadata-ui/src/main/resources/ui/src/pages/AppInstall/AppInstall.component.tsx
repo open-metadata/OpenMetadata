@@ -15,6 +15,7 @@ import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -118,8 +119,10 @@ const AppInstall = () => {
       const data: CreateAppRequest = {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
-          scheduleType: ScheduleTimeline.Custom,
-          cronExpression: repeatFrequency,
+          scheduleTimeline: isEmpty(repeatFrequency)
+            ? ScheduleTimeline.None
+            : ScheduleTimeline.Custom,
+          ...(repeatFrequency ? { cronExpression: repeatFrequency } : {}),
         },
         name: fqn,
         description: appData?.description,
