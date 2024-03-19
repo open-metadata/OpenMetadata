@@ -92,10 +92,7 @@ export const useApplicationStore = create<ApplicationStore>()(
       onLogoutHandler: () => {
         // This is a placeholder function that will be replaced by the actual function
       },
-      getCallBackComponent: () => {
-        // This is a placeholder function that will be replaced by the actual function
-        return null;
-      },
+
       handleSuccessfulLogin: () => {
         // This is a placeholder function that will be replaced by the actual function
       },
