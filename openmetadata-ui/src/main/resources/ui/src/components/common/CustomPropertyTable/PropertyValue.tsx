@@ -573,27 +573,29 @@ export const PropertyValue: FC<Props> = ({
 
         if (!isUndefined(value)) {
           if (isArray(value)) {
-            initialOptions = value.map((item) => {
+            initialOptions = value.map((item: EntityReference) => {
               return {
                 displayName: getEntityName(item),
                 reference: item,
                 label: getEntityName(item),
-                value: item.id,
+                value: item?.fullyQualifiedName ?? '',
               };
             });
 
-            initialValue = value.map((item) => item.id);
+            initialValue = value.map(
+              (item: EntityReference) => item?.fullyQualifiedName ?? ''
+            );
           } else {
             initialOptions = [
               {
                 displayName: getEntityName(value),
                 reference: value,
                 label: getEntityName(value),
-                value: value.id,
+                value: value?.fullyQualifiedName ?? '',
               },
             ];
 
-            initialValue = value.id;
+            initialValue = value?.fullyQualifiedName ?? '';
           }
         }
 
