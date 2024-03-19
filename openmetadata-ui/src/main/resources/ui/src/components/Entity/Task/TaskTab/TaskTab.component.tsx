@@ -432,7 +432,9 @@ export const TaskTab = ({
       rest.onAfterClose?.();
       setShowEditTaskModel(false);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        getErrorText(error as AxiosError, t('server.unexpected-error'))
+      );
     } finally {
       setIsActionLoading(false);
     }
