@@ -33,8 +33,8 @@ export interface TableQueriesProp {
   tableId: string;
 }
 
-export type TagsFilterType = {
-  initialTags: SearchDropdownOption[];
+export type QueryFilterType = {
+  initialOptions: SearchDropdownOption[];
   options: SearchDropdownOption[];
   selected: SearchDropdownOption[];
 };

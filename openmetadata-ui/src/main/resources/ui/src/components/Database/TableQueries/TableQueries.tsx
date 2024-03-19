@@ -29,7 +29,7 @@ import {
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,7 +43,7 @@ import {
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
-  QUERY_PAGE_DEFAULT_TAGS_FILTER,
+  QUERY_PAGE_DEFAULT_FILTER,
   QUERY_PAGE_ERROR_STATE,
   QUERY_PAGE_LOADING_STATE,
   QUERY_SORT_OPTIONS,
@@ -64,6 +64,7 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   createQueryFilter,
@@ -79,9 +80,9 @@ import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
 import {
+  QueryFilterType,
   QueryVote,
   TableQueriesProp,
-  TagsFilterType,
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
@@ -106,10 +107,14 @@ const TableQueries: FC<TableQueriesProp> = ({
   const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [tagsFilter, setTagsFilter] = useState<TagsFilterType>(
-    QUERY_PAGE_DEFAULT_TAGS_FILTER
+  const [tagsFilter, setTagsFilter] = useState<QueryFilterType>(
+    QUERY_PAGE_DEFAULT_FILTER
+  );
+  const [ownerFilter, setOwnerFilter] = useState<QueryFilterType>(
+    QUERY_PAGE_DEFAULT_FILTER
   );
   const [isTagsLoading, setIsTagsLoading] = useState(false);
+  const [isOwnerLoading, setIsOwnerLoading] = useState(false);
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [queryDateFilter, setQueryDateFilter] =
     useState<{ startTs: number; endTs: number }>();
@@ -130,6 +135,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     handlePageSizeChange,
     paging,
     handlePagingChange,
+    showPagination,
   } = usePaging(PAGE_SIZE);
 
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -215,6 +221,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const fetchFilteredQueries = async (data?: {
     tags?: SearchDropdownOption[];
+    owners?: SearchDropdownOption[];
     pageNumber?: number;
     timeRange?: { startTs: number; endTs: number };
     sortField?: string;
@@ -222,18 +229,20 @@ const TableQueries: FC<TableQueriesProp> = ({
   }) => {
     const {
       tags,
+      owners,
       pageNumber = INITIAL_PAGING_VALUE,
       timeRange,
       sortField = sortQuery.field,
       sortOrder = sortQuery.order,
     } = data ?? {};
-    const isFilterSelected = !isEmpty(tags) || !isUndefined(timeRange);
+    const isFilterSelected =
+      !isEmpty(tags) || !isEmpty(owners) || !isUndefined(timeRange);
 
     setIsLoading((pre) => ({ ...pre, query: true }));
     try {
       const response = await searchQuery({
         query: WILD_CARD_CHAR,
-        queryFilter: createQueryFilter({ tableId, tags, timeRange }),
+        queryFilter: createQueryFilter({ tableId, tags, timeRange, owners }),
         pageNumber: pageNumber,
         pageSize: pageSize,
         searchIndex: SearchIndex.QUERY,
@@ -243,6 +252,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
       const queries = response.hits.hits.map((hit) => hit._source);
       if (isEmpty(queries)) {
+        handlePagingChange({ total: 0 });
         setSelectedQuery(undefined);
         setIsError((pre) => ({
           ...pre,
@@ -279,25 +289,43 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const fetchTags = async (searchText = WILD_CARD_CHAR) => {
+  const fetchOptions = async (
+    searchText: string,
+    filters: string,
+    searchIndex: SearchIndex | SearchIndex[]
+  ) => {
     const response = await searchQuery({
       query: searchText,
-      filters: 'disabled:false AND !classification.name:Tier',
+      filters,
       pageNumber: 1,
       pageSize: PAGE_SIZE_BASE,
-      searchIndex: SearchIndex.TAG,
+      searchIndex,
     });
     const options = response.hits.hits.map((hit) => ({
       key: hit._source.fullyQualifiedName ?? hit._source.name,
-      label: hit._source.name,
+      label: getEntityName(hit._source),
     }));
 
     return options;
   };
 
+  const fetchTags = async (searchText = WILD_CARD_CHAR) => {
+    const filters = 'disabled:false AND !classification.name:Tier';
+    const searchIndex = SearchIndex.TAG;
+
+    return fetchOptions(searchText, filters, searchIndex);
+  };
+
+  const setTagsDefaultOption = () => {
+    setTagsFilter((pre) => ({
+      ...pre,
+      options: uniqBy([...pre.selected, ...pre.initialOptions], 'key'),
+    }));
+  };
+
   const handleTagsSearch = async (searchText: string) => {
     if (isEmpty(searchText)) {
-      setTagsFilter((pre) => ({ ...pre, options: pre.initialTags }));
+      setTagsDefaultOption();
 
       return;
     }
@@ -314,17 +342,17 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const getInitialTagsOptions = async () => {
-    if (!isEmpty(tagsFilter.initialTags)) {
-      setTagsFilter((pre) => ({ ...pre, options: pre.initialTags }));
+    if (!isEmpty(tagsFilter.initialOptions)) {
+      setTagsDefaultOption();
 
       return;
     }
     setIsTagsLoading(true);
     try {
       const options = await fetchTags();
-      setTagsFilter((pre) => ({ ...pre, options, initialTags: options }));
+      setTagsFilter((pre) => ({ ...pre, options, initialOptions: options }));
     } catch (error) {
-      setTagsFilter((pre) => ({ ...pre, options: [], initialTags: [] }));
+      setTagsFilter((pre) => ({ ...pre, options: [], initialOptions: [] }));
     } finally {
       setIsTagsLoading(false);
     }
@@ -333,6 +361,64 @@ const TableQueries: FC<TableQueriesProp> = ({
   const handleTagsFilterChange = (selected: SearchDropdownOption[]) => {
     setTagsFilter((pre) => ({ ...pre, selected }));
     fetchFilteredQueries({ tags: selected, timeRange: queryDateFilter });
+  };
+
+  const fetchOwner = async (searchText = WILD_CARD_CHAR) => {
+    const filters = 'isBot:false';
+    const searchIndex = [SearchIndex.USER, SearchIndex.TEAM];
+
+    return fetchOptions(searchText, filters, searchIndex);
+  };
+
+  const setOwnerDefaultOption = () => {
+    setOwnerFilter((pre) => ({
+      ...pre,
+      options: uniqBy([...pre.selected, ...pre.initialOptions], 'key'),
+    }));
+  };
+
+  const getInitialOwnerOptions = async () => {
+    if (!isEmpty(ownerFilter.initialOptions)) {
+      setOwnerDefaultOption();
+
+      return;
+    }
+    setIsOwnerLoading(true);
+    try {
+      const options = await fetchOwner();
+      setOwnerFilter((pre) => ({ ...pre, options, initialOptions: options }));
+    } catch (error) {
+      setOwnerFilter((pre) => ({ ...pre, options: [], initialOptions: [] }));
+    } finally {
+      setIsOwnerLoading(false);
+    }
+  };
+
+  const handleOwnerFilterChange = (selected: SearchDropdownOption[]) => {
+    setOwnerFilter((pre) => ({ ...pre, selected }));
+    fetchFilteredQueries({
+      tags: tagsFilter.selected,
+      timeRange: queryDateFilter,
+      owners: selected,
+    });
+  };
+
+  const handleOwnerSearch = async (searchText: string) => {
+    if (isEmpty(searchText)) {
+      setOwnerDefaultOption();
+
+      return;
+    }
+
+    setIsOwnerLoading(true);
+    try {
+      const options = await fetchOwner(searchText);
+      setOwnerFilter((pre) => ({ ...pre, options }));
+    } catch (error) {
+      setOwnerFilter((pre) => ({ ...pre, options: [] }));
+    } finally {
+      setIsOwnerLoading(false);
+    }
   };
 
   const onDateChange: RangePickerProps['onChange'] = (values) => {
@@ -484,6 +570,18 @@ const TableQueries: FC<TableQueriesProp> = ({
               <Space size={16}>
                 <SearchDropdown
                   hideCounts
+                  isSuggestionsLoading={isOwnerLoading}
+                  label={t('label.owner')}
+                  options={ownerFilter.options}
+                  searchKey="owner"
+                  selectedKeys={ownerFilter.selected}
+                  onChange={handleOwnerFilterChange}
+                  onGetInitialOptions={getInitialOwnerOptions}
+                  onSearch={handleOwnerSearch}
+                />
+
+                <SearchDropdown
+                  hideCounts
                   isSuggestionsLoading={isTagsLoading}
                   label={t('label.tag')}
                   options={tagsFilter.options}
@@ -555,25 +653,27 @@ const TableQueries: FC<TableQueriesProp> = ({
           ) : (
             <>
               {queryTabBody}
-              <Col span={24}>
-                <Pagination
-                  hideOnSinglePage
-                  showSizeChanger
-                  className="text-center m-b-sm"
-                  current={currentPage}
-                  pageSize={pageSize}
-                  pageSizeOptions={[10, 25, 50]}
-                  total={paging.total}
-                  onChange={pagingHandler}
-                  onShowSizeChange={handlePageSizeChange}
-                />
-              </Col>
+              {showPagination && (
+                <Col span={24}>
+                  <Pagination
+                    hideOnSinglePage
+                    showSizeChanger
+                    className="text-center m-b-sm"
+                    current={currentPage}
+                    pageSize={pageSize}
+                    pageSizeOptions={[10, 25, 50]}
+                    total={paging.total}
+                    onChange={pagingHandler}
+                    onShowSizeChange={handlePageSizeChange}
+                  />
+                </Col>
+              )}
             </>
           )}
         </Row>
       </Col>
-      <Col flex="400px">
-        {selectedQuery && (
+      {selectedQuery && (
+        <Col flex="400px">
           <div className="sticky top-0">
             <TableQueryRightPanel
               isLoading={isLoading.rightPanel}
@@ -582,8 +682,8 @@ const TableQueries: FC<TableQueriesProp> = ({
               onQueryUpdate={handleQueryUpdate}
             />
           </div>
-        )}
-      </Col>
+        </Col>
+      )}
     </Row>
   );
 };

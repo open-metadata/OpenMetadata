@@ -18,24 +18,36 @@ import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDrop
 export const createQueryFilter = ({
   tableId,
   tags,
+  owners,
   timeRange,
 }: {
   tableId: string;
   tags?: SearchDropdownOption[];
+  owners?: SearchDropdownOption[];
   timeRange?: { startTs: number; endTs: number };
 }) => {
-  const tagFilter =
-    tags && tags.length
-      ? [
-          {
-            bool: {
-              should: tags.map((data) => ({
-                term: { 'tags.tagFQN': data.key },
-              })),
-            },
+  const tagFilter = tags?.length
+    ? [
+        {
+          bool: {
+            should: tags.map((data) => ({
+              term: { 'tags.tagFQN': data.key },
+            })),
           },
-        ]
-      : [];
+        },
+      ]
+    : [];
+  const ownerFilter = owners?.length
+    ? [
+        {
+          bool: {
+            should: owners.map((data) => ({
+              term: { 'owner.fullyQualifiedName': data.key },
+            })),
+          },
+        },
+      ]
+    : [];
   const timeRangeFilter = timeRange
     ? [
         {
@@ -54,6 +66,7 @@ export const createQueryFilter = ({
         must: [
           { term: { 'queryUsedIn.id': tableId } },
           ...tagFilter,
+          ...ownerFilter,
           ...timeRangeFilter,
         ],
       },

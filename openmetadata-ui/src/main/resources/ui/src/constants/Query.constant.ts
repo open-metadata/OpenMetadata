@@ -30,8 +30,8 @@ export const QUERY_PAGE_FILTER = {
   team: [],
   user: [],
 };
-export const QUERY_PAGE_DEFAULT_TAGS_FILTER = {
-  initialTags: [],
+export const QUERY_PAGE_DEFAULT_FILTER = {
+  initialOptions: [],
   options: [],
   selected: [],
 };
