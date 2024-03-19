@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import {
@@ -283,15 +284,11 @@ class EntityUtilClassBase {
     }
   }
 
-  public getManageExtraOptions(entityType: string, _: string): ItemType[] {
-    switch (entityType) {
-      case EntityType.TABLE: {
-        return [];
-      }
-      default: {
-        return [];
-      }
-    }
+  public getManageExtraOptions(
+    _entityType?: EntityTabs,
+    _fqn?: string
+  ): ItemType[] {
+    return [];
   }
 }
 
