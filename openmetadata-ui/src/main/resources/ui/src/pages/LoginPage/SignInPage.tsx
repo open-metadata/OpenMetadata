@@ -51,16 +51,11 @@ const SignInPage = () => {
 
   const { t } = useTranslation();
 
-  const { isAuthProviderBasic } = useMemo(() => {
+  const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {
       isAuthProviderBasic:
         authConfig?.provider === AuthProvider.Basic ||
         authConfig?.provider === AuthProvider.LDAP,
-    };
-  }, [authConfig]);
-
-  const { isAuthProviderLDAP } = useMemo(() => {
-    return {
       isAuthProviderLDAP: authConfig?.provider === AuthProvider.LDAP,
     };
   }, [authConfig]);

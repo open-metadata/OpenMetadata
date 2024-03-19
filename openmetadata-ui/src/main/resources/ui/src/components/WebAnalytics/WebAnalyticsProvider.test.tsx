@@ -16,10 +16,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import WebAnalyticsProvider from './WebAnalyticsProvider';
 
-jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockReturnValue({ currentUser: { id: '123' } }),
-}));
-
 describe('Test WebAnalytics Component', () => {
   it('Should render the child component', async () => {
     await act(async () => {

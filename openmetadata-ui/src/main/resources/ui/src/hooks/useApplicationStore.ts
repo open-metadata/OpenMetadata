@@ -99,6 +99,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       handleSuccessfulLogin: () => {
         // This is a placeholder function that will be replaced by the actual function
       },
+      handleFailedLogin: () => {
+        // This is a placeholder function that will be replaced by the actual function
+      },
       updateAxiosInterceptors: () => {
         // This is a placeholder function that will be replaced by the actual function
       },

@@ -63,6 +63,7 @@ export interface IAuthContext {
   updateNewUser: (user: UserProfile) => void;
   setLoadingIndicator: (authenticated: boolean) => void;
   handleSuccessfulLogin: (user: OidcUser) => void;
+  handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
   updateCurrentUser: (user: User) => void;
   jwtPrincipalClaims: string[];
