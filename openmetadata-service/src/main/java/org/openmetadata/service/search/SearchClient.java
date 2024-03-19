@@ -11,7 +11,6 @@ import java.util.TreeMap;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
-
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
@@ -75,7 +74,9 @@ public interface SearchClient {
 
   Response search(SearchRequest request) throws IOException;
 
-  SearchResultListMapper listWithOffset(String filter, int limit, int offset, String index, String sortField, String sortType) throws IOException;
+  SearchResultListMapper listWithOffset(
+      String filter, int limit, int offset, String index, String sortField, String sortType)
+      throws IOException;
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
@@ -180,6 +181,7 @@ public interface SearchClient {
   class SearchResultListMapper {
     public List<Map<String, Object>> results;
     public long total;
+
     public SearchResultListMapper(List<Map<String, Object>> results, long total) {
       this.results = results;
       this.total = total;

@@ -9,7 +9,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -47,7 +46,8 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   }
 
   private List<TestPlatform> getTestDefinitionPlatforms(UUID testDefinitionId) {
-    TestDefinition testDefinition = Entity.getEntity(Entity.TEST_DEFINITION, testDefinitionId, "", Include.ALL);
+    TestDefinition testDefinition =
+        Entity.getEntity(Entity.TEST_DEFINITION, testDefinitionId, "", Include.ALL);
     return testDefinition.getTestPlatforms();
   }
 

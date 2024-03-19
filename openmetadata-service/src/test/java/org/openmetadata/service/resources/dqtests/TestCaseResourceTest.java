@@ -681,8 +681,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withOwner(USER1_REF);
       Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
       tables.add(table);
-      CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
-      TestSuite testSuite = testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+      CreateTestSuite createTestSuite =
+          testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+      TestSuite testSuite =
+          testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
       testSuites.put(table.getFullyQualifiedName(), testSuite);
     }
 
@@ -700,10 +702,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
       testCases.add(testCase);
       TestCaseResult testCaseResult =
-              new TestCaseResult()
-                      .withResult("tested")
-                      .withTestCaseStatus(TestCaseStatus.Success)
-                      .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
+          new TestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
       putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
     validateEntityListFromSearchWithPagination(new HashMap<>(), testCases.size());

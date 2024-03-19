@@ -472,17 +472,16 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public SearchResultListMapper listWithOffset(String filter, int limit, int offset, String index, String sortField, String sortType)
-  throws IOException {
+  public SearchResultListMapper listWithOffset(
+      String filter, int limit, int offset, String index, String sortField, String sortType)
+      throws IOException {
     List<Map<String, Object>> results = new ArrayList<>();
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     try {
-      XContentParser parser = XContentType.JSON
+      XContentParser parser =
+          XContentType.JSON
               .xContent()
-              .createParser(
-                      xContentRegistry,
-                      LoggingDeprecationHandler.INSTANCE,
-                      filter);
+              .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
       QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(parser).query();
       searchSourceBuilder.postFilter(queryFromXContent);
     } catch (Exception e) {
@@ -496,22 +495,18 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.sort(sortField, SortOrder.fromString(sortType));
     }
     try {
-      SearchResponse response = client
-                      .search(
-                              new es.org.elasticsearch.action.search.SearchRequest(index)
-                                      .source(searchSourceBuilder),
-                              RequestOptions.DEFAULT);
+      SearchResponse response =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(index)
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
       SearchHits searchHits = response.getHits();
       SearchHit[] hits = searchHits.getHits();
       Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
-      return new SearchResultListMapper(
-              results,
-              searchHits.getTotalHits().value
-      );
+      return new SearchResultListMapper(results, searchHits.getTotalHits().value);
     } catch (ElasticsearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-                String.format("Failed to to find index %s", index));
+        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
       } else {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }

@@ -97,7 +97,13 @@ public class ResultList<T> {
 
   public ResultList(List<T> data, Integer offset, Integer limit, Integer total) {
     this.data = data;
-    paging = new Paging().withBefore(null).withAfter(null).withTotal(total).withOffset(offset).withLimit(limit);
+    paging =
+        new Paging()
+            .withBefore(null)
+            .withAfter(null)
+            .withTotal(total)
+            .withOffset(offset)
+            .withLimit(limit);
   }
 
   public ResultList(

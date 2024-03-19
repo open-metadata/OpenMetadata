@@ -146,19 +146,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public ResultList<T> listInternalFromSearch(
-          UriInfo uriInfo,
-          SecurityContext securityContext,
-          Fields fields,
-          SearchListFilter searchListFilter,
-          int limit,
-          int offset,
-          String sortField,
-          String sortType,
-          OperationContext operationContext,
-          ResourceContextInterface resourceContext
-  ) throws IOException {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      String sortField,
+      String sortType,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext)
+      throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, sortField, sortType);
+    return repository.listFromSearchWithOffset(
+        uriInfo, fields, searchListFilter, limit, offset, sortField, sortType);
   }
 
   public T getInternal(

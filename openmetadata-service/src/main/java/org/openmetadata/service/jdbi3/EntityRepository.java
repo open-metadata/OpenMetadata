@@ -330,7 +330,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected void clearSearchFields(Map<String, Object> json) {
     // No-op
-  };
+  }
+  ;
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
@@ -990,31 +991,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
       searchRepository.softDeleteOrRestoreEntity(entity, false);
     }
   }
+
   public ResultList<T> listFromSearchWithOffset(
-          UriInfo uriInfo,
-          Fields fields,
-          SearchListFilter searchListFilter,
-          int limit,
-          int offset) throws IOException {
-    return listFromSearchWithOffset(
-            uriInfo, fields, searchListFilter, limit, offset, null, null
-    );
+      UriInfo uriInfo, Fields fields, SearchListFilter searchListFilter, int limit, int offset)
+      throws IOException {
+    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, null);
   }
 
   public ResultList<T> listFromSearchWithOffset(
-          UriInfo uriInfo,
-          Fields fields,
-          SearchListFilter searchListFilter,
-          int limit,
-          int offset,
-          String sortField,
-          String sortType
-  ) throws IOException {
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      String sortField,
+      String sortType)
+      throws IOException {
     List<T> entityList = new ArrayList<>();
     Long total = 0L;
 
     if (limit > 0) {
-      SearchClient.SearchResultListMapper results = searchRepository.listWithOffset(searchListFilter, limit, offset, entityType, sortField, sortType);
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, sortField, sortType);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         clearSearchFieldsInternal(json); // clear search index fields

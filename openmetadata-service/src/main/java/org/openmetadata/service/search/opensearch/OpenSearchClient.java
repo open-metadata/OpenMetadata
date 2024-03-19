@@ -25,6 +25,7 @@ import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.index.IndexNotFoundException;
+import es.org.elasticsearch.rest.RestStatus;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -41,8 +42,6 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
-
-import es.org.elasticsearch.rest.RestStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -61,7 +60,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
@@ -467,17 +465,16 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public SearchResultListMapper listWithOffset(String filter, int limit, int offset, String index, String sortField, String sortType)
-          throws IOException {
+  public SearchResultListMapper listWithOffset(
+      String filter, int limit, int offset, String index, String sortField, String sortType)
+      throws IOException {
     List<Map<String, Object>> results = new ArrayList<>();
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     try {
-      XContentParser parser = XContentType.JSON
+      XContentParser parser =
+          XContentType.JSON
               .xContent()
-              .createParser(
-                      X_CONTENT_REGISTRY,
-                      LoggingDeprecationHandler.INSTANCE,
-                      filter);
+              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, filter);
       QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(parser).query();
       searchSourceBuilder.postFilter(queryFromXContent);
     } catch (Exception e) {
@@ -491,22 +488,17 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort(sortField, SortOrder.fromString(sortType));
     }
     try {
-      SearchResponse response = client
-              .search(
-                      new os.org.opensearch.action.search.SearchRequest(index)
-                              .source(searchSourceBuilder),
-                      RequestOptions.DEFAULT);
+      SearchResponse response =
+          client.search(
+              new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
       SearchHits searchHits = response.getHits();
       SearchHit[] hits = searchHits.getHits();
       Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
-      return new SearchResultListMapper(
-              results,
-              searchHits.getTotalHits().value
-      );
+      return new SearchResultListMapper(results, searchHits.getTotalHits().value);
     } catch (ElasticsearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-                String.format("Failed to to find index %s", index));
+        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
       } else {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }

@@ -712,7 +712,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void validateEntityListFromSearchWithPagination(Map<String, String> queryParams, Integer maxEntities) throws IOException {
+  protected void validateEntityListFromSearchWithPagination(
+      Map<String, String> queryParams, Integer maxEntities) throws IOException {
     // List all entities and use it for checking pagination
     Random rand = new Random();
 
@@ -722,8 +723,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       queryParams.put("include", include.value());
 
-      ResultList<T> allEntities =
-              listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
+      ResultList<T> allEntities = listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
@@ -738,11 +738,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         int pageCount = 0;
         do {
           LOG.debug(
-                  "Limit {} forward pageCount {} totalRecords {} offset {}",
-                  limit,
-                  pageCount,
-                  totalRecords,
-                  offset);
+              "Limit {} forward pageCount {} totalRecords {} offset {}",
+              limit,
+              pageCount,
+              totalRecords,
+              offset);
           forwardPage = listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
           assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
 
@@ -750,7 +750,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             assertEquals(offset, 0);
           } else {
             // Make sure scrolling back based on offset - limit cursor returns the correct result
-            backwardPage = listEntitiesFromSearch(queryParams, limit, (offset - limit), ADMIN_AUTH_HEADERS);
+            backwardPage =
+                listEntitiesFromSearch(queryParams, limit, (offset - limit), ADMIN_AUTH_HEADERS);
             assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
           }
           offset = offset + limit;
@@ -759,7 +760,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           pageCount++;
         } while (offset < totalRecords);
 
-        // We reached the end of the page check total cum number matches total records and paginate backward
+        // We reached the end of the page check total cum number matches total records and paginate
+        // backward
         assertEquals(totalRecords, cumEntityCount);
 
         pageCount = 0;
@@ -767,11 +769,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
         do {
           LOG.debug(
-                  "Limit {} backward pageCount {} totalRecords {} offset {}",
-                  limit,
-                  pageCount,
-                  totalRecords,
-                  offset);
+              "Limit {} backward pageCount {} totalRecords {} offset {}",
+              limit,
+              pageCount,
+              totalRecords,
+              offset);
           offset = offset - limit;
           backwardPage = listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
           assertEntityPagination(allEntities.getData(), backwardPage, limit, offset);
@@ -3105,11 +3107,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public ResultList<T> listEntitiesFromSearch(
-        Map<String, String> queryParams,
-        Integer limit,
-        Integer offset,
-        Map<String, String> authHeader
-  ) throws HttpResponseException {
+      Map<String, String> queryParams,
+      Integer limit,
+      Integer offset,
+      Map<String, String> authHeader)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/search/list");
     for (Map.Entry<String, String> entry : queryParams.entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());

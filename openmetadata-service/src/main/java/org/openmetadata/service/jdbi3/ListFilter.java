@@ -13,7 +13,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public ListFilter() {
-      this(Include.NON_DELETED);
+    this(Include.NON_DELETED);
   }
 
   public ListFilter(Include include) {
