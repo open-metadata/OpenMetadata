@@ -78,7 +78,6 @@ const AppRouter = () => {
   return (
     <Switch>
       {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
-
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
     </Switch>
   );

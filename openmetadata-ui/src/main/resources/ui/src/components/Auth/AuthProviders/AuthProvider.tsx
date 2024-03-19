@@ -15,7 +15,6 @@ import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { LoginCallback } from '@okta/okta-react';
 import {
   AxiosError,
   AxiosRequestHeaders,
@@ -81,7 +80,6 @@ import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
 import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
-import Auth0Callback from '../AppCallbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
@@ -419,7 +417,7 @@ export const AuthProvider = ({
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = window.location.pathname;
 
-    // Do not intercept requests from domains page
+    // Do not intercept requests from domains page or /auth endpoints
     if (
       ['/domain', '/auth/logout', '/auth/refresh'].indexOf(currentPath) > -1
     ) {
@@ -557,20 +555,6 @@ export const AuthProvider = ({
     }
   };
 
-  const getCallBackComponent = () => {
-    switch (authConfig?.provider) {
-      case AuthProviderEnum.Okta: {
-        return LoginCallback;
-      }
-      case AuthProviderEnum.Auth0: {
-        return Auth0Callback;
-      }
-      default: {
-        return null;
-      }
-    }
-  };
-
   const getProtectedApp = () => {
     if (clientType === ClientType.Confidential) {
       return (
@@ -674,7 +658,6 @@ export const AuthProvider = ({
     setHelperFunctionsRef({
       onLoginHandler,
       onLogoutHandler,
-      getCallBackComponent,
       handleSuccessfulLogin,
       handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
