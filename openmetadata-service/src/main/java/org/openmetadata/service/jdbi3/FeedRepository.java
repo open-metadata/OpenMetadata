@@ -771,6 +771,7 @@ public class FeedRepository {
     if (updated.getTask() != null) {
       populateAssignees(updated);
       updated.getTask().getAssignees().sort(compareEntityReference);
+      validateAssignee(updated);
     }
 
     if (updated.getAnnouncement() != null) {
@@ -838,6 +839,13 @@ public class FeedRepository {
 
   private void validateAssignee(Thread thread) {
     if (thread != null && ThreadType.Task.equals(thread.getType())) {
+      String createdByUserName = thread.getCreatedBy();
+      User createdByUser =
+          Entity.getEntityByName(USER, createdByUserName, TEAMS_FIELD, NON_DELETED);
+      if (Boolean.TRUE.equals(createdByUser.getIsBot())) {
+        throw new IllegalArgumentException("Task cannot be created by bot only by user or teams");
+      }
+
       List<EntityReference> assignees = thread.getTask().getAssignees();
 
       // Assignees can only be user or teams
@@ -913,7 +921,7 @@ public class FeedRepository {
   }
 
   private boolean fieldsChanged(Thread original, Thread updated) {
-    // Patch supports isResolved, message, task assignees, reactions, and announcements for now
+    // Patch supports isResolved, message, task assignees, reactions, announcements and AI for now
     return !original.getResolved().equals(updated.getResolved())
         || !original.getMessage().equals(updated.getMessage())
         || (Collections.isEmpty(original.getReactions())
@@ -935,6 +943,10 @@ public class FeedRepository {
                 || !Objects.equals(
                     original.getAnnouncement().getEndTime(),
                     updated.getAnnouncement().getEndTime())))
+        || (original.getChatbot() == null && updated.getChatbot() != null)
+        || (original.getChatbot() != null
+            && updated.getChatbot() != null
+            && !original.getChatbot().getQuery().equals(updated.getChatbot().getQuery()))
         || (original.getTask() != null
             && (original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
                 || !original
