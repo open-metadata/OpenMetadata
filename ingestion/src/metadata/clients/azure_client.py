@@ -98,13 +98,3 @@ class AzureClient:
         except Exception as e:
             logger.error(f"Error creating Secret Client: {e}")
             raise e
-
-
-# from unittest.mock import Mock
-# from azure.identity import ClientSecretCredential
-
-# def test_client_secret_credential():
-#     mock_send = Mock(return_value=mock_response(json_payload=token_payload))
-#     transport = Mock(send=wrap_in_future(mock_send))
-#     scope = "scope"
-#     credential = ClientSecretCredential("tenant-id", "client-id", "secret", transport=transport)
