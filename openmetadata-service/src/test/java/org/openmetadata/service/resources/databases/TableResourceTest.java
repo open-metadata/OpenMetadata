@@ -2316,9 +2316,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column c1 = new Column().withName("c1").withDataType(STRUCT);
     Column c11 = new Column().withName("c11").withDataType(INT);
     Column c2 = new Column().withName("c2").withDataType(INT);
+    Column c3 = new Column().withName("c3").withDataType(BIGINT);
     c1.withChildren(listOf(c11));
     CreateTable createTable =
-        createRequest("s1").withColumns(listOf(c1, c2)).withTableConstraints(null);
+        createRequest("s1").withColumns(listOf(c1, c2, c3)).withTableConstraints(null);
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
@@ -2330,7 +2331,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     + "dsp1-new,desc1,type,PII.Sensitive",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
             ",,,,,,,,c1.c11,dsp11-new,desc11,type1,PII.Sensitive",
-            ",,,,,,,,c2,,,,");
+            ",,,,,,,,c2,,,,",
+            ",,,,,,,,c3,,,,");
 
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);

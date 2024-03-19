@@ -918,14 +918,10 @@ describe('Glossary page should work properly', { tags: 'Glossary' }, () => {
 
     cy.get('[data-testid="request-entity-tags"]').should('exist').click();
 
-    // set assignees for task
+    // check assignees for task which will be owner of the glossary term
     cy.get(
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
-    )
-      .click()
-      .type(userName);
-    cy.get(`[data-testid="${userName}"]`).click();
-    cy.clickOutside();
+    ).should('contain', 'admin');
 
     cy.get('[data-testid="tag-selector"]')
       .click()
