@@ -18,10 +18,10 @@ import json
 import random
 import traceback
 from typing import Any, Dict, List, Optional, Union, cast
-from metadata.parsers.json_schema_parser import parse_json_schema
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
+from metadata.parsers.json_schema_parser import parse_json_schema
 from metadata.readers.dataframe.models import (
     DatalakeColumnWrapper,
     DatalakeTableSchemaWrapper,
@@ -118,7 +118,7 @@ class DataFrameColumnParser:
         file_type: Optional[SupportedTypes] = None,
         sample: bool = True,
         shuffle: bool = False,
-        raw_data: Any = None
+        raw_data: Any = None,
     ):
         """Instantiate a column parser object with the appropriate parser
 
@@ -498,9 +498,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
         """
         if self.raw_data:
             try:
-                return parse_json_schema(
-                    schema_text=self.raw_data, cls=Column
-                )
+                return parse_json_schema(schema_text=self.raw_data, cls=Column)
             except Exception as exc:
                 logger.warning(f"Unable to parse the json schema: {exc}")
                 logger.debug(traceback.format_exc())

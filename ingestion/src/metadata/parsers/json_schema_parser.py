@@ -38,7 +38,7 @@ class JsonSchemaDataTypes(Enum):
     NULL = "null"
     RECORD = "object"
     ARRAY = "array"
-    UNKNOWN = "unknown" 
+    UNKNOWN = "unknown"
 
 
 def parse_json_schema(
@@ -79,7 +79,7 @@ def get_json_schema_fields(
                 cls(
                     name=key,
                     displayName=value.get("title"),
-                    dataType=JsonSchemaDataTypes(value.get("type","unknown")).name,
+                    dataType=JsonSchemaDataTypes(value.get("type", "unknown")).name,
                     description=value.get("description"),
                     children=get_json_schema_fields(value.get("properties"))
                     if value.get("type") == "object"
