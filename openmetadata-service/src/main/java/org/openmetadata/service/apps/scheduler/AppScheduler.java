@@ -26,7 +26,6 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -67,7 +66,7 @@ public class AppScheduler {
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
-  public static final String SEARCH_CLIENT_KEY = "searchClientKey";
+  public static final String APP_ID_KEY = "appID";
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
@@ -177,7 +176,7 @@ public class AppScheduler {
 
   private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(APP_INFO_KEY, JsonUtils.pojoToJson(app));
+    dataMap.put(APP_ID_KEY, app.getId());
     dataMap.put("triggerType", app.getAppSchedule().getScheduleTimeline().value());
     Class<? extends NativeApplication> clz =
         (Class<? extends NativeApplication>) Class.forName(app.getClassName());
@@ -251,6 +250,7 @@ public class AppScheduler {
                 application,
                 String.format("%s-%s", application.getName(), AppRunType.OnDemand.value()));
         newJobDetail.getJobDataMap().put("triggerType", AppRunType.OnDemand.value());
+        newJobDetail.getJobDataMap().put(APP_ID_KEY, application.getId());
         Trigger trigger =
             TriggerBuilder.newTrigger()
                 .withIdentity(
