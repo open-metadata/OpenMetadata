@@ -13,39 +13,18 @@
 
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
+import { Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
-import { ClientType } from '../../generated/configuration/authenticationConfiguration';
-import { AuthProvider } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import SamlCallback from '../../pages/SamlCallback';
-import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import Loader from '../common/Loader/Loader';
+import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
-const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LoginPage/SignInPage'))
-);
 const PageNotFound = withSuspenseFallback(
   React.lazy(() => import('../../pages/PageNotFound/PageNotFound'))
-);
-
-const ForgotPassword = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/ForgotPassword/ForgotPassword.component')
-  )
-);
-
-const ResetPassword = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ResetPassword/ResetPassword.component'))
-);
-
-const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/SignUp/BasicSignup.component'))
 );
 
 const AppRouter = () => {
@@ -54,23 +33,7 @@ const AppRouter = () => {
   // web analytics instance
   const analytics = useAnalytics();
 
-  const { authConfig, isAuthenticated, loading, getCallBackComponent } =
-    useApplicationStore();
-
-  const clientType = authConfig?.clientType;
-  const callbackComponent = getCallBackComponent();
-  const oidcProviders = [
-    AuthProvider.Google,
-    AuthProvider.AwsCognito,
-    AuthProvider.CustomOidc,
-  ];
-  const isOidcProvider =
-    authConfig?.provider && oidcProviders.includes(authConfig.provider);
-
-  const isBasicAuthProvider =
-    authConfig &&
-    (authConfig.provider === AuthProvider.Basic ||
-      authConfig.provider === AuthProvider.LDAP);
+  const { isAuthenticated, loading } = useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -112,50 +75,12 @@ const AppRouter = () => {
     return <Loader fullScreen />;
   }
 
-  if (!isAuthenticated && isProtectedRoute(location.pathname)) {
-    return <Redirect to={ROUTES.SIGNIN} />;
-  }
-
-  if ((isOidcProvider || isAuthenticated) && clientType === ClientType.Public) {
-    return <AppContainer />;
-  }
-
   return (
-    <>
-      <Switch>
-        <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-        {callbackComponent ? (
-          <Route component={callbackComponent} path={ROUTES.CALLBACK} />
-        ) : null}
-        <Route
-          component={SamlCallback}
-          path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
-        />
+    <Switch>
+      {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
 
-        {isBasicAuthProvider && (
-          <>
-            <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
-            <Route
-              exact
-              component={ForgotPassword}
-              path={ROUTES.FORGOT_PASSWORD}
-            />
-            <Route
-              exact
-              component={ResetPassword}
-              path={ROUTES.RESET_PASSWORD}
-            />
-            <Route
-              exact
-              component={AccountActivationConfirmation}
-              path={ROUTES.ACCOUNT_ACTIVATION}
-            />
-          </>
-        )}
-        {isAuthenticated && <AppContainer />}
-        <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-      </Switch>
-    </>
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+    </Switch>
   );
 };
 

@@ -150,6 +150,8 @@ export const AuthProvider = ({
     clearTimeout(timeoutId);
 
     authenticatorRef.current?.invokeLogout();
+    setIsUserAuthenticated(false);
+
     // reset the user details on logout
     setCurrentUser({} as User);
 

@@ -18,13 +18,13 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
-    const { setIsAuthenticated, setIsSigningIn } = useAuthContext();
+    const { setIsAuthenticated, setIsSigningIn, removeOidcToken } =
+      useApplicationStore();
     const history = useHistory();
 
     const handleLogin = () => {
@@ -36,9 +36,9 @@ export const GenericAuthenticator = forwardRef(
     const handleLogout = async () => {
       await logoutUser();
 
-      localState.removeOidcToken();
-      setIsAuthenticated(false);
       history.push(ROUTES.SIGNIN);
+      removeOidcToken();
+      setIsAuthenticated(false);
     };
 
     const handleSilentSignIn = async () => {
