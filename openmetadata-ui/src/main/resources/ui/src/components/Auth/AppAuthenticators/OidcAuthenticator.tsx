@@ -147,6 +147,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               </>
             )}
           />
+
           <Route
             path={ROUTES.SILENT_CALLBACK}
             render={() => (
