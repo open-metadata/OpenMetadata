@@ -214,7 +214,9 @@ class DagsterSource(PipelineServiceSource):
             service_name=self.context.pipeline_service,
             pipeline_name=self.context.pipeline,
         )
-        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        pipeline_entity = self.metadata.get_by_name(
+            entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"]
+        )
         for task in pipeline_entity.tasks or []:
             try:
                 runs = self.client.get_task_runs(
