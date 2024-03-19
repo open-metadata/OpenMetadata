@@ -244,7 +244,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                                     mediaType = "application/json",
                                     schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
             })
-    public ResultList<TestCase> listByLastExecution(
+    public ResultList<TestCase> listFromSearch(
             @Context UriInfo uriInfo,
             @Context SecurityContext securityContext,
             @Parameter(
@@ -262,6 +262,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     description = "Returns list of tests after this offset",
                     schema = @Schema(type = "string"))
             @QueryParam("offset")
+            @DefaultValue("0")
+            @Min(0)
             int offset,
             @Parameter(
                     description = "Return list of tests by entity link",

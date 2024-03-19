@@ -61,7 +61,7 @@ public abstract class OpenMetadataApplicationTest {
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
-  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = false;
+  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = true;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
