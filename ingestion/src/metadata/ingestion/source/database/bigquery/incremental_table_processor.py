@@ -17,10 +17,12 @@ from typing import List, Optional
 import google.cloud.logging
 from google.cloud.logging_v2.entries import LogEntry
 
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.bigquery.models import (
     BigQueryTable,
     BigQueryTableMap,
     TableName,
+    SchemaName,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING,
@@ -30,7 +32,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
 class BigQueryIncrementalTableProcessor:
     def __init__(self, client: google.cloud.logging.Client):
         self._client = client
-        self._changed_tables_map: Optional[BigQueryTableMap] = None
+        self._changed_tables_map = BigQueryTableMap(table_map={})
 
     @classmethod
     def from_project(cls, project: str) -> "BigQueryIncrementalTableProcessor":
@@ -42,10 +44,12 @@ class BigQueryIncrementalTableProcessor:
             return True
         return False
 
-    def set_changed_tables_map(self, project: str, dataset: str, start_date: datetime):
-        if self._changed_tables_map:
-            return
-
+    def set_changed_tables_map(
+        self,
+        project: str,
+        dataset: str,
+        start_date: datetime,
+    ):
         table_map = {}
 
         resource_names = [f"projects/{project}"]
@@ -70,14 +74,14 @@ class BigQueryIncrementalTableProcessor:
                 table_map[table_name] = BigQueryTable(
                     name=table_name, timestamp=timestamp, deleted=deleted
                 )
-        self._changed_tables_map = BigQueryTableMap(table_map=table_map)
+        self._changed_tables_map.add(dataset, table_map)
 
-    def get_deleted(self) -> List[TableName]:
+    def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
         if self._changed_tables_map:
-            return self._changed_tables_map.get_deleted()
+            return self._changed_tables_map.get_deleted(schema_name)
         return []
 
-    def get_not_deleted(self) -> List[TableName]:
+    def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
         if self._changed_tables_map:
-            return self._changed_tables_map.get_not_deleted()
+            return self._changed_tables_map.get_not_deleted(schema_name)
         return []

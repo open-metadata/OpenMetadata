@@ -96,7 +96,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 )
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -242,6 +242,9 @@ class BigquerySource(
             BigQueryIncrementalTableProcessor
         ] = None
 
+        self.incremental.enabled = True
+        self.incremental.start_timestamp = 1710858294000
+
         if self.incremental.enabled:
             logger.info(
                 "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
@@ -303,30 +306,10 @@ class BigquerySource(
         )
 
         if self.incremental.enabled:
-            self.incremental_table_processor.set_changed_tables_map(
-                project=self.client.project,
-                dataset=schema_name,
-                start_date=self.incremental.start_datetime_utc,
-            )
-
-            self.context.get_global().deleted_tables.extend(
-                [
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=schema_name,
-                        table_name=table_name,
-                    )
-                    for table_name in self.incremental_table_processor.get_deleted()
-                ]
-            )
-
             table_names_and_types = [
                 (table_name, table_type)
                 for table_name, table_type in table_names_and_types
-                if table_name in self.incremental_table_processor.get_not_deleted()
+                if table_name in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
         return [
@@ -352,33 +335,10 @@ class BigquerySource(
         view_names = self.inspector.get_view_names(schema_name) or []
 
         if self.incremental.enabled:
-            # NOTE: This is commented since it's already done within `query_table_names_and_types`
-            # that gets called before. We should find a better way of guaranteeing this
-
-            # self.incremental_table_processor.set_changed_tables_map(
-            #     project=self.client.project,
-            #     dataset=schema_name,
-            #     start_date=self.incremental.start_datetime_utc
-            # )
-            #
-            # self.context.get_global().deleted_tables.extend(
-            #     [
-            #         fqn.build(
-            #             metadata=self.metadata,
-            #             entity_type=Table,
-            #             service_name=self.context.get().database_service,
-            #             database_name=self.context.get().database,
-            #             schema_name=schema_name,
-            #             table_name=table_name
-            #         )
-            #         for table_name in self.incremental_table_processor.get_deleted()
-            #     ]
-            # )
-
             view_names = [
                 view_name
                 for view_name in view_names
-                if view_name in self.incremental_table_processor.get_not_deleted()
+                if view_name in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
         return [
@@ -455,6 +415,57 @@ class BigquerySource(
                 f"Failed to fetch dataset description for [{schema_name}]: {err}"
             )
         return ""
+
+    def _prepare_schema_incremental_data(self, schema_name: str):
+        """Prepares the data for Incremental Extraction.
+
+            1. Queries Cloud Logging for the changes
+            2. Sets the table map with the changes within the BigQueryIncrementalTableProcessor
+            3. Adds the Deleted Tables to the context
+        """
+        self.incremental_table_processor.set_changed_tables_map(
+            project=self.client.project,
+            dataset=schema_name,
+            start_date=self.incremental.start_datetime_utc,
+        )
+
+        self.context.get_global().deleted_tables.extend(
+            [
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                for table_name in self.incremental_table_processor.get_deleted(schema_name)
+            ]
+        )
+
+    def _get_filtered_schema_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
+        for schema_name in self.get_raw_database_schema_names():
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            if filter_by_schema(
+                self.source_config.schemaFilterPattern,
+                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
+            ):
+                if add_to_status:
+                    self.status.filter(schema_fqn, "Schema Filtered Out")
+                continue
+
+            if self.incremental.enabled:
+                self._prepare_schema_incremental_data(schema_name)
+
+            yield schema_fqn if return_fqn else schema_name
 
     def yield_database_schema(
         self, schema_name: str

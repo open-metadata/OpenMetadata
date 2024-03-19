@@ -196,19 +196,6 @@ class RedshiftSource(
                     schema_name=schema_name
                 )
             ]
-            self.context.get_global().deleted_tables.extend(
-                fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                )
-                for table_name in self.incremental_table_processor.get_deleted(
-                    schema_name=schema_name
-                )
-            )
 
         return [
             TableNameAndType(
@@ -241,9 +228,6 @@ class RedshiftSource(
                 )
             ]
 
-            # Already done on `query_table_names_and_types`. Need to find a better way to guarantee we are only doing it once. (or use a Set :think:)
-            # self.context.deleted_tables.extend(self.incremental_table_processor.get_deleted(schema_name=schema_name))
-
         return [
             TableNameAndType(name=table_name, type_=TableType.View)
             for table_name in result
@@ -258,6 +242,12 @@ class RedshiftSource(
         yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
     def _set_incremental_table_processor(self, database: str):
+        """Prepares the needed data for doing incremental metadata extration for a given database.
+
+            1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
+            2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
+            3. Sets the deleted tables in the context
+        """
         if self.incremental.enabled:
             self.incremental_table_processor = RedshiftIncrementalTableProcessor.create(
                 self.connection, self.inspector.default_schema_name
@@ -265,6 +255,18 @@ class RedshiftSource(
 
             self.incremental_table_processor.set_table_map(
                 database=database, start_date=self.incremental.start_datetime_utc
+            )
+
+            self.context.get_global().deleted_tables.extend(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                for schema_name, table_name in self.incremental_table_processor.get_deleted()
             )
 
     def get_database_names(self) -> Iterable[str]:

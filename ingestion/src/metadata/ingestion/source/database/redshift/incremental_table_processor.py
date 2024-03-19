@@ -14,7 +14,7 @@ Incremental Processor for Redshift
 """
 import re
 from datetime import datetime
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from sqlalchemy.engine import Connection
 
@@ -182,7 +182,7 @@ class RedshiftIncrementalTableProcessor:
             if not match_found:
                 logger.debug("Match not found for %s", statement)
 
-    def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
+    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName,TableName]]:
         """Returns the deleted table names present in the table_map for a given schema."""
         return self.table_map.get_deleted(schema_name)
 
