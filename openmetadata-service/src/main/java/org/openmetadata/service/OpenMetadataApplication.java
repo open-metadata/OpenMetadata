@@ -210,7 +210,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
-    ApplicationHandler.initialize(catalogConfig, getDao(jdbi));
+    ApplicationHandler.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
