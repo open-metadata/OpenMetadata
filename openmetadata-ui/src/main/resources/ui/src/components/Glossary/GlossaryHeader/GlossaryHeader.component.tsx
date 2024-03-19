@@ -45,10 +45,7 @@ import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHead
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  DE_ACTIVE_COLOR,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
@@ -74,7 +71,8 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -93,7 +91,7 @@ const GlossaryHeader = ({
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { version } = useParams<{
     version: string;
@@ -533,13 +531,7 @@ const GlossaryHeader = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={
-                      <Icon
-                        className="vertical-align-text-top"
-                        component={VersionIcon}
-                        style={DATA_ASSET_ICON_DIMENSION}
-                      />
-                    }
+                    icon={<Icon component={VersionIcon} />}
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {

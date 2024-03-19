@@ -83,7 +83,9 @@ class S3Source(StorageServiceSource):
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: S3Connection = config.serviceConnection.__root__.config
         if not isinstance(connection, S3Connection):
@@ -187,6 +189,7 @@ class S3Source(StorageServiceSource):
             parent=container_details.parent,
             sourceUrl=container_details.sourceUrl,
             fileFormats=container_details.file_formats,
+            fullPath=container_details.fullPath,
         )
         yield Either(right=container_request)
         self.register_record(container_request=container_request)
@@ -213,9 +216,12 @@ class S3Source(StorageServiceSource):
                 client=self.s3_client,
             )
             if columns:
+                prefix = (
+                    f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
+                )
                 return S3ContainerDetails(
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
-                    prefix=f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}",
+                    prefix=prefix,
                     creation_date=bucket_response.creation_date.isoformat(),
                     number_of_objects=self._fetch_metric(
                         bucket_name=bucket_name, metric=S3Metric.NUMBER_OF_OBJECTS
@@ -228,6 +234,7 @@ class S3Source(StorageServiceSource):
                         isPartitioned=metadata_entry.isPartitioned, columns=columns
                     ),
                     parent=parent,
+                    fullPath=self._get_full_path(bucket_name, prefix),
                     sourceUrl=self._get_object_source_url(
                         bucket_name=bucket_name,
                         prefix=metadata_entry.dataPath.strip(KEY_SEPARATOR),
@@ -336,8 +343,26 @@ class S3Source(StorageServiceSource):
             ),
             file_formats=[],
             data_model=None,
+            fullPath=self._get_full_path(bucket_name=bucket_response.name),
             sourceUrl=self._get_bucket_source_url(bucket_name=bucket_response.name),
         )
+
+    def _clean_path(self, path: str) -> str:
+        return path.strip(KEY_SEPARATOR)
+
+    def _get_full_path(self, bucket_name: str, prefix: str = None) -> Optional[str]:
+        """
+        Method to get the full path of the file
+        """
+        if bucket_name is None:
+            return None
+
+        full_path = f"s3://{self._clean_path(bucket_name)}"
+
+        if prefix:
+            full_path += f"/{self._clean_path(prefix)}"
+
+        return full_path
 
     def _get_sample_file_path(
         self, bucket_name: str, metadata_entry: MetadataEntry

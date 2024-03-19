@@ -59,7 +59,9 @@ class ModeSource(DashboardServiceSource):
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: ModeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ModeConnection):

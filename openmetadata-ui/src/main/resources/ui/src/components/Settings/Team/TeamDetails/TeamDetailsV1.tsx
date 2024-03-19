@@ -66,6 +66,7 @@ import {
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { getSuggestions } from '../../../../rest/miscAPI';
@@ -83,7 +84,6 @@ import {
   getDeleteMessagePostFix,
 } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -139,7 +139,7 @@ const TeamDetailsV1 = ({
   const history = useHistory();
   const location = useLocation();
   const { isAdminUser } = useAuth();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { activeTab } = useMemo(() => {
     const param = location.search;
@@ -902,7 +902,11 @@ const TeamDetailsV1 = ({
           ghost
           data-testid="leave-team-button"
           type="primary"
-          onClick={() => deleteUserHandler(currentUser.id, true)}>
+          onClick={(e) => {
+            // Used to stop click propagation event to the header collapsible panel
+            e.stopPropagation();
+            deleteUserHandler(currentUser.id, true);
+          }}>
           {t('label.leave-team')}
         </Button>
       ) : (
@@ -1115,11 +1119,9 @@ const TeamDetailsV1 = ({
           <Collapse
             accordion
             bordered={false}
-            className="header-collapse-custom-collapse"
-            expandIconPosition="end">
+            className="header-collapse-custom-collapse">
             <Collapse.Panel
               className="header-collapse-custom-panel"
-              collapsible="icon"
               data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">

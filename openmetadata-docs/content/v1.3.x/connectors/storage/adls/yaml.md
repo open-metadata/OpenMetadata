@@ -1,10 +1,10 @@
 ---
-title: Run the Azure Connector Externally
-slug: /connectors/storage/azure/yaml
+title: Run the ADLS Connector Externally
+slug: /connectors/storage/adls/yaml
 ---
 
 {% connectorDetailsHeader
-name="Azure"
+name="ADLS"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Metadata"]

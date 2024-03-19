@@ -56,7 +56,9 @@ class SplineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SplineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SplineConnection):
@@ -113,7 +115,7 @@ class SplineSource(PipelineServiceSource):
     ) -> Optional[Table]:
         if not table_name:
             return None
-        for service_name in self.source_config.dbServiceNames:
+        for service_name in self.get_db_service_names():
             table_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Table,
@@ -163,7 +165,7 @@ class SplineSource(PipelineServiceSource):
         """
         Parse all the executions available and create lineage
         """
-        if not self.source_config.dbServiceNames:
+        if not self.get_db_service_names():
             return
         lineage_details = self.client.get_lineage_details(
             pipeline_details.executionPlanId

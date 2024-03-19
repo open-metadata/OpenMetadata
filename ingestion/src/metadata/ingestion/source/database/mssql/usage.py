@@ -19,4 +19,8 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
     sql_stmt = MSSQL_SQL_STATEMENT
 
-    filters = ""  # No filtering in the queries
+    filters = """
+        AND lower(t.text) NOT LIKE '%%create%%procedure%%'
+        AND lower(t.text) NOT LIKE '%%create%%function%%'
+        AND lower(t.text) NOT LIKE '%%declare%%'
+        """

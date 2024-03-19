@@ -174,7 +174,12 @@ class LookerSource(DashboardServiceSource):
         self._added_lineage: Optional[Dict] = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "LookerSource":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "LookerSource":
         config = WorkflowSource.parse_obj(config_dict)
         connection: LookerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, LookerConnection):
@@ -541,11 +546,13 @@ class LookerSource(DashboardServiceSource):
                     " while processing view lineage."
                 )
 
+            db_service_names = self.get_db_service_names()
+
             if view.sql_table_name:
                 source_table_name = self._clean_table_name(view.sql_table_name)
 
                 # View to the source is only there if we are informing the dbServiceNames
-                for db_service_name in self.source_config.dbServiceNames or []:
+                for db_service_name in db_service_names or []:
                     yield self.build_lineage_request(
                         source=source_table_name,
                         db_service_name=db_service_name,
@@ -556,7 +563,7 @@ class LookerSource(DashboardServiceSource):
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
-                for db_service_name in self.source_config.dbServiceNames or []:
+                for db_service_name in db_service_names or []:
                     db_service = self.metadata.get_by_name(
                         DatabaseService, db_service_name
                     )
