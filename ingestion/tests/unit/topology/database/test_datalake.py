@@ -448,10 +448,10 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_1 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
-        )[0]
+        )[0][0]
         actual_df_2 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_2, decode=True
-        )[0]
+        )[0][0]
 
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
@@ -460,7 +460,7 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_3 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
-        )[0]
+        )[0][0]
         actual_cols_3 = GenericDataFrameColumnParser._get_columns(
             actual_df_3
         )  # pylint: disable=protected-access
@@ -468,7 +468,7 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_4 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
-        )[0]
+        )[0][0]
         actual_cols_4 = GenericDataFrameColumnParser._get_columns(
             actual_df_4
         )  # pylint: disable=protected-access

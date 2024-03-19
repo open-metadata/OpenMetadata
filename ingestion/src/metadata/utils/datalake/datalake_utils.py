@@ -17,7 +17,8 @@ import ast
 import json
 import random
 import traceback
-from typing import Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
+from metadata.parsers.json_schema_parser import parse_json_schema
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -35,6 +36,7 @@ def fetch_dataframe(
     config_source,
     client,
     file_fqn: DatalakeTableSchemaWrapper,
+    fetch_raw_data: bool = False,
     **kwargs,
 ) -> Optional[List["DataFrame"]]:
     """
@@ -60,6 +62,8 @@ def fetch_dataframe(
                 df_wrapper: DatalakeColumnWrapper = df_reader.read(
                     key=key, bucket_name=bucket_name, **kwargs
                 )
+                if fetch_raw_data:
+                    return df_wrapper.dataframes, df_wrapper.raw_data
                 return df_wrapper.dataframes
             except Exception as err:
                 logger.error(
@@ -73,6 +77,8 @@ def fetch_dataframe(
         # Here we need to blow things up. Without the dataframe we cannot move forward
         raise err
 
+    if fetch_raw_data:
+        return None, None
     return None
 
 
@@ -112,6 +118,7 @@ class DataFrameColumnParser:
         file_type: Optional[SupportedTypes] = None,
         sample: bool = True,
         shuffle: bool = False,
+        raw_data: Any = None
     ):
         """Instantiate a column parser object with the appropriate parser
 
@@ -126,8 +133,14 @@ class DataFrameColumnParser:
         data_frame = cls._get_data_frame(data_frame, sample, shuffle)
         if file_type == SupportedTypes.PARQUET:
             parser = ParquetDataFrameColumnParser(data_frame)
-            return cls(parser)
-        parser = GenericDataFrameColumnParser(data_frame)
+        elif file_type in {
+            SupportedTypes.JSON,
+            SupportedTypes.JSONGZ,
+            SupportedTypes.JSONZIP,
+        }:
+            parser = JsonDataFrameColumnParser(data_frame, raw_data=raw_data)
+        else:
+            parser = GenericDataFrameColumnParser(data_frame)
         return cls(parser)
 
     @staticmethod
@@ -172,8 +185,9 @@ class GenericDataFrameColumnParser:
         "bytes": DataType.BYTES,
     }
 
-    def __init__(self, data_frame: "DataFrame"):
+    def __init__(self, data_frame: "DataFrame", raw_data: Any = None):
         self.data_frame = data_frame
+        self.raw_data = raw_data
 
     def get_columns(self):
         """
@@ -472,3 +486,22 @@ class ParquetDataFrameColumnParser:
             data_type = self._data_formats.get(str(column.type), DataType.UNKNOWN)
 
         return data_type
+
+
+# pylint: disable=import-outside-toplevel
+class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
+    """Given a dataframe object generated from a json file, parse the columns and return a list of Column objects."""
+
+    def get_columns(self):
+        """
+        method to process column details for json files
+        """
+        if self.raw_data:
+            try:
+                return parse_json_schema(
+                    schema_text=self.raw_data, cls=Column
+                )
+            except Exception as exc:
+                logger.warning(f"Unable to parse the json schema: {exc}")
+                logger.debug(traceback.format_exc())
+        return self._get_columns(self.data_frame)
