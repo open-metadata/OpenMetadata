@@ -64,7 +64,9 @@ class RedshiftTableMap(BaseModel):
             if table.name not in self.table_map[schema]:
                 self.table_map[schema][table.name] = table
 
-    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName, TableName]]:
+    def get_deleted(
+        self, schema_name: Optional[SchemaName] = None
+    ) -> List[Tuple[SchemaName, TableName]]:
         """Returns all deleted table names for a given schema."""
         if schema_name:
             return [
@@ -76,11 +78,13 @@ class RedshiftTableMap(BaseModel):
         deleted_tables = []
 
         for schema_name in self.table_map:
-            deleted_tables.extend([
-                (schema_name, table.name)
-                for table in self.table_map.get(schema_name, {}).values()
-                if table.deleted
-            ])
+            deleted_tables.extend(
+                [
+                    (schema_name, table.name)
+                    for table in self.table_map.get(schema_name, {}).values()
+                    if table.deleted
+                ]
+            )
 
         return deleted_tables
 

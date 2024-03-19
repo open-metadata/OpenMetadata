@@ -244,9 +244,9 @@ class RedshiftSource(
     def _set_incremental_table_processor(self, database: str):
         """Prepares the needed data for doing incremental metadata extration for a given database.
 
-            1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
-            2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
-            3. Sets the deleted tables in the context
+        1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
+        2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
+        3. Sets the deleted tables in the context
         """
         if self.incremental.enabled:
             self.incremental_table_processor = RedshiftIncrementalTableProcessor.create(

@@ -61,7 +61,6 @@ class BigQueryTableMap(BaseModel):
             if table.deleted
         ]
 
-
     def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
         """Returns all not deleted table names for a given schema."""
         return [

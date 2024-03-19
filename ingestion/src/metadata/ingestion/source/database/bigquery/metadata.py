@@ -309,7 +309,8 @@ class BigquerySource(
             table_names_and_types = [
                 (table_name, table_type)
                 for table_name, table_type in table_names_and_types
-                if table_name in self.incremental_table_processor.get_not_deleted(schema_name)
+                if table_name
+                in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
         return [
@@ -338,7 +339,8 @@ class BigquerySource(
             view_names = [
                 view_name
                 for view_name in view_names
-                if view_name in self.incremental_table_processor.get_not_deleted(schema_name)
+                if view_name
+                in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
         return [
@@ -419,9 +421,9 @@ class BigquerySource(
     def _prepare_schema_incremental_data(self, schema_name: str):
         """Prepares the data for Incremental Extraction.
 
-            1. Queries Cloud Logging for the changes
-            2. Sets the table map with the changes within the BigQueryIncrementalTableProcessor
-            3. Adds the Deleted Tables to the context
+        1. Queries Cloud Logging for the changes
+        2. Sets the table map with the changes within the BigQueryIncrementalTableProcessor
+        3. Adds the Deleted Tables to the context
         """
         self.incremental_table_processor.set_changed_tables_map(
             project=self.client.project,
@@ -439,7 +441,9 @@ class BigquerySource(
                     schema_name=schema_name,
                     table_name=table_name,
                 )
-                for table_name in self.incremental_table_processor.get_deleted(schema_name)
+                for table_name in self.incremental_table_processor.get_deleted(
+                    schema_name
+                )
             ]
         )
 

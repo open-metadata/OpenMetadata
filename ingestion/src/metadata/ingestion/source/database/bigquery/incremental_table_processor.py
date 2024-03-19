@@ -12,17 +12,16 @@
 Bigquery Incremental Table processing logic
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 import google.cloud.logging
 from google.cloud.logging_v2.entries import LogEntry
 
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.bigquery.models import (
     BigQueryTable,
     BigQueryTableMap,
-    TableName,
     SchemaName,
+    TableName,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING,
