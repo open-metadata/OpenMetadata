@@ -212,6 +212,14 @@ public class AbstractNativeApplication implements NativeApplication {
     /* Not needed by default */
   }
 
+  @Override
+  public void raisePreviewMessage(App app) {
+    throw AppException.byMessage(
+        app.getName(),
+        "Preview",
+        "App is in Preview Mode. Enable it from the server configuration.");
+  }
+
   public static AppRuntime getAppRuntime(App app) {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
