@@ -32,7 +32,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -268,8 +268,10 @@ const AppDetails = () => {
       const updatedData = {
         ...appData,
         appSchedule: {
-          scheduleType: ScheduleTimeline.Custom,
-          cronExpression: cron,
+          scheduleTimeline: isEmpty(cron)
+            ? ScheduleTimeline.None
+            : ScheduleTimeline.Custom,
+          ...(cron ? { cronExpression: cron } : {}),
         },
       };
 

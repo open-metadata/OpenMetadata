@@ -38,6 +38,7 @@ import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -249,8 +250,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               .withId(UUID.randomUUID())
               .withName("SearchIndexApp")
               .withClassName("org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp")
-              .withAppSchedule(
-                  new AppSchedule().withScheduleType(AppSchedule.ScheduleTimeline.DAILY))
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.DAILY))
               .withAppConfiguration(
                   new EventPublisherJob()
                       .withEntities(new HashSet<>(List.of("all")))
