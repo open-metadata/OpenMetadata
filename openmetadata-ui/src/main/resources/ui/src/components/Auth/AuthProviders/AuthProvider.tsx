@@ -674,6 +674,7 @@ export const AuthProvider = ({
       onLogoutHandler,
       getCallBackComponent,
       handleSuccessfulLogin,
+      handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
 
