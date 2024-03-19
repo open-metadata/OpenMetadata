@@ -171,6 +171,7 @@ export const ROUTES = {
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/users/password/reset',
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
+  AUTH_CALLBACK: '/auth/callback',
 
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,

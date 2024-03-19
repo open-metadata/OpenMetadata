@@ -44,7 +44,10 @@ import {
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
+import {
+  AuthenticationConfiguration,
+  ClientType,
+} from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -63,7 +66,6 @@ import {
   msalInstance,
   setMsalInstance,
 } from '../../../utils/AuthProvider.util';
-
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
@@ -74,6 +76,7 @@ import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../AppAuthenticators/BasicAuthAuthenticator';
+import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator';
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
@@ -133,8 +136,11 @@ export const AuthProvider = ({
     [authConfig]
   );
 
+  const clientType = authConfig?.clientType ?? ClientType.Public;
+
   const onLoginHandler = () => {
     setLoading(true);
+
     authenticatorRef.current?.invokeLogin();
 
     resetWebAnalyticSession();
@@ -142,7 +148,9 @@ export const AuthProvider = ({
 
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
+
     authenticatorRef.current?.invokeLogout();
+    setIsUserAuthenticated(false);
 
     // reset the user details on logout
     setCurrentUser({} as User);
@@ -359,11 +367,12 @@ export const AuthProvider = ({
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
-          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
+          if (!matchUserDetails(res, updatedUserData, ['email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
             setCurrentUser(res);
           }
+
           handledVerifiedUser();
           // Start expiry timer on successful login
           startTokenExpiryTimer();
@@ -411,7 +420,9 @@ export const AuthProvider = ({
     const currentPath = window.location.pathname;
 
     // Do not intercept requests from domains page
-    if (currentPath.includes('/domain')) {
+    if (
+      ['/domain', '/auth/logout', '/auth/refresh'].indexOf(currentPath) > -1
+    ) {
       return config;
     }
 
@@ -561,6 +572,13 @@ export const AuthProvider = ({
   };
 
   const getProtectedApp = () => {
+    if (clientType === ClientType.Confidential) {
+      return (
+        <GenericAuthenticator ref={authenticatorRef}>
+          {children}
+        </GenericAuthenticator>
+      );
+    }
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
@@ -658,6 +676,7 @@ export const AuthProvider = ({
       onLogoutHandler,
       getCallBackComponent,
       handleSuccessfulLogin,
+      handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
 

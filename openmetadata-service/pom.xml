@@ -23,6 +23,7 @@
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
     <quartz.version>2.3.2</quartz.version>
+    <pac4j.version>5.7.0</pac4j.version>
   </properties>
 
   <dependencyManagement>
@@ -37,6 +38,16 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>pac4j-core</artifactId>
+      <version>${pac4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>pac4j-oidc</artifactId>
+      <version>${pac4j.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
       <artifactId>common</artifactId>

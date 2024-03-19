@@ -29,6 +29,7 @@ export interface HelperFunctions {
   onLogoutHandler: () => void;
   getCallBackComponent: () => FC | null;
   handleSuccessfulLogin: (user: OidcUser) => void;
+  handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
 }
 
