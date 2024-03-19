@@ -291,7 +291,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     // Update Entity Level Stats
     StepStats entityLevelStats = jobDataStats.getEntityStats();
     if (entityLevelStats == null) {
-      entityLevelStats = new StepStats();
+      entityLevelStats =
+          new StepStats().withTotalRecords(null).withFailedRecords(null).withSuccessRecords(null);
     }
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 
