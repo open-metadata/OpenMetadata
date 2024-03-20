@@ -19,11 +19,12 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { SearchIndex } from '../../../enums/search.enum';
 import {
   MOCK_QUERIES,
   MOCK_QUERIES_ES_DATA,
 } from '../../../mocks/Queries.mock';
-import { getQueriesList } from '../../../rest/queryAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
@@ -34,21 +35,36 @@ const mockTableQueriesProp: TableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
-jest.mock('../../common/NextPrevious/NextPrevious', () => {
-  return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
-});
 jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>TableQueryRightPanel.component</div>);
 });
+jest.mock('../../SearchDropdown/SearchDropdown', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>SearchDropdown.component</div>);
+});
 jest.mock('../../../rest/queryAPI', () => ({
-  ...jest.requireActual('../../../rest/queryAPI'),
+  getQueryById: jest.fn().mockImplementation(() => Promise.resolve()),
+  patchQueries: jest.fn(),
+  updateQueryVote: jest.fn(),
   getQueriesList: jest
     .fn()
     .mockImplementation(() =>
       Promise.resolve({ data: MOCK_QUERIES, paging: { total: 2 } })
     ),
+}));
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(({ searchIndex }) =>
+    searchIndex === SearchIndex.QUERY
+      ? Promise.resolve({
+          hits: { total: { value: 2 }, hits: MOCK_QUERIES_ES_DATA },
+        })
+      : Promise.resolve({
+          hits: { total: { value: 0 }, hits: [] },
+        })
+  ),
 }));
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -80,6 +96,10 @@ describe('Test TableQueries Component', () => {
     expect(queriesContainer).toBeInTheDocument();
     expect(rightPanel).toBeInTheDocument();
     expect(addQueryBtn).toBeInTheDocument();
+    expect(await screen.findAllByText('SearchDropdown.component')).toHaveLength(
+      2
+    );
+    expect(await screen.findByTestId('data-range-picker')).toBeInTheDocument();
   });
 
   it('All the query should render', async () => {
@@ -95,10 +115,9 @@ describe('Test TableQueries Component', () => {
   });
 
   it('Error placeholder should display if there is no data', async () => {
-    (getQueriesList as jest.Mock).mockImplementationOnce(() =>
+    (searchQuery as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        data: [],
-        paging: { total: 0 },
+        hits: { total: { value: 0 }, hits: [] },
       })
     );
     render(<TableQueries {...mockTableQueriesProp} />, {
@@ -112,16 +131,15 @@ describe('Test TableQueries Component', () => {
   });
 
   it('If paging count is more than 15, pagination should be visible', async () => {
-    (getQueriesList as jest.Mock).mockImplementationOnce(() =>
+    (searchQuery as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        data: MOCK_QUERIES,
-        paging: { total: 16 },
+        hits: { total: { value: 16 }, hits: MOCK_QUERIES_ES_DATA },
       })
     );
     render(<TableQueries {...mockTableQueriesProp} />, {
       wrapper: MemoryRouter,
     });
-    const pagingComponent = await screen.findByText('NextPrevious.component');
+    const pagingComponent = await screen.findByTestId('query-pagination');
 
     expect(pagingComponent).toBeInTheDocument();
   });
