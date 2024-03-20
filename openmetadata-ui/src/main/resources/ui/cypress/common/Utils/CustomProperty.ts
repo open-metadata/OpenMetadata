@@ -60,7 +60,7 @@ export const createCustomPropertyForEntity = ({
 
   cy.get('[data-testid="name"]').clear().type(property.name);
 
-  cy.get('[data-testid="propertyType"]').click();
+  cy.get(`#root\\/propertyType`).clear().type(property.type);
   cy.get(`[title="${property.type}"]`).click();
 
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
