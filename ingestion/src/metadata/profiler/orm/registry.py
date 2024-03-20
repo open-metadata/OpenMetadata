@@ -92,6 +92,7 @@ NOT_COMPUTE = {
     sqa_types.SQASet.__name__,
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
+    DataType.GEOMETRY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
