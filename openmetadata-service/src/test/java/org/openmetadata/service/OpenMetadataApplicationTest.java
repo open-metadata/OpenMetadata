@@ -22,6 +22,7 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import java.net.URI;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import javax.ws.rs.client.Client;
@@ -47,6 +48,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
 @Slf4j
@@ -141,6 +143,11 @@ public abstract class OpenMetadataApplicationTest {
 
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
+              new LogMessageWaitStrategy()
+                      .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
+                      .withStartupTimeout(Duration.ofMinutes(5))
+      );
       ELASTIC_SEARCH_CONTAINER.start();
       ELASTIC_SEARCH_CONTAINER.withReuse(true);
       String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
