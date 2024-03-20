@@ -84,6 +84,8 @@ public class ConfigResource {
                     authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
         authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
       }
+
+      authenticationConfiguration.setOidcConfiguration(null);
     }
     return authenticationConfiguration;
   }
