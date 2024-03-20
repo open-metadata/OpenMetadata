@@ -53,14 +53,11 @@ export type EntityTypeSearchIndex = Exclude<
   | EntityType.ALL
 >;
 
-export type EntityStats = Record<EntityTypeSearchIndex, TotalRecords> &
-  TotalRecords;
+export type EntityStats = Record<EntityTypeSearchIndex, TotalRecords>;
 
-export interface EntityStatsData extends TotalRecords {
-  statsData: {
-    name: string;
-    totalRecords: number;
-    successRecords: number;
-    failedRecords: number;
-  }[];
+export interface EntityStatsData {
+  name: string;
+  totalRecords: number;
+  successRecords: number;
+  failedRecords: number;
 }

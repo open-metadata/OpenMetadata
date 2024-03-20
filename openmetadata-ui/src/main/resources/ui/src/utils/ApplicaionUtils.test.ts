@@ -18,7 +18,7 @@ import {
 } from './mocks/ApplicationUtils.mock';
 
 describe('ApplicationUtils tests', () => {
-  it('getEntityStatsData should return stats data and overAll records', () => {
+  it('getEntityStatsData should return stats data in array', () => {
     const resultData = getEntityStatsData(MOCK_APPLICATION_ENTITY_STATS);
 
     expect(resultData).toEqual(MOCK_APPLICATION_ENTITY_STATS_DATA);

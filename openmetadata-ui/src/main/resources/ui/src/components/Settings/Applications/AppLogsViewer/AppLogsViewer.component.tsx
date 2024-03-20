@@ -23,7 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { isNil } from 'lodash';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
@@ -113,6 +113,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                 <span className="m-l-xs">
                   <Space size={8}>
                     <Badge
+                      showZero
                       className="request-badge running"
                       count={jobStats.totalRecords}
                       overflowCount={99999999}
@@ -122,6 +123,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                     />
 
                     <Badge
+                      showZero
                       className="request-badge success"
                       count={jobStats.successRecords}
                       overflowCount={99999999}
@@ -159,8 +161,11 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
     [timestamp, formatDateTimeWithTimezone]
   );
 
-  const tableColumn = useCallback(
-    (entityStatsTotalData) => [
+  const tableColumn = useMemo(() => {
+    const entityTotalJobStatsData =
+      successContext?.stats.jobStats || failureContext?.stats.jobStats;
+
+    return [
       {
         title: t('label.name'),
         dataIndex: 'name',
@@ -176,7 +181,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats total m-l-sm"
-              label={entityStatsTotalData.totalRecords}
+              label={entityTotalJobStatsData.totalRecords}
             />
           </div>
         ),
@@ -196,7 +201,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats success m-l-sm"
-              label={entityStatsTotalData.successRecords}
+              label={entityTotalJobStatsData.successRecords}
             />
           </div>
         ),
@@ -216,7 +221,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats failure m-l-sm"
-              label={entityStatsTotalData.failedRecords}
+              label={entityTotalJobStatsData.failedRecords}
             />
           </div>
         ),
@@ -226,21 +231,18 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           <Typography.Text className="text-failure">{text}</Typography.Text>
         ),
       },
-    ],
-    []
-  );
+    ];
+  }, [successContext, failureContext]);
 
   const entityStatsRenderer = useCallback(
     (entityStats: EntityStats) => {
-      const { statsData, ...rest } = getEntityStatsData(entityStats);
-
       return (
         <Table
           bordered
           className="m-t-md"
-          columns={tableColumn(rest)}
+          columns={tableColumn}
           data-testid="app-entity-stats-history-table"
-          dataSource={statsData}
+          dataSource={getEntityStatsData(entityStats)}
           pagination={false}
           rowKey="name"
           scroll={{ y: 200 }}
@@ -257,9 +259,9 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
       {failureContext?.stats && statsRender(failureContext?.stats.jobStats)}
 
       {successContext?.stats?.entityStats &&
-        entityStatsRenderer(successContext?.stats.entityStats)}
+        entityStatsRenderer(successContext.stats.entityStats)}
       {failureContext?.stats?.entityStats &&
-        entityStatsRenderer(failureContext?.stats.entityStats)}
+        entityStatsRenderer(failureContext.stats.entityStats)}
 
       {logsRender(
         formatJsonString(

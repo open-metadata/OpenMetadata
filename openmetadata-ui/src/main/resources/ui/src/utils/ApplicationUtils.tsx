@@ -52,16 +52,9 @@ export const getStatusFromPipelineState = (status: PipelineState) => {
   return Status.Failed;
 };
 
-export const getEntityStatsData = (data: EntityStats): EntityStatsData => {
-  const { totalRecords, successRecords, failedRecords, ...rest } = data;
-
-  return {
-    totalRecords,
-    successRecords,
-    failedRecords,
-    statsData: Object.keys(rest).map((key) => ({
-      name: key,
-      ...data[key as EntityTypeSearchIndex],
-    })),
-  };
+export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
+  return Object.keys(data).map((key) => ({
+    name: key,
+    ...data[key as EntityTypeSearchIndex],
+  }));
 };
