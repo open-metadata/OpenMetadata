@@ -83,6 +83,7 @@ import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { getErrorText } from '../../../../utils/StringsUtils';
 import {
   fetchOptions,
   generateOptions,
@@ -266,7 +267,9 @@ export const TaskTab = ({
         rest.onAfterClose?.();
         rest.onUpdateEntityDetails?.();
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) =>
+        showErrorToast(getErrorText(err, t('server.unexpected-error')))
+      );
   };
 
   const onTaskResolve = () => {
@@ -429,7 +432,9 @@ export const TaskTab = ({
       rest.onAfterClose?.();
       setShowEditTaskModel(false);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        getErrorText(error as AxiosError, t('server.unexpected-error'))
+      );
     } finally {
       setIsActionLoading(false);
     }
