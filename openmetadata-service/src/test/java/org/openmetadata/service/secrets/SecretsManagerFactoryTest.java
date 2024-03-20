@@ -12,8 +12,10 @@
  */
 package org.openmetadata.service.secrets;
 
+import static org.junit.Assert.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.secrets.Parameters;
@@ -84,6 +86,15 @@ public class SecretsManagerFactoryTest {
     assertTrue(
         SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME)
             instanceof AWSSSMSecretsManager);
+  }
+
+  @Test
+  void testIsCreatedIfGCPSecretsManager() {
+    config.setSecretsManager(SecretsManagerProvider.GCP);
+    Assertions.assertSame(
+            SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME).getClass(),
+            GCPSecretsManager.class
+    );
   }
 
   private void initConfigForAWSBasedSecretManager(SecretsManagerProvider secretManagerProvider) {
