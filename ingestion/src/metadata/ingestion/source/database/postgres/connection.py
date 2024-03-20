@@ -17,8 +17,12 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -46,6 +50,15 @@ def get_connection(connection: PostgresConnection) -> Engine:
     """
     Create connection
     """
+
+    if hasattr(connection.authType, "azureConfig"):
+        azure_client = AzureClient(connection.authType.azureConfig).create_client()
+        if not connection.authType.azureConfig.scopes:
+            raise ValueError("Azure Scopes are not provided")
+        access_token_obj = azure_client.get_token(
+            *[connection.authType.azureConfig.scopes]
+        )
+        connection.authType = BasicAuth(password=access_token_obj.token)
     if connection.sslMode:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
