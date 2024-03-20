@@ -35,11 +35,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
@@ -64,10 +60,10 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   createQueryFilter,
+  fetchFilterOptions,
   parseSearchParams,
   stringifySearchParams,
 } from '../../../utils/Query/QueryUtils';
@@ -80,6 +76,7 @@ import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
 import {
+  FetchFilteredQueriesType,
   QueryFilterType,
   QueryVote,
   TableQueriesProp,
@@ -219,14 +216,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const fetchFilteredQueries = async (data?: {
-    tags?: SearchDropdownOption[];
-    owners?: SearchDropdownOption[];
-    pageNumber?: number;
-    timeRange?: { startTs: number; endTs: number };
-    sortField?: string;
-    sortOrder?: SORT_ORDER;
-  }) => {
+  const fetchFilteredQueries = async (data?: FetchFilteredQueriesType) => {
     const {
       tags,
       owners,
@@ -289,28 +279,8 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const fetchOptions = async (
-    searchText: string,
-    filters: string,
-    searchIndex: SearchIndex | SearchIndex[]
-  ) => {
-    const response = await searchQuery({
-      query: `*${searchText}*`,
-      filters,
-      pageNumber: 1,
-      pageSize: PAGE_SIZE_BASE,
-      searchIndex,
-    });
-    const options = response.hits.hits.map((hit) => ({
-      key: hit._source.fullyQualifiedName ?? hit._source.name,
-      label: getEntityName(hit._source),
-    }));
-
-    return options;
-  };
-
   const fetchTags = async (searchText = WILD_CARD_CHAR) => {
-    return fetchOptions(
+    return fetchFilterOptions(
       searchText,
       'disabled:false AND !classification.name:Tier',
       SearchIndex.TAG
@@ -365,7 +335,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchOwner = async (searchText = WILD_CARD_CHAR) => {
-    return fetchOptions(searchText, 'isBot:false', [
+    return fetchFilterOptions(searchText, 'isBot:false', [
       SearchIndex.USER,
       SearchIndex.TEAM,
     ]);

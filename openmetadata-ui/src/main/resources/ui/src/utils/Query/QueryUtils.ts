@@ -14,6 +14,10 @@
 import Qs from 'qs';
 import { QuerySearchParams } from '../../components/Database/TableQueries/TableQueries.interface';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { searchQuery } from '../../rest/searchAPI';
+import { getEntityName } from '../EntityUtils';
 
 export const createQueryFilter = ({
   tableId,
@@ -84,4 +88,24 @@ export const parseSearchParams = (param: string) => {
 };
 export const stringifySearchParams = (param: QuerySearchParams) => {
   return Qs.stringify(param);
+};
+
+export const fetchFilterOptions = async (
+  searchText: string,
+  filters: string,
+  searchIndex: SearchIndex | SearchIndex[]
+) => {
+  const response = await searchQuery({
+    query: `*${searchText}*`,
+    filters,
+    pageNumber: 1,
+    pageSize: PAGE_SIZE_BASE,
+    searchIndex,
+  });
+  const options = response.hits.hits.map((hit) => ({
+    key: hit._source.fullyQualifiedName ?? hit._source.name,
+    label: getEntityName(hit._source),
+  }));
+
+  return options;
 };

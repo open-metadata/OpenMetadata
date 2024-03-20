@@ -300,7 +300,11 @@ export const checkForEditActions = ({ entityType, deleted }) => {
 };
 
 export const checkForTableSpecificFields = ({ deleted }) => {
-  interceptURL('GET', `/api/v1/queries*`, 'getQueryData');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*&index=query_search_index*`,
+    'getQueryData'
+  );
 
   cy.get('[data-testid="table_queries"]').click();
 
