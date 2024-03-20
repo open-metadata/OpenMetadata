@@ -67,3 +67,12 @@ CREATE INDEX apps_extension_time_series_index ON apps_extension_time_series (app
 CREATE INDEX index_suggestions_type ON suggestions (suggestionType);
 CREATE INDEX index_suggestions_status ON suggestions (status);
 
+-- change scheduleType to scheduleTimeline
+UPDATE installed_apps
+SET json = jsonb_set(
+        json::jsonb #- '{appSchedule,scheduleType}',
+        '{appSchedule,scheduleTimeline}',
+        (json #> '{appSchedule,scheduleType}')::jsonb,
+        true
+    );
+delete from apps_extension_time_series;
