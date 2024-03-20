@@ -46,7 +46,7 @@ class ExternalTableLineageMixin(ABC):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.get().database_service,
+                    service_name=self.context.database_service,
                     database_name=database_name,
                     schema_name=schema_name,
                     table_name=table_name,
