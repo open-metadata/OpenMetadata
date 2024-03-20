@@ -114,7 +114,7 @@ WITH SP_HISTORY AS (SELECT
       PARSING_SCHEMA_NAME AS SCHEMA_NAME,
       NULL AS DATABASE_NAME
     FROM gv$sql
-    WHERE sql_text NOT LIKE '%CALL%'
+    WHERE UPPER(sql_text) NOT LIKE '%CALL%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
