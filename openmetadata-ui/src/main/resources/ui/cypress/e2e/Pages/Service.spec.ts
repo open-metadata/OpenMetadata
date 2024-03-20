@@ -34,7 +34,7 @@ describe('Services page should work properly', { tags: 'Integration' }, () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}*`,
+      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}*&serviceType=${service.serviceType}`,
       'ingestionPipelines'
     );
     cy.login();
