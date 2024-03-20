@@ -21,7 +21,7 @@ const owner = 'admin';
 const assignee = 'adam.matthews2';
 const secondAssignee = 'aaron_johnson0';
 
-export const verifyTaskDetails = (regexPattern) => {
+export const verifyTaskDetails = (regexPattern, taskAssignee) => {
   cy.get('#task-panel').should('be.visible');
   cy.get('[data-testid="task-title"]')
     .invoke('text')
@@ -33,7 +33,7 @@ export const verifyTaskDetails = (regexPattern) => {
 
   cy.get('[data-testid="owner-link"]').should('contain', owner);
 
-  cy.get(`[data-testid="${assignee}"]`).should('be.visible');
+  cy.get(`[data-testid="${taskAssignee ?? assignee}"]`).should('be.visible');
 };
 
 export const editAssignee = () => {
