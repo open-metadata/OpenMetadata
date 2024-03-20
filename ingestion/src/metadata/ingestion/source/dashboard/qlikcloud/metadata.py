@@ -88,7 +88,6 @@ class QlikcloudSource(DashboardServiceSource):
         self.collections: List[QlikAppList] = []
         self.data_models: List[QlikTable] = []
 
-
     def prepare(self):
         self.collections = self.client.get_collections_list()
         return super().prepare()
@@ -152,12 +151,12 @@ class QlikcloudSource(DashboardServiceSource):
                 )
             )
 
-    def _get_datamodel(self, datamodel: QlikTable):
+    def _get_datamodel(self, datamodel_id):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
             service_name=self.context.dashboard_service,
-            data_model_name=datamodel.id,
+            data_model_name=datamodel_id,
         )
         if datamodel_fqn:
             return self.metadata.get_by_name(
@@ -175,13 +174,13 @@ class QlikcloudSource(DashboardServiceSource):
         # table.name in tableau can come as db.schema.table_name. Hence the logic to split it
         if datamodel.tableName and db_service_entity:
             try:
-                if len(datamodel.connectorProperties.tableQualifiers) > 1:
+                if len(datamodel.connectionInfo.tableQualifiers) > 1:
                     (
                         database_name,
                         schema_name,
-                    ) = datamodel.connectorProperties.tableQualifiers[-2:]
-                elif len(datamodel.connectorProperties.tableQualifiers) == 1:
-                    schema_name = datamodel.connectorProperties.tableQualifiers[-1]
+                    ) = datamodel.connectionInfo.tableQualifiers[-2:]
+                elif len(datamodel.connectionInfo.tableQualifiers) == 1:
+                    schema_name = datamodel.connectionInfo.tableQualifiers[-1]
                     database_name = None
                 else:
                     schema_name, database_name = None, None
@@ -215,7 +214,10 @@ class QlikcloudSource(DashboardServiceSource):
         )
         for datamodel in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel=datamodel)
+                if not datamodel.id in self.context.dataModels:
+                    # only process datamodels which are parsed in context
+                    continue
+                data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
                     om_table = self._get_database_table(
                         db_service_entity, datamodel=datamodel
@@ -236,15 +238,6 @@ class QlikcloudSource(DashboardServiceSource):
                     )
                 )
 
-    def _get_database_service(self, db_service_name: str):
-        return self.metadata.get_by_name(DatabaseService, db_service_name)
-
-    def _yield_lineage_from_query(self) -> Iterable[Either[AddLineageRequest]]:
-        pass
-
-    def _yield_lineage_from_api(self) -> Iterable[Either[AddLineageRequest]]:
-        pass
-
     def yield_dashboard_chart(
         self, dashboard_details
     ) -> Iterable[Either[CreateChartRequest]]:
@@ -254,14 +247,10 @@ class QlikcloudSource(DashboardServiceSource):
             try:
                 if not chart.qInfo.qId:
                     continue
-                # https://oq5biajesqmyhuh.sg.qlikcloud.com/sense/app/8b67aac5-15ba-45fc-98c3-7f65dcdfb956/sheet/SXqqZ/state/analysis/hubUrl/%2Fcatalog
-                if self.service_connection.hostPort:
-                    chart_url = (
-                        f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}"
-                        f"/sheet/{chart.qInfo.qId}"
-                    )
-                else:
-                    chart_url = None
+                chart_url = (
+                    f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}"
+                    f"/sheet/{chart.qInfo.qId}"
+                )
                 if chart.qMeta.title and filter_by_chart(
                     self.source_config.chartFilterPattern, chart.qMeta.title
                 ):

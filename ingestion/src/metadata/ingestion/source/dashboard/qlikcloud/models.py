@@ -88,7 +88,7 @@ class QlikTableConnectionProp(BaseModel):
 class QlikTable(BaseModel):
     tableName: Optional[str]
     id: Optional[str]
-    connectorProperties: Optional[QlikTableConnectionProp] = QlikTableConnectionProp()
+    connectionInfo: Optional[QlikTableConnectionProp] = QlikTableConnectionProp()
     fields: Optional[List[QlikFields]] = []
 
 
