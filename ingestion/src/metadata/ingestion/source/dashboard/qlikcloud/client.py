@@ -19,6 +19,13 @@ from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudCo
     QlikCloudConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.source.dashboard.qlikcloud.constants import (
+    APP_LOADMODEL_REQ,
+    CREATE_SHEET_SESSION,
+    GET_LOADMODEL_LAYOUT,
+    GET_SHEET_LAYOUT,
+    OPEN_DOC_REQ,
+)
 from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikAppDetails,
     QlikAppList,
@@ -26,13 +33,6 @@ from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikSheet,
     QlikSheetResult,
     QlikTable,
-)
-from metadata.ingestion.source.dashboard.qlikcloud.constants import (
-    OPEN_DOC_REQ,
-    CREATE_SHEET_SESSION,
-    GET_SHEET_LAYOUT,
-    APP_LOADMODEL_REQ,
-    GET_LOADMODEL_LAYOUT
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
