@@ -17,6 +17,7 @@ import static org.openmetadata.service.security.AuthLoginServlet.OIDC_CREDENTIAL
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.nimbusds.jose.JOSEException;
@@ -29,7 +30,13 @@ import com.nimbusds.oauth2.sdk.auth.ClientSecretPost;
 import com.nimbusds.oauth2.sdk.auth.PrivateKeyJWT;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.text.ParseException;
@@ -37,6 +44,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,8 +59,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.util.JsonUtils;
+import org.pac4j.core.context.HttpConstants;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
+import org.pac4j.core.util.HttpUtils;
 import org.pac4j.oidc.client.AzureAd2Client;
 import org.pac4j.oidc.client.GoogleOidcClient;
 import org.pac4j.oidc.client.OidcClient;
@@ -371,11 +382,49 @@ public final class SecurityUtil {
     if (SecurityUtil.isCredentialsExpired(credentials)) {
       LOG.debug("Expired credentials found, trying to renew.");
       profilesUpdated = true;
-      OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
-      authenticator.refresh(credentials);
+      if (client.getConfiguration()
+          instanceof AzureAd2OidcConfiguration azureAd2OidcConfiguration) {
+        refreshAccessTokenAzureAd2Token(azureAd2OidcConfiguration, credentials);
+      } else {
+        OidcAuthenticator authenticator = new OidcAuthenticator(client.getConfiguration(), client);
+        authenticator.refresh(credentials);
+      }
     }
     if (profilesUpdated) {
       request.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+    }
+  }
+
+  private static void refreshAccessTokenAzureAd2Token(
+      AzureAd2OidcConfiguration azureConfig, OidcCredentials azureAdProfile) {
+    HttpURLConnection connection = null;
+    try {
+      Map<String, String> headers = new HashMap<>();
+      headers.put(
+          HttpConstants.CONTENT_TYPE_HEADER, HttpConstants.APPLICATION_FORM_ENCODED_HEADER_VALUE);
+      headers.put(HttpConstants.ACCEPT_HEADER, HttpConstants.APPLICATION_JSON);
+      // get the token endpoint from discovery URI
+      URL tokenEndpointURL = azureConfig.findProviderMetadata().getTokenEndpointURI().toURL();
+      connection = HttpUtils.openPostConnection(tokenEndpointURL, headers);
+
+      BufferedWriter out =
+          new BufferedWriter(
+              new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8));
+      out.write(azureConfig.makeOauth2TokenRequest(azureAdProfile.getRefreshToken().getValue()));
+      out.close();
+
+      int responseCode = connection.getResponseCode();
+      if (responseCode != 200) {
+        throw new TechnicalException(
+            "request for access token failed: " + HttpUtils.buildHttpErrorMessage(connection));
+      }
+      var body = HttpUtils.readBody(connection);
+      Map<String, Object> res = JsonUtils.readValue(body, new TypeReference<>() {});
+      azureAdProfile.setAccessToken(new BearerAccessToken((String) res.get("access_token")));
+    } catch (final IOException e) {
+      throw new TechnicalException(e);
+    } finally {
+      HttpUtils.closeConnection(connection);
     }
   }
 }
