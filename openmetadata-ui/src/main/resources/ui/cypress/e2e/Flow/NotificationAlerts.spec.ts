@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-// eslint-disable-next-line spaced-comment
-/// <reference types="cypress" />
-
 import {
   addDomainFilter,
   addEntityFQNFilter,
@@ -65,6 +62,7 @@ describe(
     const data = {
       user: {
         displayName: '',
+        id: '',
       },
       domain: {
         name: '',

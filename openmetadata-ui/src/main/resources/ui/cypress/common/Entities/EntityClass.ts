@@ -369,6 +369,10 @@ class EntityClass {
     addDomainToEntity(domainDetails1.displayName);
   }
 
+  validateDomainVersionForEntity() {
+    // override for entity
+  }
+
   updateDomain() {
     addDomainToEntity(domainDetails2.displayName);
   }
