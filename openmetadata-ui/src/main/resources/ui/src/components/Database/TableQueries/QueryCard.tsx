@@ -249,8 +249,8 @@ const QueryCard: FC<QueryCardProp> = ({
               onChange={handleQueryChange}
             />
           </div>
-          <Row align="middle" className="p-y-xs border-top">
-            <Col className="p-y-0.5 p-l-md" span={16}>
+          <Row align="middle" className="p-y-md border-top">
+            <Col className="p-l-md" span={16}>
               <QueryUsedByOtherTable
                 isEditMode={isEditMode}
                 query={query}
@@ -286,15 +286,7 @@ const QueryCard: FC<QueryCardProp> = ({
           </Row>
         </Card>
       </Col>
-      {isExpanded && QueryExtras && (
-        <Col span={12}>
-          <Card
-            bordered={false}
-            className="h-full card-body-full card-padding-0">
-            <QueryExtras />
-          </Card>
-        </Col>
-      )}
+      {isExpanded && QueryExtras && <QueryExtras />}
     </Row>
   );
 };
