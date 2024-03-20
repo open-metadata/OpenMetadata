@@ -1,0 +1,78 @@
+{
+  "$id": "https://open-metadata.org/schema/security/client/oidcClientConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OidcClientConfig",
+  "description": "Oidc client security configs.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.security.client.OidcClientConfig",
+  "properties": {
+    "type": {
+      "description": "IDP type (Example Google,Azure).",
+      "type": "string"
+    },
+    "id": {
+      "description": "Client ID.",
+      "type": "string"
+    },
+    "secret": {
+      "description": "Client Secret.",
+      "type": "string"
+    },
+    "scope": {
+      "description": "Oidc Request Scopes.",
+      "type": "string",
+      "default": "openid email profile"
+    },
+    "discoveryUri": {
+      "description": "Discovery Uri for the Client.",
+      "type": "string"
+    },
+    "useNonce": {
+      "description": "Use Nonce.",
+      "type": "string",
+      "default": true
+    },
+    "preferredJwsAlgorithm": {
+      "description": "Preferred Jws Algorithm.",
+      "type": "string",
+      "default": "RS256"
+    },
+    "responseType": {
+      "description": "Auth0 Client Secret Key.",
+      "type": "string",
+      "default": "code"
+    },
+    "disablePkce": {
+      "description": "Disable PKCE.",
+      "type": "boolean",
+      "default": true
+    },
+    "maxClockSkew": {
+      "description": "Max Clock Skew",
+      "type": "string"
+    },
+    "clientAuthenticationMethod": {
+      "description": "Client Authentication Method.",
+      "type": "string",
+      "enum": ["client_secret_basic", "client_secret_post", "client_secret_jwt", "private_key_jwt"]
+    },
+    "customParams": {
+      "description": "Custom Params.",
+      "existingJavaType" : "java.util.Map<String,String>",
+      "type" : "object"
+    },
+    "tenant": {
+      "description": "Tenant in case of Azure.",
+      "type": "string"
+    },
+    "serverUrl": {
+      "description": "Server Url.",
+      "type": "string"
+    },
+    "callbackUrl": {
+      "description": "Callback Url.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
