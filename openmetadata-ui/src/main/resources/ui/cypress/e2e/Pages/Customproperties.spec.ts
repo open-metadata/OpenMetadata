@@ -514,6 +514,124 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     });
   });
 
+  describe('Add update and delete Entity Reference custom properties', () => {
+    Object.values(ENTITIES).forEach((entity) => {
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
+
+      it(`Add Entity Reference custom property for ${entity.name} Entities`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+
+        addCustomPropertiesForEntity({
+          propertyName,
+          customPropertyData: entity,
+          customType: 'Entity Reference',
+          entityReferenceConfig: entity.entityReferenceConfig,
+        });
+
+        // Navigating back to custom properties page
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+      });
+
+      it(`Edit created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+        editCreatedProperty(propertyName, 'Entity Reference');
+      });
+
+      it(`Delete created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+        deleteCreatedProperty(propertyName);
+      });
+    });
+  });
+
+  describe('Add update and delete Entity Reference List custom properties', () => {
+    Object.values(ENTITIES).forEach((entity) => {
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
+
+      it(`Add Entity Reference List custom property for ${entity.name} Entities`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+
+        addCustomPropertiesForEntity({
+          propertyName,
+          customPropertyData: entity,
+          customType: 'Entity Reference List',
+          entityReferenceConfig: entity.entityReferenceConfig,
+        });
+
+        // Navigating back to custom properties page
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+      });
+
+      it(`Edit created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+        editCreatedProperty(propertyName, 'Entity Reference List');
+      });
+
+      it(`Delete created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        // Selecting the entity
+        cy.settingClick(entity.entityApiType, true);
+
+        verifyResponseStatusCode('@getEntity', 200);
+        deleteCreatedProperty(propertyName);
+      });
+    });
+  });
+
   describe('Add update and delete Date custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;

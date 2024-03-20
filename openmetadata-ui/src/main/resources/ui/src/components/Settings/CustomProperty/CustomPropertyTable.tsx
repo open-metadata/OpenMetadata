@@ -121,7 +121,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.config'),
         dataIndex: 'customPropertyConfig',
         key: 'customPropertyConfig',
-        render: (data: CustomProperty['customPropertyConfig']) => {
+        render: (data: CustomProperty['customPropertyConfig'], record) => {
           if (isUndefined(data)) {
             return <span>--</span>;
           }
@@ -131,7 +131,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           // If config is an array and not empty
           if (isArray(config) && !isEmpty(config)) {
             return (
-              <Typography.Text>{JSON.stringify(config ?? [])}</Typography.Text>
+              <Typography.Text data-testid={`${record.name}-config`}>
+                {JSON.stringify(config ?? [])}
+              </Typography.Text>
             );
           }
 

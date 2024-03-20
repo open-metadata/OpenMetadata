@@ -204,6 +204,7 @@ export const addCustomPropertiesForEntity = ({
   customType,
   enumConfig,
   formatConfig,
+  entityReferenceConfig,
 }: {
   propertyName: string;
   customPropertyData: { description: string };
@@ -280,6 +281,14 @@ export const addCustomPropertiesForEntity = ({
       cy.get('#root\\/multiSelect').scrollIntoView().click();
     }
   }
+  if (['Entity Reference', 'Entity Reference List'].includes(customType)) {
+    entityReferenceConfig.forEach((val) => {
+      cy.get('#root\\/entityReferenceConfig').click().type(`${val}`);
+      cy.get(`[title="${val}"]`).click();
+    });
+
+    cy.clickOutside();
+  }
 
   if (['Date', 'Date Time'].includes(customType)) {
     cy.get('#root\\/formatConfig').clear().type('invalid-format');
@@ -325,6 +334,12 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
     cy.clickOutside();
   }
 
+  if (['Entity Reference', 'Entity Reference List'].includes(type)) {
+    cy.get('#root\\/customPropertyConfig').click().type(`Table{enter}`);
+
+    cy.clickOutside();
+  }
+
   interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
 
   cy.get('button[type="submit"]').scrollIntoView().click();
@@ -342,6 +357,11 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
     cy.get(`[data-row-key="${propertyName}"]`)
       .find('[data-testid="enum-config"]')
       .should('contain', '["enum1","enum2","enum3","updatedValue"]');
+  }
+  if (['Entity Reference', 'Entity Reference List'].includes(type)) {
+    cy.get(`[data-row-key="${propertyName}"]`)
+      .find(`[data-testid="${propertyName}-config"]`)
+      .should('contain', '["user","team","table"]');
   }
 };
 
