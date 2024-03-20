@@ -285,7 +285,7 @@ class EntityUtilClassBase {
   }
 
   public getManageExtraOptions(
-    _entityType?: EntityTabs,
+    _entityType?: EntityType,
     _fqn?: string
   ): ItemType[] {
     return [];
