@@ -46,6 +46,10 @@ jest.mock('../../../../rest/queryAPI', () => ({
   deleteQuery: jest.fn(),
 }));
 
+jest.mock('../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
+}));
+
 describe('QueryCardExtraOption component test', () => {
   it('Component should render', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
