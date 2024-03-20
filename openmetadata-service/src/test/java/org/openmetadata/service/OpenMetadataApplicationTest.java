@@ -21,6 +21,7 @@ import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 import javax.ws.rs.client.Client;
@@ -208,6 +209,11 @@ public abstract class OpenMetadataApplicationTest {
 
   public static WebTarget getResource(String collection) {
     return client.target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
+  }
+
+  public static WebTarget getResourceAsURI(String collection) {
+    return client.target(
+        URI.create((format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection))));
   }
 
   public static WebTarget getConfigResource(String resource) {

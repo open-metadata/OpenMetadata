@@ -13,6 +13,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   LINEAGE_ITEMS,
   PIPELINE_ITEMS,
@@ -171,16 +172,18 @@ const expandCols = (nodeFqn, hasShowMore) => {
   }
 };
 
-const addColumnLineage = (fromNode, toNode) => {
+const addColumnLineage = (fromNode, toNode, exitEditMode = true) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
   expandCols(fromNode.fqn, false);
-  expandCols(toNode.fqn, true);
+  expandCols(toNode.fqn, toNode.entityType === EntityType.Table);
   dragConnection(
     `column-${fromNode.columns[0]}`,
     `column-${toNode.columns[0]}`
   );
   verifyResponseStatusCode('@lineageApi', 200);
-  cy.get('[data-testid="edit-lineage"]').click();
+  if (exitEditMode) {
+    cy.get('[data-testid="edit-lineage"]').click();
+  }
   cy.get(
     `[data-testid="column-edge-${fromNode.columns[0]}-${toNode.columns[0]}"]`
   );
@@ -280,11 +283,16 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
 
   it('Add column lineage', () => {
     const sourceEntity = LINEAGE_ITEMS[0];
-    const targetEntity = LINEAGE_ITEMS[1];
-    addPipelineBetweenNodes(sourceEntity, targetEntity);
-    // Add column lineage
-    addColumnLineage(sourceEntity, targetEntity);
-    cy.get('[data-testid="edit-lineage"]').click();
-    deleteNode(targetEntity);
+    for (let i = 1; i < LINEAGE_ITEMS.length; i++) {
+      const targetEntity = LINEAGE_ITEMS[i];
+      if (targetEntity.columns.length > 0) {
+        addPipelineBetweenNodes(sourceEntity, targetEntity);
+        // Add column lineage
+        addColumnLineage(sourceEntity, targetEntity);
+        cy.get('[data-testid="edit-lineage"]').click();
+        deleteNode(targetEntity);
+        cy.goToHomePage();
+      }
+    }
   });
 });
