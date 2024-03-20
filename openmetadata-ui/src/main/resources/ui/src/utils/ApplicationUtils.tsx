@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import {
+  EntityStats,
+  EntityStatsData,
+  EntityTypeSearchIndex,
+} from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
@@ -45,4 +50,18 @@ export const getStatusFromPipelineState = (status: PipelineState) => {
   }
 
   return Status.Failed;
+};
+
+export const getEntityStatsData = (data: EntityStats): EntityStatsData => {
+  const { totalRecords, successRecords, failedRecords, ...rest } = data;
+
+  return {
+    totalRecords,
+    successRecords,
+    failedRecords,
+    statsData: Object.keys(rest).map((key) => ({
+      name: key,
+      ...data[key as EntityTypeSearchIndex],
+    })),
+  };
 };
