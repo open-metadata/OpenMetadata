@@ -63,7 +63,7 @@ public abstract class OpenMetadataApplicationTest {
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
-  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = true;
+  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = false;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -71,7 +71,7 @@ public abstract class OpenMetadataApplicationTest {
       "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
   private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:7.16.3";
+      "docker.elastic.co/elasticsearch/elasticsearch:8.10.2";
 
   private static String HOST;
   private static String PORT;

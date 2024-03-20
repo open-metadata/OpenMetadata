@@ -11,7 +11,6 @@ import org.openmetadata.schema.type.Include;
 public abstract class Filter<T extends Filter<T>> {
   protected Include include;
   protected final Map<String, String> queryParams = new HashMap<>();
-  protected final ArrayList<String> conditions = new ArrayList<>();
 
   public T addQueryParam(String name, String value) {
     queryParams.put(name, value);

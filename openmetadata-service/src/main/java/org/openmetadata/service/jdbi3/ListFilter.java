@@ -21,6 +21,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   public String getCondition(String tableName) {
+    ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition(tableName));
     conditions.add(getDatabaseCondition(tableName));
     conditions.add(getDatabaseSchemaCondition(tableName));

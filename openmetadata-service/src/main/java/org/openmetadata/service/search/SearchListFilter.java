@@ -17,6 +17,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   @Override
   public String getCondition(String entityType) {
+    ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition());
 
     if (entityType != null) {
