@@ -805,7 +805,9 @@ public class FeedRepository {
     // Allow if user created the task to close task (and not resolve task)
     EntityReference owner = Entity.getOwner(aboutRef);
     List<EntityReference> assignees = thread.getTask().getAssignees();
-    if (owner.getName().equals(userName) || closeTask && thread.getCreatedBy().equals(userName)) {
+    if (owner != null
+        && (owner.getName().equals(userName)
+            || closeTask && thread.getCreatedBy().equals(userName))) {
       return;
     }
 
