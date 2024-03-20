@@ -63,7 +63,7 @@ class JSONDataFrameReader(DataFrameReader):
         raw_data = None
         try:
             data = json.loads(json_text)
-            if data.get("$schema"):
+            if isinstance(data, dict) and data.get("$schema"):
                 raw_data = json_text
         except json.decoder.JSONDecodeError:
             logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
