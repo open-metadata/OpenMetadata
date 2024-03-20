@@ -37,7 +37,6 @@ export type EntityTypeSearchIndex = Exclude<
   | EntityType.ROLE
   | EntityType.TEAM
   | EntityType.SUBSCRIPTION
-  | EntityType.TYPE
   | EntityType.POLICY
   | EntityType.DATA_INSIGHT_CHART
   | EntityType.KPI
