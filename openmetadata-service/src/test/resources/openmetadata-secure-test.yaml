@@ -140,6 +140,7 @@ authorizerConfiguration:
     - "all"
 
 authenticationConfiguration:
+  clientType: "public"
   provider: "basic"
   providerName: ""
   publicKeyUrls:

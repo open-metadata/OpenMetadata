@@ -188,6 +188,9 @@ authenticationConfiguration:
     callbackUrl: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
     serverUrl: ${OIDC_SERVER_URL:-"http://localhost:8585"}
     clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
+    tenant: ${OIDC_TENANT:-""}
+    maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
+    customParams: ${OIDC_CUSTOM_PARAMS:-{}}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
