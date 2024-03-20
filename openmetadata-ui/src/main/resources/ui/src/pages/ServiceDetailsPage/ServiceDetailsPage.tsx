@@ -266,6 +266,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         const response = await getIngestionPipelines({
           arrQueryFields: ['owner', 'pipelineStatuses'],
           serviceFilter: decodedServiceFQN,
+          serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
           pipelineType: [
             PipelineType.Metadata,

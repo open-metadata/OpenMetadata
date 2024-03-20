@@ -464,6 +464,7 @@ export const service = {
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
   Owner: 'Aaron Johnson',
+  serviceType: 'databaseService',
 };
 
 export const SERVICE_TYPE = {
