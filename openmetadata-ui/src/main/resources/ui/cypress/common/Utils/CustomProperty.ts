@@ -198,12 +198,20 @@ export const customPropertiesArray = Array(10)
   .fill(null)
   .map(() => generateCustomProperties());
 
-export const addCustomPropertiesForEntity = (
-  propertyName: string,
-  customPropertyData: { description: string },
-  customType: string,
-  enumValue?: { values: string[]; multiSelect: boolean }
-) => {
+export const addCustomPropertiesForEntity = ({
+  propertyName,
+  customPropertyData,
+  customType,
+  enumConfig,
+  formatConfig,
+}: {
+  propertyName: string;
+  customPropertyData: { description: string };
+  customType: string;
+  enumConfig?: { values: string[]; multiSelect: boolean };
+  formatConfig?: string;
+  entityReferenceConfig?: string[];
+}) => {
   // Add Custom property for selected entity
   cy.get('[data-testid="add-field-button"]').click();
 
@@ -262,15 +270,22 @@ export const addCustomPropertiesForEntity = (
   cy.get(`[title="${customType}"]`).click();
 
   if (customType === 'Enum') {
-    enumValue.values.forEach((val) => {
+    enumConfig.values.forEach((val) => {
       cy.get('#root\\/enumConfig').type(`${val}{enter}`);
     });
 
     cy.clickOutside();
 
-    if (enumValue.multiSelect) {
+    if (enumConfig.multiSelect) {
       cy.get('#root\\/multiSelect').scrollIntoView().click();
     }
+  }
+
+  if (['Date', 'Date Time'].includes(customType)) {
+    cy.get('#root\\/formatConfig').clear().type('invalid-format');
+    cy.get('[role="alert"]').should('contain', 'Format is invalid');
+
+    cy.get('#root\\/formatConfig').clear().type(formatConfig);
   }
 
   cy.get(descriptionBox).clear().type(customPropertyData.description);
