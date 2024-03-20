@@ -1960,6 +1960,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
   }
 
+  public final void validateDomain(EntityReference domain) {
+    if (!supportsDomain) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DOMAIN));
+    }
+    Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), NON_DELETED);
+  }
+
+  public final void validateDataProducts(List<EntityReference> dataProducts) {
+    if (!supportsDataProducts) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DATA_PRODUCTS));
+    }
+
+    if (!nullOrEmpty(dataProducts)) {
+      for (EntityReference dataProduct : dataProducts) {
+        Entity.getEntityReferenceById(Entity.DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+      }
+    }
+  }
+
   /** Override this method to support downloading CSV functionality */
   public String exportToCsv(String name, String user) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
@@ -2316,6 +2335,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
         if (updatedDomain != null) {
+          validateDomain(updatedDomain);
           // Add relationship owner --- owns ---> ownedEntity
           LOG.info(
               "Adding domain {} for entity {}",
@@ -2336,6 +2356,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      validateDataProducts(updatedDataProducts);
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
           DATA_PRODUCT,
@@ -2352,6 +2373,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origExperts = getEntityReferences(original.getExperts());
       List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
+      validateUsers(updatedExperts);
       updateToRelationships(
           FIELD_EXPERTS,
           entityType,
@@ -2370,6 +2392,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
+      validateUsers(updatedReviewers);
       updateFromRelationships(
           "reviewers",
           Entity.USER,

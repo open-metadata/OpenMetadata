@@ -103,6 +103,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -231,6 +232,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsCustomExtension;
 
   protected final boolean supportsLifeCycle;
+  protected final boolean supportsDomain;
+  protected final boolean supportsDataProducts;
+  protected final boolean supportsExperts;
+  protected final boolean supportsReviewers;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -406,6 +411,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
     this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
     this.systemEntityName = systemEntityName;
+    this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
+    this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
+    this.supportsExperts = allowedFields.contains(FIELD_EXPERTS);
+    this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
   }
 
   @BeforeAll
@@ -591,6 +600,44 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> listEntities(params, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid field name invalidField");
+  }
+
+  @Test
+  void patchWrongDomainId(TestInfo test) throws IOException {
+    Assumptions.assumeTrue(supportsDomain);
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+    // Data Product domain cannot be modified see DataProductRepository.restorePatchAttributes
+    Assumptions.assumeTrue(!(entity.getEntityReference().getType().equals(DATA_PRODUCT)));
+
+    // Add random domain reference
+    EntityReference domainReference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN);
+    String originalJson = JsonUtils.pojoToJson(entity);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    entity.setDomain(domainReference);
+
+    assertResponse(
+        () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+        NOT_FOUND,
+        String.format("domain instance for %s not found", domainReference.getId()));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patchWrongDataProducts(TestInfo test) throws IOException {
+    Assumptions.assumeTrue(supportsDataProducts);
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+
+    // Add random domain reference
+    EntityReference dataProductReference = new EntityReference().withId(UUID.randomUUID());
+    String originalJson = JsonUtils.pojoToJson(entity);
+    ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
+    entity.setDataProducts(List.of(dataProductReference));
+
+    assertResponse(
+        () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
+        NOT_FOUND,
+        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
   }
 
   @Test
