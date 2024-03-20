@@ -675,7 +675,7 @@ export const PropertyValue: FC<Props> = ({
 
       case 'enum':
         return (
-          <Typography.Text className="break-all" data-testid="value">
+          <Typography.Text className="break-all" data-testid="enum-value">
             {isArray(value) ? value.join(', ') : value}
           </Typography.Text>
         );
@@ -749,7 +749,9 @@ export const PropertyValue: FC<Props> = ({
         }
 
         return (
-          <div className="d-flex items-center">
+          <div
+            className="d-flex items-center"
+            data-testid="entityReference-value">
             <Link
               to={entityUtilClassBase.getEntityLink(
                 item.type,
@@ -775,6 +777,7 @@ export const PropertyValue: FC<Props> = ({
                 type="text">
                 <Typography.Text
                   className="text-left text-xs"
+                  data-testid="entityReference-value-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(item)}
                 </Typography.Text>
@@ -791,7 +794,9 @@ export const PropertyValue: FC<Props> = ({
         }
 
         return (
-          <Typography.Text className="break-all" data-testid="value">
+          <Typography.Text
+            className="break-all"
+            data-testid="time-interval-value">
             {`StartTime: ${timeInterval.start}`}
             <br />
             {`EndTime: ${timeInterval.end}`}
