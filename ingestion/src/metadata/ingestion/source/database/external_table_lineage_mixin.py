@@ -14,7 +14,7 @@ External Table Lineage Mixin
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, Tuple
+from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -32,32 +32,23 @@ class ExternalTableLineageMixin(ABC):
     This mixin class is for deriving lineage between external table and container source/
     """
 
-    @abstractmethod
-    def get_external_table_location(self):
-        """
-        Get external table location
-        """
-
-    def yield_external_table_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[AddLineageRequest]:
+    def yield_external_table_lineage(self) -> Iterable[AddLineageRequest]:
         """
         Yield external table lineage
         """
-        table_name, _ = table_name_and_type
-        location = self.get_external_table_location()
-        if location:
+        for table_qualified_tuple, location in self.external_location_map.items() or []:
             try:
                 location_entity = self.metadata.es_search_container_by_path(
                     full_path=location
                 )
+                database_name, schema_name, table_name = table_qualified_tuple
 
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=database_name,
+                    schema_name=schema_name,
                     table_name=table_name,
                     skip_es_search=True,
                 )
