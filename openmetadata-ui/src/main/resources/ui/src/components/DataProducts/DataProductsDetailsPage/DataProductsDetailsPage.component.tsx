@@ -249,7 +249,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.rename-entity', {
                   entity: t('label.data-product'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -271,7 +271,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.data-product'),
                 })}
-                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={StyleIcon}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -296,7 +296,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                icon={DeleteIcon}
                 id="delete-button"
                 name={t('label.delete')}
               />

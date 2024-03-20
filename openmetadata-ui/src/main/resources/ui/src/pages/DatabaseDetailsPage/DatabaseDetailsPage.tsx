@@ -77,6 +77,7 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -117,6 +118,11 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    EntityType.DATABASE,
+    decodedDatabaseFQN
+  );
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -645,6 +651,7 @@ const DatabaseDetails: FunctionComponent = () => {
               afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
+              extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}

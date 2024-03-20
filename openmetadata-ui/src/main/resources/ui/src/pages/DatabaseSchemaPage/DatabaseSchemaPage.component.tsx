@@ -79,6 +79,7 @@ import {
   getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -125,6 +126,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    EntityType.DATABASE_SCHEMA,
+    decodedDatabaseSchemaFQN
+  );
 
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
@@ -717,6 +723,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 afterDomainUpdateAction={afterDomainUpdateAction}
                 dataAsset={databaseSchema}
                 entityType={EntityType.DATABASE_SCHEMA}
+                extraDropdownContent={extraDropdownContent}
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}
