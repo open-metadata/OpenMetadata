@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { FC } from 'react';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import {
   getEditWebhookPath,
   getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getServiceDetailsPath,
   getTagsDetailsPath,
   getUserPath,
@@ -36,7 +41,6 @@ import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import { getTableFQNFromColumnFQN } from './CommonUtils';
 import {
   getDomainDetailsPath,
-  getGlossaryPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
@@ -96,7 +100,7 @@ class EntityUtilClassBase {
       case SearchIndex.GLOSSARY:
       case EntityType.GLOSSARY_TERM:
       case SearchIndex.GLOSSARY_TERM:
-        return getGlossaryPath(fullyQualifiedName);
+        return getGlossaryTermDetailsPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.DATABASE_SERVICE:
       case EntityType.DASHBOARD_SERVICE:
@@ -229,8 +233,9 @@ class EntityUtilClassBase {
       case EntityType.DATA_PRODUCT:
         return DataProductsPage;
       case EntityType.TABLE:
-      default:
         return TableDetailsPageV1;
+      default:
+        return null;
     }
   }
 
@@ -279,6 +284,17 @@ class EntityUtilClassBase {
         return ResourceEntity.TABLE;
       }
     }
+  }
+
+  public getEntityFloatingButton(_: EntityType): FC | null {
+    return null;
+  }
+
+  public getManageExtraOptions(
+    _entityType?: EntityType,
+    _fqn?: string
+  ): ItemType[] {
+    return [];
   }
 }
 

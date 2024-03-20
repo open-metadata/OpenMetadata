@@ -12,24 +12,22 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { mockUserData } from '../Settings/Users/mocks/User.mocks';
+import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
+import { getVersion } from '../../rest/miscAPI';
+import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import NavBar from './NavBar';
 
 const mockHandleSearchBoxOpen = jest.fn();
-const mockFeatureModal = jest.fn();
 const mockHandleSearchChange = jest.fn();
 const mockHandleOnClick = jest.fn();
 const mockHandleKeyDown = jest.fn();
 const mockHandleClear = jest.fn();
 const mockProps = {
-  supportDropdown: [],
   searchValue: 'searchValue',
   isTourRoute: false,
-  isFeatureModalOpen: true,
   pathname: '',
   isSearchBoxOpen: false,
   handleSearchBoxOpen: mockHandleSearchBoxOpen,
-  handleFeatureModal: mockFeatureModal,
   handleSearchChange: mockHandleSearchChange,
   handleOnClick: mockHandleOnClick,
   handleClear: mockHandleClear,
@@ -70,19 +68,13 @@ jest.mock('../Domain/DomainProvider/DomainProvider', () => ({
   })),
 }));
 jest.mock('../Modals/WhatsNewModal/WhatsNewModal', () => {
-  return jest.fn().mockImplementation(
-    ({ onCancel, header }) =>
-      mockProps.isFeatureModalOpen && (
-        <div data-testid="whats-new-dialog">
-          WhatsNewModal
-          <p>{header}</p>
-          <button data-testid="cancel-button" onClick={onCancel}>
-            onCancel
-          </button>
-        </div>
-      )
-  );
+  return jest
+    .fn()
+    .mockImplementation(() => (
+      <p data-testid="whats-new-modal-close">WhatsNewModal</p>
+    ));
 });
+
 jest.mock('../NotificationBox/NotificationBox.component', () => {
   return jest.fn().mockImplementation(({ onTabChange }) => (
     <div data-testid="tab-change" onClick={onTabChange}>
@@ -101,11 +93,6 @@ jest.mock(
       ),
   })
 );
-jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
-    currentUser: mockUserData,
-  })),
-}));
 jest.mock('react-router-dom', () => ({
   useLocation: jest
     .fn()
@@ -134,6 +121,25 @@ jest.mock('antd', () => ({
   }),
 }));
 
+jest.mock('../../rest/miscAPI', () => ({
+  getVersion: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        version: '0.5.0-SNAPSHOT',
+      },
+    })
+  ),
+}));
+
+jest.mock('../../utils/NavbarUtils', () => ({
+  getHelpDropdownItems: jest.fn().mockReturnValue([
+    {
+      label: <p data-testid="whats-new">Whats New</p>,
+      key: HELP_ITEMS_ENUM.WHATS_NEW,
+    },
+  ]),
+}));
+
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBar {...mockProps} />);
@@ -159,6 +165,12 @@ describe('Test NavBar Component', () => {
     expect(
       await screen.findByText('label.whats-new-version')
     ).toBeInTheDocument();
+  });
+
+  it('should call getVersion onMount', () => {
+    render(<NavBar {...mockProps} />);
+
+    expect(getVersion).toHaveBeenCalled();
   });
 
   it('should handle search box open', () => {
@@ -203,13 +215,9 @@ describe('Test NavBar Component', () => {
     expect(mockHandleOnClick).toHaveBeenCalled();
   });
 
-  it('should call onCancel on modal close', async () => {
+  it('should call getHelpDropdownItems function', async () => {
     render(<NavBar {...mockProps} searchValue="" />);
-    const cancelButton = await screen.findAllByTestId('cancel-button');
-    await act(async () => {
-      fireEvent.click(cancelButton[0]);
-    });
 
-    expect(mockFeatureModal).toHaveBeenCalled();
+    expect(getHelpDropdownItems).toHaveBeenCalled();
   });
 });

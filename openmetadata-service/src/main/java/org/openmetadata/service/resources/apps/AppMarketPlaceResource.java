@@ -442,7 +442,8 @@ public class AppMarketPlaceResource
             .withAppScreenshots(create.getAppScreenshots())
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
-            .withAllowConfiguration(create.getAllowConfiguration());
+            .withAllowConfiguration(create.getAllowConfiguration())
+            .withSystemApp(create.getSystemApp());
 
     // Validate App
     validateApplication(app);

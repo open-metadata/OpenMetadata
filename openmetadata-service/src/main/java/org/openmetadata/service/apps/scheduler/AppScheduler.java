@@ -19,6 +19,7 @@ import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -142,8 +143,14 @@ public class AppScheduler {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
         JobDetail jobDetail = jobBuilder(application, application.getName());
-        Trigger trigger = trigger(application);
-        scheduler.scheduleJob(jobDetail, trigger);
+        if (!application
+            .getAppSchedule()
+            .getScheduleTimeline()
+            .value()
+            .equals(ScheduleTimeline.NONE)) {
+          Trigger trigger = trigger(application);
+          scheduler.scheduleJob(jobDetail, trigger);
+        }
       } else {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");
       }
@@ -171,7 +178,7 @@ public class AppScheduler {
   private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(APP_INFO_KEY, JsonUtils.pojoToJson(app));
-    dataMap.put("triggerType", AppRunType.Scheduled.value());
+    dataMap.put("triggerType", app.getAppSchedule().getScheduleTimeline().value());
     Class<? extends NativeApplication> clz =
         (Class<? extends NativeApplication>) Class.forName(app.getClassName());
     JobBuilder jobBuilder =
@@ -196,7 +203,7 @@ public class AppScheduler {
   }
 
   public static CronScheduleBuilder getCronSchedule(AppSchedule scheduleInfo) {
-    switch (scheduleInfo.getScheduleType()) {
+    switch (scheduleInfo.getScheduleTimeline()) {
       case HOURLY:
         return CronScheduleBuilder.cronSchedule("0 0 * ? * *");
       case DAILY:

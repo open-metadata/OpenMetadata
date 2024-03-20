@@ -54,7 +54,6 @@ import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNa
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
-  DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
   ERROR_MESSAGE,
   getEntityDetailsPath,
@@ -362,7 +361,7 @@ const DomainDetailsPage = ({
                 description={t('message.rename-entity', {
                   entity: t('label.domain'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -384,7 +383,7 @@ const DomainDetailsPage = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.domain'),
                 })}
-                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={StyleIcon}
                 id="edit-style-button"
                 name={t('label.style')}
               />
@@ -409,7 +408,7 @@ const DomainDetailsPage = ({
                     entityType: t('label.domain'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={DeleteIcon}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -589,13 +588,7 @@ const DomainDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={
-                      <Icon
-                        className="vertical-align-text-top"
-                        component={VersionIcon}
-                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
-                      />
-                    }
+                    icon={<Icon component={VersionIcon} />}
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {

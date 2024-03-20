@@ -40,12 +40,12 @@ import {
 } from '../../../../generated/api/teams/createUser';
 import { EntityReference } from '../../../../generated/entity/type';
 import { AuthProvider } from '../../../../generated/settings/settings';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { checkEmailInUse, generateRandomPwd } from '../../../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
@@ -63,7 +63,7 @@ const CreateUser = ({
 }: CreateUserProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const { authConfig } = useAuthContext();
+  const { authConfig } = useApplicationStore();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBot, setIsBot] = useState(forceBot);
   const [selectedTeams, setSelectedTeams] = useState<

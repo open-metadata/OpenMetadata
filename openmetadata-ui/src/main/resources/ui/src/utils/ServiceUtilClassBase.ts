@@ -59,6 +59,7 @@ import {
   MSSQL,
   MYSQL,
   NIFI,
+  OPENLINEAGE,
   OPEN_SEARCH,
   ORACLE,
   PINOT,
@@ -107,6 +108,7 @@ class ServiceUtilClassBase {
     StorageServiceType.Adls,
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
+    StorageServiceType.Gcs,
   ];
 
   protected updateUnsupportedServices(types: string[]) {
@@ -334,6 +336,9 @@ class ServiceUtilClassBase {
 
       case PipelineServiceType.DatabricksPipeline:
         return DATABRICK;
+
+      case PipelineServiceType.OpenLineage:
+        return OPENLINEAGE;
 
       case MlModelServiceType.Mlflow:
         return MLFLOW;

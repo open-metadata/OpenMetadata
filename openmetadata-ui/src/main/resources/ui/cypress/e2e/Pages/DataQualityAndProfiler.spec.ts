@@ -26,6 +26,7 @@ import {
   handleIngestionRetry,
   scheduleIngestion,
 } from '../../common/Utils/Ingestion';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner, updateOwner } from '../../common/Utils/Owner';
 import { goToServiceListingPage, Services } from '../../common/Utils/Services';
 import {
@@ -124,7 +125,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
 
         createEntityTable({
           token,
@@ -159,7 +160,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
         cy.request({
           method: 'DELETE',
           url: `/api/v1/dataQuality/testCases/${testCaseId}?hardDelete=true&recursive=false`,
@@ -443,13 +444,9 @@ describe(
       interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCase');
       goToProfilerTab();
       cy.get('[data-testid="profiler-tab-left-panel"]')
-        .contains('Column Profile')
+        .contains('Data Quality')
         .click();
       verifyResponseStatusCode('@testCase', 200);
-      cy.get('[data-testid="id-test-count"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
       cy.get(`[data-testid="${NEW_COLUMN_TEST_CASE.name}"]`).should(
         'be.visible'
       );
@@ -488,15 +485,10 @@ describe(
       interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCase');
       goToProfilerTab();
       cy.get('[data-testid="profiler-tab-left-panel"]')
-        .contains('Column Profile')
+        .contains('Data Quality')
         .should('be.visible')
         .click();
       verifyResponseStatusCode('@testCase', 200);
-      cy.get('[data-testid="id-test-count"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-
       [NEW_COLUMN_TEST_CASE.name, NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name].map(
         (test) => {
           cy.get(`[data-testid="${test}"]`)
@@ -687,12 +679,13 @@ describe(
       cy.get('[data-testid="profiler-tab-left-panel"]')
         .contains('Column Profile')
         .click();
-      verifyResponseStatusCode('@getTestCaseInfo', 200);
+
       cy.get('[data-row-key="shop_id"]')
         .contains('shop_id')
         .scrollIntoView()
         .click();
       verifyResponseStatusCode('@getProfilerInfo', 200);
+      verifyResponseStatusCode('@getTestCaseInfo', 200);
 
       cy.get('#count_graph').scrollIntoView().should('be.visible');
       cy.get('#proportion_graph').scrollIntoView().should('be.visible');

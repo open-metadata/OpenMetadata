@@ -92,7 +92,13 @@ class QueryParserProcessor(Processor):
         return "Query Parser"
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata, **kwargs):
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+        **kwargs,
+    ):
         config = ConfigModel.parse_obj(config_dict)
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata, connection_type)

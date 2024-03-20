@@ -160,7 +160,12 @@ class TestSuiteSource(Source):
             )
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 

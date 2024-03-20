@@ -17,6 +17,7 @@ import {
   verifyResponseStatusCode,
   visitDatabaseDetailsPage,
 } from '../../common/common';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
@@ -43,7 +44,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
         cy.request({
           method: 'PUT',
           url: `/api/v1/domains`,
@@ -99,7 +100,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
         cy.request({
           method: 'DELETE',
           url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,

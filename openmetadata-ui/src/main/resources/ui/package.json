@@ -46,8 +46,8 @@
     "@ant-design/icons": "^4.7.0",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
     "@auth0/auth0-react": "^1.9.0",
-    "@azure/msal-browser": "^2.37.0",
-    "@azure/msal-react": "^1.5.11",
+    "@azure/msal-browser": "^3.10.0",
+    "@azure/msal-react": "^2.0.12",
     "@deuex-solutions/react-tour": "^1.2.6",
     "@fontsource/poppins": "^5.0.0",
     "@fontsource/source-code-pro": "^5.0.0",
@@ -129,7 +129,8 @@
     "socket.io-client": "^4.5.1",
     "styled-components": "^6.1.8",
     "turndown": "^7.1.2",
-    "use-analytics": "^0.0.5"
+    "use-analytics": "^0.0.5",
+    "zustand": "^4.5.0"
   },
   "browserslist": {
     "production": [
