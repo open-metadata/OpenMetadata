@@ -55,7 +55,6 @@ class QlikCloudClient:
         self.config = config
         self.socket_connection = None
 
-        # self.config.token = f"{self.config.token}"
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
             api_version=API_VERSION,
@@ -103,7 +102,6 @@ class QlikCloudClient:
         """
         try:
             self.connect_websocket(dashboard_id)
-            # self._websocket_send_request(request=None)
             OPEN_DOC_REQ.update({"params": [dashboard_id]})
             self._websocket_send_request(OPEN_DOC_REQ)
             self._websocket_send_request(CREATE_SHEET_SESSION)
@@ -129,7 +127,7 @@ class QlikCloudClient:
             logger.warning("Failed to fetch the app list")
         return []
 
-    def get_dashboard_details(self, dashboard_id: str):
+    def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikAppDetails]:
         """
         Get App Details
         """

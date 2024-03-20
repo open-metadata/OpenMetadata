@@ -23,7 +23,8 @@
       "token": {
         "title": "token",
         "description": "token to connect to Qlik Cloud.",
-        "type": "string"
+        "type": "string",
+        "format": "password"
       },
       "hostPort": {
         "expose": true,

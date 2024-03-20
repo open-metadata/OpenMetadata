@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Metabase Models
+QlikCloud Models
 """
 from typing import List, Optional, Union
 
@@ -19,7 +19,7 @@ from pydantic import BaseModel
 # App
 class QlikApp(BaseModel):
     """
-    Metabase dashboard model
+    QlikCloud App model
     """
 
     description: Optional[str]
@@ -34,7 +34,7 @@ class QlikAppList(BaseModel):
 
 class QlikAppDetails(BaseModel):
     """
-    Metabase app details model
+    Qlik App details model
     """
 
     description: Optional[str]
