@@ -202,7 +202,7 @@ export const addCustomPropertiesForEntity = (
   propertyName: string,
   customPropertyData: { description: string },
   customType: string,
-  value?: { values: string[]; multiSelect: boolean }
+  enumValue?: { values: string[]; multiSelect: boolean }
 ) => {
   // Add Custom property for selected entity
   cy.get('[data-testid="add-field-button"]').click();
@@ -262,13 +262,13 @@ export const addCustomPropertiesForEntity = (
   cy.get(`[title="${customType}"]`).click();
 
   if (customType === 'Enum') {
-    value.values.forEach((val) => {
-      cy.get('#root\\/customPropertyConfig').type(`${val}{enter}`);
+    enumValue.values.forEach((val) => {
+      cy.get('#root\\/enumConfig').type(`${val}{enter}`);
     });
 
     cy.clickOutside();
 
-    if (value.multiSelect) {
+    if (enumValue.multiSelect) {
       cy.get('#root\\/multiSelect').scrollIntoView().click();
     }
   }
