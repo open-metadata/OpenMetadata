@@ -308,9 +308,8 @@ export const checkForTableSpecificFields = ({ deleted }) => {
 
   cy.get('[data-testid="table_queries"]').click();
 
-  verifyResponseStatusCode('@getQueryData', 200);
-
   if (!deleted) {
+    verifyResponseStatusCode('@getQueryData', 200);
     cy.get('[data-testid="add-query-btn"]').should('be.enabled');
   } else {
     cy.get('[data-testid="no-data-placeholder"]').should(
