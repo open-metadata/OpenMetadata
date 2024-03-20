@@ -271,7 +271,6 @@ class RedshiftSource(
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            # self.inspector = inspect(self.connection)
             self.get_partition_details()
 
             self._set_incremental_table_processor(

@@ -183,7 +183,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        # threads=True,
     )
     stored_procedure = TopologyNode(
         producer="get_stored_procedures",

@@ -242,9 +242,6 @@ class BigquerySource(
             BigQueryIncrementalTableProcessor
         ] = None
 
-        self.incremental.enabled = True
-        self.incremental.start_timestamp = 1710858294000
-
         if self.incremental.enabled:
             logger.info(
                 "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
