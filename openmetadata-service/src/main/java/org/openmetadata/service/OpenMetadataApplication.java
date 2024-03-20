@@ -122,7 +122,6 @@ import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
-import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.pac4j.core.util.CommonHelper;
 import org.pac4j.oidc.client.OidcClient;
 import org.quartz.SchedulerException;
@@ -378,14 +377,32 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               dbFactory.setPassword(token);
             });
 
-    Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
-    jdbiInstance.setSqlLogger(new OMSqlLogger());
+    Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
+    SqlLogger sqlLogger =
+        new SqlLogger() {
+          @Override
+          public void logBeforeExecution(StatementContext context) {
+            LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
+          }
+
+          @Override
+          public void logAfterExecution(StatementContext context) {
+            LOG.debug(
+                "sql {}, parameters {}, timeTaken {} ms",
+                context.getRenderedSql(),
+                context.getBinding(),
+                context.getElapsedTime(ChronoUnit.MILLIS));
+          }
+        };
+    if (LOG.isDebugEnabled()) {
+      jdbi.setSqlLogger(sqlLogger);
+    }
+
     // Set the Database type for choosing correct queries from annotations
-    jdbiInstance
-        .getConfig(SqlObjects.class)
+    jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
 
-    return jdbiInstance;
+    return jdbi;
   }
 
   @SneakyThrows
