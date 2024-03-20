@@ -157,6 +157,12 @@ class TestHelpers(TestCase):
         assert format_large_string_numbers(1000000) == "1.000M"
         assert format_large_string_numbers(1000000000) == "1.000B"
         assert format_large_string_numbers(1000000000000) == "1.000T"
+        assert format_large_string_numbers(10000000000000) == "10.000T"
+        assert format_large_string_numbers(100000000000000) == "100.000T"
+        assert format_large_string_numbers(1000000000000000) == "1e15"
+        assert format_large_string_numbers(10000000000000000) == "10e15"
+        assert format_large_string_numbers(100000000000000000) == "100e15"
+        assert format_large_string_numbers(1000000000000000000) == "1e18"
 
     def test_find_suggestion(self):
         """we can get one possible suggestion"""
