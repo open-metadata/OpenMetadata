@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { FC } from 'react';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -28,6 +32,7 @@ import {
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getTableFQNFromColumnFQN } from './CommonUtils';
@@ -135,6 +140,64 @@ class EntityUtilClassBase {
       default:
         return getTableDetailsPath(fullyQualifiedName);
     }
+  }
+
+  public getResourceEntityFromEntityType(entityType: string): string {
+    switch (entityType) {
+      case EntityType.TABLE: {
+        return ResourceEntity.TABLE;
+      }
+      case EntityType.TOPIC: {
+        return ResourceEntity.TOPIC;
+      }
+      case EntityType.DASHBOARD: {
+        return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.PIPELINE: {
+        return ResourceEntity.PIPELINE;
+      }
+      case EntityType.MLMODEL: {
+        return ResourceEntity.ML_MODEL;
+      }
+      case EntityType.CONTAINER: {
+        return ResourceEntity.CONTAINER;
+      }
+      case EntityType.SEARCH_INDEX: {
+        return ResourceEntity.SEARCH_INDEX;
+      }
+      case EntityType.DASHBOARD_DATA_MODEL: {
+        return ResourceEntity.DASHBOARD_DATA_MODEL;
+      }
+      case EntityType.STORED_PROCEDURE: {
+        return ResourceEntity.STORED_PROCEDURE;
+      }
+      case EntityType.DATABASE: {
+        return ResourceEntity.DATABASE;
+      }
+      case EntityType.DATABASE_SCHEMA: {
+        return ResourceEntity.DATABASE_SCHEMA;
+      }
+      case EntityType.GLOSSARY_TERM: {
+        return ResourceEntity.GLOSSARY_TERM;
+      }
+      case EntityType.DATA_PRODUCT: {
+        return ResourceEntity.DATA_PRODUCT;
+      }
+      default: {
+        return ResourceEntity.TABLE;
+      }
+    }
+  }
+
+  public getEntityFloatingButton(_: EntityType): FC | null {
+    return null;
+  }
+
+  public getManageExtraOptions(
+    _entityType?: EntityType,
+    _fqn?: string
+  ): ItemType[] {
+    return [];
   }
 }
 

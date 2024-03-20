@@ -19,6 +19,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
+import userClassBase from '../../utils/UserClassBase';
 import { useApplicationStore } from '../useApplicationStore';
 
 let userProfilePicsLoading: string[] = [];
@@ -80,7 +81,11 @@ export const useUserProfile = ({
       });
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
 
-      setProfilePic(profile);
+      if (user.isBot) {
+        setProfilePic(userClassBase.getBotLogo(user.name) ?? '');
+      } else {
+        setProfilePic(profile);
+      }
     } catch (error) {
       // Error
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
