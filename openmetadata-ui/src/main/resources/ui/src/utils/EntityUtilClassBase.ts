@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import {
   getEditWebhookPath,
@@ -280,6 +282,13 @@ class EntityUtilClassBase {
         return ResourceEntity.TABLE;
       }
     }
+  }
+
+  public getManageExtraOptions(
+    _entityType?: EntityType,
+    _fqn?: string
+  ): ItemType[] {
+    return [];
   }
 }
 
