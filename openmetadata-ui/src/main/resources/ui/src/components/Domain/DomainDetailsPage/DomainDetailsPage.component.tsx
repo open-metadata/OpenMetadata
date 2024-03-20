@@ -51,7 +51,11 @@ import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+  ERROR_MESSAGE,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -573,7 +577,13 @@ const DomainDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={DATA_ASSET_ICON_DIMENSION}
+                      />
+                    }
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {

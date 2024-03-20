@@ -32,7 +32,10 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -512,7 +515,13 @@ const DataProductsDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={DATA_ASSET_ICON_DIMENSION}
+                      />
+                    }
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {

@@ -30,7 +30,10 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -105,7 +108,11 @@ export const ExtraInfoLink = ({
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
-      <IconExternalLink className="m-l-xss " width={14} />{' '}
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
     </div>
   </>
 );
@@ -430,7 +437,13 @@ export const DataAssetsHeader = ({
                   <Tooltip title={t('label.open-task-plural')}>
                     <Button
                       className="w-16 p-0"
-                      icon={<Icon component={TaskOpenIcon} />}
+                      icon={
+                        <Icon
+                          className="vertical-align-text-top"
+                          component={TaskOpenIcon}
+                          style={DATA_ASSET_ICON_DIMENSION}
+                        />
+                      }
                       onClick={handleOpenTaskClick}>
                       <Typography.Text>{openTaskCount}</Typography.Text>
                     </Button>
@@ -441,7 +454,13 @@ export const DataAssetsHeader = ({
                   <Button
                     className="w-16 p-0"
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={VersionIcon}
+                        style={DATA_ASSET_ICON_DIMENSION}
+                      />
+                    }
                     onClick={onVersionClick}>
                     <Typography.Text>{version}</Typography.Text>
                   </Button>
@@ -460,6 +479,7 @@ export const DataAssetsHeader = ({
                       icon={
                         <Icon
                           component={isFollowing ? StarFilledIcon : StarIcon}
+                          style={DATA_ASSET_ICON_DIMENSION}
                         />
                       }
                       loading={isFollowingLoading}
@@ -473,7 +493,14 @@ export const DataAssetsHeader = ({
                   placement="topRight"
                   title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
-                    icon={<Icon component={ShareIcon} />}
+                    className="flex-center"
+                    icon={
+                      <Icon
+                        className="vertical-align-text-top"
+                        component={ShareIcon}
+                        style={DATA_ASSET_ICON_DIMENSION}
+                      />
+                    }
                     onClick={handleShareButtonClick}
                   />
                 </Tooltip>

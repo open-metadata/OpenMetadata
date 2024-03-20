@@ -824,6 +824,12 @@ export const ICON_DIMENSION = {
   fontSize: 14,
 };
 
+export const DATA_ASSET_ICON_DIMENSION = {
+  height: 18,
+  width: 18,
+  fontSize: 18,
+};
+
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
 };

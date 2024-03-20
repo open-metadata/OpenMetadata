@@ -41,7 +41,11 @@ import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
@@ -505,7 +509,7 @@ const AppDetails = () => {
 
                 {appData?.developerUrl && (
                   <div className="flex-center gap-2">
-                    <IconExternalLink width={12} />
+                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
                     <Typography.Link
                       className="text-xs"
                       href={appData?.developerUrl}
