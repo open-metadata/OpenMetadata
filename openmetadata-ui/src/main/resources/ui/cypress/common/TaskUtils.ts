@@ -31,7 +31,10 @@ export type TaskDetails = {
   schemaName?: string;
 };
 
-export const verifyTaskDetails = (regexPattern: RegExp) => {
+export const verifyTaskDetails = (
+  regexPattern: RegExp,
+  taskAssignee?: string
+) => {
   cy.get('#task-panel').should('be.visible');
   cy.get('[data-testid="task-title"]')
     .invoke('text')
@@ -43,7 +46,7 @@ export const verifyTaskDetails = (regexPattern: RegExp) => {
 
   cy.get('[data-testid="owner-link"]').should('contain', owner);
 
-  cy.get(`[data-testid="${assignee}"]`).should('be.visible');
+  cy.get(`[data-testid="${taskAssignee ?? assignee}"]`).should('be.visible');
 };
 
 export const editAssignee = () => {
