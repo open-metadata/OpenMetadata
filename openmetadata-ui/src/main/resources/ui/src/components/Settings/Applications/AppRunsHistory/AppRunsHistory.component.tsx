@@ -152,7 +152,7 @@ const AppRunsHistory = forwardRef(
           return NO_DATA_PLACEHOLDER;
         }
       },
-      [showLogAction, appData, isExternalApp]
+      [showLogAction, appData, isExternalApp, handleRowExpandable]
     );
 
     const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(

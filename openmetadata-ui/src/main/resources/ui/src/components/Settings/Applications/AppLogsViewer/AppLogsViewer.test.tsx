@@ -39,6 +39,23 @@ jest.mock('antd', () => ({
   Badge: jest.fn().mockReturnValue(<div>Badge</div>),
 }));
 
+jest.mock('../../../../utils/ApplicationUtils', () => ({
+  getEntityStatsData: jest.fn().mockReturnValue([
+    {
+      name: 'chart',
+      totalRecords: 100,
+      failedRecords: 10,
+      successRecords: 90,
+    },
+  ]),
+}));
+
+jest.mock('../../../common/Badge/Badge.component', () =>
+  jest.fn().mockImplementation(({ label }) => {
+    return <div data-testid="app-badge">{`${label}-AppBadge`}</div>;
+  })
+);
+
 const mockProps1 = {
   data: {
     appId: '6e4d3dcf-238d-4874-b4e4-dd863ede6544',
@@ -54,7 +71,6 @@ const mockProps1 = {
           failedRecords: 0,
           successRecords: 274,
         },
-        entityStats: {},
       },
     },
     scheduleInfo: {
@@ -77,7 +93,51 @@ const mockProps2 = {
           failedRecords: 0,
           successRecords: 274,
         },
-        entityStats: {},
+      },
+    },
+  },
+};
+
+const mockProps3 = {
+  data: {
+    ...mockProps1.data,
+    successContext: {
+      stats: {
+        jobStats: {
+          totalRecords: 274,
+          failedRecords: 4,
+          successRecords: 270,
+        },
+        entityStats: {
+          chart: {
+            totalRecords: 100,
+            failedRecords: 10,
+            successRecords: 90,
+          },
+        },
+      },
+    },
+  },
+};
+
+const mockProps4 = {
+  data: {
+    ...mockProps1.data,
+    successContext: undefined,
+    failureContext: {
+      stats: {
+        jobStats: {
+          totalRecords: 274,
+          failedRecords: 4,
+          successRecords: 270,
+        },
+        entityStats: {
+          chart: {
+            totalRecords: 100,
+            failedRecords: 10,
+            successRecords: 90,
+          },
+        },
       },
     },
   },
@@ -104,5 +164,51 @@ describe('AppLogsViewer component', () => {
 
     expect(screen.getByText('--')).toBeInTheDocument();
     // Note: not asserting other elements as for failure also same elements will render
+  });
+
+  it("should not render entity stats table based if successContext doesn't have data", () => {
+    render(<AppLogsViewer {...mockProps1} />);
+
+    expect(
+      screen.queryByTestId('app-entity-stats-history-table')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render entity stats table based if SuccessContext has data', () => {
+    render(<AppLogsViewer {...mockProps3} />);
+
+    expect(
+      screen.getByTestId('app-entity-stats-history-table')
+    ).toBeInTheDocument();
+
+    expect(screen.getByText('label.name')).toBeInTheDocument();
+
+    expect(screen.getAllByTestId('app-badge')).toHaveLength(3);
+    expect(screen.getByText('274-AppBadge')).toBeInTheDocument();
+    expect(screen.getByText('270-AppBadge')).toBeInTheDocument();
+    expect(screen.getByText('4-AppBadge')).toBeInTheDocument();
+  });
+
+  it("should not render entity stats table based if failedContext doesn't have data", () => {
+    render(<AppLogsViewer {...mockProps2} />);
+
+    expect(
+      screen.queryByTestId('app-entity-stats-history-table')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render entity stats table based if failedContext has data', () => {
+    render(<AppLogsViewer {...mockProps4} />);
+
+    expect(
+      screen.getByTestId('app-entity-stats-history-table')
+    ).toBeInTheDocument();
+
+    expect(screen.getByText('label.name')).toBeInTheDocument();
+
+    expect(screen.getAllByTestId('app-badge')).toHaveLength(3);
+    expect(screen.getByText('274-AppBadge')).toBeInTheDocument();
+    expect(screen.getByText('270-AppBadge')).toBeInTheDocument();
+    expect(screen.getByText('4-AppBadge')).toBeInTheDocument();
   });
 });
