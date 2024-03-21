@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.USER;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,7 +75,8 @@ public class WebsocketNotificationHandler {
     String jsonThread = JsonUtils.pojoToJson(thread);
     if (thread.getPostsCount() == 0) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
-      HashSet<UUID> receiversList = new HashSet<>();
+      Set<UUID> receiversList = new HashSet<>();
+      // Update Assignee
       assignees.forEach(
           e -> {
             if (Entity.USER.equals(e.getType())) {
@@ -92,6 +94,16 @@ public class WebsocketNotificationHandler {
       // Send WebSocket Notification
       WebSocketManager.getInstance()
           .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
+
+      // Notify Latest Mentioned User
+      List<MessageParser.EntityLink> mentions;
+      if (thread.getPostsCount() == 0) {
+        mentions = MessageParser.getEntityLinks(thread.getMessage());
+      } else {
+        Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
+        mentions = MessageParser.getEntityLinks(latestPost.getMessage());
+      }
+      notifyMentionedUsers(mentions, jsonThread);
     }
   }
 
@@ -117,6 +129,11 @@ public class WebsocketNotificationHandler {
       Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
       mentions = MessageParser.getEntityLinks(latestPost.getMessage());
     }
+    notifyMentionedUsers(mentions, jsonThread);
+  }
+
+  private static void notifyMentionedUsers(
+      List<MessageParser.EntityLink> mentions, String jsonThread) {
     mentions.forEach(
         entityLink -> {
           String fqn = entityLink.getEntityFQN();
