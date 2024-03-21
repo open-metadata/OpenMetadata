@@ -142,6 +142,18 @@ const mockProps4 = {
   },
 };
 
+const mockProps5 = {
+  data: {
+    ...mockProps1.data,
+    successContext: {
+      stats: null,
+    },
+    failureContext: {
+      stats: null,
+    },
+  },
+};
+
 describe('AppLogsViewer component', () => {
   it('should contain all necessary elements', () => {
     render(<AppLogsViewer {...mockProps1} />);
@@ -209,5 +221,15 @@ describe('AppLogsViewer component', () => {
     expect(screen.getByText('274-AppBadge')).toBeInTheDocument();
     expect(screen.getByText('270-AppBadge')).toBeInTheDocument();
     expect(screen.getByText('4-AppBadge')).toBeInTheDocument();
+  });
+
+  it('should not render stats and entityStats component if successContext and failureContext stats is empty', () => {
+    render(<AppLogsViewer {...mockProps5} />);
+
+    expect(screen.queryByTestId('stats-component')).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByTestId('app-entity-stats-history-table')
+    ).not.toBeInTheDocument();
   });
 });
