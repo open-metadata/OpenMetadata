@@ -13,11 +13,18 @@
 import { Button, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
+import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
+import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 
 const SuggestionsSlider = () => {
-  const { selectedUserSuggestions } = useSuggestionsContext();
+  const {
+    selectedUserSuggestions,
+    acceptRejectAllSuggestions,
+    loadingAccept,
+    loadingReject,
+  } = useSuggestionsContext();
 
   return (
     <div className="d-flex items-center gap-2">
@@ -27,12 +34,31 @@ const SuggestionsSlider = () => {
       <AvatarCarousel />
       {selectedUserSuggestions.length > 0 && (
         <>
-          <Button size="small" type="primary">
+          <Button
+            loading={loadingAccept}
+            size="small"
+            type="primary"
+            onClick={() =>
+              acceptRejectAllSuggestions(
+                SuggestionType.SuggestDescription,
+                SuggestionAction.Accept
+              )
+            }>
             <Typography.Text className="text-xs text-white">
               {t('label.accept-all')}
             </Typography.Text>
           </Button>
-          <Button ghost size="small" type="primary">
+          <Button
+            ghost
+            loading={loadingReject}
+            size="small"
+            type="primary"
+            onClick={() =>
+              acceptRejectAllSuggestions(
+                SuggestionType.SuggestDescription,
+                SuggestionAction.Accept
+              )
+            }>
             <Typography.Text className="text-xs text-primary">
               {t('label.reject-all')}
             </Typography.Text>
