@@ -163,7 +163,7 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.withEnv("discovery.type", "single-node");
     ELASTIC_SEARCH_CONTAINER.withEnv("xpack.security.enabled", "false");
     ELASTIC_SEARCH_CONTAINER.start();
-    ELASTIC_SEARCH_CONTAINER.withReuse(true);
+    ELASTIC_SEARCH_CONTAINER.withReuse(false);
     ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
         new LogMessageWaitStrategy()
             .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")

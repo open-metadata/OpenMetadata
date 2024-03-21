@@ -648,6 +648,6 @@ public final class TestUtils {
     // Wait for the async operation to complete. We cannot use
     // Awaitility here as the test method thread is not
     // the owner of the async operation
-    TimeUnit.MILLISECONDS.sleep(100);
+    TimeUnit.MILLISECONDS.sleep(500);
   }
 }
