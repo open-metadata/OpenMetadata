@@ -227,9 +227,7 @@ export const addInternalDestination = (
       ).should('be.visible');
       cy.get(
         `[data-testid="team-user-select-dropdown-${destinationNumber}"] [data-testid="search-input"]`
-      )
-        .click()
-        .type(searchText);
+      ).type(searchText);
       // Added wait for debounce functionality
       cy.wait(600);
       verifyResponseStatusCode('@getSearchResult', 200);

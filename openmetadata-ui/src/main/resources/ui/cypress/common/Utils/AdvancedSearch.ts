@@ -188,9 +188,9 @@ export const searchForField = (
         .type(searchCriteria);
 
       // checking filter is working
-      cy.get(
-        `.ant-select-item-option-active[title="${searchCriteria}"]`
-      ).should('be.visible');
+      cy.get(`.ant-select-dropdown [title="${searchCriteria}"]`).should(
+        'be.visible'
+      );
 
       // select value from dropdown
       if (!isLocalSearch) {
