@@ -69,8 +69,8 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
 
-      String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
-      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 1);
+    String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
+    assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 1);
 
     assertNotEquals(0, reportDataList.getData().size());
   }
@@ -176,12 +176,12 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             ADMIN_AUTH_HEADERS);
     assertNotEquals(0, entityReportDataList.getData().size());
     assertNotEquals(0, webAnalyticsReportDataList.getData().size());
-      List<String> indices = new ArrayList<>();
-      indices.add(ENTITY_REPORT_DATA_INDEX.value());
-      indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.value());
-      for (String index : indices) {
-        String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
-        assertDocumentCountEquals(jsonQuery, index, 1);
+    List<String> indices = new ArrayList<>();
+    indices.add(ENTITY_REPORT_DATA_INDEX.value());
+    indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.value());
+    for (String index : indices) {
+      String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+      assertDocumentCountEquals(jsonQuery, index, 1);
     }
 
     // delete the entity report data and check that it has been deleted
@@ -194,9 +194,9 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
     assertEquals(0, entityReportDataList.getData().size());
-      // Check document has been deleted from elasticsearch
-      String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
-      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 0);
+    // Check document has been deleted from elasticsearch
+    String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+    assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 0);
     webAnalyticsReportDataList =
         getReportData(
             "2022-10-15",

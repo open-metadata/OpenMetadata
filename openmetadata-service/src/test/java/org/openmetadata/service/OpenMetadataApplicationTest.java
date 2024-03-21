@@ -55,7 +55,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
@@ -69,11 +68,13 @@ public abstract class OpenMetadataApplicationTest {
   public static final String ELASTIC_PASSWORD = "password";
   public static final String ELASTIC_SCHEME = "http";
   public static final Integer ELASTIC_CONNECT_TIMEOUT = 5;
-    public static final Integer ELASTIC_SOCKET_TIMEOUT = 60;
-    public static final Integer ELASTIC_KEEP_ALIVE_TIMEOUT = 600;
-    public static final Integer ELASTIC_BATCH_SIZE = 10;
-    public static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE = IndexMappingLanguage.EN;
-    public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE = ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
+  public static final Integer ELASTIC_SOCKET_TIMEOUT = 60;
+  public static final Integer ELASTIC_KEEP_ALIVE_TIMEOUT = 600;
+  public static final Integer ELASTIC_BATCH_SIZE = 10;
+  public static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
+      IndexMappingLanguage.EN;
+  public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
+      ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource =
       new WebhookCallbackResource();
@@ -164,9 +165,9 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.start();
     ELASTIC_SEARCH_CONTAINER.withReuse(true);
     ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
-            new LogMessageWaitStrategy()
-                    .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
-                    .withStartupTimeout(Duration.ofMinutes(5)));
+        new LogMessageWaitStrategy()
+            .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
+            .withStartupTimeout(Duration.ofMinutes(5)));
     String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
     HOST = parts[0];
     PORT = parts[1];
@@ -234,7 +235,8 @@ public abstract class OpenMetadataApplicationTest {
 
   private void createIndices() {
     ElasticSearchConfiguration esConfig = new ElasticSearchConfiguration();
-    esConfig.withHost(HOST)
+    esConfig
+        .withHost(HOST)
         .withPort(ELASTIC_SEARCH_CONTAINER.getMappedPort(9200))
         .withUsername(ELASTIC_USER)
         .withPassword(ELASTIC_PASSWORD)
@@ -252,11 +254,14 @@ public abstract class OpenMetadataApplicationTest {
 
   public static RestClient getSearchClient() {
     CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-    credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, "password"));
+    credentialsProvider.setCredentials(
+        AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, "password"));
 
-    RestClientBuilder builder = RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
-            .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-                    .setDefaultCredentialsProvider(credentialsProvider));
+    RestClientBuilder builder =
+        RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
+            .setHttpClientConfigCallback(
+                httpClientBuilder ->
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
     return builder.build();
   }
 
@@ -283,12 +288,23 @@ public abstract class OpenMetadataApplicationTest {
     configOverrides.add(ConfigOverride.config("elasticsearch.password", ELASTIC_PASSWORD));
     configOverrides.add(ConfigOverride.config("elasticsearch.truststorePath", ""));
     configOverrides.add(ConfigOverride.config("elasticsearch.truststorePassword", ""));
-    configOverrides.add(ConfigOverride.config("elasticsearch.connectionTimeoutSecs", ELASTIC_CONNECT_TIMEOUT.toString()));
-    configOverrides.add(ConfigOverride.config("elasticsearch.socketTimeoutSecs", ELASTIC_SOCKET_TIMEOUT.toString()));
-    configOverrides.add(ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", ELASTIC_KEEP_ALIVE_TIMEOUT.toString()));
-    configOverrides.add(ConfigOverride.config("elasticsearch.batchSize", ELASTIC_BATCH_SIZE.toString()));
-    configOverrides.add(ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE.value()));
-    configOverrides.add(ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.connectionTimeoutSecs", ELASTIC_CONNECT_TIMEOUT.toString()));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.socketTimeoutSecs", ELASTIC_SOCKET_TIMEOUT.toString()));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.keepAliveTimeoutSecs", ELASTIC_KEEP_ALIVE_TIMEOUT.toString()));
+    configOverrides.add(
+        ConfigOverride.config("elasticsearch.batchSize", ELASTIC_BATCH_SIZE.toString()));
+    configOverrides.add(
+        ConfigOverride.config(
+            "elasticsearch.searchIndexMappingLanguage",
+            ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE.value()));
+    configOverrides.add(
+        ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
   }
 
   private static void overrideDatabaseConfig(JdbcDatabaseContainer<?> sqlContainer) {

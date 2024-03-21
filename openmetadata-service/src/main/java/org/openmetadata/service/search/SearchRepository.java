@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -534,7 +533,9 @@ public class SearchRepository {
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
-          new ImmutablePair<>(REMOVE_TAGS_CHILDREN_SCRIPT, Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+          new ImmutablePair<>(
+              REMOVE_TAGS_CHILDREN_SCRIPT,
+              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
