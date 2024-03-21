@@ -37,12 +37,8 @@ import {
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
-import {
-  CustomProperty,
-  EnumConfig,
-} from '../../../generated/type/customProperty';
+import { EnumConfig } from '../../../generated/type/customProperty';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
@@ -54,32 +50,15 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import {
+  PropertyValueProps,
+  PropertyValueType,
+  TimeIntervalType,
+} from './CustomPropertyTable.interface';
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 
-interface Props {
-  property: CustomProperty;
-  extension: Table['extension'];
-  hasEditPermissions: boolean;
-  versionDataKeys?: string[];
-  isVersionView?: boolean;
-  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
-}
-
-type TimeIntervalType = {
-  start: number;
-  end: number;
-};
-
-type PropertyValueType =
-  | string
-  | number
-  | string[]
-  | EntityReference
-  | EntityReference[]
-  | TimeIntervalType;
-
-export const PropertyValue: FC<Props> = ({
+export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,
   versionDataKeys,
   extension,
