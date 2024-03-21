@@ -6,7 +6,7 @@ import org.openmetadata.sdk.exception.WebServiceException;
 public class AppException extends WebServiceException {
 
   private static final String BY_NAME_MESSAGE = "Application [%s] Exception [%s] due to [%s].";
-  private static final String ERROR_TYPE = "PIPELINE_SERVICE_ERROR";
+  private static final String ERROR_TYPE = "APPLICATION_ERROR";
 
   public AppException(String message) {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
