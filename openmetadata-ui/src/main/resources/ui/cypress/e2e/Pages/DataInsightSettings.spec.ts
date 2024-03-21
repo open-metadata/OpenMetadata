@@ -12,6 +12,7 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe(
@@ -124,7 +125,7 @@ describe(
       verifyResponseStatusCode('@triggerPipeline', 200);
 
       cy.get('[data-testid="logs"]').click();
-      cy.get('[data-testid="summary-card"]').should('be.visible');
+      cy.url().should('eq', `${BASE_URL}/apps/DataInsightsApplication/logs`);
     });
   }
 );
