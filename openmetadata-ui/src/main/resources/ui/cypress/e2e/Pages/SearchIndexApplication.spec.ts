@@ -24,6 +24,28 @@ const visitSearchApplicationPage = () => {
   ).click();
   verifyResponseStatusCode('@getSearchIndexingApplication', 200);
 };
+const logButton = () => {
+  // check if the button is disabled to perform the click action
+
+  const checkLogButton = () => {
+    cy.get('[data-testid="logs"]').then(($logButton) => {
+      if ($logButton.is(':enabled')) {
+        cy.get('[data-testid="logs"]').click();
+        cy.get('[data-testid="stats-component"]').should('be.visible');
+        cy.get('[data-testid="app-entity-stats-history-table"]').should(
+          'be.visible'
+        );
+      } else {
+        cy.wait(5000);
+        cy.reload();
+
+        checkLogButton();
+      }
+    });
+  };
+
+  checkLogButton();
+};
 
 describe('Search Index Application', { tags: 'Settings' }, () => {
   beforeEach(() => {
@@ -114,5 +136,6 @@ describe('Search Index Application', { tags: 'Settings' }, () => {
     verifyResponseStatusCode('@getSearchIndexingApplication', 200);
     cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
+    logButton();
   });
 });

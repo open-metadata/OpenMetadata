@@ -122,6 +122,9 @@ describe(
       verifyResponseStatusCode('@getDataInsightDetails', 200);
       cy.get('[data-testid="run-now-button"]').click();
       verifyResponseStatusCode('@triggerPipeline', 200);
+
+      cy.get('[data-testid="logs"]').click();
+      cy.get('[data-testid="summary-card"]').click();
     });
   }
 );
