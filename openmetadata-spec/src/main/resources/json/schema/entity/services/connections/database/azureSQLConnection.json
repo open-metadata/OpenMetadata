@@ -92,13 +92,7 @@
           "type": "integer",
           "default": 30
         }
-      },
-      "required": [
-        "Encrypt",
-        "Trust Server Certificate",
-        "Connection Timeout",
-        "Authentication"
-      ]
+      }
     },
     "ingestAllDatabases": {
       "title": "Ingest All Databases",

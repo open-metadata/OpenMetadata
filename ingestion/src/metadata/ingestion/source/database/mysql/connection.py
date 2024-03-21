@@ -47,7 +47,7 @@ def get_connection(connection: MysqlConnection) -> Engine:
         if not connection.authType.azureConfig.scopes:
             raise ValueError("Azure Scopes are not provided")
         access_token_obj = azure_client.get_token(
-            *[connection.authType.azureConfig.scopes]
+            *connection.authType.azureConfig.scopes.split(",")
         )
         connection.authType = BasicAuth(password=access_token_obj.token)
     if connection.sslCA or connection.sslCert or connection.sslKey:
