@@ -21,6 +21,7 @@ import {
 } from '../Utils/Annoucement';
 import {
   CustomProperty,
+  CustomPropertyTypeByName,
   deleteCustomProperties,
   getPropertyValues,
   setValueForProperty,
@@ -180,7 +181,7 @@ class EntityClass {
           headers: { Authorization: `Bearer ${token}` },
         }).then(({ body }) => {
           const propertyList = body.data.filter((item) =>
-            ['integer', 'string', 'markdown'].includes(item.name)
+            Object.values(CustomPropertyTypeByName).includes(item.name)
           );
 
           // fetch the entity details for which the custom property needs to be added
@@ -532,12 +533,20 @@ class EntityClass {
   // Custom property
 
   setCustomProperty(propertydetails: CustomProperty, value: string) {
-    setValueForProperty(propertydetails.name, value);
+    setValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
     validateValueForProperty(propertydetails.name, value);
   }
 
   updateCustomProperty(propertydetails: CustomProperty, value: string) {
-    setValueForProperty(propertydetails.name, value);
+    setValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
     validateValueForProperty(propertydetails.name, value);
   }
 }

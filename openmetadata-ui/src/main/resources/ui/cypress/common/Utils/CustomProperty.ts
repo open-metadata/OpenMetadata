@@ -32,12 +32,19 @@ export enum CustomPropertyTypeByName {
   STRING = 'string',
   INTEGER = 'integer',
   MARKDOWN = 'markdown',
+  NUMBER = 'number',
+  DURATION = 'duration',
+  EMAIL = 'email',
 }
 
 export interface CustomProperty {
   name: string;
   type: CustomPropertyType;
   description: string;
+  propertyType: {
+    name: string;
+    type: string;
+  };
 }
 
 export const generateCustomProperty = (type: CustomPropertyType) => ({
@@ -62,6 +69,22 @@ export const getPropertyValues = (type: string) => {
       return {
         value: '**Bold statement**',
         newValue: '__Italic statement__',
+      };
+
+    case 'number':
+      return {
+        value: '123',
+        newValue: '456',
+      };
+    case 'duration':
+      return {
+        value: '123',
+        newValue: '456',
+      };
+    case 'email':
+      return {
+        value: 'john@gamil.com',
+        newValue: 'user@getcollate.io',
       };
 
     default:
@@ -97,7 +120,11 @@ export const deleteCustomPropertyForEntity = ({
   verifyResponseStatusCode('@patchEntity', 200);
 };
 
-export const setValueForProperty = (propertyName, value: string) => {
+export const setValueForProperty = (
+  propertyName: string,
+  value: string,
+  propertyType: string
+) => {
   cy.get('[data-testid="custom_properties"]').click();
 
   cy.get('tbody').should('contain', propertyName);
@@ -114,21 +141,29 @@ export const setValueForProperty = (propertyName, value: string) => {
 
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
-  cy.get('body').then(($body) => {
-    if ($body.find('[data-testid="value-input"]').length > 0) {
-      cy.get('[data-testid="value-input"]').clear().type(value);
-      cy.get('[data-testid="inline-save-btn"]').click();
-    } else if (
-      $body.find(
-        '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-      )
-    ) {
-      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-        .clear()
-        .type(value);
-      cy.get('[data-testid="save"]').click();
-    }
-  });
+
+  if (propertyType === 'markdown') {
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .clear()
+      .type(value);
+    cy.get('[data-testid="save"]').click();
+  }
+
+  if (propertyType === 'email') {
+    cy.get('[data-testid="email-input"]').clear().type(value);
+    cy.get('[data-testid="inline-save-btn"]').click();
+  }
+
+  if (propertyType === 'duration') {
+    cy.get('[data-testid="duration-input"]').clear().type(value);
+    cy.get('[data-testid="inline-save-btn"]').click();
+  }
+
+  if (['string', 'integer', 'number'].includes(propertyType)) {
+    cy.get('[data-testid="value-input"]').clear().type(value);
+    cy.get('[data-testid="inline-save-btn"]').click();
+  }
+
   verifyResponseStatusCode('@patchEntity', 200);
   cy.get(`[data-row-key="${propertyName}"]`).should(
     'contain',

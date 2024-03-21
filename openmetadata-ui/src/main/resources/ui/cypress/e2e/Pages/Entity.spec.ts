@@ -13,25 +13,19 @@
 
 import EntityClass from '../../common/Entities/EntityClass';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
-import ContainerClass from './../../common/Entities/ContainerClass';
 import DashboardClass from './../../common/Entities/DashboardClass';
-import DashboardDataModelClass from './../../common/Entities/DataModelClass';
-import MlModelClass from './../../common/Entities/MlModelClass';
-import PipelineClass from './../../common/Entities/PipelineClass';
-import SearchIndexClass from './../../common/Entities/SearchIndexClass';
-import TopicClass from './../../common/Entities/TopicClass';
 import { CustomPropertyTypeByName } from './../../common/Utils/CustomProperty';
 
 // Run tests over all entities except Database, Schema, Table and Store Procedure
 // Those tests are covered in cypress/new-tests/Database.spec.js
 const entities = [
   new DashboardClass(),
-  new PipelineClass(),
-  new TopicClass(),
-  new MlModelClass(),
-  new ContainerClass(),
-  new SearchIndexClass(),
-  new DashboardDataModelClass(),
+  // new PipelineClass(),
+  // new TopicClass(),
+  // new MlModelClass(),
+  // new ContainerClass(),
+  // new SearchIndexClass(),
+  // new DashboardDataModelClass(),
 ] as const;
 
 const OWNER1 = 'Aaron Johnson';

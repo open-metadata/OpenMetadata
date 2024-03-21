@@ -1245,7 +1245,11 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
       // set custom property value
       Object.values(CustomPropertyType).forEach((type) => {
-        setValueForProperty(lowerCase(type), customPropertyValue[type].value);
+        setValueForProperty(
+          lowerCase(type),
+          customPropertyValue[type].value,
+          lowerCase(type)
+        );
         validateValueForProperty(
           lowerCase(type),
           customPropertyValue[type].value
@@ -1256,7 +1260,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       Object.values(CustomPropertyType).forEach((type) => {
         setValueForProperty(
           lowerCase(type),
-          customPropertyValue[type].newValue
+          customPropertyValue[type].newValue,
+          lowerCase(type)
         );
         validateValueForProperty(
           lowerCase(type),
