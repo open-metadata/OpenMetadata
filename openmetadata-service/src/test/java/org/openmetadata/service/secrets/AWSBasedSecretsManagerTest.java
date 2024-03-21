@@ -12,41 +12,25 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
-
-import java.util.Map;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.schema.api.services.DatabaseConnection;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
-import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
-import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
-import org.openmetadata.schema.security.client.OktaSSOClientConfig;
-import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
-import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.database.common.basicAuth;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AWSBasedSecretsManagerTest extends ExternalSecretsManagerTest {

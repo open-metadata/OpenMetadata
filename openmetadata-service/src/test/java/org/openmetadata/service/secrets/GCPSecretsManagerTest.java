@@ -1,25 +1,53 @@
 package org.openmetadata.service.secrets;
 
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.service.fernet.Fernet;
 
 import java.util.List;
 
-import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
+@ExtendWith(MockitoExtension.class)
 public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
-    @Override
-    void setUpSpecific(SecretsManagerConfiguration config) {
-        secretsManager =
-                GCPSecretsManager.getInstance(
-                        new SecretsManager.SecretsConfig(
-                                "openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
-//        ((AWSSSMSecretsManager) secretsManager).setSsmClient(ssmClient);
-//        reset(ssmClient);
-    }
+  private MockedStatic<SecretManagerServiceClient> mocked;
 
-    @Override
-    protected SecretsManagerProvider expectedSecretManagerProvider() {
-        return SecretsManagerProvider.GCP;
-    }
+  @BeforeEach
+  void setUp() {
+    Fernet fernet = Fernet.getInstance();
+    fernet.setFernetKey("jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=");
+    Parameters parameters = new Parameters();
+    parameters.setAdditionalProperty("projectId", "123456");
+    SecretsManagerConfiguration config = new SecretsManagerConfiguration();
+    config.setParameters(parameters);
+    setUpSpecific(config);
+
+    mocked = mockStatic(SecretManagerServiceClient.class);
+    mocked.when(SecretManagerServiceClient::create).thenReturn(mock(SecretManagerServiceClient.class));
+  }
+
+  @AfterEach
+  void tearDown() {
+    mocked.close();
+  }
+
+  @Override
+  void setUpSpecific(SecretsManagerConfiguration config) {
+    this.secretsManager =
+        GCPSecretsManager.getInstance(
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2"), config.getParameters()));
+  }
+
+  @Override
+  protected SecretsManagerProvider expectedSecretManagerProvider() {
+    return SecretsManagerProvider.GCP;
+  }
 }
