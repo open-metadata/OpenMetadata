@@ -11,11 +11,56 @@
  *  limitations under the License.
  */
 import { ServiceCategory } from '../enums/service.enum';
-import { PipelineType as WorkflowType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
+  Pipeline,
+  PipelineType as WorkflowType,
+} from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+
+import {
+  cleanWorkFlowData,
   getMetadataSchemaByServiceCategory,
   getSchemaByWorkflowType,
 } from './IngestionWorkflowUtils';
+
+const MOCK_WORKFLOW_DATA = {
+  type: 'DashboardMetadata',
+  dashboardFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
+  chartFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
+  dataModelFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
+  projectFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
+  lineageInformation: {
+    dbServiceNames: [],
+  },
+  includeOwners: false,
+  markDeletedDashboards: true,
+  markDeletedDataModels: true,
+  includeTags: true,
+  includeDataModels: true,
+} as Pipeline;
+
+const MOCK_CLEANED_WORKFLOW_DATA = {
+  lineageInformation: {
+    dbServiceNames: [],
+  },
+  includeDataModels: true,
+  includeOwners: false,
+  includeTags: true,
+  markDeletedDashboards: true,
+  markDeletedDataModels: true,
+  type: 'DashboardMetadata',
+};
 
 describe('Ingestion Workflow tests', () => {
   it('should getMetadataSchemaByServiceCategory return the correct schema for each service category', () => {
@@ -78,5 +123,11 @@ describe('Ingestion Workflow tests', () => {
 
     expect(metadataSchema).toBeDefined();
     expect(metadataSchema).toHaveProperty('properties.displayName');
+  });
+
+  it('cleanWorkFlowData should remove the filter patterns if the includes and excludes are empty', () => {
+    const cleanedData = cleanWorkFlowData(MOCK_WORKFLOW_DATA);
+
+    expect(cleanedData).toStrictEqual(MOCK_CLEANED_WORKFLOW_DATA);
   });
 });

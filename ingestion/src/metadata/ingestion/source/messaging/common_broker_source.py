@@ -226,14 +226,16 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
+            messages = None
             try:
-                self.consumer_client.subscribe(
-                    [topic_name], on_assign=on_partitions_assignment_to_consumer
-                )
-                logger.info(
-                    f"Broker consumer polling for sample messages in topic {topic_name}"
-                )
-                messages = self.consumer_client.consume(num_messages=10, timeout=10)
+                if self.consumer_client:
+                    self.consumer_client.subscribe(
+                        [topic_name], on_assign=on_partitions_assignment_to_consumer
+                    )
+                    logger.info(
+                        f"Broker consumer polling for sample messages in topic {topic_name}"
+                    )
+                    messages = self.consumer_client.consume(num_messages=10, timeout=10)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

@@ -21,7 +21,7 @@ import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityF
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -36,7 +36,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
-  getStoredProcedureDetailPath,
+  getEntityDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -60,6 +60,7 @@ import {
 } from '../../generated/entity/data/storedProcedure';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
@@ -85,7 +86,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
   const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
@@ -404,7 +405,11 @@ const StoredProcedurePage = () => {
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
       history.push(
-        getStoredProcedureDetailPath(decodedStoredProcedureFQN, activeKey)
+        getEntityDetailsPath(
+          EntityType.STORED_PROCEDURE,
+          decodedStoredProcedureFQN,
+          activeKey
+        )
       );
     }
   };

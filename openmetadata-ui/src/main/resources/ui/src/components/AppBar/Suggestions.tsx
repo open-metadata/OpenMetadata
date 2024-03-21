@@ -79,7 +79,7 @@ const Suggestions = ({
   const [containerSuggestions, setContainerSuggestions] = useState<
     ContainerSearchSource[]
   >([]);
-  const [glossarySuggestions, setGlossarySuggestions] = useState<
+  const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
     GlossarySource[]
   >([]);
   const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
@@ -120,7 +120,9 @@ const Suggestions = ({
     setDataModelSuggestions(
       filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
     );
-    setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
+    setGlossaryTermSuggestions(
+      filterOptionsByIndex(options, SearchIndex.GLOSSARY_TERM)
+    );
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
@@ -179,8 +181,8 @@ const Suggestions = ({
             searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
           },
           {
-            suggestions: glossarySuggestions,
-            searchIndex: SearchIndex.GLOSSARY,
+            suggestions: glossaryTermSuggestions,
+            searchIndex: SearchIndex.GLOSSARY_TERM,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {

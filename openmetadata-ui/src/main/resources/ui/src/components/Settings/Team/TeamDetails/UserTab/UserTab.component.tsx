@@ -191,7 +191,7 @@ export const UserTab = ({
             className="w-full justify-center remove-icon"
             size={8}>
             <Tooltip
-              placement="bottomRight"
+              placement="left"
               title={
                 permission.EditAll
                   ? t('label.remove')
@@ -248,7 +248,7 @@ export const UserTab = ({
             description={t('message.export-entity-help', {
               entity: t('label.user-lowercase'),
             })}
-            icon={<ExportIcon width="18px" />}
+            icon={ExportIcon}
             id="export"
             name={t('label.export')}
           />
@@ -265,7 +265,7 @@ export const UserTab = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={<ImportIcon width="20px" />}
+            icon={ImportIcon}
             id="import-button"
             name={t('label.import')}
           />

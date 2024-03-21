@@ -34,7 +34,7 @@ describe('Login configuration', { tags: 'Settings' }, () => {
     cy.get('[data-testid="access-block-time"]').should('have.text', '500');
     cy.get('[data-testid="jwt-token-expiry-time"]').should(
       'have.text',
-      '5000 Milliseconds'
+      '5000 Seconds'
     );
     /* ==== End Cypress Studio ==== */
   });

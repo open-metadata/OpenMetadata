@@ -31,8 +31,6 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -117,7 +115,9 @@ class DbtSource(DbtServiceSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         return cls(config, metadata)
 
@@ -140,39 +140,29 @@ class DbtSource(DbtServiceSource):
 
     def get_dbt_owner(
         self, manifest_node: dict, catalog_node: Optional[dict]
-    ) -> Optional[str]:
+    ) -> Optional[EntityReference]:
         """
         Returns dbt owner
         """
-        owner = None
-        dbt_owner = None
-        if catalog_node:
-            dbt_owner = catalog_node.metadata.owner
-        if manifest_node:
-            dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
-        if dbt_owner:
-            owner_name = dbt_owner
-            user_owner_fqn = fqn.build(
-                self.metadata, entity_type=User, user_name=owner_name
-            )
-            if user_owner_fqn:
-                owner = self.metadata.get_entity_reference(
-                    entity=User, fqn=user_owner_fqn
-                )
-            else:
-                team_owner_fqn = fqn.build(
-                    self.metadata, entity_type=Team, team_name=owner_name
-                )
-                if team_owner_fqn:
-                    owner = self.metadata.get_entity_reference(
-                        entity=Team, fqn=team_owner_fqn
-                    )
-                else:
+        try:
+            owner = None
+            dbt_owner = None
+            if catalog_node:
+                dbt_owner = catalog_node.metadata.owner
+            if manifest_node:
+                dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
+            if dbt_owner:
+                owner = self.metadata.get_reference_by_name(name=dbt_owner)
+                if not owner:
                     logger.warning(
                         "Unable to ingest owner from DBT since no user or"
                         f" team was found with name {dbt_owner}"
                     )
-        return owner
+            return owner
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to ingest owner from DBT due to: {exc}")
+        return None
 
     def check_columns(self, catalog_node):
         for catalog_key, catalog_column in catalog_node.get("columns").items():

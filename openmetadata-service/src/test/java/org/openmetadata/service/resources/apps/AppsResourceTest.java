@@ -1,7 +1,10 @@
 package org.openmetadata.service.resources.apps;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import java.io.IOException;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +15,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -19,6 +23,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
+  private static final String SYSTEM_APP_NAME = "systemApp";
 
   public AppsResourceTest() {
     super(Entity.APPLICATION, App.class, AppResource.AppList.class, "apps", AppResource.FIELDS);
@@ -36,7 +41,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       appMarketPlaceDefinition =
           appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
     } catch (EntityNotFoundException | HttpResponseException ex) {
-      CreateAppMarketPlaceDefinitionReq req = appMarketPlaceResourceTest.createRequest(name);
+      CreateAppMarketPlaceDefinitionReq req =
+          appMarketPlaceResourceTest
+              .createRequest(name)
+              .withSystemApp(name.equals(SYSTEM_APP_NAME));
       appMarketPlaceDefinition =
           appMarketPlaceResourceTest.createAndCheckEntity(req, ADMIN_AUTH_HEADERS);
     }
@@ -44,7 +52,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     return new CreateApp()
         .withName(appMarketPlaceDefinition.getName())
         .withAppConfiguration(appMarketPlaceDefinition.getAppConfiguration())
-        .withAppSchedule(new AppSchedule().withScheduleType(AppSchedule.ScheduleTimeline.HOURLY));
+        .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
   }
 
   @Test
@@ -52,6 +60,16 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Override
   protected void post_entityCreateWithInvalidName_400() {
     // Does not apply since the App is already validated in the AppMarketDefinition
+  }
+
+  @Test
+  void delete_systemApp_400() throws IOException {
+    CreateApp systemAppRequest = createRequest(SYSTEM_APP_NAME);
+    App systemApp = createAndCheckEntity(systemAppRequest, ADMIN_AUTH_HEADERS);
+    assertResponseContains(
+        () -> deleteEntity(systemApp.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "of type SystemApp can not be deleted");
   }
 
   @Override

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space, Typography } from 'antd';
+import { Button, Popover, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -46,7 +45,7 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
-  onUpdate = noop,
+  onUpdate,
   children,
   popoverProps,
   multiSelect = false,
@@ -96,11 +95,11 @@ export const PersonaSelectableList = ({
   };
 
   const handleUpdate = useCallback(
-    (users: EntityReference[]) => {
+    async (users: EntityReference[]) => {
       if (multiSelect) {
-        (onUpdate as (users: EntityReference[]) => void)(users);
+        await (onUpdate as (users: EntityReference[]) => Promise<void>)(users);
       } else {
-        (onUpdate as (users: EntityReference) => void)(users[0]);
+        await (onUpdate as (users: EntityReference) => Promise<void>)(users[0]);
       }
 
       setPopupVisible(false);
@@ -113,37 +112,47 @@ export const PersonaSelectableList = ({
   }
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
-        <SelectableList
-          customTagRenderer={PersonaListItemRenderer}
-          fetchOptions={fetchOptions}
-          multiSelect={multiSelect}
-          searchPlaceholder={t('label.search-for-type', {
-            type: t('label.persona'),
-          })}
-          selectedItems={selectedPersonas}
-          onCancel={() => setPopupVisible(false)}
-          onUpdate={handleUpdate}
-        />
-      }
-      open={popupVisible}
-      overlayClassName="user-select-popover p-0"
-      placement="bottomRight"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ?? (
-        <Button
-          className="p-0 flex-center"
-          data-testid="add-user"
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-          size="small"
-          type="text"
-        />
-      )}
-    </Popover>
+    // Used Button to stop click propagation event anywhere in the form to parent User.component collapsible panel
+    <Button
+      className="remove-button-default-styling"
+      onClick={(e) => e.stopPropagation()}>
+      <Popover
+        destroyTooltipOnHide
+        content={
+          <SelectableList
+            customTagRenderer={PersonaListItemRenderer}
+            fetchOptions={fetchOptions}
+            multiSelect={multiSelect}
+            searchPlaceholder={t('label.search-for-type', {
+              type: t('label.persona'),
+            })}
+            selectedItems={selectedPersonas}
+            onCancel={() => setPopupVisible(false)}
+            onUpdate={handleUpdate}
+          />
+        }
+        open={popupVisible}
+        overlayClassName="user-select-popover p-0"
+        placement="bottomRight"
+        showArrow={false}
+        trigger="click"
+        onOpenChange={setPopupVisible}
+        {...popoverProps}>
+        {children ?? (
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.persona'),
+            })}>
+            <Button
+              className="p-0 flex-center"
+              data-testid="edit-persona"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+            />
+          </Tooltip>
+        )}
+      </Popover>
+    </Button>
   );
 };

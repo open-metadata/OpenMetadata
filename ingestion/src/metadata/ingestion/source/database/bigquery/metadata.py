@@ -33,7 +33,9 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    Table,
     TablePartition,
     TableType,
 )
@@ -51,6 +53,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -60,6 +63,9 @@ from metadata.ingestion.source.database.bigquery.helper import (
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
+)
+from metadata.ingestion.source.database.bigquery.incremental_table_processor import (
+    BigQueryIncrementalTableProcessor,
 )
 from metadata.ingestion.source.database.bigquery.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -76,6 +82,9 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
 )
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
@@ -210,7 +219,7 @@ class BigquerySource(
     Database metadata from Bigquery Source
     """
 
-    def __init__(self, config, metadata):
+    def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
         # Check if the engine is established before setting project IDs
         # This ensures that we don't try to set project IDs when there is no engine
         # as per service connection config, which would result in an error.
@@ -227,15 +236,32 @@ class BigquerySource(
         self.test_connection = self._test_connection
         self.test_connection()
 
+        self.context.deleted_tables = []
+        self.incremental = incremental_configuration
+        self.incremental_table_processor: Optional[
+            BigQueryIncrementalTableProcessor
+        ] = None
+
+        if self.incremental.enabled:
+            logger.info(
+                "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
+                self.incremental.start_datetime_utc,
+            )
+
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: BigQueryConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        return cls(config, metadata)
+        incremental_config = IncrementalConfig.create(
+            config.sourceConfig.config.incremental, pipeline_name, metadata
+        )
+        return cls(config, metadata, incremental_config)
 
     @staticmethod
     def set_project_id() -> List[str]:
@@ -251,7 +277,9 @@ class BigquerySource(
             test_connection_fn(
                 self.metadata, inspector_details.engine, self.service_connection
             )
-            if os.environ[GOOGLE_CREDENTIALS]:
+            # GOOGLE_CREDENTIALS may not have been set,
+            # to avoid key error, we use `get` for dict
+            if os.environ.get(GOOGLE_CREDENTIALS):
                 self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
 
     def query_table_names_and_types(
@@ -265,18 +293,97 @@ class BigquerySource(
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
+        table_names_and_types = (
+            self.engine.execute(
+                BIGQUERY_TABLE_AND_TYPE.format(
+                    project_id=self.client.project, schema_name=schema_name
+                )
+            )
+            or []
+        )
+
+        if self.incremental.enabled:
+            self.incremental_table_processor.set_changed_tables_map(
+                project=self.client.project,
+                dataset=schema_name,
+                start_date=self.incremental.start_datetime_utc,
+            )
+
+            self.context.deleted_tables.extend(
+                [
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=schema_name,
+                        table_name=table_name,
+                    )
+                    for table_name in self.incremental_table_processor.get_deleted()
+                ]
+            )
+
+            table_names_and_types = [
+                (table_name, table_type)
+                for table_name, table_type in table_names_and_types
+                if table_name in self.incremental_table_processor.get_not_deleted()
+            ]
 
         return [
             TableNameAndType(
                 name=table_name,
                 type_=_bigquery_table_types.get(table_type, TableType.Regular),
             )
-            for table_name, table_type in self.engine.execute(
-                BIGQUERY_TABLE_AND_TYPE.format(
-                    project_id=self.client.project, schema_name=schema_name
-                )
-            )
-            or []
+            for table_name, table_type in table_names_and_types
+        ]
+
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the view
+        name and type. By default, use the inspector method
+        to get the names and pass the View type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., material views,...
+        """
+
+        view_names = self.inspector.get_view_names(schema_name) or []
+
+        if self.incremental.enabled:
+            # NOTE: This is commented since it's already done within `query_table_names_and_types`
+            # that gets called before. We should find a better way of guaranteeing this
+
+            # self.incremental_table_processor.set_changed_tables_map(
+            #     project=self.client.project,
+            #     dataset=schema_name,
+            #     start_date=self.incremental.start_datetime_utc
+            # )
+            #
+            # self.context.deleted_tables.extend(
+            #     [
+            #         fqn.build(
+            #             metadata=self.metadata,
+            #             entity_type=Table,
+            #             service_name=self.context.database_service,
+            #             database_name=self.context.database,
+            #             schema_name=schema_name,
+            #             table_name=table_name
+            #         )
+            #         for table_name in self.incremental_table_processor.get_deleted()
+            #     ]
+            # )
+
+            view_names = [
+                view_name
+                for view_name in view_names
+                if view_name in self.incremental_table_processor.get_not_deleted()
+            ]
+
+        return [
+            TableNameAndType(name=view_name, type_=TableType.View)
+            for view_name in view_names
         ]
 
     def yield_tag(
@@ -442,7 +549,8 @@ class BigquerySource(
         inspector_details = get_inspector_details(
             database_name=database_name, service_connection=self.service_connection
         )
-        self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
+        if os.environ.get(GOOGLE_CREDENTIALS):
+            self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
@@ -469,6 +577,10 @@ class BigquerySource(
             else:
                 try:
                     self.set_inspector(database_name=project_id)
+                    if self.incremental.enabled:
+                        self.incremental_table_processor = (
+                            BigQueryIncrementalTableProcessor.from_project(project_id)
+                        )
                     yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -495,7 +607,7 @@ class BigquerySource(
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
         """
@@ -504,30 +616,38 @@ class BigquerySource(
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
                 table_partition = TablePartition(
-                    interval=str(table.time_partitioning.type_),
-                    intervalType=IntervalType.TIME_UNIT.value,
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=table.time_partitioning.field,
+                            interval=str(table.time_partitioning.type_),
+                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                        )
+                    ]
                 )
-                table_partition.columns = [table.time_partitioning.field]
                 return True, table_partition
-
             return True, TablePartition(
-                interval=str(table.time_partitioning.type_),
-                intervalType=IntervalType.INGESTION_TIME.value,
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="_PARTITIONTIME"
+                        if table.time_partitioning.type_ == "HOUR"
+                        else "_PARTITIONDATE",
+                        interval=str(table.time_partitioning.type_),
+                        intervalType=PartitionIntervalTypes.INGESTION_TIME,
+                    )
+                ]
             )
         if table.range_partitioning:
-            table_partition = TablePartition(
-                intervalType=IntervalType.INTEGER_RANGE.value,
+            table_partition = PartitionColumnDetails(
+                columnName=table.range_partitioning.field,
+                intervalType=PartitionIntervalTypes.INTEGER_RANGE,
+                interval=None,
             )
             if hasattr(table.range_partitioning, "range_") and hasattr(
                 table.range_partitioning.range_, "interval"
             ):
                 table_partition.interval = table.range_partitioning.range_.interval
-            if (
-                hasattr(table.range_partitioning, "field")
-                and table.range_partitioning.field
-            ):
-                table_partition.columns = [table.range_partitioning.field]
-            return True, table_partition
+            table_partition.columnName = table.range_partitioning.field
+            return True, TablePartition(columns=[table_partition])
         return False, None
 
     def clean_raw_data_type(self, raw_data_type):
@@ -672,3 +792,26 @@ class BigquerySource(
         )
 
         return queries_dict
+
+    def mark_tables_as_deleted(self):
+        """
+        Use the current inspector to mark tables as deleted
+        """
+        if self.incremental.enabled:
+            if not self.context.__dict__.get("database"):
+                raise ValueError(
+                    "No Database found in the context. We cannot run the table deletion."
+                )
+
+            if self.source_config.markDeletedTables:
+                logger.info(
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                )
+                yield from delete_entity_by_name(
+                    self.metadata,
+                    entity_type=Table,
+                    entity_names=self.context.deleted_tables,
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                )
+        else:
+            yield from super().mark_tables_as_deleted()

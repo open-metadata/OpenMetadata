@@ -3,7 +3,14 @@ title: SAS
 slug: /connectors/database/sas
 ---
 
-# SAS
+{% connectorDetailsHeader
+name="SAS"
+stage="BETA"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Owners", "Tags"]
+/ %}
+
 In this section, we provide guides and references to use the SAS connector.
 
 Configure and schedule SAS metadata workflow from the OpenMetadata UI:

@@ -28,13 +28,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { WORKFLOWS_PROFILER_DOCS } from '../../../constants/docs.constants';
-import { DROPDOWN_ICON_SIZE_PROPS } from '../../../constants/ManageButton.constants';
 import { mockDatasetData } from '../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { LOADING_STATE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
@@ -44,7 +43,6 @@ import {
   Transi18next,
 } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -64,12 +62,11 @@ const SampleDataTable = ({
   permissions,
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
-  const [deleteState, setDeleteState] = useState(LOADING_STATE.INITIAL);
   const [showActions, setShowActions] = useState(false);
 
   const hasPermission = useMemo(
@@ -94,18 +91,19 @@ const SampleDataTable = ({
         name: column,
         dataType: matchedColumn?.dataType ?? '',
         title: (
-          <Space direction="vertical" size={0}>
+          <div className="d-flex flex-column">
             <Typography.Text> {column}</Typography.Text>
             {matchedColumn?.dataType && (
               <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
               )})`}</Typography.Text>
             )}
-          </Space>
+          </div>
         ),
         dataIndex: column,
         key: column,
         accessor: column,
+        width: 210,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
@@ -137,8 +135,6 @@ const SampleDataTable = ({
   };
 
   const handleDeleteSampleData = async () => {
-    setDeleteState(LOADING_STATE.WAITING);
-
     try {
       await deleteSampleDataByTableId(tableId);
       handleDeleteModal();
@@ -150,8 +146,6 @@ const SampleDataTable = ({
           entity: t('label.sample-data'),
         })
       );
-    } finally {
-      setDeleteState(LOADING_STATE.SUCCESS);
     }
   };
 
@@ -162,13 +156,7 @@ const SampleDataTable = ({
           description={t('message.delete-entity-type-action-description', {
             entityType: t('label.sample-data'),
           })}
-          icon={
-            <IconDelete
-              className="m-t-xss"
-              {...DROPDOWN_ICON_SIZE_PROPS}
-              name="Delete"
-            />
-          }
+          icon={IconDelete}
           id="delete-button"
           name={t('label.delete')}
         />
@@ -245,7 +233,11 @@ const SampleDataTable = ({
             placement="bottomRight"
             trigger={['click']}
             onOpenChange={setShowActions}>
-            <Tooltip placement="right">
+            <Tooltip
+              placement="topLeft"
+              title={t('label.manage-entity', {
+                entity: t('label.sample-data'),
+              })}>
               <Button
                 className="flex-center px-1.5"
                 data-testid="sample-data-manage-button"
@@ -264,7 +256,7 @@ const SampleDataTable = ({
         dataSource={sampleData?.rows}
         pagination={false}
         rowKey="name"
-        scroll={{ x: true }}
+        scroll={{ y: 'calc(100vh - 160px)' }}
         size="small"
       />
 
@@ -273,7 +265,6 @@ const SampleDataTable = ({
           bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
           entityName={t('label.sample-data')}
           entityType={EntityType.SAMPLE_DATA}
-          loadingState={deleteState}
           visible={isDeleteModalOpen}
           onCancel={handleDeleteModal}
           onConfirm={handleDeleteSampleData}

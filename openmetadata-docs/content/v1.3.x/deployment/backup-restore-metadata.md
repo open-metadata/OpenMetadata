@@ -5,6 +5,18 @@ slug: /deployment/backup-restore-metadata
 
 # Backup & Restore Metadata
 
+## Using SQL Dump Tools
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="10k"
+    bold="Use Native SQL Backup Tools"
+    href="/deployment/backup-restore-metadata-sql-dump-tools" %}
+    Learn how to backup and restore metadata using native SQL backup tools.
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
 ## Introduction
 
 The goal of OpenMetadata is to enable company-wide collaboration around metadata. The more we use it, the more value
@@ -54,7 +66,7 @@ You can then run the script's statements to restore the data.
 
 {% note %}
 
-Make sure that the migrations have been run correctly (find out how [here](/deployment/bare-metal#4-prepare-the-openmetadata-database-and-indexes)).
+Make sure that the migrations have been run correctly (find out how [here](/deployment/bare-metal#4.-prepare-the-openmetadata-database-and-indexes)).
 
 Also, make sure that the target database does not already have any OpenMetadata data, or if it does, that you are OK
 replacing it with whatever comes from the SQL script.

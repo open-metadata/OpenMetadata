@@ -15,6 +15,12 @@ class ApplicationSchemaClassBase {
   public importSchema(fqn: string) {
     return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
   }
+  public getJSONUISchema() {
+    return {};
+  }
+  public importAppLogo(appName: string) {
+    return import(`../../../../assets/svg/${appName}.svg`);
+  }
 }
 
 const applicationSchemaClassBase = new ApplicationSchemaClassBase();

@@ -265,11 +265,12 @@ class TopologyRunnerMixin(Generic[C]):
             if entity:
                 same_fingerprint = True
 
-        create_entity_request_hash = generate_source_hash(
-            create_request=entity_request.right,
-        )
+        create_entity_request_hash = None
 
         if hasattr(entity_request.right, "sourceHash"):
+            create_entity_request_hash = generate_source_hash(
+                create_request=entity_request.right,
+            )
             entity_request.right.sourceHash = create_entity_request_hash
 
         if entity is None and stage.use_cache:

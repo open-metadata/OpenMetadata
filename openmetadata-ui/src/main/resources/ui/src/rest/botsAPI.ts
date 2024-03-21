@@ -47,28 +47,10 @@ export const createBot = async (data: CreateBot) => {
   return response.data;
 };
 
-export const updateBot = async (data: Bot) => {
-  const response = await axiosClient.put<Bot, AxiosResponse<Bot>>(
-    BASE_URL,
-    data
-  );
-
-  return response.data;
-};
-
 export const deleteBot = async (id: string, hardDelete?: boolean) => {
   const response = await axiosClient.delete(`${BASE_URL}/${id}`, {
     params: { hardDelete },
   });
-
-  return response.data;
-};
-
-export const createBotWithPut = async (data: CreateBot) => {
-  const response = await axiosClient.put<CreateBot, AxiosResponse<Bot>>(
-    BASE_URL,
-    data
-  );
 
   return response.data;
 };

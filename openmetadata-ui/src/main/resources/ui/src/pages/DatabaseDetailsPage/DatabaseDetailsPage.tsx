@@ -44,9 +44,9 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
+  getEntityDetailsPath,
   getExplorePath,
-  getVersionPathWithTab,
+  getVersionPath,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -77,6 +77,7 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -117,6 +118,11 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    EntityType.DATABASE,
+    decodedDatabaseFQN
+  );
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -252,7 +258,11 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(decodedDatabaseFQN, key),
+        pathname: getEntityDetailsPath(
+          EntityType.DATABASE,
+          decodedDatabaseFQN,
+          key
+        ),
       });
     }
   };
@@ -434,7 +444,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPathWithTab(
+        getVersionPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
           toString(currentVersion),
@@ -641,6 +651,7 @@ const DatabaseDetails: FunctionComponent = () => {
               afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
+              extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}

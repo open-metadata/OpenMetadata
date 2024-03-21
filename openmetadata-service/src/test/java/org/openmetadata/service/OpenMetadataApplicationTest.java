@@ -21,6 +21,7 @@ import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 import javax.ws.rs.client.Client;
@@ -35,6 +36,7 @@ import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -61,7 +63,7 @@ public abstract class OpenMetadataApplicationTest {
 
   public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = false;
 
-  private static final Set<ConfigOverride> configOverrides = new HashSet<>();
+  protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
   private static final String JDBC_CONTAINER_CLASS_NAME =
       "org.testcontainers.containers.MySQLContainer";
@@ -80,7 +82,7 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   @BeforeAll
-  public static void createApplication() throws Exception {
+  public void createApplication() throws Exception {
     String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
     String jdbcContainerImage = System.getProperty("jdbcContainerImage");
     String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
@@ -155,9 +157,7 @@ public abstract class OpenMetadataApplicationTest {
         ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
 
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
-    APP =
-        new DropwizardAppExtension<>(
-            OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
+    APP = getApp(configOverridesArray);
     // Run System Migrations
     jdbi =
         Jdbi.create(
@@ -176,6 +176,13 @@ public abstract class OpenMetadataApplicationTest {
     createClient();
   }
 
+  @NotNull
+  protected DropwizardAppExtension<OpenMetadataApplicationConfig> getApp(
+      ConfigOverride[] configOverridesArray) {
+    return new DropwizardAppExtension<>(
+        OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
+  }
+
   private static void createClient() {
     ClientConfig config = new ClientConfig();
     config.connectorProvider(new JettyConnectorProvider());
@@ -187,7 +194,7 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   @AfterAll
-  public static void stopApplication() throws Exception {
+  public void stopApplication() throws Exception {
     // If BeforeAll causes and exception AfterAll still gets called before that exception is thrown.
     // If a NullPointerException is thrown during the cleanup of above it will eat the initial error
     if (APP != null) {
@@ -208,6 +215,11 @@ public abstract class OpenMetadataApplicationTest {
 
   public static WebTarget getResource(String collection) {
     return client.target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
+  }
+
+  public static WebTarget getResourceAsURI(String collection) {
+    return client.target(
+        URI.create((format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection))));
   }
 
   public static WebTarget getConfigResource(String resource) {

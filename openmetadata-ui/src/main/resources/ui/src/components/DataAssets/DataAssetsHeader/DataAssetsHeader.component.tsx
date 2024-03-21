@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -30,7 +30,10 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  DE_ACTIVE_COLOR,
+} from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -41,8 +44,8 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
@@ -51,7 +54,8 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -76,7 +80,7 @@ export const ExtraInfoLabel = ({
   value: string | number;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider className="self-center" type="vertical" />
     <Typography.Text className="self-center text-xs whitespace-nowrap">
       {!isEmpty(label) && (
         <span className="text-grey-muted">{`${label}: `}</span>
@@ -96,7 +100,7 @@ export const ExtraInfoLink = ({
   href: string;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider className="self-center" type="vertical" />
     <div className="d-flex items-center text-xs">
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
@@ -104,7 +108,11 @@ export const ExtraInfoLink = ({
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
-      <IconExternalLink className="m-l-xss " width={14} />{' '}
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
     </div>
   </>
 );
@@ -128,14 +136,16 @@ export const DataAssetsHeader = ({
   afterDomainUpdateAction,
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
+  extraDropdownContent,
 }: DataAssetsHeaderProps) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
   const icon = useMemo(
     () =>
@@ -262,7 +272,7 @@ export const DataAssetsHeader = ({
     }
 
     history.push(
-      getEntityDetailLink(
+      entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
@@ -273,7 +283,7 @@ export const DataAssetsHeader = ({
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
-    setCopyTooltip(t('message.copy-to-clipboard'));
+    setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
 
@@ -292,8 +302,8 @@ export const DataAssetsHeader = ({
     }
   }, [isDataAssetsWithServiceField, dataAsset]);
 
-  const handleVoteChange = (data: VotingDataProps) => {
-    onUpdateVote?.(data, dataAsset.id ?? '');
+  const handleVoteChange = async (data: VotingDataProps) => {
+    await onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
   const handleOpenAnnouncementDrawer = useCallback(
@@ -305,6 +315,11 @@ export const DataAssetsHeader = ({
     () => setIsAnnouncementDrawerOpen(false),
     []
   );
+  const handleFollowingClick = useCallback(async () => {
+    setIsFollowingLoading(true);
+    await onFollowClick?.();
+    setIsFollowingLoading(false);
+  }, [onFollowClick]);
 
   const { editDomainPermission, editOwnerPermission, editTierPermission } =
     useMemo(
@@ -340,7 +355,7 @@ export const DataAssetsHeader = ({
               />
             </Col>
             <Col span={24}>
-              <div className="d-flex no-wrap">
+              <div className="d-flex flex-wrap gap-2">
                 {showDomain && (
                   <>
                     <DomainLabel
@@ -351,7 +366,7 @@ export const DataAssetsHeader = ({
                       entityType={entityType}
                       hasPermission={editDomainPermission}
                     />
-                    <Divider className="self-center m-x-sm" type="vertical" />
+                    <Divider className="self-center" type="vertical" />
                   </>
                 )}
                 <OwnerLabel
@@ -359,7 +374,7 @@ export const DataAssetsHeader = ({
                   owner={dataAsset?.owner}
                   onUpdate={onOwnerUpdate}
                 />
-                <Divider className="self-center m-x-sm" type="vertical" />
+                <Divider className="self-center" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space data-testid="header-tier-container">
                     {tier ? (
@@ -375,13 +390,20 @@ export const DataAssetsHeader = ({
                     )}
 
                     {editTierPermission && (
-                      <Button
-                        className="flex-center p-0"
-                        data-testid="edit-tier"
-                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                        size="small"
-                        type="text"
-                      />
+                      <Tooltip
+                        title={t('label.edit-entity', {
+                          entity: t('label.tier'),
+                        })}>
+                        <Button
+                          className="flex-center p-0"
+                          data-testid="edit-tier"
+                          icon={
+                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                          }
+                          size="small"
+                          type="text"
+                        />
+                      </Tooltip>
                     )}
                   </Space>
                 </TierCard>
@@ -413,41 +435,51 @@ export const DataAssetsHeader = ({
                   />
                 )}
                 {!excludeEntityService && (
-                  <Button
-                    className="w-16 p-0"
-                    icon={<Icon component={TaskOpenIcon} />}
-                    onClick={handleOpenTaskClick}>
-                    <Typography.Text>{openTaskCount}</Typography.Text>
-                  </Button>
+                  <Tooltip title={t('label.open-task-plural')}>
+                    <Button
+                      className="w-16 p-0"
+                      icon={<Icon component={TaskOpenIcon} />}
+                      onClick={handleOpenTaskClick}>
+                      <Typography.Text>{openTaskCount}</Typography.Text>
+                    </Button>
+                  </Tooltip>
                 )}
 
-                <Button
-                  className="w-16 p-0"
-                  data-testid="version-button"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={onVersionClick}>
-                  <Typography.Text>{version}</Typography.Text>
-                </Button>
-
-                {!excludeEntityService && (
+                <Tooltip title={t('label.version-plural-history')}>
                   <Button
                     className="w-16 p-0"
-                    data-testid="entity-follow-button"
-                    disabled={deleted}
-                    icon={
-                      <Icon
-                        component={isFollowing ? StarFilledIcon : StarIcon}
-                      />
-                    }
-                    onClick={onFollowClick}>
-                    <Typography.Text>{followers}</Typography.Text>
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={onVersionClick}>
+                    <Typography.Text>{version}</Typography.Text>
                   </Button>
+                </Tooltip>
+
+                {!excludeEntityService && (
+                  <Tooltip
+                    title={t('label.field-entity', {
+                      field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                      entity: capitalize(entityType),
+                    })}>
+                    <Button
+                      className="w-16 p-0"
+                      data-testid="entity-follow-button"
+                      disabled={deleted}
+                      icon={
+                        <Icon
+                          component={isFollowing ? StarFilledIcon : StarIcon}
+                        />
+                      }
+                      loading={isFollowingLoading}
+                      onClick={handleFollowingClick}>
+                      <Typography.Text>{followers}</Typography.Text>
+                    </Button>
+                  </Tooltip>
                 )}
 
                 <Tooltip
-                  open={!isEmpty(copyTooltip)}
-                  placement="bottomRight"
-                  title={copyTooltip}>
+                  placement="topRight"
+                  title={copyTooltip ?? t('message.copy-to-clipboard')}>
                   <Button
                     icon={<Icon component={ShareIcon} />}
                     onClick={handleShareButtonClick}
@@ -466,6 +498,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={dataAsset.name}
                   entityType={entityType}
+                  extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll

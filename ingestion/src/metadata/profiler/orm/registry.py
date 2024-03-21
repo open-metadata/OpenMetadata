@@ -64,6 +64,7 @@ class Dialects(Enum):
     Hive = "hive"
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
+    Ibmi = "ibmi"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"
@@ -91,6 +92,7 @@ NOT_COMPUTE = {
     sqa_types.SQASet.__name__,
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
+    DataType.GEOMETRY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,

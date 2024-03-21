@@ -163,7 +163,7 @@ export const visitEntityDetailsPage = ({
   serviceName: string;
   entity: EntityType;
   dataTestId?: string;
-  entityType?: EntityType;
+  entityType?: string;
   entityFqn?: string;
 }) => {
   if (entity === EntityType.DataModel) {
@@ -300,13 +300,16 @@ export const checkForEditActions = ({ entityType, deleted }) => {
 };
 
 export const checkForTableSpecificFields = ({ deleted }) => {
-  interceptURL('GET', `/api/v1/queries*`, 'getQueryData');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*&index=query_search_index*`,
+    'getQueryData'
+  );
 
   cy.get('[data-testid="table_queries"]').click();
 
-  verifyResponseStatusCode('@getQueryData', 200);
-
   if (!deleted) {
+    verifyResponseStatusCode('@getQueryData', 200);
     cy.get('[data-testid="add-query-btn"]').should('be.enabled');
   } else {
     cy.get('[data-testid="no-data-placeholder"]').should(
@@ -412,7 +415,7 @@ export const deleteEntity = (
   displayName: string
 ) => {
   deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
-
+  cy.clickOutside();
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
   cy.get('[data-testid="delete-modal"]').then(() => {
@@ -446,6 +449,7 @@ export const deleteEntity = (
   );
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
+  cy.clickOutside();
 
   if (endPoint === EntityType.Table) {
     interceptURL(

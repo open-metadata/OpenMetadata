@@ -18,7 +18,6 @@ import {
   queryByText,
   render,
 } from '@testing-library/react';
-import { LoadingState } from 'Models';
 import React from 'react';
 import {
   mockedGlossaries,
@@ -122,8 +121,11 @@ jest.mock('./ImportGlossary/ImportGlossary', () =>
     .mockReturnValue(<div data-testid="import-glossary">ImportGlossary</div>)
 );
 
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((component) => component),
+}));
+
 const mockProps: GlossaryV1Props = {
-  deleteStatus: 'initial' as LoadingState,
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
   onGlossaryTermUpdate: jest.fn(),

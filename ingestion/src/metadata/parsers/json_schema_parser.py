@@ -68,7 +68,8 @@ def get_json_schema_fields(properties) -> Optional[List[FieldModel]]:
         try:
             field_models.append(
                 FieldModel(
-                    name=value.get("title", key),
+                    name=key,
+                    displayName=value.get("title"),
                     dataType=JsonSchemaDataTypes(value.get("type")).name,
                     description=value.get("description"),
                     children=get_json_schema_fields(value.get("properties"))

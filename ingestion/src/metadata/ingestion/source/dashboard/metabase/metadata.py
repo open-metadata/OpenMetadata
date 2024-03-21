@@ -67,7 +67,9 @@ class MetabaseSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: MetabaseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MetabaseConnection):
@@ -178,7 +180,7 @@ class MetabaseSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        charts = dashboard_details.ordered_cards
+        charts = dashboard_details.dashcards
         for chart in charts:
             try:
                 chart_details = chart.card
@@ -225,7 +227,7 @@ class MetabaseSource(DashboardServiceSource):
         if not db_service_name:
             return
         chart_list, dashboard_name = (
-            dashboard_details.ordered_cards,
+            dashboard_details.dashcards,
             str(dashboard_details.id),
         )
         for chart in chart_list:

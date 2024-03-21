@@ -81,6 +81,8 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void setFullyQualifiedName(Container container) {
+    container.setParent(
+        container.getParent() != null ? container.getParent() : getParent(container));
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
           FullyQualifiedName.add(
@@ -292,6 +294,7 @@ public class ContainerRepository extends EntityRepository<Container> {
       recordChange(
           "size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("fullPath", original.getFullPath(), updated.getFullPath());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }

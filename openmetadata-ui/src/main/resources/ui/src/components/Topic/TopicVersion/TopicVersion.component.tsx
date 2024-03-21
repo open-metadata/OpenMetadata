@@ -17,7 +17,7 @@ import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPathWithTab } from '../../../constants/constants';
+import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/topic';
@@ -37,7 +37,6 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-
 import TopicSchemaFields from '../TopicSchema/TopicSchema';
 import { TopicVersionProp } from './TopicVersion.interface';
 
@@ -88,7 +87,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.TOPIC,
         currentVersionData.fullyQualifiedName ?? '',
         String(version),

@@ -20,7 +20,7 @@ export interface DraggableBodyRowProps<T>
   extends React.HTMLAttributes<HTMLTableRowElement> {
   index?: number;
   record?: T;
-  handleMoveRow: (dragRecord: T, dropRecord?: T) => void;
+  handleMoveRow: (dragRecord: T, dropRecord?: T) => Promise<void>;
   handleTableHover?: (value: boolean) => void;
 }
 

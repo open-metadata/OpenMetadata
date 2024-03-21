@@ -120,6 +120,8 @@ import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PartitionColumnDetails;
+import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
 import org.openmetadata.schema.type.TableData;
@@ -283,11 +285,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<Column> columns = new ArrayList<>();
     columns.add(getColumn("user_id", INT, null));
     columns.add(getColumn("date", DATE, null));
-    TablePartition partition =
-        new TablePartition()
-            .withColumns(List.of(columns.get(1).getName()))
-            .withIntervalType(TablePartition.IntervalType.TIME_UNIT)
+
+    PartitionColumnDetails partitionColumnDetails =
+        new PartitionColumnDetails()
+            .withColumnName(columns.get(1).getName())
+            .withIntervalType(PartitionIntervalTypes.TIME_UNIT)
             .withInterval("daily");
+
+    TablePartition partition = new TablePartition().withColumns(List.of(partitionColumnDetails));
     create.setColumns(columns);
     create.setTablePartition(partition);
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -309,11 +314,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableConstraint()
             .withConstraintType(ConstraintType.UNIQUE)
             .withColumns(List.of(column1.getName()));
-    TablePartition partition =
-        new TablePartition()
-            .withColumns(List.of(column1.getName(), column2.getName()))
-            .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
-            .withInterval("column");
+
+    List<PartitionColumnDetails> listPartitionColumnDetails = new ArrayList<>();
+    listPartitionColumnDetails.add(
+        new PartitionColumnDetails()
+            .withColumnName(column1.getName())
+            .withIntervalType(PartitionIntervalTypes.COLUMN_VALUE)
+            .withInterval("column"));
+    listPartitionColumnDetails.add(
+        new PartitionColumnDetails()
+            .withColumnName(column2.getName())
+            .withIntervalType(PartitionIntervalTypes.COLUMN_VALUE)
+            .withInterval("column"));
+
+    TablePartition partition = new TablePartition().withColumns(listPartitionColumnDetails);
 
     //
     // Create a table with two columns - column1, column2, table constraint and table partition
@@ -341,11 +355,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     column1.withDescription("").withDisplayName("");
     column2.withDisplayName(null);
     create.getColumns().add(column3);
-    partition =
-        new TablePartition()
-            .withColumns(List.of(column3.getName()))
-            .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
+
+    PartitionColumnDetails partitionColumnDetails =
+        new PartitionColumnDetails()
+            .withColumnName(column3.getName())
+            .withIntervalType(PartitionIntervalTypes.COLUMN_VALUE)
             .withInterval("column");
+
+    partition = new TablePartition().withColumns(List.of(partitionColumnDetails));
     create.setTablePartition(partition);
 
     ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
@@ -2299,9 +2316,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column c1 = new Column().withName("c1").withDataType(STRUCT);
     Column c11 = new Column().withName("c11").withDataType(INT);
     Column c2 = new Column().withName("c2").withDataType(INT);
+    Column c3 = new Column().withName("c3").withDataType(BIGINT);
     c1.withChildren(listOf(c11));
     CreateTable createTable =
-        createRequest("s1").withColumns(listOf(c1, c2)).withTableConstraints(null);
+        createRequest("s1").withColumns(listOf(c1, c2, c3)).withTableConstraints(null);
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
@@ -2313,7 +2331,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     + "dsp1-new,desc1,type,PII.Sensitive",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
             ",,,,,,,,c1.c11,dsp11-new,desc11,type1,PII.Sensitive",
-            ",,,,,,,,c2,,,,");
+            ",,,,,,,,c2,,,,",
+            ",,,,,,,,c3,,,,");
 
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);
@@ -2753,13 +2772,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     if (expectedPartition == null && actualPartition == null) {
       return;
     }
+
+    Map<String, PartitionColumnDetails> expectedColumnMap = new HashMap<>();
+    for (PartitionColumnDetails column : expectedPartition.getColumns()) {
+      expectedColumnMap.put(column.getColumnName(), column);
+    }
+
     assert expectedPartition != null;
     assertEquals(expectedPartition.getColumns().size(), actualPartition.getColumns().size());
-    assertEquals(expectedPartition.getIntervalType(), actualPartition.getIntervalType());
-    assertEquals(expectedPartition.getInterval(), actualPartition.getInterval());
-
-    for (int i = 0; i < expectedPartition.getColumns().size(); i++) {
-      assertEquals(expectedPartition.getColumns().get(i), actualPartition.getColumns().get(i));
+    for (PartitionColumnDetails actualColumn : actualPartition.getColumns()) {
+      PartitionColumnDetails expectedColumn = expectedColumnMap.get(actualColumn.getColumnName());
+      assertNotNull(expectedColumn);
+      assertEquals(expectedColumn.getIntervalType(), actualColumn.getIntervalType());
+      assertEquals(expectedColumn.getInterval(), actualColumn.getInterval());
     }
   }
 

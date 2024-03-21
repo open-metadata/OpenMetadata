@@ -71,7 +71,9 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         self.tables: Dict[ProjectId, Dict[InstanceId, Dict[TableId, Table]]] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: BigTableConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, BigTableConnection):
@@ -158,10 +160,10 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             records = [{"row_key": b"row_key"}]
             # In order to get a "good" sample of data, we try to distribute the sampling
             # across multiple column families.
-            for cf in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
+            for column_family in list(column_families.keys())[:MAX_COLUMN_FAMILIES]:
                 records.extend(
                     self._get_records_for_column_family(
-                        table, cf, SAMPLES_PER_COLUMN_FAMILY
+                        table, column_family, SAMPLES_PER_COLUMN_FAMILY
                     )
                 )
                 if len(records) >= GLOBAL_SAMPLE_SIZE:

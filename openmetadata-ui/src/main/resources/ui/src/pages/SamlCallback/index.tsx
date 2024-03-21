@@ -25,13 +25,13 @@
 
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Redirect, useLocation } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { useLocation } from 'react-router-dom';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
-import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import Loader from '../../components/common/Loader/Loader';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const SamlCallback = () => {
-  const { handleSuccessfulLogin } = useAuthContext();
+  const { handleSuccessfulLogin, setOidcToken } = useApplicationStore();
   const location = useLocation();
   const { t } = useTranslation();
 
@@ -42,7 +42,7 @@ const SamlCallback = () => {
     const name = params.get('name');
     const email = params.get('email');
     if (idToken) {
-      localStorage.setItem(oidcTokenKey, idToken);
+      setOidcToken(idToken);
       const oidcUser: OidcUser = {
         id_token: idToken,
         scope: '',
@@ -61,7 +61,7 @@ const SamlCallback = () => {
   return (
     <>
       <div data-testid="redirect-message">{t('message.redirect-message')}</div>
-      <Redirect to={ROUTES.HOME} />
+      <Loader fullScreen />
     </>
   );
 };

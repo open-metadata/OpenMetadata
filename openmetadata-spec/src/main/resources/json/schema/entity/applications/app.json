@@ -25,15 +25,17 @@
       ]
     },
     "scheduleTimeline": {
+      "javaType": "org.openmetadata.schema.entity.app.ScheduleTimeline",
+      "description": "This schema defines the Application ScheduleTimeline Options",
       "type": "string",
-      "enum": ["Hourly"," Daily", "Weekly", "Monthly", "Custom"],
+      "enum": ["Hourly"," Daily", "Weekly", "Monthly", "Custom", "None"],
       "default": "Weekly"
     },
     "appSchedule": {
       "javaType": "org.openmetadata.schema.entity.app.AppSchedule",
       "description": "This schema defines the type of application.",
       "properties": {
-        "scheduleType": {
+        "scheduleTimeline": {
           "$ref": "#/definitions/scheduleTimeline"
         },
         "cronExpression": {
@@ -41,7 +43,7 @@
           "type": "string"
         }
       },
-      "required": ["scheduleType"],
+      "required": ["scheduleTimeline"],
       "additionalProperties": false
     },
     "appType": {
@@ -194,6 +196,11 @@
       "description": "Allow users to configure the app from the UI. If `false`, the `configure` step will be hidden.",
       "type": "boolean",
       "default": true
+    },
+    "systemApp": {
+      "description": "A system app cannot be uninstall.",
+      "type": "boolean",
+      "default": false
     },
     "appConfiguration": {
       "description": "Application Configuration object.",

@@ -14,7 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-ORACLE_ALL_TABLE_COMMENTS = textwrap.dedent(
+ORACLE_DBA_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT
 	comments table_comment,
@@ -26,7 +26,7 @@ where comments is not null and owner not in ('SYSTEM', 'SYS')
 )
 
 
-ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
+ORACLE_DBA_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT
 LOWER(view_name) AS "view_name",
@@ -97,7 +97,7 @@ WITH SP_HISTORY AS (SELECT
     TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
     PARSING_SCHEMA_NAME as user_name
   FROM gv$sql
-  WHERE sql_text LIKE 'CALL%%'
+  WHERE UPPER(sql_text) LIKE 'CALL%%'
   AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
  ),
  Q_HISTORY AS (SELECT
@@ -114,7 +114,7 @@ WITH SP_HISTORY AS (SELECT
       PARSING_SCHEMA_NAME AS SCHEMA_NAME,
       NULL AS DATABASE_NAME
     FROM gv$sql
-    WHERE sql_text NOT LIKE '%CALL%'
+    WHERE UPPER(sql_text) NOT LIKE '%CALL%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
@@ -153,7 +153,7 @@ ORACLE_GET_COLUMNS = textwrap.dedent(
             col.virtual_column,
             {identity_cols}
         FROM DBA_TAB_COLS{dblink} col
-        LEFT JOIN all_col_comments{dblink} com
+        LEFT JOIN dba_col_comments{dblink} com
         ON col.table_name = com.table_name
         AND col.column_name = com.column_name
         AND col.owner = com.owner
@@ -172,14 +172,14 @@ SELECT
   SQL_FULLTEXT AS query_text,
   TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
   ELAPSED_TIME / 1000 AS duration,
-  TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time
+  TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
 FROM gv$sql
 WHERE OBJECT_STATUS = 'VALID' 
   {filters}
   AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
   AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
   AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
-  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') 
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') 
   < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
 ORDER BY FIRST_LOAD_TIME DESC 
 OFFSET 0 ROWS FETCH NEXT {result_limit} ROWS ONLY

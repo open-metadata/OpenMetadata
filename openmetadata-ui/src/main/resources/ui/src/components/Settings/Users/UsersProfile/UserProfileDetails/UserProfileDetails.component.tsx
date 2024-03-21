@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Input, Space, Typography } from 'antd';
+import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +29,7 @@ import {
 import { EntityReference } from '../../../../../generated/entity/type';
 import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { changePassword } from '../../../../../rest/auth-API';
 import { getEntityName } from '../../../../../utils/EntityUtils';
@@ -36,7 +37,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
@@ -52,7 +52,7 @@ const UserProfileDetails = ({
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
-  const { authConfig, currentUser } = useAuthContext();
+  const { authConfig, currentUser } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
@@ -102,9 +102,11 @@ const UserProfileDetails = ({
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setDisplayName(e.target.value);
 
-  const handleDisplayNameSave = useCallback(() => {
+  const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
-      updateUserDetails({ displayName: displayName ?? '' });
+      setIsLoading(true);
+      await updateUserDetails({ displayName: displayName ?? '' });
+      setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
@@ -113,6 +115,7 @@ const UserProfileDetails = ({
     () =>
       isDisplayNameEdit && hasEditPermission ? (
         <InlineEdit
+          isLoading={isLoading}
           onCancel={() => setIsDisplayNameEdit(false)}
           onSave={handleDisplayNameSave}>
           <Input
@@ -139,13 +142,22 @@ const UserProfileDetails = ({
               : getEntityName(userData)}
           </Typography.Text>
           {hasEditPermission && (
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-displayName"
-              {...ICON_DIMENSION}
-              onClick={() => setIsDisplayNameEdit(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.display-name'),
+              })}>
+              <EditIcon
+                className="cursor-pointer align-middle"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-displayName"
+                {...ICON_DIMENSION}
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent User.component collapsible panel
+                  e.stopPropagation();
+                  setIsDisplayNameEdit(true);
+                }}
+              />
+            </Tooltip>
           )}
         </Space>
       ),
@@ -167,7 +179,11 @@ const UserProfileDetails = ({
           className="w-full text-xs"
           data-testid="change-password-button"
           type="primary"
-          onClick={() => setIsChangePassword(true)}>
+          onClick={(e) => {
+            // Used to stop click propagation event to parent User.component collapsible panel
+            e.stopPropagation();
+            setIsChangePassword(true);
+          }}>
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
           })}
