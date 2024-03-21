@@ -90,7 +90,7 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.project'),
-    key: 'project',
+    key: 'project.keyword',
   },
 ];
 
