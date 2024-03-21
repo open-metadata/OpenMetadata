@@ -89,7 +89,8 @@
         "connectionTimeout": {
           "title": "Connection Timeout",
           "description": "Connection Timeout from Connection String for AzureSQL.",
-          "type": "integer"
+          "type": "integer",
+          "default": 30
         }
       },
       "required": [
