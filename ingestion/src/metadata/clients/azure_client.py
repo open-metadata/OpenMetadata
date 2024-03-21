@@ -33,34 +33,19 @@ class AzureClient:
     def create_client(
         self,
     ):
-        from azure.identity import (
-            ClientSecretCredential,
-            DefaultAzureCredential,
-            UsernamePasswordCredential,
-        )
+        from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
         try:
             if (
-                getattr(self.credentials.azureAuthType, "tenantId", None)
+                getattr(self.credentials, "tenantId", None)
                 and getattr(self.credentials, "clientId", None)
-                and getattr(self.credentials.azureAuthType, "clientSecret", None)
+                and getattr(self.credentials, "clientSecret", None)
             ):
                 logger.info("Using Client Secret Credentials")
                 return ClientSecretCredential(
-                    tenant_id=self.credentials.azureAuthType.tenantId,
+                    tenant_id=self.credentials.tenantId,
                     client_id=self.credentials.clientId,
-                    client_secret=self.credentials.azureAuthType.clientSecret.get_secret_value(),
-                )
-            elif (
-                getattr(self.credentials.azureAuthType, "username", None)
-                and getattr(self.credentials.azureAuthType, "password", None)
-                and getattr(self.credentials, "clientId", None)
-            ):
-                logger.info("Using Username Password Credentials")
-                return UsernamePasswordCredential(
-                    username=self.credentials.azureAuthType.username,
-                    password=self.credentials.azureAuthType.password,
-                    client_id=self.credentials.clientId,
+                    client_secret=self.credentials.clientSecret.get_secret_value(),
                 )
             else:
                 logger.info("Using Default Azure Credentials")
