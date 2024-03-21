@@ -124,7 +124,7 @@ describe(
       verifyResponseStatusCode('@triggerPipeline', 200);
 
       cy.get('[data-testid="logs"]').click();
-      cy.get('[data-testid="summary-card"]').click();
+      cy.get('[data-testid="summary-card"]').should('be.visible');
     });
   }
 );
