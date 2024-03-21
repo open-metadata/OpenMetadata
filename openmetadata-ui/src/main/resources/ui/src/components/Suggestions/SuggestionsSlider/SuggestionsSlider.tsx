@@ -35,6 +35,7 @@ const SuggestionsSlider = () => {
       {selectedUserSuggestions.length > 0 && (
         <>
           <Button
+            data-testid="accept-all-suggestions"
             loading={loadingAccept}
             size="small"
             type="primary"
@@ -50,13 +51,14 @@ const SuggestionsSlider = () => {
           </Button>
           <Button
             ghost
+            data-testid="reject-all-suggestions"
             loading={loadingReject}
             size="small"
             type="primary"
             onClick={() =>
               acceptRejectAllSuggestions(
                 SuggestionType.SuggestDescription,
-                SuggestionAction.Accept
+                SuggestionAction.Reject
               )
             }>
             <Typography.Text className="text-xs text-primary">
