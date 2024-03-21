@@ -1927,7 +1927,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void checkIndexCreated() throws IOException, JSONException {
-    if (RUN_ELASTIC_SEARCH_TESTCASES) {
       RestClient client = getSearchClient();
       Request request = new Request("GET", "/_cat/indices");
       request.addParameter("format", "json");
@@ -1940,42 +1939,40 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         indexNamesFromResponse.add(indexName);
       }
       client.close();
-    }
   }
 
   @Test
   protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
-      // create entity
-      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-      EntityReference entityReference = getEntityReference(entity);
-      IndexMapping indexMapping =
-          Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-      Awaitility.await().wait(2000L);
-      SearchResponse response =
-          getResponseFormSearch(
-              indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
-      List<String> entityIds = new ArrayList<>();
-      SearchHit[] hits = response.getHits().getHits();
-      for (SearchHit hit : hits) {
-        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-        entityIds.add(sourceAsMap.get("id").toString());
-      }
-      // verify is it present in search
-      assertTrue(entityIds.contains(entity.getId().toString()));
+    Assumptions.assumeTrue(supportsSearchIndex);
+    // create entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    EntityReference entityReference = getEntityReference(entity);
+    IndexMapping indexMapping =
+        Entity.getSearchRepository().getIndexMapping(entityReference.getType());
+    waitForEsAsyncOp();
+    SearchResponse response =
+        getResponseFormSearch(
+            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+    List<String> entityIds = new ArrayList<>();
+    SearchHit[] hits = response.getHits().getHits();
+    for (SearchHit hit : hits) {
+      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+      entityIds.add(sourceAsMap.get("id").toString());
     }
+    // verify is it present in search
+    assertTrue(entityIds.contains(entity.getId().toString()));
   }
 
   @Test
   protected void checkDeletedEntity(TestInfo test)
       throws HttpResponseException, InterruptedException {
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    Assumptions.assumeTrue(supportsSearchIndex);
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
       IndexMapping indexMapping =
           Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-      Awaitility.await().wait(2000L);
+      waitForEsAsyncOp();
       SearchResponse response =
           getResponseFormSearch(
               indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -1993,7 +1990,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
       // search again in search after deleting
 
-      Awaitility.await().wait(2000L);
+      waitForEsAsyncOp();
       response =
           getResponseFormSearch(
               indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2004,13 +2001,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       // verify if it is deleted from the search as well
       assertFalse(entityIds.contains(entity.getId().toString()));
-    }
   }
 
   @Test
   protected void updateDescriptionAndCheckInSearch(TestInfo test)
       throws IOException, InterruptedException {
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    Assumptions.assumeTrue(supportsSearchIndex);
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
       IndexMapping indexMapping =
@@ -2019,7 +2015,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       String original = JsonUtils.pojoToJson(entity);
       entity.setDescription("update description");
       entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
-      Awaitility.await().wait(2000L);
+      waitForEsAsyncOp();
       SearchResponse response =
           getResponseFormSearch(
               indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2033,13 +2029,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       // check if description is updated in search as well
       assertEquals(entity.getDescription(), desc);
-    }
   }
 
   @Test
   protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
       throws HttpResponseException, InterruptedException {
-    if (supportsTags && supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    Assumptions.assumeTrue(supportsSearchIndex && supportsTags);
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
@@ -2055,7 +2050,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<String> fqnList = new ArrayList<>();
       // add tags to entity
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
-      Awaitility.await().wait(2000L);
+      waitForEsAsyncOp();
       SearchResponse response =
           getResponseFormSearch(
               indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2074,7 +2069,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       fqnList.clear();
       // delete the tag
       tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
-      Awaitility.await().wait(2000L);
+      waitForEsAsyncOp(500);
       response =
           getResponseFormSearch(
               indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
@@ -2090,7 +2085,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       // check if the relationships of tag are also deleted in search
       assertFalse(fqnList.contains(tagLabel.getTagFQN()));
-    }
   }
 
   @Test
@@ -2161,7 +2155,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     WebTarget target =
         getResource(
             String.format(
-                "elasticsearch/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
+                "search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     SearchResponse response = null;
     try {

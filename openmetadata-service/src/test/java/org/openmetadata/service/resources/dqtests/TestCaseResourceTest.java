@@ -382,7 +382,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
 
     TestSummary testSummary;
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(null);
       assertNotEquals(0, testSummary.getFailed());
       assertNotEquals(0, testSummary.getSuccess());
@@ -400,7 +400,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase1.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(1, testSummary.getTotal());
       assertEquals(1, testSummary.getFailed());
@@ -411,7 +411,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(2, testSummary.getTotal());
     }
@@ -420,7 +420,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // the summary is updated as expected
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(1, testSummary.getTotal());
     }
@@ -462,7 +462,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     TestSuite testSuite =
         testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       // test we get the right summary for the executable test suite
       TestSummary executableTestSummary =
           getTestSummary(testCase.getTestSuite().getId().toString());
@@ -471,14 +471,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // test we get the right summary for the logical test suite
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(1, logicalTestSummary.getTotal());
     }
     testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(2, logicalTestSummary.getTotal());
     }
@@ -486,7 +486,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testSuite =
         testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary executableTestSummary =
           getTestSummary(testCase.getTestSuite().getId().toString());
       assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
@@ -497,7 +497,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // cascaded to the logical test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       // check the deletion of the test case from the logical test suite is reflected in the summary
       assertEquals(1, logicalTestSummary.getTotal());
