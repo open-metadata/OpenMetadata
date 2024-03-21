@@ -22,7 +22,7 @@ import {
   Table,
   Typography,
 } from 'antd';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
@@ -91,7 +91,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
 
   const statsRender = useCallback(
     (jobStats: JobStats) => (
-      <Card size="small">
+      <Card data-testid="stats-component" size="small">
         <Row gutter={[16, 8]}>
           <Col span={24}>
             <Space wrap direction="horizontal" size={0}>
@@ -163,75 +163,77 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
 
   const tableColumn = useMemo(() => {
     const entityTotalJobStatsData =
-      successContext?.stats.jobStats || failureContext?.stats.jobStats;
+      successContext?.stats?.jobStats || failureContext?.stats?.jobStats;
 
-    return [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-      },
-      {
-        title: (
-          <div className="d-flex items-center">
-            <Typography.Text>
-              {t('label.entity-record-plural', {
-                entity: t('label.total'),
-              })}{' '}
-            </Typography.Text>
-            <AppBadge
-              className="entity-stats total m-l-sm"
-              label={entityTotalJobStatsData.totalRecords}
-            />
-          </div>
-        ),
-        dataIndex: 'totalRecords',
-        key: 'totalRecords',
-        render: (text: string) => (
-          <Typography.Text className="text-primary">{text}</Typography.Text>
-        ),
-      },
-      {
-        title: (
-          <div className="d-flex items-center">
-            <Typography.Text>
-              {t('label.entity-record-plural', {
-                entity: t('label.success'),
-              })}{' '}
-            </Typography.Text>
-            <AppBadge
-              className="entity-stats success m-l-sm"
-              label={entityTotalJobStatsData.successRecords}
-            />
-          </div>
-        ),
-        dataIndex: 'successRecords',
-        key: 'successRecords',
-        render: (text: string) => (
-          <Typography.Text className="text-success">{text}</Typography.Text>
-        ),
-      },
-      {
-        title: (
-          <div className="d-flex items-center">
-            <Typography.Text>
-              {t('label.entity-record-plural', {
-                entity: t('label.failed'),
-              })}{' '}
-            </Typography.Text>
-            <AppBadge
-              className="entity-stats failure m-l-sm"
-              label={entityTotalJobStatsData.failedRecords}
-            />
-          </div>
-        ),
-        dataIndex: 'failedRecords',
-        key: 'failedRecords',
-        render: (text: string) => (
-          <Typography.Text className="text-failure">{text}</Typography.Text>
-        ),
-      },
-    ];
+    return isEmpty(entityTotalJobStatsData)
+      ? []
+      : [
+          {
+            title: t('label.name'),
+            dataIndex: 'name',
+            key: 'name',
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.total'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats total m-l-sm"
+                  label={entityTotalJobStatsData.totalRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'totalRecords',
+            key: 'totalRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-primary">{text}</Typography.Text>
+            ),
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.success'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats success m-l-sm"
+                  label={entityTotalJobStatsData.successRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'successRecords',
+            key: 'successRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-success">{text}</Typography.Text>
+            ),
+          },
+          {
+            title: (
+              <div className="d-flex items-center">
+                <Typography.Text>
+                  {t('label.entity-record-plural', {
+                    entity: t('label.failed'),
+                  })}{' '}
+                </Typography.Text>
+                <AppBadge
+                  className="entity-stats failure m-l-sm"
+                  label={entityTotalJobStatsData.failedRecords}
+                />
+              </div>
+            ),
+            dataIndex: 'failedRecords',
+            key: 'failedRecords',
+            render: (text: string) => (
+              <Typography.Text className="text-failure">{text}</Typography.Text>
+            ),
+          },
+        ];
   }, [successContext, failureContext]);
 
   const entityStatsRenderer = useCallback(
