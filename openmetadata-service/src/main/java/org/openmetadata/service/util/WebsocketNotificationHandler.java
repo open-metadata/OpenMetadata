@@ -94,15 +94,10 @@ public class WebsocketNotificationHandler {
       // Send WebSocket Notification
       WebSocketManager.getInstance()
           .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
-
-      // Notify Latest Mentioned User
+    } else {
       List<MessageParser.EntityLink> mentions;
-      if (thread.getPostsCount() == 0) {
-        mentions = MessageParser.getEntityLinks(thread.getMessage());
-      } else {
-        Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-        mentions = MessageParser.getEntityLinks(latestPost.getMessage());
-      }
+      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
+      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
       notifyMentionedUsers(mentions, jsonThread);
     }
   }
