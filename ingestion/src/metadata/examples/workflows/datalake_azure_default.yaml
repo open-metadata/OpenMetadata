@@ -7,7 +7,6 @@ source:
       configSource:      
         securityConfig: 
           clientId: clientId
-          azureAuthType:
           accountName: accountName
       bucketName: bucket name
       prefix: prefix
