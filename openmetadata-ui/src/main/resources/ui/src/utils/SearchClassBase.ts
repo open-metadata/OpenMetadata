@@ -253,19 +253,18 @@ class SearchClassBase {
         ];
       case SearchIndex.CONTAINER:
         return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
-      case SearchIndex.STORED_PROCEDURE:
-        return [...COMMON_DROPDOWN_ITEMS];
       case SearchIndex.DASHBOARD_DATA_MODEL:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
       case SearchIndex.GLOSSARY_TERM:
-        return [...GLOSSARY_DROPDOWN_ITEMS];
+        return GLOSSARY_DROPDOWN_ITEMS;
       case SearchIndex.TAG:
-        return [...TAG_DROPDOWN_ITEMS];
+        return TAG_DROPDOWN_ITEMS;
       case SearchIndex.DATA_PRODUCT:
-        return [...DATA_PRODUCT_DROPDOWN_ITEMS];
+        return DATA_PRODUCT_DROPDOWN_ITEMS;
+      case SearchIndex.STORED_PROCEDURE:
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
-        return [...COMMON_DROPDOWN_ITEMS];
+        return COMMON_DROPDOWN_ITEMS;
 
       default:
         return [];

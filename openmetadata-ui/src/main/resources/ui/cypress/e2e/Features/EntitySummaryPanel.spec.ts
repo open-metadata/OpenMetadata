@@ -98,6 +98,7 @@ describe('Entity Summary Panel', () => {
       'be.visible'
     );
     cy.get('[data-testid="Dashboard URL-label"]').should('be.visible');
+    cy.get('[data-testid="Project-label"]').should('be.visible');
     cy.get('[data-testid="tags-header"]').scrollIntoView().should('be.visible');
     cy.get('[data-testid="description-header"]')
       .scrollIntoView()
