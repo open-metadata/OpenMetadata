@@ -411,7 +411,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     },
     {
       name: i18next.t('label.project'),
-      value: project || NO_DATA,
+      value: project ?? NO_DATA,
       isLink: false,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.explore,
