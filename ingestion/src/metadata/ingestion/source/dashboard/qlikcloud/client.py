@@ -75,7 +75,7 @@ class QlikCloudClient:
         if self.socket_connection:
             self.socket_connection.close()
         self.socket_connection = create_connection(
-            f"wss{clean_uri(self.config.hostPort)[5:]}/app/{dashboard_id or ''}",
+            f"wss://{clean_uri(self.config.hostPort.host)}/app/{dashboard_id or ''}",
             sslopt={"cert_reqs": ssl.CERT_NONE},
             header={"Authorization": f"Bearer {self.config.token}"},
         )

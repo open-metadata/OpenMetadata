@@ -166,31 +166,23 @@ class QlikcloudSource(DashboardServiceSource):
         return None
 
     def _get_database_table(
-        self, db_service_entity: DatabaseService, datamodel: QlikTable
+        self,
+        db_service_entity: DatabaseService,
+        data_model_entity: DashboardDataModel,
     ) -> Optional[Table]:
         """
         Get the table entity for lineage
         """
         # table.name in tableau can come as db.schema.table_name. Hence the logic to split it
-        if datamodel.tableName and db_service_entity:
+        if data_model_entity and db_service_entity:
             try:
-                if len(datamodel.connectionInfo.tableQualifiers) > 1:
-                    (
-                        database_name,
-                        schema_name,
-                    ) = datamodel.connectionInfo.tableQualifiers[-2:]
-                elif len(datamodel.connectionInfo.tableQualifiers) == 1:
-                    schema_name = datamodel.connectionInfo.tableQualifiers[-1]
-                    database_name = None
-                else:
-                    schema_name, database_name = None, None
-
+                schema_name, database_name = None, None
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
                     service_name=db_service_entity.name.__root__,
                     schema_name=schema_name,
-                    table_name=datamodel.tableName,
+                    table_name=data_model_entity.displayName,
                     database_name=database_name,
                 )
                 if table_fqn:
@@ -212,15 +204,12 @@ class QlikcloudSource(DashboardServiceSource):
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
-        for datamodel in self.data_models or []:
+        for datamodel_id in self.context.dataModels or []:
             try:
-                if not datamodel.id in self.context.dataModels:
-                    # only process datamodels which are parsed in context
-                    continue
-                data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
+                data_model_entity = self._get_datamodel(datamodel_id=datamodel_id)
                 if data_model_entity:
                     om_table = self._get_database_table(
-                        db_service_entity, datamodel=datamodel
+                        db_service_entity, data_model_entity
                     )
                     if om_table:
                         yield self._get_add_lineage_request(

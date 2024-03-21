@@ -4,8 +4,8 @@ source:
   serviceConnection:
     config:
       type: QlikCloud
-      token:
-      hostPort:
+      token: eyJhbGciOiJFUzM4NCIsImtpZCI6ImM3YWUzNjRjLTNhN2UtNDQyYy1hNDliLWI0M2MzOGEwMjM3YyIsInR5cCI6IkpXVCJ9.eyJzdWJUeXBlIjoidXNlciIsInRlbmFudElkIjoiZGJpWnVFS04yNmE2NkFuSjJ5WGZtTE1zSGlPdllmd3AiLCJqdGkiOiJjN2FlMzY0Yy0zYTdlLTQ0MmMtYTQ5Yi1iNDNjMzhhMDIzN2MiLCJhdWQiOiJxbGlrLmFwaSIsImlzcyI6InFsaWsuYXBpL2FwaS1rZXlzIiwic3ViIjoiNjVlMTg3ZTUyZDNjOTM2ZWE3YjE1ZTkxIn0.4AY1N-XQ5js5qGl1OoQGPQSaz4uhPMNq09LVM4WMqqZVu3zFap2MGqKT0k7wJeaDRLaySnPR6y1O3TeYl9WVWaqzp5hRfTfkZHe2h_oJA4GNz3po6HVmvspmvqtZPPU8
+      hostPort: http://localhost:2000
 
   sourceConfig:
     config:
