@@ -250,4 +250,21 @@ describe('Test EntityTable Component', () => {
     expect(columnDisplayName[0].textContent).toBe('Comments');
     expect(columnName[0].textContent).toBe('comments');
   });
+
+  it('should not render edit displayName button is table is deleted', async () => {
+    render(
+      <EntityTableV1
+        {...mockEntityTableProp}
+        isReadOnly
+        tableColumns={[...columnsWithDisplayName]}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(
+      screen.queryByTestId('edit-displayName-button')
+    ).not.toBeInTheDocument();
+  });
 });

@@ -956,6 +956,7 @@ public class OpenSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("dataModels.displayName.keyword")
                 .field("dataModels.displayName.keyword"))
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
         .aggregation(
             AggregationBuilders.terms("charts.displayName.keyword")
                 .field("charts.displayName.keyword"));

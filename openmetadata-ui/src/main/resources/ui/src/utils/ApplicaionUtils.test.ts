@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-export interface RetentionPeriodProps {
-  retentionPeriod?: string;
-  onUpdate: (retentionPeriod: string) => Promise<void>;
-  hasPermission: boolean;
-}
+import { getEntityStatsData } from './ApplicationUtils';
+import {
+  MOCK_APPLICATION_ENTITY_STATS,
+  MOCK_APPLICATION_ENTITY_STATS_DATA,
+} from './mocks/ApplicationUtils.mock';
+
+describe('ApplicationUtils tests', () => {
+  it('getEntityStatsData should return stats data in array', () => {
+    const resultData = getEntityStatsData(MOCK_APPLICATION_ENTITY_STATS);
+
+    expect(resultData).toEqual(MOCK_APPLICATION_ENTITY_STATS_DATA);
+  });
+});
