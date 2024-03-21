@@ -44,6 +44,7 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -53,6 +54,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -738,6 +740,64 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository
         .deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp)
         .toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/failedRowsSample")
+  @Operation(
+      operationId = "addFailedRowsSample",
+      summary = "Add failed rows sample data",
+      description = "Add a sample of failed rows for this test case.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the test case with failed rows sample data.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class)))
+      })
+  public TestCase addFailedRowsData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid TableData tableData) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestCase table = repository.addFailedRowsSample(id, tableData);
+    return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/failedRowsSample")
+  @Operation(
+      operationId = "getFailedRowsSample",
+      summary = "Get failed rows sample data",
+      description = "Get a sample of failed rows for this test case.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved the test case with failed rows sample data.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TableData.class)))
+      })
+  public TableData getFailedRowsData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    return repository.getSampleData(id, authorizePII);
   }
 
   @PUT

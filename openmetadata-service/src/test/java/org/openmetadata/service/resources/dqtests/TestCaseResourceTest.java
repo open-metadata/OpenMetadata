@@ -69,6 +69,8 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.service.Entity;
@@ -108,13 +110,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withName("testCase'_ Table")
             .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
             .withOwner(USER1_REF)
-            .withColumns(
-                List.of(
-                    new Column()
-                        .withName(C1)
-                        .withDisplayName("c1")
-                        .withDataType(ColumnDataType.VARCHAR)
-                        .withDataLength(10)))
+            .withColumns(COLUMNS)
             .withOwner(USER1_REF);
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     tableReq =
@@ -2078,5 +2074,64 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         indexInAllTables -= forwardPage.getData().size();
       } while (before != null);
     }
+  }
+
+  @Test
+  void put_failedRowSample_200(TestInfo test) throws IOException {
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(TABLE_LINK)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    List<String> columns = Arrays.asList(C1, C2, C3);
+
+    // Add 3 rows of sample data for 3 columns
+    List<List<Object>> rows =
+        Arrays.asList(
+            Arrays.asList("c1Value1", 1, true),
+            Arrays.asList("c1Value2", null, false),
+            Arrays.asList("c1Value3", 3, true));
+
+    // Sample data can be put as an ADMIN
+    putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS);
+
+    // Sample data can be put as owner
+    rows.get(0).set(1, 2); // Change value 1 to 2
+    putSampleData(testCase, columns, rows, authHeaders(USER1.getName()));
+
+    // Sample data can't be put as non-owner, non-admin
+    assertResponse(
+        () -> putSampleData(testCase, columns, rows, authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_SAMPLE_DATA)));
+  }
+
+  private void putSampleData(
+      TestCase testCase,
+      List<String> columns,
+      List<List<Object>> rows,
+      Map<String, String> authHeaders)
+      throws IOException {
+    TableData tableData = new TableData().withColumns(columns).withRows(rows);
+    TestCase putResponse = putSampleData(testCase.getId(), tableData, authHeaders);
+    assertEquals(tableData, putResponse.getFailedRowsSamples());
+
+    TableData data = getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(tableData, data);
+  }
+
+  public TestCase putSampleData(UUID tableId, TableData data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/failedRowsSample");
+    return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
+  }
+
+  public TableData getSampleData(UUID testCaseId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(testCaseId).path("/failedRowsSample");
+    return TestUtils.get(target, TableData.class, authHeaders);
   }
 }

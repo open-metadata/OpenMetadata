@@ -8,11 +8,14 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
@@ -48,6 +51,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -68,7 +73,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS =
       "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
-  public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
+  public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult" + "";
+  public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
   public TestCaseRepository() {
     super(
@@ -647,7 +653,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
-  /** Remove test case from test suite summary and update test suite */
+  /**
+   * Remove test case from test suite summary and update test suite
+   */
   @Transaction
   private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
@@ -762,6 +770,44 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return new TestCaseRepository.TestCaseFailureResolutionTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  @Transaction
+  public TestCase addFailedRowsSample(UUID testCaseId, TableData tableData) {
+    TestCase testCase = find(testCaseId, NON_DELETED);
+    EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
+    Table table = Entity.getEntity(entityLink, "owner", ALL);
+    // Validate all the columns
+    for (String columnName : tableData.getColumns()) {
+      validateColumn(table, columnName);
+    }
+    // Make sure each row has number values for all the columns
+    for (List<Object> row : tableData.getRows()) {
+      if (row.size() != tableData.getColumns().size()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Number of columns is %d but row has %d sample values",
+                tableData.getColumns().size(), row.size()));
+      }
+    }
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            testCaseId,
+            FAILED_ROWS_SAMPLE_EXTENSION,
+            "failedRowsSample",
+            JsonUtils.pojoToJson(tableData));
+    setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
+    return testCase.withFailedRowsSamples(tableData);
+  }
+
+  // Validate if a given column exists in the table
+  public static void validateColumn(Table table, String columnName) {
+    boolean validColumn =
+        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+    if (!validColumn) {
+      throw new IllegalArgumentException("Invalid column name " + columnName);
+    }
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
@@ -916,5 +962,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           original.getComputePassedFailedRowCount(),
           updated.getComputePassedFailedRowCount());
     }
+  }
+
+  public TableData getSampleData(UUID testCaseID, boolean authorizePII) {
+    TestCase testCase = find(testCaseID, NON_DELETED);
+    Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), "owner", ALL);
+    // Validate the request content
+    TableData sampleData =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionDAO()
+                .getExtension(testCaseID, FAILED_ROWS_SAMPLE_EXTENSION),
+            TableData.class);
+    // Set the column tags. Will be used to mask the sample data
+    if (!authorizePII) {
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
+      List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
+      table.setTags(tags);
+      return maskSampleData(table.getSampleData(), table, table.getColumns());
+    }
+    return sampleData;
   }
 }

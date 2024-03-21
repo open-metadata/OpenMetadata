@@ -14,11 +14,13 @@ Mixin class containing Tests specific methods
 To be used by OpenMetadata class
 """
 
+import traceback
 from datetime import datetime, timezone
 from typing import List, Optional, Type, Union
 from urllib.parse import quote
 from uuid import UUID
 
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
@@ -323,3 +325,40 @@ class OMetaTestsMixin:
         response = self.client.post(path, data=data.json(encoder=show_secrets_encoder))
 
         return TestCaseResolutionStatus(**response)
+
+    def ingest_failed_rows_sample(
+        self, test_case: TestCase, failed_rows: TableData
+    ) -> Optional[TableData]:
+        """
+        PUT sample failed data for a test case.
+
+        :param test_case: The test case that failed
+        :param failed_rows: Data to add
+        """
+        resp = None
+        try:
+            resp = self.client.put(
+                f"{self.get_suffix(TestCase)}/{test_case.id.__root__}/failedRowsSample",
+                data=failed_rows.json(),
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT sample data for {test_case.fullyQualifiedName.__root__}: {exc}"
+            )
+
+        if resp:
+            try:
+                return TableData(**resp["failedRowsSamples"])
+            except UnicodeError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.__root__}: {err}"
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse sample data results from {test_case.fullyQualifiedName.__root__}: {exc}"
+                )
+
+        return None

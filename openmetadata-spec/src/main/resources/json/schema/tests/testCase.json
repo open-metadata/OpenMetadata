@@ -110,6 +110,10 @@
     "incidentId": {
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "failedRowsSamples": {
+      "description": "Sample of failed rows for this test case.",
+      "$ref": "../entity/data/table.json#/definitions/tableData"
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],
