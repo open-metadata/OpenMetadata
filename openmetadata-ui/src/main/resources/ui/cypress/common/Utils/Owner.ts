@@ -131,9 +131,9 @@ export const removeOwner = (ownerName: string, dataTestId?: string) => {
 
   cy.get('[data-testid="select-owner-tabs"]').should('be.visible');
 
-  cy.get(
-    '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
-  ).click();
+  cy.get('[data-testid="select-owner-tabs"] [data-testid="remove-owner"]')
+    .scrollIntoView()
+    .click();
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
