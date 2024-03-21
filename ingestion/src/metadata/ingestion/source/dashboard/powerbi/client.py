@@ -40,6 +40,8 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
 )
 from metadata.utils.logger import utils_logger
 
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import PowerBIConnection
+
 logger = utils_logger()
 
 
@@ -52,7 +54,7 @@ class PowerBiApiClient:
 
     client: REST
 
-    def __init__(self, config):
+    def __init__(self, config: PowerBIConnection):
         self.config = config
         self.msal_client = msal.ConfidentialClientApplication(
             client_id=self.config.clientId,
