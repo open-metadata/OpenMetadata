@@ -481,6 +481,53 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     assertEquals(0, suggestionList.getPaging().getTotal());
   }
 
+  @Test
+  @Order(5)
+  void put_acceptAllColumnSuggestions_200() throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // Add another suggestion at one column level
+    create =
+        create().withEntityLink(TABLE_COLUMN1_LINK).withDescription("Update column1 description");
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // And now update another column description
+    create =
+        create().withEntityLink(TABLE_COLUMN2_LINK).withDescription("Update column2 description");
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(3, suggestionList.getData().size());
+
+    acceptAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table = tableResourceTest.getEntity(TABLE.getId(), "columns", USER_AUTH_HEADERS);
+    for (Column column : table.getColumns()) {
+      if (column.getName().equals(C1)) {
+        assertEquals("Update column1 description", column.getDescription());
+      } else if (column.getName().equals(C2)) {
+        assertEquals("Update column2 description", column.getDescription());
+      }
+    }
+  }
+
   public Suggestion createSuggestion(CreateSuggestion create, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getResource("suggestions"), create, Suggestion.class, authHeaders);

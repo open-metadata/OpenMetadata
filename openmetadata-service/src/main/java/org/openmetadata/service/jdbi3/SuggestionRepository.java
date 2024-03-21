@@ -214,10 +214,9 @@ public class SuggestionRepository {
     String user = securityContext.getUserPrincipal().getName();
     MessageParser.EntityLink entityLink =
         MessageParser.EntityLink.parse(suggestion.getEntityLink());
-    EntityInterface entity =
-        Entity.getEntity(
-            entityLink, suggestion.getType() == SuggestionType.SuggestTagLabel ? "tags" : "", ALL);
     EntityRepository<?> repository = Entity.getEntityRepository(entityLink.getEntityType());
+    EntityInterface entity =
+        Entity.getEntity(entityLink, repository.getSuggestionFields(suggestion), ALL);
     // Prepare the original JSON before updating the Entity, otherwise we get an empty patch
     String origJson = JsonUtils.pojoToJson(entity);
     SuggestionWorkflow suggestionWorkflow = repository.getSuggestionWorkflow(entity);
