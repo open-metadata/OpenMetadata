@@ -38,6 +38,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getUserWithImage } from '../../../utils/UserDataUtils';
 import { UserTeam } from '../AssigneeList/AssigneeList.interface';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -124,7 +125,8 @@ const PopoverContent = React.memo(
     const getUserWithAdditionalDetails = useCallback(async () => {
       try {
         setLoading(true);
-        const user = await getUserByName(userName, { fields: 'teams, roles' });
+        let user = await getUserByName(userName, { fields: 'teams, roles' });
+        user = getUserWithImage(user);
 
         updateUserProfilePics({
           id: userName,
