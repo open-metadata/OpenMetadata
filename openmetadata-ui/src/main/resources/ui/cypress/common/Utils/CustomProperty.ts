@@ -35,6 +35,7 @@ export enum CustomPropertyTypeByName {
   NUMBER = 'number',
   DURATION = 'duration',
   EMAIL = 'email',
+  ENUM = 'enum',
 }
 
 export interface CustomProperty {
@@ -85,6 +86,11 @@ export const getPropertyValues = (type: string) => {
       return {
         value: 'john@gamil.com',
         newValue: 'user@getcollate.io',
+      };
+    case 'enum':
+      return {
+        value: 'small',
+        newValue: 'medium',
       };
 
     default:
@@ -164,13 +170,28 @@ export const setValueForProperty = (
     cy.get('[data-testid="inline-save-btn"]').click();
   }
 
+  if (propertyType === 'enum') {
+    cy.get('#enumValues').click().type(`${value}{enter}`);
+    cy.clickOutside();
+    cy.get('[data-testid="inline-save-btn"]').click();
+  }
+
   verifyResponseStatusCode('@patchEntity', 200);
-  cy.get(`[data-row-key="${propertyName}"]`).should(
-    'contain',
-    value.replace(/\*|_/gi, '')
-  );
+
+  if (propertyType === 'enum') {
+    cy.get('[data-testid="enum-value"]').should('contain', value);
+  } else {
+    cy.get(`[data-row-key="${propertyName}"]`).should(
+      'contain',
+      value.replace(/\*|_/gi, '')
+    );
+  }
 };
-export const validateValueForProperty = (propertyName, value: string) => {
+export const validateValueForProperty = (
+  propertyName: string,
+  value: string,
+  propertyType: string
+) => {
   cy.get('.ant-tabs-tab').first().click();
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="custom-properties-table"]',
@@ -178,10 +199,15 @@ export const validateValueForProperty = (propertyName, value: string) => {
       timeout: 10000,
     }
   ).scrollIntoView();
-  cy.get(`[data-row-key="${propertyName}"]`).should(
-    'contain',
-    value.replace(/\*|_/gi, '')
-  );
+
+  if (propertyType === 'enum') {
+    cy.get('[data-testid="enum-value"]').should('contain', value);
+  } else {
+    cy.get(`[data-row-key="${propertyName}"]`).should(
+      'contain',
+      value.replace(/\*|_/gi, '')
+    );
+  }
 };
 export const generateCustomProperties = () => {
   return {

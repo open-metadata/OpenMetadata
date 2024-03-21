@@ -205,6 +205,16 @@ class EntityClass {
                     id: item.id ?? '',
                     type: 'type',
                   },
+                  ...(item.name === 'enum'
+                    ? {
+                        customPropertyConfig: {
+                          config: {
+                            multiSelect: true,
+                            values: ['small', 'medium', 'large'],
+                          },
+                        },
+                      }
+                    : {}),
                 },
               }).then(({ body }) => {
                 this.customPropertyValue = body.customProperties.reduce(
@@ -538,7 +548,11 @@ class EntityClass {
       value,
       propertydetails.propertyType.name
     );
-    validateValueForProperty(propertydetails.name, value);
+    validateValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
   }
 
   updateCustomProperty(propertydetails: CustomProperty, value: string) {
@@ -547,7 +561,11 @@ class EntityClass {
       value,
       propertydetails.propertyType.name
     );
-    validateValueForProperty(propertydetails.name, value);
+    validateValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
   }
 }
 

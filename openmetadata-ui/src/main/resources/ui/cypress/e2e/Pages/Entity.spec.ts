@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
+import ContainerClass from '../../common/Entities/ContainerClass';
+import DashboardDataModelClass from '../../common/Entities/DataModelClass';
 import EntityClass from '../../common/Entities/EntityClass';
+import MlModelClass from '../../common/Entities/MlModelClass';
+import PipelineClass from '../../common/Entities/PipelineClass';
+import SearchIndexClass from '../../common/Entities/SearchIndexClass';
+import TopicClass from '../../common/Entities/TopicClass';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
 import DashboardClass from './../../common/Entities/DashboardClass';
 import { CustomPropertyTypeByName } from './../../common/Utils/CustomProperty';
@@ -20,12 +26,12 @@ import { CustomPropertyTypeByName } from './../../common/Utils/CustomProperty';
 // Those tests are covered in cypress/new-tests/Database.spec.js
 const entities = [
   new DashboardClass(),
-  // new PipelineClass(),
-  // new TopicClass(),
-  // new MlModelClass(),
-  // new ContainerClass(),
-  // new SearchIndexClass(),
-  // new DashboardDataModelClass(),
+  new PipelineClass(),
+  new TopicClass(),
+  new MlModelClass(),
+  new ContainerClass(),
+  new SearchIndexClass(),
+  new DashboardDataModelClass(),
 ] as const;
 
 const OWNER1 = 'Aaron Johnson';

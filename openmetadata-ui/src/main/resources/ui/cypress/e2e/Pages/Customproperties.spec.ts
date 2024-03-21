@@ -1252,7 +1252,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         );
         validateValueForProperty(
           lowerCase(type),
-          customPropertyValue[type].value
+          customPropertyValue[type].value,
+          lowerCase(type)
         );
       });
 
@@ -1265,7 +1266,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         );
         validateValueForProperty(
           lowerCase(type),
-          customPropertyValue[type].newValue
+          customPropertyValue[type].newValue,
+          lowerCase(type)
         );
       });
 
