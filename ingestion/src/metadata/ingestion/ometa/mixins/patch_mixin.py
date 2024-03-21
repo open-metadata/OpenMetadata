@@ -46,7 +46,7 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.deprecation import deprecated
-from metadata.utils.logger import ometa_logger
+from metadata.utils.logger import get_log_name, ometa_logger
 
 logger = ometa_logger()
 
@@ -155,9 +155,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH {entity.__name__} [{source.id.__root__}]: {exc}"
-            )
+            logger.error(f"Error trying to PATCH {get_log_name(source)}: {exc}")
 
         return None
 
