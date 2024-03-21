@@ -36,6 +36,9 @@ export enum CustomPropertyTypeByName {
   DURATION = 'duration',
   EMAIL = 'email',
   ENUM = 'enum',
+  SQL_QUERY = 'sqlQuery',
+  TIMESTAMP = 'timestamp',
+  TIME_INTERVAL = 'timeInterval',
 }
 
 export interface CustomProperty {
@@ -91,6 +94,22 @@ export const getPropertyValues = (type: string) => {
       return {
         value: 'small',
         newValue: 'medium',
+      };
+    case 'sqlQuery':
+      return {
+        value: 'Select * from table',
+        newValue: 'Select * from table where id = 1',
+      };
+
+    case 'timestamp':
+      return {
+        value: '1710831125922',
+        newValue: '1710831125923',
+      };
+    case 'timeInterval':
+      return {
+        value: '1710831125922,1710831125923',
+        newValue: '1710831125923,1710831125924',
       };
 
     default:
@@ -176,10 +195,33 @@ export const setValueForProperty = (
     cy.get('[data-testid="inline-save-btn"]').click();
   }
 
+  if (propertyType === 'sqlQuery') {
+    cy.get('.CodeMirror-line').click().type(value);
+    cy.get('[data-testid="inline-save-btn"]').click();
+  }
+
+  if (propertyType === 'timestamp') {
+    cy.get('[data-testid="timestamp-input"]').clear().type(value);
+    cy.get('[data-testid="inline-save-btn"]').click();
+  }
+
+  if (propertyType === 'timeInterval') {
+    const [startValue, endValue] = value.split(',');
+    cy.get('[data-testid="start-input"]').clear().type(startValue);
+    cy.get('[data-testid="end-input"]').clear().type(endValue);
+    cy.get('[data-testid="inline-save-btn"]').click();
+  }
+
   verifyResponseStatusCode('@patchEntity', 200);
 
   if (propertyType === 'enum') {
     cy.get('[data-testid="enum-value"]').should('contain', value);
+  } else if (propertyType === 'timeInterval') {
+    const [startValue, endValue] = value.split(',');
+    cy.get('[data-testid="time-interval-value"]').should('contain', startValue);
+    cy.get('[data-testid="time-interval-value"]').should('contain', endValue);
+  } else if (propertyType === 'sqlQuery') {
+    cy.get('.CodeMirror-scroll').should('contain', value);
   } else {
     cy.get(`[data-row-key="${propertyName}"]`).should(
       'contain',
@@ -202,6 +244,12 @@ export const validateValueForProperty = (
 
   if (propertyType === 'enum') {
     cy.get('[data-testid="enum-value"]').should('contain', value);
+  } else if (propertyType === 'timeInterval') {
+    const [startValue, endValue] = value.split(',');
+    cy.get('[data-testid="time-interval-value"]').should('contain', startValue);
+    cy.get('[data-testid="time-interval-value"]').should('contain', endValue);
+  } else if (propertyType === 'sqlQuery') {
+    cy.get('.CodeMirror-scroll').should('contain', value);
   } else {
     cy.get(`[data-row-key="${propertyName}"]`).should(
       'contain',
