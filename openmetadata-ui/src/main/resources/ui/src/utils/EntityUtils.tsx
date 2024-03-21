@@ -373,7 +373,8 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 };
 
 const getDashboardOverview = (dashboardDetails: Dashboard) => {
-  const { owner, tags, sourceUrl, service, displayName } = dashboardDetails;
+  const { owner, tags, sourceUrl, service, displayName, project } =
+    dashboardDetails;
   const tier = getTierFromTableTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
@@ -409,13 +410,21 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
-
     {
       name: i18next.t('label.tier'),
       value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
       isLink: false,
       isExternal: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.project'),
+      value: project ?? NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
     },
   ];
 
