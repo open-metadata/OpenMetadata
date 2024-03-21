@@ -88,6 +88,7 @@ public class AppRepository extends EntityRepository<App> {
       CreateUser createUser =
           new CreateUser()
               .withName(botName)
+              .withDisplayName(application.getDisplayName())
               .withEmail(String.format("%s@openmetadata.org", botName))
               .withIsAdmin(false)
               .withIsBot(true)

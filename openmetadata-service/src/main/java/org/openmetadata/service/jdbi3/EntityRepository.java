@@ -1953,8 +1953,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(Suggestion suggestion) {
-    return new SuggestionRepository.SuggestionWorkflow(suggestion);
+  public SuggestionRepository.SuggestionWorkflow getSuggestionWorkflow(EntityInterface entity) {
+    return new SuggestionRepository.SuggestionWorkflow(entity);
   }
 
   public EntityInterface applySuggestion(
