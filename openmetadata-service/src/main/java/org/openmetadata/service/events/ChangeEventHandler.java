@@ -39,11 +39,15 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
   private FeedMessageDecorator feedMessageDecorator = new FeedMessageDecorator();
+  private final FeedRepository feedRepository = new FeedRepository();
+  private final WebsocketNotificationHandler websocketNotificationHandler =
+      new WebsocketNotificationHandler();
 
   public void init(OpenMetadataApplicationConfig config) {
     this.mapper = new ObjectMapper();
@@ -52,13 +56,13 @@ public class ChangeEventHandler implements EventHandler {
   @SneakyThrows
   public Void process(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    websocketNotificationHandler.processNotifications(responseContext);
     String method = requestContext.getMethod();
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
       CollectionDAO collectionDAO = Entity.getCollectionDAO();
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
-      FeedRepository feedRepository = new FeedRepository();
       Optional<ChangeEvent> optionalChangeEvent =
           getChangeEventFromResponseContext(responseContext, loggedInUserName, method);
       if (optionalChangeEvent.isPresent()) {
