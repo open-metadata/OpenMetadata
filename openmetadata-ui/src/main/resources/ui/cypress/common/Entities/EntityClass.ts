@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { uuid } from '../../constants/constants';
+import { ENTITY_PATH, uuid } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
 import { EntityType } from '../../constants/Entity.interface';
 import {
@@ -20,11 +20,9 @@ import {
   deleteAnnoucement,
 } from '../Utils/Annoucement';
 import {
-  createCustomPropertyForEntity,
   CustomProperty,
-  CustomPropertyType,
-  deleteCustomPropertyForEntity,
-  generateCustomProperty,
+  deleteCustomProperties,
+  getPropertyValues,
   setValueForProperty,
   validateValueForProperty,
 } from '../Utils/CustomProperty';
@@ -136,12 +134,8 @@ class EntityClass {
   endPoint: EntityType;
   protected name: string;
 
-  intergerPropertyDetails: CustomProperty;
-  stringPropertyDetails: CustomProperty;
-  markdownPropertyDetails: CustomProperty;
-
   customPropertyValue: Record<
-    CustomPropertyType,
+    string,
     { value: string; newValue: string; property: CustomProperty }
   >;
 
@@ -153,34 +147,6 @@ class EntityClass {
     this.entityName = entityName;
     this.entityDetails = entityDetails;
     this.endPoint = endPoint;
-
-    this.intergerPropertyDetails = generateCustomProperty(
-      CustomPropertyType.INTEGER
-    );
-    this.stringPropertyDetails = generateCustomProperty(
-      CustomPropertyType.STRING
-    );
-    this.markdownPropertyDetails = generateCustomProperty(
-      CustomPropertyType.MARKDOWN
-    );
-
-    this.customPropertyValue = {
-      Integer: {
-        value: '123',
-        newValue: '456',
-        property: this.intergerPropertyDetails,
-      },
-      String: {
-        value: '123',
-        newValue: '456',
-        property: this.stringPropertyDetails,
-      },
-      Markdown: {
-        value: '**Bold statement**',
-        newValue: '__Italic statement__',
-        property: this.markdownPropertyDetails,
-      },
-    };
   }
 
   public getName() {
@@ -204,19 +170,67 @@ class EntityClass {
 
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      createCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
+      cy.getAllLocalStorage().then((data) => {
+        const token = getToken(data);
 
-      createCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
+        // fetch the available property types
+        cy.request({
+          method: 'GET',
+          url: `/api/v1/metadata/types?category=field&limit=20`,
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(({ body }) => {
+          const propertyList = body.data.filter((item) =>
+            ['integer', 'string', 'markdown'].includes(item.name)
+          );
 
-      createCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
+          // fetch the entity details for which the custom property needs to be added
+          cy.request({
+            method: 'GET',
+            url: `/api/v1/metadata/types/name/${ENTITY_PATH[this.endPoint]}`,
+            headers: { Authorization: `Bearer ${token}` },
+          }).then(({ body }) => {
+            const entityId = body.id;
+
+            // Add the custom property for the entity
+            propertyList.forEach((item) => {
+              cy.request({
+                method: 'PUT',
+                url: `/api/v1/metadata/types/${entityId}`,
+                headers: { Authorization: `Bearer ${token}` },
+                body: {
+                  name: `cyCustomProperty${uuid()}`,
+                  description: `cyCustomProperty${uuid()}`,
+                  propertyType: {
+                    id: item.id ?? '',
+                    type: 'type',
+                  },
+                },
+              }).then(({ body }) => {
+                this.customPropertyValue = body.customProperties.reduce(
+                  (prev, curr) => {
+                    const propertyTypeName = curr.propertyType.name;
+
+                    return {
+                      ...prev,
+                      [propertyTypeName]: {
+                        ...getPropertyValues(propertyTypeName),
+                        property: curr,
+                      },
+                    };
+                  },
+                  {} as Record<
+                    string,
+                    {
+                      value: string;
+                      newValue: string;
+                      property: CustomProperty;
+                    }
+                  >
+                );
+              });
+            });
+          });
+        });
       });
     }
   }
@@ -280,17 +294,15 @@ class EntityClass {
   cleanup() {
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      deleteCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
-      deleteCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
-      deleteCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
+      cy.getAllLocalStorage().then((data) => {
+        const token = getToken(data);
+        cy.request({
+          method: 'GET',
+          url: `/api/v1/metadata/types/name/${ENTITY_PATH[this.endPoint]}`,
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(({ body }) => {
+          deleteCustomProperties(body.id, token);
+        });
       });
     }
   }

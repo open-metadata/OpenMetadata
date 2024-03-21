@@ -978,3 +978,19 @@ export const ID = {
     api: '/api/v1/services/storageServices?*',
   },
 };
+
+export const ENTITY_PATH = {
+  tables: 'table',
+  topics: 'topic',
+  dashboards: 'dashboard',
+  pipelines: 'pipeline',
+  mlmodels: 'mlmodel',
+  containers: 'container',
+  tags: 'tag',
+  glossaries: 'glossary',
+  searchIndexes: 'searchIndex',
+  storedProcedures: 'storedProcedure',
+  glossaryTerm: 'glossaryTerm',
+  databases: 'database',
+  databaseSchemas: 'databaseSchema',
+};

@@ -28,6 +28,11 @@ export enum CustomPropertyType {
   INTEGER = 'Integer',
   MARKDOWN = 'Markdown',
 }
+export enum CustomPropertyTypeByName {
+  STRING = 'string',
+  INTEGER = 'integer',
+  MARKDOWN = 'markdown',
+}
 
 export interface CustomProperty {
   name: string;
@@ -41,40 +46,30 @@ export const generateCustomProperty = (type: CustomPropertyType) => ({
   description: `${type} cypress Property`,
 });
 
-export const createCustomPropertyForEntity = ({
-  property,
-  type,
-}: {
-  property: CustomProperty;
-  type: EntityType;
-}) => {
-  interceptURL('GET', `/api/v1/metadata/types/name/*`, 'getEntity');
+export const getPropertyValues = (type: string) => {
+  switch (type) {
+    case 'integer':
+      return {
+        value: '123',
+        newValue: '456',
+      };
+    case 'string':
+      return {
+        value: '123',
+        newValue: '456',
+      };
+    case 'markdown':
+      return {
+        value: '**Bold statement**',
+        newValue: '__Italic statement__',
+      };
 
-  // Selecting the entity
-  cy.settingClick(type, true);
-
-  verifyResponseStatusCode('@getEntity', 200);
-
-  // Add Custom property for selected entity
-  cy.get('[data-testid="add-field-button"]').click();
-
-  cy.get('[data-testid="name"]').clear().type(property.name);
-
-  cy.get(`#root\\/propertyType`).clear().type(property.type);
-  cy.get(`[title="${property.type}"]`).click();
-
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .clear()
-    .type(property.description);
-
-  // Check if the property got added
-  cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
-    'customProperties'
-  );
-  cy.get('[data-testid="create-button"]').scrollIntoView().click();
-
-  cy.wait('@customProperties');
-  cy.get('.ant-table-row').should('contain', property.name);
+    default:
+      return {
+        value: '',
+        newValue: '',
+      };
+  }
 };
 
 export const deleteCustomPropertyForEntity = ({
