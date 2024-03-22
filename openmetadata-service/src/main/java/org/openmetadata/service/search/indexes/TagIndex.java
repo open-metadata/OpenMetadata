@@ -29,6 +29,7 @@ public record TagIndex(Tag tag) implements SearchIndex {
     }
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TAG);
+    doc.put("followers", SearchIndexUtils.parseFollowers(tag.getFollowers()));
     return doc;
   }
 

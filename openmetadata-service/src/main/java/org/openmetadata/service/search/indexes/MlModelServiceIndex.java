@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -24,10 +23,11 @@ public record MlModelServiceIndex(MlModelService mlModelService) implements Sear
         "fqnParts",
         getFQNParts(
             mlModelService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL_SERVICE);
     doc.put("owner", getEntityWithDisplayName(mlModelService.getOwner()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(mlModelService.getFollowers()));
     return doc;
   }
 }

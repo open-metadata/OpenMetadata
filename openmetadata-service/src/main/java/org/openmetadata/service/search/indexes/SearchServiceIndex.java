@@ -27,6 +27,7 @@ public record SearchServiceIndex(SearchService searchService) implements SearchI
             searchService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("owner", getEntityWithDisplayName(searchService.getOwner()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(searchService.getFollowers()));
     return doc;
   }
 }

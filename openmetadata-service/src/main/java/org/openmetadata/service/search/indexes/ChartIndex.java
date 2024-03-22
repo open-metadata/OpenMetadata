@@ -27,6 +27,7 @@ public record ChartIndex(Chart chart) implements SearchIndex {
     doc.put("entityType", Entity.CHART);
     doc.put("owner", getEntityWithDisplayName(chart.getOwner()));
     doc.put("domain", getEntityWithDisplayName(chart.getDomain()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(chart.getFollowers()));
     doc.put(
         "totalVotes",
         CommonUtil.nullOrEmpty(chart.getVotes())
