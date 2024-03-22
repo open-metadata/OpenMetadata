@@ -83,6 +83,18 @@ public interface MessageDecorator<T> {
           link.getEntityType(), link.getEntityFQN(), "profiler?activeTab=Data%20Quality");
     }
 
+    // Glossary Term
+    if (entityType.equals(Entity.GLOSSARY_TERM)) {
+      // Glossary Term is a special case where the URL is different
+      return getEntityUrl(Entity.GLOSSARY, fqn, "");
+    }
+
+    // Tag
+    if (entityType.equals(Entity.TAG)) {
+      // Tags need to be redirected to Classification Page
+      return getEntityUrl("tags", fqn.split("\\.")[0], "");
+    }
+
     return getEntityUrl(entityType, fqn, "");
   }
 
