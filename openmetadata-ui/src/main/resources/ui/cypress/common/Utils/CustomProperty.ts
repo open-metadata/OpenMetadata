@@ -196,7 +196,7 @@ export const setValueForProperty = (
   }
 
   if (propertyType === 'sqlQuery') {
-    cy.get("pre[role='presentation']").click().type(value);
+    cy.get("pre[role='presentation']").last().click().type(value);
     cy.get('[data-testid="inline-save-btn"]').click();
   }
 
