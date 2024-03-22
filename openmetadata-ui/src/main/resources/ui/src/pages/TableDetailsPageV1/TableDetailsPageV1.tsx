@@ -91,6 +91,7 @@ import {
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import EntityLink from '../../utils/EntityLink';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -103,6 +104,9 @@ import TableConstraints from './TableConstraints/TableConstraints';
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
+  const FloatingButton = entityUtilClassBase.getEntityFloatingButton(
+    EntityType.TABLE
+  );
   const { currentUser } = useApplicationStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab = EntityTabs.SCHEMA } =
@@ -124,6 +128,11 @@ const TableDetailsPageV1: React.FC = () => {
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
+  );
+
+  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
+    EntityType.TABLE,
+    datasetFQN
   );
 
   const viewUsagePermission = useMemo(
@@ -1025,6 +1034,7 @@ const TableDetailsPageV1: React.FC = () => {
             afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
+            extraDropdownContent={extraDropdownContent}
             openTaskCount={feedCount.openTaskCount}
             permissions={tablePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
@@ -1065,6 +1075,8 @@ const TableDetailsPageV1: React.FC = () => {
             onCancel={onThreadPanelClose}
           />
         ) : null}
+
+        {FloatingButton && <FloatingButton />}
       </Row>
     </PageLayoutV1>
   );

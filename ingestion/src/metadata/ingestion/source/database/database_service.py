@@ -109,7 +109,11 @@ class DatabaseServiceTopology(ServiceTopology):
         # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
         # as post_processed. This is because we cannot ensure proper lineage processing
         # until we have finished ingesting all the metadata from the source.
-        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
+        post_process=[
+            "yield_view_lineage",
+            "yield_procedure_lineage_and_queries",
+            "yield_external_table_lineage",
+        ],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -171,11 +175,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
                 use_cache=True,
-            ),
-            NodeStage(
-                type_=AddLineageRequest,
-                processor="yield_external_table_lineage",
-                nullable=True,
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,

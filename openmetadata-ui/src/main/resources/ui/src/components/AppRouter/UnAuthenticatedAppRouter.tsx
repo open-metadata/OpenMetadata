@@ -78,7 +78,7 @@ export const UnAuthenticatedAppRouter = () => {
         path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
       />
       {!isSigningIn && (
-        <Route path={ROUTES.HOME}>
+        <Route exact path={ROUTES.HOME}>
           <Redirect to={ROUTES.SIGNIN} />
         </Route>
       )}
