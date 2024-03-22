@@ -14,7 +14,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {
-  RunType,
   ScheduleTimeline,
   Status,
 } from '../../../../generated/entity/applications/appRunRecord';
@@ -60,7 +59,7 @@ const mockProps1 = {
   data: {
     appId: '6e4d3dcf-238d-4874-b4e4-dd863ede6544',
     status: Status.Success,
-    runType: RunType.OnDemand,
+    runType: 'OnDemand',
     startTime: 1706871884587,
     endTime: 1706871891251,
     timestamp: 1706871884587,
