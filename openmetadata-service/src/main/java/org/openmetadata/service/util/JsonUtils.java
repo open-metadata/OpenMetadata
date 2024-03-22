@@ -227,6 +227,20 @@ public final class JsonUtils {
     JsonArray array = patch.toJsonArray();
     List<JsonObject> removeOperations = new ArrayList<>();
     List<JsonObject> otherOperations = new ArrayList<>();
+    // Auxiliary List to maintain the order on which the operation appear. We are just reversing the `remove` and `move`
+    // operation order but then maintaining the position on the JSONPatch.
+    // Example:
+    // {"op":"replace","path":"/tags/0/tagFQN","value":"User.BankAccount"}
+    // {"op":"remove","path":"/tags/1"}
+    // {"op":"replace","path":"/tags/0/labelType","value":"MANUAL"}
+    // {"op":"remove","path":"/tags/2"}
+    //
+    // Would become
+    // {"op":"replace","path":"/tags/0/tagFQN","value":"User.BankAccount"}
+    // {"op":"remove","path":"/tags/2"}
+    // {"op":"replace","path":"/tags/0/labelType","value":"MANUAL"}
+    // {"op":"remove","path":"/tags/1"}
+    List<String> operationTypeOrder = new ArrayList<>();
 
     array.forEach(
         entry -> {
@@ -237,8 +251,10 @@ public final class JsonUtils {
           }
           if (jsonObject.getString("op").equals("remove")) {
             removeOperations.add(jsonObject);
+            operationTypeOrder.add("remove");
           } else {
             otherOperations.add(jsonObject);
+            operationTypeOrder.add("other");
           }
         });
 
@@ -288,8 +304,15 @@ public final class JsonUtils {
 
     // Build new sorted patch
     JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
-    otherOperations.forEach(arrayBuilder::add);
-    removeOperations.forEach(arrayBuilder::add);
+    operationTypeOrder.forEach(
+            operationType -> {
+              if (operationType.equals("remove")) {
+                arrayBuilder.add(removeOperations.remove(0));
+              } else {
+                arrayBuilder.add(otherOperations.remove(0));
+              }
+            }
+    );
     JsonPatch sortedPatch = Json.createPatch(arrayBuilder.build());
 
     // Apply sortedPatch
