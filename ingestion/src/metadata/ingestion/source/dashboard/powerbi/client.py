@@ -19,6 +19,9 @@ from typing import List, Optional, Tuple
 
 import msal
 
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
+    PowerBIConnection,
+)
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -52,7 +55,7 @@ class PowerBiApiClient:
 
     client: REST
 
-    def __init__(self, config):
+    def __init__(self, config: PowerBIConnection):
         self.config = config
         self.msal_client = msal.ConfidentialClientApplication(
             client_id=self.config.clientId,

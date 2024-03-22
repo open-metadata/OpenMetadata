@@ -17,9 +17,9 @@ import traceback
 from abc import ABC
 from typing import Optional
 
-from azure.identity import ClientSecretCredential, DefaultAzureCredential
-from azure.keyvault.secrets import KeyVaultSecret, SecretClient
+from azure.keyvault.secrets import KeyVaultSecret
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
 )
@@ -105,23 +105,7 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
     ):
         super().__init__(provider=SecretsManagerProvider.azure_kv, loader=loader)
 
-        if (
-            self.credentials.tenantId
-            and self.credentials.clientId
-            and self.credentials.clientSecret
-        ):
-            azure_identity = ClientSecretCredential(
-                tenant_id=self.credentials.tenantId,
-                client_id=self.credentials.clientId,
-                client_secret=self.credentials.clientSecret.get_secret_value(),
-            )
-        else:
-            azure_identity = DefaultAzureCredential()
-
-        self.client = SecretClient(
-            vault_url=f"https://{self.credentials.vaultName}.vault.azure.net/",
-            credential=azure_identity,
-        )
+        self.client = AzureClient(self.credentials).create_secret_client()
 
     def get_string_value(self, secret_id: str) -> str:
         """

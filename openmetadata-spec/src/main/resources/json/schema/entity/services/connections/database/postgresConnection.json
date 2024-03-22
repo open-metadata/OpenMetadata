@@ -50,6 +50,9 @@
         },
         {
           "$ref": "./common/iamAuthConfig.json"
+        },
+        {
+          "$ref": "./common/azureConfig.json"
         }
       ]
     },

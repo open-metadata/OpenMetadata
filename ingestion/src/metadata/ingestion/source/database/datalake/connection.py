@@ -20,6 +20,7 @@ from typing import Optional
 
 from google.cloud import storage
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -88,22 +89,9 @@ def _(config: GCSConfig):
 
 @get_datalake_client.register
 def _(config: AzureConfig):
-    from azure.identity import ClientSecretCredential
-    from azure.storage.blob import BlobServiceClient
 
     try:
-        credentials = ClientSecretCredential(
-            config.securityConfig.tenantId,
-            config.securityConfig.clientId,
-            config.securityConfig.clientSecret.get_secret_value(),
-        )
-
-        azure_client = BlobServiceClient(
-            f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
-            credential=credentials,
-        )
-        return azure_client
-
+        return AzureClient(config.securityConfig).create_blob_client()
     except Exception as exc:
         raise RuntimeError(
             f"Unknown error connecting with {config.securityConfig}: {exc}."

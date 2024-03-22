@@ -15,7 +15,7 @@ import base64
 import json
 import os
 import tempfile
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from cryptography.hazmat.primitives import serialization
 from google import auth
@@ -24,6 +24,9 @@ from google.auth import impersonated_credentials
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GCPCredentials,
     GcpCredentialsPath,
+)
+from metadata.generated.schema.security.credentials.gcpExternalAccount import (
+    GcpCredentialsValuesExternalAccount,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -85,7 +88,9 @@ def create_credential_tmp_file(credentials: dict) -> str:
         return temp_file_path
 
 
-def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str, str]:
+def build_google_credentials_dict(
+    gcp_values: Union[GcpCredentialsValues, GcpCredentialsValuesExternalAccount]
+) -> Dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
