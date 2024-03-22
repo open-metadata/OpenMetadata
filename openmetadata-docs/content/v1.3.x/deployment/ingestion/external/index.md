@@ -512,7 +512,6 @@ source:
     config:
       type: DatabaseUsage
       queryLogDuration: 1
-      parsingTimeoutLimit: 300
       ...
 processor:
   type: query-parser
