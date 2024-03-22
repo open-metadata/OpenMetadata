@@ -97,6 +97,7 @@ class UnitycatalogSource(
         self.service_connection: UnityCatalogConnection = (
             self.config.serviceConnection.__root__.config
         )
+        self.external_location_map = {}
         self.client = get_connection(self.service_connection)
         self.connection_obj = self.client
         self.table_constraints = []
@@ -290,12 +291,13 @@ class UnitycatalogSource(
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        self.context.storage_location = None
         table = self.client.tables.get(self.context.table_data.full_name)
-        if table.storage_location and not table.storage_location.startswith("dbfs"):
-            self.context.storage_location = table.storage_location
         schema_name = self.context.database_schema
         db_name = self.context.database
+        if table.storage_location and not table.storage_location.startswith("dbfs"):
+            self.external_location_map[
+                (db_name, schema_name, table_name)
+            ] = table.storage_location
         table_constraints = None
         try:
             columns = self.get_columns(table.columns)
@@ -529,6 +531,3 @@ class UnitycatalogSource(
 
     def close(self):
         """Nothing to close"""
-
-    def get_external_table_location(self):
-        return self.context.storage_location

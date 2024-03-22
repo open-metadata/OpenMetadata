@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.storedProcedure import StoredProcedur
 from metadata.generated.schema.entity.data.table import (
     PartitionColumnDetails,
     PartitionIntervalTypes,
+    Table,
     TablePartition,
     TableType,
 )
@@ -722,8 +723,3 @@ class SnowflakeSource(
                 )
         else:
             yield from super().mark_tables_as_deleted()
-
-    def get_external_table_location(self):
-        return self.external_location_map.get(
-            (self.context.database, self.context.database_schema, self.context.table)
-        )
