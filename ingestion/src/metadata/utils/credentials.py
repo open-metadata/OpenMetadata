@@ -116,8 +116,6 @@ def build_google_credentials_dict(
             "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
         }
     if gcp_values.type == "external_account":
-        gcp_values: GcpCredentialsValuesExternalAccount = gcp_values
-
         return {
             "type": gcp_values.type,
             "audience": gcp_values.audience,
