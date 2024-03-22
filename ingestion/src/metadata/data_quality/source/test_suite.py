@@ -87,7 +87,7 @@ class TestSuiteSource(Source):
                 entity=TestCase,
                 fields=["testSuite", "entityLink", "testDefinition"],
                 params={"testSuiteId": test_suite.id.__root__},
-            ).entities
+            )
             test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
 
             return test_cases
