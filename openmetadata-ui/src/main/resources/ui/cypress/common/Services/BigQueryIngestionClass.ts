@@ -35,10 +35,9 @@ class BigQueryIngestionClass extends ServiceBaseClass {
 
   fillConnectionDetails() {
     const clientEmail = Cypress.env('bigqueryClientEmail');
-    cy.get('.form-group > #root\\/credentials\\/gcpConfig\\/type')
+    cy.get('#root\\/credentials\\/gcpConfig__oneof_select')
       .scrollIntoView()
-      .type('service_account');
-    checkServiceFieldSectionHighlighting('type');
+      .select('GCP Credentials Values');
     cy.get('#root\\/credentials\\/gcpConfig\\/projectId')
       .scrollIntoView()
       .type(Cypress.env('bigqueryProjectId'));

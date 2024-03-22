@@ -152,7 +152,11 @@ class PostgresIngestionClass extends ServiceBaseClass {
         entity: EntityType.Table,
       });
       verifyResponseStatusCode('@entityDetailsPage', 200);
-      interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
+      interceptURL(
+        'GET',
+        '/api/v1/search/query?q=*&index=query_search_index*',
+        'queriesTab'
+      );
       cy.get('[data-testid="table_queries"]')
         .should('be.visible')
         .trigger('click');
