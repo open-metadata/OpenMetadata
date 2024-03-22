@@ -18,6 +18,9 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 from metadata.generated.schema.security.credentials.azureCredentials import (
     AzureCredentials,
 )
@@ -27,10 +30,6 @@ from metadata.ingestion.source.database.mysql.connection import (
 )
 from metadata.ingestion.source.database.postgres.connection import (
     get_connection as postgres_get_connection,
-)
-
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
 )
 
 
