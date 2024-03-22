@@ -33,7 +33,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
-from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser, JsonDataFrameColumnParser
+from metadata.utils.datalake.datalake_utils import (
+    GenericDataFrameColumnParser,
+    JsonDataFrameColumnParser,
+)
 
 mock_datalake_config = {
     "source": {
