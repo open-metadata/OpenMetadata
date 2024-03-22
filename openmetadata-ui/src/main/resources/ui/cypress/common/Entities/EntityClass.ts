@@ -20,10 +20,9 @@ import {
   deleteAnnoucement,
 } from '../Utils/Annoucement';
 import {
+  createCustomPropertyForEntity,
   CustomProperty,
-  CustomPropertyTypeByName,
   deleteCustomProperties,
-  getPropertyValues,
   setValueForProperty,
   validateValueForProperty,
 } from '../Utils/CustomProperty';
@@ -171,77 +170,15 @@ class EntityClass {
 
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
-
-        // fetch the available property types
-        cy.request({
-          method: 'GET',
-          url: `/api/v1/metadata/types?category=field&limit=20`,
-          headers: { Authorization: `Bearer ${token}` },
-        }).then(({ body }) => {
-          const propertyList = body.data.filter((item) =>
-            Object.values(CustomPropertyTypeByName).includes(item.name)
-          );
-
-          // fetch the entity details for which the custom property needs to be added
-          cy.request({
-            method: 'GET',
-            url: `/api/v1/metadata/types/name/${ENTITY_PATH[this.endPoint]}`,
-            headers: { Authorization: `Bearer ${token}` },
-          }).then(({ body }) => {
-            const entityId = body.id;
-
-            // Add the custom property for the entity
-            propertyList.forEach((item) => {
-              cy.request({
-                method: 'PUT',
-                url: `/api/v1/metadata/types/${entityId}`,
-                headers: { Authorization: `Bearer ${token}` },
-                body: {
-                  name: `cyCustomProperty${uuid()}`,
-                  description: `cyCustomProperty${uuid()}`,
-                  propertyType: {
-                    id: item.id ?? '',
-                    type: 'type',
-                  },
-                  ...(item.name === 'enum'
-                    ? {
-                        customPropertyConfig: {
-                          config: {
-                            multiSelect: true,
-                            values: ['small', 'medium', 'large'],
-                          },
-                        },
-                      }
-                    : {}),
-                },
-              }).then(({ body }) => {
-                this.customPropertyValue = body.customProperties.reduce(
-                  (prev, curr) => {
-                    const propertyTypeName = curr.propertyType.name;
-
-                    return {
-                      ...prev,
-                      [propertyTypeName]: {
-                        ...getPropertyValues(propertyTypeName),
-                        property: curr,
-                      },
-                    };
-                  },
-                  {} as Record<
-                    string,
-                    {
-                      value: string;
-                      newValue: string;
-                      property: CustomProperty;
-                    }
-                  >
-                );
-              });
-            });
-          });
-        });
+      createCustomPropertyForEntity(this.endPoint).then((data) => {
+        this.customPropertyValue = data as unknown as Record<
+          string,
+          {
+            value: string;
+            newValue: string;
+            property: CustomProperty;
+          }
+        >;
       });
     }
   }

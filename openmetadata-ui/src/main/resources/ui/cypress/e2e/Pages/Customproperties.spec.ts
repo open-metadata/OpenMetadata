@@ -283,174 +283,71 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     cy.login();
   });
 
-  describe('Add update and delete Integer custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
+  [
+    'Integer',
+    'String',
+    'Markdown',
+    'Duration',
+    'Email',
+    'Number',
+    'Sql Query',
+    'Time',
+    'TimeInterval',
+    'Timestamp',
+  ].forEach((type) => {
+    describe(`Add update and delete ${type} custom properties`, () => {
+      Object.values(ENTITIES).forEach((entity) => {
+        const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
-      it(`Add Integer custom property for ${entity.name}  Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-        cy.settingClick(entity.entityApiType, true);
+        it(`Add ${type} custom property for ${entity.name}  Entities`, () => {
+          interceptURL(
+            'GET',
+            `/api/v1/metadata/types/name/${entity.name}*`,
+            'getEntity'
+          );
+          cy.settingClick(entity.entityApiType, true);
 
-        verifyResponseStatusCode('@getEntity', 200);
+          verifyResponseStatusCode('@getEntity', 200);
 
-        // Getting the property
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Integer',
+          // Getting the property
+          addCustomPropertiesForEntity({
+            propertyName,
+            customPropertyData: entity,
+            customType: type,
+          });
+
+          // Navigating back to custom properties page
+          cy.settingClick(entity.entityApiType, true);
+          verifyResponseStatusCode('@getEntity', 200);
         });
 
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-        verifyResponseStatusCode('@getEntity', 200);
-      });
+        it(`Edit created property for ${entity.name} entity`, () => {
+          interceptURL(
+            'GET',
+            `/api/v1/metadata/types/name/${entity.name}*`,
+            'getEntity'
+          );
 
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
+          // Selecting the entity
+          cy.settingClick(entity.entityApiType, true);
 
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete String custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add String custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'String',
+          verifyResponseStatusCode('@getEntity', 200);
+          editCreatedProperty(propertyName);
         });
 
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
+        it(`Delete created property for ${entity.name} entity`, () => {
+          interceptURL(
+            'GET',
+            `/api/v1/metadata/types/name/${entity.name}*`,
+            'getEntity'
+          );
 
-        verifyResponseStatusCode('@getEntity', 200);
-      });
+          // Selecting the entity
+          cy.settingClick(entity.entityApiType, true);
 
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete Markdown custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add Markdown custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Markdown',
+          verifyResponseStatusCode('@getEntity', 200);
+          deleteCreatedProperty(propertyName);
         });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
       });
     });
   });
@@ -712,412 +609,6 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
           customPropertyData: entity,
           customType: 'Date Time',
           formatConfig: entity.dateTimeFormatConfig,
-        });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete Duration custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add Duration custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Duration',
-        });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete Email custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add Email custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Email',
-        });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete Number custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add Number custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Number',
-        });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete Sql Query custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add Sql Query custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Sql Query',
-        });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete Time custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add Time custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Time',
-        });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete TimeInterval custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add TimeInterval custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Time Interval',
-        });
-
-        // Navigating back to custom properties page
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-      });
-
-      it(`Edit created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        editCreatedProperty(propertyName);
-      });
-
-      it(`Delete created property for ${entity.name} entity`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-        deleteCreatedProperty(propertyName);
-      });
-    });
-  });
-
-  describe('Add update and delete Timestamp custom properties', () => {
-    Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `addcyentity${entity.name}test${uuid()}`;
-
-      it(`Add Timestamp custom property for ${entity.name} Entities`, () => {
-        interceptURL(
-          'GET',
-          `/api/v1/metadata/types/name/${entity.name}*`,
-          'getEntity'
-        );
-
-        // Selecting the entity
-        cy.settingClick(entity.entityApiType, true);
-
-        verifyResponseStatusCode('@getEntity', 200);
-
-        addCustomPropertiesForEntity({
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Timestamp',
         });
 
         // Navigating back to custom properties page

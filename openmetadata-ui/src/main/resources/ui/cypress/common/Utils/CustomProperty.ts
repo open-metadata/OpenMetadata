@@ -14,7 +14,9 @@
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  ENTITY_PATH,
 } from '../../constants/constants';
+import { ENTITY_REFERENCE_PROPERTIES } from '../../constants/CustomProperty.constant';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   descriptionBox,
@@ -22,6 +24,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../common';
+import { getToken } from './LocalStorage';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -66,8 +69,8 @@ export const getPropertyValues = (type: string) => {
       };
     case 'string':
       return {
-        value: '123',
-        newValue: '456',
+        value: 'string value',
+        newValue: 'new string value',
       };
     case 'markdown':
       return {
@@ -82,8 +85,8 @@ export const getPropertyValues = (type: string) => {
       };
     case 'duration':
       return {
-        value: '123',
-        newValue: '456',
+        value: 'PT1H',
+        newValue: 'PT2H',
       };
     case 'email':
       return {
@@ -167,49 +170,65 @@ export const setValueForProperty = (
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
 
-  if (propertyType === 'markdown') {
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .clear()
-      .type(value);
-    cy.get('[data-testid="save"]').click();
-  }
+  switch (propertyType) {
+    case 'markdown':
+      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .clear()
+        .type(value);
+      cy.get('[data-testid="save"]').click();
 
-  if (propertyType === 'email') {
-    cy.get('[data-testid="email-input"]').clear().type(value);
-    cy.get('[data-testid="inline-save-btn"]').click();
-  }
+      break;
 
-  if (propertyType === 'duration') {
-    cy.get('[data-testid="duration-input"]').clear().type(value);
-    cy.get('[data-testid="inline-save-btn"]').click();
-  }
+    case 'email':
+      cy.get('[data-testid="email-input"]').clear().type(value);
+      cy.get('[data-testid="inline-save-btn"]').click();
 
-  if (['string', 'integer', 'number'].includes(propertyType)) {
-    cy.get('[data-testid="value-input"]').clear().type(value);
-    cy.get('[data-testid="inline-save-btn"]').click();
-  }
+      break;
 
-  if (propertyType === 'enum') {
-    cy.get('#enumValues').click().type(`${value}{enter}`);
-    cy.clickOutside();
-    cy.get('[data-testid="inline-save-btn"]').click();
-  }
+    case 'duration':
+      cy.get('[data-testid="duration-input"]').clear().type(value);
+      cy.get('[data-testid="inline-save-btn"]').click();
 
-  if (propertyType === 'sqlQuery') {
-    cy.get("pre[role='presentation']").last().click().type(value);
-    cy.get('[data-testid="inline-save-btn"]').click();
-  }
+      break;
 
-  if (propertyType === 'timestamp') {
-    cy.get('[data-testid="timestamp-input"]').clear().type(value);
-    cy.get('[data-testid="inline-save-btn"]').click();
-  }
+    case 'enum':
+      cy.get('#enumValues').click().type(`${value}{enter}`);
+      cy.clickOutside();
+      cy.get('[data-testid="inline-save-btn"]').click();
 
-  if (propertyType === 'timeInterval') {
-    const [startValue, endValue] = value.split(',');
-    cy.get('[data-testid="start-input"]').clear().type(startValue);
-    cy.get('[data-testid="end-input"]').clear().type(endValue);
-    cy.get('[data-testid="inline-save-btn"]').click();
+      break;
+
+    case 'sqlQuery':
+      cy.get("pre[role='presentation']").last().click().type(value);
+      cy.get('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'timestamp':
+      cy.get('[data-testid="timestamp-input"]').clear().type(value);
+      cy.get('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'timeInterval': {
+      const [startValue, endValue] = value.split(',');
+      cy.get('[data-testid="start-input"]').clear().type(startValue);
+      cy.get('[data-testid="end-input"]').clear().type(endValue);
+      cy.get('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'string':
+    case 'integer':
+    case 'number':
+      cy.get('[data-testid="value-input"]').clear().type(value);
+      cy.get('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    default:
+      break;
   }
 
   verifyResponseStatusCode('@patchEntity', 200);
@@ -385,7 +404,7 @@ export const addCustomPropertiesForEntity = ({
       cy.get('#root\\/multiSelect').scrollIntoView().click();
     }
   }
-  if (['Entity Reference', 'Entity Reference List'].includes(customType)) {
+  if (ENTITY_REFERENCE_PROPERTIES.includes(customType)) {
     entityReferenceConfig.forEach((val) => {
       cy.get('#root\\/entityReferenceConfig').click().type(`${val}`);
       cy.get(`[title="${val}"]`).click();
@@ -438,7 +457,7 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
     cy.clickOutside();
   }
 
-  if (['Entity Reference', 'Entity Reference List'].includes(type)) {
+  if (ENTITY_REFERENCE_PROPERTIES.includes(type)) {
     cy.get('#root\\/customPropertyConfig').click().type(`Table{enter}`);
 
     cy.clickOutside();
@@ -462,7 +481,7 @@ export const editCreatedProperty = (propertyName: string, type?: string) => {
       .find('[data-testid="enum-config"]')
       .should('contain', '["enum1","enum2","enum3","updatedValue"]');
   }
-  if (['Entity Reference', 'Entity Reference List'].includes(type)) {
+  if (ENTITY_REFERENCE_PROPERTIES.includes(type)) {
     cy.get(`[data-row-key="${propertyName}"]`)
       .find(`[data-testid="${propertyName}-config"]`)
       .should('contain', '["user","team","table"]');
@@ -480,4 +499,85 @@ export const deleteCreatedProperty = (propertyName: string) => {
   cy.get('[data-testid="body-text"]').should('contain', propertyName);
 
   cy.get('[data-testid="save-button"]').should('be.visible').click();
+};
+
+export const createCustomPropertyForEntity = (prop: string) => {
+  return cy.getAllLocalStorage().then((data) => {
+    const token = getToken(data);
+
+    // fetch the available property types
+    return cy
+      .request({
+        method: 'GET',
+        url: `/api/v1/metadata/types?category=field&limit=20`,
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(({ body }) => {
+        const propertyList = body.data.filter((item) =>
+          Object.values(CustomPropertyTypeByName).includes(item.name)
+        );
+
+        // fetch the entity details for which the custom property needs to be added
+        return cy
+          .request({
+            method: 'GET',
+            url: `/api/v1/metadata/types/name/${ENTITY_PATH[prop]}`,
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .then(({ body }) => {
+            const entityId = body.id;
+
+            // Add the custom property for the entity
+            propertyList.forEach((item) => {
+              return cy
+                .request({
+                  method: 'PUT',
+                  url: `/api/v1/metadata/types/${entityId}`,
+                  headers: { Authorization: `Bearer ${token}` },
+                  body: {
+                    name: `cyCustomProperty${uuid()}`,
+                    description: `cyCustomProperty${uuid()}`,
+                    propertyType: {
+                      id: item.id ?? '',
+                      type: 'type',
+                    },
+                    ...(item.name === 'enum'
+                      ? {
+                          customPropertyConfig: {
+                            config: {
+                              multiSelect: true,
+                              values: ['small', 'medium', 'large'],
+                            },
+                          },
+                        }
+                      : {}),
+                  },
+                })
+                .then(({ body }) => {
+                  return body.customProperties.reduce(
+                    (prev, curr) => {
+                      const propertyTypeName = curr.propertyType.name;
+
+                      return {
+                        ...prev,
+                        [propertyTypeName]: {
+                          ...getPropertyValues(propertyTypeName),
+                          property: curr,
+                        },
+                      };
+                    },
+                    {} as Record<
+                      string,
+                      {
+                        value: string;
+                        newValue: string;
+                        property: CustomProperty;
+                      }
+                    >
+                  );
+                });
+            });
+          });
+      });
+  });
 };
