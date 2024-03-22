@@ -488,7 +488,6 @@ class ParquetDataFrameColumnParser:
         return data_type
 
 
-# pylint: disable=import-outside-toplevel
 class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
     """Given a dataframe object generated from a json file, parse the columns and return a list of Column objects."""
 
