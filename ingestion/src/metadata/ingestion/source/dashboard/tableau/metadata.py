@@ -295,20 +295,24 @@ class TableauSource(DashboardServiceSource):
         """
         Get the column lineage from the fields
         """
-        column_lineage = []
-        for column in upstream_table.columns or []:
-            if column.id in upstream_col_set:
-                from_column = get_column_fqn(
-                    table_entity=table_entity, column=column.name
-                )
-                to_column = self._get_data_model_column_fqn(
-                    data_model_entity=data_model_entity,
-                    column=column.id,
-                )
-                column_lineage.append(
-                    ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                )
-        return column_lineage
+        try:
+            column_lineage = []
+            for column in upstream_table.columns or []:
+                if column.id in upstream_col_set:
+                    from_column = get_column_fqn(
+                        table_entity=table_entity, column=column.name
+                    )
+                    to_column = self._get_data_model_column_fqn(
+                        data_model_entity=data_model_entity,
+                        column=column.id,
+                    )
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: TableauDashboard, db_service_name: str
