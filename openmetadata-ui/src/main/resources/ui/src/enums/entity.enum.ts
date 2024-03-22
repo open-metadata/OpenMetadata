@@ -63,6 +63,9 @@ export enum EntityType {
   CUSTOM_METRIC = 'customMetric',
   INGESTION_PIPELINE = 'ingestionPipeline',
   QUERY = 'query',
+  ENTITY_REPORT_DATA = 'entityReportData',
+  WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = 'webAnalyticEntityViewReportData',
+  WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = 'webAnalyticUserActivityReportData',
 }
 
 export enum AssetsType {
