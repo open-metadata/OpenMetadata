@@ -17,17 +17,6 @@ import time
 from datetime import datetime
 from unittest import TestCase
 
-from ingestion.tests.integration.integration_base import (
-    generate_name,
-    get_create_entity,
-    get_create_service,
-    get_create_team_entity,
-    get_create_test_case,
-    get_create_test_definition,
-    get_create_test_suite,
-    get_create_user_entity,
-    int_admin_ometa,
-)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
@@ -53,6 +42,18 @@ from metadata.ingestion.models.patch_request import (
 )
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.utils.helpers import find_column_in_table
+
+from ..integration_base import (
+    generate_name,
+    get_create_entity,
+    get_create_service,
+    get_create_team_entity,
+    get_create_test_case,
+    get_create_test_definition,
+    get_create_test_suite,
+    get_create_user_entity,
+    int_admin_ometa,
+)
 
 PII_TAG_LABEL = TagLabel(
     tagFQN="PII.Sensitive",
