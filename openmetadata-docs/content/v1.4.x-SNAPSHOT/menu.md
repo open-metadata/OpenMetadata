@@ -638,6 +638,12 @@ site_menu:
     url: /connectors/dashboard/qliksense/yaml
   - category: Connectors / Dashboard / Qlik Sense / Export Certificates
     url: /connectors/dashboard/qliksense/certificates
+  - category: Connectors / Dashboard / Qlik Cloud
+    url: /connectors/dashboard/qlikcloud
+  - category: Connectors / Dashboard / Qlik Cloud / Run Externally
+    url: /connectors/dashboard/qliksense/yaml
+  - category: Connectors / Dashboard / Qlik Cloud / API Keys
+    url: /connectors/dashboard/qliksense/api_keys
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
