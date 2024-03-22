@@ -124,6 +124,7 @@ def build_google_credentials_dict(
             "credential_source": gcp_values.credentialSource,
         }
 
+
 def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     """
     Set GCP credentials environment variable
