@@ -27,13 +27,19 @@ import {
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
-import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import {
+  AuthenticationConfiguration,
+  ClientType,
+} from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
-export const EXPIRY_THRESHOLD_MILLES = 5 * 60 * 1000;
+// 25s for server auth approch
+export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
+// 2 minutes for client auth approch
+export const EXPIRY_THRESHOLD_MILLES_PUBLIC = 2 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -298,7 +304,10 @@ export const getUrlPathnameExpiryAfterRoute = () => {
  * @timeoutExpiry time in ms for try to silent sign-in
  * @returns exp, isExpired, diff, timeoutExpiry
  */
-export const extractDetailsFromToken = (token: string) => {
+export const extractDetailsFromToken = (
+  token: string,
+  clientType = ClientType.Public
+) => {
   if (token) {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
@@ -310,12 +319,14 @@ export const extractDetailsFromToken = (token: string) => {
           timeoutExpiry: 0,
         };
       }
+      const threshouldMillis =
+        clientType === ClientType.Public
+          ? EXPIRY_THRESHOLD_MILLES_PUBLIC
+          : EXPIRY_THRESHOLD_MILLES;
 
       const diff = exp && exp * 1000 - dateNow;
       const timeoutExpiry =
-        diff && diff > EXPIRY_THRESHOLD_MILLES
-          ? diff - EXPIRY_THRESHOLD_MILLES
-          : 0;
+        diff && diff > threshouldMillis ? diff - threshouldMillis : 0;
 
       return {
         exp,
