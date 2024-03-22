@@ -13,7 +13,7 @@ External Table Lineage Mixin
 """
 
 import traceback
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
