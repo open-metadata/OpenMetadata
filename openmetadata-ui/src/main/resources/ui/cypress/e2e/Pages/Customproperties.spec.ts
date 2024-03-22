@@ -38,7 +38,6 @@ import {
 } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
 import {
-  DATA_ASSETS,
   ENTITIES,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -833,7 +832,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
       visitEntityDetailsPage({
         term: DATABASE_SERVICE.entity.name,
         serviceName: DATABASE_SERVICE.service.name,
-        entity: DATA_ASSETS.tables as EntityType,
+        entity: EntityType.Table,
       });
       verifyCustomPropertyRows();
     });

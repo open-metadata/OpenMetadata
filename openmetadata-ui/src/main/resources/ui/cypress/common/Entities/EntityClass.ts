@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { ENTITY_PATH, uuid } from '../../constants/constants';
+import { uuid } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
