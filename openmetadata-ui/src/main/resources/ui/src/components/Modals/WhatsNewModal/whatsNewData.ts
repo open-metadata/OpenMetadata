@@ -19,9 +19,9 @@ import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 23;
+export const LATEST_VERSION_ID = 24;
 
-export const COOKIE_VERSION = 'VERSION_1_3_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_3_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1308,6 +1308,42 @@ export const WHATS_NEW = [
 - Fixed an issue about notifying the Reviewer of a Glossary Term.
 - Fixed the issues with testing the email settings.
 - Fixed an issue with adding tags.`,
+    },
+  },
+  {
+    id: 24,
+    version: 'v1.3.2',
+    description: 'Released on 26th March 2024.',
+    features: [],
+    changeLogs: {
+      MetaPilot: ``,
+
+      ['Authentication Flow']: ``,
+
+      'Data Quality': `-   Pagination support added for the Data Quality tab for data assets.
+-   Fixed an issue with execution summary timeout issue for data quality test.`,
+
+      Connectors: `-   Now supports BigTable connector.
+-   Now, users can configure the external sample data storage path.
+-   Added support for Snowflake materialized view and masking policy.
+-   Minor change has been made to skip the source hash while connecting to services.
+-   Earlier, for Kafka Topics , we used Title as the Field Name. Now, we use the Title as the Display Name, and the Key/Name is used as the Field Name.
+-   When the profiler executes long running queries against Databricks Hive metastore, the connection can be invalidated due to staleness. Implemented a disconnect method to handle this.
+-   Fixed the issue with same service name.
+-   Fixed an issue with ingesting lineage when datamodels are ingested from Tableau.
+-   Fixed issues with row count for Redshift ingestion.
+-   Fixed an issue with updating metadata description from Databricks and Postgres connectors.`,
+
+      'Other Changes': `-   Supports Entity Stats table in Search Index application history logs.
+-   Alerts added to avoid duplicate queries.
+-   In Glossary, the filter icon has been updated.
+-   SecretsManagerUpdateService updated.
+-   Updated the Docker Compose files with the setting to Restart Always.
+-   Fixed the issue with Date filter for Incident Manager.
+-   Fixed the issue with Team filter for Data Insights.
+-   Fixed an issue with Azure SSO related to the MSAL version.
+-   Fixed an issue with search indexing.
+-   Fixed the missing input field for conversation source for alerts and notifications.`,
     },
   },
 ];
