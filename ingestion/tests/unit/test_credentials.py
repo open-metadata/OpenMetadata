@@ -99,13 +99,11 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         )
 
         expected_dict = {
-            "externalType": "external_account",
+            "type": "external_account",
             "audience": "audience",
             "subject_token_type": "subject_token_type",
             "token_url": "token_url",
             "credential_source": {"environmentId": "environment_id"},
         }
-
-        build_google_credentials_dict(gcp_values)
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
