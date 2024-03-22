@@ -16,7 +16,7 @@ from unittest import TestCase
 from pydantic import SecretStr
 
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
-    GcpCredentialsValuesExternalAccount,
+    GcpExternalAccount,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -90,7 +90,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         """
         Check how we can validate GCS values
         """
-        gcp_values = GcpCredentialsValuesExternalAccount(
+        gcp_values = GcpExternalAccount(
             type="external_account",
             audience="audience",
             subjectTokenType="subject_token_type",
