@@ -42,7 +42,7 @@ Below are the configuration types to set up the OIDC Authentication with a Confi
 ```
 # Configuration Parameters
 
-## Public Key Url (publicKeyUrls) : 
+## Public Key Url (publicKeyUrls): 
 This needs to be updated as per different SSO providers. The default value is `http://localhost:8585/api/v1/system/config/jwks`. This is the URL where the public keys are stored. The public keys are used to verify the signature of the JWT token.
 
 {%important%}
@@ -59,13 +59,13 @@ Also if you have enabled [JWT Tokens](/deployment/security/enable-jwt-tokens) th
 
 {%important%}
 
-## Client ID (id) :
+## Client ID (id):
 The client ID provided by your OIDC provider. This is typically obtained when you register your application with the OIDC provider.
 
-## Type (type) : 
+## Type (type): 
 Specify the type of OIDC provider you are using (e.g., google, azure). This value is same as `provider` in `authenticationConfiguration`.
 
-## Client Secret (secret) : 
+## Client Secret (secret): 
 Replace with the client secret provided by your OIDC provider.
 
 ## Scope (scope): 
@@ -79,7 +79,7 @@ Although, some provider only give Refresh Token if `offline_access` scope is pro
 
 {%important%}
 
-## Discovery URI (discoveryUri) : 
+## Discovery URI (discoveryUri): 
 Provide the URL of the OIDC provider's discovery document. This document contains metadata about the provider's configuration.
 
 {%important%}
@@ -101,16 +101,16 @@ Normally it's some initial SSO provider URL followed by `.well-known/openid-conf
 ## Use Nonce (useNonce): 
 Set to true by Default, if you want to use nonce for replay attack protection during authentication. This does not need to be changed.
 
-## Preferred JWS Algorithm (preferredJwsAlgorithm) : 
+## Preferred JWS Algorithm (preferredJwsAlgorithm): 
 Specify the preferred JSON Web Signature (JWS) algorithm. Default is RS256 and need not be changed .
 
-## Response Type (responseType) : 
+## Response Type (responseType): 
 Define the response type for the authentication request. Default is code and need not be changed.
 
-## Disable PKCE (disablePkce) : 
+## Disable PKCE (disablePkce): 
 Set ${OIDC_DISABLE_PKCE:-true} to true if you want to disable Proof Key for Code Exchange (PKCE). If you want to send CodeVerifier and CodeChallenge in the request, set it to false.
 
-## Callback URL (callbackUrl) : 
+## Callback URL (callbackUrl): 
 Provide the callback URL where the OIDC provider redirects after authentication. Update ${OIDC_CALLBACK:-"http://localhost:8585/callback"} with your actual callback URL.
 
 {%important%}
@@ -120,10 +120,10 @@ Also, this should match what you have configured in your OIDC provider.
 
 {%important%}
 
-## Server URL (serverUrl) : 
+## Server URL (serverUrl): 
 Specify the URL of your OM Server. Default is http://localhost:8585.
 
-## Client Authentication Method (clientAuthenticationMethod) : 
+## Client Authentication Method (clientAuthenticationMethod): 
 Define the method used for client authentication. Default is client_secret_post.
 
 {%important%}
@@ -135,7 +135,7 @@ Depending on the OIDC provider, you may need to change this value if only one of
 
 {%important%}
 
-## Tenant (tenant) : 
+## Tenant (tenant): 
 If applicable, specify the tenant ID for multi-tenant applications. Example in case of Azure.
 
 {%important%}
@@ -145,8 +145,8 @@ For Azure SSO Provider this may be needed.
 
 {%important%}
 
-## Max Clock Skew (maxClockSkew) : 
+## Max Clock Skew (maxClockSkew): 
 Define the maximum acceptable clock skew between your application server and the OIDC server.
 
-## Custom Parameters (customParams) : 
+## Custom Parameters (customParams): 
 If you have any additional custom parameters required for OIDC configuration, specify them here.
