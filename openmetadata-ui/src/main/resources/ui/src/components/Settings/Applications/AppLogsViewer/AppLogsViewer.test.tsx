@@ -14,7 +14,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {
-  RunType,
   ScheduleTimeline,
   Status,
 } from '../../../../generated/entity/applications/appRunRecord';
@@ -60,7 +59,7 @@ const mockProps1 = {
   data: {
     appId: '6e4d3dcf-238d-4874-b4e4-dd863ede6544',
     status: Status.Success,
-    runType: RunType.OnDemand,
+    runType: 'OnDemand',
     startTime: 1706871884587,
     endTime: 1706871891251,
     timestamp: 1706871884587,
@@ -143,6 +142,18 @@ const mockProps4 = {
   },
 };
 
+const mockProps5 = {
+  data: {
+    ...mockProps1.data,
+    successContext: {
+      stats: null,
+    },
+    failureContext: {
+      stats: null,
+    },
+  },
+};
+
 describe('AppLogsViewer component', () => {
   it('should contain all necessary elements', () => {
     render(<AppLogsViewer {...mockProps1} />);
@@ -210,5 +221,15 @@ describe('AppLogsViewer component', () => {
     expect(screen.getByText('274-AppBadge')).toBeInTheDocument();
     expect(screen.getByText('270-AppBadge')).toBeInTheDocument();
     expect(screen.getByText('4-AppBadge')).toBeInTheDocument();
+  });
+
+  it('should not render stats and entityStats component if successContext and failureContext stats is empty', () => {
+    render(<AppLogsViewer {...mockProps5} />);
+
+    expect(screen.queryByTestId('stats-component')).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByTestId('app-entity-stats-history-table')
+    ).not.toBeInTheDocument();
   });
 });
