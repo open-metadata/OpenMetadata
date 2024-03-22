@@ -123,6 +123,9 @@ def build_google_credentials_dict(
             "token_url": gcp_values.tokenURL,
             "credential_source": gcp_values.credentialSource,
         }
+    raise InvalidGcpConfigException(
+        f"Error trying to build GCP credentials dict due to Invalid GCP config {type(gcp_values)}"
+    )
 
 
 def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
