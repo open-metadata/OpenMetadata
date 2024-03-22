@@ -246,6 +246,7 @@ export const TableProfilerProvider = ({
     if (fetchTest) {
       fetchAllTests();
     } else {
+      setAllTestCases([]);
       setIsTestsLoading(false);
     }
   }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
