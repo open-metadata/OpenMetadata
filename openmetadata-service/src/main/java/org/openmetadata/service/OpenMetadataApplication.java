@@ -156,8 +156,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-    CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
-    Entity.setCollectionDAO(collectionDAO);
+    Entity.setCollectionDAO(getDao(jdbi));
 
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
