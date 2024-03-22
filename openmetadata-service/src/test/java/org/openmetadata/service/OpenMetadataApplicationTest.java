@@ -167,7 +167,7 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
         new LogMessageWaitStrategy()
             .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
-            .withStartupTimeout(Duration.ofMinutes(5)));
+            .withStartupTimeout(Duration.ofMinutes(10)));
     String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
     HOST = parts[0];
     PORT = parts[1];
