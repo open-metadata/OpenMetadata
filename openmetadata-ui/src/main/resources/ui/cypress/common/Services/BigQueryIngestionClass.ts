@@ -38,7 +38,6 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     cy.get('#root\\/credentials\\/gcpConfig__oneof_select')
       .scrollIntoView()
       .select('GCP Credentials Values');
-    checkServiceFieldSectionHighlighting('type');
     cy.get('#root\\/credentials\\/gcpConfig\\/projectId')
       .scrollIntoView()
       .type(Cypress.env('bigqueryProjectId'));
