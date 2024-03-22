@@ -609,8 +609,3 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
         return description
-
-    def get_external_table_location(self):
-        return self.external_location_map.get(
-            (self.context.database, self.context.database_schema, self.context.table)
-        )
