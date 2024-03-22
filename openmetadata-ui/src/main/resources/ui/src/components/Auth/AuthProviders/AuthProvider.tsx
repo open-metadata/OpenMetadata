@@ -316,7 +316,8 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken()
+      getOidcToken(),
+      clientType
     );
     const refreshToken = getRefreshToken();
 
