@@ -75,7 +75,13 @@ public interface SearchClient {
   Response search(SearchRequest request) throws IOException;
 
   SearchResultListMapper listWithOffset(
-      String filter, int limit, int offset, String index, String sortField, String sortType, String q)
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      String sortField,
+      String sortType,
+      String q)
       throws IOException;
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;

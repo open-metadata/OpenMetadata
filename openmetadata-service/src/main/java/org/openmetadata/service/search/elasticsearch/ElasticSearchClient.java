@@ -299,7 +299,8 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response search(SearchRequest request) throws IOException {
-    SearchSourceBuilder searchSourceBuilder = getSearchSourceBuilder(
+    SearchSourceBuilder searchSourceBuilder =
+        getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
@@ -410,7 +411,13 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public SearchResultListMapper listWithOffset(
-      String filter, int limit, int offset, String index, String sortField, String sortType, String q)
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      String sortField,
+      String sortType,
+      String q)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(q)) {
@@ -421,13 +428,15 @@ public class ElasticSearchClient implements SearchClient {
     if (!filter.isEmpty()) {
       try {
         XContentParser parser =
-                XContentType.JSON
-                        .xContent()
-                        .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
         QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(parser).query();
-        BoolQueryBuilder boolQuery =
-                QueryBuilders.boolQuery();
-        boolQuery = nullOrEmpty(q) ? boolQuery.filter(queryFromXContent) : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery =
+            nullOrEmpty(q)
+                ? boolQuery.filter(queryFromXContent)
+                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
         searchSourceBuilder.query(boolQuery);
       } catch (Exception e) {
         throw new IOException("Failed to parse query filter: %s", e);
@@ -1853,71 +1862,51 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private static SearchSourceBuilder getSearchSourceBuilder(String index, String q, int from, int size) {
-    return
-        switch (index) {
-          case "topic_search_index", "topic" -> buildTopicSearchBuilder(
-                  q, from, size);
-          case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(
-                  q, from, size);
-          case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(
-                  q, from, size);
-          case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(
-                  q, from, size);
-          case "table_search_index", "table" -> buildTableSearchBuilder(
-                  q, from, size);
-          case "database_schema_search_index",
-                  "databaseSchema",
-                  "database_search_index",
-                  "database" -> buildGenericDataAssetSearchBuilder(
-                  q, from, size);
-          case "user_search_index",
-                  "user",
-                  "team_search_index",
-                  "team" -> buildUserOrTeamSearchBuilder(
-                  q, from, size);
-          case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
-                  q, from, size);
-          case "tag_search_index", "tag" -> buildTagSearchBuilder(
-                  q, from, size);
-          case "container_search_index", "container" -> buildContainerSearchBuilder(
-                  q, from, size);
-          case "query_search_index", "query" -> buildQuerySearchBuilder(
-                  q, from, size);
-          case "test_case_search_index",
-                  "testCase",
-                  "test_suite_search_index",
-                  "testSuite" -> buildTestCaseSearch(
-                  q, from, size);
-          case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
-                  q, from, size);
-          case "dashboard_data_model_search_index",
-                  "dashboardDataModel" -> buildDashboardDataModelsSearch(
-                  q, from, size);
-          case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(
-                  q, from, size);
-          case "domain_search_index", "domain" -> buildDomainsSearch(
-                  q, from, size);
-          case "raw_cost_analysis_report_data_index",
-                  "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
-                  q, from, size);
-          case "data_product_search_index" -> buildDataProductSearch(
-                  q, from, size);
-          case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
-                  q, from, size);
-          case "mlmodel_service_search_index",
-                  "database_service_search_index",
-                  "messaging_service_index",
-                  "dashboard_service_index",
-                  "pipeline_service_index",
-                  "storage_service_index",
-                  "search_service_index",
-                  "metadata_service_index" -> buildServiceSearchBuilder(
-                  q, from, size);
-          case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(
-                  q, from, size);
-          default -> buildAggregateSearchBuilder(
-                  q, from, size);
-        };
+  private static SearchSourceBuilder getSearchSourceBuilder(
+      String index, String q, int from, int size) {
+    return switch (index) {
+      case "topic_search_index", "topic" -> buildTopicSearchBuilder(q, from, size);
+      case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(q, from, size);
+      case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(q, from, size);
+      case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(q, from, size);
+      case "table_search_index", "table" -> buildTableSearchBuilder(q, from, size);
+      case "database_schema_search_index",
+          "databaseSchema",
+          "database_search_index",
+          "database" -> buildGenericDataAssetSearchBuilder(q, from, size);
+      case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
+          q, from, size);
+      case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
+          q, from, size);
+      case "tag_search_index", "tag" -> buildTagSearchBuilder(q, from, size);
+      case "container_search_index", "container" -> buildContainerSearchBuilder(q, from, size);
+      case "query_search_index", "query" -> buildQuerySearchBuilder(q, from, size);
+      case "test_case_search_index",
+          "testCase",
+          "test_suite_search_index",
+          "testSuite" -> buildTestCaseSearch(q, from, size);
+      case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
+          q, from, size);
+      case "dashboard_data_model_search_index",
+          "dashboardDataModel" -> buildDashboardDataModelsSearch(q, from, size);
+      case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(q, from, size);
+      case "domain_search_index", "domain" -> buildDomainsSearch(q, from, size);
+      case "raw_cost_analysis_report_data_index",
+          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
+          q, from, size);
+      case "data_product_search_index" -> buildDataProductSearch(q, from, size);
+      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
+          q, from, size);
+      case "mlmodel_service_search_index",
+          "database_service_search_index",
+          "messaging_service_index",
+          "dashboard_service_index",
+          "pipeline_service_index",
+          "storage_service_index",
+          "search_service_index",
+          "metadata_service_index" -> buildServiceSearchBuilder(q, from, size);
+      case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(q, from, size);
+      default -> buildAggregateSearchBuilder(q, from, size);
+    };
   }
 }

@@ -994,9 +994,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public ResultList<T> listFromSearchWithOffset(
-      UriInfo uriInfo, Fields fields, SearchListFilter searchListFilter, int limit, int offset, String q)
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      String q)
       throws IOException {
-    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, null, q);
+    return listFromSearchWithOffset(
+        uriInfo, fields, searchListFilter, limit, offset, null, null, q);
   }
 
   public ResultList<T> listFromSearchWithOffset(

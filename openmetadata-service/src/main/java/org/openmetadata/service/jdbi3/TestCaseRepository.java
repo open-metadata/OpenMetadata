@@ -134,7 +134,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // set the test case result state in the test case entity if the state has changed
     if (!Objects.equals(original, updated)) {
-      TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
+      TestCase testCase =
+          Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
       setTestCaseResult(testCase, updated, false);
     }
 
@@ -350,7 +351,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
       String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
-    TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
+    TestCase testCase =
+        Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
     TestCaseResult storedTestCaseResult =
         JsonUtils.readValue(
             daoCollection
@@ -926,10 +928,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
           updated.getComputePassedFailedRowCount());
-      recordChange(
-              "testCaseResult",
-              original.getTestCaseResult(),
-              updated.getTestCaseResult());
+      recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
     }
   }
 }

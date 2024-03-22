@@ -337,9 +337,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String sortType,
       @Parameter(
               description = "search query term to use in list",
-                schema = @Schema(type = "string"))
-      @QueryParam("q")
-      String q)
+              schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String q)
       throws IOException {
     if ((startTimestamp == null && endTimestamp != null)
         || (startTimestamp != null && endTimestamp == null)) {

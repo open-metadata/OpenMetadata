@@ -659,7 +659,8 @@ public class SearchRepository {
         offset,
         index.getIndexName(clusterAlias),
         sortField,
-        sortType, q);
+        sortType,
+        q);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {

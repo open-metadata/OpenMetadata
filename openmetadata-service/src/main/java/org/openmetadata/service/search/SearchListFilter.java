@@ -1,12 +1,12 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
-
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 public class SearchListFilter extends Filter<SearchListFilter> {
   public SearchListFilter() {
