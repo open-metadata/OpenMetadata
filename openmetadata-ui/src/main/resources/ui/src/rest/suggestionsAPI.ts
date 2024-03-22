@@ -13,7 +13,10 @@
 import { AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
 import { SuggestionAction } from '../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
-import { Suggestion } from '../generated/entity/feed/suggestion';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../generated/entity/feed/suggestion';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
@@ -38,4 +41,20 @@ export const updateSuggestionStatus = (
   const url = `${BASE_URL}/${data.id}/${action}`;
 
   return APIClient.put(url, {});
+};
+
+export const aproveRejectAllSuggestions = (
+  userId: string,
+  entityFQN: string,
+  suggestionType: SuggestionType,
+  action: SuggestionAction
+): Promise<AxiosResponse> => {
+  const url = `${BASE_URL}/${action}-all`;
+  const params = {
+    userId,
+    entityFQN,
+    suggestionType,
+  };
+
+  return APIClient.put(url, {}, { params });
 };

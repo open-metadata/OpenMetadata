@@ -25,11 +25,15 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { Suggestion } from '../../../generated/entity/feed/suggestion';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
 import { usePub } from '../../../hooks/usePubSub';
 import {
+  aproveRejectAllSuggestions,
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
@@ -45,6 +49,9 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const { t } = useTranslation();
   const { fqn: entityFqn } = useFqn();
   const [activeUser, setActiveUser] = useState<EntityReference>();
+  const [loadingAccept, setLoadingAccept] = useState(false);
+  const [loadingReject, setLoadingReject] = useState(false);
+
   const [allSuggestionsUsers, setAllSuggestionsUsers] = useState<
     EntityReference[]
   >([]);
@@ -122,6 +129,38 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     return suggestionsByUser.get(activeUser?.name ?? '') ?? [];
   }, [activeUser, suggestionsByUser]);
 
+  const acceptRejectAllSuggestions = useCallback(
+    async (suggestionType: SuggestionType, status: SuggestionAction) => {
+      if (status === SuggestionAction.Accept) {
+        setLoadingAccept(true);
+      } else {
+        setLoadingReject(true);
+      }
+      try {
+        await aproveRejectAllSuggestions(
+          activeUser?.id ?? '',
+          entityFqn,
+          suggestionType,
+          status
+        );
+
+        await fetchSuggestions(entityFqn);
+        if (status === SuggestionAction.Accept) {
+          selectedUserSuggestions.forEach((suggestion) => {
+            publish('updateDetails', suggestion);
+          });
+        }
+        setActiveUser(undefined);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setLoadingAccept(false);
+        setLoadingReject(false);
+      }
+    },
+    [activeUser, entityFqn, selectedUserSuggestions]
+  );
+
   useEffect(() => {
     if (!isEmpty(permissions) && !isEmpty(entityFqn)) {
       fetchSuggestions(entityFqn);
@@ -135,10 +174,13 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       selectedUserSuggestions,
       entityFqn,
       loading,
+      loadingAccept,
+      loadingReject,
       allSuggestionsUsers,
       onUpdateActiveUser,
       fetchSuggestions,
       acceptRejectSuggestion,
+      acceptRejectAllSuggestions,
     };
   }, [
     suggestions,
@@ -146,10 +188,13 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     selectedUserSuggestions,
     entityFqn,
     loading,
+    loadingAccept,
+    loadingReject,
     allSuggestionsUsers,
     onUpdateActiveUser,
     fetchSuggestions,
     acceptRejectSuggestion,
+    acceptRejectAllSuggestions,
   ]);
 
   return (
