@@ -54,7 +54,9 @@ def get_connection(connection: PostgresConnection) -> Engine:
     if hasattr(connection.authType, "azureConfig"):
         azure_client = AzureClient(connection.authType.azureConfig).create_client()
         if not connection.authType.azureConfig.scopes:
-            raise ValueError("Azure Scopes are not provided")
+            raise ValueError(
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/postgresql/flexible-server/how-to-configure-sign-in-azure-ad-authentication#retrieve-the-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+            )
         access_token_obj = azure_client.get_token(
             *connection.authType.azureConfig.scopes.split(",")
         )
