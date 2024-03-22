@@ -993,9 +993,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public ResultList<T> listFromSearchWithOffset(
-      UriInfo uriInfo, Fields fields, SearchListFilter searchListFilter, int limit, int offset)
+      UriInfo uriInfo, Fields fields, SearchListFilter searchListFilter, int limit, int offset, String q)
       throws IOException {
-    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, null);
+    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, null, q);
   }
 
   public ResultList<T> listFromSearchWithOffset(
@@ -1005,7 +1005,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       int limit,
       int offset,
       String sortField,
-      String sortType)
+      String sortType,
+      String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
     Long total = 0L;
@@ -1013,7 +1014,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limit > 0) {
       SearchClient.SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, sortField, sortType);
+              searchListFilter, limit, offset, entityType, sortField, sortType, q);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         clearSearchFieldsInternal(json); // clear search index fields

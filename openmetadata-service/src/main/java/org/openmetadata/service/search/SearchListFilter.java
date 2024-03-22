@@ -6,6 +6,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 public class SearchListFilter extends Filter<SearchListFilter> {
   public SearchListFilter() {
     this(Include.NON_DELETED);
@@ -23,8 +25,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
     }
-    String condition = addCondition(conditions);
-    return condition.isEmpty() ? "{\"query\": {\"match_all\": {}}}" : buildQueryFilter(condition);
+    return buildQueryFilter(addCondition(conditions));
   }
 
   @Override
@@ -60,7 +61,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String buildQueryFilter(String condition) {
-    return String.format("{\"query\": {\"bool\": {\"filter\": [%s]}}}", condition);
+    String q = queryParams.get("q");
+    boolean isQEmpty = nullOrEmpty(q);
+    if (!condition.isEmpty()) {
+      return String.format("{\"query\": {\"bool\": {\"filter\": [%s]}}}", condition);
+    } else if (!isQEmpty) {
+      return "";
+    } else {
+      return "{\"query\": {\"match_all\": {}}}";
+    }
   }
 
   private String getTestCaseCondition() {

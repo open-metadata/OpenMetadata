@@ -334,7 +334,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortType")
           @DefaultValue("desc")
-          String sortType)
+          String sortType,
+      @Parameter(
+              description = "search query term to use in list",
+                schema = @Schema(type = "string"))
+      @QueryParam("q")
+      String q)
       throws IOException {
     if ((startTimestamp == null && endTimestamp != null)
         || (startTimestamp != null && endTimestamp == null)) {
@@ -347,8 +352,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testCaseStatus", status);
     searchListFilter.addQueryParam("testCaseType", type);
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
+    searchListFilter.addQueryParam("q", q);
 
-    if (startTimestamp != null && endTimestamp != null) {
+    if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {
         throw new IllegalArgumentException("startTimestamp must be less than endTimestamp");
       }
@@ -374,6 +380,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             offset,
             sortField,
             sortType,
+            q,
             operationContext,
             resourceContextInterface);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);

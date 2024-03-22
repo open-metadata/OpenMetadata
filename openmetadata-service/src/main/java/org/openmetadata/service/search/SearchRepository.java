@@ -649,7 +649,8 @@ public class SearchRepository {
       int offset,
       String entityType,
       String sortField,
-      String sortType)
+      String sortType,
+      String q)
       throws IOException {
     IndexMapping index = entityIndexMap.get(entityType);
     return searchClient.listWithOffset(
@@ -658,7 +659,7 @@ public class SearchRepository {
         offset,
         index.getIndexName(clusterAlias),
         sortField,
-        sortType);
+        sortType, q);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {

@@ -66,8 +66,14 @@
         }
       },
       "fullyQualifiedName": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+        "type": "text",
+        "analyzer": "om_analyzer_jp",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
+        }
       },
       "fqnParts": {
         "type": "keyword"
