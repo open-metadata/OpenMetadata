@@ -10,6 +10,7 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.waitForEsAsyncOp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,7 +62,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withData(entityReportData);
 
     postReportData(reportData, ADMIN_AUTH_HEADERS);
-
+    waitForEsAsyncOp();
     ResultList<ReportData> reportDataList =
         getReportData(
             "2022-10-10",
