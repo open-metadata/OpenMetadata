@@ -1316,34 +1316,35 @@ export const WHATS_NEW = [
     description: 'Released on 26th March 2024.',
     features: [],
     changeLogs: {
-      MetaPilot: ``,
+      [`MetaPilot ${CollateIconWithLinkMD}`]: `-   New MetaPilot application shipped in preview mode. Try it out in the [Sandbox](https://sandbox.open-metadata.org/)!
+-   Get automatically generated descriptions with GenAI. Now it's easier than ever to document your data assets.
+-   Chat with the MetaPilot and get SQL queries to help you extract relevant information from your data assets.
+-   Let the MetaPilot help you understand and improve the queries used on your tables.`,
 
-      ['Authentication Flow']: ``,
+      'Authentication Flow': `-   Added generic support for OIDC Authentication. This is SSO provider-agnostic.
+-   You can now integrate Confidential Clients to manage the server authentication.
+-   Now, the session renewal happens automatically in the backend.`,
 
-      'Data Quality': `-   Pagination support added for the Data Quality tab for data assets.
--   Fixed an issue with execution summary timeout issue for data quality test.`,
+      'Data Quality': `-   Pagination support was added for the Data Quality tab for data assets.
+-   Fixed an issue with execution summary timeout issue for the data quality test.`,
 
-      Connectors: `-   Now supports BigTable connector.
+      Connectors: `-   New Bigtable connector.
 -   Now, users can configure the external sample data storage path.
--   Added support for Snowflake materialized view and masking policy.
--   Minor change has been made to skip the source hash while connecting to services.
--   Earlier, for Kafka Topics , we used Title as the Field Name. Now, we use the Title as the Display Name, and the Key/Name is used as the Field Name.
--   When the profiler executes long running queries against Databricks Hive metastore, the connection can be invalidated due to staleness. Implemented a disconnect method to handle this.
--   Fixed the issue with same service name.
--   Fixed an issue with ingesting lineage when datamodels are ingested from Tableau.
--   Fixed issues with row count for Redshift ingestion.
--   Fixed an issue with updating metadata description from Databricks and Postgres connectors.`,
+-   Added lineage support for Snowflake materialized view and masking policies.
+-   Fixed session invalidation on Databricks during long-running queries.
+-   Fixed Ingestion Pipeline list for services with the same name.
+-   Fixed an issue with ingesting lineage when data models are ingested from Tableau.
+-   Fixed metrics computations for empty tables.
+-   Improve PATCH generation for array fields.`,
 
-      'Other Changes': `-   Supports Entity Stats table in Search Index application history logs.
--   Alerts added to avoid duplicate queries.
--   In Glossary, the filter icon has been updated.
--   SecretsManagerUpdateService updated.
--   Updated the Docker Compose files with the setting to Restart Always.
--   Fixed the issue with Date filter for Incident Manager.
--   Fixed the issue with Team filter for Data Insights.
+      'Other Changes': `-   Avoid creating duplicated queries.
+-   Speed up the server start time by moving the Secrets Manager Migration to the migration container.
+-   Fixed the issue with the date filter for the Incident Manager.
+-   Fixed the issue with the Team filter for Data Insights.
 -   Fixed an issue with Azure SSO related to the MSAL version.
 -   Fixed an issue with search indexing.
--   Fixed the missing input field for conversation source for alerts and notifications.`,
+-   Fixed the missing input field for conversation source for alerts and notifications.
+-   Filter dashboards by a project on the Explore page.`,
     },
   },
 ];
