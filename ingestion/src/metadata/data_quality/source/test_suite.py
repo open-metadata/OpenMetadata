@@ -83,7 +83,7 @@ class TestSuiteSource(Source):
     ) -> Optional[List[TestCase]]:
         """Return test cases if the test suite exists and has them"""
         if test_suite:
-            test_cases = self.metadata.list_entities(
+            test_cases = self.metadata.list_all_entities(
                 entity=TestCase,
                 fields=["testSuite", "entityLink", "testDefinition"],
                 params={"testSuiteId": test_suite.id.__root__},
