@@ -42,6 +42,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
     doc.put("testPlatforms", getTestDefinitionPlatforms(testCase.getTestDefinition().getId()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     return doc;
   }
 
