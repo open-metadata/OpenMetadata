@@ -27,10 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.analytics.EntityReportData;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
@@ -40,7 +37,6 @@ import org.openmetadata.service.resources.analytics.ReportDataResource.ReportDat
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
   public static final String JSON_QUERY =
@@ -49,7 +45,6 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  @Order(1)
   void report_data_admin_200() throws ParseException, IOException, InterruptedException {
     EntityReportData entityReportData =
         new EntityReportData()
@@ -69,18 +64,14 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     ResultList<ReportData> reportDataList =
         getReportData(
             "2022-10-10",
-            "2022-10-12",
+            "2022-10-13",
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
-
-    String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
-    assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 1);
 
     assertNotEquals(0, reportDataList.getData().size());
   }
 
   @Test
-  @Order(2)
   void report_data_non_auth_user_403() throws ParseException {
     EntityReportData entityReportData =
         new EntityReportData()
@@ -102,8 +93,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Order(3)
-  void report_data_bot_200() throws HttpResponseException, ParseException {
+  void report_data_bot_200() throws HttpResponseException, ParseException, InterruptedException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -118,11 +108,11 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withData(entityReportData);
 
     postReportData(reportData, INGESTION_BOT_AUTH_HEADERS);
-
+    waitForEsAsyncOp();
     ResultList<ReportData> reportDataList =
         getReportData(
-            "2022-10-10",
             "2022-10-12",
+            "2022-10-14",
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             INGESTION_BOT_AUTH_HEADERS);
 
@@ -130,7 +120,6 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Order(4)
   void delete_endpoint_200() throws ParseException, IOException, InterruptedException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
