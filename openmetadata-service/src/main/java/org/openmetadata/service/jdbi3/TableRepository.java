@@ -740,8 +740,13 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public String getSuggestionFields(Suggestion suggestion) {
+    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "columns,tags" : "";
+  }
+
+  @Override
   public Table applySuggestion(EntityInterface entity, String columnFQN, Suggestion suggestion) {
-    Table table = Entity.getEntity(TABLE, entity.getId(), "columns,tags", ALL);
+    Table table = (Table) entity;
     for (Column col : table.getColumns()) {
       if (col.getFullyQualifiedName().equals(columnFQN)) {
         if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
