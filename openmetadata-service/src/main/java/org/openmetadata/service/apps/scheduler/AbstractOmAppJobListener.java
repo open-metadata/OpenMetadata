@@ -8,7 +8,6 @@ import java.util.UUID;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -35,9 +34,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
-    AppRunType runType =
-        AppRunType.fromValue(
-            (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
+    String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
     App jobApp =
         JsonUtils.readOrConvertValue(
             jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);

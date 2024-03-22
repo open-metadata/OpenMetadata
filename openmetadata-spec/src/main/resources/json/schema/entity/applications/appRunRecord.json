@@ -25,21 +25,8 @@
       ]
     },
     "runType": {
-      "javaType": "org.openmetadata.schema.entity.app.AppRunType",
       "description": "This schema defines the type of application Run.",
-      "type": "string",
-      "enum": [
-        "Scheduled",
-        "OnDemand"
-      ],
-      "javaEnums": [
-        {
-          "name": "Scheduled"
-        },
-        {
-          "name": "OnDemand"
-        }
-      ]
+      "type": "string"
     },
     "startTime": {
       "description": "Start of the job status.",
