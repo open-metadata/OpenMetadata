@@ -16,7 +16,7 @@ from unittest import TestCase
 from pydantic import SecretStr
 
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
-    GcpCredentialsValuesExternalAccount,
+    GcpExternalAccount,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -90,8 +90,8 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         """
         Check how we can validate GCS values
         """
-        gcp_values = GcpCredentialsValuesExternalAccount(
-            type="external_account",
+        gcp_values = GcpExternalAccount(
+            externalType="external_account",
             audience="audience",
             subjectTokenType="subject_token_type",
             tokenURL="token_url",
@@ -105,7 +105,5 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             "token_url": "token_url",
             "credential_source": {"environmentId": "environment_id"},
         }
-
-        build_google_credentials_dict(gcp_values)
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
