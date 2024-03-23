@@ -14,10 +14,9 @@
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-  ENTITY_PATH,
 } from '../../constants/constants';
 import { ENTITY_REFERENCE_PROPERTIES } from '../../constants/CustomProperty.constant';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   descriptionBox,
   interceptURL,
