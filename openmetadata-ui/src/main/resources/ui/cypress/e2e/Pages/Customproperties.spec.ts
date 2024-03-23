@@ -291,7 +291,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     'Number',
     'Sql Query',
     'Time',
-    'TimeInterval',
+    'Time Interval',
     'Timestamp',
   ].forEach((type) => {
     describe(`Add update and delete ${type} custom properties`, () => {
