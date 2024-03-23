@@ -47,7 +47,17 @@
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-api</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>com.nimbusds</groupId>
+          <artifactId>nimbus-jose-jwt</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>9.37.3</version>
     </dependency>
     <dependency>
       <groupId>org.pac4j</groupId>
@@ -106,8 +116,8 @@
       <artifactId>dropwizard-jdbi3</artifactId>
     </dependency>
     <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
     </dependency>
     <dependency>
         <groupId>org.postgresql</groupId>
@@ -269,13 +279,6 @@
       <artifactId>azure-identity</artifactId>
       <version>${azure-identity.version}</version>
     </dependency>
-    <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
-    <dependency>
-      <groupId>com.nimbusds</groupId>
-      <artifactId>nimbus-jose-jwt</artifactId>
-      <version>9.37.3</version>
-    </dependency>
-
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
