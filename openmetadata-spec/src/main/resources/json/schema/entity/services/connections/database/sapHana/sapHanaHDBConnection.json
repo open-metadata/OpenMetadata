@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapHana/sapHanaHDBConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapHanaHDBConnection",
+  "description": "Sap Hana Database HDB User Store Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.sapHana.SapHanaHDBConnection",
+  "properties": {
+    "userKey": {
+      "title": "User Key",
+      "description": "HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port> <USERNAME> <PASSWORD>`",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
