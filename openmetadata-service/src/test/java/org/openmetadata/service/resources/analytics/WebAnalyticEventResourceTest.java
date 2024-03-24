@@ -42,7 +42,7 @@ public class WebAnalyticEventResourceTest
         WebAnalyticEventResource.WebAnalyticEventList.class,
         "analytics/web/events",
         WebAnalyticEventResource.FIELDS);
-    supportsSearchIndex = true;
+    supportsSearchIndex = false;
   }
 
   @Test
