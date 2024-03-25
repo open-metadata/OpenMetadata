@@ -20,7 +20,6 @@ from typing import List, Optional, Type, Union
 from urllib.parse import quote
 from uuid import UUID
 
-from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
@@ -32,7 +31,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testCaseResolutionStatus import (
