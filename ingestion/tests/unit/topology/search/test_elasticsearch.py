@@ -199,7 +199,7 @@ class ElasticSearchUnitTest(TestCase):
             mock_es_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.es_source.context.__dict__[
+        self.es_source.context.get().__dict__[
             "search_service"
         ] = MOCK_SEARCH_SERVICE.name.__root__
 
