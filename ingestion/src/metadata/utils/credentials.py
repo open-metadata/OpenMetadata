@@ -26,7 +26,7 @@ from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
-    GcpCredentialsValuesExternalAccount,
+    GcpExternalAccount,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -89,7 +89,7 @@ def create_credential_tmp_file(credentials: dict) -> str:
 
 
 def build_google_credentials_dict(
-    gcp_values: Union[GcpCredentialsValues, GcpCredentialsValuesExternalAccount]
+    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount]
 ) -> Dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
@@ -97,7 +97,7 @@ def build_google_credentials_dict(
     :param gcp_values: GCP credentials
     :return: Dictionary with credentials
     """
-    if gcp_values.type == "service_account":
+    if isinstance(gcp_values, GcpCredentialsValues):
         private_key_str = gcp_values.privateKey.get_secret_value()
         # adding the replace string here to escape line break if passed from env
         private_key_str = private_key_str.replace("\\n", "\n")
@@ -115,17 +115,16 @@ def build_google_credentials_dict(
             "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
             "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
         }
-    if gcp_values.type == "external_account":
+    if isinstance(gcp_values, GcpExternalAccount):
         return {
-            "type": gcp_values.type,
+            "type": gcp_values.externalType,
             "audience": gcp_values.audience,
             "subject_token_type": gcp_values.subjectTokenType,
             "token_url": gcp_values.tokenURL,
             "credential_source": gcp_values.credentialSource,
         }
-
     raise InvalidGcpConfigException(
-        f"Error not support credential type {gcp_values.type}"
+        f"Error trying to build GCP credentials dict due to Invalid GCP config {type(gcp_values)}"
     )
 
 
