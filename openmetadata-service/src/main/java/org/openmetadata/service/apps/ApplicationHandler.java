@@ -57,6 +57,7 @@ public class ApplicationHandler {
         && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
       for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
         if (app.getName().equals(appPrivateConfig.getName())) {
+          app.setPreview(appPrivateConfig.getPreview());
           app.setPrivateConfiguration(appPrivateConfig.getParameters());
         }
       }
@@ -91,6 +92,12 @@ public class ApplicationHandler {
         clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
             .newInstance(daoCollection, searchRepository);
 
+    // Raise preview message if the app is in Preview mode
+    if (Boolean.TRUE.equals(app.getPreview())) {
+      Method preview = resource.getClass().getMethod("raisePreviewMessage", App.class);
+      preview.invoke(resource, app);
+    }
+
     // Call init Method
     Method initMethod = resource.getClass().getMethod("init", App.class);
     initMethod.invoke(resource, app);
@@ -110,14 +117,13 @@ public class ApplicationHandler {
       Method scheduleMethod = resource.getClass().getMethod(methodName);
       scheduleMethod.invoke(resource);
 
-    } catch (NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
+    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException e) {
       LOG.error("Exception encountered", e);
-      throw new UnhandledServerException(e.getCause().getMessage());
+      throw new UnhandledServerException(e.getMessage());
     } catch (ClassNotFoundException e) {
-      throw new UnhandledServerException(e.getCause().getMessage());
+      throw new UnhandledServerException(e.getMessage());
+    } catch (InvocationTargetException e) {
+      throw new AppException(e.getTargetException().getMessage());
     }
   }
 

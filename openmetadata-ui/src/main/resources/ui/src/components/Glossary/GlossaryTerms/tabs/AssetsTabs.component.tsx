@@ -47,10 +47,7 @@ import {
   AssetsFilterOptions,
   ASSET_MENU_KEYS,
 } from '../../../../constants/Assets.constants';
-import {
-  DE_ACTIVE_COLOR,
-  ES_UPDATE_DELAY,
-} from '../../../../constants/constants';
+import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -288,6 +285,11 @@ const AssetsTabs = forwardRef(
       }
     };
 
+    const onExploreCardDelete = useCallback((source: SourceType) => {
+      setAssetToDelete(source);
+      setShowDeleteModal(true);
+    }, []);
+
     const handleAssetButtonVisibleChange = (newVisible: boolean) =>
       setVisible(newVisible);
 
@@ -321,7 +323,7 @@ const AssetsTabs = forwardRef(
             description={t('message.delete-asset-from-entity-type', {
               entityType: entityTypeString,
             })}
-            icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+            icon={DeleteIcon}
             id="delete-button"
             name={t('label.delete')}
           />
@@ -334,11 +336,6 @@ const AssetsTabs = forwardRef(
         },
       },
     ];
-
-    const onExploreCardDelete = useCallback((source: SourceType) => {
-      setAssetToDelete(source);
-      setShowDeleteModal(true);
-    }, []);
 
     const handleCheckboxChange = (
       selected: boolean,
@@ -383,6 +380,69 @@ const AssetsTabs = forwardRef(
         setIsCountLoading(false);
       }
     };
+
+    const onAssetRemove = useCallback(
+      async (assetsData: SourceType[]) => {
+        if (!activeEntity) {
+          return;
+        }
+
+        setAssetRemoving(true);
+
+        try {
+          const entities = [...(assetsData?.values() ?? [])].map((item) => {
+            return getEntityReferenceFromEntity(
+              item as EntityDetailUnion,
+              (item as EntityDetailUnion).entityType
+            );
+          });
+
+          switch (type) {
+            case AssetsOfEntity.DATA_PRODUCT:
+              await removeAssetsFromDataProduct(
+                activeEntity.fullyQualifiedName ?? '',
+                entities
+              );
+
+              break;
+
+            case AssetsOfEntity.GLOSSARY:
+              await removeAssetsFromGlossaryTerm(
+                activeEntity as GlossaryTerm,
+                entities
+              );
+
+              break;
+
+            case AssetsOfEntity.DOMAIN:
+              await removeAssetsFromDomain(
+                activeEntity.fullyQualifiedName ?? '',
+                entities
+              );
+
+              break;
+            default:
+              // Handle other entity types here
+              break;
+          }
+
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve('');
+            }, ES_UPDATE_DELAY);
+          });
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        } finally {
+          setShowDeleteModal(false);
+          onRemoveAsset?.();
+          setAssetRemoving(false);
+          hideNotification();
+          setSelectedItems(new Map()); // Reset selected items
+        }
+      },
+      [type, activeEntity, entityFqn]
+    );
 
     const deleteSelectedItems = useCallback(() => {
       if (selectedItems) {
@@ -654,69 +714,6 @@ const AssetsTabs = forwardRef(
         </>
       );
     }, [assetsHeader, assetListing, selectedCard]);
-
-    const onAssetRemove = useCallback(
-      async (assetsData: SourceType[]) => {
-        if (!activeEntity) {
-          return;
-        }
-
-        setAssetRemoving(true);
-
-        try {
-          const entities = [...(assetsData?.values() ?? [])].map((item) => {
-            return getEntityReferenceFromEntity(
-              item as EntityDetailUnion,
-              (item as EntityDetailUnion).entityType
-            );
-          });
-
-          switch (type) {
-            case AssetsOfEntity.DATA_PRODUCT:
-              await removeAssetsFromDataProduct(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.GLOSSARY:
-              await removeAssetsFromGlossaryTerm(
-                activeEntity as GlossaryTerm,
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.DOMAIN:
-              await removeAssetsFromDomain(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-            default:
-              // Handle other entity types here
-              break;
-          }
-
-          await new Promise((resolve) => {
-            setTimeout(() => {
-              resolve('');
-            }, ES_UPDATE_DELAY);
-          });
-        } catch (err) {
-          showErrorToast(err as AxiosError);
-        } finally {
-          setShowDeleteModal(false);
-          onRemoveAsset?.();
-          setAssetRemoving(false);
-          hideNotification();
-          setSelectedItems(new Map()); // Reset selected items
-        }
-      },
-      [type, activeEntity, entityFqn]
-    );
 
     const clearFilters = useCallback(() => {
       setQuickFilterQuery(undefined);

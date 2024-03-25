@@ -18,6 +18,9 @@ class ApplicationSchemaClassBase {
   public getJSONUISchema() {
     return {};
   }
+  public importAppLogo(appName: string) {
+    return import(`../../../../assets/svg/${appName}.svg`);
+  }
 }
 
 const applicationSchemaClassBase = new ApplicationSchemaClassBase();
