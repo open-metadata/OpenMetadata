@@ -126,7 +126,7 @@
     "threads": {
       "description": "Number of Threads to use in order to paralellize Table ingestion.",
       "type": "integer",
-      "default": 4,
+      "default": 1,
       "title": "Number of Threads"
     },
     "incremental": {
