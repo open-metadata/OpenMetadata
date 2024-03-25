@@ -91,6 +91,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography",
+    "email-validator>=1.0.3",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
