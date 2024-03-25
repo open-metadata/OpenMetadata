@@ -367,6 +367,9 @@ email:
 
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
+  lineage-options:
+    upstream-depth: ${WEB_CONF_LINEAGE_UPSTREAM_DEPTH:-3}
+    downstream-depth: ${WEB_CONF_LINEAGE_DOWNSTREAM_DEPTH:-3}
   hsts:
     enabled: ${WEB_CONF_HSTS_ENABLED:-false}
     maxAge: ${WEB_CONF_HSTS_MAX_AGE:-"365 days"}
