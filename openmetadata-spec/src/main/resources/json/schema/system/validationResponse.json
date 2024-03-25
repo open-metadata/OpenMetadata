@@ -1,0 +1,53 @@
+{
+  "$id": "https://open-metadata.org/schema/system/validationResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SystemValidationResponse",
+  "description": "Define the system validation response",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ValidationResponse",
+  "definitions": {
+    "stepValidation": {
+      "javaType": "org.openmetadata.schema.system.StepValidation",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Validation description. What is being tested?",
+          "type": "string"
+        },
+        "passed": {
+          "description": "Did the step validation successfully?",
+          "type": "boolean"
+        },
+        "message": {
+          "description": "Results or exceptions to be shared after running the test.",
+          "type": "string",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "database": {
+      "description": "Database connectivity check",
+      "$ref": "#/definitions/stepValidation"
+    },
+    "searchInstance": {
+      "description": "Search instance connectivity check",
+      "$ref": "#/definitions/stepValidation"
+    },
+    "pipelineServiceClient": {
+      "description": "Pipeline Service Client connectivity check",
+      "$ref": "#/definitions/stepValidation"
+    },
+    "jwks": {
+      "description": "JWKs validation",
+      "$ref": "#/definitions/stepValidation"
+    },
+    "migrations": {
+      "description": "List migration results",
+      "$ref": "#/definitions/stepValidation"
+    }
+  },
+  "additionalProperties": false
+}
