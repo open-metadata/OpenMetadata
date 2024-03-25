@@ -124,6 +124,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
@@ -1960,6 +1961,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public EntityInterface applySuggestion(
       EntityInterface entity, String childFQN, Suggestion suggestion) {
     return entity;
+  }
+
+  /**
+   * Bring in the necessary fields required to have all the information before applying a suggestion
+   */
+  public String getSuggestionFields(Suggestion suggestion) {
+    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "tags" : "";
   }
 
   public final void validateTaskThread(ThreadContext threadContext) {
