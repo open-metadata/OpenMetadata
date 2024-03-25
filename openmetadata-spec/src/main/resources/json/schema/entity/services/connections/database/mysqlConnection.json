@@ -9,13 +9,17 @@
     "mySQLType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Mysql"],
+      "enum": [
+        "Mysql"
+      ],
       "default": "Mysql"
     },
     "mySQLScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mysql+pymysql"],
+      "enum": [
+        "mysql+pymysql"
+      ],
       "default": "mysql+pymysql"
     }
   },
@@ -46,6 +50,9 @@
         },
         {
           "$ref": "./common/iamAuthConfig.json"
+        },
+        {
+          "$ref": "./common/azureConfig.json"
         }
       ]
     },
@@ -108,5 +115,8 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }
