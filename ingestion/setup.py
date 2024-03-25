@@ -300,6 +300,8 @@ test = {
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
+    VERSIONS["avro"],  # Sample Data
+    VERSIONS["grpc-tools"],
     "testcontainers==3.7.1",
 }
 
