@@ -655,7 +655,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void get_listTestCasesFromSearch(TestInfo testInfo) throws IOException, ParseException {
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
       int testCasesNum = rand.nextInt(7) + 3;
