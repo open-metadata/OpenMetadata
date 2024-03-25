@@ -14,3 +14,17 @@ OpenMetadata Ingestion is a simple framework to build connectors and ingest meta
 Please refer to the documentation here https://docs.open-metadata.org/connectors
 
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=c1a30c7c-6dc7-4928-95bf-6ee08ca6aa6a" />
+
+### TopologyRunner
+
+All the Ingestion Workflows run through the TopologyRunner.
+
+The flow is depicted in the images below.
+
+**TopologyRunner Standard Flow**
+
+![image](https://github.com/IceS2/OpenMetadata/assets/4912399/c253af53-c11a-4b91-b101-892fa8169c81)
+
+**TopologyRunner Multithread Flow**
+
+![image](https://github.com/IceS2/OpenMetadata/assets/4912399/3fcef845-10da-4aee-82cc-28d5f5ff9532)

@@ -41,7 +41,7 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -112,7 +112,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: StorageConnection.__fields__["config"].type_
 
     topology = StorageServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     container_source_state: Set = set()
 
     global_manifest: Optional[ManifestMetadataConfig]
@@ -191,7 +191,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         container_fqn = fqn.build(
             self.metadata,
             entity_type=Container,
-            service_name=self.context.objectstore_service,
+            service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
             container_name=container_request.name.__root__,
         )
@@ -210,7 +210,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
                 mark_deleted_entity=self.source_config.markDeletedContainers,
-                params={"service": self.context.objectstore_service},
+                params={"service": self.context.get().objectstore_service},
             )
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):

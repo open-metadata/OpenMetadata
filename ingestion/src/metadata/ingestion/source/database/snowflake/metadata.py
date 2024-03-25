@@ -166,7 +166,7 @@ class SnowflakeSource(
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
         self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
-        self.context.deleted_tables = []
+        self.context.get_global().deleted_tables = []
         self.pipeline_name = pipeline_name
         self.incremental = incremental_configuration
 
@@ -262,7 +262,7 @@ class SnowflakeSource(
         """
         Method to fetch the schema description
         """
-        return self.schema_desc_map.get((self.context.database, schema_name))
+        return self.schema_desc_map.get((self.context.get().database, schema_name))
 
     def get_database_description(self, database_name: str) -> Optional[str]:
         """
@@ -294,7 +294,7 @@ class SnowflakeSource(
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
@@ -398,7 +398,7 @@ class SnowflakeSource(
             try:
                 result = self.connection.execute(
                     SNOWFLAKE_FETCH_ALL_TAGS.format(
-                        database_name=self.context.database,
+                        database_name=self.context.get().database,
                         schema_name=schema_name,
                     )
                 )
@@ -411,8 +411,8 @@ class SnowflakeSource(
                     )
                     result = self.connection.execute(
                         SNOWFLAKE_FETCH_ALL_TAGS.format(
-                            database_name=f'"{self.context.database}"',
-                            schema_name=f'"{self.context.database_schema}"',
+                            database_name=f'"{self.context.get().database}"',
+                            schema_name=f'"{self.context.get().database_schema}"',
                         )
                     )
                 except Exception as inner_exc:
@@ -429,7 +429,7 @@ class SnowflakeSource(
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service, *fqn_elements
+                        self.context.get().database_service, *fqn_elements
                     ),
                     tags=[row[1]],
                     classification_name=row[0],
@@ -452,13 +452,13 @@ class SnowflakeSource(
             **table_type_to_params_map[table_type],
         )
 
-        self.context.deleted_tables.extend(
+        self.context.get_global().deleted_tables.extend(
             [
                 fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                     table_name=table.name,
                 )
@@ -566,13 +566,13 @@ class SnowflakeSource(
             materialized_views=materialized_views,
         )
 
-        self.context.deleted_tables.extend(
+        self.context.get_global().deleted_tables.extend(
             [
                 fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                     table_name=view.name,
                 )
@@ -608,8 +608,8 @@ class SnowflakeSource(
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 SNOWFLAKE_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
@@ -636,8 +636,8 @@ class SnowflakeSource(
         """
         res = self.engine.execute(
             SNOWFLAKE_DESC_STORED_PROCEDURE.format(
-                database_name=self.context.database,
-                schema_name=self.context.database_schema,
+                database_name=self.context.get().database,
+                schema_name=self.context.get().database_schema,
                 procedure_name=stored_procedure.name,
                 procedure_signature=stored_procedure.unquote_signature(),
             )
@@ -660,14 +660,14 @@ class SnowflakeSource(
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
                     __root__=self._get_source_url_root(
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                     )
                     + f"/procedure/{stored_procedure.name}"
                     + f"{stored_procedure.signature if stored_procedure.signature else ''}"
@@ -706,19 +706,19 @@ class SnowflakeSource(
         Use the current inspector to mark tables as deleted
         """
         if self.incremental.enabled:
-            if not self.context.__dict__.get("database"):
+            if not self.context.get().__dict__.get("database"):
                 raise ValueError(
                     "No Database found in the context. We cannot run the table deletion."
                 )
 
             if self.source_config.markDeletedTables:
                 logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
                 )
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.deleted_tables,
+                    entity_names=self.context.get_global().deleted_tables,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                 )
         else:

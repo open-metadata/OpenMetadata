@@ -128,12 +128,12 @@ class QliksenseSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -175,7 +175,7 @@ class QliksenseSource(DashboardServiceSource):
                         description=chart.qMeta.description,
                         chartType=ChartType.Other,
                         sourceUrl=chart_url,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
@@ -221,7 +221,7 @@ class QliksenseSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         dataModelType=DataModelType.QlikSenseDataModel.value,
                         serviceType=DashboardServiceType.QlikSense.value,
                         columns=self.get_column_info(data_model),
@@ -244,7 +244,7 @@ class QliksenseSource(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:

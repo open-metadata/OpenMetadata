@@ -244,8 +244,8 @@ class SplineUnitTest(TestCase):
             mock_spline_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.spline.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.spline.context.__dict__[
+        self.spline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.spline.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.__root__
 

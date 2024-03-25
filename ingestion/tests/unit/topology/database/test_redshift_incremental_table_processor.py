@@ -203,7 +203,9 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
 
                 self.assertEqual(processor.get_not_deleted("my_schema"), [])
                 self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(processor.get_deleted("my_schema"), ["my_table"])
+                self.assertEqual(
+                    processor.get_deleted("my_schema"), [("my_schema", "my_table")]
+                )
                 self.assertEqual(processor.get_deleted("other_schema"), [])
 
     def test_create_view_regex_works_as_expected(self):
@@ -266,7 +268,9 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
 
                 self.assertEqual(processor.get_not_deleted("my_schema"), [])
                 self.assertEqual(processor.get_not_deleted("other_schema"), [])
-                self.assertEqual(processor.get_deleted("my_schema"), ["my_table"])
+                self.assertEqual(
+                    processor.get_deleted("my_schema"), [("my_schema", "my_table")]
+                )
                 self.assertEqual(processor.get_deleted("other_schema"), [])
 
     def test_comment_regex_works_as_expected(self):
@@ -326,7 +330,9 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             )
             processor.set_table_map("my_database", datetime(2020, 1, 1))
 
-            self.assertEqual(processor.get_deleted("my_schema"), ["my_table"])
+            self.assertEqual(
+                processor.get_deleted("my_schema"), [("my_schema", "my_table")]
+            )
             self.assertEqual(processor.get_not_deleted("my_schema"), [])
 
     def test_bulk(self):
@@ -388,10 +394,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             self.assertTrue(
                 all(
                     table_name in ["table_1", "table_2", "table_3", "table_4"]
-                    for table_name in (
-                        processor.get_deleted("schema_1")
-                        + processor.get_not_deleted("schema_1")
-                    )
+                    for table_name in (processor.get_not_deleted("schema_1"))
+                )
+            )
+
+            self.assertTrue(
+                all(
+                    table_name in ["table_1", "table_2", "table_3", "table_4"]
+                    for (_, table_name) in (processor.get_deleted("schema_1"))
                 )
             )
 
@@ -407,10 +417,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             self.assertTrue(
                 all(
                     table_name == "table_1"
-                    for table_name in (
-                        processor.get_deleted("schema_2")
-                        + processor.get_not_deleted("schema_2")
-                    )
+                    for table_name in (processor.get_not_deleted("schema_2"))
+                )
+            )
+
+            self.assertTrue(
+                all(
+                    table_name == "table_1"
+                    for (_, table_name) in (processor.get_deleted("schema_2"))
                 )
             )
 
@@ -426,10 +440,14 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             self.assertTrue(
                 all(
                     table_name in ["table_1", "table_2", "table_4"]
-                    for table_name in (
-                        processor.get_deleted("schema_3")
-                        + processor.get_not_deleted("schema_3")
-                    )
+                    for table_name in (processor.get_not_deleted("schema_3"))
+                )
+            )
+
+            self.assertTrue(
+                all(
+                    table_name in ["table_1", "table_2", "table_4"]
+                    for (_, table_name) in (processor.get_deleted("schema_3"))
                 )
             )
 
@@ -445,9 +463,13 @@ class RedshiftIncrementalTableProcessorTest(TestCase):
             self.assertTrue(
                 all(
                     table_name in ["table_1", "table_2"]
-                    for table_name in (
-                        processor.get_deleted("default_schema")
-                        + processor.get_not_deleted("default_schema")
-                    )
+                    for table_name in (processor.get_not_deleted("default_schema"))
+                )
+            )
+
+            self.assertTrue(
+                all(
+                    table_name in ["table_1", "table_2"]
+                    for (_, table_name) in (processor.get_deleted("default_schema"))
                 )
             )

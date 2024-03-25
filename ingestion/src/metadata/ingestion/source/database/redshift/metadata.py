@@ -16,7 +16,7 @@ import re
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from sqlalchemy import inspect, sql
+from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
@@ -89,6 +89,10 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureMixin,
 )
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
@@ -131,7 +135,7 @@ class RedshiftSource(
         super().__init__(config, metadata)
         self.partition_details = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
-        self.context.deleted_tables = []
+        self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
         self.incremental_table_processor: Optional[
             RedshiftIncrementalTableProcessor
@@ -164,7 +168,7 @@ class RedshiftSource(
         """
         try:
             self.partition_details.clear()
-            results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+            results = self.connection.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
             for row in results:
                 self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
         except Exception as exe:
@@ -192,19 +196,6 @@ class RedshiftSource(
                     schema_name=schema_name
                 )
             ]
-            self.context.deleted_tables.extend(
-                fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                )
-                for table_name in self.incremental_table_processor.get_deleted(
-                    schema_name=schema_name
-                )
-            )
 
         return [
             TableNameAndType(
@@ -237,9 +228,6 @@ class RedshiftSource(
                 )
             ]
 
-            # Already done on `query_table_names_and_types`. Need to find a better way to guarantee we are only doing it once. (or use a Set :think:)
-            # self.context.deleted_tables.extend(self.incremental_table_processor.get_deleted(schema_name=schema_name))
-
         return [
             TableNameAndType(name=table_name, type_=TableType.View)
             for table_name in result
@@ -254,6 +242,12 @@ class RedshiftSource(
         yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
     def _set_incremental_table_processor(self, database: str):
+        """Prepares the needed data for doing incremental metadata extration for a given database.
+
+        1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
+        2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
+        3. Sets the deleted tables in the context
+        """
         if self.incremental.enabled:
             self.incremental_table_processor = RedshiftIncrementalTableProcessor.create(
                 self.connection, self.inspector.default_schema_name
@@ -263,9 +257,20 @@ class RedshiftSource(
                 database=database, start_date=self.incremental.start_datetime_utc
             )
 
+            self.context.get_global().deleted_tables.extend(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                for schema_name, table_name in self.incremental_table_processor.get_deleted()
+            )
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            self.inspector = inspect(self.engine)
             self.get_partition_details()
 
             self._set_incremental_table_processor(
@@ -278,7 +283,7 @@ class RedshiftSource(
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
@@ -314,6 +319,7 @@ class RedshiftSource(
             logger.warning(err)
         return None
 
+    @calculate_execution_time()
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
@@ -359,15 +365,16 @@ class RedshiftSource(
     def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
+            results = self.connection.execute(
                 REDSHIFT_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.database_schema,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
                 stored_procedure = RedshiftStoredProcedure.parse_obj(dict(row))
                 yield stored_procedure
 
+    @calculate_execution_time_generator()
     def yield_stored_procedure(
         self, stored_procedure: RedshiftStoredProcedure
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
@@ -383,9 +390,9 @@ class RedshiftSource(
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
             )
             yield Either(right=stored_procedure_request)
@@ -409,7 +416,7 @@ class RedshiftSource(
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
-            database_name=self.context.database,
+            database_name=self.context.get().database,
         )
 
         queries_dict = self.procedure_queries_dict(
@@ -423,19 +430,19 @@ class RedshiftSource(
         Use the current inspector to mark tables as deleted
         """
         if self.incremental.enabled:
-            if not self.context.__dict__.get("database"):
+            if not self.context.get().__dict__.get("database"):
                 raise ValueError(
                     "No Database found in the context. We cannot run the table deletion."
                 )
 
             if self.source_config.markDeletedTables:
                 logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
                 )
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.deleted_tables,
+                    entity_names=self.context.get_global().deleted_tables,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                 )
         else:

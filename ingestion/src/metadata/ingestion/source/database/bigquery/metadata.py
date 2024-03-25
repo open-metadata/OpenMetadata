@@ -96,7 +96,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 )
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -236,7 +236,7 @@ class BigquerySource(
         self.test_connection = self._test_connection
         self.test_connection()
 
-        self.context.deleted_tables = []
+        self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
         self.incremental_table_processor: Optional[
             BigQueryIncrementalTableProcessor
@@ -303,30 +303,11 @@ class BigquerySource(
         )
 
         if self.incremental.enabled:
-            self.incremental_table_processor.set_changed_tables_map(
-                project=self.client.project,
-                dataset=schema_name,
-                start_date=self.incremental.start_datetime_utc,
-            )
-
-            self.context.deleted_tables.extend(
-                [
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=schema_name,
-                        table_name=table_name,
-                    )
-                    for table_name in self.incremental_table_processor.get_deleted()
-                ]
-            )
-
             table_names_and_types = [
                 (table_name, table_type)
                 for table_name, table_type in table_names_and_types
-                if table_name in self.incremental_table_processor.get_not_deleted()
+                if table_name
+                in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
         return [
@@ -352,33 +333,11 @@ class BigquerySource(
         view_names = self.inspector.get_view_names(schema_name) or []
 
         if self.incremental.enabled:
-            # NOTE: This is commented since it's already done within `query_table_names_and_types`
-            # that gets called before. We should find a better way of guaranteeing this
-
-            # self.incremental_table_processor.set_changed_tables_map(
-            #     project=self.client.project,
-            #     dataset=schema_name,
-            #     start_date=self.incremental.start_datetime_utc
-            # )
-            #
-            # self.context.deleted_tables.extend(
-            #     [
-            #         fqn.build(
-            #             metadata=self.metadata,
-            #             entity_type=Table,
-            #             service_name=self.context.database_service,
-            #             database_name=self.context.database,
-            #             schema_name=schema_name,
-            #             table_name=table_name
-            #         )
-            #         for table_name in self.incremental_table_processor.get_deleted()
-            #     ]
-            # )
-
             view_names = [
                 view_name
                 for view_name in view_names
-                if view_name in self.incremental_table_processor.get_not_deleted()
+                if view_name
+                in self.incremental_table_processor.get_not_deleted(schema_name)
             ]
 
         return [
@@ -407,7 +366,7 @@ class BigquerySource(
                         include_tags=self.source_config.includeTags,
                     )
             # Fetching policy tags on the column level
-            list_project_ids = [self.context.database]
+            list_project_ids = [self.context.get().database]
             if not self.service_connection.taxonomyProjectID:
                 self.service_connection.taxonomyProjectID = []
             list_project_ids.extend(self.service_connection.taxonomyProjectID)
@@ -456,6 +415,59 @@ class BigquerySource(
             )
         return ""
 
+    def _prepare_schema_incremental_data(self, schema_name: str):
+        """Prepares the data for Incremental Extraction.
+
+        1. Queries Cloud Logging for the changes
+        2. Sets the table map with the changes within the BigQueryIncrementalTableProcessor
+        3. Adds the Deleted Tables to the context
+        """
+        self.incremental_table_processor.set_changed_tables_map(
+            project=self.client.project,
+            dataset=schema_name,
+            start_date=self.incremental.start_datetime_utc,
+        )
+
+        self.context.get_global().deleted_tables.extend(
+            [
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                for table_name in self.incremental_table_processor.get_deleted(
+                    schema_name
+                )
+            ]
+        )
+
+    def _get_filtered_schema_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
+        for schema_name in self.get_raw_database_schema_names():
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            if filter_by_schema(
+                self.source_config.schemaFilterPattern,
+                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
+            ):
+                if add_to_status:
+                    self.status.filter(schema_fqn, "Schema Filtered Out")
+                continue
+
+            if self.incremental.enabled:
+                self._prepare_schema_incremental_data(schema_name)
+
+            yield schema_fqn if return_fqn else schema_name
+
     def yield_database_schema(
         self, schema_name: str
     ) -> Iterable[CreateDatabaseSchemaRequest]:
@@ -469,12 +481,12 @@ class BigquerySource(
             database=fqn.build(
                 metadata=self.metadata,
                 entity_type=Database,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
             ),
             description=self.get_schema_description(schema_name),
             sourceUrl=self.get_source_url(
-                database_name=self.context.database,
+                database_name=self.context.get().database,
                 schema_name=schema_name,
             ),
         )
@@ -493,8 +505,8 @@ class BigquerySource(
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
-        schema_name = self.context.database_schema
-        database = self.context.database
+        schema_name = self.context.get().database_schema
+        database = self.context.get().database
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         return self.client.get_table(bq_table_fqn)
 
@@ -553,7 +565,8 @@ class BigquerySource(
             self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
         self.client = inspector_details.client
         self.engine = inspector_details.engine
-        self.inspector = inspector_details.inspector
+        thread_id = self.context.get_current_thread_id()
+        self._inspector_map[thread_id] = inspector_details.inspector
 
     def get_configured_database(self) -> Optional[str]:
         return None
@@ -566,7 +579,7 @@ class BigquerySource(
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
-                service_name=self.context.database_service,
+                service_name=self.context.get().database_service,
                 database_name=project_id,
             )
             if filter_by_database(
@@ -594,7 +607,7 @@ class BigquerySource(
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    fqn._build(self.context.database, schema_name, table_name)
+                    fqn._build(self.context.get().database, schema_name, table_name)
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -611,7 +624,7 @@ class BigquerySource(
         """
         check if the table is partitioned table and return the partition details
         """
-        database = self.context.database
+        database = self.context.get().database
         table = self.client.get_table(fqn._build(database, schema_name, table_name))
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
@@ -728,8 +741,8 @@ class BigquerySource(
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 BIGQUERY_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
@@ -753,14 +766,14 @@ class BigquerySource(
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
                     __root__=self.get_stored_procedure_url(
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         # Follow the same building strategy as tables
                         table_name=stored_procedure.name,
                     )
@@ -798,19 +811,19 @@ class BigquerySource(
         Use the current inspector to mark tables as deleted
         """
         if self.incremental.enabled:
-            if not self.context.__dict__.get("database"):
+            if not self.context.get().__dict__.get("database"):
                 raise ValueError(
                     "No Database found in the context. We cannot run the table deletion."
                 )
 
             if self.source_config.markDeletedTables:
                 logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
                 )
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.deleted_tables,
+                    entity_names=self.context.get_global().deleted_tables,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                 )
         else:

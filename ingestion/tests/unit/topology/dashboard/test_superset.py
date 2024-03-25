@@ -255,7 +255,7 @@ class SupersetUnitTest(TestCase):
 
             self.assertEqual(type(self.superset_api), SupersetAPISource)
 
-            self.superset_api.context.__dict__[
+            self.superset_api.context.get().__dict__[
                 "dashboard_service"
             ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
 
@@ -278,7 +278,7 @@ class SupersetUnitTest(TestCase):
 
             self.assertEqual(type(self.superset_db), SupersetDBSource)
 
-            self.superset_db.context.__dict__[
+            self.superset_db.context.get().__dict__[
                 "dashboard_service"
             ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
 
@@ -352,7 +352,7 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             SupersetAPISource, "_get_user_by_email", return_value=EXPECTED_USER
         ):
-            self.superset_api.context.__dict__["charts"] = [
+            self.superset_api.context.get().__dict__["charts"] = [
                 chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
             ]
             dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
@@ -362,7 +362,7 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             SupersetDBSource, "_get_user_by_email", return_value=EXPECTED_USER
         ):
-            self.superset_db.context.__dict__["charts"] = [
+            self.superset_db.context.get().__dict__["charts"] = [
                 chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
             ]
             dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right

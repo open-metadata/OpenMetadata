@@ -98,7 +98,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
         yield from self.client.project_ids()
 
     def get_schema_name_list(self) -> List[str]:
-        project_id = self.context.database
+        project_id = self.context.get().database
         try:
             # the first element is a list of instances
             # the second element is another collection (seems empty) and I do not know what is its purpose
@@ -115,7 +115,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             raise
 
     def get_table_name_list(self, schema_name: str) -> List[str]:
-        project_id = self.context.database
+        project_id = self.context.get().database
         try:
             instance = self._get_instance(project_id, schema_name)
             if instance is None:
@@ -148,7 +148,7 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
     def get_table_columns_dict(
         self, schema_name: str, table_name: str
     ) -> Union[List[Dict], Dict]:
-        project_id = self.context.database
+        project_id = self.context.get().database
         try:
             table = self._get_table(project_id, schema_name, table_name)
             if table is None:

@@ -39,7 +39,7 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -100,7 +100,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: MlModelConnection.__fields__["config"].type_
 
     topology = MlModelServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     mlmodel_source_state: Set = set()
 
     def __init__(
@@ -179,7 +179,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
                 mark_deleted_entity=self.source_config.markDeletedMlModels,
-                params={"service": self.context.mlmodel_service},
+                params={"service": self.context.get().mlmodel_service},
             )
 
     def register_record(self, mlmodel_request: CreateMlModelRequest) -> None:

@@ -144,7 +144,7 @@ class LookerUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.looker.context.__dict__[
+        self.looker.context.get().__dict__[
             "dashboard_service"
         ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
 
@@ -279,7 +279,7 @@ class LookerUnitTest(TestCase):
                 description="description",
                 charts=[],
                 sourceUrl="https://my-looker.com/dashboards/1",
-                service=self.looker.context.dashboard_service,
+                service=self.looker.context.get().dashboard_service,
                 owner=None,
             )
 
@@ -374,7 +374,7 @@ class LookerUnitTest(TestCase):
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
             sourceUrl="https://my-looker.com/hello",
-            service=self.looker.context.dashboard_service,
+            service=self.looker.context.get().dashboard_service,
         )
 
         self.assertEqual(
@@ -397,7 +397,7 @@ class LookerUnitTest(TestCase):
         Validate the logic for existing or new usage
         """
 
-        self.looker.context.__dict__["dashboard"] = "dashboard_name"
+        self.looker.context.get().__dict__["dashboard"] = "dashboard_name"
         MOCK_LOOKER_DASHBOARD.view_count = 10
 
         # Start checking dashboard without usage

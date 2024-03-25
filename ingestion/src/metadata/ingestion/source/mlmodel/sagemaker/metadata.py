@@ -138,7 +138,7 @@ class SagemakerSource(MlModelServiceSource):
                 name=model.name,
                 algorithm=self._get_algorithm(),  # Setting this to a constant
                 mlStore=self._get_ml_store(model.name),
-                service=self.context.mlmodel_service,
+                service=self.context.get().mlmodel_service,
             )
             yield Either(right=mlmodel_request)
             self.register_record(mlmodel_request=mlmodel_request)

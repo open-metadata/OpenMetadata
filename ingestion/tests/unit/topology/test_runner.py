@@ -23,7 +23,7 @@ from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -68,12 +68,13 @@ class MockTopology(ServiceTopology):
                 context="tables",
             )
         ],
+        threads=True,
     )
 
 
 class MockSource(TopologyRunnerMixin):
     topology = MockTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
 
     @staticmethod
     def get_schemas():
@@ -119,7 +120,70 @@ class TopologyRunnerTest(TestCase):
 
     def test_node_and_stage(self):
         """The step behaves properly"""
-        processed = list(self.source._iter())
+        self.source.context = TopologyContextManager(self.source.topology)
+        self.source.context.set_threads(0)
+
+        with patch(
+            "metadata.ingestion.models.topology.TopologyContextManager.pop",
+            return_value=None,
+        ):
+            processed = list(self.source._iter())
+
+        print(self.source.context.contexts.keys())
+        self.assertEqual(len(self.source.context.contexts.keys()), 1)
+
+        self.assertEqual(
+            # check the post process being at the end
+            [
+                either.right if hasattr(either, "right") else either
+                for either in processed
+            ],
+            [
+                MockSchema(
+                    name="schema1", sourceHash="da1c4385f20477a716b0423317016e43"
+                ),
+                MockTable(
+                    name="table1",
+                    sourceHash="42373213656fb27d2f0aeb0abf81b5b2",
+                    columns=["c1", "c2"],
+                ),
+                MockTable(
+                    name="table2",
+                    sourceHash="c7d6b4802530b8ca54a48c76af56b7b4",
+                    columns=["c1", "c2"],
+                ),
+                MockSchema(
+                    name="schema2", sourceHash="31db3d644ba1bd6024c149dd3e88abe9"
+                ),
+                MockTable(
+                    name="table1",
+                    sourceHash="42373213656fb27d2f0aeb0abf81b5b2",
+                    columns=["c1", "c2"],
+                ),
+                MockTable(
+                    name="table2",
+                    sourceHash="c7d6b4802530b8ca54a48c76af56b7b4",
+                    columns=["c1", "c2"],
+                ),
+                "hello",
+            ],
+        )
+
+    def test_multithread_node_and_stage(self):
+        """The step behaves properly"""
+        self.source.context = TopologyContextManager(self.source.topology)
+        self.source.context.set_threads(2)
+        # Avoid removing the ThreadIds from the TopologyContextManager dict.
+        with patch(
+            "metadata.ingestion.models.topology.TopologyContextManager.pop",
+            return_value=None,
+        ):
+            processed = list(self.source._iter())
+
+        # Since the threads can be reused or some other ID generated we are unsure the amount of contexts we
+        # will get.
+        self.assertGreater(len(self.source.context.contexts.keys()), 1)
+
         self.assertEqual(
             # check the post process being at the end
             [

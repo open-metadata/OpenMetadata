@@ -159,12 +159,12 @@ class RedashSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 sourceUrl=self.get_dashboard_url(dashboard_details),
                 tags=get_tag_labels(
                     metadata=self.metadata,
@@ -271,7 +271,7 @@ class RedashSource(DashboardServiceSource):
                         chartType=get_standard_chart_type(
                             visualization["type"] if visualization else ""
                         ),
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         sourceUrl=self.get_dashboard_url(dashboard_details),
                         description=visualization["description"]
                         if visualization

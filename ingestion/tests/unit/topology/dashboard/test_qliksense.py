@@ -151,15 +151,18 @@ class QlikSenseUnitTest(TestCase):
                 mock_qliksense_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
-            self.qliksense.context.__dict__[
+            self.qliksense.context.get().__dict__[
                 "dashboard_service"
             ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+            print(self.qliksense.topology)
+            print(self.qliksense.context.get().__dict__)
 
     @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
         results = self.qliksense.yield_dashboard(MOCK_DASHBOARD_DETAILS)
         for result in results:
+            print(self.qliksense.context.get().__dict__)
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])

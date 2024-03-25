@@ -12,7 +12,7 @@
 Redshift models
 """
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -64,13 +64,29 @@ class RedshiftTableMap(BaseModel):
             if table.name not in self.table_map[schema]:
                 self.table_map[schema][table.name] = table
 
-    def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
+    def get_deleted(
+        self, schema_name: Optional[SchemaName] = None
+    ) -> List[Tuple[SchemaName, TableName]]:
         """Returns all deleted table names for a given schema."""
-        return [
-            table.name
-            for table in self.table_map.get(schema_name, {}).values()
-            if table.deleted
-        ]
+        if schema_name:
+            return [
+                (schema_name, table.name)
+                for table in self.table_map.get(schema_name, {}).values()
+                if table.deleted
+            ]
+
+        deleted_tables = []
+
+        for schema_name in self.table_map:
+            deleted_tables.extend(
+                [
+                    (schema_name, table.name)
+                    for table in self.table_map.get(schema_name, {}).values()
+                    if table.deleted
+                ]
+            )
+
+        return deleted_tables
 
     def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
         """Returns all not deleted table names for a given schema."""

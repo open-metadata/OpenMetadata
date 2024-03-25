@@ -125,8 +125,8 @@ class FivetranUnitTest(TestCase):
             mock_fivetran_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.fivetran.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.fivetran.context.__dict__[
+        self.fivetran.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.fivetran.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.client = fivetran_client.return_value

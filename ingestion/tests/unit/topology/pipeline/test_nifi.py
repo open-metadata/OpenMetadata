@@ -207,8 +207,8 @@ class NifiUnitTest(TestCase):
             mock_nifi_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.nifi.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.nifi.context.__dict__[
+        self.nifi.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.nifi.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.__root__
 
