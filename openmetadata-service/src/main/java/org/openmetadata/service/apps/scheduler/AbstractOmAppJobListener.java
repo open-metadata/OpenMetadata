@@ -1,12 +1,13 @@
 package org.openmetadata.service.apps.scheduler;
 
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_ID_KEY;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -42,7 +43,6 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     try {
       App jobApp = collectionDAO.applicationDAO().findEntityById(appID);
       ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
-      AppRunRecord runRecord;
       JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
       if (jobExecutionContext.isRecovering()) {
         runRecord =
@@ -69,7 +69,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       runRecord =
           new AppRunRecord()
               .withAppId(appID)
-              .withRunType(AppRunType.Scheduled)
+              .withRunType(runType)
               .withStatus(AppRunRecord.Status.FAILED)
               .withStartTime(jobStartTime)
               .withTimestamp(jobStartTime)
@@ -139,7 +139,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
 
       // Push Updates to the Database
-      UUID appId = (UUID) context.getJobDetail().getJobDataMap().get("appID");
+      UUID appId = (UUID) context.getJobDetail().getJobDataMap().get(APP_ID_KEY);
       updateStatus(appId, runRecord, update);
     }
   }
