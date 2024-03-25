@@ -40,40 +40,40 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
     boolean update = false;
     try {
-    App jobApp = collectionDAO.applicationDAO().findEntityById(appID);
-    ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
-    AppRunRecord runRecord;
-    JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
-    if (jobExecutionContext.isRecovering()) {
-      runRecord =
-          JsonUtils.readValue(
-              collectionDAO.appExtensionTimeSeriesDao().getLatestAppRun(jobApp.getId()),
-              AppRunRecord.class);
-      update = true;
-    } else {
+      App jobApp = collectionDAO.applicationDAO().findEntityById(appID);
+      ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+      AppRunRecord runRecord;
+      JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
+      if (jobExecutionContext.isRecovering()) {
+        runRecord =
+            JsonUtils.readValue(
+                collectionDAO.appExtensionTimeSeriesDao().getLatestAppRun(jobApp.getId()),
+                AppRunRecord.class);
+        update = true;
+      } else {
+        runRecord =
+            new AppRunRecord()
+                .withAppId(jobApp.getId())
+                .withStartTime(jobStartTime)
+                .withTimestamp(jobStartTime)
+                .withRunType(runType)
+                .withStatus(AppRunRecord.Status.RUNNING)
+                .withScheduleInfo(jobApp.getAppSchedule());
+      }
+      // Put the Context in the Job Data Map
+      dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
+    } catch (Exception ex) {
+      Map<String, Object> failure = new HashMap<>();
+      failure.put("message", "TriggerFailed:" + ex.getMessage());
+      failure.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
       runRecord =
           new AppRunRecord()
-              .withAppId(jobApp.getId())
+              .withAppId(appID)
+              .withRunType(AppRunType.Scheduled)
+              .withStatus(AppRunRecord.Status.FAILED)
               .withStartTime(jobStartTime)
               .withTimestamp(jobStartTime)
-              .withRunType(runType)
-              .withStatus(AppRunRecord.Status.RUNNING)
-              .withScheduleInfo(jobApp.getAppSchedule());
-    }
-    // Put the Context in the Job Data Map
-    dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
-    } catch (Exception ex) {
-        Map<String, Object> failure = new HashMap<>();
-        failure.put("message", "TriggerFailed:" + ex.getMessage());
-        failure.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-        runRecord =
-                new AppRunRecord()
-                        .withAppId(appID)
-                        .withRunType(AppRunType.Scheduled)
-                        .withStatus(AppRunRecord.Status.FAILED)
-                        .withStartTime(jobStartTime)
-                        .withTimestamp(jobStartTime)
-                        .withFailureContext(new FailureContext().withAdditionalProperty("failure", failure));
+              .withFailureContext(new FailureContext().withAdditionalProperty("failure", failure));
     }
     // Insert new Record Run
     pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
