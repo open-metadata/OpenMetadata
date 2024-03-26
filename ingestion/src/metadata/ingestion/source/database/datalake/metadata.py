@@ -409,7 +409,7 @@ class DatalakeSource(DatabaseServiceSource):
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None
-            data_frame = fetch_dataframe(
+            data_frame, raw_data = fetch_dataframe(
                 config_source=self.config_source,
                 client=self.client,
                 file_fqn=DatalakeTableSchemaWrapper(
@@ -417,10 +417,11 @@ class DatalakeSource(DatabaseServiceSource):
                     bucket_name=schema_name,
                     file_extension=table_extension,
                 ),
+                fetch_raw_data=True,
             )
             if data_frame:
                 column_parser = DataFrameColumnParser.create(
-                    data_frame[0], table_extension
+                    data_frame[0], table_extension, raw_data=raw_data
                 )
                 columns = column_parser.get_columns()
             else:
