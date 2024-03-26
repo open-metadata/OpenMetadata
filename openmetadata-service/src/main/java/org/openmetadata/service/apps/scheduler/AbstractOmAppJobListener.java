@@ -1,6 +1,6 @@
 package org.openmetadata.service.apps.scheduler;
 
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_ID_KEY;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobDataMap;
@@ -34,36 +35,48 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
-    String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
-    App jobApp =
-        JsonUtils.readOrConvertValue(
-            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
-    JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
-    long jobStartTime = System.currentTimeMillis();
     AppRunRecord runRecord;
+    long jobStartTime = System.currentTimeMillis();
+    UUID appID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+    String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
     boolean update = false;
-    if (jobExecutionContext.isRecovering()) {
-      runRecord =
-          JsonUtils.readValue(
-              collectionDAO.appExtensionTimeSeriesDao().getLatestAppRun(jobApp.getId()),
-              AppRunRecord.class);
-      update = true;
-    } else {
+    try {
+      App jobApp = collectionDAO.applicationDAO().findEntityById(appID);
+      ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+      JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
+      if (jobExecutionContext.isRecovering()) {
+        runRecord =
+            JsonUtils.readValue(
+                collectionDAO.appExtensionTimeSeriesDao().getLatestAppRun(jobApp.getId()),
+                AppRunRecord.class);
+        update = true;
+      } else {
+        runRecord =
+            new AppRunRecord()
+                .withAppId(jobApp.getId())
+                .withStartTime(jobStartTime)
+                .withTimestamp(jobStartTime)
+                .withRunType(runType)
+                .withStatus(AppRunRecord.Status.RUNNING)
+                .withScheduleInfo(jobApp.getAppSchedule());
+      }
+      // Put the Context in the Job Data Map
+      dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
+    } catch (Exception ex) {
+      Map<String, Object> failure = new HashMap<>();
+      failure.put("message", "TriggerFailed:" + ex.getMessage());
+      failure.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
       runRecord =
           new AppRunRecord()
-              .withAppId(jobApp.getId())
+              .withAppId(appID)
+              .withRunType(runType)
+              .withStatus(AppRunRecord.Status.FAILED)
               .withStartTime(jobStartTime)
               .withTimestamp(jobStartTime)
-              .withRunType(runType)
-              .withStatus(AppRunRecord.Status.RUNNING)
-              .withScheduleInfo(jobApp.getAppSchedule());
+              .withFailureContext(new FailureContext().withAdditionalProperty("failure", failure));
     }
-    // Put the Context in the Job Data Map
-    dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
-
     // Insert new Record Run
     pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
-
     this.doJobToBeExecuted(jobExecutionContext);
   }
 
@@ -126,10 +139,8 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
 
       // Push Updates to the Database
-      App jobApp =
-          JsonUtils.readOrConvertValue(
-              context.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
-      updateStatus(jobApp.getId(), runRecord, update);
+      UUID appId = (UUID) context.getJobDetail().getJobDataMap().get(APP_ID_KEY);
+      updateStatus(appId, runRecord, update);
     }
   }
 
