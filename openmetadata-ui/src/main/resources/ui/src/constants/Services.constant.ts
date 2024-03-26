@@ -390,6 +390,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spark,
   PipelineServiceType.OpenLineage,
   DashboardServiceType.QlikSense,
+  DashboardServiceType.QlikCloud,
   DatabaseServiceType.Couchbase,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
