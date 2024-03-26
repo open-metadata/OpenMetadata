@@ -242,8 +242,8 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: i18next.t('label.preferences'),
-      key: GlobalSettingsMenuCategory.OPEN_METADATA,
+      category: i18next.t('label.preferences-plural'),
+      key: GlobalSettingsMenuCategory.PREFERENCES,
       icon: OpenMetadataIcon,
       description: i18next.t('message.customize-open-metadata-description'),
       items: [
@@ -255,21 +255,21 @@ export const getGlobalSettingsMenuWithPermission = (
             'message.page-sub-header-for-customize-landing-page'
           ),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
           icon: CustomDashboardLogoIcon,
         },
         {
           label: i18next.t('label.email'),
           description: i18next.t('message.email-configuration-message'),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.EMAIL}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
           icon: EmailIcon,
         },
         {
           label: i18next.t('label.custom-logo'),
           description: i18next.t('message.custom-logo-configuration-message'),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.CUSTOM_LOGO}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOM_LOGO}`,
           icon: CustomLogoIcon,
         },
         {
@@ -278,7 +278,7 @@ export const getGlobalSettingsMenuWithPermission = (
             'message.page-sub-header-for-login-configuration'
           ),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
           icon: LoginIcon,
         },
         {
@@ -287,7 +287,7 @@ export const getGlobalSettingsMenuWithPermission = (
             'message.page-sub-header-for-om-health-configuration'
           ),
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.OPEN_METADATA}.${GlobalSettingOptions.OM_HEALTH}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_HEALTH}`,
           icon: LoginIcon,
         },
       ],
@@ -468,9 +468,9 @@ export const settingCategories = {
     name: i18next.t('label.access-control'),
     url: GlobalSettingsMenuCategory.ACCESS,
   },
-  [GlobalSettingsMenuCategory.OPEN_METADATA]: {
-    name: i18next.t('label.open-metadata'),
-    url: GlobalSettingsMenuCategory.OPEN_METADATA,
+  [GlobalSettingsMenuCategory.PREFERENCES]: {
+    name: i18next.t('label.preferences-plural'),
+    url: GlobalSettingsMenuCategory.PREFERENCES,
   },
   [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
     name: i18next.t('label.custom-property-plural'),

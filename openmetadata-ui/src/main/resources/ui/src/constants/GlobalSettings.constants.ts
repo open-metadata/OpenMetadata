@@ -17,7 +17,7 @@ export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   NOTIFICATIONS = 'notifications',
   CUSTOM_PROPERTIES = 'customProperties',
-  OPEN_METADATA = 'openMetadata',
+  PREFERENCES = 'preferences',
   MEMBERS = 'members',
   SERVICES = 'services',
   BOTS = 'bots',

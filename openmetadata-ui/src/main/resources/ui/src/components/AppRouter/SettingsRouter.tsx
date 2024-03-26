@@ -281,7 +281,7 @@ const SettingsRouter = () => {
         component={EmailConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         )}
       />
@@ -290,7 +290,7 @@ const SettingsRouter = () => {
         component={CustomLogoConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOM_LOGO
         )}
       />
@@ -299,7 +299,7 @@ const SettingsRouter = () => {
         component={LoginConfigurationPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
@@ -307,7 +307,7 @@ const SettingsRouter = () => {
         exact
         component={CustomPageSettings}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
         )}
       />
@@ -341,7 +341,7 @@ const SettingsRouter = () => {
         component={OmHealthPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_HEALTH
         )}
       />
