@@ -89,6 +89,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     long timeoutValue = 30;
     long startTime = System.currentTimeMillis();
     while (latestRun.getStatus().equals(AppRunRecord.Status.RUNNING)) {
+      assert !latestRun.getStatus().equals(AppRunRecord.Status.FAILED);
       if (System.currentTimeMillis() - startTime > timeout.toMillis(timeoutValue)) {
         throw new AssertionError(
             String.format("Expected the app to succeed within %d %s", timeoutValue, timeout));
