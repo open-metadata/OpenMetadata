@@ -62,7 +62,7 @@ describe(
 
       // Verify added description
       cy.get(
-        '[data-testid="description"] > [data-testid="viewer-container"]'
+        '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
       ).should('contain', 'description');
     });
 
