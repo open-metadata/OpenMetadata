@@ -37,7 +37,21 @@ describe(
   'Glossary and glossary term version pages should work properly',
   { tags: 'Glossary' },
   () => {
-    const data = {};
+    const data = {
+      user: {
+        id: '',
+        displayName: '',
+      },
+      glossary: {
+        id: '',
+      },
+      glossaryTerm1: {
+        id: '',
+      },
+      glossaryTerm2: {
+        id: '',
+      },
+    };
 
     before(() => {
       cy.login();

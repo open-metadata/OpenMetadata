@@ -150,10 +150,6 @@ export const OBSERVABILITY_CREATION_DETAILS = {
     ],
     actions: [
       {
-        name: 'Get Schema Changes',
-        exclude: true,
-      },
-      {
         name: 'Get Test Case Status Updates',
         inputs: [
           {
@@ -207,10 +203,6 @@ export const OBSERVABILITY_CREATION_DETAILS = {
       },
     ],
     actions: [
-      {
-        name: 'Get Schema Changes',
-        exclude: true,
-      },
       {
         name: 'Get Test Case Status Updates belonging to a Test Suite',
         inputs: [
