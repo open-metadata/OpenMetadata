@@ -298,15 +298,18 @@ class StorageUnitTest(TestCase):
     def test_extract_column_definitions(self):
         with patch(
             "metadata.ingestion.source.storage.storage_service.fetch_dataframe",
-            return_value=[
-                pd.DataFrame.from_dict(
-                    [
-                        {"transaction_id": 1, "transaction_value": 100},
-                        {"transaction_id": 2, "transaction_value": 200},
-                        {"transaction_id": 3, "transaction_value": 300},
-                    ]
-                )
-            ],
+            return_value=(
+                [
+                    pd.DataFrame.from_dict(
+                        [
+                            {"transaction_id": 1, "transaction_value": 100},
+                            {"transaction_id": 2, "transaction_value": 200},
+                            {"transaction_id": 3, "transaction_value": 300},
+                        ]
+                    )
+                ],
+                None,
+            ),
         ):
             Column.__eq__ = custom_column_compare
             self.assertListEqual(

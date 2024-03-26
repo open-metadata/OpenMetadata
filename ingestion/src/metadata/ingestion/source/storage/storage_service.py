@@ -260,7 +260,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata_entry: MetadataEntry,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
-        data_structure_details = fetch_dataframe(
+        data_structure_details, raw_data = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -269,10 +269,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 file_extension=SupportedTypes(metadata_entry.structureFormat),
                 separator=metadata_entry.separator,
             ),
+            fetch_raw_data=True,
         )
         columns = []
         column_parser = DataFrameColumnParser.create(
-            data_structure_details, SupportedTypes(metadata_entry.structureFormat)
+            data_structure_details,
+            SupportedTypes(metadata_entry.structureFormat),
+            raw_data=raw_data,
         )
         columns = column_parser.get_columns()
         return columns
