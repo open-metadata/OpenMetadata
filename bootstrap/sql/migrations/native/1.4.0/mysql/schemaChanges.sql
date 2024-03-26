@@ -67,12 +67,3 @@ ALTER TABLE user_entity ADD INDEX index_user_entity_deleted(nameHash, deleted);
 ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_index(appId);
 ALTER TABLE suggestions ADD INDEX index_suggestions_type(suggestionType);
 ALTER TABLE suggestions ADD INDEX index_suggestions_status(status);
-
--- Change scheduleType to scheduleTimeline
-UPDATE installed_apps
-SET json = JSON_INSERT(
-        JSON_REMOVE(json, '$.appSchedule.scheduleType'),
-        '$.appSchedule.scheduleTimeline',
-        JSON_EXTRACT(json, '$.appSchedule.scheduleType')
-    );
-delete from apps_extension_time_series;
