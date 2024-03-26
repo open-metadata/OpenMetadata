@@ -71,7 +71,7 @@ const EditLoginConfiguration = () => {
       {
         name: t('label.login-configuration'),
         url: getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         ),
       },

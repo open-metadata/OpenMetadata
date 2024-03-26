@@ -28,6 +28,7 @@ import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetric
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
@@ -1269,7 +1270,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EmailConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         )}
       />
@@ -1278,7 +1279,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={CustomLogoConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOM_LOGO
         )}
       />
@@ -1287,7 +1288,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={LoginConfigurationPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
@@ -1295,8 +1296,17 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={CustomPageSettings}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={OmHealthPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.OM_HEALTH
         )}
       />
 
@@ -1324,6 +1334,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
       />
+
       {RouteElements && <RouteElements />}
       <Route
         exact
