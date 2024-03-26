@@ -965,7 +965,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             TableData.class);
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      populateEntityFieldTags(Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
+      populateEntityFieldTags(
+          Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
       return maskSampleData(testCase.getFailedRowsSamples(), table, table.getColumns());
