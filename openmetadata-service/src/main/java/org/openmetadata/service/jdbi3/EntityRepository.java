@@ -1016,7 +1016,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
     }
-    throw new IOException("Limit should be greater than 0");
+    throw new IllegalArgumentException("Limit should be greater than 0");
   }
 
   @Transaction
