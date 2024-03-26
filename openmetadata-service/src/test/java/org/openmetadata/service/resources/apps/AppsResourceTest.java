@@ -90,7 +90,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     long startTime = System.currentTimeMillis();
     while (latestRun.getStatus().equals(AppRunRecord.Status.RUNNING)) {
       if (System.currentTimeMillis() - startTime > timeout.toMillis(timeoutValue)) {
-        throw new AssertionError(String.format("Expected the app to finish within %d %s", timeoutValue, timeout));
+        throw new AssertionError(
+            String.format("Expected the app to finish within %d %s", timeoutValue, timeout));
       }
       TimeUnit.MILLISECONDS.sleep(500);
       latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
