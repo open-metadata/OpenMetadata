@@ -8,7 +8,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_ID_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 
@@ -71,8 +71,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    UUID appID = (UUID) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_ID_KEY);
-    App app = collectionDAO.applicationDAO().findEntityById(appID);
+    String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
+    App app = collectionDAO.applicationDAO().findEntityByName(appName);
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     long scheduleTime = currentTime - 604800000L;
