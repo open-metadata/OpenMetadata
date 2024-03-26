@@ -111,7 +111,7 @@
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
-    "failedRowsSamples": {
+    "failedRowsSample": {
       "description": "Sample of failed rows for this test case.",
       "$ref": "../entity/data/table.json#/definitions/tableData"
     }
