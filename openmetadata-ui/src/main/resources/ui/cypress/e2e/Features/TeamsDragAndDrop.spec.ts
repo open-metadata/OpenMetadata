@@ -154,9 +154,9 @@ describe('Teams drag and drop should work properly', () => {
     confirmationDragAndDropTeam(teamNameGroup, 'Organization');
 
     // verify the team is moved under the table level
-    cy.get(`.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`).should(
-      'be.visible'
-    );
+    cy.get(`.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`)
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('Permanently deleting a team for drag and drop', () => {
