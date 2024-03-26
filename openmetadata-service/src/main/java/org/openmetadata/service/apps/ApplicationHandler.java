@@ -1,6 +1,8 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -10,10 +12,18 @@ import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.quartz.JobDataMap;
+import org.quartz.JobDetail;
+import org.quartz.JobKey;
+import org.quartz.SchedulerException;
 
 @Slf4j
 public class ApplicationHandler {
@@ -21,10 +31,12 @@ public class ApplicationHandler {
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
   private final AppsPrivateConfiguration privateConfiguration;
+  private final AppRepository appRepository;
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
     this.privateConfiguration = config.getAppsPrivateConfiguration();
+    this.appRepository = new AppRepository();
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -37,7 +49,7 @@ public class ApplicationHandler {
   /**
    * Load the apps' OM configuration and private parameters
    */
-  private void setAppRuntimeProperties(App app) {
+  public void setAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
 
@@ -93,7 +105,9 @@ public class ApplicationHandler {
     return resource;
   }
 
-  /** Load an App from its className and call its methods dynamically */
+  /**
+   * Load an App from its className and call its methods dynamically
+   */
   public void runMethodFromApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
@@ -111,5 +125,34 @@ public class ApplicationHandler {
     } catch (InvocationTargetException e) {
       throw new AppException(e.getTargetException().getMessage());
     }
+  }
+
+  public void migrateQuartzConfig(App application) throws SchedulerException {
+    JobDetail jobDetails =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+    if (jobDetails == null) {
+      return;
+    }
+    JobDataMap jobDataMap = jobDetails.getJobDataMap();
+    if (jobDataMap == null) {
+      return;
+    }
+    String appInfo = jobDataMap.getString(APP_INFO_KEY);
+    if (appInfo == null) {
+      return;
+    }
+    LOG.info("migrating app quartz configuration for {}", application.getName());
+    App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
+    updatedApp.setOpenMetadataServerConnection(null);
+    updatedApp.setPrivateConfiguration(null);
+    App currentApp = appRepository.getDao().findEntityById(application.getId());
+    EntityRepository<App>.EntityUpdater updater =
+        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
+    updater.update();
+    AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
+    AppScheduler.getInstance().addApplicationSchedule(updatedApp);
+    LOG.info("migrated app configuration for {}", application.getName());
   }
 }
