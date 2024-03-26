@@ -214,7 +214,7 @@ function CustomizeMyData({
   const handleCancel = useCallback(() => {
     history.push(
       getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
       )
     );

@@ -70,14 +70,14 @@ export const getSettingsPathFromPipelineType = (pipelineType: string) => {
   switch (pipelineType) {
     case PipelineType.DataInsight: {
       return getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.DATA_INSIGHT
       );
     }
     case PipelineType.ElasticSearchReindex:
     default: {
       return getSettingsPathWithFqn(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.SEARCH,
         ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE
       );

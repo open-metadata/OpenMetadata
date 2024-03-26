@@ -182,6 +182,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.login'),
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
+  OM_HEALTH: {
+    header: i18n.t('label.om-status'),
+    subHeader: i18n.t('message.page-sub-header-for-om-health-configuration'),
+  },
   NOTIFICATION: {
     header: i18n.t('label.notification-plural'),
     subHeader: i18n.t('message.alerts-description'),

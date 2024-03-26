@@ -17,7 +17,7 @@ export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   NOTIFICATIONS = 'notifications',
   CUSTOM_PROPERTIES = 'customProperties',
-  OPEN_METADATA = 'openMetadata',
+  PREFERENCES = 'preferences',
   MEMBERS = 'members',
   SERVICES = 'services',
   BOTS = 'bots',
@@ -67,6 +67,7 @@ export enum GlobalSettingOptions {
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
+  OM_HEALTH = 'om-health',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

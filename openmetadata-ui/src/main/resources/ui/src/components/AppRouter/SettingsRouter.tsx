@@ -37,6 +37,7 @@ import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailCo
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
+import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import AddPolicyPage from '../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage';
@@ -280,7 +281,7 @@ const SettingsRouter = () => {
         component={EmailConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         )}
       />
@@ -289,7 +290,7 @@ const SettingsRouter = () => {
         component={CustomLogoConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOM_LOGO
         )}
       />
@@ -298,7 +299,7 @@ const SettingsRouter = () => {
         component={LoginConfigurationPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
@@ -306,7 +307,7 @@ const SettingsRouter = () => {
         exact
         component={CustomPageSettings}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
         )}
       />
@@ -333,6 +334,15 @@ const SettingsRouter = () => {
         hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={OmHealthPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.OM_HEALTH
         )}
       />
     </Switch>

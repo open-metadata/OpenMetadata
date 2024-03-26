@@ -72,7 +72,7 @@ const EditCustomLogoConfig = () => {
       {
         name: t('label.custom-logo'),
         url: getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOM_LOGO
         ),
       },
