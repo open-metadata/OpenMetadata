@@ -9,10 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Pydantic definition for storing entities for patching 
+Pydantic definition for storing entities for patching
 """
 import json
-from typing import Dict, List, Optional
+from typing import Dict, Literal, List, Optional, Tuple
 
 import jsonpatch
 from pydantic import BaseModel
@@ -141,6 +141,79 @@ RESTRICT_UPDATE_LIST = ["description", "tags", "owner"]
 
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
 
+PathTuple = Tuple[str]
+DriftValue = int
+
+
+class JsonPatchPathIndexDriftMap:
+    def __init__(self):
+        self.path_index_drift_map: Dict[PathTuple, DriftValue] = {}
+
+    def items(self):
+        return self.path_index_drift_map.items()
+
+    def increase_by_one(self, path_tuple: PathTuple):
+        self.path_index_drift_map[path_tuple] = self.path_index_drift_map.setdefault(path_tuple, 0) + 1
+
+
+class JsonPatchRemoveOperationList:
+    def __init__(self):
+        self.operations: List[dict] = []
+
+    def add(self, path: str):
+        self.operations.append({
+            "op": PatchOperation.REMOVE.value,
+            "path": path
+        })
+
+    def list(self):
+        return self.operations
+
+
+class JsonPatchHelper:
+    def __init__(
+        self,
+        path_index_drift: JsonPatchPathIndexDriftMap,
+        remove_operations: JsonPatchRemoveOperationList
+    ):
+        self.path_index_drift = path_index_drift
+        self.remove_operations = remove_operations
+
+    @classmethod
+    def default(cls):
+        return cls(
+            path_index_drift=JsonPatchPathIndexDriftMap(),
+            remove_operations=JsonPatchRemoveOperationList()
+        )
+
+    def _update_path_as_list_based_on_drift(self, path_as_list: List[str]) -> List[str]:
+        for drifted_path, drift in self.path_index_drift.items():
+            if path_as_list[:len(drifted_path)] == list(drifted_path):
+                try:
+                    path_as_list[len(drifted_path)] = str(int(path_as_list[len(drifted_path)]) - drift)
+                except ValueError:
+                    # Not in a List. No need to fix any index
+                    continue
+
+        return path_as_list
+
+    def _update_path_index_drift_map(self, path_as_list: List[str]):
+        self.path_index_drift.increase_by_one(tuple(path_as_list[:-1]))
+
+    def _append_remove_operation_for_path(self, path_as_list: List[str]):
+        self.remove_operations.add("/".join(path_as_list))
+
+    def patch_replace_with_none(self, path: str):
+        path_as_list = self._update_path_as_list_based_on_drift(path.split("/"))
+
+        self._update_path_index_drift_map(path_as_list)
+        self._append_remove_operation_for_path(path_as_list)
+
+    def get_remove_operation_list(self):
+        return self.remove_operations.list()
+
+
+
 
 def build_patch(
     source: T,
@@ -200,8 +273,26 @@ def build_patch(
     if not patch:
         return None
 
-    # for a user editable fields like descriptions, tags we only want to support "add" operation in patch
-    # we will remove the other operations for replace, remove from here
+    # For a user editable fields like descriptions, tags we only want to support "add" operation in patch
+    # we will remove the other operations.
+    #
+    # For each replace to None we will add a Remove operation at the end.
+    # Example
+    # ----
+    # Initial:
+    # [
+    #   {"op": "replace", "path": "/path/1", "value": None},
+    #   {"op": "add",     "path": "/path/2", "value": "foo"},
+    # ]
+    #
+    # Final:
+    # [
+    #   {"op": "replace", "path": "/path/1", "value": None},
+    #   {"op": "add",     "path": "/path/2", "value": "foo"},
+    #   {"op": "remove",  "path": "/path/1"},
+    # ]
+    json_patch_helper = JsonPatchHelper.default()
+
     if restrict_update_fields:
         patch_ops_list = []
         for patch_ops in patch.patch or []:
@@ -212,10 +303,13 @@ def build_patch(
                     patch_ops.get("op") == PatchOperation.REPLACE.value
                     and patch_ops.get("value") is None
                 ):
-                    patch_ops["op"] = PatchOperation.REMOVE.value
-                    del patch_ops["value"]
+                    json_patch_helper.patch_replace_with_none(patch_ops["path"])
+
                 patch_ops_list.append(patch_ops)
+        patch_ops_list.extend(json_patch_helper.get_remove_operation_list())
+
         patch.patch = patch_ops_list
+
     return patch
 
 
