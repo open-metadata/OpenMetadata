@@ -101,7 +101,11 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         for index, df in enumerate(self.complex_dataframe_sample):
             if index == 0:
                 for col in self.table.columns:
-                    coltype = data_formats.get(col.dataType)
+                    coltype = [
+                        key
+                        for key, value in data_formats.items()
+                        if col.dataType == value
+                    ][0]
                     if coltype and col.dataType not in {DataType.JSON, DataType.ARRAY}:
                         coltype_mapping_df.append(coltype)
                     else:
