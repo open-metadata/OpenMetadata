@@ -36,6 +36,9 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
     TableProfilerConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -152,7 +155,7 @@ class ProfilerTest(TestCase):
     def setUpClass(cls, mock_get_connection, mocked_dfs):
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=cls.table_entity,
-            service_connection_config=None,
+            service_connection_config=DatalakeConnection(configSource={}),
             storage_config=None,
             ometa_client=None,
             thread_count=None,
@@ -304,7 +307,6 @@ class ProfilerTest(TestCase):
         default_profiler = DefaultProfiler(
             profiler_interface=self.datalake_profiler_interface,
         )
-
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
             if (

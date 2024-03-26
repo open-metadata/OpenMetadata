@@ -22,6 +22,9 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -141,7 +144,7 @@ class DatalakeSampleTest(TestCase):
         """
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=cls.table_entity,
-            service_connection_config=None,
+            service_connection_config=DatalakeConnection(configSource={}),
             storage_config=None,
             ometa_client=None,
             thread_count=None,
@@ -179,7 +182,7 @@ class DatalakeSampleTest(TestCase):
         """
         datalake_profiler_interface = PandasProfilerInterface(
             entity=self.table_entity,
-            service_connection_config=None,
+            service_connection_config=DatalakeConnection(configSource={}),
             storage_config=None,
             ometa_client=None,
             thread_count=None,
