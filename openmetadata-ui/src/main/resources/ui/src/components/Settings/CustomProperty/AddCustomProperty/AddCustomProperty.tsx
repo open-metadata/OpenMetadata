@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, map, omit, startCase } from 'lodash';
+import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import React, {
   FocusEvent,
   useCallback,
@@ -23,7 +23,11 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { SUPPORTED_FIELD_TYPES } from '../../../../constants/constants';
+import {
+  ENTITY_REFERENCE_OPTIONS,
+  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+  PROPERTY_TYPES_WITH_FORMAT,
+} from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
@@ -44,6 +48,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
+import { isValidDateFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
@@ -89,20 +94,34 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    const supportedTypes = propertyTypes.filter((property) =>
-      SUPPORTED_FIELD_TYPES.includes(property.name)
-    );
-
-    return map(supportedTypes, (type) => ({
+    return map(propertyTypes, (type) => ({
       key: type.name,
       label: startCase(type.displayName ?? type.name),
       value: type.id,
     }));
   }, [propertyTypes]);
 
-  const isEnumType =
-    propertyTypeOptions.find((option) => option.value === watchedPropertyType)
-      ?.key === 'enum';
+  const { hasEnumConfig, hasFormatConfig, hasEntityReferenceConfig } =
+    useMemo(() => {
+      const watchedOption = propertyTypeOptions.find(
+        (option) => option.value === watchedPropertyType
+      );
+      const watchedOptionKey = watchedOption?.key ?? '';
+
+      const hasEnumConfig = watchedOptionKey === 'enum';
+
+      const hasFormatConfig =
+        PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
+
+      const hasEntityReferenceConfig =
+        PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedOptionKey);
+
+      return {
+        hasEnumConfig,
+        hasFormatConfig,
+        hasEntityReferenceConfig,
+      };
+    }, [watchedPropertyType, propertyTypeOptions]);
 
   const fetchPropertyType = async () => {
     try {
@@ -135,13 +154,11 @@ const AddCustomProperty = () => {
      * In CustomProperty the propertyType is type of entity reference, however from the form we
      * get propertyType as string
      */
-    /**
-     * In CustomProperty the customPropertyConfig is type of CustomPropertyConfig, however from the
-     * form we get customPropertyConfig as string[]
-     */
-    data: Exclude<CustomProperty, 'propertyType' | 'customPropertyConfig'> & {
+    data: Exclude<CustomProperty, 'propertyType'> & {
       propertyType: string;
-      customPropertyConfig: string[];
+      enumConfig: string[];
+      formatConfig: string;
+      entityReferenceConfig: string[];
       multiSelect?: boolean;
     }
   ) => {
@@ -151,24 +168,47 @@ const AddCustomProperty = () => {
 
     try {
       setIsCreating(true);
-      await addPropertyToEntity(typeDetail?.id ?? '', {
-        ...omit(data, 'multiSelect'),
-        propertyType: {
-          id: data.propertyType,
-          type: 'type',
+      let customPropertyConfig;
+
+      if (hasEnumConfig) {
+        customPropertyConfig = {
+          config: {
+            multiSelect: Boolean(data?.multiSelect),
+            values: data.enumConfig,
+          },
+        };
+      }
+
+      if (hasFormatConfig) {
+        customPropertyConfig = {
+          config: data.formatConfig,
+        };
+      }
+
+      if (hasEntityReferenceConfig) {
+        customPropertyConfig = {
+          config: data.entityReferenceConfig,
+        };
+      }
+
+      const payload = omitBy(
+        {
+          ...omit(data, [
+            'multiSelect',
+            'formatConfig',
+            'entityReferenceConfig',
+            'enumConfig',
+          ]),
+          propertyType: {
+            id: data.propertyType,
+            type: 'type',
+          },
+          customPropertyConfig,
         },
-        // Only add customPropertyConfig if it is an enum type
-        ...(isEnumType
-          ? {
-              customPropertyConfig: {
-                config: {
-                  multiSelect: Boolean(data?.multiSelect),
-                  values: data.customPropertyConfig,
-                },
-              },
-            }
-          : {}),
-      });
+        isUndefined
+      ) as unknown as CustomProperty;
+
+      await addPropertyToEntity(typeDetail?.id ?? '', payload);
       history.goBack();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -216,6 +256,12 @@ const AddCustomProperty = () => {
         placeholder: `${t('label.select-field', {
           field: t('label.type'),
         })}`,
+        showSearch: true,
+        filterOption: (input: string, option: { label: string }) => {
+          return (option?.label ?? '')
+            .toLowerCase()
+            .includes(input.toLowerCase());
+        },
       },
     },
   ];
@@ -232,14 +278,14 @@ const AddCustomProperty = () => {
     },
   };
 
-  const customPropertyConfigTypeValueField: FieldProp = {
-    name: 'customPropertyConfig',
+  const enumConfigField: FieldProp = {
+    name: 'enumConfig',
     required: false,
     label: t('label.enum-value-plural'),
-    id: 'root/customPropertyConfig',
+    id: 'root/enumConfig',
     type: FieldTypes.SELECT,
     props: {
-      'data-testid': 'customPropertyConfig',
+      'data-testid': 'enumConfig',
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
     },
@@ -265,6 +311,50 @@ const AddCustomProperty = () => {
     formItemLayout: FormItemLayout.HORIZONTAL,
   };
 
+  const formatConfigField: FieldProp = {
+    name: 'formatConfig',
+    required: false,
+    label: t('label.format'),
+    id: 'root/formatConfig',
+    type: FieldTypes.TEXT,
+    props: {
+      'data-testid': 'formatConfig',
+      autoComplete: 'off',
+    },
+    placeholder: t('label.format'),
+    rules: [
+      {
+        validator: (_, value) => {
+          if (!isValidDateFormat(value)) {
+            return Promise.reject(
+              t('label.field-invalid', {
+                field: t('label.format'),
+              })
+            );
+          }
+
+          return Promise.resolve();
+        },
+      },
+    ],
+  };
+
+  const entityReferenceConfigField: FieldProp = {
+    name: 'entityReferenceConfig',
+    required: true,
+    label: t('label.entity-reference-types'),
+    id: 'root/entityReferenceConfig',
+    type: FieldTypes.SELECT,
+    props: {
+      mode: 'multiple',
+      options: ENTITY_REFERENCE_OPTIONS,
+      'data-testid': 'entityReferenceConfig',
+      placeholder: `${t('label.select-field', {
+        field: t('label.type'),
+      })}`,
+    },
+  };
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -276,14 +366,21 @@ const AddCustomProperty = () => {
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
         {generateFormFields(formFields)}
-        {isEnumType && (
-          <>
-            {generateFormFields([
-              customPropertyConfigTypeValueField,
-              multiSelectField,
-            ])}
-          </>
-        )}
+        {
+          // Only show enum value field if the property type has enum config
+          hasEnumConfig &&
+            generateFormFields([enumConfigField, multiSelectField])
+        }
+        {
+          // Only show format field if the property type has format config
+          hasFormatConfig && generateFormFields([formatConfigField])
+        }
+
+        {
+          // Only show entity reference field if the property type has entity reference config
+          hasEntityReferenceConfig &&
+            generateFormFields([entityReferenceConfigField])
+        }
         {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>

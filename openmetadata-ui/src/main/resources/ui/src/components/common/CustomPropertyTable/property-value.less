@@ -10,23 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from './Entity.interface';
-
-export const CustomPropertySupportedEntityList = [
-  EntityType.Database,
-  EntityType.DatabaseSchema,
-  EntityType.Table,
-  EntityType.StoreProcedure,
-  EntityType.Topic,
-  EntityType.Dashboard,
-  EntityType.Pipeline,
-  EntityType.Container,
-  EntityType.MlModel,
-  EntityType.GlossaryTerm,
-  EntityType.SearchIndex,
-];
-
-export const ENTITY_REFERENCE_PROPERTIES = [
-  'Entity Reference',
-  'Entity Reference List',
-];
+.entity-reference-list-item:last-child {
+  border-bottom: none;
+}
+.entity-reference-list-item {
+  .entity-button-icon {
+    height: 24px;
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      height: 18px;
+      width: 18px;
+    }
+  }
+}

@@ -47,7 +47,6 @@ export const LIGHT_GREEN_COLOR = '#4CAF50';
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
 
-export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer', 'enum'];
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';

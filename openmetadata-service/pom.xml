@@ -386,6 +386,18 @@
       <version>3.25.3</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.skyscreamer</groupId>
+      <artifactId>jsonassert</artifactId>
+      <version>1.5.1</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.vaadin.external.google</groupId>
+          <artifactId>android-json</artifactId>
+        </exclusion>
+      </exclusions>
+      <scope>test</scope>
+    </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
     <dependency>
       <groupId>javax.json</groupId>

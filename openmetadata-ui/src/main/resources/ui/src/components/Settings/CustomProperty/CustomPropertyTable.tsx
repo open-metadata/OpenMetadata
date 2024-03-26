@@ -12,7 +12,7 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { isArray, isEmpty, isString, isUndefined } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -66,16 +66,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   const handlePropertyUpdate = async (data: FormData) => {
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
+        const config = data.customPropertyConfig;
+        const isEnumType = selectedProperty.propertyType.name === 'enum';
+
         return {
           ...property,
           description: data.description,
-          ...(data.customPropertyConfig
+          ...(config
             ? {
                 customPropertyConfig: {
-                  config: {
-                    multiSelect: Boolean(data?.multiSelect),
-                    values: data.customPropertyConfig,
-                  },
+                  config: isEnumType
+                    ? {
+                        multiSelect: Boolean(data?.multiSelect),
+                        values: config,
+                      }
+                    : config,
                 },
               }
             : {}),
@@ -116,14 +121,24 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.config'),
         dataIndex: 'customPropertyConfig',
         key: 'customPropertyConfig',
-        render: (data: CustomProperty['customPropertyConfig']) => {
+        render: (data: CustomProperty['customPropertyConfig'], record) => {
           if (isUndefined(data)) {
             return <span>--</span>;
           }
 
           const config = data.config;
 
-          if (!isString(config)) {
+          // If config is an array and not empty
+          if (isArray(config) && !isEmpty(config)) {
+            return (
+              <Typography.Text data-testid={`${record.name}-config`}>
+                {JSON.stringify(config ?? [])}
+              </Typography.Text>
+            );
+          }
+
+          // If config is an object, then it is a enum config
+          if (!isString(config) && !isArray(config)) {
             return (
               <Space data-testid="enum-config" direction="vertical" size={4}>
                 <Typography.Text>
@@ -137,6 +152,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
             );
           }
 
+          // else it is a string
           return <Typography.Text>{config}</Typography.Text>;
         },
       },

@@ -50,3 +50,5 @@ export const VALID_OBJECT_KEY_REGEX = /^[_$a-zA-Z][_$a-zA-Z0-9]*$/;
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
 
 export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;
+
+export const TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX = /^\d{13}$/;

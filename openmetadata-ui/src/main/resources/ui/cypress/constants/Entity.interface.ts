@@ -110,3 +110,19 @@ export enum SidebarItem {
   SETTINGS = 'settings',
   LOGOUT = 'logout',
 }
+
+export enum ENTITY_PATH {
+  tables = 'table',
+  topics = 'topic',
+  dashboards = 'dashboard',
+  pipelines = 'pipeline',
+  mlmodels = 'mlmodel',
+  containers = 'container',
+  tags = 'tag',
+  glossaries = 'glossary',
+  searchIndexes = 'searchIndex',
+  storedProcedures = 'storedProcedure',
+  glossaryTerm = 'glossaryTerm',
+  databases = 'database',
+  databaseSchemas = 'databaseSchema',
+}
