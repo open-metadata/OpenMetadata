@@ -29,9 +29,11 @@ public class DataInsightDescriptionAndOwnerTemplate {
     NOT_MET
   }
 
+  private String totalAssets;
   private final String percentCompleted;
   private boolean kpiAvailable;
   private String percentChange;
+  private String percentChangeMessage;
   private String targetKpi;
   private String numberOfDaysLeft;
   private String completeMessage;
@@ -42,6 +44,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
   public DataInsightDescriptionAndOwnerTemplate(
       MetricType metricType,
       KpiCriteria criteria,
+      String totalAssets,
       Double percentCompleted,
       String targetKpi,
       Double percentChange,
@@ -53,6 +56,8 @@ public class DataInsightDescriptionAndOwnerTemplate {
     this.percentCompleted = String.format("%.2f", percentCompleted);
     this.targetKpi = targetKpi;
     this.percentChange = String.format("%.2f", percentChange);
+    this.percentChangeMessage = getFormattedPercentChangeMessage(percentChange);
+    this.totalAssets = totalAssets;
     this.kpiAvailable = isKpiAvailable;
     this.numberOfDaysLeft = numberOfDaysLeft;
     this.tierMap = tierMap;
@@ -131,6 +136,22 @@ public class DataInsightDescriptionAndOwnerTemplate {
     this.numberOfDaysLeft = numberOfDaysLeft;
   }
 
+  public String getTotalAssets() {
+    return totalAssets;
+  }
+
+  public void setTotalAssets(String totalAssets) {
+    this.totalAssets = totalAssets;
+  }
+
+  public String getPercentChangeMessage() {
+    return percentChangeMessage;
+  }
+
+  public void setPercentChangeMessage(String message) {
+    this.percentChangeMessage = message;
+  }
+
   public String getCompleteMessage() {
     return completeMessage;
   }
@@ -161,5 +182,19 @@ public class DataInsightDescriptionAndOwnerTemplate {
 
   public void setDateMap(Map<String, Integer> dateMap) {
     this.dateMap = dateMap;
+  }
+
+  public static String getFormattedPercentChangeMessage(Double percent) {
+    String symbol = "";
+    String color = "#BF0000";
+    if (percent > 0) {
+      symbol = "+";
+      color = "#008611";
+    } else if (percent < 0) {
+      symbol = "-";
+    }
+
+    return String.format(
+        "<span style=\"color:%s ; font-weight: 600\">%s%.2f</span>", color, symbol, percent);
   }
 }
