@@ -43,7 +43,7 @@ from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -110,7 +110,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: SearchConnection.__fields__["config"].type_
 
     topology = SearchServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     index_source_state: Set = set()
 
     def __init__(
@@ -195,7 +195,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=SearchIndex,
                 entity_source_state=self.index_source_state,
                 mark_deleted_entity=self.source_config.markDeletedSearchIndexes,
-                params={"service": self.context.search_service},
+                params={"service": self.context.get().search_service},
             )
 
     def register_record(self, search_index_request: CreateSearchIndexRequest) -> None:

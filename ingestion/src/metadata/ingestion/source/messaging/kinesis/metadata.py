@@ -130,7 +130,7 @@ class KinesisSource(MessagingServiceSource):
 
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=self.context.messaging_service,
+                service=self.context.get().messaging_service,
                 partitions=len(topic_details.topic_metadata.partitions),
                 retentionTime=self._compute_retention_time(
                     topic_details.topic_metadata.summary
@@ -205,8 +205,8 @@ class KinesisSource(MessagingServiceSource):
             topic_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Topic,
-                service_name=self.context.messaging_service,
-                topic_name=self.context.topic,
+                service_name=self.context.get().messaging_service,
+                topic_name=self.context.get().topic,
             )
             topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
             if topic_entity and self.generate_sample_data:
