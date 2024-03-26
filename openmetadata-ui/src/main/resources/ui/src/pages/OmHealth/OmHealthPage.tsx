@@ -10,31 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, List, Row } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
+import ConnectionStepCard from '../../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-
-import { startCase } from 'lodash';
-import axiosClient from '../../rest';
+import { ValidationResponse } from '../../generated/system/validationResponse';
+import { fetchOMStatus } from '../../rest/miscAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-interface ValidationItem {
-  description: string;
-  passed: boolean;
-}
 const OmHealthPage = () => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState<boolean>(false);
-  const [data, setData] = useState<Record<string, ValidationItem>>({});
+  const [validationStatus, setValidataionStatus] =
+    useState<ValidationResponse>();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -47,10 +45,8 @@ const OmHealthPage = () => {
   const getHealthData = async () => {
     setLoading(true);
     try {
-      const response = await axiosClient.get<Record<string, ValidationItem>>(
-        '/system/validate'
-      );
-      setData(response.data);
+      const response = await fetchOMStatus();
+      setValidataionStatus(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -83,27 +79,31 @@ const OmHealthPage = () => {
             </Col>
           </Row>
         </Col>
-        <Col span={24}>
-          <List
-            bordered
-            dataSource={Object.entries(data)}
-            renderItem={([key, validation]) => (
-              <List.Item className="d-block">
-                <p>
-                  <strong>{startCase(key)}</strong>
-                </p>
-                <p>
-                  <strong>Description: </strong>
-                  {validation.description}
-                </p>
-                <p>
-                  <strong>Status:</strong>{' '}
-                  {validation.passed ? 'Passed' : 'Failed'}
-                </p>
-              </List.Item>
-            )}
-          />
-        </Col>
+
+        {validationStatus &&
+          map(
+            validationStatus,
+            (validation, key) =>
+              validation && (
+                <Col key={key} span={24}>
+                  <ConnectionStepCard
+                    isTestingConnection={false}
+                    testConnectionStep={{
+                      name: startCase(key),
+                      mandatory: true,
+                      description: validation.description ?? '',
+                    }}
+                    testConnectionStepResult={{
+                      name: startCase(key),
+                      passed: Boolean(validation.passed),
+                      mandatory: true,
+                      message: validation.description,
+                      errorLog: validation.message,
+                    }}
+                  />
+                </Col>
+              )
+          )}
       </Row>
     </PageLayoutV1>
   );

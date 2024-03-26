@@ -37,6 +37,7 @@ import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailCo
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
+import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import AddPolicyPage from '../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage';
@@ -333,6 +334,15 @@ const SettingsRouter = () => {
         hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={OmHealthPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.OM_HEALTH
         )}
       />
     </Switch>
