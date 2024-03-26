@@ -26,9 +26,8 @@ from metadata.ingestion.source.dashboard.qlikcloud.constants import (
     GET_SHEET_LAYOUT,
     OPEN_DOC_REQ,
 )
-from metadata.ingestion.source.dashboard.qlikcloud.models import (
-    QlikAppDetails,
-    QlikAppList,
+from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp, QlikAppList
+from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDataModelResult,
     QlikSheet,
     QlikSheetResult,
@@ -128,7 +127,7 @@ class QlikCloudClient:
             logger.warning("Failed to fetch the app list")
         return []
 
-    def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikAppDetails]:
+    def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikApp]:
         """
         Get App Details
         """
@@ -137,7 +136,7 @@ class QlikCloudClient:
         try:
             resp_dashboard = self.client.get(f"/v1/apps/{dashboard_id}")
             if resp_dashboard:
-                return QlikAppDetails(**resp_dashboard.get("attributes"))
+                return QlikApp(**resp_dashboard.get("attributes"))
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
@@ -145,7 +144,7 @@ class QlikCloudClient:
 
     def get_dashboard_models(self) -> List[QlikTable]:
         """
-        Get dahsboard chart list
+        Get dahsboard data models
         """
         try:
             self._websocket_send_request(APP_LOADMODEL_REQ)

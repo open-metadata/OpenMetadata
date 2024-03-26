@@ -11,98 +11,22 @@
 """
 QlikCloud Models
 """
-from typing import List, Optional, Union
+from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-# App
+# App Models
 class QlikApp(BaseModel):
-    """
-    QlikCloud App model
-    """
+    """QlikCloud App model"""
 
     description: Optional[str]
-    name: str
+    name: Optional[str]
     id: str
-    resourceId: str
+    app_id: Optional[str] = Field(alias="resourceId", default=None)
 
 
 class QlikAppList(BaseModel):
+    """QlikCloud Apps List"""
+
     apps: Optional[List[QlikApp]]
-
-
-class QlikAppDetails(BaseModel):
-    """
-    Qlik App details model
-    """
-
-    description: Optional[str]
-
-    name: Optional[str]
-    id: str
-    collection_id: Optional[str]
-
-
-# Sheet
-class QlikSheetInfo(BaseModel):
-    qId: str
-
-
-class QlikSheetMeta(BaseModel):
-    title: Optional[str]
-    description: Optional[str]
-
-
-class QlikSheet(BaseModel):
-    qInfo: QlikSheetInfo
-    qMeta: Optional[QlikSheetMeta] = QlikSheetMeta()
-
-
-class QlikSheetItems(BaseModel):
-    qItems: Optional[List[QlikSheet]] = []
-
-
-class QlikSheetAppObject(BaseModel):
-    qAppObjectList: Optional[QlikSheetItems] = QlikSheetItems()
-
-
-class QlikSheetLayout(BaseModel):
-    qLayout: Optional[QlikSheetAppObject] = QlikSheetAppObject()
-
-
-class QlikSheetResult(BaseModel):
-    result: Optional[QlikSheetLayout] = QlikSheetLayout()
-
-
-# datamodel models
-class QlikFields(BaseModel):
-    name: Optional[str]
-    id: Optional[str]
-
-
-class QlikTableConnectionProp(BaseModel):
-    tableQualifiers: Optional[List[str]] = []
-
-
-class QlikTable(BaseModel):
-    tableName: Optional[str]
-    id: Optional[str]
-    connectionInfo: Optional[QlikTableConnectionProp] = QlikTableConnectionProp()
-    fields: Optional[List[QlikFields]] = []
-
-
-class QlikTablesList(BaseModel):
-    tables: Optional[List[QlikTable]] = []
-
-
-class QlikDataModelValue(BaseModel):
-    value: Optional[QlikTablesList]
-
-
-class QlikDataModelLayout(BaseModel):
-    qLayout: Optional[Union[QlikTablesList, List[QlikDataModelValue]]] = []
-
-
-class QlikDataModelResult(BaseModel):
-    result: Optional[QlikDataModelLayout] = QlikDataModelLayout()

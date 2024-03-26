@@ -45,12 +45,8 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.qlikcloud.models import (
-    QlikApp,
-    QlikAppDetails,
-    QlikAppList,
-    QlikTable,
-)
+from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp, QlikAppList
+from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, replace_special_with
@@ -108,10 +104,10 @@ class QlikcloudSource(DashboardServiceSource):
         """
         Get app Details
         """
-        return self.client.get_dashboard_details(dashboard.resourceId)
+        return self.client.get_dashboard_details(dashboard.app_id)
 
     def yield_dashboard(
-        self, dashboard_details: QlikAppDetails
+        self, dashboard_details: QlikApp
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
