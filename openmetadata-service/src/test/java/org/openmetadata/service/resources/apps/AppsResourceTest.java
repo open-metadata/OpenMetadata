@@ -1,17 +1,23 @@
 package org.openmetadata.service.resources.apps;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.readResponse;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
@@ -19,6 +25,7 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -72,6 +79,24 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         "of type SystemApp can not be deleted");
   }
 
+  @Test
+  void post_trigger_app_200() throws HttpResponseException, InterruptedException {
+    postTriggerApp("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
+    TimeUnit.MILLISECONDS.sleep(200);
+    AppRunRecord latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
+    assert latestRun.getStatus().equals(AppRunRecord.Status.RUNNING);
+    TimeUnit timeout = TimeUnit.SECONDS;
+    long timeoutValue = 10;
+    long startTime = System.currentTimeMillis();
+    while (latestRun.getStatus().equals(AppRunRecord.Status.RUNNING)) {
+      if (System.currentTimeMillis() - startTime > timeout.toMillis(timeoutValue)) {
+        throw new AssertionError(String.format("Expected the app to finish within %d %s", timeoutValue, timeout));
+      }
+      TimeUnit.MILLISECONDS.sleep(500);
+      latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
+    }
+  }
+
   @Override
   public void validateCreatedEntity(
       App createdEntity, CreateApp request, Map<String, String> authHeaders)
@@ -102,5 +127,18 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  private void postTriggerApp(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("apps/trigger").path(appName);
+    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    readResponse(response, OK.getStatusCode());
+  }
+
+  private AppRunRecord getLatestAppRun(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("apps/name/%s/runs/latest", appName));
+    return TestUtils.get(target, AppRunRecord.class, authHeaders);
   }
 }
