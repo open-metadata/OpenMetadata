@@ -358,11 +358,7 @@ describe('Permissions', { tags: 'Settings' }, () => {
       serviceName: DATABASE_SERVICE.service.name,
       entity: EntityType.Table,
     });
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*&index=query_search_index*',
-      'getQueries'
-    );
+    interceptURL('GET', '/api/v1/queries?*', 'getQueries');
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@getQueries', 200);
     cy.get('[data-testid="query-btn"]').click();
