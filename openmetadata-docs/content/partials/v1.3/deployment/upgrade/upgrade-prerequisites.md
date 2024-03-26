@@ -108,6 +108,9 @@ After the migration is finished, you can revert this changes.
   We will deprecate the dictionary annotation in the 1.4 release, since the new annotation allows you to define lineage between
   assets other than Tables.
 
+- On 1.4.0 we will deprecate the `metadata backup` and `metadata restore` commands in favor of native backup & restore tools
+  from MySQL and PostgreSQL. We will provide a guide on how to use these tools to backup and restore OpenMetadata metadata.
+
 # Breaking Changes
 
 ## 1.3.0

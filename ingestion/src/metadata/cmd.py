@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-This module defines the CLI commands for OpenMetada
+This module defines the CLI commands for OpenMetadata
 """
 import argparse
 import logging
@@ -21,16 +21,9 @@ from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
 from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
-from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.cli.insight import run_insight
 from metadata.cli.lineage import run_lineage
-from metadata.cli.openmetadata_dag_config_migration import (
-    run_openmetadata_dag_config_migration,
-)
-from metadata.cli.openmetadata_imports_migration import (
-    run_openmetadata_imports_migration,
-)
 from metadata.cli.profile import run_profiler
 from metadata.cli.restore import run_restore
 from metadata.cli.usage import run_usage
@@ -45,15 +38,12 @@ class MetadataCommands(Enum):
     USAGE = "usage"
     PROFILE = "profile"
     TEST = "test"
-    DOCKER = "docker"
     BACKUP = "backup"
     RESTORE = "restore"
     WEBHOOK = "webhook"
     INSIGHT = "insight"
     LINEAGE = "lineage"
     APP = "app"
-    OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
-    OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
 
 
 RUN_PATH_METHODS = {
@@ -66,21 +56,6 @@ RUN_PATH_METHODS = {
     MetadataCommands.APP.value: run_app,
 }
 
-
-OM_IMPORTS_MIGRATION = """
-    Update DAG files generated after creating workflow in 0.11 and before.
-    In 0.12 the airflow managed API package name changed from `openmetadata` to 
-    `openmetadata_managed_apis` hence breaking existing DAGs. 
-    The `dag_generated_config` folder also changed location in Docker.
-    This small CLI utility allows you to update both elements.
-    """
-
-OM_DAG_CONFIG_MIGRATION = """
-    Update DAG Config files generated after creating workflow in 0.12 and before.
-    In 0.13 certains keys of the dag config. files have been removed. This small
-    utility command allows you to update legacy dag config files. Note this can
-    also be done manually through the UI by clicking on `redeploy`
-    """
 
 BACKUP_HELP = """
     Run a backup for the metadata DB. Uses a custom dump strategy for OpenMetadata tables.
@@ -115,91 +90,6 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         help="path to the config file",
         type=Path,
         required=True,
-    )
-
-
-def create_openmetadata_imports_migration_args(parser: argparse.ArgumentParser):
-    parser.add_argument(
-        "-d",
-        "--dir-path",
-        default="/opt/airflow/dags",
-        type=Path,
-        help="Path to the DAG folder. Default to `/opt/airflow/dags`",
-    )
-
-    parser.add_argument(
-        "--change-config-file-path",
-        help="Flag option. If pass this will try to change the path of the dag config files",
-        type=bool,
-    )
-
-
-def create_openmetadata_dag_config_migration_args(parser: argparse.ArgumentParser):
-    parser.add_argument(
-        "-d",
-        "--dir-path",
-        default="/opt/airflow/dag_generated_configs",
-        type=Path,
-        help="Path to the DAG folder. Default to `/opt/airflow/dag_generated_configs`",
-    )
-
-    parser.add_argument(
-        "--keep-backups",
-        help="Flag option. If passed, old files will be kept as backups <filename>.json.bak",
-        action="store_true",
-    )
-
-
-def docker_args(parser: argparse.ArgumentParser):
-    """
-    Additional Parser Arguments for Docker
-    """
-    parser.add_argument(
-        "--start", help="Start release docker containers", action="store_true"
-    )
-    parser.add_argument(
-        "--stop", help="Stops openmetadata docker containers", action="store_true"
-    )
-    parser.add_argument(
-        "--pause", help="Pause openmetadata docker containers", action="store_true"
-    )
-    parser.add_argument(
-        "--resume",
-        help="Resume/Unpause openmetadata docker containers",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--clean",
-        help="Stops and remove openmetadata docker containers along with images, volumes, networks associated",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-f",
-        "--file-path",
-        help="Path to Local docker-compose.yml",
-        type=Path,
-        required=False,
-    )
-    parser.add_argument(
-        "-env-file",
-        "--env-file-path",
-        help="Path to env file containing the environment variables",
-        type=Path,
-        required=False,
-    )
-    parser.add_argument(
-        "--reset-db", help="Reset OpenMetadata Data", action="store_true"
-    )
-    parser.add_argument(
-        "--ingest-sample-data",
-        help="Enable the sample metadata ingestion",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-db",
-        "--database",
-        choices=list(BACKEND_DATABASES.keys()),
-        default="mysql",
     )
 
 
@@ -384,21 +274,6 @@ def get_parser(args=None):
             help="Workflow for running external applications",
         )
     )
-    create_openmetadata_imports_migration_args(
-        sub_parser.add_parser(
-            MetadataCommands.OPENMETADATA_IMPORTS_MIGRATION.value,
-            help=OM_IMPORTS_MIGRATION,
-        )
-    )
-    create_openmetadata_dag_config_migration_args(
-        sub_parser.add_parser(
-            MetadataCommands.OPENMETADATA_DAG_CONFIG_MIGRATION.value,
-            help=OM_DAG_CONFIG_MIGRATION,
-        )
-    )
-    docker_args(
-        sub_parser.add_parser(MetadataCommands.DOCKER.value, help="Docker Quickstart")
-    )
     backup_args(
         sub_parser.add_parser(
             MetadataCommands.BACKUP.value,
@@ -419,7 +294,7 @@ def get_parser(args=None):
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
-            MetadataCommands.INSIGHT.value, help="Data Insigt Workflow"
+            MetadataCommands.INSIGHT.value, help="Data Insights Workflow"
         )
     )
 
@@ -479,21 +354,6 @@ def metadata(args=None):
             ),
             sql_file=contains_args.get("input"),
         )
-    if metadata_workflow == MetadataCommands.DOCKER.value:
-        run_docker(
-            docker_obj_instance=DockerActions(
-                start=contains_args.get("start"),
-                stop=contains_args.get("stop"),
-                pause=contains_args.get("pause"),
-                resume=contains_args.get("resume"),
-                clean=contains_args.get("clean"),
-                reset_db=contains_args.get("reset_db"),
-            ),
-            file_path=contains_args.get("file_path"),
-            env_file_path=contains_args.get("env_file_path"),
-            ingest_sample_data=contains_args.get("ingest_sample_data"),
-            database=contains_args.get("database"),
-        )
     if metadata_workflow == MetadataCommands.WEBHOOK.value:
 
         class WebhookHandler(BaseHTTPRequestHandler):
@@ -518,13 +378,3 @@ def metadata(args=None):
             (contains_args.get("host"), contains_args.get("port")), WebhookHandler
         ) as server:
             server.serve_forever()
-
-    if metadata_workflow == MetadataCommands.OPENMETADATA_IMPORTS_MIGRATION.value:
-        run_openmetadata_imports_migration(
-            contains_args.get("dir_path"), contains_args.get("change_config_file_path")
-        )
-
-    if metadata_workflow == MetadataCommands.OPENMETADATA_DAG_CONFIG_MIGRATION.value:
-        run_openmetadata_dag_config_migration(
-            contains_args.get("dir_path"), contains_args.get("keep_backups")
-        )
