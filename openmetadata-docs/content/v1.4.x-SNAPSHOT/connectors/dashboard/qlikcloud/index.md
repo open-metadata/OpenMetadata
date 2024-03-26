@@ -31,7 +31,10 @@ To deploy OpenMetadata, check the Deployment guides.
 {% partial 
   file="/v1.4/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "QlikCloud"
+    connector: "QlikCloud",
+    selectServicePath: "/images/v1.4/connectors/qlikcloud/select-service.png",
+    addNewServicePath: "/images/v1.4/connectors/qlikcloud/add-new-service.png",
+    serviceConnectionPath: "/images/v1.4/connectors/qlikcloud/service-connection.png",
 } 
 /%}
 
