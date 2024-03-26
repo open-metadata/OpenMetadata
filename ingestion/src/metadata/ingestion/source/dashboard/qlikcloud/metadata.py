@@ -123,17 +123,17 @@ class QlikcloudSource(DashboardServiceSource):
                 sourceUrl=dashboard_url,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
-                project=self.context.project_name,
+                project=self.context.get().project_name,
                 charts=[
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service,
+                        service_name=self.context.get().dashboard_service,
                         chart_name=chart,
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
@@ -151,7 +151,7 @@ class QlikcloudSource(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel_id,
         )
         if datamodel_fqn:
@@ -200,7 +200,7 @@ class QlikcloudSource(DashboardServiceSource):
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
-        for datamodel_id in self.context.dataModels or []:
+        for datamodel_id in self.context.get().dataModels or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel_id)
                 if data_model_entity:
@@ -214,7 +214,7 @@ class QlikcloudSource(DashboardServiceSource):
             except Exception as err:
                 yield Either(
                     left=StackTraceError(
-                        name=f"{dashboard_details.qDocName} Lineage",
+                        name=f"{dashboard_details.name} Lineage",
                         error=(
                             "Error to yield dashboard lineage details for DB "
                             f"service name [{db_service_name}]: {err}"
@@ -246,13 +246,13 @@ class QlikcloudSource(DashboardServiceSource):
                         description=chart.qMeta.description,
                         chartType=ChartType.Other,
                         sourceUrl=chart_url,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(
-                        name=dashboard_details.qDocName,
+                        name=dashboard_details.name,
                         error=f"Error creating chart [{chart}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
@@ -275,7 +275,7 @@ class QlikcloudSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
-                        service=self.context.dashboard_service,
+                        service=self.context.get().dashboard_service,
                         dataModelType=DataModelType.QlikDataModel.value,
                         serviceType=DashboardServiceType.QlikCloud.value,
                         columns=self.get_column_info(data_model),
