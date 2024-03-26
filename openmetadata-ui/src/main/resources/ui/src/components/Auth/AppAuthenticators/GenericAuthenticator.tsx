@@ -23,8 +23,12 @@ import { logoutUser, renewToken } from '../../../rest/LoginAPI';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
-    const { setIsAuthenticated, setIsSigningIn, removeOidcToken } =
-      useApplicationStore();
+    const {
+      setIsAuthenticated,
+      setIsSigningIn,
+      removeOidcToken,
+      setOidcToken,
+    } = useApplicationStore();
     const history = useHistory();
 
     const handleLogin = () => {
@@ -43,6 +47,7 @@ export const GenericAuthenticator = forwardRef(
 
     const handleSilentSignIn = async () => {
       const resp = await renewToken();
+      setOidcToken(resp.accessToken);
 
       return Promise.resolve(resp);
     };

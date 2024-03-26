@@ -123,6 +123,12 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
     },
+    "threads": {
+      "description": "Number of Threads to use in order to paralellize Table ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads"
+    },
     "incremental": {
       "title": "Incremental Metadata Extraction Configuration",
       "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",

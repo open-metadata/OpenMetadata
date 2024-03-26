@@ -195,7 +195,7 @@ class OracleUnitTest(TestCase):
             mock_oracle_config["source"],
             self.metadata,
         )
-        self.oracle.context.__dict__[
+        self.oracle.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
 
@@ -205,7 +205,7 @@ class OracleUnitTest(TestCase):
             for either in self.oracle.yield_database(MOCK_DATABASE.name.__root__)
         ]
 
-        self.oracle.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.__root__
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [
@@ -214,7 +214,7 @@ class OracleUnitTest(TestCase):
                 MOCK_DATABASE_SCHEMA.name.__root__
             )
         ]
-        self.oracle.context.__dict__[
+        self.oracle.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
 

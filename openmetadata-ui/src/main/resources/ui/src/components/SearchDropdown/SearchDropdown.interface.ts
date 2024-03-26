@@ -27,6 +27,7 @@ export interface SearchDropdownProps {
   onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
+  hideCounts?: boolean; // Determines if the count should be displayed or not.
 }
 
 export interface SearchDropdownOption {

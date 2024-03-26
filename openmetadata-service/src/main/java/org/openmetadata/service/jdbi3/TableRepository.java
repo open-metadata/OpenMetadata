@@ -45,7 +45,6 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -85,6 +84,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -740,8 +740,13 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public String getSuggestionFields(Suggestion suggestion) {
+    return suggestion.getType() == SuggestionType.SuggestTagLabel ? "columns,tags" : "";
+  }
+
+  @Override
   public Table applySuggestion(EntityInterface entity, String columnFQN, Suggestion suggestion) {
-    Table table = Entity.getEntity(TABLE, entity.getId(), "columns,tags", ALL);
+    Table table = (Table) entity;
     for (Column col : table.getColumns()) {
       if (col.getFullyQualifiedName().equals(columnFQN)) {
         if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
@@ -751,7 +756,7 @@ public class TableRepository extends EntityRepository<Table> {
         } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
           col.setDescription(suggestion.getDescription());
         } else {
-          throw new WebApplicationException("Invalid suggestion Type");
+          throw new SuggestionException("Invalid suggestion Type");
         }
       }
     }

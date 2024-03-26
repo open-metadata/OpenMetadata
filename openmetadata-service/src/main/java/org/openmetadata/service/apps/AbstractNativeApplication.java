@@ -1,10 +1,11 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_ID_KEY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
 import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +70,14 @@ public class AbstractNativeApplication implements NativeApplication {
     }
     if (app.getAppType() == AppType.Internal
         && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      try {
+        ApplicationHandler.getInstance().migrateQuartzConfig(app);
+      } catch (SchedulerException e) {
+        throw AppException.byMessage(
+            "ApplicationHandler",
+            "SchedulerError",
+            "Error while migrating application configuration: " + app.getName());
+      }
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
         && app.getScheduleType().equals(ScheduleType.Scheduled)) {
@@ -203,9 +212,9 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
-    App jobApp =
-        JsonUtils.readOrConvertValue(
-            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY), App.class);
+    UUID appID = (UUID) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_ID_KEY);
+    App jobApp = collectionDAO.applicationDAO().findEntityById(appID);
+    ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     // Initialise the Application
     this.init(jobApp);
 
@@ -216,6 +225,14 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void configure() {
     /* Not needed by default */
+  }
+
+  @Override
+  public void raisePreviewMessage(App app) {
+    throw AppException.byMessage(
+        app.getName(),
+        "Preview",
+        "App is in Preview Mode. Enable it from the server configuration.");
   }
 
   public static AppRuntime getAppRuntime(App app) {

@@ -443,11 +443,11 @@ class SalesforceUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.salesforce_source.context.__dict__[
+        self.salesforce_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE
-        self.salesforce_source.context.__dict__["database"] = MOCK_DATABASE
-        self.salesforce_source.context.__dict__[
+        self.salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE
+        self.salesforce_source.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA
 
