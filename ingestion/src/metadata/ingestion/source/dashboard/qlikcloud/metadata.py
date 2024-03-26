@@ -15,16 +15,10 @@ from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.data.createDashboardDataModel import (
-    CreateDashboardDataModelRequest,
-)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
-from metadata.generated.schema.entity.data.dashboardDataModel import (
-    DashboardDataModel,
-    DataModelType,
-)
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
     QlikCloudConnection,
 )
@@ -44,18 +38,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp, QlikAppList
+from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
 from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import clean_uri, replace_special_with
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class QlikcloudSource(DashboardServiceSource):
+class QlikcloudSource(QliksenseSource):
     """
     QlikCloud Source Class
     """
@@ -147,20 +141,6 @@ class QlikcloudSource(DashboardServiceSource):
                 )
             )
 
-    def _get_datamodel(self, datamodel_id):
-        datamodel_fqn = fqn.build(
-            self.metadata,
-            entity_type=DashboardDataModel,
-            service_name=self.context.get().dashboard_service,
-            data_model_name=datamodel_id,
-        )
-        if datamodel_fqn:
-            return self.metadata.get_by_name(
-                entity=DashboardDataModel,
-                fqn=datamodel_fqn,
-            )
-        return None
-
     def _get_database_table(
         self,
         db_service_entity: DatabaseService,
@@ -224,7 +204,7 @@ class QlikcloudSource(DashboardServiceSource):
                 )
 
     def yield_dashboard_chart(
-        self, dashboard_details
+        self, dashboard_details: QlikApp
     ) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method"""
         charts = self.client.get_dashboard_charts(dashboard_id=dashboard_details.id)
@@ -258,55 +238,6 @@ class QlikcloudSource(DashboardServiceSource):
                     )
                 )
 
-    def yield_datamodel(self, _: QlikApp) -> Iterable[Either[DashboardDataModel]]:
-        if self.source_config.includeDataModels:
-            self.data_models = self.client.get_dashboard_models()
-            for data_model in self.data_models or []:
-                try:
-                    data_model_name = (
-                        data_model.tableName if data_model.tableName else data_model.id
-                    )
-                    if filter_by_datamodel(
-                        self.source_config.dataModelFilterPattern, data_model_name
-                    ):
-                        self.status.filter(data_model_name, "Data model filtered out.")
-                        continue
-
-                    data_model_request = CreateDashboardDataModelRequest(
-                        name=data_model.id,
-                        displayName=data_model_name,
-                        service=self.context.get().dashboard_service,
-                        dataModelType=DataModelType.QlikDataModel.value,
-                        serviceType=DashboardServiceType.QlikCloud.value,
-                        columns=self.get_column_info(data_model),
-                    )
-                    yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_request=data_model_request)
-                except Exception as exc:
-                    name = (
-                        data_model.tableName if data_model.tableName else data_model.id
-                    )
-                    yield Either(
-                        left=StackTraceError(
-                            name=name,
-                            error=f"Error yielding Data Model [{name}]: {exc}",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
-
-    def get_column_info(self, data_source: QlikApp) -> Optional[List[Column]]:
-        """Build data model columns"""
-        datasource_columns = []
-        for field in data_source.fields or []:
-            try:
-                parsed_fields = {
-                    "dataTypeDisplay": "Qlik Field",
-                    "dataType": DataType.UNKNOWN,
-                    "name": field.id,
-                    "displayName": field.name if field.name else field.id,
-                }
-                datasource_columns.append(Column(**parsed_fields))
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")
-        return datasource_columns
+    def parse_dashboard_service_type(self) -> str:
+        """return dashboard service type for respective dashboard"""
+        return DashboardServiceType.QlikCloud.value

@@ -81,6 +81,10 @@ class QlikCloudClient:
         )
         self.socket_connection.recv()
 
+    def close_websocket(self) -> None:
+        if self.socket_connection:
+            self.socket_connection.close()
+
     def _websocket_send_request(
         self, request: dict, response: bool = False
     ) -> Optional[Dict]:

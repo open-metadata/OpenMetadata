@@ -204,6 +204,10 @@ class QliksenseSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
+    def parse_dashboard_service_type(self) -> str:
+        """return dashboard service type for respective dashboard"""
+        return DashboardServiceType.QlikSense.value
+
     def yield_datamodel(self, _: QlikDashboard) -> Iterable[Either[DashboardDataModel]]:
         if self.source_config.includeDataModels:
             self.data_models = self.client.get_dashboard_models()
@@ -217,13 +221,13 @@ class QliksenseSource(DashboardServiceSource):
                     ):
                         self.status.filter(data_model_name, "Data model filtered out.")
                         continue
-
+                    service_type = self.parse_dashboard_service_type()
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
                         service=self.context.get().dashboard_service,
                         dataModelType=DataModelType.QlikDataModel.value,
-                        serviceType=DashboardServiceType.QlikSense.value,
+                        serviceType=service_type,
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)
@@ -240,12 +244,12 @@ class QliksenseSource(DashboardServiceSource):
                         )
                     )
 
-    def _get_datamodel(self, datamodel: QlikTable):
+    def _get_datamodel(self, datamodel_id: str):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
             service_name=self.context.get().dashboard_service,
-            data_model_name=datamodel.id,
+            data_model_name=datamodel_id,
         )
         if datamodel_fqn:
             return self.metadata.get_by_name(
@@ -303,7 +307,7 @@ class QliksenseSource(DashboardServiceSource):
         )
         for datamodel in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel=datamodel)
+                data_model_entity = self._get_datamodel(datamodel=datamodel.id)
                 if data_model_entity:
                     om_table = self._get_database_table(
                         db_service_entity, datamodel=datamodel
