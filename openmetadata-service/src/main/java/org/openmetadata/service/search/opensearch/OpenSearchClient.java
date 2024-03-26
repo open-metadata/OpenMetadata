@@ -423,7 +423,8 @@ public class OpenSearchClient implements SearchClient {
         XContentParser queryParser = createXContentParser(filter);
         XContentParser sourceParser = createXContentParser(filter);
         QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
-        FetchSourceContext sourceFromXContent = SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
+        FetchSourceContext sourceFromXContent =
+            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
         boolQuery =
             nullOrEmpty(q)
@@ -1904,10 +1905,9 @@ public class OpenSearchClient implements SearchClient {
 
   private XContentParser createXContentParser(String query) throws IOException {
     try {
-      return
-              XContentType.JSON
-                      .xContent()
-                      .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+      return XContentType.JSON
+          .xContent()
+          .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
     } catch (IOException e) {
       LOG.error("Failed to create XContentParser", e);
       throw e;

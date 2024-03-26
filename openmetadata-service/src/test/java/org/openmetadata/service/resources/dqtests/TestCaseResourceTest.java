@@ -655,7 +655,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void get_listTestCasesFromSearchWithPagination(TestInfo testInfo) throws IOException, ParseException {
+  void get_listTestCasesFromSearchWithPagination(TestInfo testInfo)
+      throws IOException, ParseException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
@@ -730,23 +731,23 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     for (int i = 0; i < tablesNum; i++) {
       CreateTable tableReq =
-              tableResourceTest
-                      .createRequest(testInfo, i)
-                      .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-                      .withColumns(
-                              List.of(
-                                      new Column()
-                                              .withName(C1)
-                                              .withDisplayName("c1")
-                                              .withDataType(ColumnDataType.VARCHAR)
-                                              .withDataLength(10)))
-                      .withOwner(USER1_REF);
+          tableResourceTest
+              .createRequest(testInfo, i)
+              .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName(C1)
+                          .withDisplayName("c1")
+                          .withDataType(ColumnDataType.VARCHAR)
+                          .withDataLength(10)))
+              .withOwner(USER1_REF);
       Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
       tables.add(table);
       CreateTestSuite createTestSuite =
-              testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+          testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
       TestSuite testSuite =
-              testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+          testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
       testSuites.put(table.getFullyQualifiedName(), testSuite);
     }
 
@@ -754,31 +755,31 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       String tableFQN = tables.get(rand.nextInt(tables.size())).getFullyQualifiedName();
       String testSuiteFQN = testSuites.get(tableFQN).getFullyQualifiedName();
       CreateTestCase create =
-              createRequest(testInfo, i)
-                      .withEntityLink(String.format("<#E::table::%s>", tableFQN))
-                      .withTestSuite(testSuiteFQN)
-                      .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-                      .withParameterValues(
-                              List.of(
-                                      new TestCaseParameterValue()
-                                              .withValue("20")
-                                              .withName("missingCountValue")));
+          createRequest(testInfo, i)
+              .withEntityLink(String.format("<#E::table::%s>", tableFQN))
+              .withTestSuite(testSuiteFQN)
+              .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+              .withParameterValues(
+                  List.of(
+                      new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
       TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
       testCases.add(testCase);
       TestCaseResult testCaseResult =
-              new TestCaseResult()
-                      .withResult("tested")
-                      .withTestCaseStatus(TestCaseStatus.Success)
-                      .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
+          new TestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
       putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
     HashMap queryParams = new HashMap<>();
-    ResultList<TestCase> allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    ResultList<TestCase> allEntities =
+        listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
     queryParams.put("q", "test_getSimplelistFromSearcha");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
-    Assertions.assertThat(allEntities.getData().get(0).getName()).contains("test_getSimplelistFromSearcha");
+    Assertions.assertThat(allEntities.getData().get(0).getName())
+        .contains("test_getSimplelistFromSearcha");
   }
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)

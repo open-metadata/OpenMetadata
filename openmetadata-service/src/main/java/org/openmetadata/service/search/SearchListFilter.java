@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
@@ -19,6 +18,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   public SearchListFilter(Include include) {
     this.include = include;
   }
+
   static final String SEARCH_LIST_FILTER_EXCLUDE = "fqnParts,entityType,suggest";
 
   @Override
@@ -96,7 +96,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String q = queryParams.get("q");
     boolean isQEmpty = nullOrEmpty(q);
     if (!conditionFilter.isEmpty()) {
-      return String.format("{%s,\"query\": {\"bool\": {\"filter\": [%s]}}}", sourceFilter, conditionFilter);
+      return String.format(
+          "{%s,\"query\": {\"bool\": {\"filter\": [%s]}}}", sourceFilter, conditionFilter);
     } else if (!isQEmpty) {
       return String.format("{%s}", sourceFilter);
     } else {
@@ -135,7 +136,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (type != null) {
       conditions.add(
           switch (type) {
-            case Entity.TABLE -> "{\"bool\": {\"must_not\": [{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}]}}";
+            case Entity
+                .TABLE -> "{\"bool\": {\"must_not\": [{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}]}}";
             case "column" -> "{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}";
             default -> "";
           });
