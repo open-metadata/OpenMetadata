@@ -222,7 +222,7 @@ class QliksenseSource(DashboardServiceSource):
                         name=data_model.id,
                         displayName=data_model_name,
                         service=self.context.get().dashboard_service,
-                        dataModelType=DataModelType.QlikSenseDataModel.value,
+                        dataModelType=DataModelType.QlikDataModel.value,
                         serviceType=DashboardServiceType.QlikSense.value,
                         columns=self.get_column_info(data_model),
                     )

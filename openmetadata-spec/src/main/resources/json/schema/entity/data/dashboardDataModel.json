@@ -21,7 +21,8 @@
         "LookMlExplore",
         "PowerBIDataModel",
         "QlikSenseDataModel",
-        "QlikCloudDataModel"
+        "QlikCloudDataModel",
+        "QlikDataModel"
       ],
       "javaEnums": [
         {
@@ -47,6 +48,9 @@
         },
         {
           "name": "QlikCloudDataModel"
+        },
+        {
+          "name": "QlikDataModel"
         }
       ]
     }

@@ -54,6 +54,7 @@ class QlikCloudClient:
     ):
         self.config = config
         self.socket_connection = None
+        self.config.token = self.config.token.get_secret_value()
 
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,

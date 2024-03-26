@@ -234,8 +234,6 @@ class QlikcloudSource(DashboardServiceSource):
         charts = self.client.get_dashboard_charts(dashboard_id=dashboard_details.id)
         for chart in charts:
             try:
-                if not chart.qInfo.qId:
-                    continue
                 chart_url = (
                     f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}"
                     f"/sheet/{chart.qInfo.qId}"
@@ -282,7 +280,7 @@ class QlikcloudSource(DashboardServiceSource):
                         name=data_model.id,
                         displayName=data_model_name,
                         service=self.context.dashboard_service,
-                        dataModelType=DataModelType.QlikCloudDataModel.value,
+                        dataModelType=DataModelType.QlikDataModel.value,
                         serviceType=DashboardServiceType.QlikCloud.value,
                         columns=self.get_column_info(data_model),
                     )
