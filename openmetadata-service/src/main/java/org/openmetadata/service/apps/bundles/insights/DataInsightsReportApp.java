@@ -295,6 +295,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
           currentPercentCompleted,
           currentPercentCompleted - previousPercentCompleted,
+          (int) currentCompletedDescription,
           numberOfDaysChange,
           dateMap);
     }
@@ -304,6 +305,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
         0D,
         0D,
+        0,
         numberOfDaysChange,
         dateMap);
   }
@@ -363,6 +365,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
           currentPercentCompleted,
           currentPercentCompleted - previousPercentCompleted,
+          (int) currentHasOwner,
           numberOfDaysChange,
           dateMap);
     }
@@ -371,6 +374,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
         0D,
         0D,
+        0,
         numberOfDaysChange,
         dateMap);
   }
@@ -409,6 +413,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       return new DataInsightDescriptionAndOwnerTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
           null,
+          "0",
           0D,
           KPI_NOT_SET,
           0D,
@@ -422,6 +427,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return new DataInsightDescriptionAndOwnerTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
         null,
+        "0",
         0D,
         KPI_NOT_SET,
         0D,
@@ -504,6 +510,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       DataInsightChartResult.DataInsightChartType chartType,
       Double percentCompleted,
       Double percentChange,
+      int totalAssets,
       int numberOfDaysChange,
       Map<String, Integer> dateMap) {
 
@@ -525,8 +532,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     if (isKpiAvailable) {
       targetKpi =
-          String.valueOf(
-              Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
+          String.format(
+              "%.2f", Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
         isTargetMet = result.getTargetResult().get(0).getTargetMet();
@@ -547,6 +554,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return new DataInsightDescriptionAndOwnerTemplate(
         metricType,
         criteria,
+        String.valueOf(totalAssets),
         percentCompleted,
         targetKpi,
         percentChange,

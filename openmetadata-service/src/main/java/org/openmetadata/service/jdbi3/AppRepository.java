@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
@@ -210,6 +211,9 @@ public class AppRepository extends EntityRepository<App> {
 
   public AppRunRecord getLatestAppRuns(UUID appId) {
     String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId);
+    if (json == null) {
+      throw new UnhandledServerException("No Available Application Run Records.");
+    }
     return JsonUtils.readValue(json, AppRunRecord.class);
   }
 

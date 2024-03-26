@@ -122,7 +122,6 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -3699,7 +3698,7 @@ public interface CollectionDAO {
       if (!nullOrEmpty(result)) {
         return result.get(0);
       }
-      throw new UnhandledServerException("No Available Application Run Records.");
+      return null;
     }
   }
 
