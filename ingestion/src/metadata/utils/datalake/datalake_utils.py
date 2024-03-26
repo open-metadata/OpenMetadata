@@ -253,10 +253,15 @@ class GenericDataFrameColumnParser:
             ):
                 try:
                     # Safely evaluate the input string
-                    df_row_val = data_frame[column_name].dropna().values[0]
-                    parsed_object = ast.literal_eval(str(df_row_val))
+                    df_row_val_list = data_frame[column_name].dropna().values[:1000]
+                    parsed_object_datatype_list = []
+                    for df_row_val in df_row_val_list:
+                        parsed_object_datatype_list.append(
+                            type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                        )
+                    data_type = max(parsed_object_datatype_list)
                     # Determine the data type of the parsed object
-                    data_type = type(parsed_object).__name__.lower()
+
                 except (ValueError, SyntaxError):
                     # Handle any exceptions that may occur
                     data_type = "string"

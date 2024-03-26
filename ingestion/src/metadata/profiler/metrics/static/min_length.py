@@ -67,7 +67,7 @@ class MinLength(StaticMetric):
             min_length_list = []
 
             for df in dfs:
-                if any(df[self.col.name]):
+                if any(df[self.col.name].dropna()):
                     min_length_list.append(
                         length_vectorize_func(
                             df[self.col.name].dropna().astype(str)

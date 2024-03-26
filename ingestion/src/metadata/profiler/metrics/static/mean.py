@@ -121,7 +121,22 @@ class Mean(StaticMetric):
 
         if is_quantifiable(self.col.type):
             for df in dfs:
-                mean = df[self.col.name].mean()
+                try:
+                    mean = df[self.col.name].mean()
+                except Exception as err:
+                    if str(err).startswith("Could not convert") and str(err).endswith(
+                        "to numeric"
+                    ):
+                        [
+                            float(item)
+                            for item in df[self.col.name].values
+                            if item.isdigit()
+                        ]
+                        mean = None
+                    logger.debug(
+                        f"Error while computing mean for column {self.col.name}: {err}"
+                    )
+                    continue
                 if not pd.isnull(mean):
                     means.append(mean)
                     weights.append(df[self.col.name].count())
@@ -130,7 +145,7 @@ class Mean(StaticMetric):
             length_vectorize_func = vectorize(len)
             for df in dfs:
                 mean = None
-                if any(df[self.col.name]):
+                if any(df[self.col.name].dropna()):
                     mean = length_vectorize_func(
                         df[self.col.name].dropna().astype(str)
                     ).mean()
