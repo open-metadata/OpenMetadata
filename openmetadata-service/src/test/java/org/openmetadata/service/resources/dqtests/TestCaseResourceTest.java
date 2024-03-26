@@ -6,6 +6,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -16,6 +17,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -505,20 +507,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // First, create a table with PII Sensitive tag in a column
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
-        tableResourceTest
-            .createRequest(test)
-            .withName("sensitiveTableTest")
-            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
-            .withColumns(
-                List.of(
-                    new Column()
-                        .withName(C1)
-                        .withDisplayName("c1")
-                        .withDataType(ColumnDataType.VARCHAR)
-                        .withDataLength(10)
-                        .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
-            .withOwner(USER1_REF);
+            getSensitiveTableReq(test, tableResourceTest);
     Table sensitiveTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     String sensitiveColumnLink =
         String.format("<#E::table::%s::columns::%s>", sensitiveTable.getFullyQualifiedName(), C1);
@@ -562,6 +551,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         getTestCases(queryParamsTwo, authHeaders(USER2_REF.getName()));
     assertNull(maskedTestCases.getData().get(0).getDescription());
     assertEquals(0, maskedTestCases.getData().get(0).getParameterValues().size());
+  }
+
+  private static CreateTable getSensitiveTableReq(TestInfo test, TableResourceTest tableResourceTest) {
+    return tableResourceTest
+            .createRequest(test)
+            .withName("sensitiveTableTest")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withOwner(USER1_REF)
+            .withColumns(
+                    List.of(
+                            new Column()
+                                    .withName(C1)
+                                    .withDisplayName("c1")
+                                    .withDataType(ColumnDataType.VARCHAR)
+                                    .withDataLength(10)
+                                    .withTags(List.of(PII_SENSITIVE_TAG_LABEL))));
   }
 
   @Test
@@ -2078,8 +2083,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void put_failedRowSample_200(TestInfo test) throws IOException {
-    CreateTestCase create = createRequest(test);
-    create
+    CreateTestCase create = createRequest(test)
         .withEntityLink(TABLE_LINK)
         .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
         .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
@@ -2107,6 +2111,51 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> putSampleData(testCase, columns, rows, authHeaders(USER2.getName())),
         FORBIDDEN,
         permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_SAMPLE_DATA)));
+  }
+
+  @Test
+  void test_sensitivePIISampleData(TestInfo test) throws IOException {
+    // Create table with owner and a column tagged with PII.Sensitive
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+            getSensitiveTableReq(test, tableResourceTest);
+    Table sensitiveTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    String sensitiveColumnLink =
+            String.format("<#E::table::%s::columns::%s>", sensitiveTable.getFullyQualifiedName(), C1);
+    CreateTestCase create = createRequest(test)
+            .withEntityLink(sensitiveColumnLink)
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                    List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    List<String> columns = List.of(C1);
+    // Add 3 rows of sample data
+    List<List<Object>> rows =
+            Arrays.asList(
+                    List.of("c1Value1"),
+                    List.of("c1Value2"),
+                    List.of("c1Value3"));
+    // add sample data
+    putSampleData(testCase, columns, rows, ADMIN_AUTH_HEADERS);
+    // assert values are not masked for the table owner
+    TableData data = getSampleData(testCase.getId(), authHeaders(USER1.getName()));
+    assertFalse(
+            data.getRows().stream()
+                    .flatMap(List::stream)
+                    .map(r -> r == null ? "" : r)
+                    .map(Object::toString)
+                    .anyMatch(MASKED_VALUE::equals));
+    // assert values are masked when is not the table owner
+    data = getSampleData(testCase.getId(), authHeaders(USER2.getName()));
+    assertEquals(
+            3,
+            data.getRows().stream()
+                    .flatMap(List::stream)
+                    .map(r -> r == null ? "" : r)
+                    .map(Object::toString)
+                    .filter(MASKED_VALUE::equals)
+                    .count());
   }
 
   private void putSampleData(

@@ -73,7 +73,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS =
       "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
-  public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult" + "";
+  public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
   public TestCaseRepository() {
@@ -653,9 +653,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
-  /**
-   * Remove test case from test suite summary and update test suite
-   */
+  /** Remove test case from test suite summary and update test suite */
   @Transaction
   private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
@@ -799,15 +797,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
     return testCase.withFailedRowsSamples(tableData);
-  }
-
-  // Validate if a given column exists in the table
-  public static void validateColumn(Table table, String columnName) {
-    boolean validColumn =
-        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
-    if (!validColumn) {
-      throw new IllegalArgumentException("Invalid column name " + columnName);
-    }
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
@@ -976,10 +965,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             TableData.class);
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
+      populateEntityFieldTags(Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
-      return maskSampleData(table.getSampleData(), table, table.getColumns());
+      return maskSampleData(testCase.getFailedRowsSamples(), table, table.getColumns());
     }
     return sampleData;
   }
