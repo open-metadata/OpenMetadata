@@ -324,14 +324,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
   protected abstract void clearFields(T entity, Fields fields);
-
-  /**
-   * Clear the search fields in an entity. This is used for clearing the fields that are not
-   * part of the entity class itself
-   */
-  protected void clearSearchFields(Map<String, Object> json) {
-    // No-op
-  }
   ;
 
   /**
@@ -797,13 +789,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     clearFields(entity, fields);
   }
 
-  public final void clearSearchFieldsInternal(Map<String, Object> json) {
-    json.remove("fqnParts");
-    json.remove("entityType");
-    json.remove("suggest");
-    clearSearchFields(json);
-  }
-
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
@@ -1024,7 +1009,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               searchListFilter, limit, offset, entityType, sortField, sortType, q);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        clearSearchFieldsInternal(json); // clear search index fields
         T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
         setInheritedFields(entity, fields);
         clearFieldsInternal(entity, fields);

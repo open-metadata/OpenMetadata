@@ -420,17 +420,17 @@ public class OpenSearchClient implements SearchClient {
     List<Map<String, Object>> results = new ArrayList<>();
     if (!filter.isEmpty()) {
       try {
-        XContentParser parser =
-            XContentType.JSON
-                .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, filter);
-        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(parser).query();
+        XContentParser queryParser = createXContentParser(filter);
+        XContentParser sourceParser = createXContentParser(filter);
+        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
+        FetchSourceContext sourceFromXContent = SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
         boolQuery =
             nullOrEmpty(q)
                 ? boolQuery.filter(queryFromXContent)
                 : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
         searchSourceBuilder.query(boolQuery);
+        searchSourceBuilder.fetchSource(sourceFromXContent);
       } catch (Exception e) {
         throw new IOException("Failed to parse query filter: %s", e);
       }
@@ -1900,5 +1900,17 @@ public class OpenSearchClient implements SearchClient {
       case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(q, from, size);
       default -> buildAggregateSearchBuilder(q, from, size);
     };
+  }
+
+  private XContentParser createXContentParser(String query) throws IOException {
+    try {
+      return
+              XContentType.JSON
+                      .xContent()
+                      .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+    } catch (IOException e) {
+      LOG.error("Failed to create XContentParser", e);
+      throw e;
+    }
   }
 }

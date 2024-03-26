@@ -3,7 +3,10 @@ package org.openmetadata.service.search;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
@@ -16,6 +19,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   public SearchListFilter(Include include) {
     this.include = include;
   }
+  static final String SEARCH_LIST_FILTER_EXCLUDE = "fqnParts,entityType,suggest";
 
   @Override
   public String getCondition(String entityType) {
@@ -25,7 +29,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
     }
-    return buildQueryFilter(addCondition(conditions));
+    String conditionFilter = addCondition(conditions);
+    String sourceFilter = getExcludeIncludeFields();
+    return buildQueryFilter(conditionFilter, sourceFilter);
   }
 
   @Override
@@ -52,6 +58,32 @@ public class SearchListFilter extends Filter<SearchListFilter> {
         "{\"range\": {\"%s\": {\"%s\": %d}}}", timestampField, conditionAlias, value);
   }
 
+  private String getExcludeIncludeFields() {
+    ArrayList<String> conditions = new ArrayList<>();
+    StringBuffer excludeCondition = new StringBuffer();
+    excludeCondition.append(SEARCH_LIST_FILTER_EXCLUDE);
+
+    String excludeFields = queryParams.get("excludeFields");
+    String includeFields = queryParams.get("includeFields");
+
+    if (!nullOrEmpty(excludeCondition)) {
+      if (!nullOrEmpty(excludeFields)) {
+        excludeCondition.append(",").append(excludeFields);
+      }
+      String[] excludes = excludeCondition.toString().split(",");
+      String excludesStr = Arrays.stream(excludes).collect(Collectors.joining("\",\"", "\"", "\""));
+
+      conditions.add(String.format("\"exclude\": [%s]", excludesStr));
+    }
+    if (!nullOrEmpty(includeFields)) {
+      String[] includes = includeFields.split(",");
+      String includesStr = Arrays.stream(includes).collect(Collectors.joining("\",\"", "\"", "\""));
+      conditions.add(String.format("\"include\": [%s]", includesStr));
+    }
+
+    return String.format("\"_source\": {%s}", addCondition(conditions));
+  }
+
   private String getIncludeCondition() {
     String deleted = "";
     if (include != Include.ALL) {
@@ -60,15 +92,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return deleted;
   }
 
-  private String buildQueryFilter(String condition) {
+  private String buildQueryFilter(String conditionFilter, String sourceFilter) {
     String q = queryParams.get("q");
     boolean isQEmpty = nullOrEmpty(q);
-    if (!condition.isEmpty()) {
-      return String.format("{\"query\": {\"bool\": {\"filter\": [%s]}}}", condition);
+    if (!conditionFilter.isEmpty()) {
+      return String.format("{%s,\"query\": {\"bool\": {\"filter\": [%s]}}}", sourceFilter, conditionFilter);
     } else if (!isQEmpty) {
-      return "";
+      return String.format("{%s}", sourceFilter);
     } else {
-      return "{\"query\": {\"match_all\": {}}}";
+      return String.format("{%s,\"query\": {\"match_all\": {}}}", sourceFilter);
     }
   }
 
@@ -103,7 +135,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (type != null) {
       conditions.add(
           switch (type) {
-            case "table" -> "{\"bool\": {\"must_not\": [{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}]}}";
+            case Entity.TABLE -> "{\"bool\": {\"must_not\": [{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}]}}";
             case "column" -> "{\"regexp\": {\"entityLink\": \".*::columns::.*\"}}";
             default -> "";
           });

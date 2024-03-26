@@ -84,8 +84,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
-        "index_options": "docs"
+        "analyzer": "om_analyzer"
       },
       "entityLink": {
         "type": "keyword",
@@ -146,9 +145,7 @@
             }
           },
           "description": {
-            "type": "text",
-            "analyzer": "om_analyzer",
-            "index_options": "docs"
+            "type": "text"
           },
           "entityType": {
             "type": "keyword"

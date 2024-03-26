@@ -78,6 +78,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
   static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId";
+  static final String SEARCH_FIELDS_EXCLUDE = "testPlatforms";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -353,6 +354,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testCaseType", type);
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
     searchListFilter.addQueryParam("q", q);
+    searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
 
     if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {
