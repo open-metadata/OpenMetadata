@@ -1,11 +1,10 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_ID_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
 import java.util.List;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -212,8 +211,8 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
-    UUID appID = (UUID) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_ID_KEY);
-    App jobApp = collectionDAO.applicationDAO().findEntityById(appID);
+    String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
+    App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     // Initialise the Application
     this.init(jobApp);

@@ -66,7 +66,7 @@ public class AppScheduler {
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
-  public static final String APP_ID_KEY = "appID";
+  public static final String APP_NAME = "appName";
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
@@ -169,7 +169,7 @@ public class AppScheduler {
 
   private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(APP_ID_KEY, app.getId());
+    dataMap.put(APP_NAME, app.getFullyQualifiedName());
     dataMap.put("triggerType", app.getAppSchedule().getScheduleTimeline().value());
     Class<? extends NativeApplication> clz =
         (Class<? extends NativeApplication>) Class.forName(app.getClassName());
@@ -240,7 +240,7 @@ public class AppScheduler {
         JobDetail newJobDetail =
             jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
         newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
-        newJobDetail.getJobDataMap().put(APP_ID_KEY, application.getId());
+        newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
         Trigger trigger =
             TriggerBuilder.newTrigger()
                 .withIdentity(
