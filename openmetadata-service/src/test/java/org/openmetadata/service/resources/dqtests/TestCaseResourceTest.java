@@ -2166,7 +2166,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       throws IOException {
     TableData tableData = new TableData().withColumns(columns).withRows(rows);
     TestCase putResponse = putSampleData(testCase.getId(), tableData, authHeaders);
-    assertEquals(tableData, putResponse.getFailedRowsSamples());
+    assertEquals(tableData, putResponse.getFailedRowsSample());
 
     TableData data = getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(tableData, data);

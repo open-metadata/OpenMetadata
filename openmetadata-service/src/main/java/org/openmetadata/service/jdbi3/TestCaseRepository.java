@@ -796,7 +796,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             "failedRowsSample",
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
-    return testCase.withFailedRowsSamples(tableData);
+    return testCase.withFailedRowsSample(tableData);
   }
 
   public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
@@ -969,7 +969,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
-      return maskSampleData(testCase.getFailedRowsSamples(), table, table.getColumns());
+      return maskSampleData(testCase.getFailedRowsSample(), table, table.getColumns());
     }
     return sampleData;
   }
