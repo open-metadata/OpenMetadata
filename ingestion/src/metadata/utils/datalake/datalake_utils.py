@@ -256,9 +256,12 @@ class GenericDataFrameColumnParser:
                     df_row_val_list = data_frame[column_name].dropna().values[:1000]
                     parsed_object_datatype_list = []
                     for df_row_val in df_row_val_list:
-                        parsed_object_datatype_list.append(
-                            type(ast.literal_eval(str(df_row_val))).__name__.lower()
-                        )
+                        try:
+                            parsed_object_datatype_list.append(
+                                type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                            )
+                        except ValueError:
+                            parsed_object_datatype_list.append("str")
                     data_type = max(parsed_object_datatype_list)
                     # Determine the data type of the parsed object
 

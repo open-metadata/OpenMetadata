@@ -96,24 +96,34 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.complex_df()
 
     def complex_df(self):
+        import pandas
+
         coltype_mapping_df = []
         data_formats = GenericDataFrameColumnParser._data_formats
         for index, df in enumerate(self.complex_dataframe_sample):
             if index == 0:
                 for col in self.table.columns:
-                    coltype = [
-                        key
-                        for key, value in data_formats.items()
-                        if col.dataType == value
-                    ][0]
+                    try:
+                        coltype = [
+                            key
+                            for key, value in data_formats.items()
+                            if col.dataType == value
+                        ][0]
+                    except IndexError:
+                        pass
                     if coltype and col.dataType not in {DataType.JSON, DataType.ARRAY}:
                         coltype_mapping_df.append(coltype)
                     else:
                         coltype_mapping_df.append("object")
 
-            self.complex_dataframe_sample[index] = df.astype(
-                dict(zip(df.keys(), coltype_mapping_df))
-            )
+            try:
+                self.complex_dataframe_sample[index] = df.astype(
+                    dict(zip(df.keys(), coltype_mapping_df))
+                )
+            except pandas.errors.IntCastingNaNError as err:
+                self.complex_dataframe_sample[index] = df
+                logger.warn(f"Error casting column: {err}")
+                break
 
     def _get_sampler(self):
         """Get dataframe sampler from config"""
