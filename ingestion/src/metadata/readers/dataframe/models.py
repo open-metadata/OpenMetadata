@@ -29,6 +29,7 @@ class DatalakeColumnWrapper(BaseModel):
 
     columns: Optional[List[Column]]
     dataframes: Optional[List[Any]]  # pandas.Dataframe does not have any validators
+    raw_data: Any  # in special cases like json schema, we need to store the raw data
 
 
 class DatalakeTableSchemaWrapper(BaseModel):
