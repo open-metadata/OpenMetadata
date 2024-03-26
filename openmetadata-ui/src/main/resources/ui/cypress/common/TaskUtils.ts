@@ -31,7 +31,10 @@ export type TaskDetails = {
   schemaName?: string;
 };
 
-export const verifyTaskDetails = (regexPattern: RegExp) => {
+export const verifyTaskDetails = (
+  regexPattern: RegExp,
+  taskAssignee?: string
+) => {
   cy.get('#task-panel').should('be.visible');
   cy.get('[data-testid="task-title"]')
     .invoke('text')
