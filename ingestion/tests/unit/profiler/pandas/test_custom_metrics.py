@@ -115,9 +115,8 @@ class MetricsTest(TestCase):
             self.s3_keys.append(key)
             self.client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
 
-        with patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=self.dfs,
         ):
             self.sqa_profiler_interface = PandasProfilerInterface(
@@ -153,9 +152,8 @@ class MetricsTest(TestCase):
                 ),
             ],
         )
-        with patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=self.dfs,
         ):
             self.sqa_profiler_interface = PandasProfilerInterface(
@@ -204,9 +202,8 @@ class MetricsTest(TestCase):
                 )
             ],
         )
-        with patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=self.dfs,
         ):
             self.sqa_profiler_interface = PandasProfilerInterface(
