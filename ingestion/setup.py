@@ -54,7 +54,6 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "pyiceberg": "pyiceberg~=0.6",
 }
 
 COMMONS = {
@@ -188,7 +187,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        VERSIONS["pyiceberg"],
+        "pyiceberg",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -304,7 +303,6 @@ test = {
     VERSIONS["giturlparse"],
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
-    VERSIONS["pyiceberg"],
     "testcontainers==3.7.1",
 }
 
