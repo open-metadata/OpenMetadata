@@ -23,11 +23,7 @@ on:
       - reopened
       - ready_for_review
     paths:
-      - openmetadata-spec/**
       - openmetadata-ui/**
-      - openmetadata-service/**
-      - openmetadata-clients/**
-      - common/**
 
 permissions:
   contents: read
