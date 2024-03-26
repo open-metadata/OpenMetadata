@@ -137,15 +137,14 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void storeEntity(App entity, boolean update) {
-    EntityReference botUserRef = entity.getBot();
     EntityReference ownerRef = entity.getOwner();
-    entity.withBot(null).withOwner(null);
+    entity.withOwner(null);
 
     // Store
     store(entity, update);
 
     // Restore entity fields
-    entity.withBot(botUserRef).withOwner(ownerRef);
+    entity.withOwner(ownerRef);
   }
 
   public EntityReference getBotUser(App application) {
@@ -232,6 +231,7 @@ public class AppRepository extends EntityRepository<App> {
       recordChange(
           "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
+      recordChange("bot", original.getBot(), updated.getBot());
     }
   }
 }
