@@ -26,6 +26,7 @@ import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
+import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-colored.svg';
 import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
@@ -282,13 +283,13 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: LoginIcon,
         },
         {
-          label: i18next.t('label.om-health'),
+          label: i18next.t('label.om-status'),
           description: i18next.t(
             'message.page-sub-header-for-om-health-configuration'
           ),
           isProtected: Boolean(isAdminUser),
           key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_HEALTH}`,
-          icon: LoginIcon,
+          icon: OMHealthIcon,
         },
       ],
     },

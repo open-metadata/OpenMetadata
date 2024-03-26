@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -31,13 +31,13 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const OmHealthPage = () => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState<boolean>(false);
-  const [validationStatus, setValidataionStatus] =
+  const [validationStatus, setValidationStatus] =
     useState<ValidationResponse>();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        t('label.om-health')
+        t('label.om-status')
       ),
     []
   );
@@ -46,7 +46,7 @@ const OmHealthPage = () => {
     setLoading(true);
     try {
       const response = await fetchOMStatus();
-      setValidataionStatus(response);
+      setValidationStatus(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -62,7 +62,7 @@ const OmHealthPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.om-health')}>
+    <PageLayoutV1 pageTitle={t('label.om-status')}>
       <Row className="page-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
