@@ -12,7 +12,7 @@
  */
 
 import EntityClass from '../../common/Entities/EntityClass';
-import { CustomPropertyType } from '../../common/Utils/CustomProperty';
+import { CustomPropertyTypeByName } from '../../common/Utils/CustomProperty';
 import DatabaseClass from './../../common/Entities/DatabaseClass';
 import DatabaseSchemaClass from './../../common/Entities/DatabaseSchemaClass';
 import StoreProcedureClass from './../../common/Entities/StoredProcedureClass';
@@ -111,7 +111,7 @@ describe('Database hierarchy details page', { tags: 'DataAssets' }, () => {
         entity.removeInactiveAnnouncement();
       });
 
-      Object.values(CustomPropertyType).forEach((type) => {
+      Object.values(CustomPropertyTypeByName).forEach((type) => {
         it(`Set ${type} Custom Property `, () => {
           entity.setCustomProperty(
             entity.customPropertyValue[type].property,
