@@ -32,6 +32,9 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableProfile,
 )
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -147,7 +150,7 @@ class PandasInterfaceTest(TestCase):
     def setUp(cls, mock_get_connection, mocked_dfs) -> None:
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=cls.table_entity,
-            service_connection_config=None,
+            service_connection_config=DatalakeConnection(configSource={}),
             storage_config=None,
             ometa_client=None,
             thread_count=None,

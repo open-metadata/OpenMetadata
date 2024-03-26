@@ -36,6 +36,7 @@ from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.static.null_count import NullCount
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -122,7 +123,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 )
             except pandas.errors.IntCastingNaNError as err:
                 self.complex_dataframe_sample[index] = df
-                logger.warn(f"Error casting column: {err}")
+                logger.warning(f"Error casting column: {err}")
                 break
 
     def _get_sampler(self):
@@ -187,19 +188,22 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
+        row_dict = {}
         try:
-            row_dict = {}
             for metric in metrics:
-                metric_resp = metric(column).df_fn(runner)
+                dataframes = (
+                    [df.dropna() for df in runner] if metric != NullCount else runner
+                )
+                metric_resp = metric(column).df_fn(dataframes)
                 row_dict[metric.name()] = (
                     None if pd.isnull(metric_resp) else metric_resp
                 )
-            return row_dict
         except Exception as exc:
             logger.debug(
                 f"{traceback.format_exc()}\nError trying to compute profile for {exc}"
             )
             raise RuntimeError(exc)
+        return row_dict
 
     def _compute_query_metrics(
         self,
