@@ -142,6 +142,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/extended_sample_data
 echo 'Validate sample data DAG...'
 sleep 5
 # This validates the sample data DAG flow
+make install
 python docker/validate_compose.py
 
 sleep 5
