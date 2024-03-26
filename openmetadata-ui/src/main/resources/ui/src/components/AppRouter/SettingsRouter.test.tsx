@@ -348,7 +348,7 @@ describe('SettingsRouter', () => {
   it.skip('should render CustomPageSettings component for custom page settings route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[`/settings/openMetadata/customizeLandingPage`]}>
+        initialEntries={[`/settings/preferences/customizeLandingPage`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -358,7 +358,7 @@ describe('SettingsRouter', () => {
 
   it('should render CustomLogoConfigSettingsPage component for custom logo config settings route', async () => {
     render(
-      <MemoryRouter initialEntries={[`/settings/OpenMetadata/customLogo`]}>
+      <MemoryRouter initialEntries={[`/settings/preferences/customLogo`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -380,7 +380,7 @@ describe('SettingsRouter', () => {
 
   it('should render EmailConfigSettingsPage component for email config settings route', async () => {
     render(
-      <MemoryRouter initialEntries={[`/settings/OpenMetadata/email`]}>
+      <MemoryRouter initialEntries={[`/settings/preferences/email`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
@@ -403,7 +403,7 @@ describe('SettingsRouter', () => {
   it('should render LoginConfigurationPage component for login configuration details route', async () => {
     render(
       <MemoryRouter
-        initialEntries={[`/settings/openMetadata/loginConfiguration`]}>
+        initialEntries={[`/settings/preferences/loginConfiguration`]}>
         <SettingsRouter />
       </MemoryRouter>
     );
