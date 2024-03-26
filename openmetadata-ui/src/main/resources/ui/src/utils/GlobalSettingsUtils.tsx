@@ -242,7 +242,7 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: i18next.t('label.preferences-plural'),
+      category: i18next.t('label.preference-plural'),
       key: GlobalSettingsMenuCategory.PREFERENCES,
       icon: OpenMetadataIcon,
       description: i18next.t('message.customize-open-metadata-description'),
@@ -469,7 +469,7 @@ export const settingCategories = {
     url: GlobalSettingsMenuCategory.ACCESS,
   },
   [GlobalSettingsMenuCategory.PREFERENCES]: {
-    name: i18next.t('label.preferences-plural'),
+    name: i18next.t('label.preference-plural'),
     url: GlobalSettingsMenuCategory.PREFERENCES,
   },
   [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
