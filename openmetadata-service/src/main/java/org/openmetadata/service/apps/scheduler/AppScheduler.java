@@ -169,7 +169,7 @@ public class AppScheduler {
 
   private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(APP_NAME, app.getName());
+    dataMap.put(APP_NAME, app.getFullyQualifiedName());
     dataMap.put("triggerType", app.getAppSchedule().getScheduleTimeline().value());
     Class<? extends NativeApplication> clz =
         (Class<? extends NativeApplication>) Class.forName(app.getClassName());
@@ -240,7 +240,7 @@ public class AppScheduler {
         JobDetail newJobDetail =
             jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
         newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
-        newJobDetail.getJobDataMap().put(APP_NAME, application.getId());
+        newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
         Trigger trigger =
             TriggerBuilder.newTrigger()
                 .withIdentity(
