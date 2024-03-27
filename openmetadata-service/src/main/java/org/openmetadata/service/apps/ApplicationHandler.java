@@ -6,6 +6,7 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
@@ -123,7 +124,7 @@ public class ApplicationHandler {
     } catch (ClassNotFoundException e) {
       throw new UnhandledServerException(e.getMessage());
     } catch (InvocationTargetException e) {
-      throw new AppException(e.getTargetException().getMessage());
+      throw AppException.byMessage(app.getName(), methodName, e.getTargetException().getMessage());
     }
   }
 
@@ -144,6 +145,16 @@ public class ApplicationHandler {
       return;
     }
     LOG.info("migrating app quartz configuration for {}", application.getName());
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = JsonUtils.readValue(appInfo, Map.class);
+    if (map.containsKey("appSchedule")) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> appScheduleMap = (Map<String, Object>) map.get("appSchedule");
+      appScheduleMap.put("scheduleTimeline", appScheduleMap.get("scheduleType"));
+      appScheduleMap.remove("scheduleType");
+      map.put("appSchedule", appScheduleMap);
+      appInfo = JsonUtils.pojoToJson(map);
+    }
     App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
     updatedApp.setOpenMetadataServerConnection(null);
     updatedApp.setPrivateConfiguration(null);
