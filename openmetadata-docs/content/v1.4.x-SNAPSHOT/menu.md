@@ -797,6 +797,9 @@ site_menu:
   - category: Connectors / Ingestion / Workflows/ Metadata / Incremental Extraction / Snowflake
     url: /connectors/ingestion/workflows/metadata/incremental-extraction/snowflake
 
+  - category: Connectors / Ingestion / Workflows/ Metadata / Multithreading
+    url: /connectors/ingestion/workflows/metadata/multithreading
+
   - category: Connectors / Ingestion / Workflows / Usage
     url: /connectors/ingestion/workflows/usage
   - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs

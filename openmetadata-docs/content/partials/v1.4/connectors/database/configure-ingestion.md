@@ -46,6 +46,7 @@ If the owner's name is openmetadata, you need to enter `openmetadata@domain.com`
     - **Enabled**: If `True`, enables Metadata Extraction to be Incremental.
     - **lookback Days**: Number of days to search back for a successful pipeline run. The timestamp of the last found successful pipeline run will be used as a base to search for updated entities.
     - **Safety Margin Days**: Number of days to add to the last successful pipeline run timestamp to search for updated entities.
+- **Threads (Beta)**: Use a Multithread approach for Metadata Extraction. You can define here the number of threads you would like to run concurrently. For further information please check the documentation on [**Metadata Ingestion - Multithreading**](/connectors/ingestion/workflows/metadata/multithreading)
 
 Note that the right-hand side panel in the OpenMetadata UI will also share useful documentation when configuring the ingestion.
 

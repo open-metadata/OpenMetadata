@@ -23,8 +23,8 @@ The flow is depicted in the images below.
 
 **TopologyRunner Standard Flow**
 
-![image](https://github.com/IceS2/OpenMetadata/assets/4912399/c253af53-c11a-4b91-b101-892fa8169c81)
+![image](../openmetadata-docs/images/v1.4/features/ingestion/workflows/metadata/multithreading/single-thread-flow.png)
 
 **TopologyRunner Multithread Flow**
 
-![image](https://github.com/IceS2/OpenMetadata/assets/4912399/3fcef845-10da-4aee-82cc-28d5f5ff9532)
+![image](../openmetadata-docs/images/v1.4/features/ingestion/workflows/metadata/multithreading/multi-thread-flow.png)
