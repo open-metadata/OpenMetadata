@@ -18,7 +18,11 @@ import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './avatar-carousel.less';
 
-const AvatarCarousel = () => {
+interface AvatarCarouselProps {
+  showArrows?: boolean;
+}
+
+const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
   const { allSuggestionsUsers: avatarList, onUpdateActiveUser } =
     useSuggestionsContext();
   const [currentSlide, setCurrentSlide] = useState(-1);
@@ -45,15 +49,18 @@ const AvatarCarousel = () => {
 
   return (
     <div className="avatar-carousel-container d-flex items-center">
-      <Button
-        className="carousel-arrow"
-        data-testid="prev-slide"
-        disabled={avatarList.length <= 1 || currentSlide <= 0}
-        icon={<LeftOutlined />}
-        size="small"
-        type="text"
-        onClick={prevSlide}
-      />
+      {showArrows && (
+        <Button
+          className="carousel-arrow"
+          data-testid="prev-slide"
+          disabled={avatarList.length <= 1 || currentSlide <= 0}
+          icon={<LeftOutlined />}
+          size="small"
+          type="text"
+          onClick={prevSlide}
+        />
+      )}
+
       <Carousel
         afterChange={(current) => setCurrentSlide(current)}
         dots={false}
@@ -74,17 +81,19 @@ const AvatarCarousel = () => {
           </UserPopOverCard>
         ))}
       </Carousel>
-      <Button
-        className="carousel-arrow"
-        data-testid="next-slide"
-        disabled={
-          avatarList.length <= 1 || currentSlide === avatarList.length - 1
-        }
-        icon={<RightOutlined />}
-        size="small"
-        type="text"
-        onClick={nextSlide}
-      />
+      {showArrows && (
+        <Button
+          className="carousel-arrow"
+          data-testid="next-slide"
+          disabled={
+            avatarList.length <= 1 || currentSlide === avatarList.length - 1
+          }
+          icon={<RightOutlined />}
+          size="small"
+          type="text"
+          onClick={nextSlide}
+        />
+      )}
     </div>
   );
 };

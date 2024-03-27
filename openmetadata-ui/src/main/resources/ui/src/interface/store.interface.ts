@@ -66,3 +66,8 @@ export interface ApplicationStore
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
 }
+
+export interface EntityStore {
+  activeFqn: string | null;
+  setActiveFqn: (fqn: string | null) => void;
+}

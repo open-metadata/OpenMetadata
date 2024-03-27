@@ -12,7 +12,7 @@
  */
 import { Avatar } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
-import applicationSchemaClassBase from '../AppDetails/ApplicationSchemaClassBase';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
 const AppLogo = ({
   logo,
@@ -25,7 +25,7 @@ const AppLogo = ({
 
   const fetchLogo = useCallback(async () => {
     if (!logo) {
-      const data = await applicationSchemaClassBase.importAppLogo(appName);
+      const data = await applicationsClassBase.importAppLogo(appName);
       const Icon = data.ReactComponent as React.ComponentType<
         JSX.IntrinsicElements['svg']
       >;
