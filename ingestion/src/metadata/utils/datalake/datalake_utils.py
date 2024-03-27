@@ -267,7 +267,7 @@ class GenericDataFrameColumnParser:
 
                             try:
                                 type(parse(df_row_val)).__name__.lower()
-                                parsed_object_datatype_list.append("datetime64")
+                                parsed_object_datatype_list.append("datetime64[ns]")
                             except ParserError:
                                 parsed_object_datatype_list.append("str")
                         except Exception as err:
