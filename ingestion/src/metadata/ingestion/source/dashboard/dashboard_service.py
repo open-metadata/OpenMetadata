@@ -40,7 +40,11 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -452,6 +456,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def _get_add_lineage_request(
         to_entity: Union[Dashboard, DashboardDataModel],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
+        column_lineage: List[ColumnLineage] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
@@ -466,7 +471,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                             type=LINEAGE_MAP[type(to_entity)],
                         ),
                         lineageDetails=LineageDetails(
-                            source=LineageSource.DashboardLineage
+                            source=LineageSource.DashboardLineage,
+                            columnsLineage=column_lineage,
                         ),
                     )
                 )
