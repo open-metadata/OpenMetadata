@@ -75,7 +75,7 @@ export const DomainLabel = ({
         showErrorToast(err as AxiosError);
       }
     },
-    [entityType, entityFqn, afterDomainUpdateAction]
+    [entityType, entityId, entityFqn, afterDomainUpdateAction]
   );
 
   useEffect(() => {
@@ -111,7 +111,7 @@ export const DomainLabel = ({
         </Typography.Text>
       );
     }
-  }, [activeDomain, domainDisplayName, textClassName]);
+  }, [activeDomain, domainDisplayName, showDomainHeading, textClassName]);
 
   const selectableList = useMemo(() => {
     return (
@@ -123,7 +123,7 @@ export const DomainLabel = ({
         />
       )
     );
-  }, [hasPermission, activeDomain]);
+  }, [hasPermission, activeDomain, handleDomainSave]);
 
   const label = useMemo(() => {
     if (showDomainHeading) {
