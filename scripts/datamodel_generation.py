@@ -31,6 +31,7 @@ current_directory = os.getcwd()
 ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
 directory_root = "../" if current_directory.endswith("/ingestion") else "./"
 
+UTF_8 = "UTF-8"
 UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/entity/classification/tag.py",
     f"{ingestion_path}src/metadata/generated/schema/entity/events/webhook.py",
@@ -44,9 +45,19 @@ args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schem
 main(args)
 
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
-    with open(file_path, "r", encoding="UTF-8") as file_:
+    with open(file_path, "r", encoding=UTF_8) as file_:
         content = file_.read()
         # Python now requires to move the global flags at the very start of the expression
         content = content.replace("(?U)", "(?u)")
-    with open(file_path, "w", encoding="UTF-8") as file_:
+    with open(file_path, "w", encoding=UTF_8) as file_:
+        file_.write(content)
+
+
+# Until https://github.com/koxudaxi/datamodel-code-generator/issues/1895
+MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",]
+for file_path in MISSING_IMPORTS:
+    with open(file_path, "r", encoding=UTF_8) as file_:
+        content = file_.read()
+    with open(file_path, "w", encoding=UTF_8) as file_:
+        file_.write("from typing import Union  # custom generate import\n\n")
         file_.write(content)
