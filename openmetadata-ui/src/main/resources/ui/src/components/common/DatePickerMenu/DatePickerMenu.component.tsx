@@ -16,7 +16,6 @@ import { Button, DatePicker, Dropdown, MenuProps, Space } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { isUndefined, pick } from 'lodash';
 import { DateFilterType, DateRangeObject } from 'Models';
-import moment from 'moment';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,7 +54,7 @@ const DatePickerMenu = ({
   const { menuOptions, defaultOptions } = useMemo(() => {
     const defaultOptions = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
 
-    if (defaultDateRange && defaultDateRange.key) {
+    if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
       if (defaultDateRange.key === 'customRange' && defaultDateRange.title) {
         defaultOptions.title = defaultDateRange.title;
@@ -163,10 +162,6 @@ const DatePickerMenu = ({
               <DatePicker.RangePicker
                 bordered={false}
                 clearIcon={<CloseCircleOutlined />}
-                defaultValue={[
-                  moment(defaultDateRange?.startTs),
-                  moment(defaultDateRange?.endTs),
-                ]}
                 format={(value) => value.utc().format('YYYY-MM-DD')}
                 open={isMenuOpen}
                 placement="bottomRight"
