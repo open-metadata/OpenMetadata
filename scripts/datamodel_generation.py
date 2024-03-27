@@ -55,9 +55,13 @@ for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
 
 # Until https://github.com/koxudaxi/datamodel-code-generator/issues/1895
 MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",]
+WRITE_AFTER = "from __future__ import annotations"
+
 for file_path in MISSING_IMPORTS:
     with open(file_path, "r", encoding=UTF_8) as file_:
-        content = file_.read()
+        lines = file_.readlines()
     with open(file_path, "w", encoding=UTF_8) as file_:
-        file_.write("from typing import Union  # custom generate import\n\n")
-        file_.write(content)
+        for line in lines:
+            file_.write(line)
+            if line.strip() == WRITE_AFTER:
+                file_.write("from typing import Union  # custom generate import\n\n")
