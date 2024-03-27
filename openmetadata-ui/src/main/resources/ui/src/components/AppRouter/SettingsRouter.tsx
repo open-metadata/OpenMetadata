@@ -26,6 +26,7 @@ import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AlertsActivityFeedPage from '../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
+import BrandColorConfigSettingsPage from '../../pages/BrandColorConfigSettingsPage/BrandColorConfigSettingsPage';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
 import CustomLogoConfigSettingsPage from '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage';
@@ -292,6 +293,15 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={BrandColorConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.BRAND_COLOR
         )}
       />
       <AdminProtectedRoute

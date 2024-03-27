@@ -13,17 +13,17 @@
 import { ConfigProvider } from 'antd';
 import React, { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const DirectionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
+  const { theme } = useApplicationStore();
 
   ConfigProvider.config({
     theme: {
-      primaryColor: '#25B864',
-      errorColor: '#FF4D4F',
-      warningColor: '#FAAD14',
-      successColor: '#52C41A',
-      infoColor: '#1890FF',
+      primaryColor: '#0968da',
+      infoColor: '#2196f3',
+      ...theme,
     },
   });
 

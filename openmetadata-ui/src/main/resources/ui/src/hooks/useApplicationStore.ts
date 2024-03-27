@@ -45,6 +45,10 @@ export const useApplicationStore = create<ApplicationStore>()(
       oidcIdToken: '',
       refreshTokenKey: '',
       loading: false,
+      theme: {},
+      setTheme: (theme: ApplicationStore['theme']) => {
+        set({ theme });
+      },
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });
