@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-.activity-feed-card-container.has-replies > .activity-feed-card,
-.activity-feed-card-container:last-child > .activity-feed-card {
-  border-bottom: none;
-}
+import { Post, Thread } from '../../../../generated/entity/feed/thread';
 
-.feed-posts {
-  margin-left: 24px;
+export interface FeedCardFooterProps {
+  feed: Thread;
+  post: Post;
+  isPost?: boolean;
+  componentsVisibility?: {
+    showThreadIcon?: boolean;
+    showRepliesContainer?: boolean;
+  };
 }
