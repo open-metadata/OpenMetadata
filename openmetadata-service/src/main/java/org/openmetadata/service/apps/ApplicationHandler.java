@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -129,8 +128,7 @@ public class ApplicationHandler {
     }
   }
 
-  public void migrateQuartzConfig(App application)
-      throws SchedulerException, JsonProcessingException {
+  public void migrateQuartzConfig(App application) throws SchedulerException {
     JobDetail jobDetails =
         AppScheduler.getInstance()
             .getScheduler()
