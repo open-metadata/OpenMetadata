@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -128,7 +129,8 @@ public class ApplicationHandler {
     }
   }
 
-  public void migrateQuartzConfig(App application) throws SchedulerException {
+  public void migrateQuartzConfig(App application)
+      throws SchedulerException, JsonProcessingException {
     JobDetail jobDetails =
         AppScheduler.getInstance()
             .getScheduler()
@@ -148,16 +150,14 @@ public class ApplicationHandler {
     @SuppressWarnings("unchecked")
     Map<String, Object> map = JsonUtils.readValue(appInfo, Map.class);
     if (map.containsKey("appSchedule")) {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> appScheduleMap = (Map<String, Object>) map.get("appSchedule");
-      appScheduleMap.put("scheduleTimeline", appScheduleMap.get("scheduleType"));
-      appScheduleMap.remove("scheduleType");
-      map.put("appSchedule", appScheduleMap);
+      map.remove("appSchedule");
       appInfo = JsonUtils.pojoToJson(map);
     }
     App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
     updatedApp.setOpenMetadataServerConnection(null);
     updatedApp.setPrivateConfiguration(null);
+    updatedApp.setScheduleType(application.getScheduleType());
+    updatedApp.setAppSchedule(application.getAppSchedule());
     App currentApp = appRepository.getDao().findEntityById(application.getId());
     EntityRepository<App>.EntityUpdater updater =
         appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
