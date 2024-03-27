@@ -83,6 +83,26 @@ describe(
       cy.settingClick(GlobalSettingOptions.TEAMS);
     });
 
+    before(() => {
+      cy.login();
+      cy.sidebarClick(SidebarItem.SETTINGS);
+      // Clicking on teams
+      cy.settingClick(GlobalSettingOptions.TEAMS);
+
+      DRAG_AND_DROP_TEAM_DETAILS.map((team) => {
+        addTeam(team);
+        cy.reload();
+        // asserting the added values
+        cy.get(`[data-row-key="${team.name}"]`)
+          .scrollIntoView()
+          .should('be.visible');
+        cy.get(`[data-row-key="${team.name}"]`).should(
+          'contain',
+          team.description
+        );
+      });
+    });
+
     after(() => {
       cy.login();
       cy.sidebarClick(SidebarItem.SETTINGS);
@@ -97,21 +117,6 @@ describe(
         teamNameGroup,
       ].map((teamName) => {
         deleteTeamPermanently(teamName);
-      });
-    });
-
-    it('Add new team for drag and drop', () => {
-      DRAG_AND_DROP_TEAM_DETAILS.map((team) => {
-        addTeam(team);
-        cy.reload();
-        // asserting the added values
-        cy.get(`[data-row-key="${team.name}"]`)
-          .scrollIntoView()
-          .should('be.visible');
-        cy.get(`[data-row-key="${team.name}"]`).should(
-          'contain',
-          team.description
-        );
       });
     });
 
