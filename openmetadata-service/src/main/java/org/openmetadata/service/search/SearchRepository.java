@@ -646,6 +646,26 @@ public class SearchRepository {
     return searchClient.search(request);
   }
 
+  public SearchClient.SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      String sortField,
+      String sortType,
+      String q)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        sortField,
+        sortType,
+        q);
+  }
+
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     return searchClient.searchBySourceUrl(sourceUrl);
   }

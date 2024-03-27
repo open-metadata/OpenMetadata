@@ -759,6 +759,79 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
+  protected void validateEntityListFromSearchWithPagination(
+      Map<String, String> queryParams, Integer maxEntities) throws IOException {
+    // List all entities and use it for checking pagination
+    Random rand = new Random();
+
+    for (Include include : List.of(Include.NON_DELETED, Include.ALL)) {
+      if (!supportsSoftDelete && include.equals(Include.DELETED)) {
+        continue;
+      }
+      queryParams.put("include", include.value());
+
+      ResultList<T> allEntities = listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
+      int totalRecords = allEntities.getData().size();
+      printEntities(allEntities);
+
+      ResultList<T> forwardPage;
+      ResultList<T> backwardPage;
+      int offset = 0;
+      int cumEntityCount = 0;
+      // List entity with "limit" set from 1 to maxEntities size with random jumps
+      for (int limit = 1; limit <= maxEntities; limit += rand.nextInt(5) + 1) {
+        offset = 0;
+        cumEntityCount = 0;
+        int pageCount = 0;
+        do {
+          LOG.debug(
+              "Limit {} forward pageCount {} totalRecords {} offset {}",
+              limit,
+              pageCount,
+              totalRecords,
+              offset);
+          forwardPage = listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
+
+          if (pageCount == 0) { // First page is being returned. Offset should be 0
+            assertEquals(offset, 0);
+          } else {
+            // Make sure scrolling back based on offset - limit cursor returns the correct result
+            backwardPage =
+                listEntitiesFromSearch(queryParams, limit, (offset - limit), ADMIN_AUTH_HEADERS);
+            assertEntityPagination(allEntities.getData(), forwardPage, limit, offset);
+          }
+          offset = offset + limit;
+          cumEntityCount += forwardPage.getData().size();
+          printEntities(forwardPage);
+          pageCount++;
+        } while (offset < totalRecords);
+
+        // We reached the end of the page check total cum number matches total records and paginate
+        // backward
+        assertEquals(totalRecords, cumEntityCount);
+
+        pageCount = 0;
+        cumEntityCount = 0;
+
+        do {
+          LOG.debug(
+              "Limit {} backward pageCount {} totalRecords {} offset {}",
+              limit,
+              pageCount,
+              totalRecords,
+              offset);
+          offset = offset - limit;
+          backwardPage = listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
+          assertEntityPagination(allEntities.getData(), backwardPage, limit, offset);
+          printEntities(backwardPage);
+          cumEntityCount += backwardPage.getData().size();
+          pageCount++;
+        } while (offset > 0);
+      }
+    }
+  }
+
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
     // Finally, delete the container that contains the entities created for this test
@@ -3070,6 +3143,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
     return TestUtils.get(target, entityListClass, authHeaders);
+  }
+
+  public ResultList<T> listEntitiesFromSearch(
+      Map<String, String> queryParams,
+      Integer limit,
+      Integer offset,
+      Map<String, String> authHeader)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/search/list");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, entityListClass, authHeader);
   }
 
   private void printEntities(ResultList<T> list) {
