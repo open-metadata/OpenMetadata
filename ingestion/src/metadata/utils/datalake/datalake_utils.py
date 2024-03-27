@@ -260,8 +260,23 @@ class GenericDataFrameColumnParser:
                             parsed_object_datatype_list.append(
                                 type(ast.literal_eval(str(df_row_val))).__name__.lower()
                             )
-                        except ValueError:
+                        except (ValueError, SyntaxError):
+                            # we try to parse the value as a datetime, if it fails, we fallback to string
+                            # as literal_eval will fail for string
+                            from dateutil.parser import ParserError, parse
+
+                            try:
+                                type(parse(df_row_val)).__name__.lower()
+                                parsed_object_datatype_list.append("datetime64")
+                            except ParserError:
+                                parsed_object_datatype_list.append("str")
+                        except Exception as err:
+                            logger.debug(
+                                f"Failed to parse datatype for column {column_name}, exc: {err},"
+                                "Falling back to string."
+                            )
                             parsed_object_datatype_list.append("str")
+
                     data_type = max(parsed_object_datatype_list)
                     # Determine the data type of the parsed object
 
