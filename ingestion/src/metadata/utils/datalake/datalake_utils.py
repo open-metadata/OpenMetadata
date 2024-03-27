@@ -179,7 +179,8 @@ class GenericDataFrameColumnParser:
         **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT),
         "bool": DataType.BOOLEAN,
         **dict.fromkeys(
-            ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME
+            ["datetime64[ns]", "datetime", "timedelta[ns]"],
+            DataType.DATETIME,
         ),
         "str": DataType.STRING,
         "bytes": DataType.BYTES,
