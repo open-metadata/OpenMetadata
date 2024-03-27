@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -270,6 +271,9 @@ const GlossaryPage = () => {
   const handleGlossaryTermUpdate = useCallback(
     async (updatedData: GlossaryTerm) => {
       const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
+      if (isEmpty(jsonPatch)) {
+        return;
+      }
       try {
         const response = await patchGlossaryTerm(
           selectedData?.id as string,
