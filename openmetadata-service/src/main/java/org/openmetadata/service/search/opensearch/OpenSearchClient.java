@@ -1280,19 +1280,18 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private void updateChildren(
-          UpdateByQueryRequest updateByQueryRequest,
-          Pair<String, String> fieldAndValue,
-          Pair<String, Map<String, Object>> updates
-  ) {
+      UpdateByQueryRequest updateByQueryRequest,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
     updateByQueryRequest.setQuery(
-            new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-                    .operator(Operator.AND));
+        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
+            .operator(Operator.AND));
     Script script =
-            new Script(
-                    ScriptType.INLINE,
-                    Script.DEFAULT_SCRIPT_LANG,
-                    updates.getKey(),
-                    JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+        new Script(
+            ScriptType.INLINE,
+            Script.DEFAULT_SCRIPT_LANG,
+            updates.getKey(),
+            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
     updateByQueryRequest.setScript(script);
     updateOpenSearchByQuery(updateByQueryRequest);
   }
@@ -1310,11 +1309,12 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public void updateChildren(
-          List<String> indexName,
-          Pair<String, String> fieldAndValue,
-          Pair<String, Map<String, Object>> updates) {
+      List<String> indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }

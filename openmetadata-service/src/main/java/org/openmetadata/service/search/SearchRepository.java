@@ -352,15 +352,16 @@ public class SearchRepository {
       if (!updates.getValue().isEmpty()
           && updates.getValue().get("type").toString().equalsIgnoreCase("domain")) {
         if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-                || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-                || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-                || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-                || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-                || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-                || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+            || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
           parentMatch = new ImmutablePair<>("service.id", entityId);
         } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-          EntityInterface entity = Entity.getEntity(entityType, UUID.fromString(entityId), "", Include.ALL);
+          EntityInterface entity =
+              Entity.getEntity(entityType, UUID.fromString(entityId), "", Include.ALL);
           parentMatch = new ImmutablePair<>("entityFQN", entity.getFullyQualifiedName());
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
@@ -369,7 +370,8 @@ public class SearchRepository {
         parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
       }
       if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-          searchClient.updateChildren(indexMapping.getChildAliases(clusterAlias), parentMatch, updates);
+        searchClient.updateChildren(
+            indexMapping.getChildAliases(clusterAlias), parentMatch, updates);
       }
     }
   }

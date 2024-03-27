@@ -336,13 +336,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortType")
           @DefaultValue("desc")
           String sortType,
-      @Parameter(
-              description = "domain filter to use in list",
-              schema =
-              @Schema(
-                      type = "string"))
-      @QueryParam("domain")
-      String domain,
+      @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))

@@ -143,7 +143,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.query.QueryResource;
@@ -1998,7 +1997,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_domainInheritance(TestInfo test) throws HttpResponseException, IOException, InterruptedException {
+  void test_domainInheritance(TestInfo test)
+      throws HttpResponseException, IOException, InterruptedException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     DatabaseService dbService =
         dbServiceTest.createEntity(
@@ -2024,14 +2024,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Ensure test case domain is inherited from table
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     CreateTestCase createTestCase =
-            testCaseResourceTest.createRequest(test)
-                    .withEntityLink(String.format("<#E::table::%s>",table.getFullyQualifiedName()))
-                    .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-                    .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-                    .withParameterValues(
-                            List.of(
-                                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    TestCase testCase = testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
+        testCaseResourceTest
+            .createRequest(test)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase =
+        testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
     assertDomainInheritanceOverride(

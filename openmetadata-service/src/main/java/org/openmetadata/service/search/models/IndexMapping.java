@@ -38,8 +38,8 @@ public class IndexMapping {
 
   public List<String> getChildAliases(String clusterAlias) {
     return clusterAlias != null && !clusterAlias.isEmpty()
-            ? childAliases.stream().map(alias -> clusterAlias + indexNameSeparator + alias).toList()
-            : childAliases;
+        ? childAliases.stream().map(alias -> clusterAlias + indexNameSeparator + alias).toList()
+        : childAliases;
   }
 
   private String getIndexName() {

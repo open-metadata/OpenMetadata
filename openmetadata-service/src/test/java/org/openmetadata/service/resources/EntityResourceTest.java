@@ -56,7 +56,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.org.elasticsearch.action.search.SearchResponse;
-import es.org.elasticsearch.client.ElasticsearchClient;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
@@ -188,7 +187,6 @@ import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.query.QueryResourceTest;
-import org.openmetadata.service.resources.search.SearchResource;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
@@ -199,8 +197,6 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
-import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -3040,14 +3036,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual) throws IOException, InterruptedException {
+  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual)
+      throws IOException, InterruptedException {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
-    Request request = new Request("GET",  String.format("%s/_search", index.getIndexName(null)));
-    String query = String.format(
-     "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}",
-            entity.getId());
+    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    String query =
+        String.format(
+            "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
     request.setJsonEntity(query);
     try {
       waitForEsAsyncOp();
@@ -3057,14 +3054,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     String jsonString = EntityUtils.toString(response.getEntity());
-    HashMap<String, Object> map = (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
-    ArrayList<LinkedHashMap<String, Object>> hitsList = (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
     assertEquals(1, hitsList.size());
     LinkedHashMap<String, Object> doc = (LinkedHashMap<String, Object>) hitsList.get(0);
     LinkedHashMap<String, Object> source = (LinkedHashMap<String, Object>) doc.get("_source");
 
-    EntityReference domainReference = JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
+    EntityReference domainReference =
+        JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
 
     assertEquals(domainReference.getId(), actual.getId());
     assertEquals(domainReference.getType(), actual.getType());
