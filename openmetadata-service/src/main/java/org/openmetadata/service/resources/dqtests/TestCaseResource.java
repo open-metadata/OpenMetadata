@@ -337,6 +337,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("desc")
           String sortType,
       @Parameter(
+              description = "domain filter to use in list",
+              schema =
+              @Schema(
+                      type = "string"))
+      @QueryParam("domain")
+      String domain,
+      @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
@@ -355,6 +362,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("domain", domain);
 
     if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {
