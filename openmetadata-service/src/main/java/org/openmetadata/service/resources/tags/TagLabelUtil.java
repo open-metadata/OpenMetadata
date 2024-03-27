@@ -101,8 +101,12 @@ public class TagLabelUtil {
       return tagLabels;
     }
 
+    // Filter out all the derived tags
+    List<TagLabel> filteredTags =
+        tagLabels.stream().filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED).toList();
+
     List<TagLabel> updatedTagLabels = new ArrayList<>();
-    EntityUtil.mergeTags(updatedTagLabels, tagLabels);
+    EntityUtil.mergeTags(updatedTagLabels, filteredTags);
     for (TagLabel tagLabel : tagLabels) {
       EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
     }
