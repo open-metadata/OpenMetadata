@@ -180,7 +180,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     if (isEmpty(currentUser)) {
       resetPermissions();
     }
-  }, [currentUser]);
+  }, [currentUser?.teams, currentUser?.roles]);
 
   const contextValues = useMemo(
     () => ({

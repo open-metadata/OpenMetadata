@@ -60,9 +60,12 @@ describe(
     const data = {
       testCase: {},
       testSuite: {},
-      pipelineService: {},
+      pipelineService: {
+        id: '',
+      },
       ingestionPipeline: {},
       user: {
+        id: '',
         displayName: '',
       },
       domain: {

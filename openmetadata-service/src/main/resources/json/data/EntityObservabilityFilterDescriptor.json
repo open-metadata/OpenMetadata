@@ -328,15 +328,6 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetTestCaseSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
-        "displayName": "Get Schema Changes",
-        "description" : "Get Updates for Schema Changes",
-        "effect" : "include",
-        "condition": "matchAnyFieldChange({'testDefinition','parameterValues','description'})",
-        "inputType": "none"
-      },
-      {
         "name": "GetTestCaseStatusUpdates",
         "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdates",
         "displayName": "Get Test Case Status Updates",
@@ -391,15 +382,6 @@
       }
     ],
     "supportedActions" : [
-      {
-        "name": "GetTestSuiteSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
-        "displayName": "Get Schema Changes",
-        "description" : "Get Updates for Schema Changes",
-        "effect" : "include",
-        "condition": "matchAnyFieldChange({'connection','pipelines','description'})",
-        "inputType": "none"
-      },
       {
         "name": "GetTestCaseStatusUpdatesUnderSuite",
         "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdatesUnderSuite",

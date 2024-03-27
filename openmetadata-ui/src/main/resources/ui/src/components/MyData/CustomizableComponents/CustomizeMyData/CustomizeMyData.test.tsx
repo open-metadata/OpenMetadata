@@ -154,7 +154,7 @@ describe('CustomizeMyData component', () => {
     await act(async () => userEvent.click(cancelButton));
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/settings/openMetadata/customizeLandingPage'
+      '/settings/preferences/customizeLandingPage'
     );
   });
 
