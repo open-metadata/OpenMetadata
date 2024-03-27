@@ -54,7 +54,7 @@ const DatePickerMenu = ({
   const { menuOptions, defaultOptions } = useMemo(() => {
     const defaultOptions = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
 
-    if (defaultDateRange && defaultDateRange.key) {
+    if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
       if (defaultDateRange.key === 'customRange' && defaultDateRange.title) {
         defaultOptions.title = defaultDateRange.title;
