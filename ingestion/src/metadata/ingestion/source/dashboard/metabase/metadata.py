@@ -94,7 +94,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.client.get_dashboards_list()
+        return self.client.get_dashboards_list(self.collections)
 
     def get_dashboard_name(self, dashboard: MetabaseDashboard) -> str:
         """

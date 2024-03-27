@@ -37,7 +37,7 @@ class MetabaseCollection(BaseModel):
 
 
 class MetabaseDashboardList(BaseModel):
-    dashboards: Optional[List[MetabaseDashboard]]
+    data: Optional[List[MetabaseDashboard]]
 
 
 class MetabaseCollectionList(BaseModel):
