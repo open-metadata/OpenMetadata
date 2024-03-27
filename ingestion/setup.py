@@ -58,6 +58,7 @@ VERSIONS = {
 
 COMMONS = {
     "datalake": {
+        VERSIONS["avro"],
         VERSIONS["boto3"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
