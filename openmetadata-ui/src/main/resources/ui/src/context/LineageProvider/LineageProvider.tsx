@@ -152,8 +152,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
-    upstreamDepth: 3,
-    downstreamDepth: 3,
+    // upstreamDepth: null,
+    // downstreamDepth: null, Use this to set default values
     nodesPerLayer: 50,
   });
   const [queryFilter, setQueryFilter] = useState<string>('');
