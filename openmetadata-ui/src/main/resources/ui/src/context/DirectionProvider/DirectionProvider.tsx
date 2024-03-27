@@ -17,6 +17,16 @@ import { useTranslation } from 'react-i18next';
 const DirectionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
 
+  ConfigProvider.config({
+    theme: {
+      primaryColor: '#25B864',
+      errorColor: '#FF4D4F',
+      warningColor: '#FAAD14',
+      successColor: '#52C41A',
+      infoColor: '#1890FF',
+    },
+  });
+
   return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
 };
 

@@ -64,7 +64,7 @@
   display: block;
   width: 18px;
   height: 18px;
-  border: 3px solid @primary-color-hover;
+  border: 3px solid var(--ant-primary-color)-hover;
   background: transparent;
   border-radius: 50%;
   margin-top: 0.15rem;
@@ -74,7 +74,7 @@
   border-color: #f9816c;
 }
 .timeline-rounder.selected {
-  border: 3px solid @primary-color;
+  border: 3px solid var(--ant-primary-color);
 }
 
 .timeline-rounder.selected::after {
@@ -84,8 +84,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 2px solid @primary-color;
-  background-color: @primary-color;
+  border: 2px solid var(--ant-primary-color);
+  background-color: var(--ant-primary-color);
 }
 .timeline-rounder.major.selected::after {
   border-color: #f9816c;
@@ -96,7 +96,7 @@
   display: block;
   width: 2px;
   height: 100%;
-  background-color: @primary-color-hover;
+  background-color: var(--ant-primary-color)-hover;
   transform: translate(8px, 0);
 }
 .timeline-line.major {
@@ -106,6 +106,6 @@
   display: block;
   width: 2px;
   height: 15px;
-  background-color: @primary-color-hover;
+  background-color: var(--ant-primary-color)-hover;
   transform: translate(8px, 0);
 }

@@ -34,19 +34,19 @@
 }
 
 .custom-node-header-tracing {
-  border: 1px solid @primary-color;
+  border: 1px solid var(--ant-primary-color);
   .react-flow__handle {
-    border-color: @primary-color;
+    border-color: var(--ant-primary-color);
   }
   .lineage-node-handle {
-    border: 1px solid @primary-color;
+    border: 1px solid var(--ant-primary-color);
     svg {
-      color: @primary-color;
+      color: var(--ant-primary-color);
     }
   }
 }
 .custom-node-header-active {
-  border-color: @primary-color;
+  border-color: var(--ant-primary-color);
 }
 
 .custom-node-column-lineage {
@@ -136,13 +136,13 @@
   border: 1px solid @border-color;
   background-color: @body-bg-color;
   &.active {
-    background-color: @primary-color;
+    background-color: var(--ant-primary-color);
   }
   &.active:hover {
-    background-color: @primary-color;
+    background-color: var(--ant-primary-color);
   }
   &.active:focus {
-    background-color: @primary-color;
+    background-color: var(--ant-primary-color);
   }
 }
 
@@ -244,7 +244,7 @@
 
 .custom-edge-pipeline-button {
   background-color: @body-bg-color;
-  color: @primary-color;
+  color: var(--ant-primary-color);
   &.green {
     background: @green-6;
     border: 1px solid @green-7;
@@ -286,13 +286,13 @@
 
 @keyframes blink {
   0% {
-    border: 1px solid @primary-color;
+    border: 1px solid var(--ant-primary-color);
   }
   50% {
-    border: 3px solid @primary-color;
+    border: 3px solid var(--ant-primary-color);
   }
   100% {
-    border: 1px solid @primary-color;
+    border: 1px solid var(--ant-primary-color);
   }
 }
 

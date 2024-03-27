@@ -91,7 +91,7 @@ a.ant-typography {
   }
 
   &:focus {
-    color: @link-color;
+    color: var(--ant-primary-color);
     text-decoration: underline;
     cursor: pointer;
   }
@@ -181,7 +181,7 @@ a[href].link-text-grey,
   border-color: @border-color;
 }
 .border-primary {
-  border-color: @primary-color;
+  border-color: var(--ant-primary-color);
 }
 .border-gray {
   border-color: @border-color;
@@ -264,13 +264,13 @@ a[href].link-text-grey,
   background: @body-bg-color;
 }
 .bg-primary-lite {
-  background: @primary-color-hover;
+  background: var(--ant-primary-color)-hover;
 }
 .bg-primary {
-  background: @primary-color;
+  background: var(--ant-primary-color);
 }
 .bg-primary-hover-lite {
-  background-color: @primary-color-hover;
+  background-color: var(--ant-primary-color)-hover;
 }
 .bg-grey {
   background-color: @border-color;
@@ -297,13 +297,13 @@ a[href].link-text-grey,
 }
 
 .activeCategory {
-  border-left: 2px solid @primary-color;
-  background: @primary-color-hover;
+  border-left: 2px solid var(--ant-primary-color);
+  background: var(--ant-primary-color)-hover;
   padding-left: 10px;
   font-weight: 600;
 
   .ant-typography {
-    color: @primary-color;
+    color: var(--ant-primary-color);
   }
 }
 
@@ -486,7 +486,7 @@ a[href].link-text-grey,
     color: @text-grey-muted !important;
   }
   .link-title:hover {
-    color: @primary-color !important;
+    color: var(--ant-primary-color) !important;
     text-decoration: none !important;
   }
   .link-title.inactive-link:hover {
@@ -648,7 +648,7 @@ a[href].link-text-grey,
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: @primary-color;
+  stroke: var(--ant-primary-color);
 }
 
 .react-flow__attribution > a {
