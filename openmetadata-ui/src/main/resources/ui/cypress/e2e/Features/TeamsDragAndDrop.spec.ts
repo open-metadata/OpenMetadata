@@ -83,6 +83,23 @@ describe(
       cy.settingClick(GlobalSettingOptions.TEAMS);
     });
 
+    after(() => {
+      cy.login();
+      cy.sidebarClick(SidebarItem.SETTINGS);
+
+      // Clicking on teams
+      cy.settingClick(GlobalSettingOptions.TEAMS);
+
+      [
+        teamNameBusiness,
+        teamNameDivision,
+        teamNameDepartment,
+        teamNameGroup,
+      ].map((teamName) => {
+        deleteTeamPermanently(teamName);
+      });
+    });
+
     it('Add new team for drag and drop', () => {
       DRAG_AND_DROP_TEAM_DETAILS.map((team) => {
         addTeam(team);
@@ -162,17 +179,6 @@ describe(
       cy.get(`.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`)
         .scrollIntoView()
         .should('be.visible');
-    });
-
-    it('Permanently deleting a team for drag and drop', () => {
-      [
-        teamNameBusiness,
-        teamNameDivision,
-        teamNameDepartment,
-        teamNameGroup,
-      ].map((teamName) => {
-        deleteTeamPermanently(teamName);
-      });
     });
   }
 );
