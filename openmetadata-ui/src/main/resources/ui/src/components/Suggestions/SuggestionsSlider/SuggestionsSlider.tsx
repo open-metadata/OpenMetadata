@@ -35,7 +35,7 @@ const SuggestionsSlider = () => {
       </Typography.Text>
       <AvatarCarousel />
       {selectedUserSuggestions.length > 0 && (
-        <Space className="slider-btn-container m-l-xs">
+        <Space className="slider-btn-container m-l-xss">
           <Button
             ghost
             data-testid="accept-all-suggestions"
@@ -48,7 +48,7 @@ const SuggestionsSlider = () => {
                 SuggestionAction.Accept
               )
             }>
-            <Typography.Text className="text-xs text-primary">
+            <Typography.Text className="text-xs text-primary font-medium">
               {t('label.accept-all')}
             </Typography.Text>
           </Button>
@@ -64,7 +64,7 @@ const SuggestionsSlider = () => {
                 SuggestionAction.Reject
               )
             }>
-            <Typography.Text className="text-xs text-primary">
+            <Typography.Text className="text-xs text-primary font-medium">
               {t('label.reject-all')}
             </Typography.Text>
           </Button>
