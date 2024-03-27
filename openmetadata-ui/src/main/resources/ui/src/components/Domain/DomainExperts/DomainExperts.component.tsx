@@ -63,7 +63,6 @@ function DomainExperts({
           <ProfilePicture
             displayName={getEntityName(expert)}
             name={expert.name ?? ''}
-            textClass="text-xs"
             width="20"
           />
           <Link to={getUserPath(expert.name ?? '')}>

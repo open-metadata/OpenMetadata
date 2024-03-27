@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 
-import { Divider } from 'antd';
 import classNames from 'classnames';
 import React, { FC, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Post,
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { getReplyText } from '../../../utils/FeedUtils';
-import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
+import ActivityFeedCardV2 from '../../ActivityFeedV2/ActivityFeedCardV2/ActivityFeedCardV2';
 import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 
 interface FeedPanelBodyPropV1 {
@@ -32,6 +29,10 @@ interface FeedPanelBodyPropV1 {
   onFeedClick?: (feed: Thread) => void;
   isActive?: boolean;
   isForFeedTab?: boolean;
+  componentsVisibility?: {
+    showThreadIcon?: boolean;
+    showRepliesContainer?: boolean;
+  };
   hidePopover: boolean;
 }
 
@@ -39,14 +40,16 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
   className,
   showThread = true,
+  componentsVisibility = {
+    showThreadIcon: true,
+    showRepliesContainer: true,
+  },
   isOpenInDrawer = false,
   onFeedClick,
   isActive,
   hidePopover = false,
   isForFeedTab = false,
 }) => {
-  const { t } = useTranslation();
-
   const mainFeed = useMemo(
     () =>
       ({
@@ -59,17 +62,13 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     [feed]
   );
 
-  const postLength = feed?.posts?.length ?? 0;
-
   const handleFeedClick = useCallback(() => {
     onFeedClick?.(feed);
   }, [onFeedClick, feed]);
 
   return (
     <div
-      className={classNames(className, 'activity-feed-card-container', {
-        'has-replies': showThread && postLength > 0,
-      })}
+      className={classNames(className, 'activity-feed-card-container')}
       data-testid="message-container"
       onClick={handleFeedClick}>
       {feed.type === ThreadType.Task ? (
@@ -84,42 +83,14 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           showThread={showThread}
         />
       ) : (
-        <ActivityFeedCardV1
+        <ActivityFeedCardV2
+          componentsVisibility={componentsVisibility}
           feed={feed}
-          hidePopover={hidePopover}
           isActive={isActive}
-          isPost={false}
-          key={feed.id}
           post={mainFeed}
           showThread={showThread}
         />
       )}
-
-      {showThread && postLength > 0 ? (
-        <div className="feed-posts" data-testid="replies">
-          <Divider
-            plain
-            className="m-y-sm"
-            data-testid="replies-count"
-            orientation="left">
-            {getReplyText(
-              postLength,
-              t('label.reply-lowercase'),
-              t('label.reply-lowercase-plural')
-            )}
-          </Divider>
-
-          {feed?.posts?.map((reply) => (
-            <ActivityFeedCardV1
-              isPost
-              feed={feed}
-              hidePopover={hidePopover}
-              key={reply.id}
-              post={reply}
-            />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 };
