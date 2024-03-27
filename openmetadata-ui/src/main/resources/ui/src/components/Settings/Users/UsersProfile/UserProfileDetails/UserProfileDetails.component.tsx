@@ -105,7 +105,10 @@ const UserProfileDetails = ({
   const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
       setIsLoading(true);
-      await updateUserDetails({ displayName: displayName ?? '' });
+      await updateUserDetails(
+        { displayName: displayName ?? '' },
+        'displayName'
+      );
       setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
@@ -260,9 +263,9 @@ const UserProfileDetails = ({
 
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
-      await updateUserDetails({ ...userData, defaultPersona });
+      await updateUserDetails({ defaultPersona }, 'defaultPersona');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const defaultPersonaRender = useMemo(

@@ -115,9 +115,9 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
-      await updateUserDetails({ ...userData, personas });
+      await updateUserDetails({ personas }, 'personas');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const tabDataRender = useCallback(
@@ -232,7 +232,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
-      await updateUserDetails({ description });
+      await updateUserDetails({ description }, 'description');
 
       setIsDescriptionEdit(false);
     },
