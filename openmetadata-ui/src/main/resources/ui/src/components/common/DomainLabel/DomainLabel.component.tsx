@@ -41,7 +41,7 @@ export const DomainLabel = ({
   entityType,
   entityFqn,
   entityId,
-  className,
+  className = 'font-medium text-xs',
   showDomainHeading = false,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
@@ -88,7 +88,7 @@ export const DomainLabel = ({
         <Link
           className={classNames(
             'text-primary no-underline domain-link',
-            !showDomainHeading ? `font-medium text-xs ${className}` : ''
+            !showDomainHeading ? className : ''
           )}
           data-testid="domain-link"
           to={getDomainPath(activeDomain?.fullyQualifiedName)}>
@@ -102,7 +102,7 @@ export const DomainLabel = ({
         <Typography.Text
           className={classNames(
             'domain-link',
-            !showDomainHeading ? `font-medium text-xs ${className}` : ''
+            !showDomainHeading ? className : ''
           )}
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain') })}
