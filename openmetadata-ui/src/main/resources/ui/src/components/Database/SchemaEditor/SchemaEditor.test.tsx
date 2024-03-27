@@ -35,9 +35,9 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 
 jest.mock('react-codemirror2', () => ({
   ...jest.requireActual('react-codemirror2'),
-  Controlled: jest.fn().mockImplementation(({ onChange }) => (
+  Controlled: jest.fn().mockImplementation(({ value, onChange }) => (
     <div>
-      <span>CodeMirror</span>
+      <span>{value}</span>
       <input
         data-testid="code-mirror-editor-input"
         type="text"
