@@ -59,6 +59,8 @@ type Props = {
   onThreadLinkSelect: (value: string) => void;
   entityType: EntityType;
   refreshGlossaryTerms?: () => void;
+  editCustomAttributePermission?: boolean;
+  onExtensionUpdate?: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryDetailsRightPanel = ({
@@ -70,6 +72,8 @@ const GlossaryDetailsRightPanel = ({
   onThreadLinkSelect,
   refreshGlossaryTerms,
   entityType,
+  editCustomAttributePermission,
+  onExtensionUpdate,
 }: Props) => {
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -336,7 +340,10 @@ const GlossaryDetailsRightPanel = ({
             isRenderedInRightPanel
             entityDetails={selectedData as GlossaryTerm}
             entityType={entityType as ExtentionEntitiesKeys}
-            hasEditAccess={false}
+            handleExtensionUpdate={async (updatedTable) => {
+              await onExtensionUpdate?.(updatedTable as GlossaryTerm);
+            }}
+            hasEditAccess={Boolean(editCustomAttributePermission)}
             hasPermission={hasViewAllPermission}
             maxDataCap={5}
           />
