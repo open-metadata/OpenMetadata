@@ -4,9 +4,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
@@ -128,7 +128,8 @@ public class ApplicationHandler {
     }
   }
 
-  public void migrateQuartzConfig(App application) throws SchedulerException {
+  public void migrateQuartzConfig(App application)
+      throws SchedulerException, JsonProcessingException {
     JobDetail jobDetails =
         AppScheduler.getInstance()
             .getScheduler()
@@ -145,18 +146,14 @@ public class ApplicationHandler {
       return;
     }
     LOG.info("migrating app quartz configuration for {}", application.getName());
-    @SuppressWarnings("unchecked")
-    Map<String, Object> map = JsonUtils.readValue(appInfo, Map.class);
-    if (map.containsKey("appSchedule")) {
-      map.remove("appSchedule");
-      appInfo = JsonUtils.pojoToJson(map);
-    }
     App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
+    App currentApp = appRepository.getDao().findEntityById(application.getId());
     updatedApp.setOpenMetadataServerConnection(null);
     updatedApp.setPrivateConfiguration(null);
-    updatedApp.setScheduleType(application.getScheduleType());
-    updatedApp.setAppSchedule(application.getAppSchedule());
-    App currentApp = appRepository.getDao().findEntityById(application.getId());
+    updatedApp.setScheduleType(currentApp.getScheduleType());
+    updatedApp.setAppSchedule(currentApp.getAppSchedule());
+    updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
+    updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
     EntityRepository<App>.EntityUpdater updater =
         appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
     updater.update();
