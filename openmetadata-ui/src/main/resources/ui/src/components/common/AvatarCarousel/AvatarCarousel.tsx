@@ -12,6 +12,7 @@
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Badge, Button, Carousel } from 'antd';
+import classNames from 'classnames';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
@@ -76,9 +77,12 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
         slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
         {avatarList.map((avatar, index) => {
           const isActive = currentSlide === index;
+
           const button = (
             <Button
-              className={`p-0 m-r-xss avatar-item ${isActive ? 'active' : ''}`}
+              className={classNames('p-0 m-r-xss avatar-item', {
+                active: isActive,
+              })}
               shape="circle"
               onClick={() => setCurrentSlide(index)}>
               <ProfilePicture name={avatar.name ?? ''} width="28" />
@@ -86,10 +90,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
           );
 
           return (
-            <UserPopOverCard
-              className=""
-              key={avatar.id}
-              userName={avatar?.name ?? ''}>
+            <UserPopOverCard key={avatar.id} userName={avatar?.name ?? ''}>
               {isActive ? ( // Show Badge only for active item
                 <Badge count={selectedUserSuggestions.length}>{button}</Badge>
               ) : (

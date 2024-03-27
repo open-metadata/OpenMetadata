@@ -14,14 +14,16 @@
 
 .avatar-item {
   position: relative;
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
   &:hover {
     border-color: @border-color !important;
   }
   &:focus {
     border-color: @border-color !important;
+  }
+  &.ant-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
   }
 }
 
@@ -43,10 +45,10 @@
     padding: 0 12px;
     height: 30px;
   }
-  .exit-suggestion {
-    color: @grey-4 !important;
-    border-color: @grey-4 !important;
-    padding: 0 !important;
+  .ant-btn.exit-suggestion {
+    color: @grey-4;
+    border-color: @grey-4;
+    padding: 0;
     width: 30px;
   }
 }
