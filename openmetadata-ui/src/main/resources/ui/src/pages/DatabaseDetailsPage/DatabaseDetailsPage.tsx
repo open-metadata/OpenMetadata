@@ -529,16 +529,18 @@ const DatabaseDetails: FunctionComponent = () => {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.DATABASE>
                 customProperties={database}
                 dataProducts={database?.dataProducts ?? []}
                 domain={database?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedDatabaseFQN}
                 entityId={database?.id ?? ''}
                 entityType={EntityType.DATABASE}
                 selectedTags={tags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={settingsUpdateHandler}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
