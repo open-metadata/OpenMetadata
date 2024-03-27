@@ -13,7 +13,7 @@ External Table Lineage Mixin
 """
 
 import traceback
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -32,7 +32,7 @@ class ExternalTableLineageMixin(ABC):
     This mixin class is for deriving lineage between external table and container source/
     """
 
-    def yield_external_table_lineage(self) -> Iterable[AddLineageRequest]:
+    def yield_external_table_lineage(self, _) -> Iterable[AddLineageRequest]:
         """
         Yield external table lineage
         """

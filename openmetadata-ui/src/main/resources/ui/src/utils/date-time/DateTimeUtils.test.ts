@@ -18,6 +18,7 @@ import {
   formatDateTimeFromSeconds,
   formatDateTimeLong,
   formatTimeDurationFromSeconds,
+  isValidDateFormat,
 } from './DateTimeUtils';
 
 const systemLocale = Settings.defaultLocale;
@@ -60,5 +61,25 @@ describe('DateTimeUtils tests', () => {
 
   it(`customFormatDateTime should formate date and time both`, () => {
     expect(customFormatDateTime(0, 'yyyy/MM/dd')).toBe(`1970/01/01`);
+  });
+});
+
+describe('Date and DateTime Format Validation', () => {
+  it('isValidDateFormat should validate date format correctly', () => {
+    expect(isValidDateFormat('yyyy-MM-dd')).toBe(true);
+    expect(isValidDateFormat('dd-MM-yyyy')).toBe(true);
+    expect(isValidDateFormat('MM/dd/yyyy')).toBe(true);
+    expect(isValidDateFormat('dd/MM/yyyy')).toBe(true);
+    expect(isValidDateFormat('yyyy/MM/dd')).toBe(true);
+    expect(isValidDateFormat('invalid-format')).toBe(false);
+  });
+
+  it('isValidDateFormat should validate dateTime format correctly', () => {
+    expect(isValidDateFormat('yyyy-MM-dd HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('dd-MM-yyyy HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('MM/dd/yyyy HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('dd/MM/yyyy HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('yyyy/MM/dd HH:mm:ss')).toBe(true);
+    expect(isValidDateFormat('invalid-format')).toBe(false);
   });
 });

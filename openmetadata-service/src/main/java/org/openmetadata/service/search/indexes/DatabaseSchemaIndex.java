@@ -34,6 +34,7 @@ public record DatabaseSchemaIndex(DatabaseSchema databaseSchema) implements Sear
             ? 0
             : databaseSchema.getVotes().getUpVotes() - databaseSchema.getVotes().getDownVotes());
     doc.put("domain", getEntityWithDisplayName(databaseSchema.getDomain()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(databaseSchema.getFollowers()));
     return doc;
   }
 }

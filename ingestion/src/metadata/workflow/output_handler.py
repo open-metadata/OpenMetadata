@@ -148,10 +148,10 @@ def print_execution_time_summary():
         "Execution Time Aggregate": [],
     }
 
-    for key in sorted(tracker.state.keys()):
+    for key in sorted(tracker.state.state.keys()):
         summary_table["Context"].append(key)
         summary_table["Execution Time Aggregate"].append(
-            pretty_print_time_duration(tracker.state[key])
+            pretty_print_time_duration(tracker.state.state[key])
         )
 
     log_ansi_encoded_string(bold=True, message="Execution Time Summary")

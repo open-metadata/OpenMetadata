@@ -12,7 +12,10 @@
     },
     "entityTypes": {
       "description": "Applies to Entity References. Entity Types can be used to restrict what type of entities can be configured for a entity reference.",
-      "type": "string"
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "customPropertyConfig": {
       "type": "object",
