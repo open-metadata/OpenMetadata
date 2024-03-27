@@ -93,7 +93,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             profile_sample_config=profile_sample_config,
         )
         self.sampler = self._get_sampler()
-        self.complex_dataframe_sample = deepcopy(self.sampler.random_sample())
+        self.complex_dataframe_sample = deepcopy(
+            self.sampler.random_sample(is_sampled=True)
+        )
         self.complex_df()
 
     def complex_df(self):
@@ -123,7 +125,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 )
             except pandas.errors.IntCastingNaNError as err:
                 self.complex_dataframe_sample[index] = df
-                logger.warning(f"Error casting column: {err}")
+                logger.warning(f"NaN found in the Dataframe: {err}")
                 break
 
     def _get_sampler(self):
@@ -190,11 +192,12 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         row_dict = {}
         try:
+            dataframes = [df.dropna() for df in runner]
+
             for metric in metrics:
-                dataframes = (
-                    [df.dropna() for df in runner] if metric != NullCount else runner
+                metric_resp = metric(column).df_fn(
+                    dataframes if metric not in [NullCount] else runner
                 )
-                metric_resp = metric(column).df_fn(dataframes)
                 row_dict[metric.name()] = (
                     None if pd.isnull(metric_resp) else metric_resp
                 )
