@@ -69,7 +69,6 @@ import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useEntityStore } from '../../hooks/useEntityStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -106,7 +105,6 @@ const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
   const { currentUser } = useApplicationStore();
-  const { setActiveFqn } = useEntityStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
@@ -294,15 +292,8 @@ const TableDetailsPageV1: React.FC = () => {
   useEffect(() => {
     if (tableFqn) {
       fetchResourcePermission(tableFqn);
-      setActiveFqn(tableFqn);
     }
   }, [tableFqn]);
-
-  useEffect(() => {
-    return () => {
-      setActiveFqn('');
-    };
-  }, []);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
