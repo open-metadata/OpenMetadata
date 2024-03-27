@@ -32,7 +32,7 @@ class ExternalTableLineageMixin(ABC):
     This mixin class is for deriving lineage between external table and container source/
     """
 
-    def yield_external_table_lineage(self, _) -> Iterable[AddLineageRequest]:
+    def yield_external_table_lineage(self) -> Iterable[AddLineageRequest]:
         """
         Yield external table lineage
         """
@@ -46,7 +46,7 @@ class ExternalTableLineageMixin(ABC):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=database_name,
                     schema_name=schema_name,
                     table_name=table_name,

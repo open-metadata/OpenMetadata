@@ -587,7 +587,7 @@ class DatabaseServiceSource(
         Get the life cycle data of the table
         """
 
-    def yield_external_table_lineage(self, _) -> Iterable[Either[AddLineageRequest]]:
+    def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
         Process external table lineage
         """
