@@ -552,11 +552,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(0, maskedTestCases.getData().get(0).getParameterValues().size());
   }
 
-  private static CreateTable getSensitiveTableReq(
+  private CreateTable getSensitiveTableReq(
       TestInfo test, TableResourceTest tableResourceTest) {
     return tableResourceTest
         .createRequest(test)
-        .withName("sensitiveTableTest")
+        .withName(test.getDisplayName() + "_sensitiveTableTest")
         .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
         .withOwner(USER1_REF)
         .withColumns(
