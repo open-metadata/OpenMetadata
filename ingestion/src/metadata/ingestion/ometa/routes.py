@@ -90,6 +90,16 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.applications.app import App
+from metadata.generated.schema.entity.applications.createAppRequest import (
+    CreateAppRequest,
+)
+from metadata.generated.schema.entity.applications.marketplace.appMarketPlaceDefinition import (
+    AppMarketPlaceDefinition,
+)
+from metadata.generated.schema.entity.applications.marketplace.createAppMarketPlaceDefinitionReq import (
+    CreateAppMarketPlaceDefinitionRequest,
+)
 from metadata.generated.schema.entity.automations.workflow import Workflow
 from metadata.generated.schema.entity.bot import Bot
 from metadata.generated.schema.entity.classification.classification import (
@@ -232,4 +242,9 @@ ROUTES = {
     # Suggestions
     Suggestion.__name__: "/suggestions",
     CreateSuggestionRequest.__name__: "/suggestions",
+    # Apps
+    App.__name__: "/apps",
+    CreateAppRequest.__name__: "/apps",
+    AppMarketPlaceDefinition.__name__: "/apps/marketplace",
+    CreateAppMarketPlaceDefinitionRequest.__name__: "/apps/marketplace",
 }
