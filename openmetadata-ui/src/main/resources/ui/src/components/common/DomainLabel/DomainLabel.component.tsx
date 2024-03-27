@@ -41,7 +41,7 @@ export const DomainLabel = ({
   entityType,
   entityFqn,
   entityId,
-  className = 'font-medium text-xs',
+  textClassName,
   showDomainHeading = false,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
@@ -88,7 +88,8 @@ export const DomainLabel = ({
         <Link
           className={classNames(
             'text-primary no-underline domain-link',
-            !showDomainHeading ? className : ''
+            { 'font-medium text-xs': !showDomainHeading },
+            textClassName
           )}
           data-testid="domain-link"
           to={getDomainPath(activeDomain?.fullyQualifiedName)}>
@@ -102,14 +103,15 @@ export const DomainLabel = ({
         <Typography.Text
           className={classNames(
             'domain-link',
-            !showDomainHeading ? className : ''
+            { 'font-medium text-xs': !showDomainHeading },
+            textClassName
           )}
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain') })}
         </Typography.Text>
       );
     }
-  }, [activeDomain, domainDisplayName]);
+  }, [activeDomain, domainDisplayName, textClassName]);
 
   const selectableList = useMemo(() => {
     return (

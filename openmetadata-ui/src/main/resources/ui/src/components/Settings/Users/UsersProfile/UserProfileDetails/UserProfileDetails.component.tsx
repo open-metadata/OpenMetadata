@@ -248,12 +248,12 @@ const UserProfileDetails = ({
           'label.domain'
         )} :`}</Typography.Text>
         <DomainLabel
-          className="text-sm text-grey-muted"
           domain={userData?.domain}
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
           entityType={EntityType.USER}
           hasPermission={false}
+          textClassName="text-sm text-grey-muted"
         />
       </div>
     ),
