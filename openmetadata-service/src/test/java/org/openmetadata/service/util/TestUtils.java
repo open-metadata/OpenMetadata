@@ -203,6 +203,10 @@ public final class TestUtils {
     }
   }
 
+  public static boolean isCI() {
+    return System.getenv("CI") != null;
+  }
+
   public enum UpdateType {
     CREATED, // Not updated instead entity was created
     NO_CHANGE, // PUT/PATCH made no change to the entity and the version remains the same
