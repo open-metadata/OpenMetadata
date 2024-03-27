@@ -1,6 +1,6 @@
 package org.openmetadata.service.apps.scheduler;
 
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_ID_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -139,7 +139,8 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
 
       // Push Updates to the Database
-      UUID appId = (UUID) context.getJobDetail().getJobDataMap().get(APP_ID_KEY);
+      String appName = (String) context.getJobDetail().getJobDataMap().get(APP_NAME);
+      UUID appId = collectionDAO.applicationDAO().findEntityByName(appName).getId();
       updateStatus(appId, runRecord, update);
     }
   }

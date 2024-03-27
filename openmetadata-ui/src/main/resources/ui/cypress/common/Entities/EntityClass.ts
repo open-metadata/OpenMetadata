@@ -102,7 +102,7 @@ const glossaryDetails2 = {
 };
 
 const glossaryTermDetails1 = {
-  name: 'CypressBankNumber',
+  name: `CypressBankNumber-${uuid()}`,
   displayName: 'Cypress BankNumber',
   description: 'A bank account number.',
   reviewers: [],
@@ -390,12 +390,14 @@ class EntityClass {
   assignGlossary() {
     assignGlossaryTerm(
       `${glossaryDetails1.name}.${glossaryTermDetails1.name}`,
+      glossaryTermDetails1.name,
       this.endPoint
     );
   }
   updateGlossary() {
     udpateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
+      glossaryTermDetails1.name,
       this.endPoint
     );
   }
