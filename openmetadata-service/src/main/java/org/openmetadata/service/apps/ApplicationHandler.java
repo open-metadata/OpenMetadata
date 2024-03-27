@@ -123,7 +123,7 @@ public class ApplicationHandler {
     } catch (ClassNotFoundException e) {
       throw new UnhandledServerException(e.getMessage());
     } catch (InvocationTargetException e) {
-      throw new AppException(e.getTargetException().getMessage());
+      throw AppException.byMessage(app.getName(), methodName, e.getTargetException().getMessage());
     }
   }
 
@@ -145,9 +145,13 @@ public class ApplicationHandler {
     }
     LOG.info("migrating app quartz configuration for {}", application.getName());
     App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
+    App currentApp = appRepository.getDao().findEntityById(application.getId());
     updatedApp.setOpenMetadataServerConnection(null);
     updatedApp.setPrivateConfiguration(null);
-    App currentApp = appRepository.getDao().findEntityById(application.getId());
+    updatedApp.setScheduleType(currentApp.getScheduleType());
+    updatedApp.setAppSchedule(currentApp.getAppSchedule());
+    updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
+    updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
     EntityRepository<App>.EntityUpdater updater =
         appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
     updater.update();
