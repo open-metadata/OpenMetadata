@@ -110,6 +110,10 @@
     "incidentId": {
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "domain" : {
+      "description": "Domain the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

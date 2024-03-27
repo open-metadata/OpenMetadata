@@ -154,7 +154,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException {
+  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a Dashboard service, carry it forward from the dashboard
     DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
     CreateDashboardService createService =

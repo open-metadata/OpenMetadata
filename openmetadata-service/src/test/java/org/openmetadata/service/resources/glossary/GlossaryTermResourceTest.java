@@ -202,7 +202,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException {
+  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a glossary term, carry it forward from the glossary
     CreateGlossary createGlossary =
         glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
