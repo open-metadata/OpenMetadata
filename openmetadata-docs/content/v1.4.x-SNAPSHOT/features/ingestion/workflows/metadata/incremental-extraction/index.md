@@ -28,7 +28,7 @@ How this is done depends a lot on the Source itself, but the general idea is to 
 
 When using the Incremental Extraction feature with External Ingestions (ingesting using YAML files instead of setting it up from the UI), you must pass the ingestion pipeline fully qualified name to the configuration.
 
-This should be `{service_name}{pipeline_name}`
+This should be `{service_name}.{pipeline_name}`
 
 **Example:**
 
@@ -53,7 +53,3 @@ ingestionPipelineFQN: my_service.my_pipeline
 {% connectorInfoCard name="Snowflake" stage="BETA" href="/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake" platform="OpenMetadata" / %}
 
 {% /connectorsListContainer %}
-
-<!-- [**BigQuery**](/connectors/ingestion/workflows/metadata/incremental-extraction/bigquery) -->
-<!-- [**Redshift**](/connectors/ingestion/workflows/metadata/incremental-extraction/redshift) -->
-<!-- [**Snowflake**](/connectors/ingestion/workflows/metadata/incremental-extraction/snowflake) -->
