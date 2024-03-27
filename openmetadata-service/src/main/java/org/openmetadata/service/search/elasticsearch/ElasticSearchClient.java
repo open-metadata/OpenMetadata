@@ -125,6 +125,7 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.resources.search.ApplyOMDRulesForElasticSearch;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -419,6 +420,11 @@ public class ElasticSearchClient implements SearchClient {
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.termQuery("deleted", request.deleted())));
     }
+
+    ApplyOMDRulesForElasticSearch applyOMDRulesForElasticSearch = new ApplyOMDRulesForElasticSearch();
+    searchSourceBuilder =
+            applyOMDRulesForElasticSearch.applyForQuery(
+                    request.getUriInfo(), request.getSecurityContext(), searchSourceBuilder, request.getIndex());
 
     if (!nullOrEmpty(request.getSortFieldParam())) {
       searchSourceBuilder.sort(

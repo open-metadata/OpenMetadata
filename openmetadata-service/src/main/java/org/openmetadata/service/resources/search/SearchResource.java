@@ -169,6 +169,8 @@ public class SearchResource {
             .deleted(deleted)
             .sortOrder(sortOrder)
             .includeSourceFields(includeSourceFields)
+                .uriInfo(uriInfo)
+                .securityContext(securityContext)
             .build();
     return searchRepository.search(request);
   }
