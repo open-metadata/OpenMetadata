@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 @border_color_1: #ffffff;
 @border_right_color_1: transparent;
 @border_left_color_2: #51c41a;
@@ -29,7 +32,7 @@
   height: 50px;
   border-radius: 50%;
   border: 5px solid rgba(0, 0, 0, 0.1);
-  border-left-color: var(--ant-primary-color);
+  border-left-color: @primary-color;
   background: transparent;
   animation: rotate 1s linear infinite;
   margin: 6rem auto;

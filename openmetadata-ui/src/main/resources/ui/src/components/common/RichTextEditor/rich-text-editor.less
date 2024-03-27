@@ -17,6 +17,8 @@
  * @license MIT
  */
 
+@import url('../../../styles/variables.less');
+
 .ProseMirror {
   position: relative;
 }
@@ -263,13 +265,13 @@ li.ProseMirror-selectednode:after {
 .toastui-editor-defaultUI .toastui-editor-ok-button {
   min-width: 63px;
   height: 32px;
-  background-color: var(--ant-primary-color);
+  background-color: @primary-color;
   color: #fff;
-  outline-color: var(--ant-primary-color);
+  outline-color: @primary-color;
 }
 
 .toastui-editor-defaultUI .toastui-editor-ok-button:hover {
-  background-color: var(--ant-primary-color);
+  background-color: @primary-color;
 }
 
 .toastui-editor-defaultUI .toastui-editor-close-button {
@@ -420,7 +422,7 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-defaultUI-toolbar .scroll-sync.active::before {
-  color: var(--ant-primary-color);
+  color: @primary-color;
 }
 
 .toastui-editor-defaultUI-toolbar .scroll-sync input {
@@ -459,7 +461,7 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-defaultUI-toolbar input:checked + .switch::before {
-  background-color: var(--ant-primary-color);
+  background-color: @primary-color;
   -webkit-transform: translateX(12px);
   -moz-transform: translateX(12px);
   -ms-transform: translateX(12px);
@@ -527,7 +529,7 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-popup-body input[type='text']:focus {
-  outline: 1px solid var(--ant-primary-color);
+  outline: 1px solid @primary-color;
   border-color: transparent;
 }
 
@@ -580,8 +582,8 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-popup-add-image .toastui-editor-tabs .tab-item.active {
-  color: var(--ant-primary-color);
-  border-bottom: 2px solid var(--ant-primary-color);
+  color: @primary-color;
+  border-bottom: 2px solid @primary-color;
 }
 
 .toastui-editor-popup-add-image .toastui-editor-file-name {
@@ -651,7 +653,7 @@ li.ProseMirror-selectednode:after {
   position: absolute;
   top: 0;
   left: 0;
-  border: 1px solid var(--ant-primary-color);
+  border: 1px solid @primary-color;
   background: rgba(0, 169, 255, 0.1);
   z-index: 30;
 }
@@ -987,12 +989,12 @@ li.ProseMirror-selectednode:after {
 
 table.ProseMirror-selectednode {
   border-radius: 2px;
-  outline: 2px solid var(--ant-primary-color);
+  outline: 2px solid @primary-color;
 }
 
 .html-block.ProseMirror-selectednode {
   border-radius: 2px;
-  outline: 2px solid var(--ant-primary-color);
+  outline: 2px solid @primary-color;
 }
 
 .toastui-editor-contents {
@@ -1251,11 +1253,11 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-contents a {
   text-decoration: underline;
-  color: var(--ant-primary-color);
+  color: @primary-color;
 }
 
 .toastui-editor-contents a:hover {
-  color: var(--ant-primary-color);
+  color: @primary-color;
 }
 
 .toastui-editor-contents .image-link {
@@ -1549,7 +1551,7 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-md-link.toastui-editor-md-link-desc.toastui-editor-md-marked-text,
 .toastui-editor-md-list-item-style.toastui-editor-md-list-item-odd {
-  color: var(--ant-primary-color);
+  color: @primary-color;
 }
 
 .toastui-editor-md-list-item-style.toastui-editor-md-list-item-even {
