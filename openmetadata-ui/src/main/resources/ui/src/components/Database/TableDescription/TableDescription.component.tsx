@@ -60,6 +60,7 @@ const TableDescription = ({
         <SuggestionsAlert
           hasEditAccess={hasEditPermission}
           maxLength={40}
+          showSuggestedBy={false}
           suggestion={activeSuggestion}
         />
       );

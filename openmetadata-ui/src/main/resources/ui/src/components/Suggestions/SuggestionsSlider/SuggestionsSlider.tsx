@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { SuggestionType } from '../../../generated/entity/feed/suggestion';
@@ -24,6 +25,7 @@ const SuggestionsSlider = () => {
     acceptRejectAllSuggestions,
     loadingAccept,
     loadingReject,
+    onUpdateActiveUser,
   } = useSuggestionsContext();
 
   return (
@@ -33,11 +35,12 @@ const SuggestionsSlider = () => {
       </Typography.Text>
       <AvatarCarousel />
       {selectedUserSuggestions.length > 0 && (
-        <>
+        <Space className="slider-btn-container m-l-xs">
           <Button
+            ghost
             data-testid="accept-all-suggestions"
+            icon={<CheckOutlined />}
             loading={loadingAccept}
-            size="small"
             type="primary"
             onClick={() =>
               acceptRejectAllSuggestions(
@@ -45,15 +48,15 @@ const SuggestionsSlider = () => {
                 SuggestionAction.Accept
               )
             }>
-            <Typography.Text className="text-xs text-white">
+            <Typography.Text className="text-xs text-primary">
               {t('label.accept-all')}
             </Typography.Text>
           </Button>
           <Button
             ghost
             data-testid="reject-all-suggestions"
+            icon={<CloseOutlined />}
             loading={loadingReject}
-            size="small"
             type="primary"
             onClick={() =>
               acceptRejectAllSuggestions(
@@ -65,7 +68,14 @@ const SuggestionsSlider = () => {
               {t('label.reject-all')}
             </Typography.Text>
           </Button>
-        </>
+          <Button
+            ghost
+            className="exit-suggestion"
+            data-testid="close-suggestion"
+            icon={<CloseOutlined />}
+            onClick={() => onUpdateActiveUser()}
+          />
+        </Space>
       )}
     </div>
   );

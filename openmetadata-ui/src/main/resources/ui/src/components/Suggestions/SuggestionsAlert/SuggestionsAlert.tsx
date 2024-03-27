@@ -27,6 +27,7 @@ const SuggestionsAlert = ({
   suggestion,
   hasEditAccess = false,
   maxLength,
+  showSuggestedBy = true,
 }: SuggestionsAlertProps) => {
   const { t } = useTranslation();
   const { acceptRejectSuggestion } = useSuggestionsContext();
@@ -46,20 +47,25 @@ const SuggestionsAlert = ({
       </div>
       <div className="suggested-alert-footer d-flex justify-between">
         <div className="d-flex items-center gap-2 ">
-          <StarIcon width={14} />
-          <Typography.Text className="text-grey-muted font-italic">
-            {t('label.suggested-by')}
-          </Typography.Text>
-          <UserPopOverCard userName={userName}>
-            <span>
-              <ProfilePicture
-                className="suggested-alert-footer-profile-pic"
-                name={userName}
-                width="20"
-              />
-            </span>
-          </UserPopOverCard>
+          {showSuggestedBy && (
+            <>
+              <StarIcon width={14} />
+              <Typography.Text className="text-grey-muted font-italic">
+                {t('label.suggested-by')}
+              </Typography.Text>
+              <UserPopOverCard userName={userName}>
+                <span>
+                  <ProfilePicture
+                    className="suggested-alert-footer-profile-pic"
+                    name={userName}
+                    width="20"
+                  />
+                </span>
+              </UserPopOverCard>
+            </>
+          )}
         </div>
+
         {hasEditAccess && (
           <div className="d-flex justify-end gap-2">
             <Button

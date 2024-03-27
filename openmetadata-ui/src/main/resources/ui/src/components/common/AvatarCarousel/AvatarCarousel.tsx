@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Button, Carousel } from 'antd';
+import { Badge, Button, Carousel } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
@@ -23,8 +23,11 @@ interface AvatarCarouselProps {
 }
 
 const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
-  const { allSuggestionsUsers: avatarList, onUpdateActiveUser } =
-    useSuggestionsContext();
+  const {
+    allSuggestionsUsers: avatarList,
+    onUpdateActiveUser,
+    selectedUserSuggestions,
+  } = useSuggestionsContext();
   const [currentSlide, setCurrentSlide] = useState(-1);
 
   const prevSlide = useCallback(() => {
@@ -47,6 +50,12 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
     onProfileClick(currentSlide);
   }, [currentSlide]);
 
+  useEffect(() => {
+    if (selectedUserSuggestions.length === 0) {
+      setCurrentSlide(-1);
+    }
+  }, [selectedUserSuggestions]);
+
   return (
     <div className="avatar-carousel-container d-flex items-center">
       {showArrows && (
@@ -65,22 +74,32 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
         afterChange={(current) => setCurrentSlide(current)}
         dots={false}
         slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
-        {avatarList.map((avatar, index) => (
-          <UserPopOverCard
-            className=""
-            key={avatar.id}
-            userName={avatar?.name ?? ''}>
+        {avatarList.map((avatar, index) => {
+          const isActive = currentSlide === index;
+          const button = (
             <Button
-              className={`p-0 m-r-xss avatar-item ${
-                currentSlide === index ? 'active' : ''
-              }`}
+              className={`p-0 m-r-xss avatar-item ${isActive ? 'active' : ''}`}
               shape="circle"
               onClick={() => setCurrentSlide(index)}>
-              <ProfilePicture name={avatar.name ?? ''} width="30" />
+              <ProfilePicture name={avatar.name ?? ''} width="28" />
             </Button>
-          </UserPopOverCard>
-        ))}
+          );
+
+          return (
+            <UserPopOverCard
+              className=""
+              key={avatar.id}
+              userName={avatar?.name ?? ''}>
+              {isActive ? ( // Show Badge only for active item
+                <Badge count={selectedUserSuggestions.length}>{button}</Badge>
+              ) : (
+                button
+              )}
+            </UserPopOverCard>
+          );
+        })}
       </Carousel>
+
       {showArrows && (
         <Button
           className="carousel-arrow"
