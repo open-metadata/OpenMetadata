@@ -51,6 +51,13 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 | Columns                      | Columns                      |
 | Custom Fields                | Custom Properties            |
 | Tags                         | Tags                         |
+| BI Servers                   | Dashboard Services           |
+| Dashboard DataSource         | Dashboard DataModel          |
+| Folder                       | Dashboard                    |
+| Report                       | Chart                        |
+| Users/Groups                 | Users/Teams                  |
+| Domains/Subdomains           | Domains/Subdomains           |
+| Knowledge Articles           | Knowledge Center Articles    |
 
 {% /multiTablesWrapper %}
 
