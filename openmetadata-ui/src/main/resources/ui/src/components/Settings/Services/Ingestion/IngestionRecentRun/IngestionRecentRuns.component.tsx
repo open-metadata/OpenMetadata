@@ -15,6 +15,7 @@ import { Button, Popover, Skeleton, Space, Tag } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { ColumnType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import classNamesFunc from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import React, {
   FunctionComponent,
@@ -136,7 +137,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     setLoading(true);
     try {
       const response = await getRunHistoryForPipeline(
-        ingestion.fullyQualifiedName || '',
+        ingestion.fullyQualifiedName ?? '',
         queryParams
       );
 
@@ -163,44 +164,38 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     setSelectedStatus(status);
   };
 
+  if (loading) {
+    return <Skeleton.Input size="small" />;
+  }
+
   return (
     <Space className={classNames} size={2}>
-      {loading ? (
-        <Skeleton.Input size="small" />
-      ) : isEmpty(recentRunStatus) ? (
+      {isEmpty(recentRunStatus) ? (
         <p data-testid="pipeline-status">--</p>
       ) : (
         recentRunStatus.map((r, i) => {
-          const status =
-            i === recentRunStatus.length - 1 ? (
-              <Tag
-                className="ingestion-run-badge latest cursor-pointer"
-                color={
-                  PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
-                }
-                data-testid="pipeline-status"
-                key={i}
-                onClick={() => handleRunStatusClick(r)}>
-                {startCase(r?.pipelineState)}
-              </Tag>
-            ) : (
-              <Tag
-                className="ingestion-run-badge cursor-pointer"
-                color={
-                  PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
-                }
-                data-testid="pipeline-status"
-                key={i}
-                onClick={() => handleRunStatusClick(r)}
-              />
-            );
+          const status = (
+            <Tag
+              className={classNamesFunc('ingestion-run-badge', {
+                latest: i === recentRunStatus.length - 1,
+              })}
+              color={
+                PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
+              }
+              data-testid="pipeline-status"
+              key={`${r.runId}-status`}
+              onClick={() => handleRunStatusClick(r)}>
+              {i === recentRunStatus.length - 1
+                ? startCase(r?.pipelineState)
+                : ''}
+            </Tag>
+          );
 
-          const showTooltip = r?.endDate || r?.startDate || r?.timestamp;
+          const showTooltip = r?.endDate ?? r?.startDate ?? r?.timestamp;
 
           return showTooltip ? (
             <Popover
-              key={i}
-              title={
+              content={
                 <div className="text-left">
                   {r.timestamp && (
                     <p>
@@ -220,7 +215,8 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                     </p>
                   )}
                 </div>
-              }>
+              }
+              key={`${r.runId}-timestamp`}>
               {status}
             </Popover>
           ) : (
