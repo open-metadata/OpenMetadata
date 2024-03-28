@@ -207,7 +207,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
     queryFilters({
-      filter: 'Aaron Singh',
+      filter: 'Aaron Warren',
       apiKey: '@searchOwner',
       key: 'Owner',
     });
