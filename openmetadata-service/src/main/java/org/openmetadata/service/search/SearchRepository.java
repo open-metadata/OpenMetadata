@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -532,7 +533,9 @@ public class SearchRepository {
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
-          new ImmutablePair<>(REMOVE_TAGS_CHILDREN_SCRIPT, null));
+          new ImmutablePair<>(
+              REMOVE_TAGS_CHILDREN_SCRIPT,
+              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
@@ -641,6 +644,26 @@ public class SearchRepository {
 
   public Response search(SearchRequest request) throws IOException {
     return searchClient.search(request);
+  }
+
+  public SearchClient.SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      String sortField,
+      String sortType,
+      String q)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        sortField,
+        sortType,
+        q);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {

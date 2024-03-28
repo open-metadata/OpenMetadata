@@ -382,7 +382,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
 
     TestSummary testSummary;
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(null);
       assertNotEquals(0, testSummary.getFailed());
       assertNotEquals(0, testSummary.getSuccess());
@@ -400,7 +400,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase1.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(1, testSummary.getTotal());
       assertEquals(1, testSummary.getFailed());
@@ -411,7 +411,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(2, testSummary.getTotal());
     }
@@ -420,7 +420,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // the summary is updated as expected
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       testSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(1, testSummary.getTotal());
     }
@@ -462,7 +462,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     TestSuite testSuite =
         testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       // test we get the right summary for the executable test suite
       TestSummary executableTestSummary =
           getTestSummary(testCase.getTestSuite().getId().toString());
@@ -471,14 +471,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // test we get the right summary for the logical test suite
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(1, logicalTestSummary.getTotal());
     }
     testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       assertEquals(2, logicalTestSummary.getTotal());
     }
@@ -486,7 +486,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testSuite =
         testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary executableTestSummary =
           getTestSummary(testCase.getTestSuite().getId().toString());
       assertEquals(testSuite.getTests().size(), executableTestSummary.getTotal());
@@ -497,7 +497,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // cascaded to the logical test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
 
-    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
+    if (supportsSearchIndex) {
       TestSummary logicalTestSummary = getTestSummary(logicalTestSuite.getId().toString());
       // check the deletion of the test case from the logical test suite is reflected in the summary
       assertEquals(1, logicalTestSummary.getTotal());
@@ -651,6 +651,132 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("testSuiteId", TEST_SUITE1.getId().toString());
     testCaseList = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedTestCaseList, 12);
+  }
+
+  @Test
+  void get_listTestCasesFromSearchWithPagination(TestInfo testInfo)
+      throws IOException, ParseException {
+    if (supportsSearchIndex) {
+      Random rand = new Random();
+      int tablesNum = rand.nextInt(3) + 3;
+      int testCasesNum = rand.nextInt(7) + 3;
+
+      TableResourceTest tableResourceTest = new TableResourceTest();
+      TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+
+      List<Table> tables = new ArrayList<>();
+      Map<String, TestSuite> testSuites = new HashMap<>();
+      List<TestCase> testCases = new ArrayList<>();
+
+      for (int i = 0; i < tablesNum; i++) {
+        CreateTable tableReq =
+            tableResourceTest
+                .createRequest(testInfo, i)
+                .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName(C1)
+                            .withDisplayName("c1")
+                            .withDataType(ColumnDataType.VARCHAR)
+                            .withDataLength(10)))
+                .withOwner(USER1_REF);
+        Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+        tables.add(table);
+        CreateTestSuite createTestSuite =
+            testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+        TestSuite testSuite =
+            testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuites.put(table.getFullyQualifiedName(), testSuite);
+      }
+
+      for (int i = 0; i < testCasesNum; i++) {
+        String tableFQN = tables.get(rand.nextInt(tables.size())).getFullyQualifiedName();
+        String testSuiteFQN = testSuites.get(tableFQN).getFullyQualifiedName();
+        CreateTestCase create =
+            createRequest(testInfo, i)
+                .withEntityLink(String.format("<#E::table::%s>", tableFQN))
+                .withTestSuite(testSuiteFQN)
+                .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+                .withParameterValues(
+                    List.of(
+                        new TestCaseParameterValue()
+                            .withValue("20")
+                            .withName("missingCountValue")));
+        TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
+        testCases.add(testCase);
+        TestCaseResult testCaseResult =
+            new TestCaseResult()
+                .withResult("tested")
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
+        putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+      }
+      validateEntityListFromSearchWithPagination(new HashMap<>(), testCases.size());
+    }
+  }
+
+  @Test
+  void test_getSimplelistFromSearch(TestInfo testInfo) throws IOException, ParseException {
+    Random rand = new Random();
+    int tablesNum = 5;
+    int testCasesNum = 5;
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+
+    List<Table> tables = new ArrayList<>();
+    Map<String, TestSuite> testSuites = new HashMap<>();
+    List<TestCase> testCases = new ArrayList<>();
+
+    for (int i = 0; i < tablesNum; i++) {
+      CreateTable tableReq =
+          tableResourceTest
+              .createRequest(testInfo, i)
+              .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName(C1)
+                          .withDisplayName("c1")
+                          .withDataType(ColumnDataType.VARCHAR)
+                          .withDataLength(10)))
+              .withOwner(USER1_REF);
+      Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+      tables.add(table);
+      CreateTestSuite createTestSuite =
+          testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+      TestSuite testSuite =
+          testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+      testSuites.put(table.getFullyQualifiedName(), testSuite);
+    }
+
+    for (int i = 0; i < testCasesNum; i++) {
+      String tableFQN = tables.get(rand.nextInt(tables.size())).getFullyQualifiedName();
+      String testSuiteFQN = testSuites.get(tableFQN).getFullyQualifiedName();
+      CreateTestCase create =
+          createRequest(testInfo, i)
+              .withEntityLink(String.format("<#E::table::%s>", tableFQN))
+              .withTestSuite(testSuiteFQN)
+              .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+              .withParameterValues(
+                  List.of(
+                      new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
+      TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
+      testCases.add(testCase);
+      TestCaseResult testCaseResult =
+          new TestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
+      putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    }
+    HashMap queryParams = new HashMap<>();
+    ResultList<TestCase> allEntities =
+        listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(testCasesNum, allEntities.getData().size());
+    queryParams.put("q", "test_getSimplelistFromSearcha");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertNotEquals(0, allEntities.getData().size());
   }
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)

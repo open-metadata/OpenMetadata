@@ -14,12 +14,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import FollowingWidget from './FollowingWidget';
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn().mockImplementation(() => ({
-    currentUser: { name: 'testUser' },
-  })),
-}));
-
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()

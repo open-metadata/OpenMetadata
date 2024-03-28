@@ -12,6 +12,7 @@
  */
 import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
+import { isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -68,11 +69,10 @@ const AppSchedule = ({
   }, [appData]);
 
   const cronString = useMemo(() => {
-    if (appData.appSchedule) {
-      const cronExp =
-        (appData.appSchedule as AppScheduleClass).cronExpression ?? '';
-
-      return cronstrue.toString(cronExp, {
+    const cronExpression = (appData.appSchedule as AppScheduleClass)
+      ?.cronExpression;
+    if (cronExpression) {
+      return cronstrue.toString(cronExpression, {
         throwExceptionOnParseError: false,
       });
     }
@@ -150,19 +150,18 @@ const AppSchedule = ({
         <Col className="flex-col" flex="auto">
           {appData.appSchedule && (
             <>
-              <div>
-                <Space size={8}>
-                  <Typography.Text className="right-panel-label">
-                    {t('label.schedule-type')}
-                  </Typography.Text>
-                  <Typography.Text className="font-medium">
-                    {(appData.appSchedule as AppScheduleClass).scheduleType ??
-                      ''}
-                  </Typography.Text>
-                </Space>
+              <div className="d-flex items-center gap-2">
+                <Typography.Text className="right-panel-label">
+                  {t('label.schedule-type')}
+                </Typography.Text>
+                <Typography.Text className="font-medium">
+                  {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
+                    ''}
+                </Typography.Text>
               </div>
-              <div>
-                <Space size={8}>
+
+              {!isEmpty(cronString) && (
+                <div className="d-flex items-center gap-2">
                   <Typography.Text className="right-panel-label">
                     {t('label.schedule-interval')}
                   </Typography.Text>
@@ -171,8 +170,8 @@ const AppSchedule = ({
                     data-testid="cron-string">
                     {cronString}
                   </Typography.Text>
-                </Space>
-              </div>
+                </div>
+              )}
             </>
           )}
         </Col>
@@ -231,7 +230,7 @@ const AppSchedule = ({
           }}
           includePeriodOptions={initialOptions}
           initialData={
-            (appData.appSchedule as AppScheduleClass)?.cronExpression ?? ''
+            (appData.appSchedule as AppScheduleClass)?.cronExpression
           }
           isLoading={isSaveLoading}
           onCancel={onDialogCancel}

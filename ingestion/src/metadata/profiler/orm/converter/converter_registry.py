@@ -19,8 +19,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.profiler.orm.converter.bigquery.converter import BigqueryMapTypes
 from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.converter.redshift.converter import RedshiftMapTypes
 from metadata.profiler.orm.converter.snowflake.converter import SnowflakeMapTypes
 
 converter_registry = defaultdict(lambda: CommonMapTypes)
 converter_registry[DatabaseServiceType.BigQuery] = BigqueryMapTypes
 converter_registry[DatabaseServiceType.Snowflake] = SnowflakeMapTypes
+converter_registry[DatabaseServiceType.Redshift] = RedshiftMapTypes

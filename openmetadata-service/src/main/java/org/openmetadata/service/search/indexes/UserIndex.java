@@ -37,6 +37,7 @@ public class UserIndex implements SearchIndex {
     if (user.getIsBot() == null) {
       doc.put("isBot", false);
     }
+    doc.put("followers", SearchIndexUtils.parseFollowers(user.getFollowers()));
     return doc;
   }
 

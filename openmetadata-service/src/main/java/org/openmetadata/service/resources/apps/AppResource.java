@@ -112,7 +112,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
       // Create an On Demand DAO
       CollectionDAO dao = Entity.getCollectionDAO();
       searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
-      ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, dao, searchRepository);
 
       // Get Create App Requests
@@ -139,20 +138,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
         if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
           ApplicationHandler.getInstance()
               .installApplication(app, Entity.getCollectionDAO(), searchRepository);
-        }
-      }
-
-      // Initialize installed applications
-      for (App installedApp : repository.listAll()) {
-        App appWithBot = getAppForInit(installedApp.getName());
-        if (appWithBot == null) {
-          LOG.error(
-              String.format(
-                  "Failed to init app [%s]. GET should return the installed app",
-                  installedApp.getName()));
-        } else {
-          ApplicationHandler.getInstance().runAppInit(appWithBot, dao, searchRepository);
-          LOG.info(String.format("Initialized installed app [%s]", installedApp.getName()));
         }
       }
     } catch (Exception ex) {

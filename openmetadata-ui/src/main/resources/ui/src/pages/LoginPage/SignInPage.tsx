@@ -25,7 +25,6 @@ import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import loginBG from '../../assets/img/login-bg.png';
 import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg';
-
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
@@ -51,16 +50,11 @@ const SignInPage = () => {
 
   const { t } = useTranslation();
 
-  const { isAuthProviderBasic } = useMemo(() => {
+  const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {
       isAuthProviderBasic:
         authConfig?.provider === AuthProvider.Basic ||
         authConfig?.provider === AuthProvider.LDAP,
-    };
-  }, [authConfig]);
-
-  const { isAuthProviderLDAP } = useMemo(() => {
-    return {
       isAuthProviderLDAP: authConfig?.provider === AuthProvider.LDAP,
     };
   }, [authConfig]);
@@ -313,7 +307,7 @@ const SignInPage = () => {
       <Col className="relative" span={16}>
         <div className="absolute inset-0">
           <img
-            alt="bg-image"
+            alt="Login Background"
             className="w-full h-full"
             data-testid="bg-image"
             src={loginBG}

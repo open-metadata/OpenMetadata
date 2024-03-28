@@ -25,7 +25,6 @@ from sqlparse.sql import Function, Identifier
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
@@ -46,8 +45,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, SourceUrl
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -57,6 +54,9 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
 )
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
@@ -139,7 +139,11 @@ SnowflakeDialect.get_columns = get_columns
 
 
 class SnowflakeSource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+    LifeCycleQueryMixin,
+    StoredProcedureMixin,
+    ExternalTableLineageMixin,
+    CommonDbSourceService,
+    MultiDBSource,
 ):
     """
     Implements the necessary methods to extract
@@ -162,7 +166,7 @@ class SnowflakeSource(
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
         self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
-        self.context.deleted_tables = []
+        self.context.get_global().deleted_tables = []
         self.pipeline_name = pipeline_name
         self.incremental = incremental_configuration
 
@@ -258,7 +262,7 @@ class SnowflakeSource(
         """
         Method to fetch the schema description
         """
-        return self.schema_desc_map.get((self.context.database, schema_name))
+        return self.schema_desc_map.get((self.context.get().database, schema_name))
 
     def get_database_description(self, database_name: str) -> Optional[str]:
         """
@@ -290,7 +294,7 @@ class SnowflakeSource(
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
@@ -394,7 +398,7 @@ class SnowflakeSource(
             try:
                 result = self.connection.execute(
                     SNOWFLAKE_FETCH_ALL_TAGS.format(
-                        database_name=self.context.database,
+                        database_name=self.context.get().database,
                         schema_name=schema_name,
                     )
                 )
@@ -407,8 +411,8 @@ class SnowflakeSource(
                     )
                     result = self.connection.execute(
                         SNOWFLAKE_FETCH_ALL_TAGS.format(
-                            database_name=f'"{self.context.database}"',
-                            schema_name=f'"{self.context.database_schema}"',
+                            database_name=f'"{self.context.get().database}"',
+                            schema_name=f'"{self.context.get().database_schema}"',
                         )
                     )
                 except Exception as inner_exc:
@@ -425,7 +429,7 @@ class SnowflakeSource(
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service, *fqn_elements
+                        self.context.get().database_service, *fqn_elements
                     ),
                     tags=[row[1]],
                     classification_name=row[0],
@@ -448,13 +452,13 @@ class SnowflakeSource(
             **table_type_to_params_map[table_type],
         )
 
-        self.context.deleted_tables.extend(
+        self.context.get_global().deleted_tables.extend(
             [
                 fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                     table_name=table.name,
                 )
@@ -562,13 +566,13 @@ class SnowflakeSource(
             materialized_views=materialized_views,
         )
 
-        self.context.deleted_tables.extend(
+        self.context.get_global().deleted_tables.extend(
             [
                 fqn.build(
                     metadata=self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                     table_name=view.name,
                 )
@@ -604,8 +608,8 @@ class SnowflakeSource(
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 SNOWFLAKE_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 )
             ).all()
             for row in results:
@@ -632,8 +636,8 @@ class SnowflakeSource(
         """
         res = self.engine.execute(
             SNOWFLAKE_DESC_STORED_PROCEDURE.format(
-                database_name=self.context.database,
-                schema_name=self.context.database_schema,
+                database_name=self.context.get().database,
+                schema_name=self.context.get().database_schema,
                 procedure_name=stored_procedure.name,
                 procedure_signature=stored_procedure.unquote_signature(),
             )
@@ -656,14 +660,14 @@ class SnowflakeSource(
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
                     __root__=self._get_source_url_root(
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                     )
                     + f"/procedure/{stored_procedure.name}"
                     + f"{stored_procedure.signature if stored_procedure.signature else ''}"
@@ -702,70 +706,20 @@ class SnowflakeSource(
         Use the current inspector to mark tables as deleted
         """
         if self.incremental.enabled:
-            if not self.context.__dict__.get("database"):
+            if not self.context.get().__dict__.get("database"):
                 raise ValueError(
                     "No Database found in the context. We cannot run the table deletion."
                 )
 
             if self.source_config.markDeletedTables:
                 logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
                 )
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.deleted_tables,
+                    entity_names=self.context.get_global().deleted_tables,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                 )
         else:
             yield from super().mark_tables_as_deleted()
-
-    def yield_external_table_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[AddLineageRequest]:
-        """
-        Yield external table lineage
-        """
-        table_name, table_type = table_name_and_type
-        location = self.external_location_map.get(
-            (self.context.database, self.context.database_schema, table_name)
-        )
-        if table_type == TableType.External and location:
-            location_entity = self.metadata.es_search_container_by_path(
-                full_path=location
-            )
-
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.database_service,
-                database_name=self.context.database,
-                schema_name=self.context.database_schema,
-                table_name=table_name,
-                skip_es_search=True,
-            )
-            table_entity = self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=table_fqn,
-            )
-
-            if (
-                location_entity
-                and location_entity[0]
-                and table_entity
-                and table_entity[0]
-            ):
-                yield Either(
-                    right=AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=location_entity[0].id,
-                                type="container",
-                            ),
-                            toEntity=EntityReference(
-                                id=table_entity[0].id,
-                                type="table",
-                            ),
-                        )
-                    )
-                )
