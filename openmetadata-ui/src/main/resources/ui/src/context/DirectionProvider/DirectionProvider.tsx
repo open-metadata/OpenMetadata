@@ -13,9 +13,15 @@
 import { ConfigProvider } from 'antd';
 import React, { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const DirectionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
+  const { theme } = useApplicationStore();
+
+  ConfigProvider.config({
+    theme,
+  });
 
   return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
 };

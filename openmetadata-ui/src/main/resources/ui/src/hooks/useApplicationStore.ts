@@ -45,6 +45,10 @@ export const useApplicationStore = create<ApplicationStore>()(
       oidcIdToken: '',
       refreshTokenKey: '',
       loading: false,
+      theme: { primaryColor: '#0968da', infoColor: '#2196f3' },
+      setTheme: (theme: ApplicationStore['theme']) => {
+        set({ theme });
+      },
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });
