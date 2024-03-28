@@ -267,8 +267,11 @@ class GenericDataFrameColumnParser:
                             from dateutil.parser import ParserError, parse
 
                             try:
-                                type(parse(df_row_val)).__name__.lower()
-                                parsed_object_datatype_list.append("datetime64[ns]")
+                                dtype_ = "int64"
+                                if not str(df_row_val).isnumeric():
+                                    type(parse(df_row_val)).__name__.lower()
+                                    dtype_ = "datetime64[ns]"
+                                parsed_object_datatype_list.append(dtype_)
                             except (ParserError, TypeError):
                                 parsed_object_datatype_list.append("str")
                         except Exception as err:
