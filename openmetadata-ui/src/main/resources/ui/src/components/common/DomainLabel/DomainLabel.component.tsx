@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -41,6 +41,7 @@ export const DomainLabel = ({
   entityType,
   entityFqn,
   entityId,
+  textClassName,
   showDomainHeading = false,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
@@ -74,7 +75,7 @@ export const DomainLabel = ({
         showErrorToast(err as AxiosError);
       }
     },
-    [entityType, entityFqn, afterDomainUpdateAction]
+    [entityType, entityId, entityFqn, afterDomainUpdateAction]
   );
 
   useEffect(() => {
@@ -87,7 +88,8 @@ export const DomainLabel = ({
         <Link
           className={classNames(
             'text-primary no-underline domain-link',
-            !showDomainHeading ? 'font-medium text-xs' : ''
+            { 'font-medium text-xs': !showDomainHeading },
+            textClassName
           )}
           data-testid="domain-link"
           to={getDomainPath(activeDomain?.fullyQualifiedName)}>
@@ -101,14 +103,15 @@ export const DomainLabel = ({
         <Typography.Text
           className={classNames(
             'domain-link',
-            !showDomainHeading ? 'font-medium text-xs' : ''
+            { 'font-medium text-xs': !showDomainHeading },
+            textClassName
           )}
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain') })}
         </Typography.Text>
       );
     }
-  }, [activeDomain, domainDisplayName]);
+  }, [activeDomain, domainDisplayName, showDomainHeading, textClassName]);
 
   const selectableList = useMemo(() => {
     return (
@@ -120,7 +123,7 @@ export const DomainLabel = ({
         />
       )
     );
-  }, [hasPermission, activeDomain]);
+  }, [hasPermission, activeDomain, handleDomainSave]);
 
   const label = useMemo(() => {
     if (showDomainHeading) {
@@ -133,7 +136,7 @@ export const DomainLabel = ({
             {selectableList}
           </div>
 
-          <Space>
+          <div className="d-flex items-center gap-1">
             <DomainIcon
               className="d-flex"
               color={DE_ACTIVE_COLOR}
@@ -142,13 +145,15 @@ export const DomainLabel = ({
               width={16}
             />
             {domainLink}
-          </Space>
+          </div>
         </>
       );
     }
 
     return (
-      <Space data-testid="header-domain-container">
+      <div
+        className="d-flex items-center gap-1"
+        data-testid="header-domain-container">
         <Typography.Text className="self-center text-xs whitespace-nowrap">
           <DomainIcon
             className="d-flex"
@@ -161,7 +166,7 @@ export const DomainLabel = ({
         {domainLink}
 
         {selectableList}
-      </Space>
+      </div>
     );
   }, [activeDomain, hasPermission, selectableList]);
 

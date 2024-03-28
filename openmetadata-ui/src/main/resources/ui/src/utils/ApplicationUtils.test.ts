@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { upperFirst } from 'lodash';
 import { getEntityStatsData } from './ApplicationUtils';
 import {
   MOCK_APPLICATION_ENTITY_STATS,
@@ -21,6 +22,11 @@ describe('ApplicationUtils tests', () => {
   it('getEntityStatsData should return stats data in array', () => {
     const resultData = getEntityStatsData(MOCK_APPLICATION_ENTITY_STATS);
 
-    expect(resultData).toEqual(MOCK_APPLICATION_ENTITY_STATS_DATA);
+    expect(resultData).toEqual(
+      MOCK_APPLICATION_ENTITY_STATS_DATA.map((data) => ({
+        ...data,
+        name: upperFirst(data.name),
+      }))
+    );
   });
 });

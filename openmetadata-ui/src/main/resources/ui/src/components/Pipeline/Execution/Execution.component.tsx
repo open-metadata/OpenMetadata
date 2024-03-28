@@ -177,7 +177,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                       onClick={() => {
                         setIsClickedCalendar(true);
                       }}>
-                      <span>
+                      <span className="date-container">
                         {!datesSelected && (
                           <label>{t('label.date-filter')}</label>
                         )}

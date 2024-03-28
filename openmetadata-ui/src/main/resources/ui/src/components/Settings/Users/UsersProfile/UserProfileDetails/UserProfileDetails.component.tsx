@@ -241,22 +241,21 @@ const UserProfileDetails = ({
 
   const userDomainRender = useMemo(
     () => (
-      <Space align="center">
+      <div className="d-flex items-center gap-2">
         <Typography.Text
           className="text-grey-muted"
           data-testid="user-domain-label">{`${t(
           'label.domain'
         )} :`}</Typography.Text>
-        <Space align="center">
-          <DomainLabel
-            domain={userData?.domain}
-            entityFqn={userData.fullyQualifiedName ?? ''}
-            entityId={userData.id ?? ''}
-            entityType={EntityType.USER}
-            hasPermission={false}
-          />
-        </Space>
-      </Space>
+        <DomainLabel
+          domain={userData?.domain}
+          entityFqn={userData.fullyQualifiedName ?? ''}
+          entityId={userData.id ?? ''}
+          entityType={EntityType.USER}
+          hasPermission={false}
+          textClassName="text-sm text-grey-muted"
+        />
+      </div>
     ),
     [userData.domain]
   );
