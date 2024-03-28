@@ -21,6 +21,9 @@ from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.utils import model_str
 
+PathTuple = Tuple[str]
+DriftValue = int
+
 
 class PatchRequest(BaseModel):
     """
@@ -141,35 +144,47 @@ RESTRICT_UPDATE_LIST = ["description", "tags", "owner"]
 
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
 
-PathTuple = Tuple[str]
-DriftValue = int
-
 
 class JsonPatchPathIndexDriftMap:
+    """Small Class that holds the map between a given Path in the Patch and
+    how much its index has drifted."""
+
     def __init__(self):
+        """Instantiates a JsonPatchPAthIndexDriftMap with no values."""
         self.path_index_drift_map: Dict[PathTuple, DriftValue] = {}
 
     def items(self):
+        """Returns the map items."""
         return self.path_index_drift_map.items()
 
     def increase_by_one(self, path_tuple: PathTuple):
+        """Increases the drift by one for a given Path."""
         self.path_index_drift_map[path_tuple] = (
             self.path_index_drift_map.setdefault(path_tuple, 0) + 1
         )
 
 
 class JsonPatchRemoveOperationList:
+    """Small Class that holds the List of the Remove operations we need to add
+    to the Patch."""
+
     def __init__(self):
+        """Instantiates a JsonPatchRemoveOperationList with no values."""
         self.operations: List[dict] = []
 
     def add(self, path: str):
+        """Add a new Remove operation for the given Path to the list."""
         self.operations.append({"op": PatchOperation.REMOVE.value, "path": path})
 
     def list(self):
+        """Return the list of Remove operations."""
         return self.operations
 
 
 class JsonPatchHelper:
+    """Class that helps on modifying the JsonPatch to Remove paths that would have
+    instead be Replaced by None."""
+
     def __init__(
         self,
         path_index_drift: JsonPatchPathIndexDriftMap,
@@ -180,12 +195,15 @@ class JsonPatchHelper:
 
     @classmethod
     def default(cls):
+        """Instantiates a JsonPatchHelper with the default values."""
         return cls(
             path_index_drift=JsonPatchPathIndexDriftMap(),
             remove_operations=JsonPatchRemoveOperationList(),
         )
 
     def _update_path_as_list_based_on_drift(self, path_as_list: List[str]) -> List[str]:
+        """Fixes the Path to be Removed index if needed by taking into account the number
+        of Remove operations that we already added to the list."""
         for drifted_path, drift in self.path_index_drift.items():
             if path_as_list[: len(drifted_path)] == list(drifted_path):
                 try:
@@ -199,18 +217,23 @@ class JsonPatchHelper:
         return path_as_list
 
     def _update_path_index_drift_map(self, path_as_list: List[str]):
+        """Updates the drif value on a given Path."""
         self.path_index_drift.increase_by_one(tuple(path_as_list[:-1]))
 
     def _append_remove_operation_for_path(self, path_as_list: List[str]):
+        """Add a Remove operation for a given Path."""
         self.remove_operations.add("/".join(path_as_list))
 
     def patch_replace_with_none(self, path: str):
+        """Handles the addition of a Remove operation for a given Path, while keeping
+        the state of how many we have already added in order to fix the index."""
         path_as_list = self._update_path_as_list_based_on_drift(path.split("/"))
 
         self._update_path_index_drift_map(path_as_list)
         self._append_remove_operation_for_path(path_as_list)
 
     def get_remove_operation_list(self):
+        """Return the list of Remove operations."""
         return self.remove_operations.list()
 
 
