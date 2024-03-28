@@ -105,7 +105,7 @@
             "description": "Optional Configuration to include draft dashboards. By default it will include draft dashboards",
             "type":"boolean",
             "default": true
-          },
+        },
         "certificates": {
             "oneOf": [
                 {
