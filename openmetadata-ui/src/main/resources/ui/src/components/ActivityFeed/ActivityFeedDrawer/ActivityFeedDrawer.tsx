@@ -75,6 +75,10 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
             <FeedPanelBodyV1
               isOpenInDrawer
               showThread
+              componentsVisibility={{
+                showThreadIcon: false,
+                showRepliesContainer: false,
+              }}
               feed={selectedThread as Thread}
               hidePopover={false}
             />

@@ -237,6 +237,7 @@ const UserPopOverCard: FC<Props> = ({
 }) => {
   const profilePicture = (
     <ProfilePicture
+      avatarType="outlined"
       isTeam={type === UserTeam.Team}
       name={userName}
       width={`${profileWidth}`}

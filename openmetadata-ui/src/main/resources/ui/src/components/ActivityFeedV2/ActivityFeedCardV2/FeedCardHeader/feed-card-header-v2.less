@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,32 +11,35 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+@import url('../../../../styles/variables.less');
 
-.activity-feed-card {
-  padding: 18px 12px;
-  margin: 0 12px;
-  position: relative;
-  .toastui-editor-contents code {
-    color: black !important;
-    background-color: @code-background !important;
-    padding: 2px 4px;
-    font-size: 14px;
-  }
-}
-
-.thread-users-profile-pic .profile-image-span:first-child {
-  margin-left: 0;
-  z-index: 1;
-}
-
-.thread-users-profile-pic {
+.feed-card-header-v2 {
   display: flex;
-  flex-direction: row;
   align-items: flex-start;
-  .profile-image-span {
+  flex-direction: column;
+
+  .thread-author {
+    font-weight: 600;
+    color: @text-color;
+    margin-right: 4px;
+  }
+
+  .thread-author:hover {
+    text-decoration: underline;
+  }
+  .feed-profile-pic {
     display: flex;
     align-items: center;
-    margin-left: -12px;
   }
+}
+
+.timestamp-tooltip {
+  .ant-tooltip-inner {
+    color: @grey-3;
+  }
+}
+
+.feed-card-header-v2-timestamp {
+  font-size: 12px;
+  color: @grey-3;
 }
