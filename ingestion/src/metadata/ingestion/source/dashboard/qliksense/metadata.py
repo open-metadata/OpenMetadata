@@ -86,7 +86,7 @@ class QliksenseSource(DashboardServiceSource):
 
     def filter_draft_dashboard(self, dashboard: QlikDashboard) -> bool:
         # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikDashboardMeta(qMeta)
-        return (not self.client.config.includeDraftDashboard) and (
+        return (not self.source_config.includeDraftDashboard) and (
             not dashboard.qMeta.published
         )
 
