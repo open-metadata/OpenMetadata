@@ -11,16 +11,9 @@
  *  limitations under the License.
  */
 
-import { getEntityStatsData } from './ApplicationUtils';
-import {
-  MOCK_APPLICATION_ENTITY_STATS,
-  MOCK_APPLICATION_ENTITY_STATS_DATA,
-} from './mocks/ApplicationUtils.mock';
-
-describe('ApplicationUtils tests', () => {
-  it('getEntityStatsData should return stats data in array', () => {
-    const resultData = getEntityStatsData(MOCK_APPLICATION_ENTITY_STATS);
-
-    expect(resultData).toEqual(MOCK_APPLICATION_ENTITY_STATS_DATA);
-  });
-});
+.query-editor-button {
+  position: absolute;
+  z-index: 10;
+  top: 14px;
+  right: 14px;
+}

@@ -29,17 +29,17 @@ Watch OpenMetadata's [Webinar on Custom Connectors](https://www.youtube.com/watc
 ## Step 1 - Prepare your Connector
 
 A connector is a class that extends from `metadata.ingestion.api.source.Source`. It should implement
-all the required methods ([docs](https://docs.open-metadata.org/sdk/python/build-connector/source#for-consumers-of-openmetadata-ingestion-to-define-custom-connectors-in-their-own-package-with-same-namespace)).
+all the required methods ([docs](/sdk/python/build-connector/source#for-consumers-of-openmetadata-ingestion-to-define-custom-connectors-in-their-own-package-with-same-namespace)).
 
 In [connector/my_awesome_connector.py](https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_awesome_connector.py) you have a minimal example of it.
 
 Note how the important method is the `next_record`. This is the generator function that will be iterated over
-to send all the Create Entity Requests to the `Sink`. Read more about the `Workflow` [here](https://docs.open-metadata.org/sdk/python/build-connector).
+to send all the Create Entity Requests to the `Sink`. Read more about the `Workflow` [here](/sdk/python/build-connector).
 
 ## Step 2 - Yield the Data
 
 The `Sink` is expecting Create Entity Requests. To get familiar with the Python SDK and understand how to create
-the different Entities, a recommended read is the Python SDK [docs](https://docs.open-metadata.org/sdk/python).
+the different Entities, a recommended read is the Python SDK [docs](/sdk/python).
 
 We do not have docs and examples of all the supported Services. A way to get examples on how to create and fetch
 other types of Entities is to directly refer to the `ometa` [integration tests](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/tests/integration/ometa).

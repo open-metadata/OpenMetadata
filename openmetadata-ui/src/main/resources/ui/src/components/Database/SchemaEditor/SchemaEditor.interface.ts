@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,31 +11,22 @@
  *  limitations under the License.
  */
 
-.ant-picker-range.executions-date-picker {
-  padding: 0 6px 0 0;
-  max-width: 200px;
-  .ant-picker-range-separator {
-    display: none;
-  }
-  .ant-picker-clear {
-    right: -6px;
-  }
+import { CSMode } from '../../../enums/codemirror.enum';
 
-  .ant-picker-active-bar {
-    margin-left: 0;
-    width: 85px !important;
-  }
-}
+type Mode = {
+  name: CSMode;
+  json?: boolean;
+};
 
-.range-picker-button-width {
-  max-width: 130px;
-  position: relative;
-}
-
-.range-picker-button {
-  padding: 0px 8px;
-
-  .date-container {
-    display: inline-flex;
-  }
+export interface SchemaEditorProps {
+  value?: string;
+  className?: string;
+  mode?: Mode;
+  readOnly?: boolean;
+  options?: {
+    [key: string]: string | boolean | Array<string>;
+  };
+  editorClass?: string;
+  showCopyButton?: boolean;
+  onChange?: (value: string) => void;
 }
