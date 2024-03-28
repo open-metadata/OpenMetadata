@@ -10,13 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, FormProps, Space } from 'antd';
 import { omit } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { UserTag } from '../../../components/common/UserTag/UserTag.component';
-import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
 import {
   ENTITY_NAME_REGEX,
   HEX_COLOR_CODE_REGEX,
@@ -30,16 +27,10 @@ import {
 } from '../../../generated/api/domains/createDomain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
-import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../interface/FormUtils.interface';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddDomainFormProps } from './AddDomainForm.interface';
@@ -162,21 +153,13 @@ const AddDomainForm = ({
     id: 'root/owner',
     required: false,
     label: t('label.owner'),
-    type: FieldTypes.USER_TEAM_SELECT,
+    type: FieldTypes.USER_MULTI_SELECT,
     props: {
-      hasPermission: true,
-      children: (
-        <Button
-          data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
+      userOnly: false,
+      allowMultiple: false,
     },
-    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
-      valuePropName: 'owner',
+      valuePropName: 'owners',
       trigger: 'onUpdate',
     },
   };
@@ -188,20 +171,11 @@ const AddDomainForm = ({
     label: t('label.expert-plural'),
     type: FieldTypes.USER_MULTI_SELECT,
     props: {
-      hasPermission: true,
-      popoverProps: { placement: 'topLeft' },
-      children: (
-        <Button
-          data-testid="add-experts"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
+      userOnly: true,
+      allowMultiple: true,
     },
-    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
-      valuePropName: 'selectedUsers',
+      valuePropName: 'owners',
       trigger: 'onUpdate',
       initialValue: [],
     },
@@ -211,11 +185,6 @@ const AddDomainForm = ({
     () =>
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
     [permissions]
-  );
-
-  const selectedOwner = Form.useWatch<EntityReference | undefined>(
-    'owner',
-    form
   );
 
   const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
@@ -242,38 +211,8 @@ const AddDomainForm = ({
       layout="vertical"
       onFinish={handleFormSubmit}>
       {generateFormFields(formFields)}
-      <div className="m-t-xss">
-        {getField(ownerField)}
-        {selectedOwner && (
-          <div className="m-b-sm" data-testid="owner-container">
-            <UserTag
-              id={selectedOwner.name ?? selectedOwner.id}
-              isTeam={selectedOwner.type === UserTeam.Team}
-              name={getEntityName(selectedOwner)}
-              size={UserTagSize.small}
-            />
-          </div>
-        )}
-      </div>
-      <div className="m-t-xss">
-        {getField(expertsField)}
-        {Boolean(expertsList.length) && (
-          <Space
-            wrap
-            className="m-b-xs"
-            data-testid="experts-container"
-            size={[8, 8]}>
-            {expertsList.map((d) => (
-              <UserTag
-                id={d.name ?? d.id}
-                key={'expert' + d.id}
-                name={getEntityName(d)}
-                size={UserTagSize.small}
-              />
-            ))}
-          </Space>
-        )}
-      </div>
+      <div className="m-t-xss">{getField(ownerField)}</div>
+      <div className="m-t-xss">{getField(expertsField)}</div>
 
       {!isFormInDialog && (
         <Space

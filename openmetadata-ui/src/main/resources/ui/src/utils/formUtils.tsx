@@ -31,12 +31,14 @@ import ColorPicker from '../components/common/ColorPicker/ColorPicker.component'
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
+import {
+  OwenerSelectField,
+  OwnerSelectFieldProps,
+} from '../components/common/OwnerSelectField/OwnerSelectField';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
-import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
-import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import { FieldProp, FieldTypes } from '../interface/FormUtils.interface';
@@ -166,12 +168,10 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.USER_MULTI_SELECT:
       {
-        const { children, ...rest } = props;
+        const { ...rest } = props;
 
         fieldElement = (
-          <UserSelectableList {...(rest as unknown as UserSelectableListProps)}>
-            {children}
-          </UserSelectableList>
+          <OwenerSelectField {...(rest as unknown as OwnerSelectFieldProps)} />
         );
       }
 

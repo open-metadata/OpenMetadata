@@ -1,3 +1,5 @@
+import { ReactNode } from 'react';
+
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +14,7 @@
  */
 export interface UserTags {
   id: string;
-  name: string;
+  name: ReactNode;
   closable?: boolean;
   onRemove?: () => void;
   bordered?: boolean;

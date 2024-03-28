@@ -72,6 +72,7 @@ export const SelectableList = ({
   searchBarDataTestId,
   removeIconTooltipLabel,
   emptyPlaceholderText,
+  allowSearch = true,
 }: SelectableListProps) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -251,13 +252,15 @@ export const SelectableList = ({
         )
       }
       header={
-        <Searchbar
-          removeMargin
-          placeholder={searchPlaceholder ?? t('label.search')}
-          searchBarDataTestId={searchBarDataTestId}
-          typingInterval={500}
-          onSearch={handleSearch}
-        />
+        allowSearch && (
+          <Searchbar
+            removeMargin
+            placeholder={searchPlaceholder ?? t('label.search')}
+            searchBarDataTestId={searchBarDataTestId}
+            typingInterval={500}
+            onSearch={handleSearch}
+          />
+        )
       }
       itemLayout="vertical"
       loading={{

@@ -28,4 +28,5 @@ export interface SelectableListProps {
   searchBarDataTestId?: string;
   removeIconTooltipLabel?: string;
   emptyPlaceholderText?: ReactNode;
+  allowSearch?: boolean;
 }
