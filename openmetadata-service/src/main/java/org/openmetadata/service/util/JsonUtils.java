@@ -233,9 +233,9 @@ public final class JsonUtils {
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
-      JsonNode source = readTree(v1);
-      JsonNode dest = readTree(v2);
-      return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+    JsonNode source = readTree(v1);
+    JsonNode dest = readTree(v2);
+    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
   }
 
   public static JsonPatch getJsonPatch(Object v1, Object v2) {

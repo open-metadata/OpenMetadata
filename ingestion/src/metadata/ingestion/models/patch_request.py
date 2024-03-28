@@ -12,7 +12,7 @@
 Pydantic definition for storing entities for patching
 """
 import json
-from typing import Dict, Literal, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import jsonpatch
 from pydantic import BaseModel
@@ -153,7 +153,9 @@ class JsonPatchPathIndexDriftMap:
         return self.path_index_drift_map.items()
 
     def increase_by_one(self, path_tuple: PathTuple):
-        self.path_index_drift_map[path_tuple] = self.path_index_drift_map.setdefault(path_tuple, 0) + 1
+        self.path_index_drift_map[path_tuple] = (
+            self.path_index_drift_map.setdefault(path_tuple, 0) + 1
+        )
 
 
 class JsonPatchRemoveOperationList:
@@ -161,10 +163,7 @@ class JsonPatchRemoveOperationList:
         self.operations: List[dict] = []
 
     def add(self, path: str):
-        self.operations.append({
-            "op": PatchOperation.REMOVE.value,
-            "path": path
-        })
+        self.operations.append({"op": PatchOperation.REMOVE.value, "path": path})
 
     def list(self):
         return self.operations
@@ -174,7 +173,7 @@ class JsonPatchHelper:
     def __init__(
         self,
         path_index_drift: JsonPatchPathIndexDriftMap,
-        remove_operations: JsonPatchRemoveOperationList
+        remove_operations: JsonPatchRemoveOperationList,
     ):
         self.path_index_drift = path_index_drift
         self.remove_operations = remove_operations
@@ -183,14 +182,16 @@ class JsonPatchHelper:
     def default(cls):
         return cls(
             path_index_drift=JsonPatchPathIndexDriftMap(),
-            remove_operations=JsonPatchRemoveOperationList()
+            remove_operations=JsonPatchRemoveOperationList(),
         )
 
     def _update_path_as_list_based_on_drift(self, path_as_list: List[str]) -> List[str]:
         for drifted_path, drift in self.path_index_drift.items():
-            if path_as_list[:len(drifted_path)] == list(drifted_path):
+            if path_as_list[: len(drifted_path)] == list(drifted_path):
                 try:
-                    path_as_list[len(drifted_path)] = str(int(path_as_list[len(drifted_path)]) - drift)
+                    path_as_list[len(drifted_path)] = str(
+                        int(path_as_list[len(drifted_path)]) - drift
+                    )
                 except ValueError:
                     # Not in a List. No need to fix any index
                     continue
@@ -211,8 +212,6 @@ class JsonPatchHelper:
 
     def get_remove_operation_list(self):
         return self.remove_operations.list()
-
-
 
 
 def build_patch(
