@@ -24,3 +24,11 @@ src="/images/v1.1/how-to-guides/collaboration/emoji.png"
 alt="React with Emojis"
 caption="React with Emojis"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="Conversation Threads"
+  icon="MdArrowForward"
+  href="/how-to-guides/data-collaboration/conversation"%}
+  Collaborate around data assets right within OpenMetadata.
+{%/inlineCallout%}

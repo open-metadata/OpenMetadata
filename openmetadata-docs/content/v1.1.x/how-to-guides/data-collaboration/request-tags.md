@@ -64,3 +64,11 @@ src="/images/v1.1/how-to-guides/governance/ct3.png"
 alt="Conversation: Reply, React, Edit or Delete"
 caption="Conversation: Reply, React, Edit or Delete"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="Overview of Announcements"
+  icon="MdArrowForward"
+  href="/how-to-guides/data-collaboration/announcements"%}
+  Learn more about the announcements in OpenMetadata
+{%/inlineCallout%}

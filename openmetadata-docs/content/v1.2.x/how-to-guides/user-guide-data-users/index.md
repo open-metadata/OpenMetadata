@@ -86,6 +86,13 @@ Get quick access to all the data in your organization and the activities around 
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
+  bold="Conversation Threads"
+  icon="MdMarkUnreadChatAlt"
+  href="/how-to-guides/guide-for-data-users/conversation"%}
+  Collaborate around data assets right within OpenMetadata.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
   bold="Overview of Announcements"
   icon="MdVolumeUp"
   href="/how-to-guides/guide-for-data-users/announcements"%}

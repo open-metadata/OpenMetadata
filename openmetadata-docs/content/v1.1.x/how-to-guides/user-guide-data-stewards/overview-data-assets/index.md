@@ -81,6 +81,13 @@ This section will deal with all the details related to data assets: how to chang
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
+  bold="Conversation Threads"
+  icon="MdMarkUnreadChatAlt"
+  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/conversation"%}
+  Collaborate around data assets right within OpenMetadata.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
   bold="Overview of Announcements"
   icon="MdVolumeUp"
   href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements"%}
