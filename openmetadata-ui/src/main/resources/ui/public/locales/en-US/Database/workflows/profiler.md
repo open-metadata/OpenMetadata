@@ -55,11 +55,45 @@ Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/me
 $$
 
 $$section
-### Profile Sample $(id="profileSample")
-Percentage of data or number of rows to use when sampling tables. 
+### Enable Debug Logs $(id="enableDebugLog")
 
-By default, the profiler will run against the entire table.
+Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
+
+$$section
+### Include Views $(id="includeViews")
+If activated the profiler will compute metric for view entity types. Note that it can have a negative impact on the profiler performance.
+$$
+
+$$section
+### Use FQN For Filtering Views $(id="useFqnForFiltering")
+Set this flag when you want to apply the filters on Fully Qualified Names (e.g `service_name.db_name.schema_name.table_name`) instead of applying them to the raw name of the asset (e.g `table_name`). 
+
+This Flag is useful in scenarios when you have different schemas with same name in multiple databases, or tables with same name in different schemas, and you want to filter out only one of them. 
+
+Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#table-filter-pattern) document for further examples on how to use this field.
+$$
+
+$$section
+### Ingest Sample Data $(id="generateSampleData")
+
+Set the Ingest Sample Data toggle to control whether to ingest sample data as part of profiler ingestion. If this is enabled, 100 rows will be ingested by default. You can update the number of rows in the "DatabaseServiceProfilerPipeline Advanced Config" section (i.e. `Sample Data Rows Count` setting). 
+$$
+
+$$section
+### Compute Metrics $(id="computeMetrics")
+
+Set the `Compute Metrics` toggle off to not perform any metric computation during the profiler ingestion workflow. Used in combination with `Ingest Sample Data` toggle on allows you to only ingest sample data.
+$$
+
+$$section
+### Auto Tag PII $(id="processPiiSensitive")
+
+Set the `Auto Tag PII` toggle to control whether to automatically tag columns that might contain sensitive information as part of profiler ingestion. 
+
+If `Ingest Sample Data` is enabled, OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data. If disabled, OpenMetadata will infer this information from the column name. Use the `Confidence` setting in the "DatabaseServiceProfilerPipeline Advanced Config" to set the confience level when infering the PII status of a column.
+$$
+
 
 $$section
 ### Profile Sample Type $(id="profileSampleType")
@@ -67,6 +101,21 @@ The sample type can be set to either:
 
 * **Percentage**: this will use a percentage to sample the table (e.g. if table has 100 rows, and we set sample percentage tp 50%, the profiler will use 50 random rows to compute the metrics).
 * **Row Count**: this will use a number of rows to sample the table (e.g. if table has 100 rows, and we set row count to 10, the profiler will use 10 random rows to compute the metrics).
+$$
+
+$$section
+### Profile Sample $(id="profileSample")
+Percentage of data or number of rows to use when sampling tables to compute the profiler metrics. By default (i.e. if left blank), the profiler will run against the entire table.
+$$
+
+$$section
+### PII Inference Confidence Level $(id="confidence")
+Confidence level to use when infering whether a column shoul be flagged as PII or not (between 0 and 100). A number closer to 100 will yield less false positive but potentially more false negative. 
+$$
+
+$$section
+### Sample Data Rows Count $(id="sampleDataCount")
+Set the number of rows to ingest when `Ingest Sample Data` toggle is on. Defaults to 50.
 $$
 
 $$section
@@ -82,26 +131,6 @@ $$section
 This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table.
 
 It is important to note that the profiler will wait for the hanging query to **terminate** before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12 hours.
-$$
-
-$$section
-### Ingest Sample Data $(id="generateSampleData")
-
-Set the Ingest Sample Data toggle to control whether to ingest sample data as part of profiler ingestion. If this is enabled, 100 rows will be ingested by default.
-$$
-
-$$section
-### Enable Debug Logs $(id="enableDebugLog")
-
-Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
-$$
-
-$$section
-### Auto Tag PII $(id="processPiiSensitive")
-
-Set the `Auto Tag PII` toggle to control whether to automatically tag columns that might contain sensitive information as part of profiler ingestion. 
-
-If `Ingest Sample Data` is enabled, OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data. If disabled, OpenMetadata will infer this information from the column name.
 $$
 
 $$section
