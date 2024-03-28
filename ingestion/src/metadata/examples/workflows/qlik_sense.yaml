@@ -31,6 +31,7 @@ source:
       # dashboardFilterPattern:
       #   includes:
       #   - .*mysql.*
+      includeDraftDashboard: True
 
 sink:
   type: metadata-rest
