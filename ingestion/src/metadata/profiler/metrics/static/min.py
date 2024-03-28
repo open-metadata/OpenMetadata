@@ -95,14 +95,16 @@ class Min(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
+        import pandas as pd
+
         if is_quantifiable(self.col.type):
             return min((df[self.col.name].min() for df in dfs))
         if is_date_time(self.col.type):
-            import pandas as pd
-
             min_ = min((pd.to_datetime(df[self.col.name]).min() for df in dfs))
+            if pd.isna(min_):
+                return None
             return int(min_.timestamp() * 1000)
-        return 0
+        return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
         """nosql function"""

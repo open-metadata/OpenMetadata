@@ -94,12 +94,16 @@ class Max(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
+        import pandas as pd
+
         if is_quantifiable(self.col.type):
             return max((df[self.col.name].max() for df in dfs))
         if is_date_time(self.col.type):
-            max_ = max((df[self.col.name].max() for df in dfs))
+            max_ = max((pd.to_datetime(df[self.col.name]).max() for df in dfs))
+            if pd.isna(max_):
+                return None
             return int(max_.timestamp() * 1000)
-        return 0
+        return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
         """nosql function"""

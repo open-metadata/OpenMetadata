@@ -36,7 +36,6 @@ from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.metrics.static.null_count import NullCount
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -113,7 +112,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                             if col.dataType == value
                         ][0]
                     except IndexError:
-                        pass
+                        coltype = []
                     if coltype and col.dataType not in {DataType.JSON, DataType.ARRAY}:
                         coltype_mapping_df.append(coltype)
                     else:
@@ -123,9 +122,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 self.complex_dataframe_sample[index] = df.astype(
                     dict(zip(df.keys(), coltype_mapping_df))
                 )
-            except pandas.errors.IntCastingNaNError as err:
+            except (pandas.errors.IntCastingNaNError, TypeError, ValueError) as err:
                 self.complex_dataframe_sample[index] = df
-                logger.warning(f"NaN found in the Dataframe: {err}")
+                logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 break
 
     def _get_sampler(self):
@@ -192,12 +191,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         row_dict = {}
         try:
-            dataframes = [df.dropna() for df in runner]
 
             for metric in metrics:
-                metric_resp = metric(column).df_fn(
-                    dataframes if metric not in [NullCount] else runner
-                )
+                metric_resp = metric(column).df_fn(runner)
                 row_dict[metric.name()] = (
                     None if pd.isnull(metric_resp) else metric_resp
                 )
@@ -306,7 +302,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(f"Running profiler for {metric_func.table}")
+        logger.debug(f"Running profiler for {metric_func.table.name.__root__}")
         try:
             row = None
             if self.complex_dataframe_sample:
