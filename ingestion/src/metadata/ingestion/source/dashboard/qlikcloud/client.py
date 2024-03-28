@@ -165,9 +165,3 @@ class QlikCloudClient:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard datamodels")
         return []
-
-    def get_collections_list(self):
-        """
-        Get List of all collections
-        """
-        return []

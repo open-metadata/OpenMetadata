@@ -78,10 +78,6 @@ class QlikcloudSource(QliksenseSource):
         self.collections: List[QlikAppList] = []
         self.data_models: List[QlikTable] = []
 
-    def prepare(self):
-        self.collections = self.client.get_collections_list()
-        return super().prepare()
-
     def get_dashboards_list(self) -> Optional[List[QlikApp]]:
         """
         Get List of all apps
