@@ -2,6 +2,9 @@
   sourceConfig:
     config:
       type: PipelineMetadata
+      # lineageInformation:
+      #   dbServiceNames: []
+      #   storageServiceNames: []
       # markDeletedPipelines: True
       # includeTags: True
       # includeLineage: true
