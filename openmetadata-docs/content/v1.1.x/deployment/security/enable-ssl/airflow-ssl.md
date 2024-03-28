@@ -30,7 +30,7 @@ or update the following environment variables:
 - `PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH="path/to/cert`
 
 Note that the `PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH` should be the path to the certificate you generated
-[here](https://docs.open-metadata.org/v1.1/deployment/security/enable-ssl), and it should be the local path
+[here](/deployment/security/enable-ssl), and it should be the local path
 in your Airflow deployment.
 
 
