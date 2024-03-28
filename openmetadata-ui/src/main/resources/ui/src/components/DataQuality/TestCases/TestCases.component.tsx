@@ -10,21 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Col, DatePicker, Form, FormProps, Row, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty, isNull, omit } from 'lodash';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { PAGE_SIZE } from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import {
+  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_TYPE_OPTION,
+} from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { TestCase } from '../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
+  TestCaseType,
 } from '../../../rest/testAPI';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -55,6 +61,10 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [filters, setFilters] = useState<ListTestCaseParamsBySearch>({
+    testCaseType: TestCaseType.all,
+    testCaseStatus: '' as TestCaseStatus,
+  });
 
   const {
     currentPage,
@@ -88,13 +98,16 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   };
 
   const fetchTestCases = async (
-    currentPage = 1,
+    currentPage = INITIAL_PAGING_VALUE,
     params?: ListTestCaseParamsBySearch
   ) => {
     setIsLoading(true);
     try {
       const { data, paging } = await getListTestCaseBySearch({
         ...params,
+        testCaseStatus: isEmpty(params?.testCaseStatus)
+          ? undefined
+          : params?.testCaseStatus,
         limit: pageSize,
         fields: 'testCaseResult,testSuite,incidentId',
         q: `*${searchValue}*`,
@@ -128,10 +141,30 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     fetchTestCases(currentPage);
   };
 
+  const handleFilterChange: FormProps['onValuesChange'] = (_, values) => {
+    const { lastRunRange } = values;
+    const startTimestamp =
+      !isNull(lastRunRange) && lastRunRange[0]
+        ? lastRunRange[0].set({ h: 0, m: 0 }).unix() * 1000
+        : undefined;
+    const endTimestamp =
+      !isNull(lastRunRange) && lastRunRange[1]
+        ? lastRunRange[1].set({ h: 23, m: 59 }).unix() * 1000
+        : undefined;
+
+    const params = {
+      ...omit(values, 'lastRunRange'),
+      startTimestamp,
+      endTimestamp,
+    };
+    fetchTestCases(INITIAL_PAGING_VALUE, params);
+    setFilters((prev) => ({ ...prev, ...params }));
+  };
+
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
       if (tab === DataQualityPageTabs.TEST_CASES) {
-        fetchTestCases();
+        fetchTestCases(INITIAL_PAGING_VALUE, filters);
       }
     } else {
       setIsLoading(false);
@@ -165,6 +198,37 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           searchValue={searchValue}
           onSearch={(value) => handleSearchParam(value, 'searchValue')}
         />
+      </Col>
+      <Col span={16}>
+        <Form
+          initialValues={filters}
+          layout="inline"
+          onValuesChange={handleFilterChange}>
+          <Space align="center" className="w-full justify-end">
+            <Form.Item
+              className="m-0 w-40"
+              label={t('label.type')}
+              name="testCaseType">
+              <Select options={TEST_CASE_TYPE_OPTION} />
+            </Form.Item>
+            <Form.Item
+              className="m-0 w-40"
+              label={t('label.status')}
+              name="testCaseStatus">
+              <Select options={TEST_CASE_STATUS_OPTION} />
+            </Form.Item>
+            <Form.Item
+              className="m-0"
+              label={t('label.created-date')}
+              name="lastRunRange">
+              <DatePicker.RangePicker
+                allowClear
+                showNow
+                data-testid="data-range-picker"
+              />
+            </Form.Item>
+          </Space>
+        </Form>
       </Col>
       <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
