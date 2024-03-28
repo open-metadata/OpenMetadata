@@ -690,7 +690,7 @@ public class EventSubscriptionResourceTest
         new SubscriptionDestination()
             .withId(DESTINATION_ID)
             .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
-            .withType(SubscriptionDestination.SubscriptionType.GENERIC)
+            .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
             .withConfig(
                 new Webhook()
                     .withEndpoint(URI.create(uri))

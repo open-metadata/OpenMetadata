@@ -1586,8 +1586,8 @@ public interface CollectionDAO {
       return "nameHash";
     }
 
-    @SqlQuery("SELECT json FROM <table>")
-    List<String> listAllEventsSubscriptions(@Define("table") String table);
+    @SqlQuery("SELECT json FROM event_subscription_entity")
+    List<String> listAllEventsSubscriptions();
 
     @Override
     default boolean supportsSoftDelete() {
