@@ -91,7 +91,7 @@ pii_requirements = {
 }
 
 base_requirements = {
-    "antlr4-python3-runtime==4.9.2",
+    "antlr4-python3-runtime==4.13.1",
     VERSIONS["azure-identity"],
     "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["avro"],  # Used in sample data
