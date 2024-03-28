@@ -134,7 +134,7 @@ jest.mock('../AppSchedule/AppSchedule.component', () =>
     ))
 );
 
-jest.mock('./ApplicationSchemaClassBase', () => ({
+jest.mock('./ApplicationsClassBase', () => ({
   importSchema: jest.fn().mockReturnValue({ default: ['table'] }),
   getJSONUISchema: jest.fn().mockReturnValue({}),
 }));
