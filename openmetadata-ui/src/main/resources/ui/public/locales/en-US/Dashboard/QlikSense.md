@@ -154,3 +154,9 @@ $$section
 
 This field specifies the user id of the user.
 $$
+
+$$section
+### Include Draft Dashboard $(id="includeDraftDashboard")
+
+Option to include/exclude draft dashboards. By default it will include draft dashboards.
+$$
