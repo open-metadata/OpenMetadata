@@ -38,6 +38,7 @@ const SuggestionsSlider = () => {
         <Space className="slider-btn-container m-l-xss">
           <Button
             ghost
+            className="text-xs text-primary font-medium"
             data-testid="accept-all-suggestions"
             icon={<CheckOutlined />}
             loading={loadingAccept}
@@ -48,12 +49,11 @@ const SuggestionsSlider = () => {
                 SuggestionAction.Accept
               )
             }>
-            <Typography.Text className="text-xs text-primary font-medium">
-              {t('label.accept-all')}
-            </Typography.Text>
+            {t('label.accept-all')}
           </Button>
           <Button
             ghost
+            className="text-xs text-primary font-medium"
             data-testid="reject-all-suggestions"
             icon={<CloseOutlined />}
             loading={loadingReject}
@@ -64,17 +64,17 @@ const SuggestionsSlider = () => {
                 SuggestionAction.Reject
               )
             }>
-            <Typography.Text className="text-xs text-primary font-medium">
-              {t('label.reject-all')}
-            </Typography.Text>
+            {t('label.reject-all')}
           </Button>
           <Button
             ghost
-            className="exit-suggestion"
+            className="text-xs text-primary font-medium"
             data-testid="close-suggestion"
             icon={<CloseOutlined />}
-            onClick={() => onUpdateActiveUser()}
-          />
+            type="primary"
+            onClick={() => onUpdateActiveUser()}>
+            {t('label.close')}
+          </Button>
         </Space>
       )}
     </div>
