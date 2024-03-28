@@ -60,7 +60,7 @@ public class MigrationUtil {
         }
       }
     } catch (Exception ex) {
-      LOG.warn("Error running the query migration ", ex);
+      LOG.warn("Error running the Generic to Webhook migration ", ex);
     }
   }
 
