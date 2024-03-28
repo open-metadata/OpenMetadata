@@ -60,7 +60,7 @@ pip install "openmetadata-ingestion[athena,datalake,trino]~=1.2.1"
 ## 1. Define the YAML Config
 
 You will need to prepare a yaml file for the data profiler depending on the database source. 
-You can get details of how to define a yaml file for data profiler for each connector [here](/v1.2.x/connectors/database).
+You can get details of how to define a yaml file for data profiler for each connector [here](/connectors/database).
 
 For example, consider if the data source was snowflake, then the yaml file would have looked like as follows.
 
