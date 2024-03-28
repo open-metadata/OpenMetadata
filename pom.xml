@@ -136,7 +136,7 @@
     <json-schema-validator.version>1.1.0</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
-    <jjwt.version>0.9.1</jjwt.version>
+    <jjwt.version>0.12.3</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
     <freemarker.version>2.3.32</freemarker.version>
     <passay.version>1.6.4</passay.version>
