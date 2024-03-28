@@ -82,8 +82,6 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 **User ID**: This field specifies the user id of the user.
 
-**Include Draft Dashboard**: Option to include/exclude draft dashboards. By default it will include draft dashboards.
-
 {% /extraContent %}
 
 {% partial file="/v1.4/connectors/test-connection.md" /%}

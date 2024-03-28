@@ -6,7 +6,6 @@ source:
       type: QlikSense
       hostPort: wss://localhost:4747
       displayUrl: https://localhost
-      includeDraftDashboard: True
       certificates:
         # pass certificate paths
         clientCertificate: /path/to/client.pem
@@ -32,6 +31,7 @@ source:
       # dashboardFilterPattern:
       #   includes:
       #   - .*mysql.*
+      includeDraftDashboard: True
 
 sink:
   type: metadata-rest

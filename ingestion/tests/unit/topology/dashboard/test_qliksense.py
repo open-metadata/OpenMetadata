@@ -66,11 +66,14 @@ mock_qliksense_config = {
                 "userId": "demo",
                 "hostPort": "wss://test:4747",
                 "displayUrl": "https://test",
-                "includeDraftDashboard": False,
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeDraftDashboard": False,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},

@@ -11,5 +11,5 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 - **includeTags**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
 - **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
 - **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
-
+- **Include Draft Dashboard (toogle)**: Set the 'Include Draft Dashboard' toggle to include draft dashboards. By default it will include draft dashboards.
 {% /codeInfo %}

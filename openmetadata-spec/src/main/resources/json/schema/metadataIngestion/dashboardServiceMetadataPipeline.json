@@ -82,6 +82,12 @@
       "type": "boolean",
       "default": true,
       "title": "Include Data Models"
+    },
+    "includeDraftDashboard": {
+      "title": "Include Draft Dashboards",
+      "description": "Optional Configuration to include/exclude draft dashboards. By default it will include draft dashboards",
+      "type":"boolean",
+      "default": true
     }
   },
   "additionalProperties": false

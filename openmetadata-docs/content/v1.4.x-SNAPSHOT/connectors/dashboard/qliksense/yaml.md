@@ -130,12 +130,6 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=7 %}
-
-**includeDraftDashboard**: Option to include/exclude draft dashboards. By default it will include draft dashboards. 
-
-{% /codeInfo %}
-
 {% partial file="/v1.4/connectors/yaml/dashboard/source-config-def.md" /%}
 
 {% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
@@ -179,9 +173,6 @@ source:
 ```
 ```yaml {% srNumber=6 %}
       userDirectory: user_dir
-```
-```yaml {% srNumber=7 %}
-      includeDraftDashboard: true
 ```
 
 {% partial file="/v1.4/connectors/yaml/dashboard/source-config.md" /%}
