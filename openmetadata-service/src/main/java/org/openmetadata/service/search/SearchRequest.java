@@ -1,5 +1,7 @@
 package org.openmetadata.service.search;
 
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import java.util.List;
 
 public class SearchRequest {
@@ -16,6 +18,8 @@ public class SearchRequest {
   private final String fieldName;
   private final String sortOrder;
   private final List<String> includeSourceFields;
+  private UriInfo uriInfo;
+  private SecurityContext securityContext;
 
   public SearchRequest(ElasticSearchRequestBuilder builder) {
     this.query = builder.query;
@@ -31,6 +35,8 @@ public class SearchRequest {
     this.sortOrder = builder.sortOrder;
     this.includeSourceFields = builder.includeSourceFields;
     this.fieldName = builder.fieldName;
+    this.uriInfo = builder.uriInfo;
+    this.securityContext = builder.securityContext;
   }
 
   // Getters for the attributes
@@ -87,6 +93,14 @@ public class SearchRequest {
     return includeSourceFields;
   }
 
+  public UriInfo getUriInfo() {
+    return uriInfo;
+  }
+
+  public SecurityContext getSecurityContext() {
+    return securityContext;
+  }
+
   // Builder class for ElasticSearchRequest
 
   public static class ElasticSearchRequestBuilder {
@@ -103,6 +117,8 @@ public class SearchRequest {
     private boolean deleted;
     private String sortOrder;
     private List<String> includeSourceFields;
+    private UriInfo uriInfo;
+    private SecurityContext securityContext;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
       this.query = query;
@@ -157,6 +173,16 @@ public class SearchRequest {
 
     public ElasticSearchRequestBuilder fieldName(String fieldName) {
       this.fieldName = fieldName;
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder uriInfo(UriInfo uriInfo) {
+      this.uriInfo = uriInfo;
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder securityContext(SecurityContext securityContext) {
+      this.securityContext = securityContext;
       return this;
     }
 
