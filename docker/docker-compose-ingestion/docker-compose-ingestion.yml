@@ -18,6 +18,7 @@ volumes:
 services:  
   ingestion:
     container_name: openmetadata_ingestion
+    restart: always
     image: docker.getcollate.io/openmetadata/ingestion:1.4.0-SNAPSHOT
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
