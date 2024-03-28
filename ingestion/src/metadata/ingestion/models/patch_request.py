@@ -21,9 +21,6 @@ from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.utils import model_str
 
-PathTuple = Tuple[str]
-DriftValue = int
-
 
 class PatchRequest(BaseModel):
     """
@@ -145,96 +142,167 @@ RESTRICT_UPDATE_LIST = ["description", "tags", "owner"]
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
 
 
-class JsonPatchPathIndexDriftMap:
-    """Small Class that holds the map between a given Path in the Patch and
-    how much its index has drifted."""
+PathTuple = Tuple[str]
 
-    def __init__(self):
-        """Instantiates a JsonPatchPAthIndexDriftMap with no values."""
-        self.path_index_drift_map: Dict[PathTuple, DriftValue] = {}
 
-    def items(self):
-        """Returns the map items."""
-        return self.path_index_drift_map.items()
+# For each 'replace to None' operation we will add a Remove operation at the end.
+# This helps up prevent sending to the backend lists with None values for instance.
+#
+# Obs: The `replace to None` operations are created by the jsonpatch library.
+#
+# Example
+# ----
+# Initial:
+# [
+#   {"op": "replace", "path": "/path/1", "value": None},
+#   {"op": "add",     "path": "/path/2", "value": "foo"},
+# ]
+#
+# Final:
+# [
+#   {"op": "replace", "path": "/path/1", "value": None},
+#   {"op": "add",     "path": "/path/2", "value": "foo"},
+#   {"op": "remove",  "path": "/path/1"},
+# ]
+class ReplaceWithNoneOpFixer:
+    """Responsible for creating the Remove operations that fix every
+    Replace to None ones.
 
-    def increase_by_one(self, path_tuple: PathTuple):
-        """Increases the drift by one for a given Path."""
-        self.path_index_drift_map[path_tuple] = (
-            self.path_index_drift_map.setdefault(path_tuple, 0) + 1
+    It is important to keep the state of the index drift in order to
+    create a working patch.
+
+    Example:
+
+        Initial:
+        [
+            {"op": "replace", "path": "/path/1", "value": None},
+            {"op": "replace", "path": "/path/2", "value": None}
+        ]
+
+       Final:
+        [
+            {"op": "replace", "path": "/path/1", "value": None},
+            {"op": "replace", "path": "/path/2", "value": None},
+            {"op": "remove",  "path": "/path/1"},
+            {"op": "remove",  "path": "/path/1"}
+        ]
+
+        Since the first Remove operation is relative to the first replace, there is no drift.
+        When the second Remove operation happens however, the first one would have already been done.
+        This means that '/path/2' becomes '/path/1'.
+    """
+
+    def __init__(self, index_drift_map: Dict[PathTuple, int]):
+        self.index_drift_map = index_drift_map
+
+    @classmethod
+    def default(cls) -> "ReplaceWithNoneOpFixer":
+        """Instantiates the ReplaceWithNoOpFixer with an empty drift map."""
+        return cls(index_drift_map={})
+
+    def _fix_index_drift(self, path: List[str]):
+        """Modifies the incoming path depending on how many Remove operations we have already
+        registered for this path."""
+
+        # We check all the paths for which we already registered a Remove operation
+        for drifted_path, drift in self.index_drift_map.items():
+            # If any of them matches the start of the current path we update the index.
+            if path[: len(drifted_path)] == list(drifted_path):
+                try:
+                    drift_location = len(drifted_path)
+                    path[drift_location] = str(int(path[drift_location]) - drift)
+                except ValueError:
+                    # Not in a List. No need to fix the Path Index
+                    continue
+        return path
+
+    def _update_index_drift_map(self, path: List[str]):
+        """Update the dirft map with the seen path."""
+        path_tuple: PathTuple = tuple(path[:-1])
+
+        self.index_drift_map[path_tuple] = (
+            self.index_drift_map.setdefault(path_tuple, 0) + 1
         )
 
+    def _get_remove_operation(self, path: List[str]) -> Dict:
+        """Return a JSONPatch Remove operation for the given path."""
+        return {"op": PatchOperation.REMOVE.value, "path": "/".join(path)}
 
-class JsonPatchRemoveOperationList:
-    """Small Class that holds the List of the Remove operations we need to add
-    to the Patch."""
+    def get_remove_operation(self, path: List[str]):
+        """Returns a JSONPatch Remove operation for the given path
+        while keeping in the state that we are sending a Remove operation
+        for the given path."""
+        fixed_path = self._fix_index_drift(path)
 
-    def __init__(self):
-        """Instantiates a JsonPatchRemoveOperationList with no values."""
-        self.operations: List[dict] = []
+        self._update_index_drift_map(fixed_path)
 
-    def add(self, path: str):
-        """Add a new Remove operation for the given Path to the list."""
-        self.operations.append({"op": PatchOperation.REMOVE.value, "path": path})
-
-    def list(self):
-        """Return the list of Remove operations."""
-        return self.operations
+        return self._get_remove_operation(fixed_path)
 
 
-class JsonPatchHelper:
-    """Class that helps on modifying the JsonPatch to Remove paths that would have
-    instead be Replaced by None."""
+class JsonPatchUpdater:
+    """Reponsible for applying any custom changes to the JSONPatch generated by the jsonpatch library."""
 
     def __init__(
         self,
-        path_index_drift: JsonPatchPathIndexDriftMap,
-        remove_operations: JsonPatchRemoveOperationList,
+        restrict_update_fields: List,
+        replace_with_none_op_fixer: ReplaceWithNoneOpFixer,
     ):
-        self.path_index_drift = path_index_drift
-        self.remove_operations = remove_operations
+        self.restrict_update_fields = restrict_update_fields
+        self.replace_with_none_op_fixer = replace_with_none_op_fixer
 
     @classmethod
-    def default(cls):
-        """Instantiates a JsonPatchHelper with the default values."""
+    def from_restrict_update_fields(
+        cls, restrict_update_fields: List
+    ) -> "JsonPatchUpdater":
+        """Instantiates a JsonPatchUpdater based on the restric_update_fields"""
         return cls(
-            path_index_drift=JsonPatchPathIndexDriftMap(),
-            remove_operations=JsonPatchRemoveOperationList(),
+            restrict_update_fields=restrict_update_fields,
+            replace_with_none_op_fixer=ReplaceWithNoneOpFixer.default(),
         )
 
-    def _update_path_as_list_based_on_drift(self, path_as_list: List[str]) -> List[str]:
-        """Fixes the Path to be Removed index if needed by taking into account the number
-        of Remove operations that we already added to the list."""
-        for drifted_path, drift in self.path_index_drift.items():
-            if path_as_list[: len(drifted_path)] == list(drifted_path):
-                try:
-                    path_as_list[len(drifted_path)] = str(
-                        int(path_as_list[len(drifted_path)]) - drift
+    def _determine_restricted_operation(self, patch_ops: Dict) -> bool:
+        """
+        Only retain add operation for restrict_update_fields fields
+        """
+        path = patch_ops.get("path")
+        ops = patch_ops.get("op")
+        for field in self.restrict_update_fields or []:
+            if field in path and ops != PatchOperation.ADD.value:
+                return False
+        return True
+
+    def _is_replace_with_none_operation(self, patch_ops: dict) -> bool:
+        """Check if the Operation is a Replace operation to a None value."""
+        return (patch_ops.get("op") == PatchOperation.REPLACE.value) and (
+            patch_ops.get("value") is None
+        )
+
+    def _get_remove_operation_for_replace_with_none(self, path: str) -> Dict:
+        """Returns the Remove operation for the given Path. Used to fix the Replace to None operations."""
+        return self.replace_with_none_op_fixer.get_remove_operation(path.split("/"))
+
+    def update(self, patch: jsonpatch.JsonPatch):
+        """Given a JSONPatch generated by the jsonpatch library, updates it based on our custom needs.
+        1. Remove any restricted operations
+        2. Fix any 'Replace to None' operation by adding a 'Remove' operation at the end.
+        """
+        patch_ops_list = []
+        remove_ops_list = []
+
+        for patch_ops in patch.patch or []:
+            if self._determine_restricted_operation(patch_ops=patch_ops):
+                patch_ops_list.append(patch_ops)
+
+                if self._is_replace_with_none_operation(patch_ops):
+                    remove_ops_list.append(
+                        self._get_remove_operation_for_replace_with_none(
+                            patch_ops["path"]
+                        )
                     )
-                except ValueError:
-                    # Not in a List. No need to fix any index
-                    continue
 
-        return path_as_list
+        patch_ops_list.extend(remove_ops_list)
 
-    def _update_path_index_drift_map(self, path_as_list: List[str]):
-        """Updates the drif value on a given Path."""
-        self.path_index_drift.increase_by_one(tuple(path_as_list[:-1]))
-
-    def _append_remove_operation_for_path(self, path_as_list: List[str]):
-        """Add a Remove operation for a given Path."""
-        self.remove_operations.add("/".join(path_as_list))
-
-    def patch_replace_with_none(self, path: str):
-        """Handles the addition of a Remove operation for a given Path, while keeping
-        the state of how many we have already added in order to fix the index."""
-        path_as_list = self._update_path_as_list_based_on_drift(path.split("/"))
-
-        self._update_path_index_drift_map(path_as_list)
-        self._append_remove_operation_for_path(path_as_list)
-
-    def get_remove_operation_list(self):
-        """Return the list of Remove operations."""
-        return self.remove_operations.list()
+        patch.patch = patch_ops_list
 
 
 def build_patch(
@@ -297,40 +365,10 @@ def build_patch(
 
     # For a user editable fields like descriptions, tags we only want to support "add" operation in patch
     # we will remove the other operations.
-    #
-    # For each replace to None we will add a Remove operation at the end.
-    # Example
-    # ----
-    # Initial:
-    # [
-    #   {"op": "replace", "path": "/path/1", "value": None},
-    #   {"op": "add",     "path": "/path/2", "value": "foo"},
-    # ]
-    #
-    # Final:
-    # [
-    #   {"op": "replace", "path": "/path/1", "value": None},
-    #   {"op": "add",     "path": "/path/2", "value": "foo"},
-    #   {"op": "remove",  "path": "/path/1"},
-    # ]
-    json_patch_helper = JsonPatchHelper.default()
-
     if restrict_update_fields:
-        patch_ops_list = []
-        for patch_ops in patch.patch or []:
-            if _determine_restricted_operation(
-                patch_ops=patch_ops, restrict_update_fields=restrict_update_fields
-            ):
-                if (
-                    patch_ops.get("op") == PatchOperation.REPLACE.value
-                    and patch_ops.get("value") is None
-                ):
-                    json_patch_helper.patch_replace_with_none(patch_ops["path"])
-
-                patch_ops_list.append(patch_ops)
-        patch_ops_list.extend(json_patch_helper.get_remove_operation_list())
-
-        patch.patch = patch_ops_list
+        JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields).update(
+            patch
+        )
 
     return patch
 
@@ -369,21 +407,6 @@ def _sort_array_entity_fields(
             # Combine the updated attributes with the remaining destination attributes
             final_attributes = updated_attributes + list(destination_dict.values())
             setattr(destination, field, final_attributes)
-
-
-def _determine_restricted_operation(
-    patch_ops: Dict,
-    restrict_update_fields: Optional[List] = None,
-) -> bool:
-    """
-    Only retain add operation for restrict_update_fields fields
-    """
-    path = patch_ops.get("path")
-    ops = patch_ops.get("op")
-    for field in restrict_update_fields or []:
-        if field in path and ops != PatchOperation.ADD.value:
-            return False
-    return True
 
 
 def _remove_change_description(entity: T) -> T:
