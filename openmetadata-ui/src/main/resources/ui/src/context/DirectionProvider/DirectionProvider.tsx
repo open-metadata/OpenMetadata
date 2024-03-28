@@ -20,11 +20,7 @@ const DirectionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { theme } = useApplicationStore();
 
   ConfigProvider.config({
-    theme: {
-      primaryColor: '#0968da',
-      infoColor: '#2196f3',
-      ...theme,
-    },
+    theme,
   });
 
   return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
