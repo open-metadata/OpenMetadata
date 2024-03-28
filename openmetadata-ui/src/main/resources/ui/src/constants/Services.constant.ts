@@ -425,6 +425,10 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'scheme',
   'sampleDataStorageConfig',
+  'confidence',
+  'sampleDataCount',
+  'threadCount',
+  'timeoutSeconds',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
