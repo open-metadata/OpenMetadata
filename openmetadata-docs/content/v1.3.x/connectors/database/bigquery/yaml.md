@@ -206,9 +206,9 @@ source:
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
           clientX509CertUrl: https://cert.url
-          # taxonomyLocation: us
-          # taxonomyProjectID: ["project-id-1", "project-id-2"]
-          # usageLocation: us
+      # taxonomyLocation: us
+      # taxonomyProjectID: ["project-id-1", "project-id-2"]
+      # usageLocation: us
 ```
 ```yaml {% srNumber=2 %}
       # connectionOptions:
