@@ -210,7 +210,7 @@ You can see a full demo setup [here](https://github.com/open-metadata/openmetada
 ### Using Airflow Connections
 
 In any connector page, you might have seen an example on how to build a DAG to run the ingestion with Airflow
-(e.g., [Athena](https://docs.open-metadata.org/connectors/database/athena/airflow#2-prepare-the-ingestion-dag)).
+(e.g., [Athena](/connectors/database/athena/airflow#2-prepare-the-ingestion-dag)).
 
 A possible approach to retrieving sensitive information from Airflow would be using Airflow's 
 [Connections](https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html). Note that these

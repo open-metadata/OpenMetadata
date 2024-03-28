@@ -7,7 +7,7 @@ slug: /deployment/ingestion/airflow
 
 We can use Airflow in different ways:
 
-1. We can [extract metadata](https://docs.open-metadata.org/connectors/pipeline/airflow) from it,
+1. We can [extract metadata](/connectors/pipeline/airflow) from it,
 2. And we can [connect it to the OpenMetadata UI](/deployment/ingestion/openmetadata) to deploy Workflows automatically.
 
 In this guide, we will show how to host the ingestion DAGs in your Airflow directly.

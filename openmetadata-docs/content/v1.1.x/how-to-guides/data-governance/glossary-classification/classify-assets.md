@@ -130,7 +130,7 @@ alt="Column Data provides information"
 caption="Column Data provides information"
 /%}
 
-You can read more about [Auto PII Tagging](https://docs.open-metadata.org/v1.1.x/connectors/ingestion/auto_tagging) here.
+You can read more about [Auto PII Tagging](/connectors/ingestion/auto_tagging) here.
 
 ## Tag Mapping
 
