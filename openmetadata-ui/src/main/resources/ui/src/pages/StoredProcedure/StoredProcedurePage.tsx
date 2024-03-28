@@ -565,7 +565,7 @@ const StoredProcedurePage = () => {
                     mode={{ name: CSMode.SQL }}
                     options={{
                       styleActiveLine: false,
-                      readOnly: 'nocursor',
+                      readOnly: true,
                     }}
                     value={code}
                   />

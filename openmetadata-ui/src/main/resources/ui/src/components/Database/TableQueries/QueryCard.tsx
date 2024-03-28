@@ -245,6 +245,7 @@ const QueryCard: FC<QueryCardProp> = ({
                 styleActiveLine: isEditMode,
                 readOnly: isEditMode ? false : 'nocursor',
               }}
+              showCopyButton={false}
               value={query.query ?? ''}
               onChange={handleQueryChange}
             />

@@ -326,7 +326,7 @@ const DataModelDetails = ({
                     mode={{ name: CSMode.SQL }}
                     options={{
                       styleActiveLine: false,
-                      readOnly: 'nocursor',
+                      readOnly: true,
                     }}
                     value={dataModelData?.sql}
                   />
