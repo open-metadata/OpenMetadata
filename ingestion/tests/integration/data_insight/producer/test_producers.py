@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Validate data insight producer class for entitites."""
+"""Validate data insight producer class for entities."""
 
 import random
 import uuid
@@ -62,7 +62,7 @@ data_insight_config = {
 
 
 class TestEntityProducer(TestCase):
-    """test entity producer"""
+    """test entity producer. Note that this test requires the sample data to be ingested."""
 
     @classmethod
     def setUpClass(cls):

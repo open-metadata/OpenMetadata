@@ -14,13 +14,8 @@ Avro DataFrame reader
 """
 import io
 
-from avro.datafile import DataFileReader
-from avro.errors import InvalidAvroBinaryEncoding
-from avro.io import DatumReader
-
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.schema import DataTypeTopic
-from metadata.parsers.avro_parser import parse_avro_schema
 from metadata.readers.dataframe.base import DataFrameReader
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
@@ -51,7 +46,12 @@ class AvroDataFrameReader(DataFrameReader):
         Method to parse the avro data from storage sources
         """
         # pylint: disable=import-outside-toplevel
+        from avro.datafile import DataFileReader
+        from avro.errors import InvalidAvroBinaryEncoding
+        from avro.io import DatumReader
         from pandas import DataFrame, Series
+
+        from metadata.parsers.avro_parser import parse_avro_schema
 
         try:
             elements = DataFileReader(io.BytesIO(avro_text), DatumReader())
