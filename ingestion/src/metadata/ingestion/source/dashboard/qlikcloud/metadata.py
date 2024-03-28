@@ -25,9 +25,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudCo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -233,7 +230,3 @@ class QlikcloudSource(QliksenseSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
-
-    def parse_dashboard_service_type(self) -> str:
-        """return dashboard service type for respective dashboard"""
-        return DashboardServiceType.QlikCloud.value

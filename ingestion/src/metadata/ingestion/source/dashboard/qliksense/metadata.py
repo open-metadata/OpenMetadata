@@ -31,9 +31,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseCo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -204,10 +201,6 @@ class QliksenseSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def parse_dashboard_service_type(self) -> str:
-        """return dashboard service type for respective dashboard"""
-        return DashboardServiceType.QlikSense.value
-
     def yield_datamodel(self, _: QlikDashboard) -> Iterable[Either[DashboardDataModel]]:
         if self.source_config.includeDataModels:
             self.data_models = self.client.get_dashboard_models()
@@ -221,13 +214,12 @@ class QliksenseSource(DashboardServiceSource):
                     ):
                         self.status.filter(data_model_name, "Data model filtered out.")
                         continue
-                    service_type = self.parse_dashboard_service_type()
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
                         service=self.context.get().dashboard_service,
                         dataModelType=DataModelType.QlikDataModel.value,
-                        serviceType=service_type,
+                        serviceType=self.service_connection.type.value,
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)

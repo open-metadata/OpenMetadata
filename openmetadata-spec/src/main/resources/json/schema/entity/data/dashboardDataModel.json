@@ -20,8 +20,6 @@
         "LookMlView",
         "LookMlExplore",
         "PowerBIDataModel",
-        "QlikSenseDataModel",
-        "QlikCloudDataModel",
         "QlikDataModel"
       ],
       "javaEnums": [
@@ -42,12 +40,6 @@
         },
         {
           "name": "PowerBIDataModel"
-        },
-        {
-          "name": "QlikSenseDataModel"
-        },
-        {
-          "name": "QlikCloudDataModel"
         },
         {
           "name": "QlikDataModel"
