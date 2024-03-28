@@ -17,6 +17,7 @@ import { hardDeleteService } from '../../../common/EntityUtils';
 import {
   advanceSearchPreRequests,
   ADVANCE_SEARCH_DATABASE_SERVICE,
+  ADVANCE_SEARCH_DATABASE_SERVICE_2,
   checkAddRuleWithOperator,
   CONDITIONS_MUST,
   CONDITIONS_MUST_NOT,
@@ -47,6 +48,11 @@ describe('Search with additional rule', () => {
       hardDeleteService({
         token,
         serviceFqn: ADVANCE_SEARCH_DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+      hardDeleteService({
+        token,
+        serviceFqn: ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name,
         serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
       });
       // Delete created user

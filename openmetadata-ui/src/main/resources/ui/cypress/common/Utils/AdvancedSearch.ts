@@ -75,11 +75,151 @@ export const ADVANCE_SEARCH_TABLES = {
   },
 };
 
+export const DATABASE_SERVICE_DETAILS_2 = {
+  name: `cy-service-as2-${uuid()}`,
+  serviceType: 'Mysql',
+  connection: {
+    config: {
+      type: 'Mysql',
+      scheme: 'mysql+pymysql',
+      username: 'username',
+      authType: {
+        password: 'password',
+      },
+      hostPort: 'mysql:3306',
+      supportsMetadataExtraction: true,
+      supportsDBTExtraction: true,
+      supportsProfiler: true,
+      supportsQueryComment: true,
+    },
+  },
+};
+
+export const DATABASE_DETAILS_2 = {
+  name: `cy-database-as2-${uuid()}`,
+  service: DATABASE_SERVICE_DETAILS_2.name,
+};
+
+export const SCHEMA_DETAILS_2 = {
+  name: `cy-schema-as2-${uuid()}`,
+  database: `${DATABASE_SERVICE_DETAILS_2.name}.${DATABASE_DETAILS_2.name}`,
+};
+
+export const TABLE_DETAILS_2 = {
+  name: `cy-table-as2-${uuid()}`,
+  description: 'description',
+  columns: [
+    {
+      name: 'user_id',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+    },
+    {
+      name: 'shop_id',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+    },
+    {
+      name: 'name',
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Name of the staff member.',
+      children: [
+        {
+          name: 'first_name',
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+          description: 'First name of the staff member.',
+        },
+        {
+          name: 'last_name',
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+        },
+      ],
+    },
+    {
+      name: 'email',
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Email address of the staff member.',
+    },
+  ],
+  databaseSchema: `${DATABASE_SERVICE_DETAILS_2.name}.${DATABASE_DETAILS_2.name}.${SCHEMA_DETAILS_2.name}`,
+};
+
+export const ADVANCE_SEARCH_TABLES_2 = {
+  table1: TABLE_DETAILS_2,
+  table2: {
+    name: `cy-table2-as2-${uuid()}`,
+    description: 'description',
+    columns: [
+      {
+        name: 'cypress_first_name',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'First name of the staff member.',
+      },
+      {
+        name: 'cypress_last_name',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+      },
+      {
+        name: 'cypress_email',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Email address of the staff member.',
+      },
+    ],
+    databaseSchema: `${DATABASE_SERVICE_DETAILS_2.name}.${DATABASE_DETAILS_2.name}.${SCHEMA_DETAILS_2.name}`,
+  },
+  table3: {
+    name: `cy-table3-as2-${uuid()}`,
+    description: 'description',
+    columns: [
+      {
+        name: 'cypress_user_id',
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+      },
+      {
+        name: 'cypress_shop_id',
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+      },
+    ],
+    databaseSchema: `${DATABASE_SERVICE_DETAILS_2.name}.${DATABASE_DETAILS_2.name}.${SCHEMA_DETAILS_2.name}`,
+  },
+};
+
 export const ADVANCE_SEARCH_DATABASE_SERVICE = {
   service: DATABASE_SERVICE_DETAILS,
   database: DATABASE_DETAILS,
   schema: SCHEMA_DETAILS,
   tables: Object.values(ADVANCE_SEARCH_TABLES),
+};
+
+export const ADVANCE_SEARCH_DATABASE_SERVICE_2 = {
+  service: DATABASE_SERVICE_DETAILS_2,
+  database: DATABASE_DETAILS_2,
+  schema: SCHEMA_DETAILS_2,
+  tables: Object.values(ADVANCE_SEARCH_TABLES_2),
 };
 
 export const CONDITIONS_MUST = {
@@ -158,24 +298,24 @@ export const FIELDS: Record<string, AdvancedSearchFieldDetails> = {
   Service: {
     name: 'Service',
     testId: '[title="Service"]',
-    searchCriteriaFirstGroup: 'sample_data',
-    responseValueFirstGroup: `"name":"sample_data"`,
+    searchCriteriaFirstGroup: ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name,
+    responseValueFirstGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name}"`,
     searchCriteriaSecondGroup: DATABASE_SERVICE_DETAILS.name,
     responseValueSecondGroup: `"name":"${DATABASE_SERVICE_DETAILS.name}"`,
   },
   Database: {
     name: 'Database',
     testId: '[title="Database"]',
-    searchCriteriaFirstGroup: 'ecommerce_db',
-    responseValueFirstGroup: `"name":"ecommerce_db"`,
+    searchCriteriaFirstGroup: ADVANCE_SEARCH_DATABASE_SERVICE_2.database.name,
+    responseValueFirstGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE_2.database.name}"`,
     searchCriteriaSecondGroup: DATABASE_DETAILS.name,
     responseValueSecondGroup: `"name":"${DATABASE_DETAILS.name}"`,
   },
   Database_Schema: {
     name: 'Database Schema',
     testId: '[title="Database Schema"]',
-    searchCriteriaFirstGroup: 'shopify',
-    responseValueFirstGroup: `"name":"shopify"`,
+    searchCriteriaFirstGroup: ADVANCE_SEARCH_DATABASE_SERVICE_2.schema.name,
+    responseValueFirstGroup: `"name":"${ADVANCE_SEARCH_DATABASE_SERVICE_2.schema.name}"`,
     searchCriteriaSecondGroup: SCHEMA_DETAILS.name,
     responseValueSecondGroup: `"name":"${SCHEMA_DETAILS.name}"`,
   },
@@ -639,6 +779,17 @@ export const advanceSearchPreRequests = (testData, token: string) => {
     token,
     ...ADVANCE_SEARCH_DATABASE_SERVICE,
   });
+
+  createEntityTable({
+    token,
+    ...ADVANCE_SEARCH_DATABASE_SERVICE_2,
+  });
+
+  cy.log(
+    'here',
+    ADVANCE_SEARCH_DATABASE_SERVICE.service.name,
+    ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name
+  );
 
   // Create a new user
   cy.request({
