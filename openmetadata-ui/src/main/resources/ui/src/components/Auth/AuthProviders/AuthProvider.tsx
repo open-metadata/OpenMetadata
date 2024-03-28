@@ -530,7 +530,9 @@ export const AuthProvider = ({
             }
             setLoading(false);
           } else {
-            getLoggedInUserDetails();
+            if (location.pathname !== ROUTES.AUTH_CALLBACK) {
+              getLoggedInUserDetails();
+            }
           }
         } else {
           // provider is either null or not supported
