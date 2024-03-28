@@ -17,43 +17,57 @@ import {
   verifyResponseStatusCode,
   visitDatabaseSchemaDetailsPage,
 } from '../../common/common';
+import { hardDeleteService } from '../../common/EntityUtils';
 import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner } from '../../common/Utils/Owner';
 import { addTier } from '../../common/Utils/Tier';
 import { DELETE_TERM } from '../../constants/constants';
 import { DOMAIN_CREATION_DETAILS } from '../../constants/EntityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import {
   COMMON_PATCH_PAYLOAD,
   DATABASE_DETAILS_FOR_VERSION_TEST,
   DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST,
-  OWNER,
+  OWNER_DETAILS,
   SERVICE_DETAILS_FOR_VERSION_TEST,
   TIER,
 } from '../../constants/Version.constants';
 
 const serviceDetails = SERVICE_DETAILS_FOR_VERSION_TEST.Database;
 
-let domainId;
-
 describe(
   `Database schema version page should work properly`,
   { tags: 'DataAssets' },
   () => {
-    let databaseId;
-    let databaseSchemaId;
-    let databaseSchemaFQN;
+    const data = {
+      user: { id: '', displayName: '' },
+      domain: { id: '' },
+      database: { id: '' },
+      schema: { id: '', fullyQualifiedName: '' },
+    };
 
     before(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
+      cy.getAllLocalStorage().then((responseData) => {
+        const token = getToken(responseData);
+
+        // Create user
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: OWNER_DETAILS,
+        }).then((response) => {
+          data.user = response.body;
+        });
+
         cy.request({
           method: 'PUT',
           url: `/api/v1/domains`,
           headers: { Authorization: `Bearer ${token}` },
           body: DOMAIN_CREATION_DETAILS,
         }).then((response) => {
-          domainId = response.body.id;
+          data.domain = response.body;
         });
 
         // Create service
@@ -62,48 +76,47 @@ describe(
           url: `/api/v1/services/${serviceDetails.serviceCategory}`,
           headers: { Authorization: `Bearer ${token}` },
           body: serviceDetails.entityCreationDetails,
-        });
-
-        // Create Database
-        cy.request({
-          method: 'POST',
-          url: `/api/v1/databases`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: DATABASE_DETAILS_FOR_VERSION_TEST,
-        }).then((response) => {
-          databaseId = response.body.id;
-        });
-
-        // Create Database Schema
-        cy.request({
-          method: 'PUT',
-          url: `/api/v1/databaseSchemas`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST,
-        }).then((response) => {
-          databaseSchemaId = response.body.id;
-          databaseSchemaFQN = response.body.fullyQualifiedName;
-
+        }).then(() => {
+          // Create Database
           cy.request({
-            method: 'PATCH',
-            url: `/api/v1/databaseSchemas/${databaseSchemaId}`,
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json-patch+json',
-            },
-            body: [
-              ...COMMON_PATCH_PAYLOAD,
-              {
-                op: 'add',
-                path: '/domain',
-                value: {
-                  id: domainId,
-                  type: 'domain',
-                  name: DOMAIN_CREATION_DETAILS.name,
-                  description: DOMAIN_CREATION_DETAILS.description,
+            method: 'POST',
+            url: `/api/v1/databases`,
+            headers: { Authorization: `Bearer ${token}` },
+            body: DATABASE_DETAILS_FOR_VERSION_TEST,
+          }).then((response) => {
+            data.database = response.body;
+
+            // Create Database Schema
+            cy.request({
+              method: 'PUT',
+              url: `/api/v1/databaseSchemas`,
+              headers: { Authorization: `Bearer ${token}` },
+              body: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST,
+            }).then((response) => {
+              data.schema = response.body;
+
+              cy.request({
+                method: 'PATCH',
+                url: `/api/v1/databaseSchemas/${data.schema.id}`,
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json-patch+json',
                 },
-              },
-            ],
+                body: [
+                  ...COMMON_PATCH_PAYLOAD,
+                  {
+                    op: 'add',
+                    path: '/domain',
+                    value: {
+                      id: data.domain.id,
+                      type: 'domain',
+                      name: DOMAIN_CREATION_DETAILS.name,
+                      description: DOMAIN_CREATION_DETAILS.description,
+                    },
+                  },
+                ],
+              });
+            });
           });
         });
       });
@@ -111,12 +124,25 @@ describe(
 
     after(() => {
       cy.login();
-      cy.getAllLocalStorage().then((data) => {
-        const token = getToken(data);
+      cy.getAllLocalStorage().then((responseData) => {
+        const token = getToken(responseData);
         cy.request({
           method: 'DELETE',
           url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
           headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Delete created user
+        cy.request({
+          method: 'DELETE',
+          url: `/api/v1/users/${data.user.id}?hardDelete=true&recursive=false`,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        hardDeleteService({
+          token,
+          serviceFqn: serviceDetails.serviceName,
+          serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
         });
       });
     });
@@ -130,25 +156,25 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
-        databaseSchemaRowKey: databaseSchemaId,
+        databaseSchemaRowKey: data.schema.id,
         databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
       });
 
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/name/${databaseSchemaFQN}*`,
+        `/api/v1/databaseSchemas/name/${data.schema.fullyQualifiedName}*`,
         `getDatabaseSchemaDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.2`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions/0.2`,
         'getSelectedVersionDetails'
       );
 
@@ -186,9 +212,9 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
-        databaseSchemaRowKey: databaseSchemaId,
+        databaseSchemaRowKey: data.schema.id,
         databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
       });
 
@@ -196,21 +222,21 @@ describe(
 
       cy.get('@versionButton').contains('0.2');
 
-      addOwner(OWNER);
+      addOwner(data.user.displayName);
 
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/name/${databaseSchemaFQN}*`,
+        `/api/v1/databaseSchemas/name/${data.schema.fullyQualifiedName}*`,
         `getDatabaseSchemaDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.2`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions/0.2`,
         'getSelectedVersionDetails'
       );
 
@@ -230,9 +256,9 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
-        databaseSchemaRowKey: databaseSchemaId,
+        databaseSchemaRowKey: data.schema.id,
         databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
       });
 
@@ -244,17 +270,17 @@ describe(
 
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/name/${databaseSchemaFQN}*`,
+        `/api/v1/databaseSchemas/name/${data.schema.fullyQualifiedName}*`,
         `getDatabaseSchemaDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.2`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions/0.2`,
         'getSelectedVersionDetails'
       );
 
@@ -274,9 +300,9 @@ describe(
         settingsMenuId: serviceDetails.settingsMenuId,
         serviceCategory: serviceDetails.serviceCategory,
         serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
+        databaseRowKey: data.database.id,
         databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
-        databaseSchemaRowKey: databaseSchemaId,
+        databaseSchemaRowKey: data.schema.id,
         databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
       });
 
@@ -305,17 +331,17 @@ describe(
 
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/name/${databaseSchemaFQN}*`,
+        `/api/v1/databaseSchemas/name/${data.schema.fullyQualifiedName}*`,
         `getDatabaseSchemaDetails`
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions`,
         'getVersionsList'
       );
       interceptURL(
         'GET',
-        `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.3`,
+        `/api/v1/databaseSchemas/${data.schema.id}/versions/0.3`,
         'getSelectedVersionDetails'
       );
 
@@ -350,51 +376,6 @@ describe(
       toastNotification(`Database Schema restored successfully`);
 
       cy.get('@versionButton').should('contain', '0.4');
-    });
-
-    it(`Cleanup for Database  Schema version page tests`, () => {
-      visitDatabaseSchemaDetailsPage({
-        settingsMenuId: serviceDetails.settingsMenuId,
-        serviceCategory: serviceDetails.serviceCategory,
-        serviceName: serviceDetails.serviceName,
-        databaseRowKey: databaseId,
-        databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
-        databaseSchemaRowKey: databaseSchemaId,
-        databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
-      });
-
-      // Clicking on permanent delete radio button and checking the service name
-      cy.get('[data-testid="manage-button"]').click();
-
-      cy.get('[data-menu-id*="delete-button"]').should('be.visible');
-      cy.get('[data-testid="delete-button-title"]').click();
-
-      // Clicking on permanent delete radio button and checking the service name
-      cy.get('[data-testid="hard-delete-option"]')
-        .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-        .click();
-
-      cy.get('[data-testid="confirmation-text-input"]')
-        .should('be.visible')
-        .type(DELETE_TERM);
-      interceptURL('DELETE', `/api/v1/databaseSchemas/*`, 'deleteService');
-      interceptURL(
-        'GET',
-        '/api/v1/services/*/name/*?fields=owner',
-        'serviceDetails'
-      );
-
-      cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-      verifyResponseStatusCode('@deleteService', 200);
-
-      // Closing the toast notification
-      toastNotification(
-        `"${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}" deleted successfully!`
-      );
-
-      cy.get(
-        `[data-testid="service-name-${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`
-      ).should('not.exist');
     });
   }
 );

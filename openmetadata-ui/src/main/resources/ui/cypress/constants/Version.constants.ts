@@ -13,11 +13,27 @@
 
 import { uuid } from '../common/common';
 import { EntityType } from './Entity.interface';
+import { DASHBOARD_DETAILS } from './EntityConstant';
 import { SERVICE_CATEGORIES } from './service.constants';
 import { GlobalSettingOptions } from './settings.constant';
 
-export const OWNER = 'Amber Green';
-export const REVIEWER = 'Amanda York';
+export const OWNER_NAME = `user${uuid()}`;
+
+export const OWNER_DETAILS = {
+  firstName: `first-name-${uuid()}`,
+  lastName: `last-name-${uuid()}`,
+  email: `${OWNER_NAME}@example.com`,
+  password: 'User@OMD123',
+};
+
+export const REVIEWER_NAME = `user${uuid()}`;
+
+export const REVIEWER_DETAILS = {
+  firstName: `first-name-${uuid()}`,
+  lastName: `last-name-${uuid()}`,
+  email: `${REVIEWER_NAME}@example.com`,
+  password: 'User@OMD123',
+};
 export const TIER = 'Tier1';
 
 const TABLE_NAME = `cypress_version_table-${uuid()}`;
@@ -27,7 +43,6 @@ const PIPELINE_NAME = `cypress_version_pipeline-${uuid()}`;
 const ML_MODEL_NAME = `cypress_version_ml_model-${uuid()}`;
 const CONTAINER_NAME = `cypress_version_container-${uuid()}`;
 const SEARCH_INDEX_NAME = `cypress_version_search_index-${uuid()}`;
-const STORED_PROCEDURE_NAME = `cypress_version_stored_procedure-${uuid()}`;
 const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
 
 type TableColumn = Record<string, string | number>;
@@ -627,37 +642,9 @@ const SEARCH_INDEX_PATCH_PAYLOAD = [
   },
 ];
 
-const STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST = {
-  name: STORED_PROCEDURE_NAME,
-  databaseSchema: 'sample_data.ecommerce_db.shopify',
-  storedProcedureCode: {
-    langauge: 'SQL',
-    code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
-  },
-  tags: [],
-};
-
-const STORED_PROCEDURE_PATCH_PAYLOAD = [
-  {
-    op: 'add',
-    path: '/tags/0',
-    value: {
-      labelType: 'Manual',
-      state: 'Confirmed',
-      source: 'Classification',
-      tagFQN: 'PersonalData.SpecialCategory',
-    },
-  },
-  {
-    op: 'add',
-    path: '/description',
-    value: `Description for ${STORED_PROCEDURE_NAME}`,
-  },
-];
-
 export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
   name: DATA_MODEL_NAME,
-  service: 'sample_looker',
+  service: DASHBOARD_DETAILS.service,
   dataModelType: 'LookMlExplore',
   tags: [],
   columns: [
@@ -666,8 +653,7 @@ export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
       dataType: 'VARCHAR',
       dataLength: 256,
       dataTypeDisplay: 'varchar',
-      fullyQualifiedName:
-        'sample_looker.model.cypress_version_test_data_model.column_1',
+      fullyQualifiedName: `${DASHBOARD_DETAILS.service}.model.${DATA_MODEL_NAME}.column_1`,
       tags: [],
       ordinalPosition: 1,
     },
@@ -676,8 +662,7 @@ export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description: 'Description for column column_2',
-      fullyQualifiedName:
-        'sample_looker.model.cypress_version_test_data_model.column_2',
+      fullyQualifiedName: `${DASHBOARD_DETAILS.service}.model.${DATA_MODEL_NAME}.column_2`,
       tags: [],
       ordinalPosition: 2,
     },
@@ -685,8 +670,7 @@ export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
       name: 'column_3',
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
-      fullyQualifiedName:
-        'sample_looker.model.cypress_version_test_data_model.column_3',
+      fullyQualifiedName: `${DASHBOARD_DETAILS.service}.model.${DATA_MODEL_NAME}.column_3`,
       tags: [],
       ordinalPosition: 3,
     },
