@@ -89,7 +89,12 @@ class Median(StaticMetric, PercentilMixin):
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            median = df.median()
+            try:
+                median = df.median()
+            except Exception as err:
+                logger.error(
+                    f"Unable to compute Median for {self.col.name} due to error: {err}"
+                )
             return None if pd.isnull(median) else median
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Median"
