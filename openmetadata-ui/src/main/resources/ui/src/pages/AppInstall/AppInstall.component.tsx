@@ -24,7 +24,7 @@ import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import Loader from '../../components/common/Loader/Loader';
 import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationSchemaClassBase';
+import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';

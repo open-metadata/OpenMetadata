@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-class ApplicationSchemaClassBase {
+import { FC } from 'react';
+
+class ApplicationsClassBase {
   public importSchema(fqn: string) {
     return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
   }
@@ -21,9 +23,17 @@ class ApplicationSchemaClassBase {
   public importAppLogo(appName: string) {
     return import(`../../../../assets/svg/${appName}.svg`);
   }
+  /**
+   * Used to pass extra elements from installed Apps.
+   *
+   * @return {FC | null} The application extension, or null if none exists.
+   */
+  public getApplicationExtension(): FC | null {
+    return null;
+  }
 }
 
-const applicationSchemaClassBase = new ApplicationSchemaClassBase();
+const applicationsClassBase = new ApplicationsClassBase();
 
-export default applicationSchemaClassBase;
-export { ApplicationSchemaClassBase };
+export default applicationsClassBase;
+export { ApplicationsClassBase };

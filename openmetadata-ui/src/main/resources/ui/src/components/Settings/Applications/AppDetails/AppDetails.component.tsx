@@ -76,7 +76,7 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
-import applicationSchemaClassBase from './ApplicationSchemaClassBase';
+import applicationsClassBase from './ApplicationsClassBase';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -93,7 +93,7 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
-  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
+  const UiSchema = applicationsClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -104,7 +104,7 @@ const AppDetails = () => {
       });
       setAppData(data);
 
-      const schema = await applicationSchemaClassBase.importSchema(fqn);
+      const schema = await applicationsClassBase.importSchema(fqn);
 
       setJsonSchema(schema.default);
     } catch (error) {

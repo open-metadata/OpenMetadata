@@ -205,7 +205,7 @@ const DescriptionV1 = ({
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>
-      <div className="d-flex justify-between">
+      <div className="d-flex justify-between flex-wrap">
         <div className="d-flex items-center gap-2">
           <Text className="right-panel-label">{t('label.description')}</Text>
           {showActions && actionButtons}

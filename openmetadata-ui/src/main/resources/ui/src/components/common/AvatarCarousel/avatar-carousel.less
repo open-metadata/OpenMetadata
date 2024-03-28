@@ -13,20 +13,42 @@
 @import url('../../../styles/variables.less');
 
 .avatar-item {
-  opacity: 0.4;
-  &.active {
-    opacity: 1;
-  }
+  position: relative;
   &:hover {
     border-color: @border-color !important;
   }
   &:focus {
     border-color: @border-color !important;
   }
+  &.ant-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+  }
 }
 
 .avatar-carousel-container {
   .slick-slide {
     width: 32px !important;
+  }
+  .slick-list {
+    overflow: visible !important;
+  }
+  .ant-badge-count {
+    right: 4px;
+    background-color: @red-3;
+  }
+}
+
+.slider-btn-container {
+  .ant-btn {
+    padding: 0 10px;
+    height: 30px;
+  }
+  .ant-btn.exit-suggestion {
+    color: @grey-4;
+    border-color: @grey-4;
+    padding: 0;
+    width: 30px;
   }
 }

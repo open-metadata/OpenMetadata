@@ -82,6 +82,30 @@ const deleteNode = (node) => {
   verifyResponseStatusCode('@lineageDeleteApi', 200);
 };
 
+const deleteEdge = (fromNode, toNode) => {
+  interceptURL('DELETE', '/api/v1/lineage/**', 'lineageDeleteApi');
+  cy.get(`[data-testid="edge-${fromNode.fqn}-${toNode.fqn}"]`).click({
+    force: true,
+  });
+
+  if (
+    ['Table', 'Topic'].indexOf(fromNode.entityType) > -1 &&
+    ['Table', 'Topic'].indexOf(toNode.entityType) > -1
+  ) {
+    cy.get('[data-testid="add-pipeline"]').click();
+
+    cy.get(
+      '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
+    ).click();
+  } else {
+    cy.get('[data-testid="delete-button"]').click();
+  }
+  cy.get(
+    '[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary'
+  ).click();
+  verifyResponseStatusCode('@lineageDeleteApi', 200);
+};
+
 const applyPipelineFromModal = (fromNode, toNode, pipelineData) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
   cy.get(`[data-testid="edge-${fromNode.fqn}-${toNode.fqn}"]`).click({
@@ -244,10 +268,10 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       // Delete Nodes
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
         if (i !== index) {
-          deleteNode(LINEAGE_ITEMS[i]);
-          cy.get(`[data-testid="lineage-node-${LINEAGE_ITEMS[i].fqn}"]`).should(
-            'not.exist'
-          );
+          deleteEdge(entity, LINEAGE_ITEMS[i]);
+          cy.get(
+            `[data-testid="edge-${entity.fqn}-${LINEAGE_ITEMS[i].fqn}"]`
+          ).should('not.exist');
         }
       }
 

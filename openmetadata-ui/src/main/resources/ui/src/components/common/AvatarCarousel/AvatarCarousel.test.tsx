@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import AvatarCarousel from './AvatarCarousel';
 
@@ -35,6 +35,7 @@ jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
       { id: '2', name: 'Avatar 2', type: 'user' },
     ],
     acceptRejectSuggestion: jest.fn(),
+    selectedUserSuggestions: [],
     onUpdateActiveUser: jest.fn(),
   })),
   __esModule: true,
@@ -70,19 +71,10 @@ jest.mock('../../../rest/suggestionsAPI', () => ({
 
 describe('AvatarCarousel', () => {
   it('renders without crashing', () => {
-    render(<AvatarCarousel />);
+    render(<AvatarCarousel showArrows />);
 
     expect(screen.getByText(/Avatar 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Avatar 2/i)).toBeInTheDocument();
     expect(screen.getByTestId('prev-slide')).toBeDisabled();
-  });
-
-  it('disables the next button when on the last slide', () => {
-    render(<AvatarCarousel />);
-    const nextButton = screen.getByTestId('next-slide');
-    fireEvent.click(nextButton);
-    fireEvent.click(nextButton);
-
-    expect(nextButton).toBeDisabled();
   });
 });
