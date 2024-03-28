@@ -551,7 +551,7 @@ const TableDetailsPageV1: React.FC = () => {
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <EntityRightPanel
+          <EntityRightPanel<EntityType.TABLE>
             afterSlot={
               <Space
                 className="w-full m-t-lg"
@@ -570,6 +570,7 @@ const TableDetailsPageV1: React.FC = () => {
             customProperties={tableDetails}
             dataProducts={tableDetails?.dataProducts ?? []}
             domain={tableDetails?.domain}
+            editCustomAttributePermission={editCustomAttributePermission}
             editTagPermission={editTagsPermission}
             entityFQN={datasetFQN}
             entityId={tableDetails?.id ?? ''}
@@ -577,6 +578,7 @@ const TableDetailsPageV1: React.FC = () => {
             selectedTags={tableTags}
             tablePartition={tableDetails?.tablePartition}
             viewAllPermission={viewAllPermission}
+            onExtensionUpdate={onExtensionUpdate}
             onTagSelectionChange={handleTagSelection}
             onThreadLinkSelect={onThreadLinkSelect}
           />

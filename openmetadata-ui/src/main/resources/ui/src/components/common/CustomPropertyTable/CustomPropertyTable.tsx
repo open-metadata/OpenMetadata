@@ -286,6 +286,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             loading={entityTypeDetailLoading}
             pagination={false}
             rowKey="name"
+            scroll={isRenderedInRightPanel ? { x: true } : undefined}
             size="small"
           />
         </>

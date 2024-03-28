@@ -415,16 +415,18 @@ function SearchIndexDetailsPage() {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <EntityRightPanel
+              <EntityRightPanel<EntityType.SEARCH_INDEX>
                 customProperties={searchIndexDetails}
                 dataProducts={searchIndexDetails?.dataProducts ?? []}
                 domain={searchIndexDetails?.domain}
+                editCustomAttributePermission={editCustomAttributePermission}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedSearchIndexFQN}
                 entityId={searchIndexDetails?.id ?? ''}
                 entityType={EntityType.SEARCH_INDEX}
                 selectedTags={searchIndexTags}
                 viewAllPermission={viewAllPermission}
+                onExtensionUpdate={onExtensionUpdate}
                 onTagSelectionChange={handleTagSelection}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
