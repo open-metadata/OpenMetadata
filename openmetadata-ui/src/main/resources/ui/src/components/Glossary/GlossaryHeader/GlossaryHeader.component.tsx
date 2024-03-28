@@ -25,6 +25,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +61,7 @@ import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
   getGlossaryTermsById,
+  patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
@@ -74,6 +76,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
+import ChangeParent from '../../Modals/ChangeParent/ChangeParent.compoenent';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
@@ -108,6 +111,7 @@ const GlossaryHeader = ({
     Glossary | GlossaryTerm
   >();
   const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [isChangeParent, setIsChangeParent] = useState(false);
 
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
@@ -242,6 +246,28 @@ const GlossaryHeader = ({
     setIsStyleEditing(false);
   };
 
+  const onChangeParentSave = async (parentFQN: string) => {
+    const newTermData = {
+      ...selectedData,
+      parent: {
+        fullyQualifiedName: parentFQN,
+      },
+    };
+    const jsonPatch = compare(selectedData, newTermData);
+
+    try {
+      const { fullyQualifiedName, name } = await patchGlossaryTerm(
+        selectedData.id,
+        jsonPatch
+      );
+      history.push(getGlossaryPath(fullyQualifiedName ?? name));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsChangeParent(false);
+    }
+  };
+
   const addButtonContent = [
     {
       label: t('label.glossary-term'),
@@ -351,6 +377,32 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
+
+    ...(!isGlossary
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.modify-hierarchy-entity-description', {
+                  entity: t('label.term'),
+                })}
+                icon={StyleIcon}
+                id="change-parent-button"
+                name={t('label.change-parent-entity', {
+                  entity: t('label.term'),
+                })}
+              />
+            ),
+            key: 'change-parent-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsChangeParent(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+
     ...(permissions.Delete
       ? ([
           {
@@ -599,6 +651,15 @@ const GlossaryHeader = ({
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
+
+      {isChangeParent && (
+        <ChangeParent
+          open={isChangeParent}
+          selectedData={selectedData as GlossaryTerm}
+          onCancel={() => setIsChangeParent(false)}
+          onSubmit={onChangeParentSave}
+        />
+      )}
     </>
   );
 };
