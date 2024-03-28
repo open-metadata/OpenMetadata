@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
+import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
@@ -232,15 +233,15 @@ public final class JsonUtils {
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
-    JsonValue source = readJson(v1);
-    JsonValue dest = readJson(v2);
-    return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
+      JsonNode source = readTree(v1);
+      JsonNode dest = readTree(v2);
+      return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
   }
 
   public static JsonPatch getJsonPatch(Object v1, Object v2) {
-    JsonValue source = readJson(JsonUtils.pojoToJson(v1));
-    JsonValue dest = readJson(JsonUtils.pojoToJson(v2));
-    return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
+    JsonNode source = valueToTree(v1);
+    JsonNode dest = valueToTree(v2);
+    return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
   }
 
   public static JsonValue readJson(String s) {
