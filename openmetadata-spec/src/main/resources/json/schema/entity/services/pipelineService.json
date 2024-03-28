@@ -28,8 +28,7 @@
         "DatabricksPipeline",
         "Spline",
         "Spark",
-        "OpenLineage",
-        "KafkaConnect"
+        "OpenLineage"
       ],
       "javaEnums": [
         {
@@ -67,9 +66,6 @@
         },
         {
           "name": "OpenLineage"
-        },
-        {
-          "name": "KafkaConnect"
         }
       ]
     },
@@ -119,9 +115,6 @@
             },
             {
               "$ref": "./connections/pipeline/openLineageConnection.json"
-            },
-            {
-              "$ref": "./connections/pipeline/kafkaConnectConnection.json"
             }
           ]
         }
