@@ -83,6 +83,18 @@ public interface MessageDecorator<T> {
           link.getEntityType(), link.getEntityFQN(), "profiler?activeTab=Data%20Quality");
     }
 
+    // Glossary Term
+    if (entityType.equals(Entity.GLOSSARY_TERM)) {
+      // Glossary Term is a special case where the URL is different
+      return getEntityUrl(Entity.GLOSSARY, fqn, "");
+    }
+
+    // Tag
+    if (entityType.equals(Entity.TAG)) {
+      // Tags need to be redirected to Classification Page
+      return getEntityUrl("tags", fqn.split("\\.")[0], "");
+    }
+
     return getEntityUrl(entityType, fqn, "");
   }
 
@@ -176,6 +188,11 @@ public interface MessageDecorator<T> {
     OutgoingMessage message = new OutgoingMessage();
     message.setUserName(event.getUserName());
     Thread thread = getThread(event);
+
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
+    EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
+    String entityUrl = buildEntityUrl(entityLink.getEntityType(), entityInterface);
+
     String headerMessage = "";
     List<String> attachmentList = new ArrayList<>();
     switch (thread.getType()) {
@@ -214,8 +231,8 @@ public interface MessageDecorator<T> {
           case THREAD_CREATED -> {
             headerMessage =
                 String.format(
-                    "@%s created a Task with Id : %s",
-                    thread.getCreatedBy(), thread.getTask().getId());
+                    "@%s created a Task for %s %s",
+                    thread.getCreatedBy(), entityLink.getEntityType(), entityUrl);
             attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
             attachmentList.add(
                 String.format(
@@ -319,6 +336,8 @@ public interface MessageDecorator<T> {
     }
     message.setHeader(headerMessage);
     message.setMessages(attachmentList);
+
+    message.setEntityUrl(entityUrl);
     return message;
   }
 

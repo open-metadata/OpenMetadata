@@ -59,7 +59,9 @@ class DomopipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config = WorkflowSource.parse_obj(config_dict)
         connection: DomoPipelineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DomoPipelineConnection):
@@ -94,7 +96,7 @@ class DomopipelineSource(PipelineServiceSource):
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
                 tasks=[task],
-                service=self.context.pipeline_service,
+                service=self.context.get().pipeline_service,
                 startDate=pipeline_details.get("created"),
                 sourceUrl=source_url,
             )
@@ -164,8 +166,8 @@ class DomopipelineSource(PipelineServiceSource):
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Pipeline,
-                    service_name=self.context.pipeline_service,
-                    pipeline_name=self.context.pipeline,
+                    service_name=self.context.get().pipeline_service,
+                    pipeline_name=self.context.get().pipeline,
                 )
                 yield Either(
                     right=OMetaPipelineStatus(

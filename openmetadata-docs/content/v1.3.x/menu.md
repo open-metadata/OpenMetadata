@@ -98,6 +98,8 @@ site_menu:
     url: /deployment/security/custom-oidc/bare-metal
   - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
     url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / OIDC SSO
+    url: /deployment/security/oidc
   - category: Deployment / Enable Security / Google SSO
     url: /deployment/security/google
   - category: Deployment / Enable Security / Google SSO / Docker
@@ -156,8 +158,6 @@ site_menu:
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
-  - category: Deployment / Enable Security / Enable Password Masking
-    url: /deployment/security/enable-password-masking
 
   - category: Deployment / Enable Secrets Manager
     url: /deployment/secrets-manager
@@ -228,6 +228,8 @@ site_menu:
     url: /how-to-guides/admin-guide/roles-policies/authorization
   - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
     url: /how-to-guides/admin-guide/roles-policies/use-cases
+  - category: How-to Guides / Admin Guide / Set up Alerts and Notifications
+    url: /how-to-guides/admin-guide/alerts
   - category: How-to Guides / Admin Guide / CLI Ingestion with Basic Auth
     url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
@@ -320,6 +322,12 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
+  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
+    url: /how-to-guides/data-insights/airflow-sdk
+  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
+    url: /how-to-guides/data-insights/metadata-cli   
+  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
+    url: /how-to-guides/data-insights/elasticsearch-reindex 
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
   - category: How-to Guides / Data Insights / Cost Analysis
@@ -341,6 +349,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/create-terms
   - category: How-to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
     url: /how-to-guides/data-governance/glossary/import
+  - category: How-to Guides / Data Governance / Glossary / Glossary Export
+    url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
@@ -372,10 +382,10 @@ site_menu:
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
-  - category: Releases / Roadmap
-    url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.3.1 Release
+    url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release
     url: /releases/all-releases/#1.3.0-release
   - category: Releases / All Releases / 1.2.0 Release
@@ -422,6 +432,9 @@ site_menu:
     url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
+  
+  - category: Roadmap
+    url: /roadmap
 
   - category: Connectors
     url: /connectors
@@ -731,6 +744,14 @@ site_menu:
     url: /connectors/storage/s3
   - category: Connectors / Storage / S3 / Run Externally
     url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / GCS
+    url: /connectors/storage/gcs
+  - category: Connectors / Storage / GCS / Run Externally
+    url: /connectors/storage/gcs/yaml
+  - category: Connectors / Storage / ADLS
+    url: /connectors/storage/adls
+  - category: Connectors / Storage / ADLS / Run Externally
+    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -829,6 +850,8 @@ site_menu:
     url: /connectors/ingestion/versioning/change-events
   - category: Connectors / Ingestion / Versioning / Event Notification via Webhooks
     url: /connectors/ingestion/versioning/event-notification-via-webhooks
+  - category: Connectors / Ingestion / Great Expectations
+    url: /connectors/ingestion/great-expectations
   - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
@@ -840,19 +863,7 @@ site_menu:
     icon: openmetadata
 
   - category: Features / Discovery & Collaboration
-    url: /features/discovery-collaboration
-
-  - category: Features / Integrations
-    url: /features/integrations
-  - category: Features / Integrations / Great Expectations
-    url: /features/integrations/great-expectations
-  - category: Features / Integrations / Prefect
-    url: /features/integrations/prefect
-  - category: Features / Data Insights
-    url: /features/data-insight
-
-  - category: Features / Alerts & Notifications
-    url: /features/alerts-notifications
+    url: /features/discovery-collaboration 
 
   - category: Main Concepts
     url: /main-concepts

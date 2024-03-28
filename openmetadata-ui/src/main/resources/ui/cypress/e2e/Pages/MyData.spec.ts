@@ -12,7 +12,6 @@
  */
 import {
   interceptURL,
-  login,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -27,6 +26,7 @@ import {
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { createEntityTableViaREST } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { generateRandomUser } from '../../common/Utils/Owner';
 import {
   DATABASE_SERVICE,
@@ -133,7 +133,7 @@ const updateOwnerAndVerify = ({ url, body, type, entityName, newOwner }) => {
     'feedData'
   );
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     cy.request({
       method: 'PATCH',
       url,
@@ -166,7 +166,7 @@ const updateOwnerAndVerify = ({ url, body, type, entityName, newOwner }) => {
 const prepareData = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     SINGLE_LEVEL_SERVICE.forEach((data) => {
       createSingleLevelEntity({
         token,
@@ -267,7 +267,7 @@ const prepareData = () => {
 const cleanUp = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     hardDeleteService({
       token,
       serviceFqn: DATABASE_SERVICE.service.name,
@@ -301,7 +301,7 @@ describe('My Data page', { tags: 'DataAssets' }, () => {
 
   it('Verify my data widget', () => {
     // login with newly created user
-    login(user1.email, user1.password);
+    cy.login(user1.email, user1.password);
     cy.get('[data-testid="my-data-widget"]').scrollIntoView();
 
     // verify total count
@@ -320,7 +320,7 @@ describe('My Data page', { tags: 'DataAssets' }, () => {
 
   it('Verify following widget', () => {
     // login with newly created user
-    login(user1.email, user1.password);
+    cy.login(user1.email, user1.password);
     cy.get('[data-testid="following-widget"]').scrollIntoView();
 
     // verify total count
@@ -336,7 +336,7 @@ describe('My Data page', { tags: 'DataAssets' }, () => {
 
   it('Verify user as owner feed widget', () => {
     // login with newly created user
-    login(user2.email, user2.password);
+    cy.login(user2.email, user2.password);
     cy.get('[data-testid="no-data-placeholder-container"]')
       .scrollIntoView()
       .should(
@@ -365,7 +365,7 @@ describe('My Data page', { tags: 'DataAssets' }, () => {
 
   it('Verify team as owner feed widget', () => {
     // login with newly created user
-    login(user1.email, user1.password);
+    cy.login(user1.email, user1.password);
 
     Object.entries(entities).forEach(([key, value]) => {
       updateOwnerAndVerify({

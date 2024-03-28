@@ -9,9 +9,10 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
-      dbServiceNames:
-      - local_databricks
-      - local_postgres_empty1
+      lineageInformation:
+        dbServiceNames:
+        - local_databricks
+        - local_postgres_empty1
 
       pipelineFilterPattern:
         includes:
@@ -21,7 +22,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
-  loggerLevel: DEBUG
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

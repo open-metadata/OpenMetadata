@@ -11,6 +11,7 @@ import java.util.TreeMap;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -43,7 +44,7 @@ public interface SearchClient {
       "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
@@ -72,6 +73,16 @@ public interface SearchClient {
   void createAliases(IndexMapping indexMapping);
 
   Response search(SearchRequest request) throws IOException;
+
+  SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      String sortField,
+      String sortType,
+      String q)
+      throws IOException;
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
@@ -170,5 +181,16 @@ public interface SearchClient {
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
         : null;
+  }
+
+  @Getter
+  class SearchResultListMapper {
+    public List<Map<String, Object>> results;
+    public long total;
+
+    public SearchResultListMapper(List<Map<String, Object>> results, long total) {
+      this.results = results;
+      this.total = total;
+    }
   }
 }

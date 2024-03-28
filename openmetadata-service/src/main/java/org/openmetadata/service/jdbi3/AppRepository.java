@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
@@ -88,6 +89,7 @@ public class AppRepository extends EntityRepository<App> {
       CreateUser createUser =
           new CreateUser()
               .withName(botName)
+              .withDisplayName(application.getDisplayName())
               .withEmail(String.format("%s@openmetadata.org", botName))
               .withIsAdmin(false)
               .withIsBot(true)
@@ -135,15 +137,14 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void storeEntity(App entity, boolean update) {
-    EntityReference botUserRef = entity.getBot();
     EntityReference ownerRef = entity.getOwner();
-    entity.withBot(null).withOwner(null);
+    entity.withOwner(null);
 
     // Store
     store(entity, update);
 
     // Restore entity fields
-    entity.withBot(botUserRef).withOwner(ownerRef);
+    entity.withOwner(ownerRef);
   }
 
   public EntityReference getBotUser(App application) {
@@ -209,6 +210,9 @@ public class AppRepository extends EntityRepository<App> {
 
   public AppRunRecord getLatestAppRuns(UUID appId) {
     String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId);
+    if (json == null) {
+      throw new UnhandledServerException("No Available Application Run Records.");
+    }
     return JsonUtils.readValue(json, AppRunRecord.class);
   }
 
@@ -227,6 +231,7 @@ public class AppRepository extends EntityRepository<App> {
       recordChange(
           "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
+      recordChange("bot", original.getBot(), updated.getBot());
     }
   }
 }

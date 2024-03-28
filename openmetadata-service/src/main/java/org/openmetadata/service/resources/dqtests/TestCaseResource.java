@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -50,6 +51,7 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -76,6 +78,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
   static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId";
+  static final String SEARCH_FIELDS_EXCLUDE = "testPlatforms";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -174,20 +177,32 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter test case by status",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
+          @QueryParam("testCaseStatus")
+          String status,
+      @Parameter(
+              description = "Filter for test case type (e.g. column, table, all",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"column", "table", "all"}))
+          @QueryParam("testCaseType")
+          @DefaultValue("all")
+          String type) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString())
-            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString());
-    ResourceContextInterface resourceContext;
-    if (entityLink != null) {
-      EntityLink entityLinkParsed = EntityLink.parse(entityLink);
-      filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
-      resourceContext = TestCaseResourceContext.builder().entityLink(entityLinkParsed).build();
-    } else {
-      resourceContext = TestCaseResourceContext.builder().build();
-    }
+            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString())
+            .addQueryParam("testCaseStatus", status)
+            .addQueryParam("testCaseType", type);
+    ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
 
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
     // VIEW_TESTS
@@ -206,6 +221,170 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             after,
             operationContext,
             resourceContext);
+    return PIIMasker.getTestCases(tests, authorizer, securityContext);
+  }
+
+  @GET
+  @Path("/search/list")
+  @Operation(
+      operationId = "listTestCasesFromSearchService",
+      summary = "List test cases using search service",
+      description =
+          "Get a list of test cases using the search service. Use `fields` "
+              + "parameter to get only necessary fields. Use offset/limit pagination to limit the number "
+              + "entries in the list using `limit` and `offset` query params."
+              + "Use the `testSuite` field to get the executable Test Suite linked to this test case "
+              + "or use the `testSuites` field to list test suites (executable and logical) linked.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of test cases",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
+      })
+  public ResultList<TestCase> listFromSearch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limit,
+      @Parameter(
+              description = "Returns list of tests after this offset",
+              schema = @Schema(type = "string"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset,
+      @Parameter(
+              description = "Return list of tests by entity link",
+              schema =
+                  @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
+          @QueryParam("entityLink")
+          String entityLink,
+      @Parameter(
+              description = "Returns list of tests filtered by a testSuite id",
+              schema = @Schema(type = "string"))
+          @QueryParam("testSuiteId")
+          String testSuiteId,
+      @Parameter(
+              description = "Include all the tests at the entity level",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("includeAllTests")
+          @DefaultValue("false")
+          Boolean includeAllTests,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description = "Filter test case by status",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"Success", "Failed", "Aborted", "Queued"}))
+          @QueryParam("testCaseStatus")
+          String status,
+      @Parameter(
+              description = "Filter for test case type (e.g. column, table, all)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"column", "table", "all"}))
+          @QueryParam("testCaseType")
+          @DefaultValue("all")
+          String type,
+      @Parameter(
+              description = "Filter for test case by source (e.g. OpenMetadata, dbt, etc.)",
+              schema = @Schema(type = "string"))
+          @QueryParam("testPlatforms")
+          String testPlatforms,
+      @Parameter(
+              description =
+                  "Parameter used to filter (inclusive) the test cases by the last execution timestamp (in milliseconds). Must be used in conjunction with `endTimestamp`",
+              schema = @Schema(type = "long"))
+          @QueryParam("startTimestamp")
+          Long startTimestamp,
+      @Parameter(
+              description =
+                  "Parameter used to filter (inclusive) the test cases by the last execution timestamp (in milliseconds). Must be used in conjunction with `startTimestamp`",
+              schema = @Schema(type = "long"))
+          @QueryParam("endTimestamp")
+          Long endTimestamp,
+      @Parameter(
+              description = "Field used to sort the test cases listing",
+              schema = @Schema(type = "string"))
+          @QueryParam("sortField")
+          String sortField,
+      @Parameter(
+              description = "Sort type",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortType")
+          @DefaultValue("desc")
+          String sortType,
+      @Parameter(
+              description = "search query term to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String q)
+      throws IOException {
+    if ((startTimestamp == null && endTimestamp != null)
+        || (startTimestamp != null && endTimestamp == null)) {
+      throw new IllegalArgumentException("startTimestamp and endTimestamp must be used together");
+    }
+
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+    searchListFilter.addQueryParam("testSuiteId", testSuiteId);
+    searchListFilter.addQueryParam("includeAllTests", includeAllTests.toString());
+    searchListFilter.addQueryParam("testCaseStatus", status);
+    searchListFilter.addQueryParam("testCaseType", type);
+    searchListFilter.addQueryParam("testPlatforms", testPlatforms);
+    searchListFilter.addQueryParam("q", q);
+    searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+
+    if (startTimestamp != null) {
+      if (startTimestamp > endTimestamp) {
+        throw new IllegalArgumentException("startTimestamp must be less than endTimestamp");
+      }
+      searchListFilter.addQueryParam("startTimestamp", startTimestamp.toString());
+      searchListFilter.addQueryParam("endTimestamp", endTimestamp.toString());
+    }
+
+    ResourceContextInterface resourceContextInterface =
+        getResourceContext(entityLink, new ListFilter());
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
+    // VIEW_TESTS
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    Fields fields = getFields(fieldsParam);
+
+    ResultList<TestCase> tests =
+        super.listInternalFromSearch(
+            uriInfo,
+            securityContext,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            sortField,
+            sortType,
+            q,
+            operationContext,
+            resourceContextInterface);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 
@@ -767,6 +946,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           "You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+  }
+
+  private ResourceContextInterface getResourceContext(String entityLink, ListFilter filter) {
+    ResourceContextInterface resourceContext;
+    if (entityLink != null) {
+      EntityLink entityLinkParsed = EntityLink.parse(entityLink);
+      filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
+      resourceContext = TestCaseResourceContext.builder().entityLink(entityLinkParsed).build();
+    } else {
+      resourceContext = TestCaseResourceContext.builder().build();
+    }
+    return resourceContext;
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {

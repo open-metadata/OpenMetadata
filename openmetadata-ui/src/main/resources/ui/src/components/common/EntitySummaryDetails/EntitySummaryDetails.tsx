@@ -23,11 +23,12 @@ import { ReactComponent as IconExternalLink } from '../../../assets/svg/external
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as IconInfoSecondary } from '../../../assets/svg/icon-info.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './entity-summary-details.style.less';
 
@@ -57,7 +58,7 @@ const InfoIcon = ({
 const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const displayVal = data.placeholderText || data.value;
 
   const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
@@ -215,7 +216,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
                 {data.openInNewTab && (
                   <>
                     &nbsp;
-                    <IconExternalLink width={12} />
+                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
                   </>
                 )}
               </a>

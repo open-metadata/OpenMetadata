@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { USER_DATA } from '../../../../../mocks/User.mock';
-import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import UserProfileDetails from './UserProfileDetails.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
@@ -34,8 +34,8 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     authConfig: {
       provider: AuthProvider.Basic,
     },
@@ -63,7 +63,15 @@ jest.mock('../UserProfileImage/UserProfileImage.component', () => {
 });
 
 jest.mock('../../../../common/InlineEdit/InlineEdit.component', () => {
-  return jest.fn().mockReturnValue(<p>InlineEdit</p>);
+  return jest.fn().mockImplementation(({ onSave, children }) => (
+    <div data-testid="inline-edit">
+      <span>InlineEdit</span>
+      {children}
+      <button data-testid="display-name-save-button" onClick={onSave}>
+        DisplayNameButton
+      </button>
+    </div>
+  ));
 });
 
 jest.mock('../../ChangePasswordForm', () => {
@@ -73,9 +81,16 @@ jest.mock('../../ChangePasswordForm', () => {
 jest.mock(
   '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component',
   () => ({
-    PersonaSelectableList: jest
-      .fn()
-      .mockReturnValue(<p>PersonaSelectableList</p>),
+    PersonaSelectableList: jest.fn().mockImplementation(({ onUpdate }) => (
+      <div>
+        <span>PersonaSelectableList</span>
+        <button
+          data-testid="persona-save-button"
+          onClick={() => onUpdate(USER_DATA.defaultPersona)}>
+          PersonaSaveButton
+        </button>
+      </div>
+    )),
   })
 );
 
@@ -137,11 +152,13 @@ describe('Test User Profile Details Component', () => {
   });
 
   it('should not render change password button and component in case of SSO', async () => {
-    (useAuthContext as jest.Mock).mockImplementationOnce(() => ({
-      authConfig: jest.fn().mockImplementationOnce(() => ({
-        provider: AuthProvider.Google,
-      })),
-    }));
+    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
+      () => ({
+        authConfig: jest.fn().mockImplementationOnce(() => ({
+          provider: AuthProvider.Google,
+        })),
+      })
+    );
 
     render(<UserProfileDetails {...mockPropsData} />, {
       wrapper: MemoryRouter,
@@ -159,12 +176,14 @@ describe('Test User Profile Details Component', () => {
       isAdminUser: false,
     }));
 
-    (useAuthContext as jest.Mock).mockImplementationOnce(() => ({
-      currentUser: {
-        name: 'admin',
-        id: '1234',
-      },
-    }));
+    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
+      () => ({
+        currentUser: {
+          name: 'admin',
+          id: '1234',
+        },
+      })
+    );
 
     render(<UserProfileDetails {...mockPropsData} />, {
       wrapper: MemoryRouter,
@@ -203,5 +222,45 @@ describe('Test User Profile Details Component', () => {
     fireEvent.click(editButton);
 
     expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+  });
+
+  it('should call updateUserDetails on click of DisplayNameButton', async () => {
+    render(<UserProfileDetails {...mockPropsData} />, {
+      wrapper: MemoryRouter,
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('edit-displayName'));
+    });
+
+    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.change(screen.getByTestId('displayName'), {
+        target: { value: 'test' },
+      });
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('display-name-save-button'));
+    });
+
+    expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
+      { displayName: 'test' },
+      'displayName'
+    );
+  });
+
+  it('should call updateUserDetails on click of PersonaSaveButton', async () => {
+    render(<UserProfileDetails {...mockPropsData} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByTestId('persona-save-button'));
+
+    expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
+      { defaultPersona: USER_DATA.defaultPersona },
+      'defaultPersona'
+    );
   });
 });

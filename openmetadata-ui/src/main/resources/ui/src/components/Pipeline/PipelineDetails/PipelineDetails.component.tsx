@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Card, Col, Radio, Row, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -22,7 +23,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import {
-  getPipelineDetailsPath,
+  DATA_ASSET_ICON_DIMENSION,
+  getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -41,6 +43,7 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { postThread } from '../../../rest/feedsAPI';
 import { restorePipeline } from '../../../rest/pipelineAPI';
@@ -62,7 +65,6 @@ import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -100,7 +102,7 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const userID = currentUser?.id ?? '';
   const {
@@ -392,10 +394,10 @@ const PipelineDetails = ({
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 
-                <ExternalLinkIcon
+                <Icon
                   className="m-l-xs flex-none"
-                  height={14}
-                  width={14}
+                  component={ExternalLinkIcon}
+                  style={DATA_ASSET_ICON_DIMENSION}
                 />
               </div>
             </Link>
@@ -505,7 +507,11 @@ const PipelineDetails = ({
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getPipelineDetailsPath(pipelineFQN, tabValue),
+        pathname: getEntityDetailsPath(
+          EntityType.PIPELINE,
+          pipelineFQN,
+          tabValue
+        ),
       });
     }
   };

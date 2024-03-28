@@ -29,6 +29,7 @@ import {
 import { EntityReference } from '../../../../../generated/entity/type';
 import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { changePassword } from '../../../../../rest/auth-API';
 import { getEntityName } from '../../../../../utils/EntityUtils';
@@ -36,7 +37,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
@@ -52,7 +52,7 @@ const UserProfileDetails = ({
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
-  const { authConfig, currentUser } = useAuthContext();
+  const { authConfig, currentUser } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
@@ -105,7 +105,10 @@ const UserProfileDetails = ({
   const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
       setIsLoading(true);
-      await updateUserDetails({ displayName: displayName ?? '' });
+      await updateUserDetails(
+        { displayName: displayName ?? '' },
+        'displayName'
+      );
       setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
@@ -151,7 +154,11 @@ const UserProfileDetails = ({
                 color={DE_ACTIVE_COLOR}
                 data-testid="edit-displayName"
                 {...ICON_DIMENSION}
-                onClick={() => setIsDisplayNameEdit(true)}
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent User.component collapsible panel
+                  e.stopPropagation();
+                  setIsDisplayNameEdit(true);
+                }}
               />
             </Tooltip>
           )}
@@ -175,7 +182,11 @@ const UserProfileDetails = ({
           className="w-full text-xs"
           data-testid="change-password-button"
           type="primary"
-          onClick={() => setIsChangePassword(true)}>
+          onClick={(e) => {
+            // Used to stop click propagation event to parent User.component collapsible panel
+            e.stopPropagation();
+            setIsChangePassword(true);
+          }}>
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
           })}
@@ -252,9 +263,9 @@ const UserProfileDetails = ({
 
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
-      await updateUserDetails({ ...userData, defaultPersona });
+      await updateUserDetails({ defaultPersona }, 'defaultPersona');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const defaultPersonaRender = useMemo(

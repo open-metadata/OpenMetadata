@@ -10,62 +10,97 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { FC } from 'react';
+import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import {
-  getContainerDetailPath,
-  getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getDataModelDetailsPath,
   getEditWebhookPath,
-  getMlModelPath,
-  getPipelineDetailsPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getServiceDetailsPath,
-  getStoredProcedureDetailPath,
-  getTableDetailsPath,
-  getTableTabPath,
   getTagsDetailsPath,
-  getTopicDetailsPath,
   getUserPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import ContainerPage from '../pages/ContainerPage/ContainerPage';
+import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
+import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
+import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
+import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
+import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
+import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
+import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
+import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import { getTableFQNFromColumnFQN } from './CommonUtils';
 import {
-  getDataProductsDetailsPath,
   getDomainDetailsPath,
-  getGlossaryPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
-import { getSearchIndexDetailsPath } from './SearchIndexUtils';
 
 class EntityUtilClassBase {
-  public getEntityLink(indexType: string, fullyQualifiedName: string) {
+  public getEntityLink(
+    indexType: string,
+    fullyQualifiedName: string,
+    tab?: string,
+    subTab?: string
+  ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
       case EntityType.TOPIC:
-        return getTopicDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.TOPIC,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.DASHBOARD:
       case EntityType.DASHBOARD:
-        return getDashboardDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DASHBOARD,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.PIPELINE:
       case EntityType.PIPELINE:
-        return getPipelineDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.PIPELINE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.DATABASE:
-        return getDatabaseDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DATABASE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.DATABASE_SCHEMA:
-        return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.GLOSSARY:
       case SearchIndex.GLOSSARY:
       case EntityType.GLOSSARY_TERM:
       case SearchIndex.GLOSSARY_TERM:
-        return getGlossaryPath(fullyQualifiedName);
+        return getGlossaryTermDetailsPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.DATABASE_SERVICE:
       case EntityType.DASHBOARD_SERVICE:
@@ -88,43 +123,74 @@ class EntityUtilClassBase {
 
       case EntityType.MLMODEL:
       case SearchIndex.MLMODEL:
-        return getMlModelPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.MLMODEL,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.CONTAINER:
       case SearchIndex.CONTAINER:
-        return getContainerDetailPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.CONTAINER,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
       case SearchIndex.TAG:
         return getTagsDetailsPath(fullyQualifiedName);
 
       case SearchIndex.DASHBOARD_DATA_MODEL:
       case EntityType.DASHBOARD_DATA_MODEL:
-        return getDataModelDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DASHBOARD_DATA_MODEL,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.STORED_PROCEDURE:
       case EntityType.STORED_PROCEDURE:
-        return getStoredProcedureDetailPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.STORED_PROCEDURE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.TEST_CASE:
-        return `${getTableTabPath(
+        return `${getEntityDetailsPath(
+          EntityType.TABLE,
           getTableFQNFromColumnFQN(fullyQualifiedName),
           EntityTabs.PROFILER
         )}?activeTab=Data Quality`;
 
       case EntityType.SEARCH_INDEX:
       case SearchIndex.SEARCH_INDEX:
-        return getSearchIndexDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.SEARCH_INDEX,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.DOMAIN:
       case SearchIndex.DOMAIN:
-        return getDomainDetailsPath(fullyQualifiedName);
+        return getDomainDetailsPath(fullyQualifiedName, tab);
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
-        return getDataProductsDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.DATA_PRODUCT,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.USER:
       case SearchIndex.USER:
-        return getUserPath(fullyQualifiedName);
+        return getUserPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.TEAM:
       case SearchIndex.TEAM:
@@ -133,8 +199,102 @@ class EntityUtilClassBase {
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
-        return getTableDetailsPath(fullyQualifiedName);
+        return getEntityDetailsPath(
+          EntityType.TABLE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
     }
+  }
+
+  public getEntityDetailComponent(entityType: string) {
+    switch (entityType) {
+      case EntityType.DATABASE:
+        return DatabaseDetailsPage;
+      case EntityType.DATABASE_SCHEMA:
+        return DatabaseSchemaPageComponent;
+      case EntityType.PIPELINE:
+        return PipelineDetailsPage;
+      case EntityType.TOPIC:
+        return TopicDetailsPage;
+      case EntityType.DASHBOARD:
+        return DashboardDetailsPage;
+      case EntityType.STORED_PROCEDURE:
+        return StoredProcedurePage;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return DataModelsPage;
+      case EntityType.MLMODEL:
+        return MlModelPage;
+      case EntityType.CONTAINER:
+        return ContainerPage;
+      case EntityType.SEARCH_INDEX:
+        return SearchIndexDetailsPage;
+      case EntityType.DATA_PRODUCT:
+        return DataProductsPage;
+      case EntityType.TABLE:
+        return TableDetailsPageV1;
+      default:
+        return null;
+    }
+  }
+
+  public getResourceEntityFromEntityType(entityType: string): string {
+    switch (entityType) {
+      case EntityType.TABLE: {
+        return ResourceEntity.TABLE;
+      }
+      case EntityType.TOPIC: {
+        return ResourceEntity.TOPIC;
+      }
+      case EntityType.DASHBOARD: {
+        return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.PIPELINE: {
+        return ResourceEntity.PIPELINE;
+      }
+      case EntityType.MLMODEL: {
+        return ResourceEntity.ML_MODEL;
+      }
+      case EntityType.CONTAINER: {
+        return ResourceEntity.CONTAINER;
+      }
+      case EntityType.SEARCH_INDEX: {
+        return ResourceEntity.SEARCH_INDEX;
+      }
+      case EntityType.DASHBOARD_DATA_MODEL: {
+        return ResourceEntity.DASHBOARD_DATA_MODEL;
+      }
+      case EntityType.STORED_PROCEDURE: {
+        return ResourceEntity.STORED_PROCEDURE;
+      }
+      case EntityType.DATABASE: {
+        return ResourceEntity.DATABASE;
+      }
+      case EntityType.DATABASE_SCHEMA: {
+        return ResourceEntity.DATABASE_SCHEMA;
+      }
+      case EntityType.GLOSSARY_TERM: {
+        return ResourceEntity.GLOSSARY_TERM;
+      }
+      case EntityType.DATA_PRODUCT: {
+        return ResourceEntity.DATA_PRODUCT;
+      }
+      default: {
+        return ResourceEntity.TABLE;
+      }
+    }
+  }
+
+  public getEntityFloatingButton(_: EntityType): FC | null {
+    return null;
+  }
+
+  public getManageExtraOptions(
+    _entityType?: EntityType,
+    _fqn?: string
+  ): ItemType[] {
+    return [];
   }
 }
 

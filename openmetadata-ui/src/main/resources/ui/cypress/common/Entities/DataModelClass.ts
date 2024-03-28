@@ -20,6 +20,7 @@ import {
   DASHBOARD_DATA_MODEL_DETAILS,
   DASHBOARD_SERVICE_DETAILS,
 } from '../../constants/EntityConstant';
+import { getToken } from '../Utils/LocalStorage';
 import EntityClass from './EntityClass';
 
 class DashboardDataModelClass extends EntityClass {
@@ -51,7 +52,7 @@ class DashboardDataModelClass extends EntityClass {
     // Handle creation here
 
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
 
       createEntityViaREST({
         token,
@@ -75,7 +76,7 @@ class DashboardDataModelClass extends EntityClass {
   override cleanup() {
     super.cleanup();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken as string;
+      const token = getToken(data);
       deleteEntityViaREST({
         token,
         endPoint: EntityType.DashboardService,

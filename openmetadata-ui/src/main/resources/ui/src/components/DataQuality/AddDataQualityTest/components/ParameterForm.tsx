@@ -99,9 +99,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
               <SchemaEditor
                 className="custom-query-editor query-editor-h-200"
                 mode={{ name: CSMode.SQL }}
-                options={{
-                  readOnly: false,
-                }}
+                showCopyButton={false}
               />
             );
           } else {

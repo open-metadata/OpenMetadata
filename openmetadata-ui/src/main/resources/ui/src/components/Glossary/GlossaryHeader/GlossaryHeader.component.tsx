@@ -54,6 +54,7 @@ import {
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Style } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   exportGlossaryInCSVFormat,
@@ -71,7 +72,6 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -90,7 +90,7 @@ const GlossaryHeader = ({
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { version } = useParams<{
     version: string;
@@ -273,7 +273,7 @@ const GlossaryHeader = ({
                 description={t('message.export-entity-help', {
                   entity: t('label.glossary-term-lowercase-plural'),
                 })}
-                icon={<ExportIcon width="18px" />}
+                icon={ExportIcon}
                 id="export-button"
                 name={t('label.export')}
               />
@@ -291,7 +291,7 @@ const GlossaryHeader = ({
                 description={t('message.import-entity-help', {
                   entity: t('label.glossary-term-lowercase'),
                 })}
-                icon={<ImportIcon width="20px" />}
+                icon={ImportIcon}
                 id="import-button"
                 name={t('label.import')}
               />
@@ -315,7 +315,7 @@ const GlossaryHeader = ({
                     ? t('label.glossary')
                     : t('label.glossary-term'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -337,7 +337,7 @@ const GlossaryHeader = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.glossary-term'),
                 })}
-                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={StyleIcon}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -364,13 +364,7 @@ const GlossaryHeader = ({
                       : t('label.glossary-term'),
                   }
                 )}
-                icon={
-                  <Icon
-                    className="align-middle"
-                    component={IconDelete}
-                    style={{ fontSize: '16px' }}
-                  />
-                }
+                icon={IconDelete}
                 id="delete-button"
                 name={t('label.delete')}
               />

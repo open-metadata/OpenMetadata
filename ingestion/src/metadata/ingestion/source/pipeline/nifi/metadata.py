@@ -81,7 +81,9 @@ class NifiSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: NifiConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, NifiConnection):
@@ -142,7 +144,7 @@ class NifiSource(PipelineServiceSource):
             displayName=pipeline_details.name,
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{pipeline_details.uri}",
             tasks=self._get_tasks_from_details(pipeline_details),
-            service=self.context.pipeline_service,
+            service=self.context.get().pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)

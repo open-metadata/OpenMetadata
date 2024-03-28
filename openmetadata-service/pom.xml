@@ -23,6 +23,7 @@
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
     <quartz.version>2.3.2</quartz.version>
+    <pac4j.version>5.7.0</pac4j.version>
   </properties>
 
   <dependencyManagement>
@@ -37,6 +38,43 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>pac4j-core</artifactId>
+      <version>${pac4j.version}</version>
+      <exclusions>
+        <exclusion>        
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.nimbusds</groupId>
+          <artifactId>nimbus-jose-jwt</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>9.37.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.pac4j</groupId>
+      <artifactId>pac4j-oidc</artifactId>
+      <version>${pac4j.version}</version>
+      <exclusions>
+      <exclusion>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+      </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>net.minidev</groupId>
+      <artifactId>json-smart</artifactId>
+      <version>2.5.0</version>
+    </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
       <artifactId>common</artifactId>
@@ -78,8 +116,8 @@
       <artifactId>dropwizard-jdbi3</artifactId>
     </dependency>
     <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
     </dependency>
     <dependency>
         <groupId>org.postgresql</groupId>
@@ -241,13 +279,6 @@
       <artifactId>azure-identity</artifactId>
       <version>${azure-identity.version}</version>
     </dependency>
-    <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
-    <dependency>
-      <groupId>com.nimbusds</groupId>
-      <artifactId>nimbus-jose-jwt</artifactId>
-      <version>9.37.3</version>
-    </dependency>
-
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
@@ -298,7 +329,21 @@
       <artifactId>testcontainers</artifactId>
       <version>${org.testcontainers.version}</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-compress</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-compress -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.26.1</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
@@ -339,6 +384,18 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>3.25.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.skyscreamer</groupId>
+      <artifactId>jsonassert</artifactId>
+      <version>1.5.1</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.vaadin.external.google</groupId>
+          <artifactId>android-json</artifactId>
+        </exclusion>
+      </exclusions>
       <scope>test</scope>
     </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
