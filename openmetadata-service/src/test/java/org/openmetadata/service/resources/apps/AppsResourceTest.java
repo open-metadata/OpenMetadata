@@ -49,9 +49,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
           appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
     } catch (EntityNotFoundException | HttpResponseException ex) {
       CreateAppMarketPlaceDefinitionReq req =
-          appMarketPlaceResourceTest
-              .createRequest(name)
-              .withSystem(name.equals(SYSTEM_APP_NAME));
+          appMarketPlaceResourceTest.createRequest(name).withSystem(name.equals(SYSTEM_APP_NAME));
       appMarketPlaceDefinition =
           appMarketPlaceResourceTest.createAndCheckEntity(req, ADMIN_AUTH_HEADERS);
     }
