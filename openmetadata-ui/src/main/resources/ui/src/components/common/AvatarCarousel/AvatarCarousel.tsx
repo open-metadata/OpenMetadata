@@ -11,16 +11,24 @@
  *  limitations under the License.
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Button, Carousel } from 'antd';
+import { Badge, Button, Carousel } from 'antd';
+import classNames from 'classnames';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './avatar-carousel.less';
 
-const AvatarCarousel = () => {
-  const { allSuggestionsUsers: avatarList, onUpdateActiveUser } =
-    useSuggestionsContext();
+interface AvatarCarouselProps {
+  showArrows?: boolean;
+}
+
+const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
+  const {
+    allSuggestionsUsers: avatarList,
+    onUpdateActiveUser,
+    selectedUserSuggestions,
+  } = useSuggestionsContext();
   const [currentSlide, setCurrentSlide] = useState(-1);
 
   const prevSlide = useCallback(() => {
@@ -43,48 +51,69 @@ const AvatarCarousel = () => {
     onProfileClick(currentSlide);
   }, [currentSlide]);
 
+  useEffect(() => {
+    if (selectedUserSuggestions.length === 0) {
+      setCurrentSlide(-1);
+    }
+  }, [selectedUserSuggestions]);
+
   return (
     <div className="avatar-carousel-container d-flex items-center">
-      <Button
-        className="carousel-arrow"
-        data-testid="prev-slide"
-        disabled={avatarList.length <= 1 || currentSlide <= 0}
-        icon={<LeftOutlined />}
-        size="small"
-        type="text"
-        onClick={prevSlide}
-      />
+      {showArrows && (
+        <Button
+          className="carousel-arrow"
+          data-testid="prev-slide"
+          disabled={avatarList.length <= 1 || currentSlide <= 0}
+          icon={<LeftOutlined />}
+          size="small"
+          type="text"
+          onClick={prevSlide}
+        />
+      )}
+
       <Carousel
         afterChange={(current) => setCurrentSlide(current)}
         dots={false}
         slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
-        {avatarList.map((avatar, index) => (
-          <UserPopOverCard
-            className=""
-            key={avatar.id}
-            userName={avatar?.name ?? ''}>
+        {avatarList.map((avatar, index) => {
+          const isActive = currentSlide === index;
+
+          const button = (
             <Button
-              className={`p-0 m-r-xss avatar-item ${
-                currentSlide === index ? 'active' : ''
-              }`}
+              className={classNames('p-0 m-r-xss avatar-item', {
+                active: isActive,
+              })}
               shape="circle"
               onClick={() => setCurrentSlide(index)}>
-              <ProfilePicture name={avatar.name ?? ''} width="30" />
+              <ProfilePicture name={avatar.name ?? ''} width="28" />
             </Button>
-          </UserPopOverCard>
-        ))}
+          );
+
+          return (
+            <UserPopOverCard key={avatar.id} userName={avatar?.name ?? ''}>
+              {isActive ? ( // Show Badge only for active item
+                <Badge count={selectedUserSuggestions.length}>{button}</Badge>
+              ) : (
+                button
+              )}
+            </UserPopOverCard>
+          );
+        })}
       </Carousel>
-      <Button
-        className="carousel-arrow"
-        data-testid="next-slide"
-        disabled={
-          avatarList.length <= 1 || currentSlide === avatarList.length - 1
-        }
-        icon={<RightOutlined />}
-        size="small"
-        type="text"
-        onClick={nextSlide}
-      />
+
+      {showArrows && (
+        <Button
+          className="carousel-arrow"
+          data-testid="next-slide"
+          disabled={
+            avatarList.length <= 1 || currentSlide === avatarList.length - 1
+          }
+          icon={<RightOutlined />}
+          size="small"
+          type="text"
+          onClick={nextSlide}
+        />
+      )}
     </div>
   );
 };

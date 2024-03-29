@@ -104,9 +104,6 @@ import TableConstraints from './TableConstraints/TableConstraints';
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
-  const FloatingButton = entityUtilClassBase.getEntityFloatingButton(
-    EntityType.TABLE
-  );
   const { currentUser } = useApplicationStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab = EntityTabs.SCHEMA } =
@@ -1077,8 +1074,6 @@ const TableDetailsPageV1: React.FC = () => {
             onCancel={onThreadPanelClose}
           />
         ) : null}
-
-        {FloatingButton && <FloatingButton />}
       </Row>
     </PageLayoutV1>
   );

@@ -390,6 +390,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spark,
   PipelineServiceType.OpenLineage,
   DashboardServiceType.QlikSense,
+  DashboardServiceType.QlikCloud,
   DatabaseServiceType.Couchbase,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
@@ -424,6 +425,10 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'scheme',
   'sampleDataStorageConfig',
+  'confidence',
+  'sampleDataCount',
+  'threadCount',
+  'timeoutSeconds',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
