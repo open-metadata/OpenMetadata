@@ -1,0 +1,43 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/qlikCloudConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QlikCloudConnection",
+    "description": "Qlik Cloud Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.dashboard.QlikCloudConnection",
+    "definitions": {
+      "qlikCloudType": {
+        "description": "Qlik Cloud service type",
+        "type": "string",
+        "enum": ["QlikCloud"],
+        "default": "QlikCloud"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/qlikCloudType",
+        "default": "QlikCloud"
+      },
+      "token": {
+        "title": "token",
+        "description": "token to connect to Qlik Cloud.",
+        "type": "string",
+        "format": "password"
+      },
+      "hostPort": {
+        "expose": true,
+        "title": "Host and Port",
+        "description": "Host and Port of the Qlik Cloud instance.",
+        "type": "string",
+        "format": "uri"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["hostPort", "token"]
+  }
