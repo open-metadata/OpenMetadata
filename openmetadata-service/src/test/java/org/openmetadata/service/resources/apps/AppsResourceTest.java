@@ -51,7 +51,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       CreateAppMarketPlaceDefinitionReq req =
           appMarketPlaceResourceTest
               .createRequest(name)
-              .withSystemApp(name.equals(SYSTEM_APP_NAME));
+              .withSystem(name.equals(SYSTEM_APP_NAME));
       appMarketPlaceDefinition =
           appMarketPlaceResourceTest.createAndCheckEntity(req, ADMIN_AUTH_HEADERS);
     }
