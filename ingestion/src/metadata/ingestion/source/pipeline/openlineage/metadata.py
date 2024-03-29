@@ -466,43 +466,25 @@ class OpenlineageSource(PipelineServiceSource):
     def get_pipelines_list(self) -> Optional[List[Any]]:
         """Get List of all pipelines"""
         try:
-            consumer = self.client
-            session_active = True
-            empty_msg_cnt = 0
-            pool_timeout = self.service_connection.poolTimeout
-            while session_active:
-                message = consumer.poll(timeout=pool_timeout)
-                if message is None:
-                    logger.debug("no new messages")
-                    empty_msg_cnt += 1
-                    if (
-                        empty_msg_cnt * pool_timeout
-                        > self.service_connection.sessionTimeout
-                    ):
-                        # There is no new messages, timeout is passed
-                        session_active = False
-                else:
-                    logger.debug(f"new message {message.value()}")
-                    empty_msg_cnt = 0
-                    try:
-                        _result = message_to_open_lineage_event(
-                            json.loads(message.value())
-                        )
-                        result = self._filter_event_by_type(_result, EventType.COMPLETE)
-                        if result:
-                            yield result
-                    except Exception as e:
-                        logger.debug(e)
+            for json_event in self.client.get_events():
+                try:
+                    _result = message_to_open_lineage_event(
+                        json_event
+                    )
+                    result = self._filter_event_by_type(_result, EventType.COMPLETE)
+                    if result:
+                        yield result
+                except Exception as e:
+                    logger.debug(e)
 
         except Exception as e:
             traceback.print_exc()
 
-            raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")
+            raise InvalidSourceException(f"Failed to read OL Event : {str(e)}")
 
         finally:
             # Close down consumer to commit final offsets.
-            # @todo address this
-            consumer.close()
+            self.client.close()
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

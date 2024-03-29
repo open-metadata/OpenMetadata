@@ -19,77 +19,18 @@
       "$ref": "#/definitions/OpenLineageType",
       "default": "OpenLineage"
     },
-    "brokersUrl": {
-      "title": "Kafka brokers list",
-      "description": "service type of the messaging source",
-      "type": "string"
-    },
-    "topicName": {
-      "title": "Topic Name",
-      "description": "topic from where Open lineage events will be pulled ",
-      "type": "string"
-    },
-    "consumerGroupName": {
-      "title": "Consumer Group",
-      "description": "consumer group name ",
-      "type": "string"
-    },
-    "consumerOffsets": {
-      "title": "Initial consumer offsets",
-      "description": "initial Kafka consumer offset",
-      "default": "earliest",
-      "type": "string",
-      "enum": ["earliest", "latest"],
-      "javaEnums": [
+    "connection": {
+      "mask": true,
+      "title": "OpenLineage Connection",
+      "description": "Choose between API connection or Kafka connection.",
+      "oneOf": [
         {
-          "name": "earliest"
+          "$ref": "openlineage/openLineageApiConnection.json"
         },
         {
-          "name": "latest"
+          "$ref": "openlineage/openLineageKafkaConnection.json"
         }
       ]
-    },
-    "poolTimeout": {
-      "title": "Single pool call timeout",
-      "description": "max allowed wait time",
-      "type": "number",
-      "default": 1.0
-    },
-    "sessionTimeout": {
-      "title": "Broker inactive session timeout",
-      "description": "max allowed inactivity time",
-      "type": "integer",
-      "default": 30
-    },
-    "securityProtocol": {
-      "title": "Kafka security protocol",
-      "description": "Kafka security protocol config",
-      "default": "PLAINTEXT",
-      "type": "string",
-      "enum": ["PLAINTEXT", "SSL"],
-      "javaEnums": [
-        {
-          "name": "PLAINTEXT"
-        },
-        {
-          "name": "SSL"
-        }
-      ]
-    },
-    "SSLCertificateLocation": {
-      "title": "SSL Certificate location",
-      "description": "Kafka SSL certificate location",
-      "type": "string"
-    },
-    "SSLKeyLocation": {
-      "title": "SSL Key location",
-      "description": "Kafka SSL key location",
-      "type": "string"
-    },
-    "SSLCALocation": {
-      "title": "SSL CA location",
-      "description": "Kafka SSL ca location",
-      "type": "string"
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

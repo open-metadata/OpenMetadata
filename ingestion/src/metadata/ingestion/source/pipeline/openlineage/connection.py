@@ -12,10 +12,7 @@
 """
 Source connection handler
 """
-from typing import Optional
-
-from confluent_kafka import Consumer as KafkaConsumer
-from confluent_kafka import TopicPartition
+from typing import Optional, Union
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -23,62 +20,48 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
-    SecurityProtocol as KafkaSecProtocol,
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.openLineageKafkaConnection import (
+    OpenLineageKafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.openLineageApiConnection import (
+    OpenLineageApiConnection,
+)
+
 from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.openlineage.client import OpenLineageKafkaClient
+
+from ingestion.src.metadata.ingestion.source.pipeline.openlineage.client import OpenLineageApiClient
 
 
-def get_connection(connection: OpenLineageConnection) -> KafkaConsumer:
+def get_connection(connection: OpenLineageConnection) -> Union[OpenLineageKafkaClient,OpenLineageApiClient]:
     """
     Create connection
     """
-    try:
-        config = {
-            "bootstrap.servers": connection.brokersUrl,
-            "group.id": connection.consumerGroupName,
-            "auto.offset.reset": connection.consumerOffsets.value,
-        }
-        if connection.securityProtocol.value == KafkaSecProtocol.SSL.value:
-            config.update(
-                {
-                    "security.protocol": connection.securityProtocol.value,
-                    "ssl.ca.location": connection.SSLCALocation,
-                    "ssl.certificate.location": connection.SSLCertificateLocation,
-                    "ssl.key.location": connection.SSLKeyLocation,
-                }
-            )
 
-        kafka_consumer = KafkaConsumer(config)
-        kafka_consumer.subscribe([connection.topicName])
+    if isinstance(connection.connection, OpenLineageKafkaConnection):
+        return OpenLineageKafkaClient(connection)
 
-        return kafka_consumer
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+    if isinstance(connection.connection, OpenLineageApiConnection):
+        return OpenLineageApiClient(connection)
+
+    raise ValueError("Unrecognized OpenLineage connection type!")
 
 
 def test_connection(
-    metadata: OpenMetadata,
-    client: KafkaConsumer,
-    service_connection: OpenLineageConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
+        metadata: OpenMetadata,
+        client: Union[OpenLineageKafkaClient, OpenLineageApiClient],
+        service_connection: OpenLineageConnection,
+        automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    def custom_executor():
-        _ = client.get_watermark_offsets(
-            TopicPartition(service_connection.topicName, 0)
-        )
-
-    test_fn = {"GetWatermarkOffsets": custom_executor}
+    test_fn = {"Connection check": client.connection_check}
 
     test_connection_steps(
         metadata=metadata,
