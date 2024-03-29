@@ -105,7 +105,7 @@ Security requirements for your **production** environment:
 
 ### Step 3: Setup JWT Configuration
 
-- Follow the guide here for JWT Configuration [Enable JWT Token](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens).
+- Follow the guide here for JWT Configuration [Enable JWT Token](/deployment/security/enable-jwt-tokens).
 
 {% note %}
 
