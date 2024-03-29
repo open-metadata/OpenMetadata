@@ -129,7 +129,7 @@ class DatalakeMetricsTest(TestCase):
                 ),
                 EntityColumn(
                     name=ColumnName(__root__="tob"),
-                    dataType=DataType.DATE,
+                    dataType=DataType.TIME,
                 ),
                 EntityColumn(
                     name=ColumnName(__root__="doe"),
@@ -211,7 +211,7 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
         # string as min returns 0
         assert res.get(User.dob.name).get(Metrics.MIN.name) == 642902400000
-        assert res.get(User.tob.name).get(Metrics.MIN.name) == 1711533691000
+        assert res.get(User.tob.name).get(Metrics.MIN.name) == 36091
         assert res.get(User.doe.name).get(Metrics.MIN.name) == 1257897600000
 
     def test_null_count(self):

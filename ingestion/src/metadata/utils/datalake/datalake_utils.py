@@ -179,9 +179,10 @@ class GenericDataFrameColumnParser:
         **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT),
         "bool": DataType.BOOLEAN,
         **dict.fromkeys(
-            ["datetime64[ns]", "datetime", "timedelta[ns]"],
+            ["datetime64[ns]", "datetime"],
             DataType.DATETIME,
         ),
+        "timedelta[ns]": DataType.TIME,
         "str": DataType.STRING,
         "bytes": DataType.BYTES,
     }
@@ -264,13 +265,21 @@ class GenericDataFrameColumnParser:
                         except (ValueError, SyntaxError):
                             # we try to parse the value as a datetime, if it fails, we fallback to string
                             # as literal_eval will fail for string
+                            from datetime import datetime
+
                             from dateutil.parser import ParserError, parse
 
                             try:
                                 dtype_ = "int64"
                                 if not str(df_row_val).isnumeric():
-                                    type(parse(df_row_val)).__name__.lower()
-                                    dtype_ = "datetime64[ns]"
+                                    # check if the row value is time
+                                    try:
+                                        datetime.strptime(df_row_val, "%H:%M:%S").time()
+                                        dtype_ = "timedelta[ns]"
+                                    except (ValueError, TypeError):
+                                        # check if the row value is date / time / datetime
+                                        type(parse(df_row_val)).__name__.lower()
+                                        dtype_ = "datetime64[ns]"
                                 parsed_object_datatype_list.append(dtype_)
                             except (ParserError, TypeError):
                                 parsed_object_datatype_list.append("str")
