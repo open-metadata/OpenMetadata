@@ -101,6 +101,7 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import { SearchSourceAlias } from '../interface/search.interface';
 import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
 import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
+import { getPipelineConfig } from './PipelineServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
 class ServiceUtilClassBase {
@@ -409,6 +410,10 @@ class ServiceUtilClassBase {
     }
 
     return cloneDeep({ schema, uiSchema });
+  }
+
+  public getPipelineServiceConfig(type: PipelineServiceType) {
+    return getPipelineConfig(type);
   }
 }
 

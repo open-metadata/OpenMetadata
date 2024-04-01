@@ -47,6 +47,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "storageServiceNames": {
+          "title": "Storage Service Names List",
+          "description": "List of Storage Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

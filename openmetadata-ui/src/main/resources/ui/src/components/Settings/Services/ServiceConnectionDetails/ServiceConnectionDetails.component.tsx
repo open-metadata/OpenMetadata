@@ -39,7 +39,6 @@ import { getDatabaseConfig } from '../../../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
@@ -228,7 +227,11 @@ const ServiceConnectionDetails = ({
 
         break;
       case EntityType.PIPELINE_SERVICE:
-        setSchema(getPipelineConfig(serviceFQN as PipelineServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getPipelineServiceConfig(
+            serviceFQN as PipelineServiceType
+          ).schema
+        );
 
         break;
       case EntityType.MLMODEL_SERVICE:
