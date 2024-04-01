@@ -173,7 +173,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             params_data["job_definition_id"] = job_id
 
         response = client.get(f"/accounts/{account_id}/runs", data=params_data)
-        if not response and not response.get("data"):
+        if not response or not response.get("data"):
             raise DBTConfigException(
                 "Unable to get the dbt job runs information.\n"
                 "Please check if the auth token is correct and has the necessary scopes to fetch dbt runs"
