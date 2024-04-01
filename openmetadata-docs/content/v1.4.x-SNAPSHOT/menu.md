@@ -638,6 +638,12 @@ site_menu:
     url: /connectors/dashboard/qliksense/yaml
   - category: Connectors / Dashboard / Qlik Sense / Export Certificates
     url: /connectors/dashboard/qliksense/certificates
+  - category: Connectors / Dashboard / Qlik Cloud
+    url: /connectors/dashboard/qlikcloud
+  - category: Connectors / Dashboard / Qlik Cloud / Run Externally
+    url: /connectors/dashboard/qliksense/yaml
+  - category: Connectors / Dashboard / Qlik Cloud / API Keys
+    url: /connectors/dashboard/qliksense/api_keys
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
@@ -796,6 +802,9 @@ site_menu:
     url: /connectors/ingestion/workflows/metadata/incremental-extraction/redshift
   - category: Connectors / Ingestion / Workflows/ Metadata / Incremental Extraction / Snowflake
     url: /connectors/ingestion/workflows/metadata/incremental-extraction/snowflake
+
+  - category: Connectors / Ingestion / Workflows/ Metadata / Multithreading
+    url: /connectors/ingestion/workflows/metadata/multithreading
 
   - category: Connectors / Ingestion / Workflows / Usage
     url: /connectors/ingestion/workflows/usage

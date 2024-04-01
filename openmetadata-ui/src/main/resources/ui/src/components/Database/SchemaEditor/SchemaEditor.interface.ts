@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,19 +11,22 @@
  *  limitations under the License.
  */
 
-class ApplicationSchemaClassBase {
-  public importSchema(fqn: string) {
-    return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
-  }
-  public getJSONUISchema() {
-    return {};
-  }
-  public importAppLogo(appName: string) {
-    return import(`../../../../assets/svg/${appName}.svg`);
-  }
+import { CSMode } from '../../../enums/codemirror.enum';
+
+type Mode = {
+  name: CSMode;
+  json?: boolean;
+};
+
+export interface SchemaEditorProps {
+  value?: string;
+  className?: string;
+  mode?: Mode;
+  readOnly?: boolean;
+  options?: {
+    [key: string]: string | boolean | Array<string>;
+  };
+  editorClass?: string;
+  showCopyButton?: boolean;
+  onChange?: (value: string) => void;
 }
-
-const applicationSchemaClassBase = new ApplicationSchemaClassBase();
-
-export default applicationSchemaClassBase;
-export { ApplicationSchemaClassBase };

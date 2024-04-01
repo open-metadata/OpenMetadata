@@ -305,6 +305,9 @@ class ServiceUtilClassBase {
       case DashboardServiceType.QlikSense:
         return QLIK_SENSE;
 
+      case DashboardServiceType.QlikCloud:
+        return QLIK_SENSE;
+
       case DashboardServiceType.Lightdash:
         return LIGHT_DASH;
 

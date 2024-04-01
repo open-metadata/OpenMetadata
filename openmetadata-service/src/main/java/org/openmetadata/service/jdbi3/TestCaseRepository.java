@@ -129,7 +129,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // set the test case result state in the test case entity if the state has changed
     if (!Objects.equals(original, updated)) {
-      TestCase testCase = findByName(fqn, Include.NON_DELETED);
+      TestCase testCase =
+          Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
       setTestCaseResult(testCase, updated, false);
     }
 
@@ -261,6 +262,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields = new ArrayList<>();
+    fields.add("testDefinition");
     fields.add(TEST_SUITE_FIELD);
 
     // set the test case resolution status reference if test failed, by either
@@ -344,7 +346,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
       String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
-    TestCase testCase = findByName(fqn, Include.NON_DELETED);
+    TestCase testCase =
+        Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
     TestCaseResult storedTestCaseResult =
         JsonUtils.readValue(
             daoCollection
@@ -478,7 +481,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   .class); // we'll fetch the new latest result to update the test case state
       testCase.setTestCaseResult(latestTestCaseResult);
     }
-    dao.update(testCase.getId(), testCase.getFullyQualifiedName(), JsonUtils.pojoToJson(testCase));
+    // Update test case result attribute for the test case
+    Map<String, Object> jsonMap = JsonUtils.getMap(testCase);
+    jsonMap.remove("testCaseResult");
+    TestCase original = JsonUtils.readOrConvertValue(jsonMap, TestCase.class);
+    EntityUpdater testCaseUpdater = getUpdater(original, testCase, Operation.PUT);
+    testCaseUpdater.update();
   }
 
   private boolean compareTestCaseResult(TestCase testCase, TestCaseResult testCaseResult) {
@@ -915,6 +923,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
           updated.getComputePassedFailedRowCount());
+      recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
     }
   }
 }
