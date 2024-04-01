@@ -255,7 +255,7 @@ public class SubscriptionUtil {
               case SLACK -> profile.getSubscription().getSlack();
               case MS_TEAMS -> profile.getSubscription().getMsTeams();
               case G_CHAT -> profile.getSubscription().getgChat();
-              case GENERIC -> profile.getSubscription().getGeneric();
+              case WEBHOOK -> profile.getSubscription().getGeneric();
               default -> null;
             };
         if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
