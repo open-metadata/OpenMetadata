@@ -11,8 +11,11 @@ import javax.json.JsonString;
 import javax.json.JsonValue;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.TablePartition;
@@ -33,6 +36,32 @@ public class MigrationUtil {
 
   private MigrationUtil() {
     /* Cannot create object  util class*/
+  }
+
+  public static void migrateGenericToWebhook(CollectionDAO collectionDAO) {
+    try {
+      List<String> jsonEventSubscription =
+          collectionDAO.eventSubscriptionDAO().listAllEventsSubscriptions();
+      for (String eventSubscription : jsonEventSubscription) {
+        JSONObject jsonObj = new JSONObject(eventSubscription);
+        // Read array detination if exist and check subscription type if Generic then change to
+        // Webhook
+        JSONArray destination = jsonObj.getJSONArray("destinations");
+        if (destination != null && !destination.isEmpty()) {
+          for (Object value : destination) {
+            JSONObject destinationObj = (JSONObject) value;
+            if (destinationObj.getString("type").equals("Generic")) {
+              destinationObj.put("type", "Webhook");
+              collectionDAO
+                  .eventSubscriptionDAO()
+                  .update(JsonUtils.readValue(jsonObj.toString(), EventSubscription.class));
+            }
+          }
+        }
+      }
+    } catch (Exception ex) {
+      LOG.warn("Error running the Generic to Webhook migration ", ex);
+    }
   }
 
   public static void migrateTablePartition(Handle handle, CollectionDAO collectionDAO) {

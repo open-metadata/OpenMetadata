@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.mysql.v140;
 
+import static org.openmetadata.service.migration.utils.v140.MigrationUtil.migrateGenericToWebhook;
 import static org.openmetadata.service.migration.utils.v140.MigrationUtil.migrateTablePartition;
 
 import lombok.SneakyThrows;
@@ -27,5 +28,8 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     migrateTablePartition(handle, collectionDAO);
+
+    // Migrate Generic to Webhook
+    migrateGenericToWebhook(collectionDAO);
   }
 }
