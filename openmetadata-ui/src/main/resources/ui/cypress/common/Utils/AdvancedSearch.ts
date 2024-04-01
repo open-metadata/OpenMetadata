@@ -785,12 +785,6 @@ export const advanceSearchPreRequests = (testData, token: string) => {
     ...ADVANCE_SEARCH_DATABASE_SERVICE_2,
   });
 
-  cy.log(
-    'here',
-    ADVANCE_SEARCH_DATABASE_SERVICE.service.name,
-    ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name
-  );
-
   // Create a new user
   cy.request({
     method: 'POST',
