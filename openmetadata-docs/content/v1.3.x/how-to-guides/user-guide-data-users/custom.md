@@ -40,8 +40,8 @@ caption="Enter the Value for a Custom Property"
 
 {%inlineCallout
   color="violet-70"
-  bold="Overview of Announcements"
+  bold="Conversation Threads"
   icon="MdArrowForward"
-  href="/how-to-guides/guide-for-data-users/announcements"%}
-  Learn more about the announcements in OpenMetadata
+  href="/how-to-guides/guide-for-data-users/conversation"%}
+  Collaborate around data assets right within OpenMetadata.
 {%/inlineCallout%}

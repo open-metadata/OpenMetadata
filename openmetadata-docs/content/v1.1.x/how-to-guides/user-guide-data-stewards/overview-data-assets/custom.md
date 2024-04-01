@@ -37,3 +37,11 @@ src="/images/v1.1/how-to-guides/discovery/custom3.png"
 alt="Enter the Value for a Custom Property"
 caption="Enter the Value for a Custom Property"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="Conversation Threads"
+  icon="MdArrowForward"
+  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/conversation"%}
+  Collaborate around data assets right within OpenMetadata.
+{%/inlineCallout%}
