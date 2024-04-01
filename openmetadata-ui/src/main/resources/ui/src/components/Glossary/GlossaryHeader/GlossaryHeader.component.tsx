@@ -76,7 +76,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
-import ChangeParent from '../../Modals/ChangeParent/ChangeParent.compoenent';
+import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
@@ -111,7 +111,8 @@ const GlossaryHeader = ({
     Glossary | GlossaryTerm
   >();
   const [isStyleEditing, setIsStyleEditing] = useState(false);
-  const [isChangeParent, setIsChangeParent] = useState(false);
+  const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
+    useState(false);
 
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
@@ -264,7 +265,7 @@ const GlossaryHeader = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsChangeParent(false);
+      setOpenChangeParentHierarchyModal(false);
     }
   };
 
@@ -396,7 +397,7 @@ const GlossaryHeader = ({
             key: 'change-parent-button',
             onClick: (e) => {
               e.domEvent.stopPropagation();
-              setIsChangeParent(true);
+              setOpenChangeParentHierarchyModal(true);
               setShowActions(false);
             },
           },
@@ -652,11 +653,10 @@ const GlossaryHeader = ({
         onSubmit={onStyleSave}
       />
 
-      {isChangeParent && (
-        <ChangeParent
-          open={isChangeParent}
+      {openChangeParentHierarchyModal && (
+        <ChangeParentHierarchy
           selectedData={selectedData as GlossaryTerm}
-          onCancel={() => setIsChangeParent(false)}
+          onCancel={() => setOpenChangeParentHierarchyModal(false)}
           onSubmit={onChangeParentSave}
         />
       )}

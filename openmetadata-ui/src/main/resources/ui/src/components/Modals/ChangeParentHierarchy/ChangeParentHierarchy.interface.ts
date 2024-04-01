@@ -13,9 +13,13 @@
 
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 
-export interface ChangeParentProps {
+export interface ChangeParentHierarchyProps {
   selectedData: GlossaryTerm;
-  open: boolean;
   onCancel: () => void;
   onSubmit: (id: string) => Promise<void>;
+}
+
+export interface SelectOptions {
+  label: string;
+  value: string;
 }

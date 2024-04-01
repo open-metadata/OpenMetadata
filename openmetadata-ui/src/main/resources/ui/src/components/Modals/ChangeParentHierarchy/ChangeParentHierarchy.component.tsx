@@ -22,27 +22,27 @@ import {
 import { getGlossaryTerms } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ChangeParentProps } from './ChangeParent.interface';
+import {
+  ChangeParentHierarchyProps,
+  SelectOptions,
+} from './ChangeParentHierarchy.interface';
 
-const ChangeParent = ({
+const ChangeParentHierarchy = ({
   selectedData,
-  open,
   onCancel,
   onSubmit,
-}: ChangeParentProps) => {
+}: ChangeParentHierarchyProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isFetching, setIsFetching] = useState<boolean>(true);
-  const [options, setOptions] = useState<
-    {
-      label: string;
-      value: string;
-    }[]
-  >([]);
+  const [loadingState, setLoadingState] = useState({
+    isSaving: false,
+    isFetching: true,
+  });
+
+  const [options, setOptions] = useState<SelectOptions[]>([]);
 
   const fetchGlossaryTerm = async () => {
-    setIsFetching(true);
+    setLoadingState((prev) => ({ ...prev, isFetching: true }));
     try {
       const { data } = await getGlossaryTerms({
         glossary: selectedData.glossary.id,
@@ -60,14 +60,14 @@ const ChangeParent = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsFetching(false);
+      setLoadingState((prev) => ({ ...prev, isFetching: false }));
     }
   };
 
   const handleSubmit = async (value: { parent: string }) => {
-    setIsSaving(true);
+    setLoadingState((prev) => ({ ...prev, isSaving: true }));
     await onSubmit(value.parent);
-    setIsSaving(false);
+    setLoadingState((prev) => ({ ...prev, isSaving: false }));
   };
 
   useEffect(() => {
@@ -76,19 +76,19 @@ const ChangeParent = ({
 
   return (
     <Modal
+      open
       cancelText={t('label.cancel')}
       okButtonProps={{
-        form: 'change-parent-modal',
+        form: 'change-parent-hierarchy-modal',
         htmlType: 'submit',
-        loading: isSaving,
+        loading: loadingState.isSaving,
       }}
       okText={t('label.submit')}
-      open={open}
       title={t('label.change-entity', { entity: t('label.parent') })}
       onCancel={onCancel}>
       <Form
         form={form}
-        id="change-parent-modal"
+        id="change-parent-hierarchy-modal"
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSubmit}>
@@ -104,7 +104,7 @@ const ChangeParent = ({
           ]}>
           <Select
             data-testid="change-parent-select"
-            loading={isFetching}
+            loading={loadingState.isFetching}
             options={options}
             placeholder={t('label.select-field', {
               field: t('label.parent'),
@@ -116,4 +116,4 @@ const ChangeParent = ({
   );
 };
 
-export default ChangeParent;
+export default ChangeParentHierarchy;
