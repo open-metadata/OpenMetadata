@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
-import { checkAndDeleteDataInsightReportApplication } from '../../common/DataInsightUtils';
+import { checkAndDeleteApp } from '../../common/Utils/Apps';
 import { getToken } from '../../common/Utils/LocalStorage';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
@@ -46,7 +46,10 @@ describe('Data Insight Report Application', { tags: 'Settings' }, () => {
     cy.getAllLocalStorage().then((data) => {
       const token = getToken(data);
 
-      checkAndDeleteDataInsightReportApplication(token);
+      checkAndDeleteApp({
+        token,
+        applicationName: 'DataInsightsReportApplication',
+      });
     });
   });
 

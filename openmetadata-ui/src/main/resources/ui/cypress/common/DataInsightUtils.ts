@@ -66,27 +66,3 @@ export const verifyKpiChart = () => {
     cy.get('#kpi-chart').scrollIntoView().should('be.visible');
   }
 };
-
-export const checkAndDeleteDataInsightReportApplication = (token: string) => {
-  cy.request({
-    method: 'GET',
-    url: '/api/v1/apps?limit=20&include=non-deleted',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }).then((response) => {
-    expect(response.status).to.eq(200);
-
-    response.body.data.forEach((app) => {
-      if (app.name === 'DataInsightsReportApplication') {
-        cy.request({
-          method: 'DELETE',
-          url: `/api/v1/apps/name/DataInsightsReportApplication?hardDelete=true`,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
-    });
-  });
-};
