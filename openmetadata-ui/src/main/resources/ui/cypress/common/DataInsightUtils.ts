@@ -67,7 +67,7 @@ export const verifyKpiChart = () => {
   }
 };
 
-export const checkDataInsightReportApplication = (token: string) => {
+export const checkAndDeleteDataInsightReportApplication = (token: string) => {
   cy.request({
     method: 'GET',
     url: '/api/v1/apps?limit=20&include=non-deleted',
