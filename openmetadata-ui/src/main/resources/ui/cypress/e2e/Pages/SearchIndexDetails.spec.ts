@@ -24,7 +24,9 @@ import {
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { BASE_URL } from '../../constants/constants';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   POLICY_DETAILS,
   ROLE_DETAILS,
@@ -77,12 +79,12 @@ describe(
   'SearchIndexDetails page should work properly for data consumer role',
   { tags: 'DataAssets' },
   () => {
-    const data = {};
+    const data = { user: { id: '' } };
 
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Create search index entity
         createSingleLevelEntity({
@@ -108,7 +110,7 @@ describe(
       cy.login();
 
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Delete search index
         hardDeleteService({
@@ -137,7 +139,7 @@ describe(
       visitEntityDetailsPage({
         term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
         serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-        entity: 'searchIndexes',
+        entity: EntityType.SearchIndex,
       });
 
       // Edit domain option should not be available
@@ -158,12 +160,16 @@ describe(
 );
 
 describe('SearchIndexDetails page should work properly for data steward role', () => {
-  const data = {};
+  const data = {
+    user: { id: '' },
+    policy: { id: '' },
+    role: { id: '', name: '' },
+  };
 
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Create search index entity
       createSingleLevelEntity({
@@ -230,7 +236,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
     cy.login();
 
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Delete created user
       cy.request({
@@ -273,7 +279,7 @@ describe('SearchIndexDetails page should work properly for data steward role', (
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
 
     // Edit domain option should not be available
@@ -320,7 +326,7 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Create search index entity
       createSingleLevelEntity({
@@ -334,7 +340,7 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     cy.login();
 
     cy.getAllLocalStorage().then((storageData) => {
-      const token = Object.values(storageData)[0].oidcIdToken;
+      const token = getToken(storageData);
 
       // Delete search index
       hardDeleteService({
@@ -353,7 +359,7 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
     performCommonOperations();
   });
@@ -362,12 +368,12 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
+      EntityType.SearchIndex,
       'Search Index',
       'soft'
     );
@@ -424,12 +430,12 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
     visitEntityDetailsPage({
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      entity: 'searchIndexes',
+      entity: EntityType.SearchIndex,
     });
     deleteEntity(
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
+      EntityType.SearchIndex,
       'Search Index'
     );
   });

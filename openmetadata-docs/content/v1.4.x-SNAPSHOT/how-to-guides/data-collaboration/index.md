@@ -28,6 +28,20 @@ Watch the video on how to use the collaboration features in OpenMetadata.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
+  bold="Conversation Threads"
+  icon="MdMarkUnreadChatAlt"
+  href="/how-to-guides/data-collaboration/conversation"%}
+  Collaborate around data assets right within OpenMetadata.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Tasks"
+  icon="MdTask"
+  href="/how-to-guides/data-collaboration/tasks"%}
+  Add requests to create or update descriptions and tags.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
   bold="Request for Description"
   icon="MdDescription"
   href="/how-to-guides/data-collaboration/request-description"%}

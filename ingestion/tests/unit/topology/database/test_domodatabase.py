@@ -259,11 +259,13 @@ class DomoDatabaseUnitTest(TestCase):
             mock_domodatabase_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domodatabase.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.domodatabase.context.__dict__[
+        self.domodatabase.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
+        self.domodatabase.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.domodatabase.context.__dict__[
+        self.domodatabase.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.__root__
 

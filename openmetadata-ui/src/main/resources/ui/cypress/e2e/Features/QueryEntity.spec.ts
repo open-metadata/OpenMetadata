@@ -22,6 +22,7 @@ import {
   hardDeleteService,
 } from '../../common/EntityUtils';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { EntityType } from '../../constants/Entity.interface';
 import {
   DATABASE_SERVICE,
@@ -51,11 +52,28 @@ const DATA = {
   },
 };
 
+const queryFilters = ({
+  key,
+  filter,
+  apiKey,
+}: {
+  key: string;
+  filter: string;
+  apiKey: string;
+}) => {
+  cy.get(`[data-testid="search-dropdown-${key}"]`).click();
+  cy.get('[data-testid="search-input"]').type(filter);
+  verifyResponseStatusCode(apiKey, 200);
+  cy.get(`[data-testid="drop-down-menu"] [title="${filter}"]`).click();
+  cy.get('[data-testid="update-btn"]').click();
+  verifyResponseStatusCode('@fetchQuery', 200);
+};
+
 describe('Query Entity', { tags: 'DataAssets' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       createEntityTable({
         token,
@@ -70,7 +88,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
   after(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       hardDeleteService({
         token,
@@ -82,6 +100,11 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
 
   beforeEach(() => {
     cy.login();
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=query_search_index*',
+      'fetchQuery'
+    );
   });
 
   it('Create query', () => {
@@ -90,7 +113,6 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
       'explorePageSearch'
     );
-    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
     interceptURL('POST', '/api/v1/queries', 'createQuery');
     visitEntityDetailsPage({
       term: DATA.term,
@@ -120,7 +142,6 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
   });
 
   it('Update owner, description and tag', () => {
-    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
     interceptURL('PATCH', '/api/v1/queries/*', 'patchQuery');
     interceptURL(
@@ -167,8 +188,51 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     verifyResponseStatusCode('@patchQuery', 200);
   });
 
+  it('Verify query filter', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?*index=user_search_index,team_search_index*',
+      'searchOwner'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?*index=tag_search_index*',
+      'searchTag'
+    );
+    visitEntityDetailsPage({
+      term: DATA.term,
+      serviceName: DATA.serviceName,
+      entity: DATA.entity,
+    });
+    cy.get('[data-testid="table_queries"]').click();
+    verifyResponseStatusCode('@fetchQuery', 200);
+    queryFilters({
+      filter: 'Aaron Singh',
+      apiKey: '@searchOwner',
+      key: 'Owner',
+    });
+    cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
+    queryFilters({
+      filter: DATA.owner,
+      apiKey: '@searchOwner',
+      key: 'Owner',
+    });
+    cy.get('[data-testid="query-card"]').should('have.length.above', 0);
+    queryFilters({
+      filter: 'None',
+      apiKey: '@searchTag',
+      key: 'Tag',
+    });
+    cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
+    queryFilters({
+      filter: DATA.tag,
+      apiKey: '@searchTag',
+      key: 'Tag',
+    });
+    cy.get('[data-testid="query-card"]').should('have.length.above', 0);
+  });
+
   it('Update query and QueryUsedIn', () => {
-    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
     interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
     interceptURL('PATCH', '/api/v1/queries/*', 'patchQuery');
     interceptURL(
@@ -225,8 +289,6 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
   });
 
   it('Verify query duration', () => {
-    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
-
     visitEntityDetailsPage({
       term: table1.name,
       serviceName: DATABASE_SERVICE_DETAILS.name,

@@ -29,6 +29,7 @@ public record DashboardServiceIndex(DashboardService dashboardService) implement
     doc.put("entityType", Entity.DASHBOARD_SERVICE);
     doc.put("owner", getEntityWithDisplayName(dashboardService.getOwner()));
     doc.put("domain", getEntityWithDisplayName(dashboardService.getDomain()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(dashboardService.getFollowers()));
     return doc;
   }
 }

@@ -18,6 +18,7 @@ import {
   removeReviewer,
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { addOwner, removeOwner } from '../../common/Utils/Owner';
 import { USER_DETAILS } from '../../constants/EntityConstant';
 import { GLOSSARY_OWNER_LINK_TEST_ID } from '../../constants/glossary.constant';
@@ -36,12 +37,26 @@ describe(
   'Glossary and glossary term version pages should work properly',
   { tags: 'Glossary' },
   () => {
-    let data = {};
+    const data = {
+      user: {
+        id: '',
+        displayName: '',
+      },
+      glossary: {
+        id: '',
+      },
+      glossaryTerm1: {
+        id: '',
+      },
+      glossaryTerm2: {
+        id: '',
+      },
+    };
 
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
         // Create a new user
         cy.request({
           method: 'POST',
@@ -129,7 +144,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Delete created user
         cy.request({

@@ -16,4 +16,5 @@ export interface SuggestionsAlertProps {
   suggestion: Suggestion;
   hasEditAccess?: boolean;
   maxLength?: number;
+  showSuggestedBy?: boolean;
 }

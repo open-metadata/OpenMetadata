@@ -184,7 +184,6 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "deltalake": {"delta-spark<=2.3.0"},
-    "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
@@ -234,6 +233,7 @@ plugins: Dict[str, Set[str]] = {
     "mysql": {VERSIONS["pymysql"]},
     "nifi": {},  # uses requests
     "okta": {"okta~=2.3"},
+    "openlineage": {*COMMONS["kafka"]},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},

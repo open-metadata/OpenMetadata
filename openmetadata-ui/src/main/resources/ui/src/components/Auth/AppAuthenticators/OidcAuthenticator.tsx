@@ -24,12 +24,11 @@ import React, {
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import PageNotFound from '../../../pages/PageNotFound/PageNotFound';
-import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -73,9 +72,11 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       setIsSigningIn,
       setLoadingIndicator,
       updateAxiosInterceptors,
-    } = useAuthContext();
+      currentUser,
+      newUser,
+      setOidcToken,
+    } = useApplicationStore();
     const history = useHistory();
-    const { currentUser, newUser } = useAuthContext();
     const userManager = useMemo(
       () => makeUserManager(userConfig),
       [userConfig]
@@ -94,7 +95,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
       const user = await userManager.signinSilent();
-      localState.setOidcToken(user.id_token);
+      setOidcToken(user.id_token);
 
       return user.id_token;
     };
@@ -138,7 +139,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     onLoginFailure();
                   }}
                   onSuccess={(user) => {
-                    localState.setOidcToken(user.id_token);
+                    setOidcToken(user.id_token);
                     setIsAuthenticated(true);
                     onLoginSuccess(user as OidcUser);
                   }}
@@ -146,6 +147,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               </>
             )}
           />
+
           <Route
             path={ROUTES.SILENT_CALLBACK}
             render={() => (
@@ -159,7 +161,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     history.push(ROUTES.SIGNIN);
                   }}
                   onSuccess={(user) => {
-                    localState.setOidcToken(user.id_token);
+                    setOidcToken(user.id_token);
                     updateAxiosInterceptors();
                   }}
                 />

@@ -23,7 +23,6 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   getRequestDescriptionPath,
@@ -35,31 +34,10 @@ import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAler
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import { DescriptionProps } from './Description.interface';
 
 const { Text } = Typography;
 
-interface Props {
-  entityName?: string;
-  owner?: Table['owner'];
-  hasEditAccess?: boolean;
-  removeBlur?: boolean;
-  description?: string;
-  isEdit?: boolean;
-  isReadOnly?: boolean;
-  entityType: EntityType;
-  entityFqn?: string;
-  onThreadLinkSelect?: (value: string) => void;
-  onDescriptionEdit?: () => void;
-  onCancel?: () => void;
-  onDescriptionUpdate?: (value: string) => Promise<void>;
-  onSuggest?: (value: string) => void;
-  onEntityFieldSelect?: (value: string) => void;
-  wrapInCard?: boolean;
-  showActions?: boolean;
-  showCommentsIcon?: boolean;
-  reduceDescription?: boolean;
-  className?: string;
-}
 const DescriptionV1 = ({
   hasEditAccess,
   onDescriptionEdit,
@@ -78,7 +56,8 @@ const DescriptionV1 = ({
   showActions = true,
   showCommentsIcon = true,
   reduceDescription,
-}: Props) => {
+  showSuggestions = false,
+}: DescriptionProps) => {
   const history = useHistory();
   const { suggestions = [], selectedUserSuggestions = [] } =
     useSuggestionsContext();
@@ -226,12 +205,12 @@ const DescriptionV1 = ({
       data-testid="asset-description-container"
       direction="vertical"
       size={16}>
-      <div className="d-flex justify-between">
+      <div className="d-flex justify-between flex-wrap">
         <div className="d-flex items-center gap-2">
           <Text className="right-panel-label">{t('label.description')}</Text>
           {showActions && actionButtons}
         </div>
-        {suggestions.length > 0 && <SuggestionsSlider />}
+        {showSuggestions && suggestions.length > 0 && <SuggestionsSlider />}
       </div>
 
       <div>

@@ -29,6 +29,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import {
   ALERT_DESCRIPTION,
   ALERT_NAME,
@@ -64,6 +65,7 @@ describe(
       },
       ingestionPipeline: {},
       user: {
+        id: '',
         displayName: '',
         id: '',
       },
@@ -78,7 +80,7 @@ describe(
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Create a table
         createEntityTable({
@@ -185,7 +187,7 @@ describe(
     after(() => {
       cy.login();
       cy.getAllLocalStorage().then((storageData) => {
-        const token = Object.values(storageData)[0].oidcIdToken;
+        const token = getToken(storageData);
 
         // Delete created services
         hardDeleteService({

@@ -135,9 +135,7 @@ public class EventSubscriptionResource
     try {
       CollectionDAO daoCollection = repository.getDaoCollection();
       List<String> listAllEventsSubscriptions =
-          daoCollection
-              .eventSubscriptionDAO()
-              .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
+          daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions();
       List<EventSubscription> eventSubList =
           JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       for (EventSubscription subscription : eventSubList) {

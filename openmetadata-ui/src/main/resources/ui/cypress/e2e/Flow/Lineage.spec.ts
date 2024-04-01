@@ -13,6 +13,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
+import { EntityType } from '../../constants/Entity.interface';
 import {
   LINEAGE_ITEMS,
   PIPELINE_ITEMS,
@@ -81,6 +82,30 @@ const deleteNode = (node) => {
   verifyResponseStatusCode('@lineageDeleteApi', 200);
 };
 
+const deleteEdge = (fromNode, toNode) => {
+  interceptURL('DELETE', '/api/v1/lineage/**', 'lineageDeleteApi');
+  cy.get(`[data-testid="edge-${fromNode.fqn}-${toNode.fqn}"]`).click({
+    force: true,
+  });
+
+  if (
+    ['Table', 'Topic'].indexOf(fromNode.entityType) > -1 &&
+    ['Table', 'Topic'].indexOf(toNode.entityType) > -1
+  ) {
+    cy.get('[data-testid="add-pipeline"]').click();
+
+    cy.get(
+      '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
+    ).click();
+  } else {
+    cy.get('[data-testid="delete-button"]').click();
+  }
+  cy.get(
+    '[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary'
+  ).click();
+  verifyResponseStatusCode('@lineageDeleteApi', 200);
+};
+
 const applyPipelineFromModal = (fromNode, toNode, pipelineData) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
   cy.get(`[data-testid="edge-${fromNode.fqn}-${toNode.fqn}"]`).click({
@@ -133,8 +158,8 @@ const verifyPipelineDataInDrawer = (
 const addPipelineBetweenNodes = (
   sourceEntity,
   targetEntity,
-  pipelineItem,
-  bVerifyPipeline
+  pipelineItem?,
+  bVerifyPipeline?: boolean
 ) => {
   visitEntityDetailsPage({
     term: sourceEntity.term,
@@ -171,16 +196,18 @@ const expandCols = (nodeFqn, hasShowMore) => {
   }
 };
 
-const addColumnLineage = (fromNode, toNode) => {
+const addColumnLineage = (fromNode, toNode, exitEditMode = true) => {
   interceptURL('PUT', '/api/v1/lineage', 'lineageApi');
   expandCols(fromNode.fqn, false);
-  expandCols(toNode.fqn, true);
+  expandCols(toNode.fqn, toNode.entityType === EntityType.Table);
   dragConnection(
     `column-${fromNode.columns[0]}`,
     `column-${toNode.columns[0]}`
   );
   verifyResponseStatusCode('@lineageApi', 200);
-  cy.get('[data-testid="edit-lineage"]').click();
+  if (exitEditMode) {
+    cy.get('[data-testid="edit-lineage"]').click();
+  }
   cy.get(
     `[data-testid="column-edge-${fromNode.columns[0]}-${toNode.columns[0]}"]`
   );
@@ -196,7 +223,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       visitEntityDetailsPage({
         term: entity.term,
         serviceName: entity.serviceName,
-        entity: entity.entity,
+        entity: entity.entity as EntityType,
       });
 
       cy.get('[data-testid="lineage"]').click();
@@ -230,7 +257,7 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       visitEntityDetailsPage({
         term: entity.term,
         serviceName: entity.serviceName,
-        entity: entity.entity,
+        entity: entity.entity as EntityType,
       });
 
       cy.get('[data-testid="lineage"]').click();
@@ -241,10 +268,10 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
       // Delete Nodes
       for (let i = 0; i < LINEAGE_ITEMS.length; i++) {
         if (i !== index) {
-          deleteNode(LINEAGE_ITEMS[i]);
-          cy.get(`[data-testid="lineage-node-${LINEAGE_ITEMS[i].fqn}"]`).should(
-            'not.exist'
-          );
+          deleteEdge(entity, LINEAGE_ITEMS[i]);
+          cy.get(
+            `[data-testid="edge-${entity.fqn}-${LINEAGE_ITEMS[i].fqn}"]`
+          ).should('not.exist');
         }
       }
 
@@ -280,11 +307,16 @@ describe('Lineage verification', { tags: 'DataAssets' }, () => {
 
   it('Add column lineage', () => {
     const sourceEntity = LINEAGE_ITEMS[0];
-    const targetEntity = LINEAGE_ITEMS[1];
-    addPipelineBetweenNodes(sourceEntity, targetEntity);
-    // Add column lineage
-    addColumnLineage(sourceEntity, targetEntity);
-    cy.get('[data-testid="edit-lineage"]').click();
-    deleteNode(targetEntity);
+    for (let i = 1; i < LINEAGE_ITEMS.length; i++) {
+      const targetEntity = LINEAGE_ITEMS[i];
+      if (targetEntity.columns.length > 0) {
+        addPipelineBetweenNodes(sourceEntity, targetEntity);
+        // Add column lineage
+        addColumnLineage(sourceEntity, targetEntity);
+        cy.get('[data-testid="edit-lineage"]').click();
+        deleteNode(targetEntity);
+        cy.goToHomePage();
+      }
+    }
   });
 });

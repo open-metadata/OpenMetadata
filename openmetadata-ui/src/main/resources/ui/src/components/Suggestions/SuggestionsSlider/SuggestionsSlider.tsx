@@ -10,14 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
+import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
+import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 
 const SuggestionsSlider = () => {
-  const { selectedUserSuggestions } = useSuggestionsContext();
+  const {
+    selectedUserSuggestions,
+    acceptRejectAllSuggestions,
+    loadingAccept,
+    loadingReject,
+    onUpdateActiveUser,
+  } = useSuggestionsContext();
 
   return (
     <div className="d-flex items-center gap-2">
@@ -26,18 +35,47 @@ const SuggestionsSlider = () => {
       </Typography.Text>
       <AvatarCarousel />
       {selectedUserSuggestions.length > 0 && (
-        <>
-          <Button size="small" type="primary">
-            <Typography.Text className="text-xs text-white">
-              {t('label.accept-all')}
-            </Typography.Text>
+        <Space className="slider-btn-container m-l-xss">
+          <Button
+            ghost
+            className="text-xs text-primary font-medium"
+            data-testid="accept-all-suggestions"
+            icon={<CheckOutlined />}
+            loading={loadingAccept}
+            type="primary"
+            onClick={() =>
+              acceptRejectAllSuggestions(
+                SuggestionType.SuggestDescription,
+                SuggestionAction.Accept
+              )
+            }>
+            {t('label.accept-all')}
           </Button>
-          <Button ghost size="small" type="primary">
-            <Typography.Text className="text-xs text-primary">
-              {t('label.reject-all')}
-            </Typography.Text>
+          <Button
+            ghost
+            className="text-xs text-primary font-medium"
+            data-testid="reject-all-suggestions"
+            icon={<CloseOutlined />}
+            loading={loadingReject}
+            type="primary"
+            onClick={() =>
+              acceptRejectAllSuggestions(
+                SuggestionType.SuggestDescription,
+                SuggestionAction.Reject
+              )
+            }>
+            {t('label.reject-all')}
           </Button>
-        </>
+          <Button
+            ghost
+            className="text-xs text-primary font-medium"
+            data-testid="close-suggestion"
+            icon={<CloseOutlined />}
+            type="primary"
+            onClick={() => onUpdateActiveUser()}>
+            {t('label.close')}
+          </Button>
+        </Space>
       )}
     </div>
   );

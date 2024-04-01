@@ -33,7 +33,6 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import {
-  DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
   getEntityDetailsPath,
   getVersionPath,
@@ -250,7 +249,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.rename-entity', {
                   entity: t('label.data-product'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -272,7 +271,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.data-product'),
                 })}
-                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={StyleIcon}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -297,7 +296,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                icon={DeleteIcon}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -516,13 +515,7 @@ const DataProductsDetailsPage = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={
-                      <Icon
-                        className="vertical-align-text-top"
-                        component={VersionIcon}
-                        style={{ ...DATA_ASSET_ICON_DIMENSION }}
-                      />
-                    }
+                    icon={<Icon component={VersionIcon} />}
                     onClick={handleVersionClick}>
                     <Typography.Text
                       className={classNames('', {

@@ -98,14 +98,17 @@ const UserProfileRoles = ({
     const isAdmin = selectedRoles.find(
       (roleId) => roleId === toLower(TERM_ADMIN)
     );
-    await updateUserDetails({
-      roles: updatedRoles.map((roleId) => {
-        const role = roles.find((r) => r.id === roleId);
+    await updateUserDetails(
+      {
+        roles: updatedRoles.map((roleId) => {
+          const role = roles.find((r) => r.id === roleId);
 
-        return { id: roleId, type: 'role', name: role?.name ?? '' };
-      }),
-      isAdmin: Boolean(isAdmin),
-    });
+          return { id: roleId, type: 'role', name: role?.name ?? '' };
+        }),
+        isAdmin: Boolean(isAdmin),
+      },
+      'roles'
+    );
     setIsLoading(false);
     setIsRolesEdit(false);
   };

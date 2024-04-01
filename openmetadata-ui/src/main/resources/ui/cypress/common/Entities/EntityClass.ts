@@ -13,7 +13,7 @@
 
 import { uuid } from '../../constants/constants';
 import { CustomPropertySupportedEntityList } from '../../constants/CustomProperty.constant';
-import { EntityType } from '../../constants/Entity.interface';
+import { EntityType, ENTITY_PATH } from '../../constants/Entity.interface';
 import {
   createAnnouncement as createAnnouncementUtil,
   createInactiveAnnouncement as createInactiveAnnouncementUtil,
@@ -22,9 +22,7 @@ import {
 import {
   createCustomPropertyForEntity,
   CustomProperty,
-  CustomPropertyType,
-  deleteCustomPropertyForEntity,
-  generateCustomProperty,
+  deleteCustomProperties,
   setValueForProperty,
   validateValueForProperty,
 } from '../Utils/CustomProperty';
@@ -46,6 +44,7 @@ import {
   removeGlossaryTerm,
   udpateGlossaryTerm,
 } from '../Utils/Glossary';
+import { getToken } from '../Utils/LocalStorage';
 import {
   addOwner,
   addTeamAsOwner,
@@ -103,7 +102,7 @@ const glossaryDetails2 = {
 };
 
 const glossaryTermDetails1 = {
-  name: 'CypressBankNumber',
+  name: `CypressBankNumber-${uuid()}`,
   displayName: 'Cypress BankNumber',
   description: 'A bank account number.',
   reviewers: [],
@@ -135,12 +134,8 @@ class EntityClass {
   endPoint: EntityType;
   protected name: string;
 
-  intergerPropertyDetails: CustomProperty;
-  stringPropertyDetails: CustomProperty;
-  markdownPropertyDetails: CustomProperty;
-
   customPropertyValue: Record<
-    CustomPropertyType,
+    string,
     { value: string; newValue: string; property: CustomProperty }
   >;
 
@@ -152,34 +147,6 @@ class EntityClass {
     this.entityName = entityName;
     this.entityDetails = entityDetails;
     this.endPoint = endPoint;
-
-    this.intergerPropertyDetails = generateCustomProperty(
-      CustomPropertyType.INTEGER
-    );
-    this.stringPropertyDetails = generateCustomProperty(
-      CustomPropertyType.STRING
-    );
-    this.markdownPropertyDetails = generateCustomProperty(
-      CustomPropertyType.MARKDOWN
-    );
-
-    this.customPropertyValue = {
-      Integer: {
-        value: '123',
-        newValue: '456',
-        property: this.intergerPropertyDetails,
-      },
-      String: {
-        value: '123',
-        newValue: '456',
-        property: this.stringPropertyDetails,
-      },
-      Markdown: {
-        value: '**Bold statement**',
-        newValue: '__Italic statement__',
-        property: this.markdownPropertyDetails,
-      },
-    };
   }
 
   public getName() {
@@ -189,7 +156,7 @@ class EntityClass {
   async setToken() {
     await new Promise<void>((res) =>
       cy.getAllLocalStorage().then((data) => {
-        const token = Object.values(data)[0].oidcIdToken;
+        const token = getToken(data);
 
         this.token = token;
         res();
@@ -203,26 +170,22 @@ class EntityClass {
 
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      createCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
-
-      createCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
-
-      createCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
+      createCustomPropertyForEntity(this.endPoint).then((data) => {
+        this.customPropertyValue = data as unknown as Record<
+          string,
+          {
+            value: string;
+            newValue: string;
+            property: CustomProperty;
+          }
+        >;
       });
     }
   }
 
   static preRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // assign DevOps team to user
 
@@ -279,24 +242,22 @@ class EntityClass {
   cleanup() {
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endPoint)) {
-      deleteCustomPropertyForEntity({
-        property: this.intergerPropertyDetails,
-        type: this.endPoint,
-      });
-      deleteCustomPropertyForEntity({
-        property: this.stringPropertyDetails,
-        type: this.endPoint,
-      });
-      deleteCustomPropertyForEntity({
-        property: this.markdownPropertyDetails,
-        type: this.endPoint,
+      cy.getAllLocalStorage().then((data) => {
+        const token = getToken(data);
+        cy.request({
+          method: 'GET',
+          url: `/api/v1/metadata/types/name/${ENTITY_PATH[this.endPoint]}`,
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(({ body }) => {
+          deleteCustomProperties(body.id, token);
+        });
       });
     }
   }
 
   static postRequisitesForTests() {
     cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
+      const token = getToken(data);
 
       // Remove devops as team
       //   cy.get('[data-testid="dropdown-profile"]').click();
@@ -368,6 +329,7 @@ class EntityClass {
     addDomainToEntity(domainDetails1.displayName);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   validateDomainVersionForEntity() {}
 
   updateDomain() {
@@ -428,12 +390,14 @@ class EntityClass {
   assignGlossary() {
     assignGlossaryTerm(
       `${glossaryDetails1.name}.${glossaryTermDetails1.name}`,
+      glossaryTermDetails1.name,
       this.endPoint
     );
   }
   updateGlossary() {
     udpateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
+      glossaryTermDetails1.name,
       this.endPoint
     );
   }
@@ -518,13 +482,29 @@ class EntityClass {
   // Custom property
 
   setCustomProperty(propertydetails: CustomProperty, value: string) {
-    setValueForProperty(propertydetails.name, value);
-    validateValueForProperty(propertydetails.name, value);
+    setValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
+    validateValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
   }
 
   updateCustomProperty(propertydetails: CustomProperty, value: string) {
-    setValueForProperty(propertydetails.name, value);
-    validateValueForProperty(propertydetails.name, value);
+    setValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
+    validateValueForProperty(
+      propertydetails.name,
+      value,
+      propertydetails.propertyType.name
+    );
   }
 }
 

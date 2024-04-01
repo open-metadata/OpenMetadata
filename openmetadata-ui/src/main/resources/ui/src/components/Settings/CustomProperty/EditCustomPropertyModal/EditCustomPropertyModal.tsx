@@ -15,6 +15,10 @@ import { isUndefined, uniq } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ENTITY_REFERENCE_OPTIONS,
+  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+} from '../../../../constants/CustomProperty.constants';
+import {
   CustomProperty,
   EnumConfig,
 } from '../../../../generated/type/customProperty';
@@ -54,6 +58,18 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     setIsSaving(false);
   };
 
+  const { hasEnumConfig, hasEntityReferenceConfig } = useMemo(() => {
+    const propertyName = customProperty.propertyType.name ?? '';
+    const hasEnumConfig = propertyName === 'enum';
+    const hasEntityReferenceConfig =
+      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(propertyName);
+
+    return {
+      hasEnumConfig,
+      hasEntityReferenceConfig,
+    };
+  }, [customProperty]);
+
   const formFields: FieldProp[] = [
     {
       name: 'description',
@@ -68,7 +84,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     },
   ];
 
-  const customPropertyConfigField: FieldProp = {
+  const enumConfigField: FieldProp = {
     name: 'customPropertyConfig',
     required: false,
     label: t('label.enum-value-plural'),
@@ -95,6 +111,37 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     ],
   };
 
+  const entityReferenceConfigField: FieldProp = {
+    name: 'customPropertyConfig',
+    required: false,
+    label: t('label.entity-reference-types'),
+    id: 'root/customPropertyConfig',
+    type: FieldTypes.SELECT,
+    props: {
+      'data-testid': 'customPropertyConfig',
+      mode: 'multiple',
+      options: ENTITY_REFERENCE_OPTIONS,
+      placeholder: t('label.entity-reference-types'),
+      onChange: (value: string[]) => {
+        const entityReferenceConfig = customProperty.customPropertyConfig
+          ?.config as string[];
+        const updatedValues = uniq([
+          ...value,
+          ...(entityReferenceConfig ?? []),
+        ]);
+        form.setFieldsValue({ customPropertyConfig: updatedValues });
+      },
+    },
+    rules: [
+      {
+        required: true,
+        message: t('label.field-required', {
+          field: t('label.entity-reference-types'),
+        }),
+      },
+    ],
+  };
+
   const multiSelectField: FieldProp = {
     name: 'multiSelect',
     label: t('label.multi-select'),
@@ -108,8 +155,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   };
 
   const initialValues = useMemo(() => {
-    const isEnumType = customProperty.propertyType.name === 'enum';
-    if (isEnumType) {
+    if (hasEnumConfig) {
       const enumConfig = customProperty.customPropertyConfig
         ?.config as EnumConfig;
 
@@ -124,7 +170,17 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       description: customProperty.description,
       customPropertyConfig: customProperty.customPropertyConfig?.config,
     };
-  }, [customProperty]);
+  }, [customProperty, hasEnumConfig]);
+
+  const note = (
+    <Typography.Text
+      className="text-grey-muted"
+      style={{ display: 'block', marginTop: '-18px' }}>
+      {`Note: ${t(
+        'message.updating-existing-not-possible-can-add-new-values'
+      )}`}
+    </Typography.Text>
+  );
 
   return (
     <Modal
@@ -160,15 +216,20 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         {generateFormFields(formFields)}
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
-            {generateFormFields([customPropertyConfigField])}
-            <Typography.Text
-              className="text-grey-muted"
-              style={{ display: 'block', marginTop: '-18px' }}>
-              {`Note: ${t(
-                'message.updating-existing-not-possible-can-add-new-values'
-              )}`}
-            </Typography.Text>
-            {generateFormFields([multiSelectField])}
+            {hasEnumConfig && (
+              <>
+                {generateFormFields([enumConfigField])}
+                {note}
+                {generateFormFields([multiSelectField])}
+              </>
+            )}
+
+            {hasEntityReferenceConfig && (
+              <>
+                {generateFormFields([entityReferenceConfigField])}
+                {note}
+              </>
+            )}
           </>
         )}
       </Form>

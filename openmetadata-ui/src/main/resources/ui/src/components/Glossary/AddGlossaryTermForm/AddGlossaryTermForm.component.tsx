@@ -30,7 +30,8 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
@@ -42,7 +43,7 @@ const AddGlossaryTermForm = ({
   glossaryTerm,
   formRef: form,
 }: AddGlossaryTermFormProps) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const owner = Form.useWatch<EntityReference | undefined>('owner', form);
   const reviewersList =
     Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
