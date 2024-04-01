@@ -197,8 +197,8 @@
       "type": "boolean",
       "default": true
     },
-    "systemApp": {
-      "description": "A system app cannot be uninstall.",
+    "system": {
+      "description": "A system app cannot be uninstalled or modified.",
       "type": "boolean",
       "default": false
     },

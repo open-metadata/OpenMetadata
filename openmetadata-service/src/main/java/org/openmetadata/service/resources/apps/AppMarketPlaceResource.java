@@ -443,7 +443,7 @@ public class AppMarketPlaceResource
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
-            .withSystemApp(create.getSystemApp());
+            .withSystem(create.getSystem());
 
     // Validate App
     validateApplication(app);
