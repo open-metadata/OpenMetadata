@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { checkDataInsightReportApplication } from '../../common/DataInsightUtils';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 const visitDataInsightReportApplicationPage = () => {
@@ -39,6 +41,15 @@ const logButton = () => {
 };
 
 describe('Data Insight Report Application', { tags: 'Settings' }, () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+
+      checkDataInsightReportApplication(token);
+    });
+  });
+
   beforeEach(() => {
     cy.login();
 
