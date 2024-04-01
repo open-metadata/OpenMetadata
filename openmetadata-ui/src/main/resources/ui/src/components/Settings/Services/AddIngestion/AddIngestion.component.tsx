@@ -29,6 +29,7 @@ import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getIngestionFrequency } from '../../../../utils/CommonUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
+import { getUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
@@ -69,7 +70,9 @@ const AddIngestion = ({
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
-      name: data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      name: data?.name ?? getUUID(),
+      displayName:
+        data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
     })
   );
@@ -83,10 +86,11 @@ const AddIngestion = ({
   const { ingestionName, retries } = useMemo(
     () => ({
       ingestionName:
-        data?.name ?? getIngestionName(serviceData.name, pipelineType),
+        workflowData?.displayName ??
+        getIngestionName(serviceData.name, pipelineType),
       retries: data?.airflowConfig.retries ?? 0,
     }),
-    [data, pipelineType, serviceData]
+    [data, pipelineType, serviceData, workflowData]
   );
 
   const isSettingsPipeline = useMemo(

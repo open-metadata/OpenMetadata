@@ -254,3 +254,21 @@ export const formatJsonString = (jsonString: string, indent = '') => {
     return jsonString;
   }
 };
+export const getUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+    /[xy]/g,
+    function (character) {
+      // Generate a random number between 0 and 15
+      const randomNumber = (Math.random() * 16) | 0;
+
+      // If the character in the UUID template is 'x', use the random number.
+      // Otherwise, use the random number ANDed with 0x3 (which gives a number between 0 and 3) ORed with 0x8
+      // (which sets the high bit, ensuring a number between 8 and 11).
+      const uuidCharacter =
+        character === 'x' ? randomNumber : (randomNumber & 0x3) | 0x8;
+
+      // Convert the number to a hexadecimal string and return it
+      return uuidCharacter.toString(16);
+    }
+  );
+};
