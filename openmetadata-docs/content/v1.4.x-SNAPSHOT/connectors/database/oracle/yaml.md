@@ -3,31 +3,13 @@ title: Run the Oracle Connector Externally
 slug: /connectors/database/oracle/yaml
 ---
 
-# Run the Oracle Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | 12c, 18c, 19c, and 21c       |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
-
+{% connectorDetailsHeader
+name="Oracle"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+unavailableFeatures=["Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the Oracle connector.
 
@@ -36,18 +18,13 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 **Note**: To retrieve metadata from an Oracle database, the python-oracledb library can be utilized, which provides support for versions 12c, 18c, 19c, and 21c.
 
@@ -147,11 +124,11 @@ This is a sample config for Oracle:
 
 {% /codeInfo %}
 
-{% partial file="/v1.2/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -208,19 +185,21 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.2/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/data-profiler.md" variables={connector: "oracle"} /%}
+{% partial file="/v1.4/connectors/yaml/data-profiler.md" variables={connector: "oracle"} /%}
+
+{% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
 
 ## Lineage
 
