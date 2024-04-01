@@ -47,7 +47,6 @@ import {
   ArgumentsInput,
   EventSubscription,
   ProviderType,
-  SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
@@ -249,9 +248,7 @@ function AlertDetailsPage({
               </Col>
               <Col span={1}>:</Col>
               <Col data-testid="destination-type" span={20}>
-                {destination.type === SubscriptionType.Generic
-                  ? t('label.webhook')
-                  : startCase(destination.type)}
+                {startCase(destination.type)}
               </Col>
               {!isEmpty(destination.config?.receivers) &&
                 !isNil(destination.config?.receivers) && (

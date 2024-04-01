@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { filter, startCase } from 'lodash';
 import React from 'react';
 import {
@@ -49,11 +48,7 @@ export const EXTERNAL_CATEGORY_OPTIONS = filter(
       className="d-flex items-center gap-2"
       data-testid={`${startCase(value)}-external-option`}>
       {getAlertDestinationCategoryIcons(value)}
-      <span>
-        {value === SubscriptionType.Generic
-          ? t('label.webhook')
-          : startCase(value)}
-      </span>
+      <span>{startCase(value)}</span>
     </div>
   ),
   value: String(value),
@@ -71,6 +66,6 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
     'https://outlook.office.com/webhook/XXXXX/XXXXX/XXXXX',
   [SubscriptionType.GChat]:
     'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX',
-  [SubscriptionType.Generic]: 'https://example.com',
+  [SubscriptionType.Webhook]: 'https://example.com',
   [SubscriptionType.Email]: 'Add ↵ seprated Email addresses',
 };

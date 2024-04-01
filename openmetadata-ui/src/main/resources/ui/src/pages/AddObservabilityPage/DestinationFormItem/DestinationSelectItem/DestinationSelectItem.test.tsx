@@ -138,8 +138,8 @@ describe('DestinationSelectItem component', () => {
       await screen.findByTestId('G Chat-external-option')
     ).toHaveTextContent('G Chat');
     expect(
-      await screen.findByTestId('Generic-external-option')
-    ).toHaveTextContent('label.webhook');
+      await screen.findByTestId('Webhook-external-option')
+    ).toHaveTextContent('Webhook');
     expect(
       await screen.findByTestId('Ms Teams-external-option')
     ).toHaveTextContent('Ms Teams');
