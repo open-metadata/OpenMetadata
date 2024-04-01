@@ -75,11 +75,23 @@ class QlikcloudSource(QliksenseSource):
         self.collections: List[QlikAppList] = []
         self.data_models: List[QlikTable] = []
 
-    def get_dashboards_list(self) -> Optional[List[QlikApp]]:
+    def filter_draft_dashboard(self, dashboard: QlikApp) -> bool:
+        # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikApp
+        return (not self.source_config.includeDraftDashboard) and (
+            not dashboard.published
+        )
+
+    def get_dashboards_list(self) -> Iterable[QlikApp]:
         """
         Get List of all apps
         """
-        return self.client.get_dashboards_list()
+        for dashboard in self.client.get_dashboards_list():
+            if self.filter_draft_dashboard(dashboard):
+                # Skip unpublished dashboards
+                continue
+            # clean data models for next iteration
+            self.data_models = []
+            yield dashboard
 
     def get_dashboard_name(self, dashboard: QlikApp) -> str:
         """

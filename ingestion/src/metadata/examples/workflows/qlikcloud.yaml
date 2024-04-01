@@ -16,6 +16,7 @@ source:
       lineageInformation:
         dbServiceNames:
         - postgres
+      includeDraftDashboard: True
 
 
 sink:
