@@ -12,13 +12,14 @@
  */
 import { Col, DatePicker, Form, FormProps, Row, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNull, omit } from 'lodash';
+import { isEmpty, omit } from 'lodash';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import {
+  TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
@@ -144,11 +145,11 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const handleFilterChange: FormProps['onValuesChange'] = (_, values) => {
     const { lastRunRange } = values;
     const startTimestamp =
-      !isNull(lastRunRange) && lastRunRange[0]
+      lastRunRange && lastRunRange[0]
         ? lastRunRange[0].set({ h: 0, m: 0 }).unix() * 1000
         : undefined;
     const endTimestamp =
-      !isNull(lastRunRange) && lastRunRange[1]
+      lastRunRange && lastRunRange[1]
         ? lastRunRange[1].set({ h: 23, m: 59 }).unix() * 1000
         : undefined;
 
@@ -192,14 +193,17 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       className="p-x-lg p-t-md"
       data-testid="test-case-container"
       gutter={[16, 16]}>
-      <Col span={8}>
+      <Col span={6}>
         <Searchbar
           removeMargin
+          placeholder={t('label.search-entity', {
+            entity: t('label.test-case-lowercase'),
+          })}
           searchValue={searchValue}
           onSearch={(value) => handleSearchParam(value, 'searchValue')}
         />
       </Col>
-      <Col span={16}>
+      <Col span={18}>
         <Form
           initialValues={filters}
           layout="inline"
@@ -218,8 +222,19 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Select options={TEST_CASE_STATUS_OPTION} />
             </Form.Item>
             <Form.Item
+              className="m-0 w-min-13"
+              label={t('label.platform')}
+              name="testPlatforms">
+              <Select
+                allowClear
+                mode="multiple"
+                options={TEST_CASE_PLATFORM_OPTION}
+                placeholder={t('label.platform')}
+              />
+            </Form.Item>
+            <Form.Item
               className="m-0"
-              label={t('label.created-date')}
+              label={t('label.last-run')}
               name="lastRunRange">
               <DatePicker.RangePicker
                 allowClear
