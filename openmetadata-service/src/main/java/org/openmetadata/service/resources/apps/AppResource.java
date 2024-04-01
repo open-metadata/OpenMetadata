@@ -582,7 +582,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           JsonPatch patch)
       throws SchedulerException {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
-    if (app.getSystemApp()) {
+    if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
@@ -657,7 +657,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
-    if (app.getSystemApp()) {
+    if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
@@ -689,7 +689,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
-    if (app.getSystemApp()) {
+    if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
@@ -960,7 +960,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withFeatures(marketPlaceDefinition.getFeatures())
             .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
             .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
-            .withSystemApp(marketPlaceDefinition.getSystemApp());
+            .withSystem(marketPlaceDefinition.getSystem());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
