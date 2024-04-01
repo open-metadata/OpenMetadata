@@ -203,8 +203,8 @@ export const OBSERVABILITY_CREATION_DETAILS: ObservabilityCreationDetails = {
       },
       {
         mode: 'external',
-        category: 'Generic',
-        inputValue: 'https://generic.com',
+        category: 'Webhook',
+        inputValue: 'https://webhook.com',
       },
     ],
   },

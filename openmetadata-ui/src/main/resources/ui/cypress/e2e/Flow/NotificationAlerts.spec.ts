@@ -350,7 +350,7 @@ describe(
       addInternalDestination(0, 'Followers', 'Email');
       addExternalDestination(1, 'Email', 'test@example.com');
       addExternalDestination(2, 'G Chat', 'https://gchat.com');
-      addExternalDestination(3, 'Generic', 'https://generic.com');
+      addExternalDestination(3, 'Webhook', 'https://webhook.com');
       addExternalDestination(4, 'Ms Teams', 'https://msteams.com');
       addExternalDestination(5, 'Slack', 'https://slack.com');
 
