@@ -10,3 +10,19 @@ SET json = jsonb_set(
         true
     );
 delete from apps_extension_time_series;
+
+-- Change systemApp to system
+UPDATE installed_apps
+SET json = jsonb_set(
+        json::jsonb #- '{systemApp}',
+        '{system}',
+        (json #> '{systemApp}')::jsonb,
+        true
+    );
+UPDATE apps_marketplace
+SET json = jsonb_set(
+        json::jsonb #- '{systemApp}',
+        '{system}',
+        (json #> '{systemApp}')::jsonb,
+        true
+    );

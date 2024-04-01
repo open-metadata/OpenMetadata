@@ -22,6 +22,7 @@ import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
+import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import './app-container.less';
 
 const AppContainer = () => {
@@ -29,7 +30,7 @@ const AppContainer = () => {
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useApplicationStore();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
-
+  const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
   return (
@@ -53,6 +54,7 @@ const AppContainer = () => {
           <Layout>
             <Content className="main-content">
               <AuthenticatedRouter />
+              {ApplicationExtras && <ApplicationExtras />}
             </Content>
           </Layout>
         </Layout>
