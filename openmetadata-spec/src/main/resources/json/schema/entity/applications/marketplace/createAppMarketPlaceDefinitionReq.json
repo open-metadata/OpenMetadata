@@ -98,8 +98,8 @@
       },
       "uniqueItems": true
     },
-    "systemApp": {
-      "description": "If the app is a system app, it cannot be uninstalled.",
+    "system": {
+      "description": "A system app cannot be uninstalled or modified.",
       "type": "boolean",
       "default": false
     }
