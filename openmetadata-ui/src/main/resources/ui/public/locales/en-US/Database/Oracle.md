@@ -23,6 +23,9 @@ GRANT new_role TO user_name;
 
 -- GRANT CREATE SESSION PRIVILEGE TO USER
 GRANT CREATE SESSION TO new_role;
+
+-- GRANT SELECT CATALOG ROLE PRIVILEGE TO FETCH METADATA TO ROLE / USER
+GRANT SELECT_CATALOG_ROLE TO new_role;
 ```
 
 - `GRANT SELECT` on the relevant tables which are to be ingested into OpenMetadata to the user
