@@ -19,7 +19,7 @@ from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
 from metadata.profiler.orm.functions.length import LenFn
@@ -98,11 +98,15 @@ class Max(StaticMetric):
 
         if is_quantifiable(self.col.type):
             return max((df[self.col.name].max() for df in dfs))
+
         if is_date_time(self.col.type):
-            max_ = max((pd.to_datetime(df[self.col.name]).max() for df in dfs))
-            if pd.isna(max_):
-                return None
-            return int(max_.timestamp() * 1000)
+            max_ = None
+            if self.col.type in {DataType.DATETIME, DataType.DATE}:
+                max_ = max((pd.to_datetime(df[self.col.name]).max() for df in dfs))
+                return None if pd.isna(max_) else int(max_.timestamp() * 1000)
+            elif self.col.type == DataType.TIME:
+                max_ = max((pd.to_timedelta(df[self.col.name]).max() for df in dfs))
+                return None if pd.isna(max_) else max_.seconds
         return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:

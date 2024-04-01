@@ -98,7 +98,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.complex_df()
 
     def complex_df(self):
-        import pandas
 
         coltype_mapping_df = []
         data_formats = GenericDataFrameColumnParser._data_formats
@@ -122,7 +121,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 self.complex_dataframe_sample[index] = df.astype(
                     dict(zip(df.keys(), coltype_mapping_df))
                 )
-            except (pandas.errors.IntCastingNaNError, TypeError, ValueError) as err:
+            except (TypeError, ValueError) as err:
                 self.complex_dataframe_sample[index] = df
                 logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 break
