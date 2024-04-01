@@ -45,7 +45,7 @@ const HARD_DELETE_TEAM_DETAILS = {
   email: 'team@gmail.com',
 };
 
-describe('Teams flow should work properly', () => {
+describe('Teams flow should work properly', { tags: 'Settings' }, () => {
   beforeEach(() => {
     interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
     interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
