@@ -66,7 +66,7 @@ class MissingMetricException(Exception):
     """
 
 
-class Profiler(Generic[TMetric]):
+class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
     """
     Core Profiler.
 

@@ -98,9 +98,11 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.complex_df()
 
     def complex_df(self):
-
+        """Assign DataTypes to dataframe columns as per the parsed column type"""
         coltype_mapping_df = []
-        data_formats = GenericDataFrameColumnParser._data_formats
+        data_formats = (
+            GenericDataFrameColumnParser._data_formats  # pylint: disable=protected-access
+        )
         for index, df in enumerate(self.complex_dataframe_sample):
             if index == 0:
                 for col in self.table.columns:
