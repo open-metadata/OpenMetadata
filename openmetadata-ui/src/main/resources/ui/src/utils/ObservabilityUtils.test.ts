@@ -29,7 +29,7 @@ describe('Observability Utils test', () => {
         'Email',
         'MsTeams',
         'Followers',
-        'Generic',
+        'Webhook',
         'Owners',
       ];
       types.forEach((type) => {
