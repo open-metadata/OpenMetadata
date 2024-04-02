@@ -95,7 +95,7 @@
       "description": "Subscription Endpoint Type.",
       "type": "string",
       "enum": [
-        "Generic",
+        "Webhook",
         "Slack",
         "MsTeams",
         "GChat",

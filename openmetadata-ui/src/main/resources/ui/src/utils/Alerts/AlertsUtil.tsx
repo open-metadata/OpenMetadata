@@ -61,7 +61,7 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
       return <MailIcon height={16} width={16} />;
     case SubscriptionType.ActivityFeed:
       return <AllActivityIcon height={16} width={16} />;
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
     default:
       return <WebhookIcon height={16} width={16} />;
   }
@@ -127,7 +127,7 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.activity-feed-plural');
     case SubscriptionType.Email:
       return i18next.t('label.email');
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
       return i18next.t('label.webhook');
     case SubscriptionType.Slack:
       return i18next.t('label.slack');
@@ -288,7 +288,7 @@ export const getDestinationConfigField = (
     case SubscriptionType.Slack:
     case SubscriptionType.MSTeams:
     case SubscriptionType.GChat:
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
       return (
         <Col span={12}>
           <Form.Item
