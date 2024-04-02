@@ -77,6 +77,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -3035,6 +3036,40 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
+  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual)
+      throws IOException, InterruptedException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Response response;
+    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    String query =
+        String.format(
+            "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
+    request.setJsonEntity(query);
+    try {
+      waitForEsAsyncOp();
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertEquals(1, hitsList.size());
+    LinkedHashMap<String, Object> doc = (LinkedHashMap<String, Object>) hitsList.get(0);
+    LinkedHashMap<String, Object> source = (LinkedHashMap<String, Object>) doc.get("_source");
+
+    EntityReference domainReference =
+        JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
+
+    assertEquals(domainReference.getId(), actual.getId());
+    assertEquals(domainReference.getType(), actual.getType());
+  }
+
   protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
       throws HttpResponseException {
     if (owner != null) {
@@ -3426,7 +3461,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public T assertDomainInheritance(K createRequest, EntityReference expectedDomain)
-      throws HttpResponseException {
+      throws HttpResponseException, IOException, InterruptedException, InterruptedException {
     T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
@@ -3435,11 +3470,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     assertTrue(entity.getDomain().getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain);
     return entity;
   }
 
   public void assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
-      throws HttpResponseException {
+      throws HttpResponseException, IOException, InterruptedException {
     // When an entity has domain set, it does not inherit domain from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setDomain(newDomain);

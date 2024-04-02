@@ -25,6 +25,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   public String getCondition(String entityType) {
     ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition());
+    conditions.add(getDomainCondition());
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
@@ -85,6 +86,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getIncludeCondition() {
+    String domain = getQueryParam("domain");
+    if (!nullOrEmpty(domain)) {
+      return String.format("{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", domain);
+    }
+    return "";
+  }
+
+  private String getDomainCondition() {
     String deleted = "";
     if (include != Include.ALL) {
       deleted = String.format("{\"term\": {\"deleted\": \"%s\"}}", include == Include.DELETED);

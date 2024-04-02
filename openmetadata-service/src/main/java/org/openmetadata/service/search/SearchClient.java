@@ -125,6 +125,11 @@ public interface SearchClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 
+  void updateChildren(
+      List<String> indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
+
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
 
