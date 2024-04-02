@@ -371,6 +371,12 @@ public final class SecurityUtil {
     if (credentials != null && credentials.getRefreshToken() != null) {
       removeOrRenewOidcCredentials(request, client, credentials);
       return Optional.of(credentials);
+    } else {
+      if (credentials == null) {
+        LOG.error("No credentials found against session. ID: {}", request.getSession().getId());
+      } else {
+        LOG.error("No refresh token found against session. ID: {}", request.getSession().getId());
+      }
     }
     return Optional.empty();
   }
