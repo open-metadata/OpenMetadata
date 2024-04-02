@@ -13,11 +13,9 @@
 
 // The spec is related to advance search feature
 
-import { hardDeleteService } from '../../../common/EntityUtils';
 import {
+  advancedSearchFlowCleanup,
   advanceSearchPreRequests,
-  ADVANCE_SEARCH_DATABASE_SERVICE,
-  ADVANCE_SEARCH_DATABASE_SERVICE_2,
   checkAddRuleWithOperator,
   CONDITIONS_MUST,
   CONDITIONS_MUST_NOT,
@@ -25,11 +23,15 @@ import {
   OPERATOR,
 } from '../../../common/Utils/AdvancedSearch';
 import { getToken } from '../../../common/Utils/LocalStorage';
-import { SERVICE_CATEGORIES } from '../../../constants/service.constants';
 
 describe('Search with additional rule', () => {
   const testData = {
-    userId: '',
+    user_1: {
+      id: '',
+    },
+    user_2: {
+      id: '',
+    },
   };
 
   before(() => {
@@ -45,22 +47,7 @@ describe('Search with additional rule', () => {
     cy.getAllLocalStorage().then((data) => {
       const token = getToken(data);
 
-      hardDeleteService({
-        token,
-        serviceFqn: ADVANCE_SEARCH_DATABASE_SERVICE.service.name,
-        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
-      });
-      hardDeleteService({
-        token,
-        serviceFqn: ADVANCE_SEARCH_DATABASE_SERVICE_2.service.name,
-        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
-      });
-      // Delete created user
-      cy.request({
-        method: 'DELETE',
-        url: `/api/v1/users/${testData.userId}?hardDelete=true&recursive=false`,
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      advancedSearchFlowCleanup(token);
     });
     Cypress.session.clearAllSavedSessions();
   });
