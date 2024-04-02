@@ -454,7 +454,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 column=column,
                 table=self.table,
             )
-            for column in self._columns
+            for column in self.columns
         ]
         query_metrics = [
             ThreadPoolMetrics(
@@ -463,7 +463,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 column=column,
                 table=self.table,
             )
-            for column in self._columns
+            for column in self.columns
             for metric in self.get_col_metrics(self.query_metrics, column)
         ]
         window_metrics = [
@@ -477,7 +477,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 column=column,
                 table=self.table,
             )
-            for column in self._columns
+            for column in self.columns
         ]
 
         # we'll add the system metrics to the thread pool computation
@@ -485,7 +485,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
             column_metrics_for_thread_pool.extend(metric_type)
 
         # we'll add the custom metrics to the thread pool computation
-        for column in self._columns:
+        for column in self.columns:
             custom_metrics = self.get_custom_metrics(column.name)
             if custom_metrics:
                 column_metrics_for_thread_pool.append(
@@ -520,7 +520,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
     def compute_metrics(self) -> Profiler:
         """Run the whole profiling using multithreading"""
         self.profile_entity()
-        for column in self._columns:
+        for column in self.columns:
             self.run_composed_metrics(column)
             self.run_hybrid_metrics(column)
 
@@ -569,7 +569,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                 f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."  # type: ignore
             )
             table_data = self.profiler_interface.fetch_sample_data(
-                self.table, self._columns
+                self.table, self.columns
             )
             upload_sample_data(
                 data=table_data, profiler_interface=self.profiler_interface
@@ -620,7 +620,7 @@ class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
                         else col.name.__root__
                     )
                 )
-                for col in self._columns
+                for col in self.columns
                 if self.column_results.get(
                     col.name
                     if not isinstance(col.name, ColumnName)
