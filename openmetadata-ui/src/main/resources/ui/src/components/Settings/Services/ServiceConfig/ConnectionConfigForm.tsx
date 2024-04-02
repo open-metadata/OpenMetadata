@@ -44,7 +44,6 @@ import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
@@ -145,7 +144,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         break;
       }
       case ServiceCategory.PIPELINE_SERVICES: {
-        connSch = getPipelineConfig(serviceType as PipelineServiceType);
+        connSch = serviceUtilClassBase.getPipelineServiceConfig(
+          serviceType as PipelineServiceType
+        );
 
         break;
       }
