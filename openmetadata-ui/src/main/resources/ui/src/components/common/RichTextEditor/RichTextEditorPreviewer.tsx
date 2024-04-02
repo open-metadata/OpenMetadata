@@ -31,6 +31,7 @@ const RichTextEditorPreviewer = ({
   textVariant = 'black',
   showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
+  isDescriptionExpanded = false,
 }: PreviewerProp) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -94,6 +95,17 @@ const RichTextEditorPreviewer = ({
 
     return () => window.removeEventListener('mousedown', handleMouseDownEvent);
   }, [handleMouseDownEvent]);
+
+  useEffect(() => {
+    setReadMore(Boolean(isDescriptionExpanded));
+    //   console.count(`Description expanded: ${isDescriptionExpanded}`);
+  }, [isDescriptionExpanded]);
+
+  //   useEffect(() => {
+  //     console.count(`Read More Description expanded: ${readMore}`);
+  //   }, [readMore]);
+
+  //   console.log(`Read More Description expanded outer console: ${readMore}`);
 
   return (
     <div
