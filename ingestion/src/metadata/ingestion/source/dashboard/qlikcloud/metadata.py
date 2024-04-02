@@ -40,7 +40,7 @@ from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSour
 from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import clean_uri, replace_special_with
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -112,10 +112,7 @@ class QlikcloudSource(QliksenseSource):
         Method to Get Dashboard Entity
         """
         try:
-            dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}/overview"
-                f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
-            )
+            dashboard_url = f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}/overview"
 
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
