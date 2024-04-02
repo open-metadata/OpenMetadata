@@ -254,7 +254,7 @@ export const formatJsonString = (jsonString: string, indent = '') => {
     return jsonString;
   }
 };
-export const getUUID = () => {
+export const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
     /[xy]/g,
     function (character) {
