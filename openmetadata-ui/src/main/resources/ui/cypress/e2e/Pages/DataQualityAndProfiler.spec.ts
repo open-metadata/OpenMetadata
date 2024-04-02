@@ -909,8 +909,8 @@ describe(
       verifyResponseStatusCode('@tableProfiler', 200);
       verifyResponseStatusCode('@systemProfiler', 200);
       cy.get('[data-testid="profiler-setting-btn"]').click();
-      verifyResponseStatusCode('@tableProfilerConfig', 200);
       cy.get('.ant-modal-body').should('be.visible');
+      verifyResponseStatusCode('@tableProfilerConfig', 200);
       cy.get('[data-testid="slider-input"]')
         .clear()
         .type(profilerSetting.profileSample);
