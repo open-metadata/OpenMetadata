@@ -158,7 +158,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   };
 
   const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
-    fetchTestCases(currentPage);
+    fetchTestCases(currentPage, filters);
   };
 
   const handleFilterChange: FormProps['onValuesChange'] = (_, values) => {
