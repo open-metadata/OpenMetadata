@@ -36,7 +36,7 @@ const SuggestionsSlider = () => {
       </Typography.Text>
       <AvatarCarousel />
       {selectedUserSuggestions.length > 0 && (
-        <Space className="slider-btn-container m-l-xss">
+        <Space className="slider-btn-container m-l-xs">
           <Button
             ghost
             className="text-xs text-primary font-medium"
