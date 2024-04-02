@@ -120,8 +120,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (entityFQN != null) {
       conditions.add(
           includeAllTests
-              ? String.format("{\"prefix\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN))
-              : String.format("{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
+              ? String.format(
+                  "{\"prefix\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN))
+              : String.format(
+                  "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
 
     if (testSuiteId != null) {
@@ -144,7 +146,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     }
 
     if (testPlatform != null) {
-      String platforms = Arrays.stream(testPlatform.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
+      String platforms =
+          Arrays.stream(testPlatform.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
       conditions.add(String.format("{\"terms\": {\"testPlatforms\": [%s]}}", platforms));
     }
 
