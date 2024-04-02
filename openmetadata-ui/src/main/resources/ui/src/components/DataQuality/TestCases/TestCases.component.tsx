@@ -11,13 +11,25 @@
  *  limitations under the License.
  */
 import { Col, DatePicker, Form, FormProps, Row, Select, Space } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { isEmpty, omit } from 'lodash';
+import { debounce, isEmpty, omit } from 'lodash';
 import QueryString from 'qs';
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  PAGE_SIZE_BASE,
+} from '../../../constants/constants';
 import {
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
@@ -25,15 +37,19 @@ import {
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
   TestCaseType,
 } from '../../../rest/testAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
+import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -48,6 +64,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
+  const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
+  const [isTableLoading, setIsTableLoading] = useState(false);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -110,8 +128,9 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           ? undefined
           : params?.testCaseStatus,
         limit: pageSize,
+        includeAllTests: true,
         fields: 'testCaseResult,testSuite,incidentId',
-        q: `*${searchValue}*`,
+        q: searchValue ? `*${searchValue}*` : undefined,
         offset: (currentPage - 1) * pageSize,
       });
       setTestCase(data);
@@ -143,24 +162,51 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   };
 
   const handleFilterChange: FormProps['onValuesChange'] = (_, values) => {
-    const { lastRunRange } = values;
-    const startTimestamp =
-      lastRunRange && lastRunRange[0]
-        ? lastRunRange[0].set({ h: 0, m: 0 }).unix() * 1000
-        : undefined;
-    const endTimestamp =
-      lastRunRange && lastRunRange[1]
-        ? lastRunRange[1].set({ h: 23, m: 59 }).unix() * 1000
-        : undefined;
-
+    const { lastRunRange, tableFqn } = values;
+    const startTimestamp = lastRunRange?.[0]
+      ? lastRunRange[0].set({ h: 0, m: 0 }).unix() * 1000
+      : undefined;
+    const endTimestamp = lastRunRange?.[1]
+      ? lastRunRange[1].set({ h: 23, m: 59 }).unix() * 1000
+      : undefined;
+    const entityLink = tableFqn ? generateEntityLink(tableFqn) : undefined;
     const params = {
-      ...omit(values, 'lastRunRange'),
+      ...omit(values, ['lastRunRange', 'tableFqn']),
       startTimestamp,
       endTimestamp,
+      entityLink,
     };
     fetchTestCases(INITIAL_PAGING_VALUE, params);
     setFilters((prev) => ({ ...prev, ...params }));
   };
+
+  const fetchTableData = async (search = WILD_CARD_CHAR) => {
+    setIsTableLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${search}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.TABLE,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+
+      const options = response.hits.hits.map((hit) => ({
+        label: getEntityName(hit._source),
+        value: hit._source.fullyQualifiedName,
+      }));
+      setTableOptions(options);
+    } catch (error) {
+      setTableOptions([]);
+    } finally {
+      setIsTableLoading(false);
+    }
+  };
+
+  const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
+    fetchTableData,
+  ]);
 
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
@@ -171,6 +217,10 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       setIsLoading(false);
     }
   }, [tab, searchValue, testCasePermission, pageSize]);
+
+  useEffect(() => {
+    fetchTableData();
+  }, []);
 
   const pagingData = useMemo(
     () => ({
@@ -193,22 +243,47 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       className="p-x-lg p-t-md"
       data-testid="test-case-container"
       gutter={[16, 16]}>
-      <Col span={6}>
-        <Searchbar
-          removeMargin
-          placeholder={t('label.search-entity', {
-            entity: t('label.test-case-lowercase'),
-          })}
-          searchValue={searchValue}
-          onSearch={(value) => handleSearchParam(value, 'searchValue')}
-        />
-      </Col>
-      <Col span={18}>
+      <Col span={24}>
         <Form
           initialValues={filters}
-          layout="inline"
+          layout="horizontal"
           onValuesChange={handleFilterChange}>
-          <Space align="center" className="w-full justify-end">
+          <Space align="center" className="w-full justify-between">
+            <Form.Item className="m-0 w-80">
+              <Searchbar
+                removeMargin
+                placeholder={t('label.search-entity', {
+                  entity: t('label.test-case-lowercase'),
+                })}
+                searchValue={searchValue}
+                onSearch={(value) => handleSearchParam(value, 'searchValue')}
+              />
+            </Form.Item>
+            <Form.Item
+              className="m-0 w-52"
+              label={t('label.table')}
+              name="tableFqn">
+              <Select
+                allowClear
+                showSearch
+                loading={isTableLoading}
+                options={tableOptions}
+                placeholder={t('label.table')}
+                onSearch={debounceFetchTableData}
+              />
+            </Form.Item>
+            <Form.Item
+              className="m-0 w-min-20"
+              label={t('label.platform')}
+              name="testPlatforms">
+              <Select
+                allowClear
+                maxTagCount={1}
+                mode="multiple"
+                options={TEST_CASE_PLATFORM_OPTION}
+                placeholder={t('label.platform')}
+              />
+            </Form.Item>
             <Form.Item
               className="m-0 w-40"
               label={t('label.type')}
@@ -220,17 +295,6 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               label={t('label.status')}
               name="testCaseStatus">
               <Select options={TEST_CASE_STATUS_OPTION} />
-            </Form.Item>
-            <Form.Item
-              className="m-0 w-min-13"
-              label={t('label.platform')}
-              name="testPlatforms">
-              <Select
-                allowClear
-                mode="multiple"
-                options={TEST_CASE_PLATFORM_OPTION}
-                placeholder={t('label.platform')}
-              />
             </Form.Item>
             <Form.Item
               className="m-0"
