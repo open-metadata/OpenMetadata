@@ -96,10 +96,7 @@ MOCK_SUPERSET_API_CONFIG = {
             }
         },
         "sourceConfig": {
-            "config": {
-                "type": "DashboardMetadata",
-                "includeDraftDashboard": False
-            }
+            "config": {"type": "DashboardMetadata", "includeDraftDashboard": False}
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -348,7 +345,9 @@ class SupersetUnitTest(TestCase):
         ):
             dashboard_list = list(self.superset_api.get_dashboards_list())
             self.assertEqual(len(dashboard_list), PUBLISHED_DASHBOARD_COUNT)
-            self.assertEqual(dashboard_list[0].dashboard_title, PUBLISHED_DASHBOARD_NAME)
+            self.assertEqual(
+                dashboard_list[0].dashboard_title, PUBLISHED_DASHBOARD_NAME
+            )
 
     def test_charts_of_dashboard(self):
         """
