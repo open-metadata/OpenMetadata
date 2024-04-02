@@ -37,7 +37,6 @@ select
 	d.id, 
 	d.dashboard_title, 
 	d.position_json,
-    d.published,
 	au.email 
 from 
 	dashboards d
@@ -47,22 +46,6 @@ ON
 	d.created_by_fk = au.id
 """
 
-FETCH_PUBLISHED_DASHBOARDS = """
-select
-	d.id, 
-	d.dashboard_title, 
-	d.position_json,
-    d.published,
-	au.email 
-from 
-	dashboards d
-LEFT JOIN
-	ab_user au
-ON
-	d.created_by_fk = au.id
-where 
-	d.published=true
-"""
 
 FETCH_ALL_CHARTS_TEST = """
 select 

@@ -11,8 +11,6 @@
 """
 Superset source module
 """
-from typing import Optional
-
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -34,12 +32,7 @@ class SupersetSource:
     """
 
     @classmethod
-    def create(
-        cls,
-        config_dict: dict,
-        metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
-    ):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: SupersetConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SupersetConnection):

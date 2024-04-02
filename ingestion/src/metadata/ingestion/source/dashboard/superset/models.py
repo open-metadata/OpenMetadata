@@ -42,7 +42,6 @@ class DashboardResult(BaseModel):
     position_json: Optional[str]
     id: Optional[int]
     email: Optional[str]
-    published: Optional[bool]
 
 
 class SupersetDashboardCount(BaseModel):
@@ -136,7 +135,6 @@ class FetchDashboard(BaseModel):
     id: Optional[int]
     dashboard_title: Optional[str]
     position_json: Optional[str]
-    published: Optional[bool]
     email: Optional[str]
 
 
