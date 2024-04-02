@@ -155,7 +155,7 @@ the option to tag the created resources.
 In this release we updated the server [Dockerfile](https://github.com/open-metadata/OpenMetadata/blob/1.3.0/docker/development/Dockerfile#L34)
 to work with `openmetadata` as a user instead of root.
 
-If you're mapping volumes, specially when [configuring JWK](https://docs.open-metadata.org/v1.3.x/deployment/docker#add-docker-volumes-for-openmetadata-server-compose-service),
+If you're mapping volumes, specially when [configuring JWK](/deployment/docker#add-docker-volumes-for-openmetadata-server-compose-service),
 you will need to update the owner of the directory to get it working with the new `openmetadata` user.
 
 You will need to run:

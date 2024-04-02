@@ -68,102 +68,122 @@ const DRAG_AND_DROP_TEAM_DETAILS = [
   },
 ];
 
-describe('Teams drag and drop should work properly', () => {
-  beforeEach(() => {
-    interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
-    interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
-    cy.login();
+describe(
+  'Teams drag and drop should work properly',
+  { tags: 'Settings' },
+  () => {
+    beforeEach(() => {
+      interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
+      interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
+      cy.login();
 
-    cy.sidebarClick(SidebarItem.SETTINGS);
+      cy.sidebarClick(SidebarItem.SETTINGS);
 
-    // Clicking on teams
-    cy.settingClick(GlobalSettingOptions.TEAMS);
-  });
-
-  it('Add new team for drag and drop', () => {
-    DRAG_AND_DROP_TEAM_DETAILS.map((team) => {
-      addTeam(team);
-      cy.reload();
-      // asserting the added values
-      cy.get(`[data-row-key="${team.name}"]`)
-        .scrollIntoView()
-        .should('be.visible');
-      cy.get(`[data-row-key="${team.name}"]`).should(
-        'contain',
-        team.description
-      );
+      // Clicking on teams
+      cy.settingClick(GlobalSettingOptions.TEAMS);
     });
-  });
 
-  it('Should fail when drop team type is Group', () => {
-    [teamNameBusiness, teamNameDepartment, teamNameDivision].map((team) => {
-      dragAndDropElement(team, teamNameGroup);
-      toastNotification(
-        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Group children`
-      );
+    before(() => {
+      cy.login();
+      cy.sidebarClick(SidebarItem.SETTINGS);
+      // Clicking on teams
+      cy.settingClick(GlobalSettingOptions.TEAMS);
 
-      cy.get('.Toastify__toast-body', { timeout: 10000 }).should('not.exist');
-    });
-  });
-
-  it('Should fail when droppable team type is Department', () => {
-    [teamNameBusiness, teamNameDivision].map((team) => {
-      dragAndDropElement(team, teamNameDepartment);
-      toastNotification(
-        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Department children`
-      );
-      cy.get('.Toastify__toast-body', { timeout: 10000 }).should('not.exist');
-    });
-  });
-
-  it('Should fail when draggable team type is BusinessUnit and droppable team type is Division', () => {
-    dragAndDropElement(teamNameBusiness, teamNameDivision);
-    toastNotification(
-      `You cannot move to this team as Team Type BusinessUnit can't be Division children`
-    );
-  });
-
-  [teamNameBusiness, teamNameDivision, teamNameDepartment].map(
-    (droppableTeamName, index) => {
-      it(`Should drag and drop on  ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, () => {
-        // nested team will be shown once anything is moved under it
-        if (index !== 0) {
-          openDragDropDropdown(
-            [teamNameBusiness, teamNameDivision, teamNameDepartment][index - 1]
-          );
-        }
-
-        dragAndDropElement(teamNameGroup, droppableTeamName);
-
-        confirmationDragAndDropTeam(teamNameGroup, droppableTeamName);
-
-        // verify the team is moved under the business team
-        openDragDropDropdown(droppableTeamName);
-        cy.get(
-          `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
-        ).should('be.visible');
+      DRAG_AND_DROP_TEAM_DETAILS.map((team) => {
+        addTeam(team);
+        cy.reload();
+        // asserting the added values
+        cy.get(`[data-row-key="${team.name}"]`)
+          .scrollIntoView()
+          .should('be.visible');
+        cy.get(`[data-row-key="${team.name}"]`).should(
+          'contain',
+          team.description
+        );
       });
-    }
-  );
+    });
 
-  it(`Should drag and drop team on table level`, () => {
-    // open department team dropdown as it is moved under it from last test
-    openDragDropDropdown(teamNameDepartment);
+    after(() => {
+      cy.login();
+      cy.sidebarClick(SidebarItem.SETTINGS);
 
-    dragAndDropElement(teamNameGroup, '.ant-table-thead > tr', true);
-    confirmationDragAndDropTeam(teamNameGroup, 'Organization');
+      // Clicking on teams
+      cy.settingClick(GlobalSettingOptions.TEAMS);
 
-    // verify the team is moved under the table level
-    cy.get(`.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`).should(
-      'be.visible'
-    );
-  });
-
-  it('Permanently deleting a team for drag and drop', () => {
-    [teamNameBusiness, teamNameDivision, teamNameDepartment, teamNameGroup].map(
-      (teamName) => {
+      [
+        teamNameBusiness,
+        teamNameDivision,
+        teamNameDepartment,
+        teamNameGroup,
+      ].map((teamName) => {
         deleteTeamPermanently(teamName);
+      });
+    });
+
+    it('Should fail when drop team type is Group', () => {
+      [teamNameBusiness, teamNameDepartment, teamNameDivision].map((team) => {
+        dragAndDropElement(team, teamNameGroup);
+        toastNotification(
+          `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Group children`
+        );
+
+        cy.get('.Toastify__toast-body', { timeout: 10000 }).should('not.exist');
+      });
+    });
+
+    it('Should fail when droppable team type is Department', () => {
+      [teamNameBusiness, teamNameDivision].map((team) => {
+        dragAndDropElement(team, teamNameDepartment);
+        toastNotification(
+          `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Department children`
+        );
+        cy.get('.Toastify__toast-body', { timeout: 10000 }).should('not.exist');
+      });
+    });
+
+    it('Should fail when draggable team type is BusinessUnit and droppable team type is Division', () => {
+      dragAndDropElement(teamNameBusiness, teamNameDivision);
+      toastNotification(
+        `You cannot move to this team as Team Type BusinessUnit can't be Division children`
+      );
+    });
+
+    [teamNameBusiness, teamNameDivision, teamNameDepartment].map(
+      (droppableTeamName, index) => {
+        it(`Should drag and drop on  ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, () => {
+          // nested team will be shown once anything is moved under it
+          if (index !== 0) {
+            openDragDropDropdown(
+              [teamNameBusiness, teamNameDivision, teamNameDepartment][
+                index - 1
+              ]
+            );
+          }
+
+          dragAndDropElement(teamNameGroup, droppableTeamName);
+
+          confirmationDragAndDropTeam(teamNameGroup, droppableTeamName);
+
+          // verify the team is moved under the business team
+          openDragDropDropdown(droppableTeamName);
+          cy.get(
+            `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
+          ).should('be.visible');
+        });
       }
     );
-  });
-});
+
+    it(`Should drag and drop team on table level`, () => {
+      // open department team dropdown as it is moved under it from last test
+      openDragDropDropdown(teamNameDepartment);
+
+      dragAndDropElement(teamNameGroup, '.ant-table-thead > tr', true);
+      confirmationDragAndDropTeam(teamNameGroup, 'Organization');
+
+      // verify the team is moved under the table level
+      cy.get(`.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`)
+        .scrollIntoView()
+        .should('be.visible');
+    });
+  }
+);
