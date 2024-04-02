@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
@@ -365,7 +366,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
 
     ResourceContextInterface resourceContextInterface =
-        getResourceContext(entityLink, new ListFilter());
+        getResourceContext(entityLink, searchListFilter);
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
     // VIEW_TESTS
     OperationContext operationContext =
@@ -948,7 +949,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
-  private ResourceContextInterface getResourceContext(String entityLink, ListFilter filter) {
+  private ResourceContextInterface getResourceContext(String entityLink, Filter filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);
