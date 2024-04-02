@@ -128,7 +128,7 @@ def test_valid_get_table_or_column_fqn(entity_link, fqn):
             "<#E::table::rds.dev.dbt_jaffle.customers::columns>",
             ValueError,
             id="invalid_entity_link4",
-        )
+        ),
     ],
 )
 def test_invalid_get_table_or_column_fqn(entity_link, error):
