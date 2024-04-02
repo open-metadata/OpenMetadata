@@ -15,6 +15,7 @@ public class IndexMapping {
   String indexMappingFile;
   String alias;
   List<String> parentAliases;
+  List<String> childAliases;
   public static final String indexNameSeparator = "_";
 
   public String getIndexName(String clusterAlias) {
@@ -33,6 +34,12 @@ public class IndexMapping {
     return clusterAlias != null && !clusterAlias.isEmpty()
         ? parentAliases.stream().map(alias -> clusterAlias + indexNameSeparator + alias).toList()
         : parentAliases;
+  }
+
+  public List<String> getChildAliases(String clusterAlias) {
+    return clusterAlias != null && !clusterAlias.isEmpty()
+        ? childAliases.stream().map(alias -> clusterAlias + indexNameSeparator + alias).toList()
+        : childAliases;
   }
 
   private String getIndexName() {

@@ -24,6 +24,7 @@ class QlikApp(BaseModel):
     name: Optional[str]
     id: str
     app_id: Optional[str] = Field(alias="resourceId", default=None)
+    published: Optional[bool]
 
 
 class QlikAppList(BaseModel):
