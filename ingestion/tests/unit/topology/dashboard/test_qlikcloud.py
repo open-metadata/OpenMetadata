@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Test QlikSense using the topology
+Test QlikCloud using the topology
 """
 
 from unittest import TestCase
@@ -31,47 +31,28 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.qliksense.client import QlikSenseClient
-from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
+from metadata.ingestion.source.dashboard.qlikcloud.client import QlikCloudClient
+from metadata.ingestion.source.dashboard.qlikcloud.metadata import QlikcloudSource
+from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp
 from metadata.ingestion.source.dashboard.qliksense.models import (
-    QlikDashboard,
-    QlikDashboardMeta,
     QlikSheet,
     QlikSheetInfo,
     QlikSheetMeta,
 )
 
-MOCK_DASHBOARD_SERVICE = DashboardService(
-    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    name="qliksense_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="qliksense_source_test"),
-    connection=DashboardConnection(),
-    serviceType=DashboardServiceType.QlikSense,
-)
-
-
-mock_qliksense_config = {
+mock_qlikcloud_config = {
     "source": {
-        "type": "qliksense",
-        "serviceName": "local_qliksensem",
+        "type": "qlikcloud",
+        "serviceName": "local_qlikcloud",
         "serviceConnection": {
             "config": {
-                "type": "QlikSense",
-                "certificates": {
-                    "rootCertificate": "/test/path/root.pem",
-                    "clientKeyCertificate": "/test/path/client_key.pem",
-                    "clientCertificate": "/test/path/client.pem",
-                },
-                "userDirectory": "demo",
-                "userId": "demo",
-                "hostPort": "wss://test:4747",
-                "displayUrl": "https://test",
+                "type": "QlikCloud",
+                "hostPort": "https://test",
+                "token": "token",
             }
         },
         "sourceConfig": {
             "config": {
-                "dashboardFilterPattern": {},
-                "chartFilterPattern": {},
                 "includeDraftDashboard": False,
             }
         },
@@ -87,116 +68,123 @@ mock_qliksense_config = {
         }
     },
 }
-MOCK_DASHBOARD_NAME = "New Dashboard"
 
-MOCK_DASHBOARD_DETAILS = QlikDashboard(
-    qDocName=MOCK_DASHBOARD_NAME,
-    qDocId="1",
-    qTitle=MOCK_DASHBOARD_NAME,
+MOCK_DASHBOARD_SERVICE = DashboardService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    name="qlikcloud_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="qlikcloud_source_test"),
+    connection=DashboardConnection(),
+    serviceType=DashboardServiceType.QlikCloud,
 )
 
-MOCK_CHARTS = [
-    QlikSheet(
-        qInfo=QlikSheetInfo(qId="11"), qMeta=QlikSheetMeta(title="Top Salespeople")
-    ),
-    QlikSheet(
-        qInfo=QlikSheetInfo(qId="12"),
-        qMeta=QlikSheetMeta(title="Milan Datasets", description="dummy"),
-    ),
-]
+MOCK_DASHBOARD_NAME = "Product Data"
+
+MOCK_DASHBOARD_DETAILS = QlikApp(
+    name=MOCK_DASHBOARD_NAME,
+    id="14",
+    description="product data details",
+)
 
 EXPECTED_DASHBOARD = CreateDashboardRequest(
-    name="1",
-    displayName="New Dashboard",
-    sourceUrl="https://test/sense/app/1/overview",
+    name="14",
+    displayName="Product Data",
+    description="product data details",
+    sourceUrl="https://test/sense/app/14/overview",
     charts=[],
     tags=None,
     owner=None,
-    service="qliksense_source_test",
+    service="qlikcloud_source_test",
     extension=None,
 )
 
-EXPECTED_DASHBOARDS = [
-    CreateChartRequest(
-        name="11",
-        displayName="Top Salespeople",
-        chartType="Other",
-        sourceUrl="https://test/sense/app/1/sheet/11",
-        tags=None,
-        owner=None,
-        service="qliksense_source_test",
-    ),
-    CreateChartRequest(
-        name="12",
-        displayName="Milan Datasets",
-        chartType="Other",
-        sourceUrl="https://test/sense/app/1/sheet/12",
-        tags=None,
-        owner=None,
-        service="qliksense_source_test",
-        description="dummy",
+MOCK_CHARTS = [
+    QlikSheet(qInfo=QlikSheetInfo(qId="9"), qMeta=QlikSheetMeta(title="FY 22 Data")),
+    QlikSheet(
+        qInfo=QlikSheetInfo(qId="10"),
+        qMeta=QlikSheetMeta(title="Car Sales", description="American car sales data"),
     ),
 ]
+
+EXPECTED_CHARTS = [
+    CreateChartRequest(
+        name="9",
+        displayName="FY 22 Data",
+        chartType="Other",
+        sourceUrl="https://test/sense/app/14/sheet/9",
+        tags=None,
+        owner=None,
+        service="qlikcloud_source_test",
+    ),
+    CreateChartRequest(
+        name="10",
+        displayName="Car Sales",
+        chartType="Other",
+        sourceUrl="https://test/sense/app/14/sheet/10",
+        tags=None,
+        owner=None,
+        service="qlikcloud_source_test",
+        description="American car sales data",
+    ),
+]
+
 MOCK_DASHBOARDS = [
-    QlikDashboard(
-        qDocName="sample unpublished dashboard",
-        qDocId="51",
-        qTitle="sample unpublished dashboard",
-        qMeta=QlikDashboardMeta(published=False),
+    QlikApp(
+        name="sample unpublished dashboard",
+        id="201",
+        description="sample unpublished dashboard",
+        published=False,
     ),
-    QlikDashboard(
-        qDocName="sample published dashboard",
-        qDocId="52",
-        qTitle="sample published dashboard",
-        qMeta=QlikDashboardMeta(published=True),
+    QlikApp(
+        name="sample published dashboard",
+        id="202",
+        description="sample published dashboard",
+        published=True,
     ),
-    QlikDashboard(
-        qDocName="sample published dashboard",
-        qDocId="53",
-        qTitle="sample published dashboard",
-        qMeta=QlikDashboardMeta(published=True),
+    QlikApp(
+        name="sample published dashboard",
+        id="203",
+        description="sample published dashboard",
+        published=True,
     ),
 ]
 DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS = 1
 
 
-class QlikSenseUnitTest(TestCase):
+class QlikCloudUnitTest(TestCase):
     """
     Implements the necessary methods to extract
-    QlikSense Unit Testtest_dbt
+    Qlikcloud Unit Testtest_dbt
     """
 
     def __init__(self, methodName) -> None:
-        with patch.object(
-            QlikSenseClient, "get_dashboard_for_test_connection", return_value=None
-        ):
+        with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
             super().__init__(methodName)
             # test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qliksense_config)
-            self.qliksense = QliksenseSource.create(
-                mock_qliksense_config["source"],
+            self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qlikcloud_config)
+            self.qlikcloud = QlikcloudSource.create(
+                mock_qlikcloud_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
-            self.qliksense.context.get().__dict__[
+            self.qlikcloud.context.get().__dict__[
                 "dashboard_service"
             ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
-            print(self.qliksense.topology)
-            print(self.qliksense.context.get().__dict__)
+            self.qlikcloud.context.get().__dict__["project_name"] = None
 
     @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
-        results = self.qliksense.yield_dashboard(MOCK_DASHBOARD_DETAILS)
+        results = self.qlikcloud.yield_dashboard(MOCK_DASHBOARD_DETAILS)
         for result in results:
-            print(self.qliksense.context.get().__dict__)
+            print(self.qlikcloud.context.get().__dict__)
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
+
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     @pytest.mark.order(2)
     def test_dashboard_name(self):
         assert (
-            self.qliksense.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
+            self.qlikcloud.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
             == MOCK_DASHBOARD_NAME
         )
 
@@ -204,22 +192,20 @@ class QlikSenseUnitTest(TestCase):
     def test_chart(self):
         dashboard_details = MOCK_DASHBOARD_DETAILS
         with patch.object(
-            QlikSenseClient, "get_dashboard_charts", return_value=MOCK_CHARTS
+            QlikCloudClient, "get_dashboard_charts", return_value=MOCK_CHARTS
         ):
-            results = list(self.qliksense.yield_dashboard_chart(dashboard_details))
+            results = list(self.qlikcloud.yield_dashboard_chart(dashboard_details))
             chart_list = []
             for result in results:
                 if isinstance(result, Either) and result.right:
                     chart_list.append(result.right)
-            for _, (expected, original) in enumerate(
-                zip(EXPECTED_DASHBOARDS, chart_list)
-            ):
+            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
                 self.assertEqual(expected, original)
 
     @pytest.mark.order(4)
     def test_draft_dashboard(self):
         draft_dashboards_count = 0
         for dashboard in MOCK_DASHBOARDS:
-            if self.qliksense.filter_draft_dashboard(dashboard):
+            if self.qlikcloud.filter_draft_dashboard(dashboard):
                 draft_dashboards_count += 1
         assert draft_dashboards_count == DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS
