@@ -38,6 +38,9 @@ class EntityLinkSplitListener(EntityLinkListener):
     def enterNameOrFQN(self, ctx: EntityLinkParser.NameOrFQNContext):
         self._list.append(ctx.getText())
 
+    def enterSingleNameOrFQN(self, ctx: EntityLinkParser.NameOrFQNContext):
+        self._list.append(ctx.getText())
+
     def enterEntityType(self, ctx: EntityLinkParser.EntityTypeContext):
         self._list.append(ctx.getText())
 

@@ -12,6 +12,7 @@ entity_type
 
 name_or_fqn
     : NAME_OR_FQN # nameOrFQN
+    | SINGLE_NAME_OR_FQN # singleNameOrFQN
     ;
 
 entity_field
@@ -132,5 +133,9 @@ ENTITY_FIELD
     
 
 NAME_OR_FQN
-    : ~(':'|'>')+
+    : (~[:>])+ (~[:] ~[>:]+|~[\r\n])? ~(':'|'>')
+    ;
+
+SINGLE_NAME_OR_FQN
+    : ~[:>]
     ;

@@ -87,7 +87,12 @@ def test_get_decoded_column(entity_link, expected):
         pytest.param(
             "<#E::table::rds.dev.dbt_jaffle.customers>",
             "rds.dev.dbt_jaffle.customers",
-            id="invalid_entity_link9",
+            id="valid_entity_link9",
+        ),
+        pytest.param(
+            "<#E::dashboard::rds.dev.dbt_jaffle>.customers>",
+            "rds.dev.dbt_jaffle>.customers",
+            id="valid_entity_link10",
         ),
     ],
 )
@@ -120,15 +125,10 @@ def test_valid_get_table_or_column_fqn(entity_link, fqn):
             id="invalid_entity_link3",
         ),
         pytest.param(
-            "<#E::table::rds.dev.dbt_jaffle>.customers::columns::14532>",
-            ParseCancellationException,
-            id="invalid_entity_link4",
-        ),
-        pytest.param(
             "<#E::table::rds.dev.dbt_jaffle.customers::columns>",
             ValueError,
-            id="invalid_entity_link5",
-        ),
+            id="invalid_entity_link4",
+        )
     ],
 )
 def test_invalid_get_table_or_column_fqn(entity_link, error):
