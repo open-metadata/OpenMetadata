@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.ant-tag.ingestion-run-badge {
-  display: block;
-  border-radius: 0.125rem;
-  font-size: 14px;
-  line-height: 20px;
-  height: 1.25rem;
-  width: 1rem;
-  margin: 0;
-  cursor: pointer;
 
-  &.latest {
-    width: auto;
-  }
+export interface DestinationSelectItemProps {
+  selectorKey: number;
+  id: number;
+  remove: (index: number | number[]) => void;
 }

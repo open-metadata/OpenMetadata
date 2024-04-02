@@ -111,7 +111,7 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getAlertsActionTypeIcon should return correct icon for generic', () => {
-    const icon = getAlertsActionTypeIcon(SubscriptionType.Generic);
+    const icon = getAlertsActionTypeIcon(SubscriptionType.Webhook);
 
     expect(icon).toStrictEqual(<WebhookIcon height={16} width={16} />);
   });
@@ -147,7 +147,7 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getAlertActionTypeDisplayName should return correct text for generic', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Generic)).toBe(
+    expect(getAlertActionTypeDisplayName(SubscriptionType.Webhook)).toBe(
       'label.webhook'
     );
   });
