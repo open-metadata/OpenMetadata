@@ -12,10 +12,9 @@
  */
 import { Button, Col, Form, FormProps, Row, Space } from 'antd';
 import { Theme } from 'antd/lib/config-provider/context';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -33,8 +32,6 @@ const BrandColorConfigSettingsPage = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -43,25 +40,6 @@ const BrandColorConfigSettingsPage = () => {
       ),
     []
   );
-
-  const fetchTheme = async () => {
-    try {
-      setIsLoading(true);
-      const response = await new Promise<Theme>((resolve) => {
-        setTimeout(() => {
-          resolve({
-            primaryColor: '#1890ff',
-            infoColor: '#2196f3',
-          });
-        }, 3000);
-      });
-      setTheme(response);
-    } catch (error) {
-      //
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSave: FormProps['onFinish'] = (values: Theme) => {
     setTheme(values);
@@ -134,14 +112,6 @@ const BrandColorConfigSettingsPage = () => {
       ],
     },
   ];
-
-  useEffect(() => {
-    fetchTheme();
-  }, []);
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   return (
     <PageLayoutV1 pageTitle={t('label.custom-logo')}>
