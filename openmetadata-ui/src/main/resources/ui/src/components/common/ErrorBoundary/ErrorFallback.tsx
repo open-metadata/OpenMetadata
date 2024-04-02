@@ -21,6 +21,10 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   error,
   resetErrorBoundary,
 }) => {
+  const message = error.message?.startsWith('Loading chunk')
+    ? t('message.please-refresh-the-page')
+    : error.message;
+
   return (
     <Result
       extra={
@@ -32,7 +36,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
         </Button>
       }
       status="404"
-      subTitle={error.message}
+      subTitle={message}
       title={ERROR500}
     />
   );
