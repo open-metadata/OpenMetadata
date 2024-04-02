@@ -476,6 +476,7 @@ export const SERVICE_TYPE = {
   MLModels: GlobalSettingOptions.MLMODELS,
   Storage: GlobalSettingOptions.STORAGES,
   Search: GlobalSettingOptions.SEARCH,
+  Metadata: GlobalSettingOptions.METADATA,
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
 };
 

@@ -335,3 +335,126 @@ export const deleteEntityById = ({ entityType, token, entityFqn }) => {
     });
   });
 };
+
+export const getTableDetails = (tableName: string, schemaFQN: string) => ({
+  name: tableName,
+  description: 'description',
+  columns: [
+    {
+      name: `cy-user_id-${uuid()}`,
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+    },
+    {
+      name: `cy-shop_id-${uuid()}`,
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+    },
+    {
+      name: `cy-name-${uuid()}`,
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Name of the staff member.',
+      children: [
+        {
+          name: `cy-first_name-${uuid()}`,
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+          description: 'First name of the staff member.',
+        },
+        {
+          name: `cy-last_name-${uuid()}`,
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+        },
+      ],
+    },
+    {
+      name: `cy-email-${uuid()}`,
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Email address of the staff member.',
+    },
+  ],
+  databaseSchema: schemaFQN,
+});
+
+export const getTableCreationDetails = () => {
+  const DATABASE_SERVICE_NAME = `cy-database-service-${uuid()}`;
+  const DATABASE_NAME = `cy-database-${uuid()}`;
+  const SCHEMA_NAME = `cy-database-schema-${uuid()}`;
+  const TABLE_1_NAME = `cy-table-1-${uuid()}`;
+  const TABLE_2_NAME = `cy-table-2-${uuid()}`;
+  const TABLE_3_NAME = `cy-table-3-${uuid()}`;
+
+  const service = {
+    name: DATABASE_SERVICE_NAME,
+    serviceType: 'Mysql',
+    connection: {
+      config: {
+        type: 'Mysql',
+        scheme: 'mysql+pymysql',
+        username: 'username',
+        authType: {
+          password: 'password',
+        },
+        hostPort: 'mysql:3306',
+        supportsMetadataExtraction: true,
+        supportsDBTExtraction: true,
+        supportsProfiler: true,
+        supportsQueryComment: true,
+      },
+    },
+  };
+  const database = {
+    name: DATABASE_NAME,
+    service: DATABASE_SERVICE_NAME,
+  };
+
+  const schema = {
+    name: SCHEMA_NAME,
+    database: `${DATABASE_SERVICE_NAME}.${DATABASE_NAME}`,
+  };
+
+  const table1 = getTableDetails(
+    TABLE_1_NAME,
+    `${DATABASE_SERVICE_NAME}.${DATABASE_NAME}.${SCHEMA_NAME}`
+  );
+  const table2 = getTableDetails(
+    TABLE_2_NAME,
+    `${DATABASE_SERVICE_NAME}.${DATABASE_NAME}.${SCHEMA_NAME}`
+  );
+  const table3 = getTableDetails(
+    TABLE_3_NAME,
+    `${DATABASE_SERVICE_NAME}.${DATABASE_NAME}.${SCHEMA_NAME}`
+  );
+
+  return {
+    service,
+    database,
+    schema,
+    tables: [table1, table2, table3],
+  };
+};
+
+export const getUserCreationDetails = () => {
+  const userName = `user${uuid()}`;
+
+  return {
+    userName,
+    user: {
+      firstName: `first-name-${uuid()}`,
+      lastName: `last-name-${uuid()}`,
+      email: `${userName}@example.com`,
+      password: 'User@OMD123',
+    },
+  };
+};

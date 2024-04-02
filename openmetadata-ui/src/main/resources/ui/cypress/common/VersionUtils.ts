@@ -65,9 +65,10 @@ export const visitDataModelVersionPage = (
   dataModelFQN,
   dataModelId,
   dataModelName,
+  serviceName,
   version
 ) => {
-  visitDataModelPage(dataModelFQN, dataModelName);
+  visitDataModelPage(dataModelFQN, dataModelName, serviceName);
 
   interceptURL(
     'GET',

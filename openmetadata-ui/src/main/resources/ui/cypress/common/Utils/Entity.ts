@@ -138,10 +138,10 @@ export const deleteEntityViaREST = ({
   token,
 }: {
   entityName: string;
-  endPoint: EntityType;
+  endPoint: EntityType | string;
   token: Cypress.Storable;
 }) => {
-  // Create entity
+  // Delete entity
   cy.request({
     method: 'DELETE',
     url: `/api/v1/${endPoint}/name/${entityName}?recursive=true&hardDelete=true`,
