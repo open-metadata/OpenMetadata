@@ -18,8 +18,8 @@ select
 	s.id,
 	s.slice_name,
 	s.description,
-    s.datasource_id,
-    s.viz_type,
+    	s.datasource_id,
+    	s.viz_type,
 	t.table_name,
 	t.schema,
 	db.database_name,
@@ -37,7 +37,7 @@ select
 	d.id, 
 	d.dashboard_title, 
 	d.position_json,
-    d.published,
+    	d.published,
 	au.email 
 from 
 	dashboards d
@@ -52,7 +52,7 @@ select
 	d.id, 
 	d.dashboard_title, 
 	d.position_json,
-    d.published,
+    	d.published,
 	au.email 
 from 
 	dashboards d
@@ -91,10 +91,10 @@ LIMIT 1
 FETCH_COLUMN = """
 select 
 	tc.id, 
-    table_name ,
-    column_name, 
-    type,
-    tc.description 
+    	table_name ,
+    	column_name, 
+    	type,
+    	tc.description 
 from 
 	table_columns  tc  
 inner join 
