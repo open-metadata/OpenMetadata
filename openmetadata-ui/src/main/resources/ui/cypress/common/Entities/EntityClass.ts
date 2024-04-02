@@ -438,7 +438,7 @@ class EntityClass {
   updateGlossary() {
     udpateGlossaryTerm(
       `${glossaryDetails2.name}.${glossaryTermDetails2.name}`,
-      glossaryTermDetails1.name,
+      glossaryTermDetails2.name,
       this.endPoint
     );
   }

@@ -464,7 +464,7 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
-      it(`Add Enum custom property for ${entity.name} Entities`, () => {
+      it(`Add/Update/Delete Enum custom property for ${entity.name} Entities`, () => {
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -488,9 +488,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
         cy.settingClick(entity.entityApiType, true);
 
         verifyResponseStatusCode('@getEntity', 200);
-      });
 
-      it(`Edit created property for ${entity.name} entity`, () => {
+        // `Edit created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
@@ -502,9 +501,8 @@ describe('Custom Properties should work properly', { tags: 'Settings' }, () => {
 
         verifyResponseStatusCode('@getEntity', 200);
         editCreatedProperty(propertyName, 'Enum');
-      });
 
-      it(`Delete created property for ${entity.name} entity`, () => {
+        // `Delete created property for ${entity.name} entity`
         interceptURL(
           'GET',
           `/api/v1/metadata/types/name/${entity.name}*`,
