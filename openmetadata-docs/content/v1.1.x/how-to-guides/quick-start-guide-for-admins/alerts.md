@@ -5,7 +5,6 @@ slug: /how-to-guides/quick-start-guide-for-admins/alerts
 
 # Set up Alerts and Notifications
 
-# Alerts & Notifications
 Starting in 0.13 OpenMetadata allows users to define fine grain notification/alerts using the "Alerts" feature. This feature replaces the Webhook that present in version 0.12 and before. It stills provides native integration with Slack and MS Webhook and give you the ability to send alerts using a generic webhook. It also introduces the ability to send email alerts
 
 ## Creating an Alert
@@ -27,7 +26,7 @@ As with most configuration in OpenMetadata you will first need to add a Name and
     - Webhook
 
 {% image
-    src="/images/v1.1/features/alerts-notifications/OMAlerts.gif"
+    src="/images/v1.1/how-to-guides/quick-start-guide-for-admins/OMAlerts.gif"
     alt="Set profiler configuration"
     caption="Configure OpenMetadata Alert"
  /%}

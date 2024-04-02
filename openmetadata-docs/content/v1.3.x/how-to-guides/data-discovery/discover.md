@@ -5,7 +5,12 @@ slug: /how-to-guides/data-discovery/discover
 
 # How to Discover Assets of Interest
 
-Search is at the front and center of OpenMetadata and is available in the top Menu bar across all the different pages. OpenMetadata simplifies data discovery with the following strategies.
+OpenMetadata simplifies data discovery with the following strategies.
+
+## Search
+Search is at the front and center of OpenMetadata and is available in the top Menu bar across all the different pages. Users can also start searching by invoking the Keyboard shortcut Ctrl + K in Windows or Cmd + K in Mac OS.
+
+The Search APIs are backed by Elasticsearch.
 
 ## Keyword Search
 A simple yet powerful way to find assets by typing the name or description from the search interface. The search suggest will display matching data assets in several categories. Your query will retrieve all matching tables, topics, dashboards, pipelines, ML models, containers, glossaries, and tags. Your queries will match names for data assets and their components, such as column names for tables and chart names for dashboards. The queries will also match the descriptions used.
@@ -99,7 +104,7 @@ caption="Discover Assets through Relationships: Lineage"
 Users can find data assets matching strict criteria by multiple parameters on metadata properties, using the **syntax editor** with and/or conditions. Advanced search in OpenMetadata supports Boolean operators and faceted queries to search for specific facets of your data. Separate advanced search options are available for Tables, Topics, Dashboards, Pipelines, ML Models, Containers, Glossary, and Tags.
 
 {% image
-  src="/images/v1.3/features/data-discovery.gif"
+  src="/images/v1.3/how-to-guides/discovery/data-discovery.gif"
 /%}
 
 ## Discover Data Evolution
