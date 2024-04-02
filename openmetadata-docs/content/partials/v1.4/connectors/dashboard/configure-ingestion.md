@@ -38,5 +38,6 @@ Please follow the instructions below
 - **Include Tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
 - **Include Data Models (toggle)**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
 - **Mark Deleted Dashboards (toggle)**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
+- **Include Draft Dashboard (toogle)**: Set the 'Include Draft Dashboard' toggle to include draft dashboards. By default it will include draft dashboards.
 
 {% /extraContent %}

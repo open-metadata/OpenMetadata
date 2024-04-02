@@ -84,9 +84,18 @@ class QliksenseSource(DashboardServiceSource):
         # Data models will be cleared up for each dashboard
         self.data_models: List[QlikTable] = []
 
+    def filter_draft_dashboard(self, dashboard: QlikDashboard) -> bool:
+        # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikDashboardMeta(qMeta)
+        return (not self.source_config.includeDraftDashboard) and (
+            not dashboard.qMeta.published
+        )
+
     def get_dashboards_list(self) -> Iterable[QlikDashboard]:
         """Get List of all dashboards"""
         for dashboard in self.client.get_dashboards_list():
+            if self.filter_draft_dashboard(dashboard):
+                # Skip unpublished dashboards
+                continue
             # create app specific websocket
             self.client.connect_websocket(dashboard.qDocId)
             # clean data models for next iteration

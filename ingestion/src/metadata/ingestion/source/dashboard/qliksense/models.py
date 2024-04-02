@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 class QlikDashboardMeta(BaseModel):
     description: Optional[str]
+    published: Optional[bool]
 
 
 class QlikDashboard(BaseModel):
