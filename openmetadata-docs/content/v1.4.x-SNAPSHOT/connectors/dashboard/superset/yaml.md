@@ -157,8 +157,7 @@ source:
         # For MySQL Connection
         # type: Mysql
         # username: <username>
-        # authType:
-        #   password: <password>
+        # password: <password>
         # hostPort: <hostPort>
         # databaseSchema: superset
 
@@ -167,8 +166,7 @@ source:
         # For Postgres Connection
         # type: Postgres
         # username: username
-        # authType:
-        #   password: <password>
+        # password: password
         # hostPort: localhost:5432
         # database: superset
 ```
