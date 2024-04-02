@@ -170,8 +170,6 @@ class QlikCloudUnitTest(TestCase):
             ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
             self.qlikcloud.context.get().__dict__["project_name"] = None
 
-            # print(self.qlikcloud.topology)
-            # print(self.qlikcloud.context.get().__dict__)
 
     @pytest.mark.order(1)
     def test_dashboard(self):
