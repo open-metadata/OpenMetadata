@@ -33,6 +33,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as ChangeHierarchyIcon } from '../../../assets/svg/ic-change-hierarchy.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
@@ -387,7 +388,7 @@ const GlossaryHeader = ({
                 description={t('message.modify-hierarchy-entity-description', {
                   entity: t('label.term'),
                 })}
-                icon={StyleIcon}
+                icon={ChangeHierarchyIcon}
                 id="change-parent-button"
                 name={t('label.change-parent-entity', {
                   entity: t('label.term'),
