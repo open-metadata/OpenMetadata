@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import React from 'react';
-import AvatarCarousel from './AvatarCarousel';
+import { EntityReference } from '../../../generated/entity/type';
+import AvatarCarouselItem from './AvatarCarouselItem';
 
 const suggestions = [
   {
@@ -50,26 +51,69 @@ jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
   default: 'SuggestionsProvider',
 }));
 
-jest.mock('../ProfilePicture/ProfilePicture', () =>
-  jest
-    .fn()
-    .mockImplementation(({ name }) => (
-      <span data-testid="mocked-profile-picture">{name}</span>
-    ))
-);
-
 jest.mock('../../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest
     .fn()
     .mockImplementation(() => Promise.resolve(suggestions)),
 }));
 
-describe('AvatarCarousel', () => {
-  it('renders without crashing', () => {
-    render(<AvatarCarousel showArrows />);
+describe('AvatarCarouselItem', () => {
+  const avatar: EntityReference = {
+    id: '1',
+    name: 'Test Avatar',
+    type: 'user',
+  };
+  const index = 0;
+  const onAvatarClick = jest.fn();
+  const avatarBtnRefs = { current: [] };
+  const isActive = false;
 
-    expect(screen.getByText(/Avatar 1/i)).toBeInTheDocument();
-    expect(screen.getByText(/Avatar 2/i)).toBeInTheDocument();
-    expect(screen.getByTestId('prev-slide')).toBeDisabled();
+  it('renders AvatarCarouselItem with ProfilePicture component', () => {
+    const { getByTestId } = render(
+      <AvatarCarouselItem
+        avatar={avatar}
+        avatarBtnRefs={avatarBtnRefs}
+        index={index}
+        isActive={isActive}
+        onAvatarClick={onAvatarClick}
+      />
+    );
+
+    expect(
+      getByTestId(`avatar-carousel-item-${avatar.id}`)
+    ).toBeInTheDocument();
+  });
+
+  it('calls onAvatarClick function when clicked', () => {
+    const { getByTestId } = render(
+      <AvatarCarouselItem
+        avatar={avatar}
+        avatarBtnRefs={avatarBtnRefs}
+        index={index}
+        isActive={isActive}
+        onAvatarClick={onAvatarClick}
+      />
+    );
+
+    const button = getByTestId(`avatar-carousel-item-${avatar.id}`);
+    button.click();
+
+    expect(onAvatarClick).toHaveBeenCalledWith(index);
+  });
+
+  it('sets isActive class when isActive is true', () => {
+    const { getByTestId } = render(
+      <AvatarCarouselItem
+        isActive
+        avatar={avatar}
+        avatarBtnRefs={avatarBtnRefs}
+        index={index}
+        onAvatarClick={onAvatarClick}
+      />
+    );
+
+    expect(getByTestId(`avatar-carousel-item-${avatar.id}`)).toHaveClass(
+      'active'
+    );
   });
 });
