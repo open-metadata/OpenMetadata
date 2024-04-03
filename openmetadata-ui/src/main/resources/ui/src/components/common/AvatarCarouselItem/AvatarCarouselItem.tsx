@@ -12,7 +12,7 @@
  */
 import { Badge, Button } from 'antd';
 import classNames from 'classnames';
-import React, { RefObject, useRef } from 'react';
+import React, { RefObject, useCallback, useRef } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
@@ -33,11 +33,17 @@ const AvatarCarouselItem = ({
   avatarBtnRefs,
   onAvatarClick,
 }: AvatarCarouselItemProps) => {
-  const { selectedUserSuggestions } = useSuggestionsContext();
-
+  const { suggestionsByUser } = useSuggestionsContext();
   const isActive = currentSlide === index;
   const buttonRef = useRef(null);
   avatarBtnRefs.current[index] = buttonRef;
+
+  const getUserSuggestionsCount = useCallback(
+    (userName: string) => {
+      return suggestionsByUser.get(userName) ?? [];
+    },
+    [suggestionsByUser]
+  );
 
   const button = (
     <Button
@@ -53,11 +59,9 @@ const AvatarCarouselItem = ({
 
   return (
     <UserPopOverCard key={avatar.id} userName={avatar?.name ?? ''}>
-      {isActive ? ( // Show Badge only for active item
-        <Badge count={selectedUserSuggestions.length}>{button}</Badge>
-      ) : (
-        button
-      )}
+      <Badge count={getUserSuggestionsCount(avatar?.name ?? '').length}>
+        {button}
+      </Badge>
     </UserPopOverCard>
   );
 };
