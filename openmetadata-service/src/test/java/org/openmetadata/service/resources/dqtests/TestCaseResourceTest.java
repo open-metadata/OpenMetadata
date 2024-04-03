@@ -771,11 +771,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withTimestamp(TestUtils.dateToTimestamp(String.format("2021-09-%02d", i)));
       putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
+    TestCase testCaseForEL = testCases.get(0);
+
     HashMap queryParams = new HashMap<>();
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
-    TestCase testCaseForEL = allEntities.getData().get(0);
     queryParams.put("q", "test_getSimplelistFromSearcha");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
