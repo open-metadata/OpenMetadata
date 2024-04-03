@@ -50,7 +50,7 @@ Set the Include tags toggle to control whether to include tags as part of metada
 $$
 
 $$section
-### Include Tags $(id="includeUnDeployedPipelines")
+### Include UnDeployed Pipelines $(id="includeUnDeployedPipelines")
 
 Set the 'Include UnDeployed Pipelines' toggle to control whether to include un-deployed pipelines as part of metadata ingestion.
 $$
