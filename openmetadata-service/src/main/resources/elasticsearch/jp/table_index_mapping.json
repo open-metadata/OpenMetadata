@@ -110,6 +110,7 @@
         "type": "keyword"
       },
       "columns": {
+        "type": "nested",
         "properties": {
           "name": {
             "type": "text",

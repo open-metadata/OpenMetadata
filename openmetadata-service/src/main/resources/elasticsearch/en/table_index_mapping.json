@@ -99,6 +99,7 @@
         "normalizer": "lowercase_normalizer"
       },
       "columns": {
+        "type": "nested",
         "properties": {
           "name": {
             "type": "text",
