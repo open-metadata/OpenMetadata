@@ -13,6 +13,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { getToken } from '../../common/Utils/LocalStorage';
+import { performLogin } from '../../common/Utils/Login';
 import { BASE_URL, LOGIN_ERROR_MESSAGE } from '../../constants/constants';
 
 const CREDENTIALS = {
@@ -75,7 +76,7 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
 
     // Login with the created user
 
-    cy.login(CREDENTIALS.email, CREDENTIALS.password);
+    performLogin(CREDENTIALS.email, CREDENTIALS.password);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
@@ -103,14 +104,14 @@ describe('Login flow should work properly', { tags: 'Settings' }, () => {
 
   it('Signin using invalid credentials', () => {
     // Login with invalid email
-    cy.login(invalidEmail, CREDENTIALS.password);
+    performLogin(invalidEmail, CREDENTIALS.password);
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
       .invoke('text')
       .should('eq', LOGIN_ERROR_MESSAGE);
 
     // Login with invalid password
-    cy.login(CREDENTIALS.email, invalidPassword);
+    performLogin(CREDENTIALS.email, invalidPassword);
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
       .invoke('text')
