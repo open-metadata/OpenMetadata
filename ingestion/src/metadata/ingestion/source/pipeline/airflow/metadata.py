@@ -306,7 +306,7 @@ class AirflowSource(PipelineServiceSource):
                     DagModel,
                     SerializedDagModel.dag_id == DagModel.dag_id,
                 )
-            ).filter(DagModel.is_paused is False)
+            ).filter(DagModel.is_paused == False) #pylint: disable=singleton-comparison
         for serialized_dag in session_query.yield_per(100):
             try:
                 data = serialized_dag[1]["dag"]
