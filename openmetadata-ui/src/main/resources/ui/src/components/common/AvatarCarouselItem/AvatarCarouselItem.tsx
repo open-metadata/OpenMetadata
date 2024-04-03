@@ -48,6 +48,7 @@ const AvatarCarouselItem = ({
       className={classNames('p-0 m-r-xss avatar-item', {
         active: isActive,
       })}
+      data-testid={`avatar-carousel-item-${avatar.id}`}
       ref={buttonRef}
       shape="circle"
       onClick={() => onAvatarClick(index)}>
