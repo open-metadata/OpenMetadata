@@ -218,8 +218,10 @@ public class JwtFilter implements ContainerRequestFilter {
       domain = StringUtils.EMPTY;
     }
 
-    // validate principal domain
-    if (enforcePrincipalDomain && !domain.equals(principalDomain)) {
+    // validate principal domain, for users
+    boolean isBot =
+        claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean());
+    if (!isBot && (enforcePrincipalDomain && !domain.equals(principalDomain))) {
       throw new AuthenticationException(
           String.format(
               "Not Authorized! Email does not match the principal domain %s", principalDomain));
