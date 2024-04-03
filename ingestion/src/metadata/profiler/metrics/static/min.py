@@ -19,7 +19,7 @@ from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
 from metadata.profiler.orm.functions.length import LenFn
@@ -95,12 +95,19 @@ class Min(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
+        import pandas as pd
+
         if is_quantifiable(self.col.type):
             return min((df[self.col.name].min() for df in dfs))
         if is_date_time(self.col.type):
-            min_ = min((df[self.col.name].min() for df in dfs))
-            return int(min_.timestamp() * 1000)
-        return 0
+            min_ = None
+            if self.col.type in {DataType.DATETIME, DataType.DATE}:
+                min_ = min((pd.to_datetime(df[self.col.name]).min() for df in dfs))
+                return None if pd.isnull(min_) else int(min_.timestamp() * 1000)
+            elif self.col.type == DataType.TIME:
+                min_ = min((pd.to_timedelta(df[self.col.name]).min() for df in dfs))
+                return None if pd.isnull(min_) else min_.seconds
+        return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
         """nosql function"""

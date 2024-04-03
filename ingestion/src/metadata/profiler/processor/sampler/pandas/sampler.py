@@ -136,7 +136,7 @@ class DatalakeSampler(SamplerInterface):
                 break
         return cols, rows
 
-    def random_sample(self):
+    def random_sample(self, is_sampled: bool = False):
         """Generate random sample from the table
 
         Returns:
@@ -148,9 +148,8 @@ class DatalakeSampler(SamplerInterface):
         if self._partition_details:
             self.table = self._partitioned_table()
 
-        if not self.profile_sample:
+        if not self.profile_sample or is_sampled:
             return self.table
-
         return self._get_sampled_dataframe()
 
     def _fetch_rows(self, data_frame):
