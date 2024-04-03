@@ -81,7 +81,9 @@
           {
             "name": "fieldChangeList",
             "input": [
-              "usageSummary"
+              "usageSummary",
+              "sourceHash",
+              "lifeCycle"
             ]
           }
         ]
