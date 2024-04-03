@@ -45,10 +45,13 @@ public class AuthLoginServlet extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      LOG.debug("Performing Auth Login For User Session: {} ", req.getSession().getId());
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req, client);
       if (credentials.isPresent()) {
+        LOG.debug("Auth Tokens Located from Session: {} ", req.getSession().getId());
         sendRedirectWithToken(resp, credentials.get(), serverUrl, claimsOrder);
       } else {
+        LOG.debug("Performing Auth Code Flow to Idp: {} ", req.getSession().getId());
         Map<String, String> params = buildParams();
 
         params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
