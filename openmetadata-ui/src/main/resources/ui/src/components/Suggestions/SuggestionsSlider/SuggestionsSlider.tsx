@@ -14,6 +14,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
+import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
@@ -35,7 +36,7 @@ const SuggestionsSlider = () => {
       </Typography.Text>
       <AvatarCarousel />
       {selectedUserSuggestions.length > 0 && (
-        <Space className="slider-btn-container m-l-xss">
+        <Space className="slider-btn-container m-l-xs">
           <Button
             ghost
             className="text-xs text-primary font-medium"
@@ -68,11 +69,11 @@ const SuggestionsSlider = () => {
           </Button>
           <Button
             ghost
-            className="text-xs text-primary font-medium"
+            className="text-xs text-primary font-medium close-suggestion-btn flex-center"
             data-testid="close-suggestion"
-            icon={<CloseOutlined />}
             type="primary"
             onClick={() => onUpdateActiveUser()}>
+            <ExitIcon />
             {t('label.close')}
           </Button>
         </Space>
