@@ -89,7 +89,6 @@ def _(config: GCSConfig):
 
 @get_datalake_client.register
 def _(config: AzureConfig):
-
     try:
         return AzureClient(config.securityConfig).create_blob_client()
     except Exception as exc:

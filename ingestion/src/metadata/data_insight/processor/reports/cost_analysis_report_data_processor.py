@@ -157,7 +157,6 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
             list:
         """
         try:
-
             for entity_fqn, cost_analysis_report_data in entity.items():
                 entity_type = str(cost_analysis_report_data.entity.__class__.__name__)
                 service_type = str(cost_analysis_report_data.entity.serviceType.name)
