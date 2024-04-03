@@ -60,7 +60,7 @@ public interface MessageDecorator<T> {
 
   String getRemoveMarkerClose();
 
-  String getEntityUrl(String entityType, String fqn, String additionalInput);
+  String getEntityUrl(String prefix, String fqn, String additionalInput);
 
   T buildEntityMessage(ChangeEvent event);
 
@@ -80,7 +80,7 @@ public interface MessageDecorator<T> {
       MessageParser.EntityLink link = MessageParser.EntityLink.parse(testCase.getEntityLink());
       // TODO: this needs to be fixed no way to know the UI redirection
       return getEntityUrl(
-          link.getEntityType(), link.getEntityFQN(), "profiler?activeTab=Data%20Quality");
+          "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
     }
 
     // Glossary Term
