@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
+import org.pac4j.oidc.client.GoogleOidcClient;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.credentials.OidcCredentials;
@@ -59,7 +60,11 @@ public class AuthLoginServlet extends HttpServlet {
         addStateAndNonceParameters(req, params);
 
         // This is always used to prompt the user to login
-        params.put(OidcConfiguration.PROMPT, "login");
+        if (client instanceof GoogleOidcClient) {
+          params.put(OidcConfiguration.PROMPT, "consent");
+        } else {
+          params.put(OidcConfiguration.PROMPT, "login");
+        }
         params.put(OidcConfiguration.MAX_AGE, "0");
 
         String location = buildAuthenticationRequestUrl(params);
