@@ -561,6 +561,12 @@
       <artifactId>quartz</artifactId>
       <version>${quartz.version}</version>
     </dependency>
+    <!-- Needed for Quartz -->
+    <dependency>
+      <groupId>com.mchange</groupId>
+      <artifactId>c3p0</artifactId>
+      <version>0.10.0</version>
+    </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
       <artifactId>woodstox-core</artifactId>
