@@ -84,7 +84,7 @@ export const FIELDS: Record<string, AdvancedSearchFieldDetails> = {
     responseValueFirstGroup: `"displayName":"${USER_1_FULL_NAME}"`,
     searchCriteriaSecondGroup: USER_2_FULL_NAME,
     owner: true,
-    responseValueSecondGroup: `"displayName":"${USER_2_FULL_NAME}"`,
+    responseValueSecondGroup: USER_2_FULL_NAME,
   },
   Tags: {
     name: 'Tags',
@@ -596,7 +596,6 @@ export const advanceSearchPreRequests = (testData, token: string) => {
     ...ADVANCE_SEARCH_DATABASE_SERVICE_2,
   });
 
-  // Create a new users
   cy.request({
     method: 'POST',
     url: `/api/v1/users/signup`,
@@ -604,15 +603,6 @@ export const advanceSearchPreRequests = (testData, token: string) => {
     body: USER_1.user,
   }).then((response) => {
     testData.user_1 = response.body;
-  });
-
-  cy.request({
-    method: 'POST',
-    url: `/api/v1/users/signup`,
-    headers: { Authorization: `Bearer ${token}` },
-    body: USER_2.user,
-  }).then((response) => {
-    testData.user_2 = response.body;
 
     // Add owner to table 1
     cy.request({
@@ -632,12 +622,22 @@ export const advanceSearchPreRequests = (testData, token: string) => {
             op: 'add',
             path: '/owner',
             value: {
-              id: testData.user_2.id,
+              id: testData.user_1.id,
               type: 'user',
             },
           },
         ],
       });
+    });
+
+    // Create a new users
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/users/signup`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: USER_2.user,
+    }).then((response) => {
+      testData.user_2 = response.body;
     });
 
     // Add Tier to table 2
