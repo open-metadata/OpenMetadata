@@ -123,6 +123,47 @@
                 "status": "published",
                 "thumbnail_url": "/api/v1/dashboard/14/thumbnail/0088b55d1a7c34b5aa121f11252c11d5/",
                 "url": "/superset/dashboard/14/"
+            },
+            {
+                "certification_details": "",
+                "certified_by": "",
+                "changed_by": {
+                    "first_name": "Superset",
+                    "id": 1,
+                    "last_name": "Admin",
+                    "username": "admin"
+                },
+                "changed_by_name": "Superset Admin",
+                "changed_by_url": "/superset/profile/admin",
+                "changed_on_delta_humanized": "2 days ago",
+                "changed_on_utc": "2024-02-30T10:53:25.572977+0000",
+                "created_by": {
+                    "first_name": "Superset",
+                    "id": 1,
+                    "last_name": "Admin"
+                },
+                "created_on_delta_humanized": "2 days ago",
+                "css": "",
+                "dashboard_title": "My DRAFT DASH",
+                "id": 15,
+                "is_managed_externally": false,
+                "json_metadata": "{\"show_native_filters\": true, \"color_scheme\": \"\", \"refresh_frequency\": 0, \"shared_label_colors\": {}, \"color_scheme_domain\": [], \"expanded_slices\": {}, \"label_colors\": {}, \"timed_refresh_immune_slices\": [], \"default_filters\": \"{}\", \"chart_configuration\": {}}",
+                "owners": [
+                    {
+                        "email": "admin@openmetadata.org",
+                        "first_name": "Superset",
+                        "id": 1,
+                        "last_name": "Admin",
+                        "username": "admin"
+                    }
+                ],
+                "position_json": "{\"CHART-dwSXo_0t5X\":{\"children\":[],\"id\":\"CHART-dwSXo_0t5X\",\"meta\":{\"chartId\":37,\"height\":50,\"sliceName\":\"% Rural\",\"uuid\":\"8f663401-854a-4da7-8e50-4b8e4ebb4f22\",\"width\":4},\"parents\":[\"ROOT_ID\",\"GRID_ID\",\"ROW-z_7odBWenK\"],\"type\":\"CHART\"},\"DASHBOARD_VERSION_KEY\":\"v2\",\"GRID_ID\":{\"children\":[\"ROW-z_7odBWenK\"],\"id\":\"GRID_ID\",\"parents\":[\"ROOT_ID\"],\"type\":\"GRID\"},\"HEADER_ID\":{\"id\":\"HEADER_ID\",\"meta\":{\"text\":\"My DASH\"},\"type\":\"HEADER\"},\"ROOT_ID\":{\"children\":[\"GRID_ID\"],\"id\":\"ROOT_ID\",\"type\":\"ROOT\"},\"ROW-z_7odBWenK\":{\"children\":[\"CHART-dwSXo_0t5X\"],\"id\":\"ROW-z_7odBWenK\",\"meta\":{\"background\":\"BACKGROUND_TRANSPARENT\"},\"parents\":[\"ROOT_ID\",\"GRID_ID\"],\"type\":\"ROW\"}}",
+                "published": false,
+                "roles": [],
+                "slug": null,
+                "status": "draft",
+                "thumbnail_url": "/api/v1/dashboard/15/thumbnail/0088b55d1a7c34b5aa121f11252c11d5/",
+                "url": "/superset/dashboard/15/"
             }
         ]
     },
