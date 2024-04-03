@@ -21,7 +21,6 @@ import 'react-toastify/dist/ReactToastify.min.css';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
-import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
@@ -82,11 +81,9 @@ const App: FC = () => {
                           <WebSocketProvider>
                             <GlobalSearchProvider>
                               <ApplicationsProvider>
-                                <DomainProvider>
-                                  <EntityExportModalProvider>
-                                    <AppRouter />
-                                  </EntityExportModalProvider>
-                                </DomainProvider>
+                                <EntityExportModalProvider>
+                                  <AppRouter />
+                                </EntityExportModalProvider>
                               </ApplicationsProvider>
                             </GlobalSearchProvider>
                           </WebSocketProvider>

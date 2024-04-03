@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
@@ -20,6 +21,7 @@ import { AuthenticationConfiguration } from '../generated/configuration/authenti
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 
@@ -65,4 +67,15 @@ export interface ApplicationStore
   setOidcToken: (oidcToken: string) => void;
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
+}
+
+export interface DomainStore {
+  domains: Domain[];
+  domainLoading: boolean;
+  activeDomain: string;
+  domainOptions: ItemType[];
+  fetchDomainList: () => Promise<void>;
+  updateDomains: (domainsArr: Domain[]) => void;
+  refreshDomains: () => void;
+  updateActiveDomain: (activeDomainKey: string) => void;
 }

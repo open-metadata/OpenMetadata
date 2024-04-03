@@ -53,6 +53,7 @@ import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
@@ -82,7 +83,6 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
@@ -108,8 +108,7 @@ const NavBar = ({
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
 
   const history = useHistory();
-  const { domainOptions, activeDomain, updateActiveDomain } =
-    useDomainProvider();
+  const { domainOptions, activeDomain, updateActiveDomain } = useDomainStore();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
