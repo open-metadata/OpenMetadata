@@ -40,7 +40,7 @@ from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSour
 from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import clean_uri, replace_special_with
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -75,11 +75,23 @@ class QlikcloudSource(QliksenseSource):
         self.collections: List[QlikAppList] = []
         self.data_models: List[QlikTable] = []
 
-    def get_dashboards_list(self) -> Optional[List[QlikApp]]:
+    def filter_draft_dashboard(self, dashboard: QlikApp) -> bool:
+        # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikApp
+        return (not self.source_config.includeDraftDashboard) and (
+            not dashboard.published
+        )
+
+    def get_dashboards_list(self) -> Iterable[QlikApp]:
         """
         Get List of all apps
         """
-        return self.client.get_dashboards_list()
+        for dashboard in self.client.get_dashboards_list():
+            if self.filter_draft_dashboard(dashboard):
+                # Skip unpublished dashboards
+                continue
+            # clean data models for next iteration
+            self.data_models = []
+            yield dashboard
 
     def get_dashboard_name(self, dashboard: QlikApp) -> str:
         """
@@ -100,10 +112,7 @@ class QlikcloudSource(QliksenseSource):
         Method to Get Dashboard Entity
         """
         try:
-            dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}/overview"
-                f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
-            )
+            dashboard_url = f"{clean_uri(self.service_connection.hostPort)}/sense/app/{dashboard_details.id}/overview"
 
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,

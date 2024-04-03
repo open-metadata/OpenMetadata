@@ -1287,7 +1287,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException {
+  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a user term, carry it forward from the parent team
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =

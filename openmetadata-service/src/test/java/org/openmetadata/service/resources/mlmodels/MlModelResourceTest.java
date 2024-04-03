@@ -420,7 +420,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException {
+  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for an ML Model, carry it forward from the ML Model Service
     MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
     CreateMlModelService createService =
