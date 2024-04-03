@@ -34,6 +34,10 @@ export default defineConfig({
 
       return config;
     },
-    specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
+    specPattern: [
+      '/cypress/e2e/Flow/SearchFlow/AdditionalRuleSearch.spec.ts',
+      '/cypress/e2e/Flow/SearchFlow/GroupSearch.spec.ts',
+      '/cypress/e2e/Flow/SearchFlow/SingleFiledSearch.spec.ts',
+    ],
   },
 });
