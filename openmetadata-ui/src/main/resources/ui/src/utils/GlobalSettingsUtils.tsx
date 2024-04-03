@@ -274,10 +274,11 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: CustomLogoIcon,
         },
         {
-          label: 'Brand Color',
-          description: 'Customize OpenMetadata with your company brand color',
+          label: 'White Label',
+          description:
+            'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
           isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.BRAND_COLOR}`,
+          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.WHITE_LABEL}`,
           icon: CustomLogoIcon,
         },
         {

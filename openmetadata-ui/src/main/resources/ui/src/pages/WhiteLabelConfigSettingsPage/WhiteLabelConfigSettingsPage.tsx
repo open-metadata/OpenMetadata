@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, FormProps, Row, Space } from 'antd';
+import { Button, Card, Col, Form, FormProps, Row, Space } from 'antd';
 import { Theme } from 'antd/lib/config-provider/context';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,8 +25,9 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import './white-label-config-settings-page.less';
 
-const BrandColorConfigSettingsPage = () => {
+const WhiteLabelConfigSettingsPage = () => {
   const history = useHistory();
   const { theme, setTheme } = useApplicationStore();
   const { t } = useTranslation();
@@ -36,7 +37,7 @@ const BrandColorConfigSettingsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        'Brand Color'
+        'White Label'
       ),
     []
   );
@@ -45,7 +46,7 @@ const BrandColorConfigSettingsPage = () => {
     setTheme(values);
   };
 
-  const formFields: FieldProp[] = [
+  const themeFormFields: FieldProp[] = [
     {
       name: 'primaryColor',
       id: 'root/color',
@@ -113,6 +114,67 @@ const BrandColorConfigSettingsPage = () => {
     },
   ];
 
+  const customLogoFormFields: FieldProp[] = [
+    {
+      name: 'customLogoUrlPath',
+      label: t('label.logo-url'),
+      type: FieldTypes.TEXT,
+      required: false,
+      id: 'root/customLogoUrlPath',
+      placeholder: 'URL path for the login page logo',
+      props: {
+        'data-testid': 'customLogoUrlPath',
+        autoFocus: true,
+      },
+      rules: [
+        {
+          type: 'url',
+          message: t('message.entity-is-not-valid-url', {
+            entity: t('label.logo-url'),
+          }),
+        },
+      ],
+    },
+    {
+      name: 'customMonogramUrlPath',
+      label: t('label.monogram-url'),
+      type: FieldTypes.TEXT,
+      required: false,
+      id: 'root/customMonogramUrlPath',
+      placeholder: 'URL path for the navbar logo',
+      props: {
+        'data-testid': 'customMonogramUrlPath',
+      },
+      rules: [
+        {
+          type: 'url',
+          message: t('message.entity-is-not-valid-url', {
+            entity: t('label.monogram-url'),
+          }),
+        },
+      ],
+    },
+    {
+      name: 'customFaviconUrlPath',
+      label: t('label.favicon-url'),
+      type: FieldTypes.TEXT,
+      required: false,
+      id: 'root/customFaviconUrlPath',
+      placeholder: 'URL path for the favicon',
+      props: {
+        'data-testid': 'customFaviconUrlPath',
+      },
+      rules: [
+        {
+          type: 'url',
+          message: t('message.entity-is-not-valid-url', {
+            entity: t('label.favicon-url'),
+          }),
+        },
+      ],
+    },
+  ];
+
   return (
     <PageLayoutV1 pageTitle={t('label.custom-logo')}>
       <Row align="middle" className="page-container" gutter={[0, 16]}>
@@ -124,21 +186,28 @@ const BrandColorConfigSettingsPage = () => {
             <Col>
               <PageHeader
                 data={{
-                  header: 'Brand Color',
+                  header: 'White Label',
                   subHeader:
-                    'Customize OpenMetadata with your company brand color',
+                    'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
                 }}
               />
             </Col>
           </Row>
         </Col>
-        <Col offset={6} span={12}>
+        <Col offset={2} span={20}>
           <Form
             form={form}
             initialValues={theme}
             layout="vertical"
             onFinish={handleSave}>
-            {generateFormFields(formFields)}
+            <div className="white-label-card-wrapper m-b-md">
+              <Card className="white-label-config-card" title="Custom Logo">
+                {generateFormFields(customLogoFormFields)}
+              </Card>
+              <Card className="white-label-config-card" title="Custom Theme">
+                {generateFormFields(themeFormFields)}
+              </Card>
+            </div>
 
             <Space
               className="w-full justify-end"
@@ -161,4 +230,4 @@ const BrandColorConfigSettingsPage = () => {
   );
 };
 
-export default BrandColorConfigSettingsPage;
+export default WhiteLabelConfigSettingsPage;

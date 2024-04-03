@@ -26,7 +26,6 @@ import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AlertsActivityFeedPage from '../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
-import BrandColorConfigSettingsPage from '../../pages/BrandColorConfigSettingsPage/BrandColorConfigSettingsPage';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
 import CustomLogoConfigSettingsPage from '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage';
@@ -53,6 +52,7 @@ import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
 import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
+import BrandColorConfigSettingsPage from '../../pages/WhiteLabelConfigSettingsPage/WhiteLabelConfigSettingsPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -301,7 +301,7 @@ const SettingsRouter = () => {
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.BRAND_COLOR
+          GlobalSettingOptions.WHITE_LABEL
         )}
       />
       <AdminProtectedRoute
