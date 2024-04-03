@@ -66,7 +66,7 @@ class MissingMetricException(Exception):
     """
 
 
-class Profiler(Generic[TMetric]):
+class Profiler(Generic[TMetric]):  # pylint: disable=too-many-public-methods
     """
     Core Profiler.
 
@@ -108,6 +108,7 @@ class Profiler(Generic[TMetric]):
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
+        self.fetch_column_from_property()
         self.data_frame_list = None
 
     @property
@@ -161,7 +162,14 @@ class Profiler(Generic[TMetric]):
                 if column.name not in self._get_excluded_columns()
             ]
 
-        return self._columns
+        return [
+            column
+            for column in self._columns
+            if column.type.__class__.__name__ not in NOT_COMPUTE
+        ]
+
+    def fetch_column_from_property(self) -> Optional[List[Column]]:
+        self._columns = self.columns
 
     def _get_excluded_columns(self) -> Optional[Set[str]]:
         """Get excluded  columns for table being profiled"""
@@ -434,11 +442,6 @@ class Profiler(Generic[TMetric]):
 
     def _prepare_column_metrics(self) -> List:
         """prepare column metrics"""
-        columns = [
-            column
-            for column in self.columns
-            if column.type.__class__.__name__ not in NOT_COMPUTE
-        ]
         column_metrics_for_thread_pool = []
         static_metrics = [
             ThreadPoolMetrics(
@@ -451,7 +454,7 @@ class Profiler(Generic[TMetric]):
                 column=column,
                 table=self.table,
             )
-            for column in columns
+            for column in self.columns
         ]
         query_metrics = [
             ThreadPoolMetrics(
@@ -460,7 +463,7 @@ class Profiler(Generic[TMetric]):
                 column=column,
                 table=self.table,
             )
-            for column in columns
+            for column in self.columns
             for metric in self.get_col_metrics(self.query_metrics, column)
         ]
         window_metrics = [
@@ -474,7 +477,7 @@ class Profiler(Generic[TMetric]):
                 column=column,
                 table=self.table,
             )
-            for column in columns
+            for column in self.columns
         ]
 
         # we'll add the system metrics to the thread pool computation
@@ -482,7 +485,7 @@ class Profiler(Generic[TMetric]):
             column_metrics_for_thread_pool.extend(metric_type)
 
         # we'll add the custom metrics to the thread pool computation
-        for column in columns:
+        for column in self.columns:
             custom_metrics = self.get_custom_metrics(column.name)
             if custom_metrics:
                 column_metrics_for_thread_pool.append(
@@ -631,12 +634,16 @@ class Profiler(Generic[TMetric]):
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=self._table_results.get("createDateTime"),
                 sizeInByte=self._table_results.get("sizeInBytes"),
-                profileSample=self.profile_sample_config.profile_sample
-                if self.profile_sample_config
-                else None,
-                profileSampleType=self.profile_sample_config.profile_sample_type
-                if self.profile_sample_config
-                else None,
+                profileSample=(
+                    self.profile_sample_config.profile_sample
+                    if self.profile_sample_config
+                    else None
+                ),
+                profileSampleType=(
+                    self.profile_sample_config.profile_sample_type
+                    if self.profile_sample_config
+                    else None
+                ),
                 customMetrics=self._table_results.get("customMetrics"),
             )
 
