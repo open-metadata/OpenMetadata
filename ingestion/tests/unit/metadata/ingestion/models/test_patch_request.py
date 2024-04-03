@@ -26,14 +26,21 @@ class JsonPatchUpdaterTest(TestCase):
         """Returns patch as is when no restrict update fields are defined and no replace
         operation is being done."""
 
-        json_patch = jsonpatch.JsonPatch([
-            { "op": "add", "path": "/foo/1", "value": "bar" },
-            { "op": "remove", "path": "/foo/0",},
-            { "op": "add", "path": "/foo/0", "value": "baz" },
-        ])
+        json_patch = jsonpatch.JsonPatch(
+            [
+                {"op": "add", "path": "/foo/1", "value": "bar"},
+                {
+                    "op": "remove",
+                    "path": "/foo/0",
+                },
+                {"op": "add", "path": "/foo/0", "value": "baz"},
+            ]
+        )
         restrict_update_fields = []
 
-        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields)
+        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(
+            restrict_update_fields
+        )
 
         updated_operations = json_patch_updater.update(json_patch)
 
@@ -43,26 +50,30 @@ class JsonPatchUpdaterTest(TestCase):
         """Returns the input patch as is, with the addition of a remove operation for each replace operation
         to None."""
 
-        json_patch = jsonpatch.JsonPatch([
-            { "op": "replace", "path": "/foo/1", "value": "bar" },
-            { "op": "replace", "path": "/name", "value": "Foo" },
-            { "op": "replace", "path": "/foo/2", "value": None },
-            { "op": "replace", "path": "/foo/3", "value": None },
-            { "op": "remove", "path": "/attribute" },
-        ])
+        json_patch = jsonpatch.JsonPatch(
+            [
+                {"op": "replace", "path": "/foo/1", "value": "bar"},
+                {"op": "replace", "path": "/name", "value": "Foo"},
+                {"op": "replace", "path": "/foo/2", "value": None},
+                {"op": "replace", "path": "/foo/3", "value": None},
+                {"op": "remove", "path": "/attribute"},
+            ]
+        )
         restrict_update_fields = []
 
         expected = [
-            { "op": "replace", "path": "/foo/1", "value": "bar" },
-            { "op": "replace", "path": "/name", "value": "Foo" },
-            { "op": "replace", "path": "/foo/2", "value": None },
-            { "op": "replace", "path": "/foo/3", "value": None },
-            { "op": "remove", "path": "/attribute" },
-            { "op": "remove", "path": "/foo/2" },
-            { "op": "remove", "path": "/foo/2" },
+            {"op": "replace", "path": "/foo/1", "value": "bar"},
+            {"op": "replace", "path": "/name", "value": "Foo"},
+            {"op": "replace", "path": "/foo/2", "value": None},
+            {"op": "replace", "path": "/foo/3", "value": None},
+            {"op": "remove", "path": "/attribute"},
+            {"op": "remove", "path": "/foo/2"},
+            {"op": "remove", "path": "/foo/2"},
         ]
 
-        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields)
+        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(
+            restrict_update_fields
+        )
 
         updated_operations = json_patch_updater.update(json_patch)
 
@@ -72,19 +83,23 @@ class JsonPatchUpdaterTest(TestCase):
         """Returns the input patch as is, without any operations on restricted fields, unless the operation is
         an ADD operation."""
 
-        json_patch = jsonpatch.JsonPatch([
-            { "op": "add", "path": "/foo/1", "value": "bar" },
-            { "op": "remove", "path": "/foo/2" },
-            { "op": "remove", "path": "/attribute" },
-        ])
+        json_patch = jsonpatch.JsonPatch(
+            [
+                {"op": "add", "path": "/foo/1", "value": "bar"},
+                {"op": "remove", "path": "/foo/2"},
+                {"op": "remove", "path": "/attribute"},
+            ]
+        )
         restrict_update_fields = ["foo"]
 
         expected = [
-            { "op": "add", "path": "/foo/1", "value": "bar" },
-            { "op": "remove", "path": "/attribute" },
+            {"op": "add", "path": "/foo/1", "value": "bar"},
+            {"op": "remove", "path": "/attribute"},
         ]
 
-        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields)
+        json_patch_updater = JsonPatchUpdater.from_restrict_update_fields(
+            restrict_update_fields
+        )
 
         updated_operations = json_patch_updater.update(json_patch)
 

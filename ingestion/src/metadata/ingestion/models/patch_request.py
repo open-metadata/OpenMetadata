@@ -366,9 +366,9 @@ def build_patch(
     # For a user editable fields like descriptions, tags we only want to support "add" operation in patch
     # we will remove the other operations.
     if restrict_update_fields:
-        updated_operations = JsonPatchUpdater.from_restrict_update_fields(restrict_update_fields).update(
-            patch
-        )
+        updated_operations = JsonPatchUpdater.from_restrict_update_fields(
+            restrict_update_fields
+        ).update(patch)
         patch.patch = updated_operations
 
     return patch
