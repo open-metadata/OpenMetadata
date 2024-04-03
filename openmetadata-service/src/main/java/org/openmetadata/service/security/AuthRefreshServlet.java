@@ -30,8 +30,10 @@ public class AuthRefreshServlet extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      LOG.debug("Performing Auth Refresh For User Session: {} ", req.getSession().getId());
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(req, client);
       if (credentials.isPresent()) {
+        LOG.debug("Credentials Found For User Session: {} ", req.getSession().getId());
         JwtResponse jwtResponse = new JwtResponse();
         jwtResponse.setAccessToken(credentials.get().getIdToken().getParsedString());
         jwtResponse.setExpiryDuration(
@@ -44,6 +46,9 @@ public class AuthRefreshServlet extends HttpServlet {
                 .getEpochSecond());
         writeJsonResponse(resp, JsonUtils.pojoToJson(jwtResponse));
       } else {
+        LOG.debug(
+            "Credentials Not Found For User Session: {}, Redirect to Logout ",
+            req.getSession().getId());
         resp.sendRedirect(String.format("%s/logout", baseUrl));
       }
     } catch (Exception e) {
