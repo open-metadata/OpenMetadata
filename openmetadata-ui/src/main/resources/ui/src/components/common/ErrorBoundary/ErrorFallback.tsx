@@ -21,6 +21,16 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   error,
   resetErrorBoundary,
 }) => {
+  const isChunkLoadError = error.message?.startsWith('Loading chunk');
+
+  const message = isChunkLoadError
+    ? t('message.please-refresh-the-page')
+    : error.message;
+
+  const title = isChunkLoadError
+    ? t('message.look-like-upgraded-om')
+    : ERROR500;
+
   return (
     <Result
       extra={
@@ -32,8 +42,8 @@ const ErrorFallback: React.FC<FallbackProps> = ({
         </Button>
       }
       status="404"
-      subTitle={error.message}
-      title={ERROR500}
+      subTitle={message}
+      title={title}
     />
   );
 };
