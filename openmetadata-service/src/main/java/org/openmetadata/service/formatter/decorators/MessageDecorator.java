@@ -268,7 +268,7 @@ public interface MessageDecorator<T> {
             headerMessage =
                 String.format(
                     "@%s created a Task for %s %s",
-                    thread.getCreatedBy(), entityLink.getEntityType(), entityUrl);
+                    thread.getCreatedBy(), entityLink.getEntityType(), assetUrl);
             attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
             attachmentList.add(
                 String.format(
