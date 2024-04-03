@@ -219,24 +219,28 @@ const AppDetails = () => {
             },
           },
         ]),
-    {
-      label: (
-        <ManageButtonItemLabel
-          description={t('message.uninstall-app', {
-            app: getEntityName(appData),
-          })}
-          icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
-          id="uninstall-button"
-          name={t('label.uninstall')}
-        />
-      ),
-      key: 'uninstall-button',
-      onClick: () => {
-        setShowDeleteModel(true);
-        setShowActions(false);
-        setAction(AppAction.UNINSTALL);
-      },
-    },
+    ...(appData?.system
+      ? []
+      : [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.uninstall-app', {
+                  app: getEntityName(appData),
+                })}
+                icon={DeleteIcon}
+                id="uninstall-button"
+                name={t('label.uninstall')}
+              />
+            ),
+            key: 'uninstall-button',
+            onClick: () => {
+              setShowDeleteModel(true);
+              setShowActions(false);
+              setAction(AppAction.UNINSTALL);
+            },
+          },
+        ]),
   ];
 
   const onConfigSave = async (data: IChangeEvent) => {
