@@ -111,7 +111,7 @@ const applyPipelineFromModal = (fromNode, toNode, pipelineData) => {
   cy.get(`[data-testid="edge-${fromNode.fqn}-${toNode.fqn}"]`).click({
     force: true,
   });
-  cy.get('[data-testid="add-pipeline"]').click();
+  cy.get('[data-testid="add-pipeline"]').click({ force: true });
 
   cy.get('[data-testid="add-edge-modal"] [data-testid="field-input"]')
     .click()
