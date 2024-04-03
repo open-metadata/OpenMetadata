@@ -54,7 +54,7 @@ While linking the owner from `manifest.json` or `catalog.json` files to the enti
 **1.** Click on the `Users` section from homepage
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page.png"
+  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page.webp"
   alt="click-users-page"
   caption="Click Users page"
  /%}
@@ -63,7 +63,7 @@ While linking the owner from `manifest.json` or `catalog.json` files to the enti
 **2.** Click on the `Add User` button
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-user.png"
+  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-user.webp"
   alt="click-add-user"
   caption="Click Add User"
  /%}
@@ -78,7 +78,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 {% /note %}
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/add-user-dbt.png"
+  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/add-user-dbt.webp"
   alt="add-user-dbt"
   caption="Add User"
  /%}
@@ -88,7 +88,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 **1.** Click on the `Teams` section from homepage
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page.png"
+  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page.webp"
   alt="click-teams-page"
   caption="Click Teams page"
  /%}
@@ -96,7 +96,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 **2.** Click on the `Add Team` button
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-team.png"
+  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-team.webp"
   alt="click-add-team"
   caption="Click Add Team"
  /%}
@@ -111,7 +111,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 {% /note %}
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/add-team-dbt.png"
+  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/add-team-dbt.webp"
   alt="add-team-dbt"
   caption="Add Team"
  /%}
@@ -122,7 +122,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 After running the ingestion workflow with dbt you can see the created user or team getting linked to the table as it's owner as it was specified in the `manifest.json` or `catalog.json` file.
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.png"
+  src="/images/v1.3/features/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.webp"
   alt="linked-user"
   caption="Linked User"
  /%}
