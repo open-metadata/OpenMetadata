@@ -36,7 +36,7 @@ import {
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -132,6 +132,8 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         fields: 'testCaseResult,testSuite,incidentId',
         q: searchValue ? `*${searchValue}*` : undefined,
         offset: (currentPage - 1) * pageSize,
+        sortType: SORT_ORDER.DESC,
+        sortField: 'testCaseResult.timestamp',
       });
       setTestCase(data);
       handlePagingChange(paging);
@@ -266,6 +268,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <Select
                 allowClear
                 showSearch
+                data-testid="table-select-filter"
                 loading={isTableLoading}
                 options={tableOptions}
                 placeholder={t('label.table')}
@@ -278,7 +281,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               name="testPlatforms">
               <Select
                 allowClear
-                maxTagCount={1}
+                data-testid="platform-select-filter"
                 mode="multiple"
                 options={TEST_CASE_PLATFORM_OPTION}
                 placeholder={t('label.platform')}
@@ -288,13 +291,19 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               className="m-0 w-40"
               label={t('label.type')}
               name="testCaseType">
-              <Select options={TEST_CASE_TYPE_OPTION} />
+              <Select
+                data-testid="test-case-type-select-filter"
+                options={TEST_CASE_TYPE_OPTION}
+              />
             </Form.Item>
             <Form.Item
               className="m-0 w-40"
               label={t('label.status')}
               name="testCaseStatus">
-              <Select options={TEST_CASE_STATUS_OPTION} />
+              <Select
+                data-testid="status-select-filter"
+                options={TEST_CASE_STATUS_OPTION}
+              />
             </Form.Item>
             <Form.Item
               className="m-0"
@@ -303,7 +312,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               <DatePicker.RangePicker
                 allowClear
                 showNow
-                data-testid="data-range-picker"
+                data-testid="last-run-range-picker"
               />
             </Form.Item>
           </Space>

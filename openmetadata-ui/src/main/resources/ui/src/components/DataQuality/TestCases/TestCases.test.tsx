@@ -106,6 +106,21 @@ describe('TestCases component', () => {
     expect(
       await screen.findByText('DataQualityTab.component')
     ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('table-select-filter')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('last-run-range-picker')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('status-select-filter')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('test-case-type-select-filter')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('platform-select-filter')
+    ).toBeInTheDocument();
   });
 
   it('on page load getListTestCaseBySearch API should call', async () => {
@@ -121,6 +136,8 @@ describe('TestCases component', () => {
       q: undefined,
       testCaseStatus: undefined,
       testCaseType: 'all',
+      sortField: 'testCaseResult.timestamp',
+      sortType: 'desc',
     });
   });
 
@@ -138,6 +155,8 @@ describe('TestCases component', () => {
       q: '*sale*',
       testCaseStatus: undefined,
       testCaseType: 'all',
+      sortField: 'testCaseResult.timestamp',
+      sortType: 'desc',
     });
   });
 });
