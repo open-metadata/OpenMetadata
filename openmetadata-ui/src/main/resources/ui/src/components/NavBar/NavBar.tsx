@@ -431,6 +431,7 @@ const NavBar = ({
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconSearch}
+                        data-testid="search-icon"
                         style={{ fontSize: '16px' }}
                         onClick={(e) => {
                           e.preventDefault();
