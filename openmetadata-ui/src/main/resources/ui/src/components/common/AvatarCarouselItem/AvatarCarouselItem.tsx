@@ -21,23 +21,21 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 interface AvatarCarouselItemProps {
   avatar: EntityReference;
   index: number;
-  currentSlide: number;
   onAvatarClick: (index: number) => void;
   avatarBtnRefs: React.MutableRefObject<RefObject<HTMLButtonElement>[]>;
+  isActive: boolean;
 }
 
 const AvatarCarouselItem = ({
   avatar,
   index,
-  currentSlide,
   avatarBtnRefs,
   onAvatarClick,
+  isActive,
 }: AvatarCarouselItemProps) => {
   const { suggestionsByUser } = useSuggestionsContext();
-  const isActive = currentSlide === index;
   const buttonRef = useRef(null);
   avatarBtnRefs.current[index] = buttonRef;
-
   const getUserSuggestionsCount = useCallback(
     (userName: string) => {
       return suggestionsByUser.get(userName) ?? [];

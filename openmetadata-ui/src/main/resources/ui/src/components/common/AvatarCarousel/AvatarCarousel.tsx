@@ -91,8 +91,8 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
           <AvatarCarouselItem
             avatar={avatar}
             avatarBtnRefs={avatarBtnRefs}
-            currentSlide={currentSlide}
             index={index}
+            isActive={currentSlide === index}
             key={avatar.id}
             onAvatarClick={setCurrentSlide}
           />
