@@ -31,10 +31,8 @@ import ColorPicker from '../components/common/ColorPicker/ColorPicker.component'
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
-import {
-  OwenerSelectField,
-  OwnerSelectFieldProps,
-} from '../components/common/OwnerSelectField/OwnerSelectField';
+import { OwnerSelectField } from '../components/common/OwnerSelectField/OwnerSelectField';
+import { OwnerSelectFieldProps } from '../components/common/OwnerSelectField/OwnerSelectField.interface';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
@@ -171,7 +169,7 @@ export const getField = (field: FieldProp) => {
         const { ...rest } = props;
 
         fieldElement = (
-          <OwenerSelectField {...(rest as unknown as OwnerSelectFieldProps)} />
+          <OwnerSelectField {...(rest as unknown as OwnerSelectFieldProps)} />
         );
       }
 

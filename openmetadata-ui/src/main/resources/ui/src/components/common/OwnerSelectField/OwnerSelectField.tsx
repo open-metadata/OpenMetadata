@@ -16,6 +16,7 @@ import { BaseOptionType } from 'antd/lib/select';
 import { isNil, noop } from 'lodash';
 import React, {
   ReactElement,
+  UIEventHandler,
   useCallback,
   useEffect,
   useMemo,
@@ -23,12 +24,12 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, pagingObject } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
+import { Paging } from '../../../generated/type/paging';
 import { searchData } from '../../../rest/miscAPI';
-import { getUsers } from '../../../rest/userAPI';
 import {
   formatTeamsResponse,
   formatUsersResponse,
@@ -40,6 +41,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
+import { OwnerSelectFieldProps } from './OwnerSelectField.interface';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
@@ -50,20 +52,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
   );
 };
 
-export type OwnerSelectFieldProps = { userOnly: boolean } & (
-  | {
-      owners: EntityReference;
-      onUpdate: (owners: EntityReference) => void;
-      allowMultiple?: false;
-    }
-  | {
-      owners: EntityReference[];
-      onUpdate: (owners: EntityReference[]) => void;
-      allowMultiple: true;
-    }
-);
-
-export const OwenerSelectField = ({
+export const OwnerSelectField = ({
   owners,
   onUpdate = noop,
   allowMultiple = false,
@@ -83,58 +72,45 @@ export const OwenerSelectField = ({
 
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
-  const [userOptions, setUserOptions] = useState<EntityReference[]>([]);
-  const [teamOptions, setTeamOptions] = useState<EntityReference[]>([]);
+  const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const [searchText, setSearchText] = useState('');
 
-  const fetchUserOptions = async (searchText: string) => {
-    if (searchText) {
-      try {
-        const res = await searchData(
-          searchText,
-          1,
-          PAGE_SIZE_MEDIUM,
-          'isBot:false',
-          '',
-          '',
-          SearchIndex.USER
-        );
+  const fetchUserOptions = async (searchText: string, after = 1) => {
+    try {
+      const res = await searchData(
+        searchText,
+        after,
+        PAGE_SIZE_MEDIUM,
+        'isBot:false',
+        'displayName.keyword',
+        'asc',
+        SearchIndex.USER
+      );
 
-        const data = getEntityReferenceListFromEntities(
-          formatUsersResponse(res.data.hits.hits),
-          EntityType.USER
-        );
-        setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
-        setUserOptions(data);
-      } catch (error) {
-        setUserOptions([]);
-      }
-    } else {
-      try {
-        const { data, paging: resPaging } = await getUsers({
-          limit: PAGE_SIZE_MEDIUM,
-          after: undefined,
-          isBot: false,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.USER
-        );
+      const data = getEntityReferenceListFromEntities(
+        formatUsersResponse(res.data.hits.hits),
+        EntityType.USER
+      );
+      setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
 
-        setCount((pre) => ({ ...pre, user: resPaging.total }));
-        setUserOptions(filterData);
-      } catch (error) {
-        setUserOptions([]);
-      }
+      return {
+        data,
+        paging: { total: res.data.hits.total.value, offset: after + '' },
+      };
+    } catch (error) {
+      return {
+        data: [],
+        paging: { total: 0 },
+      };
     }
   };
 
-  const fetchTeamOptions = async (searchText: string) => {
-    const afterPage = 1;
-
+  const fetchTeamOptions = async (searchText: string, after = 1) => {
     try {
       const res = await searchData(
         searchText || '',
-        afterPage,
+        after,
         PAGE_SIZE_MEDIUM,
         'teamType:Group',
         'displayName.keyword',
@@ -149,9 +125,12 @@ export const OwenerSelectField = ({
 
       setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
 
-      setTeamOptions(data);
+      return { data, paging: { total: res.data.hits.total.value } };
     } catch (error) {
-      setTeamOptions([]);
+      return {
+        data: [],
+        paging: { total: 0 },
+      };
     }
   };
 
@@ -191,11 +170,43 @@ export const OwenerSelectField = ({
     }
   };
 
+  const fetchOptions = useCallback(
+    async (searchText: string, after?: number) => {
+      const { data, paging: pageInfo } =
+        activeTab === 'teams' && !userOnly
+          ? await fetchTeamOptions(searchText, after)
+          : await fetchUserOptions(searchText, after);
+
+      setUniqueOptions((prevData) => [...prevData, ...data]);
+      setPaging(pageInfo as Paging);
+    },
+    [activeTab, userOnly]
+  );
+
+  const onScroll: UIEventHandler<HTMLElement> = useCallback(
+    async (e) => {
+      if (
+        // If user reach to end of container fetch more options
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 256 &&
+        // If there are other options available which can be determine form the cursor value
+        paging.offset &&
+        // If we have all the options already we don't need to fetch more
+        uniqueOptions.length < paging.total
+      ) {
+        await fetchOptions(searchText, paging.offset + 1);
+      }
+    },
+    [paging, uniqueOptions, searchText]
+  );
+
   useEffect(() => {
-    activeTab === 'teams' && !userOnly
-      ? fetchTeamOptions('')
-      : fetchUserOptions('');
-  }, [activeTab, userOnly]);
+    fetchOptions(searchText);
+  }, [searchText]);
+
+  useEffect(() => {
+    setUniqueOptions([]);
+    fetchOptions('');
+  }, [fetchOptions, userOnly]);
 
   useEffect(() => {
     fetchCount();
@@ -248,6 +259,7 @@ export const OwenerSelectField = ({
           ({
             type: item.title,
             name: item.value,
+            id: item.id,
             displayName: item.label,
           } as EntityReference)
       );
@@ -264,10 +276,9 @@ export const OwenerSelectField = ({
       showSearch
       dropdownRender={customDropdown}
       mode={allowMultiple ? 'multiple' : undefined}
-      options={[
-        ...(activeTab === 'teams' && !userOnly ? teamOptions : userOptions),
-      ].map((option) => ({
+      options={uniqueOptions.map((option) => ({
         label: getEntityName(option),
+        id: option.id,
         value: option.name,
         title: option.type,
       }))}
@@ -277,10 +288,6 @@ export const OwenerSelectField = ({
             bordered
             className="m-r-xs"
             id={props.value}
-            isTeam={
-              teamOptions.find((team) => team.name === props.value) !==
-              undefined
-            }
             name={props.label as string}
             size={UserTagSize.small}
             onRemove={props.onClose}
@@ -290,7 +297,8 @@ export const OwenerSelectField = ({
       }}
       value={selectedValues?.map((owner) => owner.name) as string[]}
       onChange={handleOnChangeMultiMode}
-      onSearch={activeTab === 'users' ? fetchUserOptions : fetchTeamOptions}
+      onPopupScroll={onScroll}
+      onSearch={setSearchText}
     />
   );
 };
