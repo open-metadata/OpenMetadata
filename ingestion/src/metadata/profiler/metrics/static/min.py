@@ -103,10 +103,10 @@ class Min(StaticMetric):
             min_ = None
             if self.col.type in {DataType.DATETIME, DataType.DATE}:
                 min_ = min((pd.to_datetime(df[self.col.name]).min() for df in dfs))
-                return None if pd.isna(min_) else int(min_.timestamp() * 1000)
+                return None if pd.isnull(min_) else int(min_.timestamp() * 1000)
             elif self.col.type == DataType.TIME:
                 min_ = min((pd.to_timedelta(df[self.col.name]).min() for df in dfs))
-                return None if pd.isna(min_) else min_.seconds
+                return None if pd.isnull(min_) else min_.seconds
         return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:

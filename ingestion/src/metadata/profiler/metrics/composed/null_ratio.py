@@ -53,7 +53,7 @@ class NullRatio(ComposedMetric):
         res_count = res.get(Count.name())
         res_null = res.get(NullCount.name())
 
-        if res_count is not None and res_null is not None:
+        if not pd.isnull(res_count) and not pd.isnull(res_null):
             result = res_null / (res_null + res_count)
-            return None if pd.isna(result) else result
+            return None if pd.isnull(result) else result
         return None

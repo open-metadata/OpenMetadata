@@ -103,10 +103,10 @@ class Max(StaticMetric):
             max_ = None
             if self.col.type in {DataType.DATETIME, DataType.DATE}:
                 max_ = max((pd.to_datetime(df[self.col.name]).max() for df in dfs))
-                return None if pd.isna(max_) else int(max_.timestamp() * 1000)
+                return None if pd.isnull(max_) else int(max_.timestamp() * 1000)
             elif self.col.type == DataType.TIME:
                 max_ = max((pd.to_timedelta(df[self.col.name]).max() for df in dfs))
-                return None if pd.isna(max_) else max_.seconds
+                return None if pd.isnull(max_) else max_.seconds
         return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
