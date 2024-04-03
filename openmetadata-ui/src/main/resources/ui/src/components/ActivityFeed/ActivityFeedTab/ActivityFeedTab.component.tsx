@@ -482,6 +482,7 @@ export const ActivityFeedTab = ({
               <FeedPanelBodyV1
                 isOpenInDrawer
                 showThread
+                className="m-md"
                 componentsVisibility={{
                   showThreadIcon: false,
                   showRepliesContainer: false,

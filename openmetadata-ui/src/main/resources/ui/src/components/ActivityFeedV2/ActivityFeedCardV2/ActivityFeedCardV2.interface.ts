@@ -16,7 +16,9 @@ import { Post, Thread } from '../../../generated/entity/feed/thread';
 export interface ActivityFeedCardV2Props {
   post: Post;
   feed: Thread;
+  className?: string;
   isPost?: boolean;
+  isOpenInDrawer?: boolean;
   showThread?: boolean;
   isActive?: boolean;
   componentsVisibility?: {

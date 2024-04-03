@@ -13,9 +13,12 @@
 
 import { Avatar, Col, Divider, Row } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { compare } from 'fast-json-patch';
+import React, { useMemo, useState } from 'react';
 import { getRandomColor } from '../../../utils/CommonUtils';
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ActivityFeedActions from '../../ActivityFeed/Shared/ActivityFeedActions';
 import './activity-feed-card-v2.less';
 import { ActivityFeedCardV2Props } from './ActivityFeedCardV2.interface';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
@@ -24,14 +27,20 @@ import FeedCardHeaderV2 from './FeedCardHeader/FeedCardHeaderV2';
 const ActivityFeedCardV2 = ({
   post,
   feed,
+  className = '',
   isPost = false,
   isActive = false,
   showThread = false,
+  isOpenInDrawer = false,
   componentsVisibility = {
     showThreadIcon: true,
     showRepliesContainer: true,
   },
 }: Readonly<ActivityFeedCardV2Props>) => {
+  const [isEditPost, setIsEditPost] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState(false);
+  const { updateFeed } = useActivityFeedProvider();
+
   const { color, character, backgroundColor } = useMemo(
     () => getRandomColor(post.from),
     [post.from]
@@ -42,12 +51,35 @@ const ActivityFeedCardV2 = ({
     [feed?.posts?.length]
   );
 
+  const onEditPost = () => {
+    setIsEditPost(!isEditPost);
+  };
+
+  const handleMouseEnter = () => {
+    setShowActions(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowActions(false);
+  };
+
+  const onUpdate = (message: string) => {
+    const updatedPost = { ...feed, message };
+    const patch = compare(feed, updatedPost);
+    updateFeed(feed.id, post.id, !isPost, patch);
+    setIsEditPost(!isEditPost);
+  };
+
   return (
     <div
-      className={classNames('feed-card-v2', {
-        active: isActive,
-        'feed-reply-card-v2': isPost,
-      })}>
+      className={classNames(
+        'feed-card-v2-container',
+        {
+          'p-sm': !isOpenInDrawer,
+          active: isActive,
+        },
+        className
+      )}>
       <div
         className={classNames('feed-card-v2-sidebar', {
           'feed-card-v2-post-sidebar': isPost,
@@ -64,42 +96,64 @@ const ActivityFeedCardV2 = ({
         />
         {!isPost && <Divider className="flex-1" type="vertical" />}
       </div>
-      <Row>
-        <Col span={24}>
-          <FeedCardHeaderV2
-            about={!isPost ? feed.about : undefined}
-            createdBy={post.from}
-            isEntityFeed={isPost}
-            timeStamp={post.postTs}
-          />
-        </Col>
-        <Col span={24}>
-          <FeedCardBodyV1
-            announcement={!isPost ? feed.announcement : undefined}
-            isEditPost={false}
-            message={post.message}
-          />
-        </Col>
-        <Col span={24}>
-          <FeedCardFooter
-            componentsVisibility={componentsVisibility}
-            feed={feed}
-            isPost={isPost}
-            post={post}
-          />
+      <Row className="w-full">
+        <Col
+          className={classNames('feed-card-v2', {
+            'feed-reply-card-v2': isPost,
+            'drawer-feed-card-v2': isOpenInDrawer,
+          })}
+          span={24}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}>
+          <Row className="w-full">
+            <Col span={24}>
+              <FeedCardHeaderV2
+                about={!isPost ? feed.about : undefined}
+                createdBy={post.from}
+                isEntityFeed={isPost}
+                timeStamp={post.postTs}
+              />
+            </Col>
+            <Col span={24}>
+              <FeedCardBodyV1
+                announcement={!isPost ? feed.announcement : undefined}
+                isEditPost={isEditPost}
+                message={post.message}
+                onEditCancel={() => setIsEditPost(false)}
+                onUpdate={onUpdate}
+              />
+            </Col>
+            <Col span={24}>
+              <FeedCardFooter
+                componentsVisibility={componentsVisibility}
+                feed={feed}
+                isPost={isPost}
+                post={post}
+              />
+            </Col>
+          </Row>
+          {showActions && (
+            <ActivityFeedActions
+              feed={feed}
+              isPost={isPost}
+              post={post}
+              onEditPost={onEditPost}
+            />
+          )}
         </Col>
         {showThread && postLength > 0 && (
-          <div data-testid="feed-replies">
+          <Col className="feed-replies" data-testid="feed-replies" span={24}>
             {feed?.posts?.map((reply) => (
               <ActivityFeedCardV2
                 isPost
                 componentsVisibility={componentsVisibility}
                 feed={feed}
+                isOpenInDrawer={isOpenInDrawer}
                 key={reply.id}
                 post={reply}
               />
             ))}
-          </div>
+          </Col>
         )}
       </Row>
     </div>

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import classNames from 'classnames';
 import React, { FC, useCallback, useMemo } from 'react';
 import {
@@ -24,6 +25,7 @@ import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 interface FeedPanelBodyPropV1 {
   feed: Thread;
   className?: string;
+  FeedContainerClassName?: string;
   showThread?: boolean;
   isOpenInDrawer?: boolean;
   onFeedClick?: (feed: Thread) => void;
@@ -39,6 +41,7 @@ interface FeedPanelBodyPropV1 {
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
   className,
+  FeedContainerClassName = '',
   showThread = true,
   componentsVisibility = {
     showThreadIcon: true,
@@ -67,8 +70,13 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   }, [onFeedClick, feed]);
 
   return (
-    <div
-      className={classNames(className, 'activity-feed-card-container')}
+    <Button
+      block
+      ghost
+      className={classNames(
+        className,
+        'activity-feed-card-container h-auto text-left p-0 border-none'
+      )}
       data-testid="message-container"
       onClick={handleFeedClick}>
       {feed.type === ThreadType.Task ? (
@@ -84,14 +92,16 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         />
       ) : (
         <ActivityFeedCardV2
+          className={FeedContainerClassName}
           componentsVisibility={componentsVisibility}
           feed={feed}
           isActive={isActive}
+          isOpenInDrawer={isOpenInDrawer}
           post={mainFeed}
           showThread={showThread}
         />
       )}
-    </div>
+    </Button>
   );
 };
 

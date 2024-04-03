@@ -13,28 +13,46 @@
 
 @import url('../../../styles/variables.less');
 
-.feed-card-v2 {
+.feed-card-v2-container {
   display: flex;
+  width: 100%;
   gap: 8px;
-  padding: 12px;
-  margin: 0 12px;
+
   .feed-card-v2-sidebar {
-    padding: 4px 0px;
     display: flex;
+    padding: 4px 0px;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
     border-radius: 4px 0 0 4px;
+  }
+
+  .feed-card-v2 {
+    position: relative;
+    display: flex;
+    gap: 8px;
   }
   .feed-card-v2-post-sidebar {
     justify-content: flex-start;
   }
   &.active {
+    margin: 0px 12px;
     border-left: 4px solid @info-color;
   }
-}
 
-.feed-reply-card-v2 {
-  margin: 0px;
-  padding: 4px 0px;
+  .feed-reply-card-v2 {
+    margin: 0px;
+    padding: 8px 0px;
+  }
+
+  .feed-replies {
+    width: 100%;
+    .feed-card-v2-sidebar {
+      padding: 12px 0px;
+    }
+  }
+
+  .drawer-feed-card-v2 {
+    margin: 0px;
+    padding-bottom: 0px;
+  }
 }

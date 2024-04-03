@@ -37,7 +37,8 @@ function FeedCardFooter({
   },
 }: Readonly<FeedCardFooterProps>) {
   const { t } = useTranslation();
-  const { showDrawer, updateReactions } = useActivityFeedProvider();
+  const { showDrawer, updateReactions, fetchUpdatedThread } =
+    useActivityFeedProvider();
 
   // The number of posts in the thread
   const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
@@ -58,10 +59,11 @@ function FeedCardFooter({
   }, [feed?.posts]);
 
   const onReactionUpdate = useCallback(
-    (reaction: ReactionType, operation: ReactionOperation) => {
-      updateReactions(post, feed.id, !isPost, reaction, operation);
+    async (reaction: ReactionType, operation: ReactionOperation) => {
+      await updateReactions(post, feed.id, !isPost, reaction, operation);
+      await fetchUpdatedThread(feed.id);
     },
-    [updateReactions, post, feed.id, isPost]
+    [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
   );
 
   const showReplies = useCallback(() => {
@@ -71,25 +73,23 @@ function FeedCardFooter({
   return (
     <Row>
       <Col span={24}>
-        {!isPost && (
-          <Space className="p-xss" size={8}>
-            {componentsVisibility.showThreadIcon && postLength === 0 && (
-              <Button
-                className="flex-center p-0"
-                data-testid="thread-count"
-                icon={<ThreadIcon width={18} />}
-                shape="circle"
-                size="small"
-                type="text"
-                onClick={showReplies}
-              />
-            )}
-            <Reactions
-              reactions={post.reactions ?? []}
-              onReactionSelect={onReactionUpdate ?? noop}
+        <Space className="p-xss" size={8}>
+          {componentsVisibility.showThreadIcon && postLength === 0 && (
+            <Button
+              className="flex-center p-0"
+              data-testid="thread-count"
+              icon={<ThreadIcon width={18} />}
+              shape="circle"
+              size="small"
+              type="text"
+              onClick={showReplies}
             />
-          </Space>
-        )}
+          )}
+          <Reactions
+            reactions={post.reactions ?? []}
+            onReactionSelect={onReactionUpdate ?? noop}
+          />
+        </Space>
       </Col>
       <Col span={24}>
         {componentsVisibility.showRepliesContainer && postLength !== 0 && (
