@@ -65,29 +65,22 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.apache.http.util.EntityUtils;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -151,6 +144,7 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -2152,6 +2146,117 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(3, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void get_entityWithoutDescriptionFromSearch(TestInfo test)
+      throws InterruptedException, IOException {
+    // Create Database
+    CreateDatabase createDatabase = dbTest.createRequest(getEntityName(test));
+    Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+    // Create Database Schema
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaTest
+            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
+            .withDatabase(database.getEntityReference());
+    schema = schemaTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    // Create Column without description
+    Column columnWithNullDescription =
+        new Column().withName("column").withDataType(INT).withDescription(null);
+    // Create Column with empty description
+    Column columnWithEmptyDescription =
+        new Column().withName("column").withDataType(INT).withDescription("");
+    // Create Column with description
+    Column columnWithDescription =
+        new Column().withName("column").withDataType(INT).withDescription("FooBar");
+    // Create an entity without column description
+    CreateTable createWithNullColumnDescription =
+        createRequest(test, 1)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("description")
+            .withColumns(listOf(columnWithNullDescription))
+            .withTableConstraints(null);
+    Table entityWithNullColumnDescription =
+        createEntity(createWithNullColumnDescription, ADMIN_AUTH_HEADERS);
+    // Create an entity with empty column description
+    CreateTable createWithEmptyColumnDescription =
+        createRequest(test, 2)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("description")
+            .withColumns(listOf(columnWithEmptyDescription))
+            .withTableConstraints(null);
+    Table entityWithEmptyDescription =
+        createEntity(createWithEmptyColumnDescription, ADMIN_AUTH_HEADERS);
+    // Create an entity with null description but with column description
+    CreateTable createWithNullDescription =
+        createRequest(test, 3)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription(null)
+            .withColumns(listOf(columnWithDescription))
+            .withTableConstraints(null);
+    Table entityWithNullDescription = createEntity(createWithNullDescription, ADMIN_AUTH_HEADERS);
+    // Create an entity with description complete
+    CreateTable createWithDescription =
+        createRequest(test, 4)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("description")
+            .withColumns(listOf(columnWithDescription))
+            .withTableConstraints(null);
+    Table entityWithDescription = createEntity(createWithDescription, ADMIN_AUTH_HEADERS);
+
+    // Search for entities without description
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+    Response response;
+    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    String query =
+        "{\"size\":100,\"query\":{\"bool\":{\"should\":[{\"nested\":{\"ignore_unmapped\":true,\"path\":\"columns\",\"query\":{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"columns.description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"columns.description\":\"*\"}}}}]}}}},{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"description\":\"*\"}}}}]}}]}}}";
+    request.setJsonEntity(query);
+    try {
+      waitForEsAsyncOp();
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertTrue(
+        hitsList.stream()
+            .noneMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithDescription.getName())));
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithNullDescription.getName())));
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithEmptyColumnDescription.getName())));
+    assertTrue(
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithNullColumnDescription.getName())));
   }
 
   @Test
