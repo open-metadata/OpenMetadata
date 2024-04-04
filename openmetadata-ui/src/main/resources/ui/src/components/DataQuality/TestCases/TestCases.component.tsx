@@ -250,7 +250,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           initialValues={filters}
           layout="horizontal"
           onValuesChange={handleFilterChange}>
-          <Space align="center" className="w-full justify-between">
+          <Space wrap align="center" className="w-full justify-between">
             <Form.Item className="m-0 w-80">
               <Searchbar
                 removeMargin
