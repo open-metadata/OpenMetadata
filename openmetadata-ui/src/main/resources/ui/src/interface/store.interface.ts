@@ -81,6 +81,6 @@ export interface DomainStore {
   domainOptions: ItemType[];
   fetchDomainList: () => Promise<void>;
   updateDomains: (domainsArr: Domain[]) => void;
-  refreshDomains: () => void;
+  refreshDomains: () => Promise<void>;
   updateActiveDomain: (activeDomainKey: string) => void;
 }
