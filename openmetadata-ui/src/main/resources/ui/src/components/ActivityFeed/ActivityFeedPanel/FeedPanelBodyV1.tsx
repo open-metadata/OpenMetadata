@@ -19,7 +19,7 @@ import {
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import ActivityFeedCardV2 from '../../ActivityFeedV2/ActivityFeedCardV2/ActivityFeedCardV2';
+import ActivityFeedCardV2 from '../ActivityFeedCardV2/ActivityFeedCardV2';
 import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 
 interface FeedPanelBodyPropV1 {

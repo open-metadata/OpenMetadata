@@ -94,9 +94,9 @@ import {
   TASK_ACTION_LIST,
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
 import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityFeedCardV2 from '../../../ActivityFeedV2/ActivityFeedCardV2/ActivityFeedCardV2';
 import AssigneeList from '../../../common/AssigneeList/AssigneeList';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';

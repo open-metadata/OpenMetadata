@@ -22,9 +22,9 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import Reactions from '../../../ActivityFeed/Reactions/Reactions';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
+import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 function FeedCardFooter({
