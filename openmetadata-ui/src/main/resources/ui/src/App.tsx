@@ -26,7 +26,6 @@ import ApplicationsProvider from './components/Settings/Applications/Application
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import DirectionProvider from './context/DirectionProvider/DirectionProvider';
-import GlobalSearchProvider from './context/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
@@ -79,13 +78,11 @@ const App: FC = () => {
                       <WebAnalyticsProvider>
                         <PermissionProvider>
                           <WebSocketProvider>
-                            <GlobalSearchProvider>
-                              <ApplicationsProvider>
-                                <EntityExportModalProvider>
-                                  <AppRouter />
-                                </EntityExportModalProvider>
-                              </ApplicationsProvider>
-                            </GlobalSearchProvider>
+                            <ApplicationsProvider>
+                              <EntityExportModalProvider>
+                                <AppRouter />
+                              </EntityExportModalProvider>
+                            </ApplicationsProvider>
                           </WebSocketProvider>
                         </PermissionProvider>
                       </WebAnalyticsProvider>

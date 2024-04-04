@@ -16,7 +16,10 @@ import {
   IAuthContext,
   OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import {
+  EntityUnion,
+  ExploreSearchIndex,
+} from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
@@ -45,6 +48,7 @@ export interface ApplicationStore
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: LogoConfiguration;
+  searchCriteria: ExploreSearchIndex | '';
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: LogoConfiguration) => void;
   setUrlPathName: (urlPathName: string) => void;
@@ -67,6 +71,7 @@ export interface ApplicationStore
   setOidcToken: (oidcToken: string) => void;
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
+  updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
 }
 
 export interface DomainStore {

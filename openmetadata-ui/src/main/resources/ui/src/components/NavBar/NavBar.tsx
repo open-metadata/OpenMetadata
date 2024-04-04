@@ -50,9 +50,9 @@ import {
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
-import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
@@ -103,7 +103,7 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
-  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
+  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
 

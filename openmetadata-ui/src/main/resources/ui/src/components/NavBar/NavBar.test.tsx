@@ -33,12 +33,14 @@ const mockProps = {
   handleClear: mockHandleClear,
   handleKeyDown: mockHandleKeyDown,
 };
-jest.mock('../../context/GlobalSearchProvider/GlobalSearchProvider', () => ({
-  useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
     updateSearchCriteria: jest.fn(),
   })),
 }));
+
 jest.mock('../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn().mockImplementation(() => ({
     socket: {
