@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import {
   ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
@@ -22,44 +21,39 @@ import {
 import { Domain } from '../generated/entity/domains/domain';
 import { DomainStore } from '../interface/store.interface';
 import { getDomainList } from '../rest/domainAPI';
-import { getEntityName } from '../utils/EntityUtils';
+import { getDomainOptions } from '../utils/DomainUtils';
 import { showErrorToast } from '../utils/ToastUtils';
 
-export const useDomainStore = create<DomainStore>((set, get) => ({
-  domains: [],
-  domainLoading: false,
-  activeDomain:
-    localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE,
-  domainOptions: [],
-  fetchDomainList: async () => {
-    set({ domainLoading: true });
-    try {
-      const { data } = await getDomainList({ limit: PAGE_SIZE_LARGE });
-      set({ domains: data });
-
-      const domainOptions: ItemType[] = [
-        {
-          label: t('label.all-domain-plural'),
-          key: DEFAULT_DOMAIN_VALUE,
-        },
-      ];
-      data.forEach((domain: Domain) => {
-        domainOptions.push({
-          label: getEntityName(domain),
-          key: domain.fullyQualifiedName ?? '',
-        });
-      });
-      set({ domainOptions });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      set({ domainLoading: false });
+export const useDomainStore = create<DomainStore>()(
+  persist(
+    (set, get) => ({
+      domains: [],
+      domainLoading: false,
+      activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
+      domainOptions: [],
+      fetchDomainList: async () => {
+        set({ domainLoading: true });
+        try {
+          const { data } = await getDomainList({ limit: PAGE_SIZE_LARGE });
+          set({
+            domains: data,
+            domainOptions: getDomainOptions(data),
+          });
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        } finally {
+          set({ domainLoading: false });
+        }
+      },
+      updateDomains: (domainsArr: Domain[]) => set({ domains: domainsArr }),
+      refreshDomains: () => get().fetchDomainList(),
+      updateActiveDomain: (activeDomainKey: string) => {
+        set({ activeDomain: activeDomainKey });
+        get().refreshDomains();
+      },
+    }),
+    {
+      name: ACTIVE_DOMAIN_STORAGE_KEY,
     }
-  },
-  updateDomains: (domainsArr: Domain[]) => set({ domains: domainsArr }),
-  refreshDomains: () => get().fetchDomainList(),
-  updateActiveDomain: (activeDomainKey: string) => {
-    localStorage.setItem(ACTIVE_DOMAIN_STORAGE_KEY, activeDomainKey);
-    get().refreshDomains();
-  },
-}));
+  )
+);
