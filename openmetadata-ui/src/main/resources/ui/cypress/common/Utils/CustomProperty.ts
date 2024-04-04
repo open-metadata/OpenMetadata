@@ -164,7 +164,8 @@ export const setValueForProperty = (
     .scrollIntoView()
     .as('editbutton');
 
-  cy.get('@editbutton').click();
+  // added force true to click on the element to avoid the element is not visible error
+  cy.get('@editbutton').click({ force: true });
 
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
