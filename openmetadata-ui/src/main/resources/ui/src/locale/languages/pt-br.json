@@ -1498,7 +1498,7 @@
     "list-of-strings-regex-patterns-csv": "Insira uma lista de strings/padrões regex como um valor separado por vírgulas",
     "login-fail-attempt-message": "Tentativa permitida após falhas consecutivas de login no aplicativo.",
     "logout-confirmation": "Você tem certeza de que deseja sair?",
-    "look-like-upgraded-om": "Look like you have upgraded OpenMetadata",
+    "look-like-upgraded-om": "Look's like you have upgraded OpenMetadata",
     "made-announcement": "made an announcement",
     "make-an-announcement": "Faça um anúncio!",
     "manage-airflow-api": "OpenMetadata - APIs Gerenciadas de Airflow",
