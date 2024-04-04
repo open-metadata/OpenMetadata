@@ -1492,7 +1492,7 @@
     "list-of-strings-regex-patterns-csv": "Geben Sie eine Liste von Zeichenfolgen/Regex-Mustern als durch Kommas getrennte Werte ein.",
     "login-fail-attempt-message": "Allowed attampt on consicutive failed login to application.",
     "logout-confirmation": "Sind Sie sicher, dass Sie sich abmelden möchten?",
-    "look-like-upgraded-om": "Look like you have upgraded OpenMetadata",
+    "look-like-upgraded-om": "Look's like you have upgraded OpenMetadata",
     "made-announcement": "made an announcement",
     "make-an-announcement": "Machen Sie eine Ankündigung!",
     "manage-airflow-api": "OpenMetadata - Verwaltete Airflow-APIs",

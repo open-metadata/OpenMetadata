@@ -1492,7 +1492,7 @@
     "list-of-strings-regex-patterns-csv": "הזן רשימה של מחרוזות / דפוסי Regex כערך מופרך בפסיקים",
     "login-fail-attempt-message": "ניתן עדיין לנסות במקרה של כמה ניסיונות כושלים רצופים להתחבר ליישום.",
     "logout-confirmation": "האם אתה בטוח שברצונך להתנתק?",
-    "look-like-upgraded-om": "Look like you have upgraded OpenMetadata",
+    "look-like-upgraded-om": "Look's like you have upgraded OpenMetadata",
     "made-announcement": "made an announcement",
     "make-an-announcement": "פרסם הודעה!",
     "manage-airflow-api": "OpenMetadata - ממונה APIs ל-Airflow",
