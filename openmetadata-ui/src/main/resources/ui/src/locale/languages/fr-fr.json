@@ -1499,7 +1499,7 @@
     "list-of-strings-regex-patterns-csv": "Entrer une liste de chaînes / motifs regex comme une valeur séparée par des virgules",
     "login-fail-attempt-message": "Allowed attampt on consicutive failed login to application.",
     "logout-confirmation": "Are you sure you want to logout?",
-    "look-like-upgraded-om": "Look like you have upgraded OpenMetadata",
+    "look-like-upgraded-om": "Look's like you have upgraded OpenMetadata",
     "made-announcement": "made an announcement",
     "make-an-announcement": "Faire une annonce",
     "manage-airflow-api": "OpenMetadata - Managed Airflow APIs",

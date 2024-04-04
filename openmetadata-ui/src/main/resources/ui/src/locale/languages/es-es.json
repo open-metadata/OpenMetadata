@@ -1499,7 +1499,7 @@
     "list-of-strings-regex-patterns-csv": "Ingrese una lista de cadenas/patrones regex como un valor separado por comas",
     "login-fail-attempt-message": "Intento permitido en el inicio de sesión consecutivamente fallido a la aplicación.",
     "logout-confirmation": "¿Estás seguro de que quieres cerrar sesión?",
-    "look-like-upgraded-om": "Look like you have upgraded OpenMetadata",
+    "look-like-upgraded-om": "Look's like you have upgraded OpenMetadata",
     "made-announcement": "hizo un anuncio",
     "make-an-announcement": "¡Haz un anuncio!",
     "manage-airflow-api": "OpenMetadata - APIs de Airflow",

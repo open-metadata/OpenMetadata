@@ -1499,7 +1499,7 @@
     "list-of-strings-regex-patterns-csv": "以逗号分隔的值的形式输入字符串/正则表达式列表",
     "login-fail-attempt-message": "Allowed attampt on consicutive failed login to application.",
     "logout-confirmation": "您确定要注销登录吗?",
-    "look-like-upgraded-om": "Look like you have upgraded OpenMetadata",
+    "look-like-upgraded-om": "Look's like you have upgraded OpenMetadata",
     "made-announcement": "made an announcement",
     "make-an-announcement": "发布公告",
     "manage-airflow-api": "OpenMetadata 管理的 Airflow APIs",
