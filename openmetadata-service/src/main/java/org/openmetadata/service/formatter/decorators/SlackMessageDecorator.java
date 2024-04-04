@@ -55,11 +55,11 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return "~";
   }
 
-  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<%s/%s/%s%s|%s>",
         getSmtpSettings().getOpenMetadataUrl(),
-        entityType,
+        prefix,
         fqn.trim().replaceAll(" ", "%20"),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());

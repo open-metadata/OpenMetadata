@@ -55,11 +55,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<%s/%s/%s%s|%s>",
         getSmtpSettings().getOpenMetadataUrl(),
-        entityType,
+        prefix,
         fqn.trim().replace(" ", "%20"),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());

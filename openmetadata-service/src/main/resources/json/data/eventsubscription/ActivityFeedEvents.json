@@ -20,7 +20,7 @@
       {
         "name": "matchAnyFieldChange",
         "effect": "exclude",
-        "condition": "matchAnyFieldChange({'usageSummary'})"
+        "condition": "matchAnyFieldChange({'usageSummary', 'sourceHash', 'lifeCycle'})"
       }
     ]
   },
@@ -81,7 +81,9 @@
           {
             "name": "fieldChangeList",
             "input": [
-              "usageSummary"
+              "usageSummary",
+              "sourceHash",
+              "lifeCycle"
             ]
           }
         ]
