@@ -50,6 +50,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     return data.map(({ _source: table, highlight }, index) => {
       const matches = highlight
         ? Object.entries(highlight)
+            .filter(([key]) => !key.includes('.ngram'))
             .map(([key, value]) => ({ key, value: value?.length || 1 }))
             .filter((d) => !ASSETS_NAME.includes(d.key))
         : [];
