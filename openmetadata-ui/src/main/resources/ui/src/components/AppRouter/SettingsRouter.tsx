@@ -52,7 +52,6 @@ import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
 import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
-import BrandColorConfigSettingsPage from '../../pages/WhiteLabelConfigSettingsPage/WhiteLabelConfigSettingsPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -293,15 +292,6 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOM_LOGO
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={BrandColorConfigSettingsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.WHITE_LABEL
         )}
       />
       <AdminProtectedRoute

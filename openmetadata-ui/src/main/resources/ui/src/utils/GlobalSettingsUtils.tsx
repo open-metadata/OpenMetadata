@@ -274,14 +274,6 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: CustomLogoIcon,
         },
         {
-          label: 'White Label',
-          description:
-            'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
-          isProtected: Boolean(isAdminUser),
-          key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.WHITE_LABEL}`,
-          icon: CustomLogoIcon,
-        },
-        {
           label: i18next.t('label.login-configuration'),
           description: i18next.t(
             'message.page-sub-header-for-login-configuration'

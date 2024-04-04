@@ -26,7 +26,7 @@ import { EntityExportModalProvider } from './components/Entity/EntityExportModal
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
-import DirectionProvider from './context/DirectionProvider/DirectionProvider';
+import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import GlobalSearchProvider from './context/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
@@ -73,7 +73,7 @@ const App: FC = () => {
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <DirectionProvider>
+              <AntDConfigProvider>
                 <AuthProvider childComponentType={AppRouter}>
                   <TourProvider>
                     <HelmetProvider>
@@ -95,7 +95,7 @@ const App: FC = () => {
                     </HelmetProvider>
                   </TourProvider>
                 </AuthProvider>
-              </DirectionProvider>
+              </AntDConfigProvider>
             </ErrorBoundary>
           </I18nextProvider>
         </Router>
