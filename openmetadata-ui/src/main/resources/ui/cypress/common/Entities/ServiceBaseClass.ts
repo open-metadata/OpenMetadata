@@ -470,11 +470,15 @@ class ServiceBaseClass {
       '/api/v1/services/ingestionPipelines/trigger/*',
       'checkRun'
     );
-    cy.get(
-      `[data-row-key*="${replaceAllSpacialCharWith_(
-        this.serviceName
-      )}_metadata"] [data-testid="run"]`
-    ).click();
+
+    cy.contains(
+      'td',
+      `${replaceAllSpacialCharWith_(this.serviceName)}_metadata`
+    ) // find the element with the text
+      .parent('tr') // find the parent 'tr'
+      .find('[data-testid="run"]') // find the element with '[data-testid="run"]'
+      .click();
+
     verifyResponseStatusCode('@checkRun', 200);
 
     toastNotification(`Pipeline triggered successfully!`);

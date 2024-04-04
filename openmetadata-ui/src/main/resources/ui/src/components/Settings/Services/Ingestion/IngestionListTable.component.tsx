@@ -208,7 +208,7 @@ function IngestionListTable({
           ),
         }}
         pagination={false}
-        rowKey="displayName"
+        rowKey="name"
         size="small"
       />
 
