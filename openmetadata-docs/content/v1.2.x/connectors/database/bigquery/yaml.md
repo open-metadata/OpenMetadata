@@ -116,7 +116,7 @@ This is a sample config for BigQuery:
 
 **hostPort**: BigQuery APIs URL. By default the API URL is `bigquery.googleapis.com` you can modify this if you have custom implementation of BigQuery.
 
-**credentials**: 
+**credentials**:
 You can authenticate with your bigquery instance using either `GCP Credentials Path` where you can specify the file path of the service account key or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
 You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
@@ -232,9 +232,9 @@ source:
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
           clientX509CertUrl: https://cert.url
-          # taxonomyLocation: us
-          # taxonomyProjectID: ["project-id-1", "project-id-2"]
-          # usageLocation: us
+      # taxonomyLocation: us
+      # taxonomyProjectID: ["project-id-1", "project-id-2"]
+      # usageLocation: us
 ```
 ```yaml {% srNumber=2 %}
       # connectionOptions:
