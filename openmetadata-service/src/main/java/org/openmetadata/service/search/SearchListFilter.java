@@ -29,6 +29,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
+      conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
     }
     String conditionFilter = addCondition(conditions);
     String sourceFilter = getExcludeIncludeFields();
@@ -39,8 +40,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   protected String addCondition(List<String> conditions) {
     StringBuffer condition = new StringBuffer();
     for (String c : conditions) {
-      if (!c.isEmpty()) {
-        if (!condition.isEmpty()) {
+      if (!nullOrEmpty(c)) {
+        if (!nullOrEmpty(condition)) {
           // Add `,` between conditions
           condition.append(",\n");
         }
@@ -165,6 +166,27 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getTimestampFilter("testCaseResult.timestamp", "gte", Long.parseLong(startTimestamp)));
       conditions.add(
           getTimestampFilter("testCaseResult.timestamp", "lte", Long.parseLong(endTimestamp)));
+    }
+
+    return addCondition(conditions);
+  }
+
+  private String getTestSuiteCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+
+    String testSuiteType = getQueryParam("testSuiteType");
+    Boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
+
+    if (testSuiteType != null) {
+      Boolean executable = true;
+      if (testSuiteType.equals("logical")) {
+        executable = false;
+      }
+      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+    }
+
+    if (!includeEmptyTestSuites) {
+      conditions.add("{\"exists\": {\"field\": \"tests\"}}");
     }
 
     return addCondition(conditions);

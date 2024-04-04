@@ -85,6 +85,9 @@ import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
+import es.org.elasticsearch.search.sort.FieldSortBuilder;
+import es.org.elasticsearch.search.sort.SortBuilders;
+import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
 import es.org.elasticsearch.search.suggest.Suggest;
 import es.org.elasticsearch.search.suggest.SuggestBuilder;
@@ -129,6 +132,7 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
@@ -415,8 +419,7 @@ public class ElasticSearchClient implements SearchClient {
       int limit,
       int offset,
       String index,
-      String sortField,
-      String sortType,
+      SearchSortFilter searchSortFilter,
       String q)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -447,8 +450,13 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
     searchSourceBuilder.size(limit);
-    if (sortField != null && sortType != null) {
-      searchSourceBuilder.sort(sortField, SortOrder.fromString(sortType));
+    if (searchSortFilter.isSorted()) {
+      FieldSortBuilder fieldSortBuilder = SortBuilders.fieldSort(searchSortFilter.getSortField()).order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (searchSortFilter.isNested()) {
+        fieldSortBuilder.setNestedPath(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.sortMode(SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
     try {
       SearchResponse response =

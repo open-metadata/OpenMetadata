@@ -4,6 +4,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
@@ -26,6 +27,7 @@ import javax.json.JsonObject;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -318,6 +320,53 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         getEntityByName(executableTestSuite.getFullyQualifiedName(), "*", ADMIN_AUTH_HEADERS);
     // Check that the logical test suite has the test cases
     verifyTestCases(executableTestSuite.getTests(), logicalTestSuite.getTests());
+
+    /* We'll then list the test suite from search
+    List from search test path:
+      1. List all test suites w/o filters
+      2. List only executable test suites
+      3. List only logical test suites
+      4. List non-empty test suites
+      5. List test suites with a query
+      6. List test suites with a nested sort
+     */
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "tests");
+    // 1. List all test suites w/o filters
+    ResultList<TestSuite> allEntities =
+            listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(allEntities.getData().stream().anyMatch(ts -> ts.getId().equals(logicalTestSuite.getId())));
+    TestSuite finalExecutableTestSuite = executableTestSuite;
+    Assertions.assertTrue(allEntities.getData().stream().anyMatch(ts -> ts.getId().equals(finalExecutableTestSuite.getId())));
+    // 2. List only executable test suites
+    queryParams.put("testSuiteType", "executable");
+    queryParams.put("fields", "tests");
+    ResultList<TestSuite> executableTestSuites =
+            listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(executableTestSuites.getData().stream().anyMatch(ts -> ts.getId().equals(finalExecutableTestSuite.getId())));
+    // 3. List only logical test suites
+    queryParams.put("testSuiteType", "logical");
+    queryParams.put("fields", "tests");
+    ResultList<TestSuite> logicalTestSuites =
+            listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(logicalTestSuites.getData().stream().anyMatch(ts -> ts.getId().equals(logicalTestSuite.getId())));
+    // 4. List non-empty test suites
+    queryParams.clear();
+    queryParams.put("includeEmptyTestSuites", "false");
+    queryParams.put("fields", "tests");
+    ResultList<TestSuite> nonEmptyTestSuites =
+            listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(nonEmptyTestSuites.getData().stream().anyMatch(ts -> !ts.getTests().isEmpty()));
+    // 6. List test suites with a nested sort
+    queryParams.clear();
+    queryParams.put("fields", "tests");
+    queryParams.put("sortField", "testCaseResultSummary.timestamp");
+    queryParams.put("sortOrder", "asc");
+    queryParams.put("sortNestedPath", "testCaseResultSummary");
+    queryParams.put("sortNestedMode", "max");
+    ResultList<TestSuite> sortedTestSuites =
+            listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(sortedTestSuites.getData());
   }
 
   @Test

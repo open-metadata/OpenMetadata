@@ -61,6 +61,7 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -158,6 +159,9 @@ import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
+import os.org.opensearch.search.sort.FieldSortBuilder;
+import os.org.opensearch.search.sort.SortBuilders;
+import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
 import os.org.opensearch.search.suggest.Suggest;
 import os.org.opensearch.search.suggest.SuggestBuilder;
@@ -408,8 +412,7 @@ public class OpenSearchClient implements SearchClient {
       int limit,
       int offset,
       String index,
-      String sortField,
-      String sortType,
+      SearchSortFilter searchSortFilter,
       String q)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -440,8 +443,13 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
     searchSourceBuilder.size(limit);
-    if (sortField != null && sortType != null) {
-      searchSourceBuilder.sort(sortField, SortOrder.fromString(sortType));
+    if (searchSortFilter.isSorted()) {
+      FieldSortBuilder fieldSortBuilder = SortBuilders.fieldSort(searchSortFilter.getSortField()).order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (searchSortFilter.isNested()) {
+        fieldSortBuilder.setNestedPath(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.sortMode(SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
     try {
       SearchResponse response =

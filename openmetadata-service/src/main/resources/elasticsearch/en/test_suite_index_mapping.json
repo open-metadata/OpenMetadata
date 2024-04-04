@@ -125,7 +125,7 @@
         "type": "text"
       },
       "executable": {
-        "type": "text"
+        "type": "boolean"
       }
     }
   }
