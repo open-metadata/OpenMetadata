@@ -19,7 +19,7 @@ export interface IngestionPipelineLogByIdInterface {
   test_suite_task?: string;
   data_insight_task?: string;
   dbt_task?: string;
-  application_task?: string;
+  elasticsearch_reindex_task?: string;
   total?: string;
   after?: string;
 }

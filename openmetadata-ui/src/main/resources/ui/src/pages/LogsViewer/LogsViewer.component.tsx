@@ -91,7 +91,7 @@ const LogsViewer = () => {
 
         const logs = await getLatestApplicationRuns(ingestionName);
         setAppLatestRun(data[0]);
-        setLogs(logs.data_insight_task);
+        setLogs(logs.data_insight_task || logs.application_task);
 
         return;
       }
@@ -137,8 +137,8 @@ const LogsViewer = () => {
 
           break;
 
-        case PipelineType.Application:
-          setLogs(logs.concat(res.data?.application_task || ''));
+        case PipelineType.ElasticSearchReindex:
+          setLogs(logs.concat(res.data?.elasticsearch_reindex_task || ''));
 
           break;
 
