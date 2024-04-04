@@ -60,7 +60,6 @@ export const SIDEBAR_LIST = [
         redirect_url: ROUTES.INCIDENT_MANAGER,
         icon: IncidentMangerIcon,
         dataTestId: `app-bar-item-${SidebarItem.INCIDENT_MANAGER}`,
-        isBeta: true,
       },
       {
         key: ROUTES.OBSERVABILITY_ALERTS,
