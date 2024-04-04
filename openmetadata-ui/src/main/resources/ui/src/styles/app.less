@@ -757,3 +757,20 @@ a[href].link-text-grey,
   right: 20px;
   z-index: 1001;
 }
+
+// Task Feed Message Container
+
+.task-feed-message-container {
+  .task-feed-message {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    &:hover {
+      .ant-typography {
+        color: @primary-color;
+      }
+    }
+  }
+}
