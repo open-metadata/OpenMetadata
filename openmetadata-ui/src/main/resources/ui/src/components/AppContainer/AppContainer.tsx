@@ -36,7 +36,9 @@ const AppContainer = () => {
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
   useEffect(() => {
-    fetchDomainList();
+    if (currentUser?.id) {
+      fetchDomainList();
+    }
   }, [currentUser?.id]);
 
   return (

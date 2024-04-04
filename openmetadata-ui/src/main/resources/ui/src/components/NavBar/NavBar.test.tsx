@@ -60,13 +60,15 @@ jest.mock('../../utils/FeedUtils', () => ({
   getEntityType: jest.fn().mockReturnValue('entityType'),
   prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
 }));
-jest.mock('../Domain/DomainProvider/DomainProvider', () => ({
-  useDomainProvider: jest.fn().mockImplementation(() => ({
+
+jest.mock('../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockImplementation(() => ({
     domainOptions: jest.fn().mockReturnValue('domainOptions'),
     activeDomain: jest.fn().mockReturnValue('activeDomain'),
     updateActiveDomain: jest.fn(),
   })),
 }));
+
 jest.mock('../Modals/WhatsNewModal/WhatsNewModal', () => {
   return jest
     .fn()
