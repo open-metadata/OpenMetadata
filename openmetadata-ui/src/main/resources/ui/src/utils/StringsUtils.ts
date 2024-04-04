@@ -255,7 +255,7 @@ export const formatJsonString = (jsonString: string, indent = '') => {
   }
 };
 
-const replaceCallback = (character: string) => {
+export const replaceCallback = (character: string) => {
   // Generate a random number between 0 and 15
   const randomNumber = (Math.random() * 16) | 0;
 
