@@ -17,8 +17,10 @@ import static java.util.stream.Collectors.groupingBy;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwner;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
@@ -1157,19 +1159,29 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
-      // column.fullyQualifiedName, column.displayName, column.description, column.dataTypeDisplay,
-      // column.tags
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // sourceUrl, domain, column.fullyQualifiedName, column.displayName, column.description,
+      // column.dataTypeDisplay,
+      // column.tags, column.glossaryTerms
       if (processRecord) {
+        // fields tags(4), glossaryTerms(5), tiers(6)
+        List<TagLabel> tagLabels =
+            getTagLabels(
+                printer,
+                csvRecord,
+                List.of(
+                    Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                    Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                    Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
         table
             .withName(csvRecord.get(0))
             .withDisplayName(csvRecord.get(1))
             .withDescription(csvRecord.get(2))
             .withOwner(getOwner(printer, csvRecord, 3))
-            .withTags(getTagLabels(printer, csvRecord, 4))
-            .withRetentionPeriod(csvRecord.get(5))
-            .withSourceUrl(csvRecord.get(6))
-            .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+            .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
+            .withRetentionPeriod(csvRecord.get(7))
+            .withSourceUrl(csvRecord.get(8))
+            .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
         ImportResult importResult = updateColumn(printer, csvRecord);
         if (importResult.result().equals(IMPORT_FAILED)) {
           importFailure(printer, importResult.details(), csvRecord);
@@ -1202,16 +1214,24 @@ public class TableRepository extends EntityRepository<Table> {
       if (!processRecord) {
         return new ImportResult(IMPORT_SKIPPED, csvRecord, "");
       }
-      String columnFqn = csvRecord.get(8);
+      String columnFqn = csvRecord.get(10);
       Column column = findColumn(table.getColumns(), columnFqn);
       if (column == null) {
         processRecord = false;
         return new ImportResult(IMPORT_FAILED, csvRecord, columnNotFound(8, columnFqn));
       }
-      column.withDisplayName(csvRecord.get(9));
-      column.withDescription(csvRecord.get(10));
-      column.withDataTypeDisplay(csvRecord.get(11));
-      column.withTags(getTagLabels(printer, csvRecord, 12));
+      column.withDisplayName(csvRecord.get(11));
+      column.withDescription(csvRecord.get(12));
+      column.withDataTypeDisplay(csvRecord.get(13));
+      List<TagLabel> tagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(14, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(15, TagLabel.TagSource.GLOSSARY)));
+      column.withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels);
+      // Add GlossaryTerm and Tiers
       return new ImportResult(IMPORT_SUCCESS, csvRecord, ENTITY_UPDATED);
     }
 
@@ -1226,6 +1246,8 @@ public class TableRepository extends EntityRepository<Table> {
       addField(recordList, entity.getDescription());
       addOwner(recordList, entity.getOwner());
       addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
       addField(recordList, entity.getRetentionPeriod());
       addField(recordList, entity.getSourceUrl());
       String domain =
@@ -1243,7 +1265,7 @@ public class TableRepository extends EntityRepository<Table> {
     private void addRecord(
         CsvFile csvFile, List<String> recordList, Column column, boolean emptyTableDetails) {
       if (emptyTableDetails) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 10; i++) {
           addField(recordList, (String) null); // Add empty fields for table information
         }
       }
@@ -1254,6 +1276,7 @@ public class TableRepository extends EntityRepository<Table> {
       addField(recordList, column.getDescription());
       addField(recordList, column.getDataTypeDisplay());
       addTagLabels(recordList, column.getTags());
+      addGlossaryTerms(recordList, column.getTags());
       addRecord(csvFile, recordList);
       listOrEmpty(column.getChildren())
           .forEach(c -> addRecord(csvFile, new ArrayList<>(), c, true));

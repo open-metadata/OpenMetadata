@@ -14,8 +14,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwner;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 
 import java.io.IOException;
@@ -26,6 +28,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -36,6 +39,7 @@ import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -239,17 +243,26 @@ public class DatabaseRepository extends EntityRepository<Database> {
         return;
       }
 
-      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
+      List<TagLabel> tagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       schema
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwner(getOwner(printer, csvRecord, 3))
-          .withTags(getTagLabels(printer, csvRecord, 4))
-          .withRetentionPeriod(csvRecord.get(5))
-          .withSourceUrl(csvRecord.get(6))
-          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+          .withTags(tagLabels)
+          .withRetentionPeriod(csvRecord.get(7))
+          .withSourceUrl(csvRecord.get(8))
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
       if (processRecord) {
         createEntity(printer, csvRecord, schema);
       }
@@ -264,6 +277,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
       addField(recordList, entity.getDescription());
       addOwner(recordList, entity.getOwner());
       addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
       addField(recordList, entity.getRetentionPeriod());
       addField(recordList, entity.getSourceUrl());
       String domain =
