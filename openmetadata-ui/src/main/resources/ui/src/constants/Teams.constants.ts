@@ -13,6 +13,8 @@
 
 import { t } from 'i18next';
 import DraggableBodyRow from '../components/common/Draggable/DraggableBodyRow';
+import { EntityType } from '../enums/entity.enum';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 
 export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';
 
@@ -50,3 +52,23 @@ export const SUBSCRIPTION_WEBHOOK_OPTIONS = [
     value: SUBSCRIPTION_WEBHOOK.G_CHAT,
   },
 ];
+
+export const QueryFilterToExcludeTeamTerms: QueryFilterInterface = {
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  entityType: EntityType.TAG,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+};

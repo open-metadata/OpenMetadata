@@ -17,6 +17,7 @@ import { PagingResponse, RestoreRequestType } from 'Models';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
+import { EntityReference } from '../generated/entity/type';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -142,6 +143,38 @@ export const importUserInTeam = async (
     data,
     configOptions
   );
+
+  return response.data;
+};
+
+export const addAssetsToTeam = async (
+  domainFqn: string,
+  assets: EntityReference[]
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: assets,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<Team>
+  >(`/teams/${getEncodedFqn(domainFqn)}/assets/add`, data);
+
+  return response.data;
+};
+
+export const removeAssetsFromTeam = async (
+  teamFqn: string,
+  assets: EntityReference[]
+) => {
+  const data = {
+    assets: assets,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<Team>
+  >(`/teams/${getEncodedFqn(teamFqn)}/assets/remove`, data);
 
   return response.data;
 };

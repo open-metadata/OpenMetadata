@@ -55,6 +55,7 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
+import { Team } from '../../../../generated/entity/teams/team';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
@@ -71,6 +72,7 @@ import {
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getTeamByName, removeAssetsFromTeam } from '../../../../rest/teamsAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import {
@@ -152,6 +154,7 @@ const AssetsTabs = forwardRef(
           AssetsOfEntity.DATA_PRODUCT,
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
+          AssetsOfEntity.TEAM,
         ].includes(type),
       [type]
     );
@@ -163,7 +166,7 @@ const AssetsTabs = forwardRef(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
     const [activeEntity, setActiveEntity] = useState<
-      Domain | DataProduct | GlossaryTerm
+      Domain | DataProduct | GlossaryTerm | Team
     >();
 
     const [selectedItems, setSelectedItems] = useState<
@@ -309,6 +312,11 @@ const AssetsTabs = forwardRef(
           data = await getGlossaryTermByFQN(fqn);
 
           break;
+
+        case AssetsOfEntity.TEAM:
+          data = await getTeamByName(fqn);
+
+          break;
         default:
           break;
       }
@@ -416,6 +424,14 @@ const AssetsTabs = forwardRef(
 
             case AssetsOfEntity.DOMAIN:
               await removeAssetsFromDomain(
+                activeEntity.fullyQualifiedName ?? '',
+                entities
+              );
+
+              break;
+
+            case AssetsOfEntity.TEAM:
+              await removeAssetsFromTeam(
                 activeEntity.fullyQualifiedName ?? '',
                 entities
               );

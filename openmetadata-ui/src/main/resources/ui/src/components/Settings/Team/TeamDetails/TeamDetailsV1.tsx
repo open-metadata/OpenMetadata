@@ -32,7 +32,13 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
@@ -41,7 +47,6 @@ import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { ReactComponent as IconTeams } from '../../../../assets/svg/teams.svg';
-import { ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
   ROLE_DOCS,
@@ -51,6 +56,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
+import { QueryFilterToExcludeTeamTerms } from '../../../../constants/Teams.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -92,10 +98,13 @@ import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { AssetSelectionModal } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { useEntityExportModalProvider } from '../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
-import AssetsTabs from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import AssetsTabs, {
+  AssetsTabRef,
+} from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
@@ -183,6 +192,8 @@ const TeamDetailsV1 = ({
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
   const { showModal } = useEntityExportModalProvider();
+  const [assetModalVisible, setAssetModelVisible] = useState(false);
+  const assetTabRef = useRef<AssetsTabRef>(null);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -423,6 +434,12 @@ const TeamDetailsV1 = ({
       );
     }
   };
+
+  const handleAssetSave = useCallback(() => {
+    // fetchGlossaryTermAssets();
+    assetTabRef.current?.refreshAssets();
+    // tab !== 'assets' && activeTabHandler('assets');
+  }, [assetTabRef]);
 
   useEffect(() => {
     if (currentTeam) {
@@ -725,15 +742,23 @@ const TeamDetailsV1 = ({
       <AssetsTabs
         isSummaryPanelOpen
         assetCount={assetsCount}
+        entityFqn={currentTeam.fullyQualifiedName}
         isEntityDeleted={isTeamDeleted}
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
+        ref={assetTabRef}
         type={AssetsOfEntity.TEAM}
-        onAddAsset={() => history.push(ROUTES.EXPLORE)}
+        onAddAsset={() => setAssetModelVisible(true)}
         onAssetClick={setPreviewAsset}
       />
     ),
-    [entityPermissions, assetsCount, setPreviewAsset, isTeamDeleted]
+    [
+      currentTeam,
+      entityPermissions,
+      assetsCount,
+      setPreviewAsset,
+      isTeamDeleted,
+    ]
   );
 
   const rolesTabRender = useMemo(
@@ -1174,6 +1199,18 @@ const TeamDetailsV1 = ({
             onSave={(data) => handleAddAttribute(data)}
           />
         )}
+
+        {assetModalVisible && currentTeam.fullyQualifiedName && (
+          <AssetSelectionModal
+            entityFqn={currentTeam.fullyQualifiedName}
+            open={assetModalVisible}
+            queryFilter={QueryFilterToExcludeTeamTerms}
+            type={AssetsOfEntity.TEAM}
+            onCancel={() => setAssetModelVisible(false)}
+            onSave={handleAssetSave}
+          />
+        )}
+
         {selectedEntity && (
           <Modal
             centered

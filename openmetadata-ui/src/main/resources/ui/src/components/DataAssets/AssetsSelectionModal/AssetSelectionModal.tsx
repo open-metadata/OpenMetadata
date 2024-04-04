@@ -46,6 +46,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { Team } from '../../../generated/entity/teams/team';
 import {
   BulkOperationResult,
   Status,
@@ -62,6 +63,7 @@ import {
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { addAssetsToTeam, getTeamByName } from '../../../rest/teamsAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import {
@@ -102,7 +104,9 @@ export const AssetSelectionModal = ({
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
     type === AssetsOfEntity.GLOSSARY ? SearchIndex.DATA_ASSET : SearchIndex.ALL
   );
-  const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
+  const [activeEntity, setActiveEntity] = useState<
+    Domain | DataProduct | Team
+  >();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -172,12 +176,13 @@ export const AssetSelectionModal = ({
       const data = await getDomainByName(entityFqn);
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-      const data = await getDataProductByName(entityFqn, {
-        fields: 'domain,assets',
-      });
+      const data = await getDataProductByName(entityFqn);
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.GLOSSARY) {
       const data = await getGlossaryTermByFQN(entityFqn, { fields: 'tags' });
+      setActiveEntity(data);
+    } else if (type === AssetsOfEntity.TEAM) {
+      const data = await getTeamByName(entityFqn);
       setActiveEntity(data);
     }
   }, [type, entityFqn]);
@@ -276,6 +281,14 @@ export const AssetSelectionModal = ({
           break;
         case AssetsOfEntity.DOMAIN:
           res = await addAssetsToDomain(
+            activeEntity.fullyQualifiedName ?? '',
+            entities
+          );
+
+          break;
+
+        case AssetsOfEntity.TEAM:
+          res = await addAssetsToTeam(
             activeEntity.fullyQualifiedName ?? '',
             entities
           );

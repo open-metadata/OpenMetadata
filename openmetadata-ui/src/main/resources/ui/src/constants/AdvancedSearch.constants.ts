@@ -240,6 +240,16 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TEAM_DROPDOWN_ITEMS = [
+  {
+    label: t('label.entity-type-plural', {
+      entity: t('label.entity'),
+    }) as string,
+    key: 'entityType',
+  },
+  ...COMMON_DROPDOWN_ITEMS,
+];
+
 export const LINEAGE_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   {
