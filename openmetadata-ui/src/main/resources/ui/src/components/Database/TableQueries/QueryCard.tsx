@@ -251,14 +251,14 @@ const QueryCard: FC<QueryCardProp> = ({
             />
           </div>
           <Row align="middle" className="p-y-md border-top">
-            <Col className="p-l-md" span={16}>
+            <Col className="p-l-md" span={20}>
               <QueryUsedByOtherTable
                 isEditMode={isEditMode}
                 query={query}
                 onChange={(value) => setSelectedTables(value)}
               />
             </Col>
-            <Col span={8}>
+            <Col span={4}>
               {isEditMode && (
                 <Space
                   align="end"

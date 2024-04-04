@@ -81,7 +81,7 @@ const TableQueryRightPanel = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Row className="m-y-md p-x-md" gutter={[16, 40]}>
+        <Row className="m-y-md p-x-md w-full" gutter={[16, 40]}>
           <Col span={24}>
             <Space className="relative" direction="vertical" size={4}>
               <Space align="center" className="w-full" size={0}>

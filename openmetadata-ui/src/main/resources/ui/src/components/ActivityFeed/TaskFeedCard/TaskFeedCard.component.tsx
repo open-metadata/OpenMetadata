@@ -155,7 +155,9 @@ const TaskFeedCard = ({
       )}
       data-testid="task-feed-card">
       <Row gutter={[0, 8]}>
-        <Col className="d-flex items-center" span={24}>
+        <Col
+          className="d-flex items-center task-feed-message-container"
+          span={24}>
           <Icon
             className="m-r-xs"
             component={
