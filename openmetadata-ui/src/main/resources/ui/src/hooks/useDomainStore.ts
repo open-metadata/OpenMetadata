@@ -14,8 +14,8 @@ import { AxiosError } from 'axios';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
-  ACTIVE_DOMAIN_STORAGE_KEY,
   DEFAULT_DOMAIN_VALUE,
+  DOMAIN_STORAGE_KEY,
   PAGE_SIZE_LARGE,
 } from '../constants/constants';
 import { Domain } from '../generated/entity/domains/domain';
@@ -53,7 +53,8 @@ export const useDomainStore = create<DomainStore>()(
       },
     }),
     {
-      name: ACTIVE_DOMAIN_STORAGE_KEY,
+      name: DOMAIN_STORAGE_KEY,
+      partialize: (state) => ({ activeDomain: state.activeDomain }),
     }
   )
 );
