@@ -17,6 +17,7 @@ import { DataInsightLatestRun } from '../components/Settings/Applications/AppDet
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
+import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
@@ -61,12 +62,11 @@ export const getApplicationRuns = async (
   appName: string,
   params?: AppListParams
 ) => {
-  const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
-    `${BASE_URL}/name/${getEncodedFqn(appName)}/status`,
-    {
-      params,
-    }
-  );
+  const response = await APIClient.get<
+    PagingResponse<AppRunRecord[] | PipelineStatus[]>
+  >(`${BASE_URL}/name/${getEncodedFqn(appName)}/status`, {
+    params,
+  });
 
   return response.data;
 };

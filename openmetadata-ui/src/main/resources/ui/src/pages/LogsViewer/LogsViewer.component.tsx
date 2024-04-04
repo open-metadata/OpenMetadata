@@ -34,10 +34,10 @@ import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../../constants/pipeline.constants';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
-import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
 import {
   IngestionPipeline,
   PipelineState,
+  PipelineStatus,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
@@ -68,7 +68,7 @@ const LogsViewer = () => {
   const [logs, setLogs] = useState<string>('');
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
   const [appData, setAppData] = useState<App>();
-  const [appLatestRun, setAppLatestRun] = useState<AppRunRecord>();
+  const [appLatestRun, setAppLatestRun] = useState<PipelineStatus>();
   const [paging, setPaging] = useState<Paging>();
 
   const isApplicationType = useMemo(
@@ -90,7 +90,7 @@ const LogsViewer = () => {
         });
 
         const logs = await getLatestApplicationRuns(ingestionName);
-        setAppLatestRun(data[0]);
+        setAppLatestRun((data as PipelineStatus[])[0]);
         setLogs(logs.data_insight_task);
 
         return;
@@ -267,18 +267,17 @@ const LogsViewer = () => {
   };
 
   const recentRuns = useMemo(() => {
-    if (isApplicationType) {
+    if (isApplicationType && !isUndefined(appLatestRun)) {
       return (
         <Tag
           className="ingestion-run-badge latest"
           color={
             PIPELINE_INGESTION_RUN_STATUS[
-              (appLatestRun?.status as unknown as PipelineState) ??
-                PipelineState.Failed
+              appLatestRun.pipelineState ?? PipelineState.Failed
             ]
           }
           data-testid="pipeline-status">
-          {startCase(appLatestRun?.status)}
+          {startCase(appLatestRun.pipelineState)}
         </Tag>
       );
     }
@@ -288,7 +287,7 @@ const LogsViewer = () => {
     }
 
     return '--';
-  }, [logEntityType, appLatestRun, ingestionDetails]);
+  }, [isApplicationType, logEntityType, appLatestRun, ingestionDetails]);
 
   const logSummaries = useMemo(() => {
     const scheduleClass = appData?.appSchedule as AppScheduleClass;
