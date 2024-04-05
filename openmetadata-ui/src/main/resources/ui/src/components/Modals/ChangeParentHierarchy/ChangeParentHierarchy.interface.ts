@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,15 @@
  *  limitations under the License.
  */
 
-export interface IngestionPipelineLogByIdInterface {
-  ingestion_task?: string;
-  profiler_task?: string;
-  usage_task?: string;
-  lineage_task?: string;
-  test_suite_task?: string;
-  data_insight_task?: string;
-  dbt_task?: string;
-  elasticsearch_reindex_task?: string;
-  total?: string;
-  after?: string;
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+
+export interface ChangeParentHierarchyProps {
+  selectedData: GlossaryTerm;
+  onCancel: () => void;
+  onSubmit: (id: string) => Promise<void>;
 }
 
-export interface LogViewerParams {
-  logEntityType: string;
-  fqn: string;
+export interface SelectOptions {
+  label: string;
+  value: string;
 }

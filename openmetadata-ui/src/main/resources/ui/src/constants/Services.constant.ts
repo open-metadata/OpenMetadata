@@ -284,8 +284,10 @@ export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
 
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
     'name',
+    'displayName',
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
