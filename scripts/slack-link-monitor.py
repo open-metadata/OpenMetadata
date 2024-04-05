@@ -14,7 +14,7 @@ import requests
 
 try:
     res = requests.post(
-        "https://www.linkmonitor.dev/api/v1/validate",
+        "https://linkmonitor.onrender.com/api/v1/validate",
         headers={"Content-Type": "application/json"},
         json={"url": "https://slack.open-metadata.org"},
     )
