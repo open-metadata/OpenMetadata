@@ -91,3 +91,90 @@ export const mockIngestionPipeline = {
   updatedBy: 'admin',
   deleted: false,
 };
+
+export const mockDataInsightApplication = {
+  id: '8437b08f-404a-4129-8448-610323daf51e',
+  name: 'DataInsightsApplication',
+  displayName: 'Data Insights',
+  description:
+    // eslint-disable-next-line max-len
+    '**Data Insights: A Revolutionary Tool for Metadata Analysis and Data Management**\n\n**Comprehensive Data Analytics:** Dive deep into the world of data with our advanced analytics, crafted to transform raw metadata into valuable insights.',
+  fullyQualifiedName: 'DataInsightsApplication',
+  version: 0.1,
+  updatedAt: 1712299044226,
+  updatedBy: 'admin',
+  href: 'http://localhost:8585/api/v1/apps/8437b08f-404a-4129-8448-610323daf51e',
+  deleted: false,
+  provider: 'user',
+  developer: 'Collate Inc.',
+  developerUrl: 'https://www.getcollate.io',
+  privacyPolicyUrl: 'https://www.getcollate.io',
+  supportEmail: 'support@getcollate.io',
+  className: 'org.openmetadata.service.apps.bundles.insights.DataInsightsApp',
+  appType: 'external',
+  scheduleType: 'Scheduled',
+  permission: 'All',
+  bot: {
+    id: '2f38b35d-bc91-4412-af2a-294644d44b2c',
+    type: 'bot',
+    name: 'DataInsightsApplicationBot',
+    fullyQualifiedName: 'DataInsightsApplicationBot',
+    deleted: false,
+  },
+  runtime: {
+    enabled: 'true',
+  },
+  allowConfiguration: false,
+  system: false,
+  appConfiguration: {},
+  preview: false,
+  appSchedule: {
+    scheduleTimeline: 'Custom',
+    cronExpression: '0 0 * * *',
+  },
+  appScreenshots: ['DataInsightsPic1.png'],
+};
+
+export const mockDataInsightApplicationRun = {
+  data: [
+    {
+      runId: '7852085e-2ef3-44d1-8c95-dd8c14d33895',
+      pipelineState: 'success',
+      startDate: 1712299055158,
+      timestamp: 1712299055158,
+      endDate: 1712299060061,
+      status: [
+        {
+          name: 'OpenMetadata Insights',
+          records: 71,
+          updated_records: 0,
+          warnings: 0,
+          errors: 0,
+          filtered: 0,
+          failures: [],
+        },
+        {
+          name: 'OpenMetadata',
+          records: 71,
+          updated_records: 0,
+          warnings: 0,
+          errors: 0,
+          filtered: 0,
+          failures: [],
+        },
+      ],
+    },
+  ],
+  paging: {
+    before: 'MTcxMjIxMzc0NjM1Ng==',
+    after: 'MTcxMjMwMDE0NjM1Ng==',
+    total: 1,
+  },
+};
+
+export const mockLatestDataInsightApplicationRunLogs = {
+  data_insight_task:
+    // eslint-disable-next-line max-len
+    "31103bd4cfc9\n*** Found local files:\n***   * /opt/airflow/logs/dag_id=OpenMetadata_dataInsight/run_id=manual__2024-04-05T06:37:28+00:00/task_id=data_insight_task/attempt=1.log\n[2024-04-05T06:37:35.052+0000] {taskinstance.py:1159} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: OpenMetadata_dataInsight.data_insight_task manual__2024-04-05T06:37:28+00:00 [queued]>\n[2024-04-05T06:37:35.057+0000] {taskinstance.py:1159} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: OpenMetadata_dataInsight.data_insight_task manual__2024-04-05T06:37:28+00:00 [queued]>\n[2024-04-05T06:37:35.057+0000] {taskinstance.py:1361} INFO - Starting attempt 1 of 1\n[2024-04-05T06:37:35.065+0000] {taskinstance.py:1382} INFO - Executing <Task(CustomPythonOperator): data_insight_task> on 2024-04-05 06:37:28+00:00\n[2024-04-05T06:37:35.068+0000] {standard_task_runner.py:57} INFO - Started process 40504 to run task\n[2024-04-05T06:37:35.072+0000] {standard_task_runner.py:84} INFO - Running: ['airflow', 'tasks', 'run', 'OpenMetadata_dataInsight', 'data_insight_task', 'manual__2024-04-05T06:37:28+00:00', '--job-id', '81', '--raw', '--subdir', 'DAGS_FOLDER/OpenMetadata_dataInsight.py', '--cfg-path', '/tmp/tmpu41_kxxp']\n[2024-04-05T06:37:35.073+0000] {standard_task_runner.py:85} INFO - Job 81: Subtask data_insight_task\n[2024-04-05T06:37:35.099+0000] {task_command.py:416} INFO - Running <TaskInstance: OpenMetadata_dataInsight.data_insight_task manual__2024-04-05T06:37:28+00:00 [running]> on host 31103bd4cfc9\n[2024-04-05T06:37:35.151+0000] {taskinstance.py:1662} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='openmetadata' AIRFLOW_CTX_DAG_ID='OpenMetadata_dataInsight' AIRFLOW_CTX_TASK_ID='data_insight_task' AIRFLOW_CTX_EXECUTION_DATE='2024-04-05T06:37:28+00:00",
+  total: '1',
+};

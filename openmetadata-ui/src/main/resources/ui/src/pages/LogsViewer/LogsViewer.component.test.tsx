@@ -13,8 +13,20 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  getApplicationByName,
+  getApplicationRuns,
+  getLatestApplicationRuns,
+} from '../../rest/applicationAPI';
 import LogsViewer from './LogsViewer.component';
-import { mockIngestionPipeline, mockLogsData } from './mocks/LogsViewer.mock';
+import {
+  mockDataInsightApplication,
+  mockDataInsightApplicationRun,
+  mockIngestionPipeline,
+  mockLatestDataInsightApplicationRunLogs,
+  mockLogsData,
+} from './mocks/LogsViewer.mock';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
@@ -60,6 +72,20 @@ jest.mock(
   })
 );
 
+jest.mock('../../rest/applicationAPI', () => ({
+  getApplicationByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockDataInsightApplication)),
+  getApplicationRuns: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockDataInsightApplicationRun)),
+  getLatestApplicationRuns: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(mockLatestDataInsightApplicationRunLogs)
+    ),
+}));
+
 describe('LogsViewer.component', () => {
   it('On initial, component should render', async () => {
     await act(async () => {
@@ -78,4 +104,39 @@ describe('LogsViewer.component', () => {
 
     expect(logElement).toBeInTheDocument();
   });
+});
+
+it('should fetch api for application logs', async () => {
+  (useParams as jest.Mock).mockReturnValue({
+    logEntityType: 'apps',
+    fqn: 'DataInsightsApplication',
+  });
+
+  await act(async () => {
+    render(<LogsViewer />);
+  });
+
+  expect(getApplicationByName).toHaveBeenCalled();
+  expect(getApplicationRuns).toHaveBeenCalled();
+  expect(getLatestApplicationRuns).toHaveBeenCalled();
+});
+
+it('should show basic configuration for application in right panel', async () => {
+  (useParams as jest.Mock).mockReturnValue({
+    logEntityType: 'apps',
+    fqn: 'DataInsightsApplication',
+  });
+
+  await act(async () => {
+    render(<LogsViewer />);
+  });
+
+  expect(screen.getByText('Type')).toBeInTheDocument();
+  expect(screen.getByText('Custom')).toBeInTheDocument();
+
+  expect(screen.getByText('Schedule')).toBeInTheDocument();
+  expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
+
+  expect(screen.getByText('Recent Runs')).toBeInTheDocument();
+  expect(screen.getByText('Success')).toBeInTheDocument();
 });
