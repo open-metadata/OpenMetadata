@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -100,10 +101,9 @@ public class DatabaseServiceRepository
       Database database;
       try {
         database = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
-        importFailure(printer, entityNotFound(0, DATABASE, databaseFqn), csvRecord);
-        processRecord = false;
-        return;
+      } catch (EntityNotFoundException ex) {
+        LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
+        database = new Database().withService(service.getEntityReference());
       }
 
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain
@@ -117,6 +117,7 @@ public class DatabaseServiceRepository
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       database
+          .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwner(getOwner(printer, csvRecord, 3))

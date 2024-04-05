@@ -192,7 +192,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
       throws IOException {
-    DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
+    DatabaseSchema schema =
+        getByName(null, name, getFields("database,service")); // Validate database schema
     return new DatabaseSchemaCsv(schema, user).importCsv(csv, dryRun);
   }
 
@@ -270,9 +271,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       try {
         table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
       } catch (Exception ex) {
-        importFailure(printer, entityNotFound(0, TABLE, tableFqn), csvRecord);
-        processRecord = false;
-        return;
+        LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
+        table =
+            new Table()
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference());
       }
 
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
@@ -287,12 +291,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       table
+          .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwner(getOwner(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
+          .withColumns(new ArrayList<>())
           .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
 
       if (processRecord) {

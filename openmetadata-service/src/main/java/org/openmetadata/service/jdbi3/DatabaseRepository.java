@@ -120,7 +120,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
       throws IOException {
-    Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
+    Database database =
+        getByName(
+            null,
+            name,
+            getFields(
+                "service")); // Validate glossary name, and get service needed in case of create
     DatabaseCsv databaseCsv = new DatabaseCsv(database, user);
     return databaseCsv.importCsv(csv, dryRun);
   }
@@ -238,9 +243,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
       try {
         schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
       } catch (Exception ex) {
-        importFailure(printer, entityNotFound(0, DATABASE_SCHEMA, schemaFqn), csvRecord);
-        processRecord = false;
-        return;
+        LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
+        schema =
+            new DatabaseSchema()
+                .withDatabase(database.getEntityReference())
+                .withService(database.getService());
       }
 
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
