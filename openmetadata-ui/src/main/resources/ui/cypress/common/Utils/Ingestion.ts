@@ -71,8 +71,9 @@ export const handleIngestionRetry = (count = 0, ingestionType = 'metadata') => {
 
     retryCount++;
 
-    cy.get(`[data-row-key*="${ingestionType}"]`)
-      .find('[data-testid="pipeline-status"]')
+    cy.contains('td', `${ingestionType}`) // find the element with the text
+      .parent('tr') // find the parent 'tr'
+      .find('[data-testid="pipeline-status"]') // find the element with '[data-testid="run"]'
       .as('checkRun');
     // the latest run should be success
     cy.get('@checkRun').then(($ingestionStatus) => {
