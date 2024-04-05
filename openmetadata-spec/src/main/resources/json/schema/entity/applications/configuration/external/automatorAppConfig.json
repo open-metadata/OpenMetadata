@@ -35,11 +35,11 @@
       "default": "Automator"
     },
     "resources": {
-        "description": "Entities selected to run the automation.",
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/resource"
-        }
+      "description": "Entities selected to run the automation.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/resource"
+      }
     },
     "action": {
       "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
@@ -56,6 +56,6 @@
       ]
     }
   },
-  "required": ["type", "searchQuery", "action"],
+  "required": ["type", "resources", "action"],
   "additionalProperties": false
 }
