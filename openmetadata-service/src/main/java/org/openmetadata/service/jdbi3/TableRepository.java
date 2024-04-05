@@ -1218,7 +1218,7 @@ public class TableRepository extends EntityRepository<Table> {
       Column column = findColumn(table.getColumns(), columnFqn);
       if (column == null) {
         processRecord = false;
-        return new ImportResult(IMPORT_FAILED, csvRecord, columnNotFound(8, columnFqn));
+        return new ImportResult(IMPORT_FAILED, csvRecord, columnNotFound(10, columnFqn));
       }
       column.withDisplayName(csvRecord.get(11));
       column.withDescription(csvRecord.get(12));
