@@ -173,6 +173,7 @@ export const setValueForProperty = (
   switch (propertyType) {
     case 'markdown':
       cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .filter(':visible')
         .clear()
         .type(value);
       cy.get('[data-testid="save"]').click();
@@ -180,13 +181,19 @@ export const setValueForProperty = (
       break;
 
     case 'email':
-      cy.get('[data-testid="email-input"]').clear().type(value);
+      cy.get('[data-testid="email-input"]')
+        .filter(':visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
-      cy.get('[data-testid="duration-input"]').clear().type(value);
+      cy.get('[data-testid="duration-input"]')
+        .filter(':visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -205,15 +212,24 @@ export const setValueForProperty = (
       break;
 
     case 'timestamp':
-      cy.get('[data-testid="timestamp-input"]').clear().type(value);
+      cy.get('[data-testid="timestamp-input"]')
+        .filter(':visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
-      cy.get('[data-testid="start-input"]').clear().type(startValue);
-      cy.get('[data-testid="end-input"]').clear().type(endValue);
+      cy.get('[data-testid="start-input"]')
+        .filter(':visible')
+        .clear()
+        .type(startValue);
+      cy.get('[data-testid="end-input"]')
+        .filter(':visible')
+        .clear()
+        .type(endValue);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -222,7 +238,10 @@ export const setValueForProperty = (
     case 'string':
     case 'integer':
     case 'number':
-      cy.get('[data-testid="value-input"]').clear().type(value);
+      cy.get('[data-testid="value-input"]')
+        .filter(':visible')
+        .clear()
+        .type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
 
       break;
