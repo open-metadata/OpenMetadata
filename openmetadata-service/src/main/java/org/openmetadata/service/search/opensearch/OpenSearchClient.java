@@ -95,7 +95,6 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
-import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -446,11 +445,15 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder.from(offset);
     searchSourceBuilder.size(limit);
     if (searchSortFilter.isSorted()) {
-      FieldSortBuilder fieldSortBuilder = SortBuilders.fieldSort(searchSortFilter.getSortField()).order(SortOrder.fromString(searchSortFilter.getSortType()));
+      FieldSortBuilder fieldSortBuilder =
+          SortBuilders.fieldSort(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
       if (searchSortFilter.isNested()) {
-        NestedSortBuilder nestedSortBuilder = new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        NestedSortBuilder nestedSortBuilder =
+            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
         fieldSortBuilder.setNestedSort(nestedSortBuilder);
-        fieldSortBuilder.sortMode(SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+        fieldSortBuilder.sortMode(
+            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
       }
       searchSourceBuilder.sort(fieldSortBuilder);
     }

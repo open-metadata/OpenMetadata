@@ -192,7 +192,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     }
 
     if (fullyQualifiedName != null) {
-      conditions.add(String.format("{\"term\": {\"fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(fullyQualifiedName)));
+      conditions.add(
+          String.format(
+              "{\"term\": {\"fullyQualifiedName\": \"%s\"}}",
+              escapeDoubleQuotes(fullyQualifiedName)));
     }
 
     if (owner != null) {

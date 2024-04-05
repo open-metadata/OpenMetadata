@@ -330,15 +330,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortField")
           String sortField,
       @Parameter(
-              description = "Set this field if your mapping is nested and you want to sort on a nested field",
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
               schema = @Schema(type = "string"))
-      @QueryParam("sortNestedPath")
-      String sortNestedPath,
+          @QueryParam("sortNestedPath")
+          String sortNestedPath,
       @Parameter(
-              description = "Set this field if your mapping is nested and you want to sort on a nested field",
+              description =
+                  "Set this field if your mapping is nested and you want to sort on a nested field",
               schema = @Schema(type = "string", example = "min,max,avg,sum,median"))
-      @QueryParam("sortNestedMode")
-      String sortNestedMode,
+          @QueryParam("sortNestedMode")
+          String sortNestedMode,
       @Parameter(
               description = "Sort type",
               schema =
@@ -361,7 +363,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         || (startTimestamp != null && endTimestamp == null)) {
       throw new IllegalArgumentException("startTimestamp and endTimestamp must be used together");
     }
-    SearchSortFilter searchSortFilter = new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter = new SearchListFilter(include);
     searchListFilter.addQueryParam("testSuiteId", testSuiteId);
     searchListFilter.addQueryParam("includeAllTests", includeAllTests.toString());

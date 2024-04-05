@@ -65,7 +65,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   private static final String INCIDENTS_FIELD = "incidentId";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testSuites,testDefinition";
+  private static final String UPDATE_FIELDS =
+      "owner,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
       "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
@@ -267,16 +268,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     daoCollection.testCaseResolutionStatusTimeSeriesDao().delete(test.getFullyQualifiedName());
   }
 
-    @Override
-    protected void postCreate(TestCase test) {
-      super.postCreate(test);
-      // Update test suite with new test case in search index
-      TestSuiteRepository testSuiteRepository =
-          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-      TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
-      TestSuite original = testSuiteRepository.copyTestSuite(testSuite);
-      testSuiteRepository.postUpdate(original, testSuite);
-    }
+  @Override
+  protected void postCreate(TestCase test) {
+    super.postCreate(test);
+    // Update test suite with new test case in search index
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
+    TestSuite original = testSuiteRepository.copyTestSuite(testSuite);
+    testSuiteRepository.postUpdate(original, testSuite);
+  }
 
   public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
@@ -909,11 +910,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private void putUpdateTestSuite(TestSuite testSuite, List<ResultSummary> resultSummaries) {
     // Update test case result summary attribute for the test suite
-    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     testSuite.setSummary(null); // we don't want to store the summary in the database
-    TestSuite original = TestSuiteRepository.copyTestSuite(testSuite); // we'll need the original state to update the test suite
-    testSuite.setTestCaseResultSummary(resultSummaries != null ? resultSummaries : testSuite.getTestCaseResultSummary());
-    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater = testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
+    TestSuite original =
+        TestSuiteRepository.copyTestSuite(
+            testSuite); // we'll need the original state to update the test suite
+    testSuite.setTestCaseResultSummary(
+        resultSummaries != null ? resultSummaries : testSuite.getTestCaseResultSummary());
+    EntityRepository<TestSuite>.EntityUpdater testSuiteUpdater =
+        testSuiteRepository.getUpdater(original, testSuite, Operation.PUT);
     testSuiteUpdater.update();
   }
 }

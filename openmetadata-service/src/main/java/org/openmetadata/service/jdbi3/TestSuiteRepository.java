@@ -141,11 +141,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       TestSummary testSummary;
       if (testSuiteId == null) {
         JsonObject testCaseResultSummary =
-                searchRepository.aggregate(null, TEST_SUITE, aggregationJson);
+            searchRepository.aggregate(null, TEST_SUITE, aggregationJson);
         testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
       } else {
         String query =
-                """
+            """
                   {
                     "query": {
                       "bool": {
@@ -156,10 +156,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
                     }
                   }
               """
-                        .formatted(testSuiteId);
+                .formatted(testSuiteId);
         // don't want to get it from the cache as test results summary may be stale
         JsonObject testCaseResultSummary =
-                searchRepository.aggregate(query, TEST_SUITE, aggregationJson);
+            searchRepository.aggregate(query, TEST_SUITE, aggregationJson);
         testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
       }
       return testSummary;

@@ -452,11 +452,15 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.from(offset);
     searchSourceBuilder.size(limit);
     if (searchSortFilter.isSorted()) {
-      FieldSortBuilder fieldSortBuilder = SortBuilders.fieldSort(searchSortFilter.getSortField()).order(SortOrder.fromString(searchSortFilter.getSortType()));
+      FieldSortBuilder fieldSortBuilder =
+          SortBuilders.fieldSort(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
       if (searchSortFilter.isNested()) {
-        NestedSortBuilder nestedSortBuilder = new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        NestedSortBuilder nestedSortBuilder =
+            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
         fieldSortBuilder.setNestedSort(nestedSortBuilder);
-        fieldSortBuilder.sortMode(SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+        fieldSortBuilder.sortMode(
+            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
       }
       searchSourceBuilder.sort(fieldSortBuilder);
     }
