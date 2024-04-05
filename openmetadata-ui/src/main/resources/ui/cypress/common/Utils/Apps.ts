@@ -28,7 +28,7 @@ export const checkAndDeleteApp = ({
 
     const app = response.body.data.find((app) => app.name === applicationName);
 
-    if (app.name === applicationName) {
+    if (app?.name === applicationName) {
       cy.request({
         method: 'DELETE',
         url: `/api/v1/apps/name/${applicationName}?hardDelete=true`,
