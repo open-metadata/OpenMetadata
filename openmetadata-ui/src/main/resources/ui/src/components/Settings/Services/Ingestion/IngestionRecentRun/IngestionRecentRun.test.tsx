@@ -20,7 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { mockDataInsightApplicationRun } from '../../../../../pages/LogsViewer/mocks/LogsViewer.mock';
+import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';

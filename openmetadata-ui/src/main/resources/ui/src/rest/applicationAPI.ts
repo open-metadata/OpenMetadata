@@ -62,11 +62,26 @@ export const getApplicationRuns = async (
   appName: string,
   params?: AppListParams
 ) => {
-  const response = await APIClient.get<
-    PagingResponse<AppRunRecord[] | PipelineStatus[]>
-  >(`${BASE_URL}/name/${getEncodedFqn(appName)}/status`, {
-    params,
-  });
+  const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/status`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const getExternalApplicationRuns = async (
+  appName: string,
+  params?: AppListParams
+) => {
+  const response = await APIClient.get<PagingResponse<PipelineStatus[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/status`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

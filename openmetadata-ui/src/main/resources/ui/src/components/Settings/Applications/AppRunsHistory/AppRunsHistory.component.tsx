@@ -27,10 +27,7 @@ import { useHistory } from 'react-router-dom';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { AppType } from '../../../../generated/entity/applications/app';
-import {
-  AppRunRecord,
-  Status,
-} from '../../../../generated/entity/applications/appRunRecord';
+import { Status } from '../../../../generated/entity/applications/appRunRecord';
 import {
   PipelineState,
   PipelineStatus,
@@ -243,7 +240,7 @@ const AppRunsHistory = forwardRef(
             });
 
             setAppRunsHistoryData(
-              (data as AppRunRecord[]).map((item) => ({
+              data.map((item) => ({
                 ...item,
                 id: `${item.appId}-${item.runType}-${item.timestamp}`,
               }))

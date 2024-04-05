@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -42,7 +42,7 @@ import { Paging } from '../../generated/type/paging';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApplicationByName,
-  getApplicationRuns,
+  getExternalApplicationRuns,
   getLatestApplicationRuns,
 } from '../../rest/applicationAPI';
 import {
@@ -52,11 +52,11 @@ import {
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './logs-viewer.style.less';
-import LogViewerSkeleton from './LogsViewer-skeleton.component';
-import { LogViewerParams } from './LogsViewer.interfaces';
+import './logs-viewer-page.style.less';
+import { LogViewerParams } from './LogsViewerPage.interfaces';
+import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
-const LogsViewer = () => {
+const LogsViewerPage = () => {
   const { logEntityType } = useParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
 
@@ -82,13 +82,13 @@ const LogsViewer = () => {
       if (isApplicationType) {
         const currentTime = Date.now();
         const oneDayAgo = getEpochMillisForPastDays(1);
-        const { data } = await getApplicationRuns(ingestionName, {
+        const { data } = await getExternalApplicationRuns(ingestionName, {
           startTs: oneDayAgo,
           endTs: currentTime,
         });
 
         const logs = await getLatestApplicationRuns(ingestionName);
-        setAppRuns(data as PipelineStatus[]);
+        setAppRuns(data);
         setLogs(logs.data_insight_task || logs.application_task);
 
         return;
@@ -384,10 +384,10 @@ const LogsViewer = () => {
           </Col>
         </Row>
       ) : (
-        <LogViewerSkeleton />
+        <LogViewerPageSkeleton />
       )}
     </PageLayoutV1>
   );
 };
 
-export default LogsViewer;
+export default LogsViewerPage;

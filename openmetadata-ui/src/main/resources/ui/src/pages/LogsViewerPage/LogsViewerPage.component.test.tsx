@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,18 +15,18 @@ import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  getApplicationByName,
-  getApplicationRuns,
-  getLatestApplicationRuns,
-} from '../../rest/applicationAPI';
-import LogsViewer from './LogsViewer.component';
-import {
   mockDataInsightApplication,
   mockDataInsightApplicationRun,
   mockIngestionPipeline,
   mockLatestDataInsightApplicationRunLogs,
   mockLogsData,
-} from './mocks/LogsViewer.mock';
+} from '../../mocks/LogsViewerPage.mock';
+import {
+  getApplicationByName,
+  getExternalApplicationRuns,
+  getLatestApplicationRuns,
+} from '../../rest/applicationAPI';
+import LogsViewerPage from './LogsViewerPage';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
@@ -72,11 +72,15 @@ jest.mock(
   })
 );
 
+jest.mock('./LogsViewerPageSkeleton.component', () => {
+  return jest.fn().mockImplementation(() => <p>LogsViewerPageSkeleton</p>);
+});
+
 jest.mock('../../rest/applicationAPI', () => ({
   getApplicationByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockDataInsightApplication)),
-  getApplicationRuns: jest
+  getExternalApplicationRuns: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockDataInsightApplicationRun)),
   getLatestApplicationRuns: jest
@@ -86,10 +90,10 @@ jest.mock('../../rest/applicationAPI', () => ({
     ),
 }));
 
-describe('LogsViewer.component', () => {
+describe('LogsViewerPage.component', () => {
   it('On initial, component should render', async () => {
     await act(async () => {
-      render(<LogsViewer />);
+      render(<LogsViewerPage />);
 
       expect(
         await screen.findByText('TitleBreadcrumb.component')
@@ -104,39 +108,39 @@ describe('LogsViewer.component', () => {
 
     expect(logElement).toBeInTheDocument();
   });
-});
 
-it('should fetch api for application logs', async () => {
-  (useParams as jest.Mock).mockReturnValue({
-    logEntityType: 'apps',
-    fqn: 'DataInsightsApplication',
+  it('should fetch api for application logs', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'apps',
+      fqn: 'DataInsightsApplication',
+    });
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    expect(getApplicationByName).toHaveBeenCalled();
+    expect(getExternalApplicationRuns).toHaveBeenCalled();
+    expect(getLatestApplicationRuns).toHaveBeenCalled();
   });
 
-  await act(async () => {
-    render(<LogsViewer />);
+  it('should show basic configuration for application in right panel', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'apps',
+      fqn: 'DataInsightsApplication',
+    });
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('Custom')).toBeInTheDocument();
+
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
+    expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
+
+    expect(screen.getByText('Recent Runs')).toBeInTheDocument();
+    expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
   });
-
-  expect(getApplicationByName).toHaveBeenCalled();
-  expect(getApplicationRuns).toHaveBeenCalled();
-  expect(getLatestApplicationRuns).toHaveBeenCalled();
-});
-
-it('should show basic configuration for application in right panel', async () => {
-  (useParams as jest.Mock).mockReturnValue({
-    logEntityType: 'apps',
-    fqn: 'DataInsightsApplication',
-  });
-
-  await act(async () => {
-    render(<LogsViewer />);
-  });
-
-  expect(screen.getByText('Type')).toBeInTheDocument();
-  expect(screen.getByText('Custom')).toBeInTheDocument();
-
-  expect(screen.getByText('Schedule')).toBeInTheDocument();
-  expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
-
-  expect(screen.getByText('Recent Runs')).toBeInTheDocument();
-  expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
 });
