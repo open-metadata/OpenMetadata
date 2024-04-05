@@ -18,8 +18,8 @@ export interface IngestionPipelineLogByIdInterface {
   lineage_task?: string;
   test_suite_task?: string;
   data_insight_task?: string;
-  elasticsearch_reindex_task?: string;
   dbt_task?: string;
+  elasticsearch_reindex_task?: string;
   total?: string;
   after?: string;
 }
