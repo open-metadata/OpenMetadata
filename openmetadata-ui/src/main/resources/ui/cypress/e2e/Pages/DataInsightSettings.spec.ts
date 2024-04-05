@@ -121,6 +121,10 @@ describe(
       verifyResponseStatusCode('@deploy', 200);
       cy.reload();
       verifyResponseStatusCode('@getDataInsightDetails', 200);
+
+      // Adding a manual wait to allow some time between deploying the pipeline and triggering it
+      // eslint-disable-next-line cypress/no-unnecessary-waiting
+      cy.wait(1000);
       cy.get('[data-testid="run-now-button"]').click();
       verifyResponseStatusCode('@triggerPipeline', 200);
 

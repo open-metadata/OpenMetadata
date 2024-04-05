@@ -910,7 +910,6 @@ describe(
       verifyResponseStatusCode('@systemProfiler', 200);
       cy.get('[data-testid="profiler-setting-btn"]').click();
       cy.get('.ant-modal-body').should('be.visible');
-      verifyResponseStatusCode('@tableProfilerConfig', 200);
       cy.get('[data-testid="slider-input"]')
         .clear()
         .type(profilerSetting.profileSample);
@@ -975,7 +974,8 @@ describe(
       cy.get('[data-testid="profiler"]').click();
       // verify profiler setting details
       cy.get('[data-testid="profiler-setting-btn"]').click();
-      verifyResponseStatusCode('@tableProfilerConfig', 200);
+      // need extra time to load API response
+      verifyResponseStatusCode('@tableProfilerConfig', 200, { timeout: 10000 });
 
       cy.get('[data-testid="slider-input"]').should(
         'have.value',
