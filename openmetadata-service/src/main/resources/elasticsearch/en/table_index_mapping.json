@@ -100,6 +100,7 @@
       },
       "columns": {
         "type": "nested",
+        "include_in_parent": true,
         "properties": {
           "name": {
             "type": "text",
