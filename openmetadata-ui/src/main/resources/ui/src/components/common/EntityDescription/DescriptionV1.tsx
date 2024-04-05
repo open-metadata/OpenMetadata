@@ -199,7 +199,7 @@ const DescriptionV1 = ({
         <span>{t('label.no-description')}</span>
       );
     }
-  }, [description, suggestionData]);
+  }, [description, suggestionData, isDescriptionExpanded]);
 
   const content = (
     <Space

@@ -35,7 +35,6 @@ const RichTextEditorPreviewer = ({
 }: PreviewerProp) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
-
   // initially read more will be false
   const [readMore, setReadMore] = useState<boolean>(false);
 
@@ -98,14 +97,7 @@ const RichTextEditorPreviewer = ({
 
   useEffect(() => {
     setReadMore(Boolean(isDescriptionExpanded));
-    //   console.count(`Description expanded: ${isDescriptionExpanded}`);
   }, [isDescriptionExpanded]);
-
-  //   useEffect(() => {
-  //     console.count(`Read More Description expanded: ${readMore}`);
-  //   }, [readMore]);
-
-  //   console.log(`Read More Description expanded outer console: ${readMore}`);
 
   return (
     <div
