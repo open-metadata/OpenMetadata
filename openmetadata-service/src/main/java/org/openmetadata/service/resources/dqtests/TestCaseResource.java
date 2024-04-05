@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
@@ -77,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain";
   static final String SEARCH_FIELDS_EXCLUDE = "testPlatforms";
 
   @Override
@@ -336,6 +337,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortType")
           @DefaultValue("desc")
           String sortType,
+      @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -355,6 +359,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("domain", domain);
 
     if (startTimestamp != null) {
       if (startTimestamp > endTimestamp) {
@@ -365,7 +370,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
 
     ResourceContextInterface resourceContextInterface =
-        getResourceContext(entityLink, new ListFilter());
+        getResourceContext(entityLink, searchListFilter);
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
     // VIEW_TESTS
     OperationContext operationContext =
@@ -948,7 +953,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
-  private ResourceContextInterface getResourceContext(String entityLink, ListFilter filter) {
+  private ResourceContextInterface getResourceContext(String entityLink, Filter filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);

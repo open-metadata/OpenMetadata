@@ -92,13 +92,13 @@ const deleteEdge = (fromNode, toNode) => {
     ['Table', 'Topic'].indexOf(fromNode.entityType) > -1 &&
     ['Table', 'Topic'].indexOf(toNode.entityType) > -1
   ) {
-    cy.get('[data-testid="add-pipeline"]').click();
-
+    // Adding force true for handles because it can be hidden behind the node
+    cy.get('[data-testid="add-pipeline"]').click({ force: true });
     cy.get(
       '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
     ).click();
   } else {
-    cy.get('[data-testid="delete-button"]').click();
+    cy.get('[data-testid="delete-button"]').click({ force: true });
   }
   cy.get(
     '[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary'
@@ -111,7 +111,7 @@ const applyPipelineFromModal = (fromNode, toNode, pipelineData) => {
   cy.get(`[data-testid="edge-${fromNode.fqn}-${toNode.fqn}"]`).click({
     force: true,
   });
-  cy.get('[data-testid="add-pipeline"]').click();
+  cy.get('[data-testid="add-pipeline"]').click({ force: true });
 
   cy.get('[data-testid="add-edge-modal"] [data-testid="field-input"]')
     .click()
