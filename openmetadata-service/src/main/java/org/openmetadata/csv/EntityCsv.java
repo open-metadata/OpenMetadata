@@ -288,14 +288,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
       int fieldNumbers = pair.getLeft();
       TagSource source = pair.getRight();
       List<EntityReference> refs =
-          pair.getRight() == TagSource.CLASSIFICATION
+          source == TagSource.CLASSIFICATION
               ? getEntityReferences(printer, csvRecord, fieldNumbers, Entity.TAG)
               : getEntityReferences(printer, csvRecord, fieldNumbers, Entity.GLOSSARY_TERM);
-      if (!processRecord || nullOrEmpty(refs)) {
-        continue;
-      }
-      for (EntityReference ref : refs) {
-        tagLabels.add(new TagLabel().withSource(source).withTagFQN(ref.getFullyQualifiedName()));
+      if (processRecord && !nullOrEmpty(refs)) {
+        for (EntityReference ref : refs) {
+          tagLabels.add(new TagLabel().withSource(source).withTagFQN(ref.getFullyQualifiedName()));
+        }
       }
     }
     return tagLabels;
