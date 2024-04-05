@@ -30,7 +30,7 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
-    init_empty_connection_options,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
@@ -52,15 +52,22 @@ def get_connection(connection: MysqlConnection) -> Engine:
             *connection.authType.azureConfig.scopes.split(",")
         )
         connection.authType = BasicAuth(password=access_token_obj.token)
-    if connection.sslCA or connection.sslCert or connection.sslKey:
-        if not connection.connectionOptions:
-            connection.connectionOptions = init_empty_connection_options()
-        if connection.sslCA:
-            connection.connectionOptions.__root__["ssl_ca"] = connection.sslCA
-        if connection.sslCert:
-            connection.connectionOptions.__root__["ssl_cert"] = connection.sslCert
-        if connection.sslKey:
-            connection.connectionOptions.__root__["ssl_key"] = connection.sslKey
+        if (
+            connection.ssl.__root__.caCertificate
+            or connection.ssl.__root__.sslCertificate
+            or connection.ssl.__root__.sslKey
+        ):
+            connection.connectionArguments = (
+                connection.connectionArguments or init_empty_connection_arguments()
+            )
+            ssl_args = connection.connectionArguments.get("ssl", {})
+            if connection.ssl.__root__.caCertificate:
+                ssl_args["ssl_ca"] = connection.ssl.__root__.caCertificate
+            if connection.ssl.__root__.sslCertificate:
+                ssl_args["ssl_cert"] = connection.ssl.__root__.sslCertificate
+            if connection.ssl.__root__.sslKey:
+                ssl_args["ssl_key"] = connection.ssl.__root__.sslKey
+            connection.connectionArguments["ssl"] = ssl_args
 
     return create_generic_db_connection(
         connection=connection,

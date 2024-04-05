@@ -9,13 +9,17 @@
     "redshiftType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Redshift"],
+      "enum": [
+        "Redshift"
+      ],
       "default": "Redshift"
     },
     "redshiftScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["redshift+psycopg2"],
+      "enum": [
+        "redshift+psycopg2"
+      ],
       "default": "redshift+psycopg2"
     }
   },
@@ -60,10 +64,7 @@
       "default": false
     },
     "sslMode": {
-      "title": "SSL Mode",
-      "description": "SSL Mode to connect to redshift database.",
-      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
-      "default": "disable"
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
     },
     "sslConfig": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
@@ -107,5 +108,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "database"]
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
 }
