@@ -107,7 +107,7 @@ This is a sample config for BigQuery:
 
 **hostPort**: BigQuery APIs URL. By default the API URL is `bigquery.googleapis.com` you can modify this if you have custom implementation of BigQuery.
 
-**credentials**: 
+**credentials**:
 You can authenticate with your bigquery instance using either `GCP Credentials Path` where you can specify the file path of the service account key or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
 You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
@@ -239,9 +239,9 @@ source:
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
           clientX509CertUrl: https://cert.url
-          # taxonomyLocation: us
-          # taxonomyProjectID: ["project-id-1", "project-id-2"]
-          # usageLocation: us
+      # taxonomyLocation: us
+      # taxonomyProjectID: ["project-id-1", "project-id-2"]
+      # usageLocation: us
 ```
 ```yaml {% srNumber=2 %}
       # connectionOptions:
@@ -610,7 +610,7 @@ processor:
   config: {}  # Remove braces if adding properties
     # tableConfig:
     #   - fullyQualifiedName: <table fqn>
-    #     profileSample: <number between 0 and 99> # default 
+    #     profileSample: <number between 0 and 99> # default
 
     #     profileSample: <number between 0 and 99> # default will be 100 if omitted
     #     profileQuery: <query to use for sampling data for the profiler>
@@ -678,7 +678,7 @@ Here, we follow a similar approach as with the metadata and usage pipelines, alt
 
 #### Import necessary modules
 
-The `ProfilerWorkflow` class that is being imported is a part of a metadata orm_profiler framework, which defines a process of extracting Profiler data. 
+The `ProfilerWorkflow` class that is being imported is a part of a metadata orm_profiler framework, which defines a process of extracting Profiler data.
 
 Here we are also importing all the basic requirements to parse YAMLs, handle dates and build our DAG.
 
@@ -686,7 +686,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% codeInfo srNumber=26 %}
 
-**Default arguments for all tasks in the Airflow DAG.** 
+**Default arguments for all tasks in the Airflow DAG.**
 - Default arguments dictionary contains default arguments for tasks in the DAG, including the owner's name, email address, number of retries, retry delay, and execution timeout.
 
 {% /codeInfo %}

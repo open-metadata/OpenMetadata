@@ -35,6 +35,7 @@ from metadata.ingestion.source.dashboard.qliksense.client import QlikSenseClient
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDashboard,
+    QlikDashboardMeta,
     QlikSheet,
     QlikSheetInfo,
     QlikSheetMeta,
@@ -68,7 +69,11 @@ mock_qliksense_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeDraftDashboard": False,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -132,6 +137,27 @@ EXPECTED_DASHBOARDS = [
         description="dummy",
     ),
 ]
+MOCK_DASHBOARDS = [
+    QlikDashboard(
+        qDocName="sample unpublished dashboard",
+        qDocId="51",
+        qTitle="sample unpublished dashboard",
+        qMeta=QlikDashboardMeta(published=False),
+    ),
+    QlikDashboard(
+        qDocName="sample published dashboard",
+        qDocId="52",
+        qTitle="sample published dashboard",
+        qMeta=QlikDashboardMeta(published=True),
+    ),
+    QlikDashboard(
+        qDocName="sample published dashboard",
+        qDocId="53",
+        qTitle="sample published dashboard",
+        qMeta=QlikDashboardMeta(published=True),
+    ),
+]
+DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS = 1
 
 
 class QlikSenseUnitTest(TestCase):
@@ -189,3 +215,11 @@ class QlikSenseUnitTest(TestCase):
                 zip(EXPECTED_DASHBOARDS, chart_list)
             ):
                 self.assertEqual(expected, original)
+
+    @pytest.mark.order(4)
+    def test_draft_dashboard(self):
+        draft_dashboards_count = 0
+        for dashboard in MOCK_DASHBOARDS:
+            if self.qliksense.filter_draft_dashboard(dashboard):
+                draft_dashboards_count += 1
+        assert draft_dashboards_count == DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS
