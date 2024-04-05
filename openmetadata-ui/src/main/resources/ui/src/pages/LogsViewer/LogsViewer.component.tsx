@@ -91,7 +91,7 @@ const LogsViewer = () => {
 
         const logs = await getLatestApplicationRuns(ingestionName);
         setAppLatestRun((data as PipelineStatus[])[0]);
-        setLogs(logs.data_insight_task);
+        setLogs(logs.data_insight_task || logs.application_task);
 
         return;
       }
