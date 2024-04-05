@@ -159,7 +159,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
 
   useEffect(() => {
     if (isApplicationType && appRuns) {
-      setRecentRunStatus(appRuns);
+      setRecentRunStatus(appRuns.splice(0, 5).reverse() ?? []);
       setLoading(false);
     } else if (ingestion?.fullyQualifiedName) {
       fetchPipelineStatus();
