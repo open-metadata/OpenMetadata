@@ -25,9 +25,9 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import './white-label-config-settings-page.less';
+import './appearance-config-settings-page.less';
 
-const WhiteLabelConfigSettingsPage = () => {
+const AppearanceConfigSettingsPage = () => {
   const history = useHistory();
   const { theme, setTheme } = useApplicationStore();
   const { t } = useTranslation();
@@ -230,4 +230,4 @@ const WhiteLabelConfigSettingsPage = () => {
   );
 };
 
-export default WhiteLabelConfigSettingsPage;
+export default AppearanceConfigSettingsPage;

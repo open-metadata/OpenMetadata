@@ -24,6 +24,7 @@ import { TeamType } from '../../generated/entity/teams/team';
 import AddNotificationPage from '../../pages/AddNotificationPage/AddNotificationPage';
 import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AlertsActivityFeedPage from '../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage';
+import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
@@ -292,6 +293,15 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AppearanceConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.APPEARANCE
         )}
       />
       <AdminProtectedRoute
