@@ -175,6 +175,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     ArrayList<String> conditions = new ArrayList<>();
 
     String testSuiteType = getQueryParam("testSuiteType");
+    String fullyQualifiedName = getQueryParam("fullyQualifiedName");
+    String owner = getQueryParam("owner");
     Boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
@@ -187,6 +189,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     if (!includeEmptyTestSuites) {
       conditions.add("{\"exists\": {\"field\": \"tests\"}}");
+    }
+
+    if (fullyQualifiedName != null) {
+      conditions.add(String.format("{\"term\": {\"fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(fullyQualifiedName)));
+    }
+
+    if (owner != null) {
+      conditions.add(String.format("{\"term\": {\"owner.id\": \"%s\"}}", owner));
     }
 
     return addCondition(conditions);

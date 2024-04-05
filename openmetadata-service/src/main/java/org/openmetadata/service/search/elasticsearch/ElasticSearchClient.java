@@ -86,6 +86,7 @@ import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import es.org.elasticsearch.search.sort.FieldSortBuilder;
+import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
 import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
@@ -453,7 +454,8 @@ public class ElasticSearchClient implements SearchClient {
     if (searchSortFilter.isSorted()) {
       FieldSortBuilder fieldSortBuilder = SortBuilders.fieldSort(searchSortFilter.getSortField()).order(SortOrder.fromString(searchSortFilter.getSortType()));
       if (searchSortFilter.isNested()) {
-        fieldSortBuilder.setNestedPath(searchSortFilter.getSortNestedPath());
+        NestedSortBuilder nestedSortBuilder = new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.setNestedSort(nestedSortBuilder);
         fieldSortBuilder.sortMode(SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
       }
       searchSourceBuilder.sort(fieldSortBuilder);

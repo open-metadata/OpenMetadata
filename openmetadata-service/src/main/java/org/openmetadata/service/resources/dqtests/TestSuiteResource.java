@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -35,13 +36,17 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpResponseException;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
@@ -227,6 +232,16 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         @DefaultValue("true")
         Boolean includeEmptyTestSuites,
         @Parameter(
+                description = "Filter a test suite by fully qualified name.",
+                schema = @Schema(type = "string"))
+        @QueryParam("fullyQualifiedName")
+        String fullyQualifiedName,
+        @Parameter(
+                description = "Filter test suites by owner.",
+                schema = @Schema(type = "string"))
+        @QueryParam("owner")
+        String owner,
+        @Parameter(
                 description = "Include all, deleted, or non-deleted entities.",
                 schema = @Schema(implementation = Include.class))
         @QueryParam("include")
@@ -266,6 +281,18 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         SearchListFilter searchListFilter = new SearchListFilter(include);
         searchListFilter.addQueryParam("testSuiteType", testSuiteType);
         searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
+        searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
+        if (!nullOrEmpty(owner)) {
+            EntityInterface entity;
+            try {
+                entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
+            } catch (Exception e) {
+                // If the owner is not a user, then we'll try to geta team
+                entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
+            }
+            searchListFilter.addQueryParam("owner", entity.getId().toString());
+        }
+
         EntityUtil.Fields fields = getFields(fieldsParam);
 
         ResourceContext<?> resourceContext = getResourceContext();

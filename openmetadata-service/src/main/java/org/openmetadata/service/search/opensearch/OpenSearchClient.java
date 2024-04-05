@@ -23,9 +23,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.index.IndexNotFoundException;
-import es.org.elasticsearch.rest.RestStatus;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -97,6 +95,8 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
+import os.org.opensearch.OpenSearchException;
+import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -142,6 +142,7 @@ import os.org.opensearch.index.query.functionscore.ScriptScoreFunctionBuilder;
 import os.org.opensearch.index.reindex.BulkByScrollResponse;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
+import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.script.Script;
 import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
@@ -160,6 +161,7 @@ import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 import os.org.opensearch.search.sort.FieldSortBuilder;
+import os.org.opensearch.search.sort.NestedSortBuilder;
 import os.org.opensearch.search.sort.SortBuilders;
 import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
@@ -446,7 +448,8 @@ public class OpenSearchClient implements SearchClient {
     if (searchSortFilter.isSorted()) {
       FieldSortBuilder fieldSortBuilder = SortBuilders.fieldSort(searchSortFilter.getSortField()).order(SortOrder.fromString(searchSortFilter.getSortType()));
       if (searchSortFilter.isNested()) {
-        fieldSortBuilder.setNestedPath(searchSortFilter.getSortNestedPath());
+        NestedSortBuilder nestedSortBuilder = new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.setNestedSort(nestedSortBuilder);
         fieldSortBuilder.sortMode(SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
       }
       searchSourceBuilder.sort(fieldSortBuilder);
@@ -460,7 +463,7 @@ public class OpenSearchClient implements SearchClient {
       SearchHit[] hits = searchHits.getHits();
       Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
       return new SearchResultListMapper(results, searchHits.getTotalHits().value);
-    } catch (ElasticsearchStatusException e) {
+    } catch (OpenSearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
       } else {
