@@ -478,7 +478,7 @@ public class ElasticSearchClient implements SearchClient {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
       } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
       }
     }
   }
