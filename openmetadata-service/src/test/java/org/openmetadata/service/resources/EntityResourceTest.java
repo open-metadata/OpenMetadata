@@ -1006,10 +1006,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void get_entityWithNullDescriptionFromSearch(TestInfo test)
-          throws InterruptedException, IOException {
+      throws InterruptedException, IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(
-            Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
+        Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
     // We can't create a Glossary or a Tag without description
     Assumptions.assumeTrue(!List.of(GLOSSARY, TAG).contains(entityType));
     // Create an entity without description
@@ -1022,7 +1022,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Response response;
     Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
     String query =
-            "{\"size\":100,\"query\":{\"bool\":{\"should\":[{\"nested\":{\"ignore_unmapped\":true,\"path\":\"columns\",\"query\":{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"columns.description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"columns.description\":\"*\"}}}}]}}}},{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"description\":\"*\"}}}}]}}]}}}";
+        "{\"size\":100,\"query\":{\"bool\":{\"should\":[{\"nested\":{\"ignore_unmapped\":true,\"path\":\"columns\",\"query\":{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"columns.description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"columns.description\":\"*\"}}}}]}}}},{\"bool\":{\"should\":[{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"description\"}}}},{\"bool\":{\"must_not\":{\"wildcard\":{\"description\":\"*\"}}}}]}}]}}}";
     request.setJsonEntity(query);
     try {
       waitForEsAsyncOp();
@@ -1033,19 +1033,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
-            (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
     ArrayList<LinkedHashMap<String, Object>> hitsList =
-            (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
 
     assertTrue(
-            hitsList.stream()
-                    .anyMatch(
-                            hit ->
-                                    ((LinkedHashMap<String, Object>) hit.get("_source"))
-                                            .get("name")
-                                            .equals(createWithNullDescription.getName())));
+        hitsList.stream()
+            .anyMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("name")
+                        .equals(createWithNullDescription.getName())));
   }
+
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void get_entityWithEmptyDescriptionFromSearch(TestInfo test)
