@@ -46,6 +46,7 @@ export interface ApplicationStore
   applicationConfig?: LogoConfiguration;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  resetTheme: () => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: LogoConfiguration) => void;
   setUrlPathName: (urlPathName: string) => void;

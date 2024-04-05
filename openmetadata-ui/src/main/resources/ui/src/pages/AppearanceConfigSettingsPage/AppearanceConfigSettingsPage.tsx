@@ -15,15 +15,17 @@ import { Theme } from 'antd/lib/config-provider/context';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../constants/regex.constants';
+import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
-import { generateFormFields } from '../../utils/formUtils';
+import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import './appearance-config-settings-page.less';
 
@@ -37,13 +39,21 @@ const AppearanceConfigSettingsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        'White Label'
+        'Appearance'
       ),
     []
   );
 
-  const handleSave: FormProps['onFinish'] = (values: Theme) => {
-    setTheme(values);
+  const handleSave: FormProps['onFinish'] = (
+    values: Theme & LogoConfiguration
+  ) => {
+    const {
+      customFaviconUrlPath,
+      customLogoUrlPath,
+      customMonogramUrlPath,
+      ...rest
+    } = values;
+    setTheme(rest);
   };
 
   const themeFormFields: FieldProp[] = [
@@ -183,14 +193,17 @@ const AppearanceConfigSettingsPage = () => {
         </Col>
         <Col span={24}>
           <Row align="middle" justify="space-between">
-            <Col>
-              <PageHeader
-                data={{
-                  header: 'White Label',
-                  subHeader:
-                    'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
-                }}
-              />
+            <Col span={24}>
+              <Space className="w-full justify-between">
+                <PageHeader
+                  data={{
+                    header: 'Appearance',
+                    subHeader:
+                      'Customize OpenMetadata with your company logo, monogram, favicon and brand color.',
+                  }}
+                />
+                <Button type="primary">{t('label.reset')}</Button>
+              </Space>
             </Col>
           </Row>
         </Col>
@@ -202,10 +215,39 @@ const AppearanceConfigSettingsPage = () => {
             onFinish={handleSave}>
             <div className="white-label-card-wrapper m-b-md">
               <Card className="white-label-config-card" title="Custom Logo">
-                {generateFormFields(customLogoFormFields)}
+                <Row className="w-full" gutter={[16, 16]}>
+                  {customLogoFormFields.map((field) => {
+                    return (
+                      <Col className="w-full" key={field.name} span={24}>
+                        <Row gutter={[48, 16]}>
+                          <Col span={12}>{getField(field)}</Col>
+                          <Col>
+                            <BrandImage
+                              className="preview-image"
+                              height="auto"
+                              isMonoGram={field.name !== 'customLogoUrlPath'}
+                              width={100}
+                            />
+                          </Col>
+                        </Row>
+                      </Col>
+                    );
+                  })}
+                </Row>
               </Card>
               <Card className="white-label-config-card" title="Custom Theme">
-                {generateFormFields(themeFormFields)}
+                <Row className="w-full" gutter={[16, 16]}>
+                  {themeFormFields.map((field) => {
+                    return (
+                      <Col className="w-full" key={field.name} span={24}>
+                        <Row gutter={[48, 16]}>
+                          <Col span={12}>{getField(field)}</Col>
+                          <Col />
+                        </Row>
+                      </Col>
+                    );
+                  })}
+                </Row>
               </Card>
             </div>
 
