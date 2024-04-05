@@ -138,5 +138,5 @@ it('should show basic configuration for application in right panel', async () =>
   expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
 
   expect(screen.getByText('Recent Runs')).toBeInTheDocument();
-  expect(screen.getByText('Success')).toBeInTheDocument();
+  expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
 });

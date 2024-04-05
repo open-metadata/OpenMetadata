@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+
 export const mockLogsData = {
   ingestion_task: 'test Logs',
   total: '6',
@@ -139,7 +141,7 @@ export const mockDataInsightApplicationRun = {
   data: [
     {
       runId: '7852085e-2ef3-44d1-8c95-dd8c14d33895',
-      pipelineState: 'success',
+      pipelineState: PipelineState.Success,
       startDate: 1712299055158,
       timestamp: 1712299055158,
       endDate: 1712299060061,

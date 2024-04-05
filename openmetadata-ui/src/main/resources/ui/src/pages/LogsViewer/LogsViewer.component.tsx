@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tag, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, startCase, toNumber } from 'lodash';
+import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import React, {
   Fragment,
   useCallback,
@@ -31,12 +31,10 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { PIPELINE_INGESTION_RUN_STATUS } from '../../constants/pipeline.constants';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
 import {
   IngestionPipeline,
-  PipelineState,
   PipelineStatus,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
@@ -68,7 +66,7 @@ const LogsViewer = () => {
   const [logs, setLogs] = useState<string>('');
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
   const [appData, setAppData] = useState<App>();
-  const [appLatestRun, setAppLatestRun] = useState<PipelineStatus>();
+  const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
 
   const isApplicationType = useMemo(
@@ -90,7 +88,7 @@ const LogsViewer = () => {
         });
 
         const logs = await getLatestApplicationRuns(ingestionName);
-        setAppLatestRun((data as PipelineStatus[])[0]);
+        setAppRuns(data as PipelineStatus[]);
         setLogs(logs.data_insight_task || logs.application_task);
 
         return;
@@ -267,27 +265,18 @@ const LogsViewer = () => {
   };
 
   const recentRuns = useMemo(() => {
-    if (isApplicationType && !isUndefined(appLatestRun)) {
+    if (!isUndefined(ingestionDetails) || appRuns) {
       return (
-        <Tag
-          className="ingestion-run-badge latest"
-          color={
-            PIPELINE_INGESTION_RUN_STATUS[
-              appLatestRun.pipelineState ?? PipelineState.Failed
-            ]
-          }
-          data-testid="pipeline-status">
-          {startCase(appLatestRun.pipelineState)}
-        </Tag>
+        <IngestionRecentRuns
+          appRuns={appRuns}
+          ingestion={ingestionDetails}
+          isApplicationType={isApplicationType}
+        />
       );
     }
 
-    if (ingestionDetails?.fullyQualifiedName) {
-      return <IngestionRecentRuns ingestion={ingestionDetails} />;
-    }
-
     return '--';
-  }, [isApplicationType, logEntityType, appLatestRun, ingestionDetails]);
+  }, [isApplicationType, appRuns, ingestionDetails]);
 
   const logSummaries = useMemo(() => {
     const scheduleClass = appData?.appSchedule as AppScheduleClass;
