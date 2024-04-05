@@ -63,6 +63,7 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -425,7 +426,10 @@ export const DataAssetsHeader = ({
         <Col span={7}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              <ButtonGroup data-testid="asset-header-btn-group" size="small">
+              <ButtonGroup
+                className="data-asset-button-group"
+                data-testid="asset-header-btn-group"
+                size="small">
                 {onUpdateVote && (
                   <Voting
                     disabled={deleted}
