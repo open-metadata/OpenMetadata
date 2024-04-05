@@ -15,9 +15,11 @@ import { Button, Col, Form, Row, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import React, { useState } from 'react';
+import { TagSource } from '../../../generated/type/tagLabel';
 import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
-import './tag-select-fom.style.less';
+import TreeAsyncSelectList from '../../common/AsyncSelectList/TreeAsyncSelectList';
 import { TagsSelectFormProps } from './TagsSelectForm.interface';
+import './tag-select-fom.style.less';
 
 const TagSelectForm = ({
   fetchApi,
@@ -70,14 +72,24 @@ const TagSelectForm = ({
 
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="tags">
-            <AsyncSelectList
-              fetchOptions={fetchApi}
-              initialOptions={tagData}
-              mode="multiple"
-              optionClassName="tag-select-box"
-              placeholder={placeholder}
-              tagType={tagType}
-            />
+            {tagType === TagSource.Classification ? (
+              <AsyncSelectList
+                fetchOptions={fetchApi}
+                initialOptions={tagData}
+                mode="multiple"
+                optionClassName="tag-select-box"
+                placeholder={placeholder}
+                tagType={tagType}
+              />
+            ) : (
+              <TreeAsyncSelectList
+                fetchOptions="tag-select-box"
+                fetchOptions={fetchApi}
+                initialOptions={tagData}
+                placeholder={placeholder}
+                tagType={tagType}
+              />
+            )}
           </Form.Item>
         </Col>
       </Row>
