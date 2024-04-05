@@ -22,8 +22,8 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.database.greenplumConnection import (
     GreenplumConnection,
-    SslMode,
 )
+from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -43,7 +43,10 @@ def get_connection(connection: GreenplumConnection) -> Engine:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
-        if connection.sslMode in (SslMode.verify_ca, SslMode.verify_full):
+        if connection.sslMode in (
+            verifySSLConfig.SslMode.verify_ca,
+            verifySSLConfig.SslMode.verify_full,
+        ):
             connection.connectionArguments.__root__[
                 "sslrootcert"
             ] = connection.sslConfig.__root__.certificatePath
