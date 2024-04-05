@@ -10,12 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Checkbox, List, Popover, Space, Typography } from 'antd';
+import {
+  Button,
+  Checkbox,
+  List,
+  Popover,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import './feeds-filter-popover.less';
 import { FeedsFilterPopoverProps } from './FeedsFilterPopover.interface';
 
@@ -24,7 +33,7 @@ const FeedsFilterPopover = ({
   onUpdate,
 }: FeedsFilterPopoverProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] =
     useState<FeedFilter>(defaultFilter);
@@ -123,11 +132,13 @@ const FeedsFilterPopover = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}>
-      <Button
-        className="flex-center"
-        data-testid="filter-button"
-        icon={<FilterIcon height={16} />}
-      />
+      <Tooltip title={t('label.feed-filter-plural')}>
+        <Button
+          className="flex-center"
+          data-testid="filter-button"
+          icon={<FilterIcon height={16} />}
+        />
+      </Tooltip>
     </Popover>
   );
 };

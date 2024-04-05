@@ -14,7 +14,7 @@ Databricks pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List
+from typing import Any, Iterable, List, Optional
 
 from pydantic import ValidationError
 
@@ -68,7 +68,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksPipelineConnection = (
@@ -91,14 +93,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self, pipeline_details: Any
     ) -> Iterable[Either[CreatePipelineRequest]]:
         """Method to Get Pipeline Entity"""
-        self.context.job_id_list = []
+        self.context.get().job_id_list = []
         try:
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details["job_id"],
                 displayName=pipeline_details["settings"].get("name"),
                 description=pipeline_details["settings"].get("name"),
                 tasks=self.get_tasks(pipeline_details),
-                service=self.context.pipeline_service,
+                service=self.context.get().pipeline_service,
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -133,7 +135,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def get_tasks(self, pipeline_details: dict) -> List[Task]:
         task_list = []
-        self.context.append(key="job_id_list", value=pipeline_details["job_id"])
+        self.context.get().append(key="job_id_list", value=pipeline_details["job_id"])
 
         downstream_tasks = self.get_downstream_tasks(
             pipeline_details["settings"].get("tasks")
@@ -192,7 +194,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return dependent_tasks
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
-        for job_id in self.context.job_id_list:
+        for job_id in self.context.get().job_id_list:
             try:
                 runs = self.client.get_job_runs(job_id=job_id)
                 for attempt in runs or []:
@@ -227,8 +229,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         pipeline_fqn = fqn.build(
                             metadata=self.metadata,
                             entity_type=Pipeline,
-                            service_name=self.context.pipeline_service,
-                            pipeline_name=self.context.pipeline,
+                            service_name=self.context.get().pipeline_service,
+                            pipeline_name=self.context.get().pipeline,
                         )
                         yield Either(
                             right=OMetaPipelineStatus(

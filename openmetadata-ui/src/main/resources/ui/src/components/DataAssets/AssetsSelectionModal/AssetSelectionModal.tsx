@@ -14,7 +14,6 @@ import {
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleOutlined,
-  PlusOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -41,6 +40,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ERROR_COLOR, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -508,7 +508,7 @@ export const AssetSelectionModal = ({
               selectedKeys: selectedFilter,
             }}
             trigger={['click']}>
-            <Button icon={<PlusOutlined />} size="small" type="primary" />
+            <Button className="flex-center" icon={<FilterIcon height={16} />} />
           </Dropdown>
           <div className="flex-1">
             <Searchbar

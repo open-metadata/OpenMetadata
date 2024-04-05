@@ -13,7 +13,9 @@
 
 import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { Source } from '../generated/type/entityLineage';
 
 export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.75;
@@ -72,4 +74,25 @@ export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   'domain.displayName.keyword',
   'owner.displayName.keyword',
   'tags.tagFQN',
+];
+
+export const LINEAGE_SOURCE: { [key in Source]: string } = {
+  [Source.DashboardLineage]: 'Dashboard Lineage',
+  [Source.DbtLineage]: 'dbt Lineage',
+  [Source.Manual]: 'Manual',
+  [Source.PipelineLineage]: 'Pipeline Lineage',
+  [Source.QueryLineage]: 'Query Lineage',
+  [Source.SparkLineage]: 'Spark Lineage',
+  [Source.ViewLineage]: 'View Lineage',
+  [Source.OpenLineage]: 'OpenLineage',
+  [Source.ExternalTableLineage]: 'External Table Lineage',
+};
+
+export const LINEAGE_COLUMN_NODE_SUPPORTED = [
+  EntityType.TABLE,
+  EntityType.DASHBOARD,
+  EntityType.MLMODEL,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.CONTAINER,
+  EntityType.TOPIC,
 ];

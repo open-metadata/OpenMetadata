@@ -201,6 +201,9 @@ class REST:
                 )
                 time.sleep(retry_wait)
                 retry -= 1
+                if retry == 0:
+                    logger.error(f"No more retries left for {url}")
+                    traceback.format_exc()
         return None
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):

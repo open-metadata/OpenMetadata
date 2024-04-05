@@ -16,7 +16,7 @@ import gzip
 import io
 import json
 import zipfile
-from typing import List, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from metadata.readers.dataframe.base import DataFrameReader
 from metadata.readers.dataframe.common import dataframe_to_chunks
@@ -33,7 +33,7 @@ def _get_json_text(key: str, text: bytes, decode: bool) -> Union[str, bytes]:
         processed_text = gzip.decompress(text)
     if key.endswith(".zip"):
         with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
-            processed_text = zip_file.read(zip_file.infolist()[0]).decode(UTF_8)
+            processed_text = zip_file.read(zip_file.infolist()[0])
     if decode:
         return processed_text.decode(UTF_8) if isinstance(text, bytes) else text
     return processed_text
@@ -47,7 +47,7 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def read_from_json(
         key: str, json_text: bytes, decode: bool = False, **__
-    ) -> List["DataFrame"]:
+    ) -> Tuple[List["DataFrame"], Optional[Dict[str, Any]]]:
         """
         Decompress a JSON file (if needed) and read its contents
         as a dataframe.
@@ -60,20 +60,25 @@ class JSONDataFrameReader(DataFrameReader):
         import pandas as pd
 
         json_text = _get_json_text(key=key, text=json_text, decode=decode)
+        raw_data = None
         try:
             data = json.loads(json_text)
+            if isinstance(data, dict) and data.get("$schema"):
+                raw_data = json_text
         except json.decoder.JSONDecodeError:
             logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
             data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
 
         # if we get a scalar value (e.g. {"a":"b"}) then we need to specify the index
         data = data if not isinstance(data, dict) else [data]
-        return dataframe_to_chunks(pd.DataFrame.from_records(data))
+        return dataframe_to_chunks(pd.DataFrame.from_records(data)), raw_data
 
     def _read(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
         text = self.reader.read(key, bucket_name=bucket_name)
+        dataframes, raw_data = self.read_from_json(
+            key=key, json_text=text, decode=True, **kwargs
+        )
         return DatalakeColumnWrapper(
-            dataframes=self.read_from_json(
-                key=key, json_text=text, decode=True, **kwargs
-            )
+            dataframes=dataframes,
+            raw_data=raw_data,
         )

@@ -41,7 +41,7 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -112,7 +112,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: StorageConnection.__fields__["config"].type_
 
     topology = StorageServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     container_source_state: Set = set()
 
     global_manifest: Optional[ManifestMetadataConfig]
@@ -191,7 +191,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         container_fqn = fqn.build(
             self.metadata,
             entity_type=Container,
-            service_name=self.context.objectstore_service,
+            service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
             container_name=container_request.name.__root__,
         )
@@ -210,7 +210,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
                 mark_deleted_entity=self.source_config.markDeletedContainers,
-                params={"service": self.context.objectstore_service},
+                params={"service": self.context.get().objectstore_service},
             )
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
@@ -260,7 +260,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata_entry: MetadataEntry,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
-        data_structure_details = fetch_dataframe(
+        data_structure_details, raw_data = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -269,10 +269,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 file_extension=SupportedTypes(metadata_entry.structureFormat),
                 separator=metadata_entry.separator,
             ),
+            fetch_raw_data=True,
         )
         columns = []
         column_parser = DataFrameColumnParser.create(
-            data_structure_details, SupportedTypes(metadata_entry.structureFormat)
+            data_structure_details,
+            SupportedTypes(metadata_entry.structureFormat),
+            raw_data=raw_data,
         )
         columns = column_parser.get_columns()
         return columns

@@ -8,8 +8,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 
@@ -48,6 +47,7 @@ import org.openmetadata.service.events.scheduled.template.DataInsightDescription
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -64,12 +64,14 @@ import org.quartz.JobExecutionContext;
 public class DataInsightsReportApp extends AbstractNativeApplication {
   private static final String KPI_NOT_SET = "No Kpi Set";
 
+  public DataInsightsReportApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super(collectionDAO, searchRepository);
+  }
+
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    SearchRepository searchRepository =
-        (SearchRepository)
-            jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
-    App app = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
+    App app = collectionDAO.applicationDAO().findEntityByName(appName);
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     long scheduleTime = currentTime - 604800000L;
@@ -292,6 +294,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
           currentPercentCompleted,
           currentPercentCompleted - previousPercentCompleted,
+          (int) currentCompletedDescription,
           numberOfDaysChange,
           dateMap);
     }
@@ -301,6 +304,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
         0D,
         0D,
+        0,
         numberOfDaysChange,
         dateMap);
   }
@@ -360,6 +364,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
           currentPercentCompleted,
           currentPercentCompleted - previousPercentCompleted,
+          (int) currentHasOwner,
           numberOfDaysChange,
           dateMap);
     }
@@ -368,6 +373,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
         0D,
         0D,
+        0,
         numberOfDaysChange,
         dateMap);
   }
@@ -406,6 +412,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       return new DataInsightDescriptionAndOwnerTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
           null,
+          "0",
           0D,
           KPI_NOT_SET,
           0D,
@@ -419,6 +426,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return new DataInsightDescriptionAndOwnerTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
         null,
+        "0",
         0D,
         KPI_NOT_SET,
         0D,
@@ -501,6 +509,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       DataInsightChartResult.DataInsightChartType chartType,
       Double percentCompleted,
       Double percentChange,
+      int totalAssets,
       int numberOfDaysChange,
       Map<String, Integer> dateMap) {
 
@@ -522,8 +531,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     if (isKpiAvailable) {
       targetKpi =
-          String.valueOf(
-              Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
+          String.format(
+              "%.2f", Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
         isTargetMet = result.getTargetResult().get(0).getTargetMet();
@@ -544,6 +553,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     return new DataInsightDescriptionAndOwnerTemplate(
         metricType,
         criteria,
+        String.valueOf(totalAssets),
         percentCompleted,
         targetKpi,
         percentChange,

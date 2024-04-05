@@ -30,7 +30,8 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
@@ -39,13 +40,10 @@ import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 const AddGlossaryTermForm = ({
   editMode,
   onSave,
-  onCancel,
-  isLoading,
   glossaryTerm,
-  isFormInModal = false,
   formRef: form,
 }: AddGlossaryTermFormProps) => {
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const owner = Form.useWatch<EntityReference | undefined>('owner', form);
   const reviewersList =
     Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
@@ -53,7 +51,7 @@ const AddGlossaryTermForm = ({
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
 
-  const handleSave: FormProps['onFinish'] = (formObj) => {
+  const handleSave: FormProps['onFinish'] = async (formObj) => {
     const {
       name,
       displayName = '',
@@ -106,7 +104,7 @@ const AddGlossaryTermForm = ({
       style: isEmpty(style) ? undefined : style,
     };
 
-    onSave(data);
+    await onSave(data);
   };
 
   useEffect(() => {
@@ -456,29 +454,6 @@ const AddGlossaryTermForm = ({
             </Space>
           )}
         </div>
-
-        {!isFormInModal && (
-          <Form.Item>
-            <Space
-              className="w-full justify-end"
-              data-testid="cta-buttons"
-              size={16}>
-              <Button
-                data-testid="cancel-glossary-term"
-                type="link"
-                onClick={onCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="save-glossary-term"
-                htmlType="submit"
-                loading={isLoading}
-                type="primary">
-                {t('label.save')}
-              </Button>
-            </Space>
-          </Form.Item>
-        )}
       </Form>
     </>
   );

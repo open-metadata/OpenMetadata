@@ -24,7 +24,7 @@ import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { useAuthContext } from '../../../../Auth/AuthProviders/AuthProvider';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
@@ -46,8 +46,9 @@ const TeamsInfo = ({
 
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { email, owner, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,
@@ -73,12 +74,15 @@ const TeamsInfo = ({
 
   const onEmailSave = async (data: { email: string }) => {
     if (currentTeam) {
+      setIsLoading(true);
+
       const updatedData: Team = {
         ...currentTeam,
         email: isEmpty(data.email) ? undefined : data.email,
       };
 
       await updateTeamHandler(updatedData);
+      setIsLoading(false);
     }
     setIsEmailEdit(false);
   };
@@ -134,7 +138,12 @@ const TeamsInfo = ({
           'label.email'
         )} :`}</Typography.Text>
         {isEmailEdit ? (
-          <Form initialValues={{ email }} onFinish={onEmailSave}>
+          <Form
+            initialValues={{ email }}
+            //  Used onClick stop click propagation event anywhere in the form to parent
+            //  TeamsDetailV1 collapsible panel
+            onClick={(e) => e.stopPropagation()}
+            onFinish={onEmailSave}>
             <Space align="baseline">
               <Form.Item
                 className="m-b-0"
@@ -160,6 +169,7 @@ const TeamsInfo = ({
                 <Button
                   className="h-8 p-x-xss"
                   data-testid="cancel-edit-email"
+                  disabled={isLoading}
                   size="small"
                   type="primary"
                   onClick={() => setIsEmailEdit(false)}>
@@ -169,6 +179,7 @@ const TeamsInfo = ({
                   className="h-8 p-x-xss"
                   data-testid="save-edit-email"
                   htmlType="submit"
+                  loading={isLoading}
                   size="small"
                   type="primary">
                   <CheckOutlined />
@@ -183,7 +194,6 @@ const TeamsInfo = ({
             </Typography.Text>
             {hasEditPermission && (
               <Tooltip
-                placement="right"
                 title={
                   hasEditPermission
                     ? t('label.edit-entity', {
@@ -196,7 +206,11 @@ const TeamsInfo = ({
                   component={EditIcon}
                   data-testid="edit-email"
                   style={{ fontSize: '16px' }}
-                  onClick={() => setIsEmailEdit(true)}
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    setIsEmailEdit(true);
+                  }}
                 />
               </Tooltip>
             )}
@@ -204,7 +218,7 @@ const TeamsInfo = ({
         )}
       </Space>
     ),
-    [email, isEmailEdit, hasEditPermission]
+    [email, isEmailEdit, hasEditPermission, isLoading]
   );
 
   const teamTypeElement = useMemo(() => {
@@ -235,23 +249,33 @@ const TeamsInfo = ({
             </Typography.Text>
 
             {hasEditPermission && (
-              <Icon
-                className={classNames('vertical-middle m-l-xs', {
-                  'opacity-50': isGroupType,
-                })}
-                data-testid="edit-team-type-icon"
-                title={
-                  isGroupType
-                    ? t('message.group-team-type-change-message')
-                    : t('label.edit-entity', {
-                        entity: t('label.team-type'),
-                      })
-                }
-                onClick={
-                  isGroupType ? undefined : () => setShowTypeSelector(true)
-                }>
-                <EditIcon />
-              </Icon>
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.team-type'),
+                })}>
+                <Icon
+                  className={classNames('vertical-middle m-l-xs', {
+                    'opacity-50': isGroupType,
+                  })}
+                  data-testid="edit-team-type-icon"
+                  title={
+                    isGroupType
+                      ? t('message.group-team-type-change-message')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
+                  }
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    if (isGroupType) {
+                      return;
+                    }
+                    setShowTypeSelector(true);
+                  }}>
+                  <EditIcon />
+                </Icon>
+              </Tooltip>
             )}
           </>
         )}

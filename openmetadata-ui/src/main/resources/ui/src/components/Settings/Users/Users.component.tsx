@@ -23,13 +23,13 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../common/Chip/Chip.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -58,13 +58,12 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
-
   const { t } = useTranslation();
 
   const isLoggedInUser = useMemo(
@@ -116,9 +115,9 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
-      await updateUserDetails({ ...userData, personas });
+      await updateUserDetails({ personas }, 'personas');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const tabDataRender = useCallback(
@@ -233,7 +232,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
-      await updateUserDetails({ description });
+      await updateUserDetails({ description }, 'description');
 
       setIsDescriptionEdit(false);
     },
@@ -304,11 +303,9 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
         <Collapse
           accordion
           bordered={false}
-          className="header-collapse-custom-collapse user-profile-container"
-          expandIconPosition="end">
+          className="header-collapse-custom-collapse user-profile-container">
           <Collapse.Panel
             className="header-collapse-custom-panel"
-            collapsible="icon"
             header={userProfileCollapseHeader}
             key="1">
             <Row className="border-top p-y-lg" gutter={[0, 24]}>

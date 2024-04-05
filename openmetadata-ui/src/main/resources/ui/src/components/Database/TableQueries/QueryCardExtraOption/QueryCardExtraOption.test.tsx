@@ -35,8 +35,8 @@ let mockUserData: User = {
   email: '',
 };
 
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
 }));
@@ -44,6 +44,10 @@ jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
 jest.mock('../../../../rest/queryAPI', () => ({
   ...jest.requireActual('../../../../rest/queryAPI'),
   deleteQuery: jest.fn(),
+}));
+
+jest.mock('../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
 
 describe('QueryCardExtraOption component test', () => {
@@ -54,7 +58,7 @@ describe('QueryCardExtraOption component test', () => {
       await screen.findByTestId('extra-option-container')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('query-line')).toBeInTheDocument();
-    expect(await screen.findByTestId('more-option-btn')).toBeInTheDocument();
+    expect(await screen.findByTestId('query-btn')).toBeInTheDocument();
     expect(await screen.findByTestId('up-vote-btn')).toBeInTheDocument();
     expect(await screen.findByTestId('down-vote-btn')).toBeInTheDocument();
   });
@@ -183,7 +187,7 @@ describe('QueryCardExtraOption component test', () => {
   it('Dropdown should show 2 menu options', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const moreOptionBtn = await screen.findByTestId('more-option-btn');
+    const moreOptionBtn = await screen.findByTestId('query-btn');
 
     expect(moreOptionBtn).toBeInTheDocument();
 
@@ -209,7 +213,7 @@ describe('QueryCardExtraOption component test', () => {
       />
     );
 
-    const moreOptionBtn = await screen.findByTestId('more-option-btn');
+    const moreOptionBtn = await screen.findByTestId('query-btn');
 
     expect(moreOptionBtn).toBeInTheDocument();
 
@@ -246,7 +250,7 @@ describe('QueryCardExtraOption component test', () => {
       />
     );
 
-    const moreOptionBtn = await screen.findByTestId('more-option-btn');
+    const moreOptionBtn = await screen.findByTestId('query-btn');
 
     expect(moreOptionBtn).toBeInTheDocument();
 
@@ -267,7 +271,7 @@ describe('QueryCardExtraOption component test', () => {
   it('If there is no permission, Edit option should be disabled', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const moreOptionBtn = await screen.findByTestId('more-option-btn');
+    const moreOptionBtn = await screen.findByTestId('query-btn');
 
     expect(moreOptionBtn).toBeInTheDocument();
 
@@ -284,7 +288,7 @@ describe('QueryCardExtraOption component test', () => {
   it('If there is no permission, Delete option should be disabled', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const moreOptionBtn = await screen.findByTestId('more-option-btn');
+    const moreOptionBtn = await screen.findByTestId('query-btn');
 
     expect(moreOptionBtn).toBeInTheDocument();
 

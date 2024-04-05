@@ -3,30 +3,13 @@ title: Datalake
 slug: /connectors/database/datalake
 ---
 
-# Datalake
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%} |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Datalake"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the Datalake connector.
 
@@ -181,7 +164,8 @@ We support two ways of authenticating to GCS:
   - **Client ID** : Client ID of the data storage account
   - **Client Secret** : Client Secret of the account
   - **Tenant ID** : Tenant ID under which the data storage account falls
-  - **Account Name** : Account Name of the data Storage
+  - **Account Name** : Account Name of the Data Storage
+  - **Key Vault Name**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
 
 - **Required Roles**
 

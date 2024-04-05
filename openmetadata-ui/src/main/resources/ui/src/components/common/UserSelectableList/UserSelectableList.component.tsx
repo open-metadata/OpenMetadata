@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
-import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -27,7 +26,8 @@ import { searchData } from '../../../rest/miscAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -35,7 +35,7 @@ import { UserSelectableListProps } from './UserSelectableList.interface';
 export const UserSelectableList = ({
   hasPermission,
   selectedUsers = [],
-  onUpdate = noop,
+  onUpdate,
   children,
   popoverProps,
   multiSelect = true,
@@ -43,7 +43,7 @@ export const UserSelectableList = ({
 }: UserSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -100,11 +100,11 @@ export const UserSelectableList = ({
   };
 
   const handleUpdate = useCallback(
-    (users: EntityReference[]) => {
+    async (users: EntityReference[]) => {
       if (multiSelect) {
-        (onUpdate as (users: EntityReference[]) => void)(users);
+        await (onUpdate as (users: EntityReference[]) => Promise<void>)(users);
       } else {
-        (onUpdate as (users: EntityReference) => void)(users[0]);
+        await (onUpdate as (users: EntityReference) => Promise<void>)(users[0]);
       }
       setPopupVisible(false);
     },

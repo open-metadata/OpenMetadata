@@ -37,7 +37,7 @@ class MetabaseCollection(BaseModel):
 
 
 class MetabaseDashboardList(BaseModel):
-    dashboards: Optional[List[MetabaseDashboard]]
+    data: Optional[List[MetabaseDashboard]]
 
 
 class MetabaseCollectionList(BaseModel):
@@ -67,7 +67,7 @@ class MetabaseChart(BaseModel):
     display: Optional[str]
 
 
-class OrderedCard(BaseModel):
+class DashCard(BaseModel):
     card: MetabaseChart
 
 
@@ -77,7 +77,7 @@ class MetabaseDashboardDetails(BaseModel):
     """
 
     description: Optional[str]
-    ordered_cards: List[OrderedCard]
+    dashcards: List[DashCard]
     name: Optional[str]
     id: int
     collection_id: Optional[str]

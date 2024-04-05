@@ -12,7 +12,8 @@
 """Athena source module"""
 
 import traceback
-from typing import Iterable, Tuple
+from copy import deepcopy
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import types
@@ -22,7 +23,8 @@ from sqlalchemy.engine.reflection import Inspector
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     Table,
     TablePartition,
     TableType,
@@ -56,6 +58,18 @@ logger = ingestion_logger()
 
 ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
+
+ATHENA_INTERVAL_TYPE_MAP = {
+    **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
+    **dict.fromkeys(
+        ["integer", "bigint", "INTEGER", "BIGINT"], PartitionIntervalTypes.INTEGER_RANGE
+    ),
+    **dict.fromkeys(
+        ["date", "timestamp", "DATE", "DATETIME", "TIMESTAMP"],
+        PartitionIntervalTypes.TIME_UNIT,
+    ),
+    "injected": PartitionIntervalTypes.INJECTED,
+}
 
 
 def _get_column_type(self, type_):
@@ -123,6 +137,29 @@ def _get_column_type(self, type_):
     return col_type(*args)
 
 
+def _get_projection_details(
+    columns: List[Dict], projection_parameters: Dict
+) -> List[Dict]:
+    """Get the projection details for the columns
+
+    Args:
+        columns (List[Dict]): list of columns
+        projection_parameters (Dict): projection parameters
+    """
+    if not projection_parameters:
+        return columns
+
+    columns = deepcopy(columns)
+    for col in columns:
+        projection_details = next(
+            ({k: v} for k, v in projection_parameters.items() if k == col["name"]), None
+        )
+        if projection_details:
+            col["projection_type"] = projection_details[col["name"]]
+
+    return columns
+
+
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
@@ -147,6 +184,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     ]
 
     if kw.get("only_partition_columns"):
+        # Return projected partition information to set partition type in `get_table_partition_details`
+        # projected partition fields are stored in the form of `projection.<field_name>.type` as a table parameter
+        projection_parameters = {
+            key_.split(".")[1]: value_
+            for key_, value_ in metadata.parameters.items()
+            if key_.startswith("projection") and key_.endswith("type")
+        }
+        columns = _get_projection_details(columns, projection_parameters)
         return columns
 
     columns += [
@@ -192,7 +237,9 @@ class AthenaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AthenaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AthenaConnection):
@@ -223,14 +270,34 @@ class AthenaSource(CommonDbSourceService):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
+        """Get Athena table partition detail
+
+        Args:
+            table_name (str): name of the table
+            schema_name (str): name of the schema
+            inspector (Inspector):
+
+
+        Returns:
+            Tuple[bool, Optional[TablePartition]]:
+        """
         columns = inspector.get_columns(
             table_name=table_name, schema=schema_name, only_partition_columns=True
         )
         if columns:
             partition_details = TablePartition(
-                intervalType=IntervalType.COLUMN_VALUE.value,
-                columns=[column["name"] for column in columns],
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=col["name"],
+                        intervalType=ATHENA_INTERVAL_TYPE_MAP.get(
+                            col.get("projection_type", str(col["type"])),
+                            PartitionIntervalTypes.COLUMN_VALUE,
+                        ),
+                        interval=None,
+                    )
+                    for col in columns
+                ]
             )
             return True, partition_details
         return False, None
@@ -251,8 +318,8 @@ class AthenaSource(CommonDbSourceService):
                         tag_fqn=fqn.build(
                             self.metadata,
                             DatabaseSchema,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
                             schema_name=schema_name,
                         ),
                         tags=tag.TagValues,
@@ -280,7 +347,8 @@ class AthenaSource(CommonDbSourceService):
                 table_name, _ = table_name_and_type
                 table_tags = (
                     self.athena_lake_formation_client.get_table_and_column_tags(
-                        schema_name=self.context.database_schema, table_name=table_name
+                        schema_name=self.context.get().database_schema,
+                        table_name=table_name,
                     )
                 )
 
@@ -290,9 +358,9 @@ class AthenaSource(CommonDbSourceService):
                         tag_fqn=fqn.build(
                             self.metadata,
                             Table,
-                            service_name=self.context.database_service,
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
+                            service_name=self.context.get().database_service,
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
                             table_name=table_name,
                         ),
                         tags=tag.TagValues,
@@ -308,9 +376,9 @@ class AthenaSource(CommonDbSourceService):
                             tag_fqn=fqn.build(
                                 self.metadata,
                                 Column,
-                                service_name=self.context.database_service,
-                                database_name=self.context.database,
-                                schema_name=self.context.database_schema,
+                                service_name=self.context.get().database_service,
+                                database_name=self.context.get().database,
+                                schema_name=self.context.get().database_schema,
                                 table_name=table_name,
                                 column_name=column.Name,
                             ),

@@ -196,13 +196,22 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
 
     # module building strings read better with .format instead of f-strings
     # pylint: disable=consider-using-f-string
-    _connection_fn = import_from_module(
-        "metadata.ingestion.source.{}.{}.connection.{}".format(
-            service_type.name.lower(),
-            connection_type.value.lower(),
-            function_name,
+
+    if connection.type.value.lower().startswith("custom"):
+        python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
+        python_module_path = ".".join(python_class_parts[:-1])
+
+        _connection_fn = import_from_module(
+            "{}.{}".format(python_module_path, function_name)
         )
-    )
+    else:
+        _connection_fn = import_from_module(
+            "metadata.ingestion.source.{}.{}.connection.{}".format(
+                service_type.name.lower(),
+                connection_type.value.lower(),
+                function_name,
+            )
+        )
 
     return _connection_fn
 

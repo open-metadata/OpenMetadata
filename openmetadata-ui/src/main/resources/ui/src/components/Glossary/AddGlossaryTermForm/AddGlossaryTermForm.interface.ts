@@ -22,11 +22,9 @@ import { EntityReference } from '../../../generated/type/entityLineage';
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
-  isLoading: boolean;
-  onSave: (value: GlossaryTermForm) => void;
+  onSave: (value: GlossaryTermForm) => void | Promise<void>;
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;
-  isFormInModal?: boolean;
   formRef: FormInstance<CreateGlossaryTerm>;
 }
 

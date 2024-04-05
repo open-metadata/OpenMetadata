@@ -29,7 +29,6 @@ const SchemaTab: FunctionComponent<Props> = ({
   isReadOnly = false,
   entityFqn,
   tableConstraints,
-  tablePartitioned,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -39,16 +38,17 @@ const SchemaTab: FunctionComponent<Props> = ({
 
   return (
     <Fragment>
-      <div className="w-1/2">
-        <Searchbar
-          removeMargin
-          placeholder={`${t('message.find-in-table')}`}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearchAction}
-        />
+      <div className="d-flex items-center justify-between">
+        <div className="w-1/2">
+          <Searchbar
+            removeMargin
+            placeholder={`${t('message.find-in-table')}`}
+            searchValue={searchText}
+            typingInterval={500}
+            onSearch={handleSearchAction}
+          />
+        </div>
       </div>
-
       <SchemaTable
         columnName={columnName}
         entityFqn={entityFqn}
@@ -59,7 +59,6 @@ const SchemaTab: FunctionComponent<Props> = ({
         searchText={lowerCase(searchText)}
         tableColumns={columns}
         tableConstraints={tableConstraints}
-        tablePartitioned={tablePartitioned}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />

@@ -242,7 +242,7 @@ def _(record: OMetaLifeCycleData) -> str:
     """
     Capture the lifecycle changes of an Entity
     """
-    return f"{type(record.entity).__name__} Lifecycle [{record.entity.name.__root__}]"
+    return f"{record.entity.__name__} Lifecycle [{record.entity_fqn}]"
 
 
 @get_log_name.register

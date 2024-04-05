@@ -24,11 +24,11 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getTableTabPath, ROUTES } from '../../../../constants/constants';
+import { getEntityDetailsPath, ROUTES } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityTabs } from '../../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSummary } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite } from '../../../../generated/tests/testCase';
@@ -77,12 +77,30 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        sorter: (a, b) => {
+          if (a.executable) {
+            // Sort for executable test suites
+            return (
+              a.executableEntityReference?.fullyQualifiedName?.localeCompare(
+                b.executableEntityReference?.fullyQualifiedName ?? ''
+              ) ?? 0
+            );
+          } else {
+            // Sort for logical test suites
+            return (
+              a.fullyQualifiedName?.localeCompare(b.fullyQualifiedName ?? '') ??
+              0
+            );
+          }
+        },
+        sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
           return record.executable ? (
             <Link
               data-testid={name}
               to={{
-                pathname: getTableTabPath(
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
                   record.executableEntityReference?.fullyQualifiedName ?? '',
                   EntityTabs.PROFILER
                 ),

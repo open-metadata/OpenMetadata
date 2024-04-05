@@ -70,6 +70,10 @@ const mockProps1 = {
     ...mockApplicationData,
     name: 'DataInsightsReportApplication',
   },
+  loading: {
+    isRunLoading: false,
+    isDeployLoading: false,
+  },
   onSave: mockOnSave,
   onDemandTrigger: mockOnDemandTrigger,
   onDeployTrigger: mockOnDeployTrigger,

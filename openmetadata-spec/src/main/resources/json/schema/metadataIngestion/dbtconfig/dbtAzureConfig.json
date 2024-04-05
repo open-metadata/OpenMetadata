@@ -6,6 +6,12 @@
   "description": "DBT Catalog, Manifest and Run Results files in Azure bucket. We will search for catalog.json, manifest.json and run_results.json.",
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtAzureConfig",
   "properties": {
+    "dbtConfigType": {
+      "description": "dbt Configuration type",
+      "type": "string",
+      "enum": ["azure"],
+      "default": "azure"
+    },
     "dbtSecurityConfig": {
       "title": "DBT Azure Security Config",
       "$ref": "../../security/credentials/azureCredentials.json"
@@ -30,5 +36,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtSecurityConfig"]
+  "required": ["dbtSecurityConfig", "dbtConfigType"]
 }

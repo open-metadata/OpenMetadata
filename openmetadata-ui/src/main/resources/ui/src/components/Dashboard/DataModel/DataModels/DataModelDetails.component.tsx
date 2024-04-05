@@ -19,7 +19,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
-  getDataModelDetailsPath,
+  getEntityDetailsPath,
   getVersionPath,
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
@@ -142,7 +142,11 @@ const DataModelDetails = ({
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
       history.push({
-        pathname: getDataModelDetailsPath(decodedDataModelFQN, tabValue),
+        pathname: getEntityDetailsPath(
+          EntityType.DASHBOARD_DATA_MODEL,
+          decodedDataModelFQN,
+          tabValue
+        ),
       });
     }
   };
@@ -322,7 +326,7 @@ const DataModelDetails = ({
                     mode={{ name: CSMode.SQL }}
                     options={{
                       styleActiveLine: false,
-                      readOnly: 'nocursor',
+                      readOnly: true,
                     }}
                     value={dataModelData?.sql}
                   />

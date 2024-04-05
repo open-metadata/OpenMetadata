@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Select, Space, Typography } from 'antd';
+import { Card, Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -42,11 +42,11 @@ const UserProfileRoles = ({
   const { t } = useTranslation();
 
   const { isAdminUser } = useAuth();
-
   const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -87,7 +87,8 @@ const UserProfileRoles = ({
     }
   };
 
-  const handleRolesSave = () => {
+  const handleRolesSave = async () => {
+    setIsLoading(true);
     // filter out the roles , and exclude the admin one
     const updatedRoles = selectedRoles.filter(
       (roleId) => roleId !== toLower(TERM_ADMIN)
@@ -97,15 +98,18 @@ const UserProfileRoles = ({
     const isAdmin = selectedRoles.find(
       (roleId) => roleId === toLower(TERM_ADMIN)
     );
-    updateUserDetails({
-      roles: updatedRoles.map((roleId) => {
-        const role = roles.find((r) => r.id === roleId);
+    await updateUserDetails(
+      {
+        roles: updatedRoles.map((roleId) => {
+          const role = roles.find((r) => r.id === roleId);
 
-        return { id: roleId, type: 'role', name: role?.name ?? '' };
-      }),
-      isAdmin: Boolean(isAdmin),
-    });
-
+          return { id: roleId, type: 'role', name: role?.name ?? '' };
+        }),
+        isAdmin: Boolean(isAdmin),
+      },
+      'roles'
+    );
+    setIsLoading(false);
     setIsRolesEdit(false);
   };
 
@@ -152,13 +156,18 @@ const UserProfileRoles = ({
             {t('label.role-plural')}
           </Typography.Text>
           {!isRolesEdit && isAdminUser && (
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-roles-button"
-              {...ICON_DIMENSION}
-              onClick={() => setIsRolesEdit(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.role-plural'),
+              })}>
+              <EditIcon
+                className="cursor-pointer align-middle"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-roles-button"
+                {...ICON_DIMENSION}
+                onClick={() => setIsRolesEdit(true)}
+              />
+            </Tooltip>
           )}
         </Space>
       }>
@@ -166,6 +175,7 @@ const UserProfileRoles = ({
         {isRolesEdit && isAdminUser ? (
           <InlineEdit
             direction="vertical"
+            isLoading={isLoading}
             onCancel={() => setIsRolesEdit(false)}
             onSave={handleRolesSave}>
             <Select

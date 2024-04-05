@@ -3,12 +3,13 @@ title: S3
 slug: /connectors/storage/s3
 ---
 
-# S3
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="S3"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=[]
+/ %}
 
 This page contains the setup guide and reference information for the S3 connector.
 
@@ -20,10 +21,6 @@ Configure and schedule S3 metadata workflows from the OpenMetadata UI:
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/s3/yaml"} /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 We need the following permissions in AWS:
 
@@ -112,7 +109,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.3/connectors/visit-services.png"
+src="/images/v1.3/connectors/visit-services-page.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -131,7 +128,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.3/connectors/create-service.png"
+src="/images/v1.3/connectors/create-new-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Storage Services page" /%}
 

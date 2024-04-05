@@ -12,13 +12,15 @@
  */
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
-import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
+import IconTeams from '../../assets/svg/teams-grey.svg';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
+import { getUserWithImage } from '../../utils/UserDataUtils';
+import { useApplicationStore } from '../useApplicationStore';
 
 let userProfilePicsLoading: string[] = [];
 
@@ -31,8 +33,7 @@ export const useUserProfile = ({
   name: string;
   isTeam?: boolean;
 }): [string | null, boolean, User | undefined] => {
-  const { userProfilePics, updateUserProfilePics } =
-    useApplicationConfigContext();
+  const { userProfilePics, updateUserProfilePics } = useApplicationStore();
 
   const user = userProfilePics[name];
   const [profilePic, setProfilePic] = useState(
@@ -55,6 +56,8 @@ export const useUserProfile = ({
 
   const fetchProfileIfRequired = useCallback(async () => {
     if (isTeam || userProfilePics[name]) {
+      isTeam && setProfilePic(IconTeams);
+
       return;
     }
 
@@ -65,25 +68,26 @@ export const useUserProfile = ({
     userProfilePicsLoading = [...userProfilePicsLoading, name];
 
     try {
-      const user = await getUserByName(name, { fields: 'profile' });
-      const profile =
-        getImageWithResolutionAndFallback(
-          ImageQuality['6x'],
-          user.profile?.images
-        ) ?? '';
+      let user = await getUserByName(name, { fields: 'profile' });
+      user = getUserWithImage(user);
 
       updateUserProfilePics({
         id: user.name,
         user,
       });
-      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
 
-      setProfilePic(profile);
+      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
     } catch (error) {
       // Error
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
     }
-  }, [updateUserProfilePics, userProfilePics, name, isTeam]);
+  }, [
+    updateUserProfilePics,
+    userProfilePics,
+    name,
+    isTeam,
+    userProfilePicsLoading,
+  ]);
 
   useEffect(() => {
     if (!permission) {
@@ -97,5 +101,11 @@ export const useUserProfile = ({
     fetchProfileIfRequired();
   }, [name, permission, fetchProfileIfRequired]);
 
-  return [profilePic, Boolean(!isTeam && isUndefined(user)), user];
+  return [
+    profilePic,
+    Boolean(
+      !isTeam && isUndefined(user) && userProfilePicsLoading.includes(name)
+    ),
+    user,
+  ];
 };

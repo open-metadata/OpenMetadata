@@ -21,7 +21,8 @@ from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.table import (
     Column,
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TableConstraint,
     TablePartition,
     TableType,
@@ -144,7 +145,9 @@ class DorisSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
@@ -306,9 +309,16 @@ class DorisSource(CommonDbSourceService):
 
             if result and result[0].PartitionKey != "":
                 partition_details = TablePartition(
-                    intervalType=IntervalType.TIME_UNIT.value,
-                    columns=result[0].PartitionKey.split(", "),
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=partition_key,
+                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                            interval=None,
+                        )
+                        for partition_key in result[0].PartitionKey.split(", ")
+                    ]
                 )
+
                 return True, partition_details
             return False, None
         except Exception:

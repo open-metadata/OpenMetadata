@@ -32,7 +32,11 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -59,11 +63,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
-import {
-  getDataProductsDetailsPath,
-  getDataProductVersionsPath,
-  getDomainPath,
-} from '../../../utils/RouterUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -249,7 +249,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.rename-entity', {
                   entity: t('label.data-product'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -271,7 +271,7 @@ const DataProductsDetailsPage = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.data-product'),
                 })}
-                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={StyleIcon}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -296,7 +296,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                icon={DeleteIcon}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -332,7 +332,7 @@ const DataProductsDetailsPage = ({
     }
   };
 
-  const onStyleSave = (data: Style) => {
+  const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
@@ -343,7 +343,7 @@ const DataProductsDetailsPage = ({
       style,
     };
 
-    onUpdate(updatedDetails);
+    await onUpdate(updatedDetails);
     setIsStyleEditing(false);
   };
 
@@ -353,14 +353,17 @@ const DataProductsDetailsPage = ({
       fetchDataProductAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDataProductsDetailsPath(dataProductFqn, activeKey));
+      history.push(
+        getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn, activeKey)
+      );
     }
   };
 
   const handleVersionClick = async () => {
     const path = isVersionsView
-      ? getDataProductsDetailsPath(dataProductFqn)
-      : getDataProductVersionsPath(
+      ? getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn)
+      : getVersionPath(
+          EntityType.DATA_PRODUCT,
           dataProductFqn,
           toString(dataProduct.version)
         );
@@ -499,20 +502,29 @@ const DataProductsDetailsPage = ({
 
             <ButtonGroup className="p-l-xs" size="small">
               {dataProduct?.version && (
-                <Button
-                  className={classNames('', {
-                    'text-primary border-primary': version,
-                  })}
-                  data-testid="version-button"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={handleVersionClick}>
-                  <Typography.Text
+                <Tooltip
+                  title={t(
+                    `label.${
+                      isVersionsView
+                        ? 'exit-version-history'
+                        : 'version-plural-history'
+                    }`
+                  )}>
+                  <Button
                     className={classNames('', {
-                      'text-primary': version,
-                    })}>
-                    {toString(dataProduct.version)}
-                  </Typography.Text>
-                </Button>
+                      'text-primary border-primary': version,
+                    })}
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={handleVersionClick}>
+                    <Typography.Text
+                      className={classNames('', {
+                        'text-primary': version,
+                      })}>
+                      {toString(dataProduct.version)}
+                    </Typography.Text>
+                  </Button>
+                </Tooltip>
               )}
 
               {!isVersionsView && manageButtonContent.length > 0 && (
@@ -528,7 +540,11 @@ const DataProductsDetailsPage = ({
                   placement="bottomRight"
                   trigger={['click']}
                   onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.manage-entity', {
+                      entity: t('label.data-product'),
+                    })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
@@ -569,7 +585,6 @@ const DataProductsDetailsPage = ({
         bodyText={getEntityDeleteMessage(dataProduct.name, '')}
         entityName={dataProduct.name}
         entityType="Glossary"
-        loadingState="success"
         visible={isDelete}
         onCancel={() => setIsDelete(false)}
         onConfirm={onDelete}

@@ -20,7 +20,7 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
     TableRowInsertedCountToBeBetweenValidator,
 )
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
@@ -41,7 +41,7 @@ class DatalakeSampler(SamplerInterface):
         partition_field = self._partition_details.partitionColumnName
         if (
             self._partition_details.partitionIntervalType
-            == PartitionIntervalType.COLUMN_VALUE
+            == PartitionIntervalTypes.COLUMN_VALUE
         ):
             return [
                 df[df[partition_field].isin(self._partition_details.partitionValues)]
@@ -49,7 +49,7 @@ class DatalakeSampler(SamplerInterface):
             ]
         if (
             self._partition_details.partitionIntervalType
-            == PartitionIntervalType.INTEGER_RANGE
+            == PartitionIntervalTypes.INTEGER_RANGE
         ):
             return [
                 df[
@@ -136,7 +136,7 @@ class DatalakeSampler(SamplerInterface):
                 break
         return cols, rows
 
-    def random_sample(self):
+    def random_sample(self, is_sampled: bool = False):
         """Generate random sample from the table
 
         Returns:
@@ -148,9 +148,8 @@ class DatalakeSampler(SamplerInterface):
         if self._partition_details:
             self.table = self._partitioned_table()
 
-        if not self.profile_sample:
+        if not self.profile_sample or is_sampled:
             return self.table
-
         return self._get_sampled_dataframe()
 
     def _fetch_rows(self, data_frame):

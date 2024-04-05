@@ -3,14 +3,14 @@ title: Elasticsearch
 slug: /connectors/search/elasticsearch
 ---
 
-# Elasticsearch
+{% connectorDetailsHeader
+name="Elasticsearch"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Search Indexes", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
-| Feature            | Status               |
-|------------|------------------------------|
-| Search Indexes | {% icon iconName="check" /%} |
-| Sample Data | {% icon iconName="check" /%} |
-| Supported Versions | Elasticsearch 7.0 and above |
-| Stage              | BETA                      |
 
 In this section, we provide guides and references to use the Elasticsearch connector.
 
@@ -22,6 +22,8 @@ Configure and schedule Elasticsearch metadata workflow from the OpenMetadata UI:
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/search/elasticsearch/yaml"} /%}
 
 ## Requirements
+
+We support Elasticsearch 7.0 and above.
 
 We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html). To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
 
