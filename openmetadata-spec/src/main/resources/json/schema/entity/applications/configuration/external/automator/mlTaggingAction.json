@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/mlTaggingAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MLTaggingAction",
+  "description": "ML Tagging action configuration for external automator.",
+  "type": "object",
+  "definitions": {
+    "mlTaggingActionType": {
+      "description": "ML PII Tagging action type.",
+      "type": "string",
+      "enum": ["MLTaggingAction"],
+      "default": "MLTaggingAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/mlTaggingActionType",
+      "default": "MLTaggingAction"
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

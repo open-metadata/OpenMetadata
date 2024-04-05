@@ -205,33 +205,6 @@ class ESMixin(Generic[T]):
             )
         return None
 
-    def reindex_es(
-        self,
-        config: CreateEventPublisherJob,
-    ) -> Optional[EventPublisherResult]:
-        """
-        Method to trigger elasticsearch reindex
-        """
-        try:
-            resp = self.client.post(path="/search/reindex", data=config.json())
-            return EventPublisherResult(**resp)
-        except APIError as err:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to trigger es reindex job due to {err}")
-            return None
-
-    def get_reindex_job_status(self, job_id: str) -> Optional[EventPublisherResult]:
-        """
-        Method to fetch the elasticsearch reindex job status
-        """
-        try:
-            resp = self.client.get(path=f"/search/reindex/{job_id}")
-            return EventPublisherResult(**resp)
-        except APIError as err:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch reindex job status due to {err}")
-            return None
-
     @staticmethod
     def get_query_with_lineage_filter(service_name: str) -> str:
         query_lineage_filter = {

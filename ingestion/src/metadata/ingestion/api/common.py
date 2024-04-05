@@ -21,10 +21,6 @@ T = TypeVar("T")
 
 logger = ingestion_logger()
 
-# Allow types from the generated pydantic models
-# TODO: deprecate me. This is never really used a TypeVar.
-Entity = TypeVar("Entity", bound=BaseModel)
-
 
 class ConfigModel(BaseModel):
     class Config:

@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/lineagePropagationAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LineagePropagationAction",
+  "description": "Propagate description and tags via lineage",
+  "type": "object",
+  "definitions": {
+    "lineagePropagationActionType": {
+      "description": "Lineage propagation action type.",
+      "type": "string",
+      "enum": ["LineagePropagationAction"],
+      "default": "LineagePropagationAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/lineagePropagationActionType",
+      "default": "LineagePropagationAction"
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}
