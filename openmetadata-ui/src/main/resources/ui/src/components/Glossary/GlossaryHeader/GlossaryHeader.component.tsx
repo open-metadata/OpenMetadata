@@ -25,6 +25,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +33,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as ChangeHierarchyIcon } from '../../../assets/svg/ic-change-hierarchy.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
@@ -60,6 +62,7 @@ import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
   getGlossaryTermsById,
+  patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
@@ -74,6 +77,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
+import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
@@ -108,6 +112,8 @@ const GlossaryHeader = ({
     Glossary | GlossaryTerm
   >();
   const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
+    useState(false);
 
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
@@ -242,6 +248,28 @@ const GlossaryHeader = ({
     setIsStyleEditing(false);
   };
 
+  const onChangeParentSave = async (parentFQN: string) => {
+    const newTermData = {
+      ...selectedData,
+      parent: {
+        fullyQualifiedName: parentFQN,
+      },
+    };
+    const jsonPatch = compare(selectedData, newTermData);
+
+    try {
+      const { fullyQualifiedName, name } = await patchGlossaryTerm(
+        selectedData.id,
+        jsonPatch
+      );
+      history.push(getGlossaryPath(fullyQualifiedName ?? name));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setOpenChangeParentHierarchyModal(false);
+    }
+  };
+
   const addButtonContent = [
     {
       label: t('label.glossary-term'),
@@ -351,6 +379,32 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
+
+    ...(!isGlossary
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.modify-hierarchy-entity-description', {
+                  entity: t('label.term'),
+                })}
+                icon={ChangeHierarchyIcon}
+                id="change-parent-button"
+                name={t('label.change-parent-entity', {
+                  entity: t('label.term'),
+                })}
+              />
+            ),
+            key: 'change-parent-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setOpenChangeParentHierarchyModal(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+
     ...(permissions.Delete
       ? ([
           {
@@ -599,6 +653,14 @@ const GlossaryHeader = ({
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
+
+      {openChangeParentHierarchyModal && (
+        <ChangeParentHierarchy
+          selectedData={selectedData as GlossaryTerm}
+          onCancel={() => setOpenChangeParentHierarchyModal(false)}
+          onSubmit={onChangeParentSave}
+        />
+      )}
     </>
   );
 };
