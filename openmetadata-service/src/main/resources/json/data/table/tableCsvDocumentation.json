@@ -118,6 +118,31 @@
       ]
     },
     {
+      "name": "column.dataType",
+      "required": false,
+      "description": "Actual Column data type.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+    {
+      "name": "column.arrayDataType",
+      "required": false,
+      "description": "In case of data Type being Array, type of Array Data.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+    
+    {
+      "name": "column.dataLength",
+      "required": false,
+      "description": "Data Length of Column in case of CHAR, VARCHAR, BINARY etc.",
+      "examples": [
+        "36"
+      ]
+    },
+    {
       "name": "column.tags",
       "required": false,
       "description": "Fully qualified classification tag names associated with the column separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",

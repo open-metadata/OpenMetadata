@@ -25,6 +25,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -128,17 +129,27 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
         };
     assertRows(result, expectedRows);
 
-    // Existing table can be updated. New table can't be created.
+    // Tag will cause failure
     record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(schemaName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
-    String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), "non-existing");
     expectedRows =
         new String[] {
-          resultsHeader, getFailedRecord(record, entityNotFound(0, Entity.TABLE, tableFqn))
+          resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
         };
     assertRows(result, expectedRows);
+
+    // non-existing table will cause
+    record = "non-existing,dsp1,dsc1,,,,,,,";
+    String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), "non-existing");
+    csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
+    result = importCsv(schemaName, csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity created")};
+    assertRows(result, expectedRows);
+    Table table = tableTest.getEntityByName(tableFqn, "id", ADMIN_AUTH_HEADERS);
+    assertEquals(tableFqn, table.getFullyQualifiedName());
   }
 
   @Test

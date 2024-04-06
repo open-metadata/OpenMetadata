@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static java.util.stream.Collectors.groupingBy;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwner;
@@ -37,6 +38,7 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 import com.google.common.collect.Streams;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -64,6 +66,7 @@ import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
@@ -776,7 +779,11 @@ public class TableRepository extends EntityRepository<Table> {
   public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
       throws IOException {
     // Validate table
-    Table table = getByName(null, name, new Fields(allowedFields, "owner,domain,tags,columns"));
+    Table table =
+        getByName(
+            null,
+            name,
+            new Fields(allowedFields, "owner,domain,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun);
   }
 
@@ -1216,22 +1223,69 @@ public class TableRepository extends EntityRepository<Table> {
       }
       String columnFqn = csvRecord.get(10);
       Column column = findColumn(table.getColumns(), columnFqn);
+      boolean columnExists = column != null;
       if (column == null) {
-        processRecord = false;
-        return new ImportResult(IMPORT_FAILED, csvRecord, columnNotFound(10, columnFqn));
+        // Create Column, if not found
+        column =
+            new Column()
+                .withName(getLocalColumnName(table.getFullyQualifiedName(), columnFqn))
+                .withFullyQualifiedName(
+                    table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
       }
       column.withDisplayName(csvRecord.get(11));
       column.withDescription(csvRecord.get(12));
       column.withDataTypeDisplay(csvRecord.get(13));
+      column.withDataType(
+          nullOrEmpty(csvRecord.get(14)) ? null : ColumnDataType.fromValue(csvRecord.get(14)));
+      column.withArrayDataType(
+          nullOrEmpty(csvRecord.get(15)) ? null : ColumnDataType.fromValue(csvRecord.get(15)));
+      column.withDataLength(
+          nullOrEmpty(csvRecord.get(16)) ? null : Integer.parseInt(csvRecord.get(16)));
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
               csvRecord,
               List.of(
-                  Pair.of(14, TagLabel.TagSource.CLASSIFICATION),
-                  Pair.of(15, TagLabel.TagSource.GLOSSARY)));
-      column.withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels);
-      // Add GlossaryTerm and Tiers
+                  Pair.of(17, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(18, TagLabel.TagSource.GLOSSARY)));
+      column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
+      column.withOrdinalPosition(nullOrEmpty(table.getColumns()) ? 0 : table.getColumns().size());
+
+      // If Column Does not Exist add it to the table
+      if (!columnExists) {
+        String[] splitColumnName = FullyQualifiedName.split(columnFqn);
+        // Parent Column
+        if (splitColumnName.length == 1) {
+          List<Column> tableColumns =
+              table.getColumns() == null ? new ArrayList<>() : table.getColumns();
+          tableColumns.add(column);
+          table.withColumns(tableColumns);
+        } else {
+          String parentColumnFqn =
+              String.join(
+                  Entity.SEPARATOR, Arrays.copyOf(splitColumnName, splitColumnName.length - 1));
+          Column parentColumn = findColumn(table.getColumns(), parentColumnFqn);
+          if (parentColumn == null) {
+            return new ImportResult(
+                IMPORT_FAILED,
+                csvRecord,
+                "Parent Column not found. Check the order of the columns in the CSV file.");
+          }
+
+          // Update Name And Ordinal position in the parent column
+          column.withName(splitColumnName[splitColumnName.length - 1]);
+          column.withOrdinalPosition(
+              nullOrEmpty(parentColumn.getChildren()) ? 0 : parentColumn.getChildren().size());
+          // Add this column to children of Parent
+          List<Column> children =
+              nullOrEmpty(parentColumn.getChildren())
+                  ? new ArrayList<>()
+                  : parentColumn.getChildren();
+          children.add(column);
+          parentColumn.withChildren(children);
+        }
+      }
+
       return new ImportResult(IMPORT_SUCCESS, csvRecord, ENTITY_UPDATED);
     }
 
@@ -1275,6 +1329,12 @@ public class TableRepository extends EntityRepository<Table> {
       addField(recordList, column.getDisplayName());
       addField(recordList, column.getDescription());
       addField(recordList, column.getDataTypeDisplay());
+      addField(recordList, column.getDataType() == null ? null : column.getDataType().value());
+      addField(
+          recordList, column.getArrayDataType() == null ? null : column.getArrayDataType().value());
+      addField(
+          recordList,
+          column.getDataLength() == null ? null : String.valueOf(column.getDataLength()));
       addTagLabels(recordList, column.getTags());
       addGlossaryTerms(recordList, column.getTags());
       addRecord(csvFile, recordList);

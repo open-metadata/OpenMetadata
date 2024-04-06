@@ -398,6 +398,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
         return;
       }
     } else { // Dry run don't create the entity
