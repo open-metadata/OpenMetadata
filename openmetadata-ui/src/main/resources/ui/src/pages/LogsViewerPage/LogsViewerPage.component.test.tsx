@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,8 +13,20 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import LogsViewer from './LogsViewer.component';
-import { mockIngestionPipeline, mockLogsData } from './mocks/LogsViewer.mock';
+import { useParams } from 'react-router-dom';
+import {
+  mockDataInsightApplication,
+  mockDataInsightApplicationRun,
+  mockIngestionPipeline,
+  mockLatestDataInsightApplicationRunLogs,
+  mockLogsData,
+} from '../../mocks/LogsViewerPage.mock';
+import {
+  getApplicationByName,
+  getExternalApplicationRuns,
+  getLatestApplicationRuns,
+} from '../../rest/applicationAPI';
+import LogsViewerPage from './LogsViewerPage';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
@@ -60,10 +72,28 @@ jest.mock(
   })
 );
 
-describe('LogsViewer.component', () => {
+jest.mock('./LogsViewerPageSkeleton.component', () => {
+  return jest.fn().mockImplementation(() => <p>LogsViewerPageSkeleton</p>);
+});
+
+jest.mock('../../rest/applicationAPI', () => ({
+  getApplicationByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockDataInsightApplication)),
+  getExternalApplicationRuns: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockDataInsightApplicationRun)),
+  getLatestApplicationRuns: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(mockLatestDataInsightApplicationRunLogs)
+    ),
+}));
+
+describe('LogsViewerPage.component', () => {
   it('On initial, component should render', async () => {
     await act(async () => {
-      render(<LogsViewer />);
+      render(<LogsViewerPage />);
 
       expect(
         await screen.findByText('TitleBreadcrumb.component')
@@ -77,5 +107,40 @@ describe('LogsViewer.component', () => {
     const logElement = await screen.findByTestId('logs');
 
     expect(logElement).toBeInTheDocument();
+  });
+
+  it('should fetch api for application logs', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'apps',
+      fqn: 'DataInsightsApplication',
+    });
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    expect(getApplicationByName).toHaveBeenCalled();
+    expect(getExternalApplicationRuns).toHaveBeenCalled();
+    expect(getLatestApplicationRuns).toHaveBeenCalled();
+  });
+
+  it('should show basic configuration for application in right panel', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'apps',
+      fqn: 'DataInsightsApplication',
+    });
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('Custom')).toBeInTheDocument();
+
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
+    expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
+
+    expect(screen.getByText('Recent Runs')).toBeInTheDocument();
+    expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
   });
 });

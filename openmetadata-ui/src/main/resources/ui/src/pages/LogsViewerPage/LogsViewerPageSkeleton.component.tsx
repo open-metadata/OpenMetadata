@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 import { Col, Row, Skeleton } from 'antd';
 import React from 'react';
 
-const LogViewerSkeleton = () => {
+const LogViewerPageSkeleton = () => {
   return (
     <Row className="border-top justify-between" gutter={[16, 16]}>
       <Col className="p-md border-right" span={18}>
@@ -47,4 +47,4 @@ const LogViewerSkeleton = () => {
   );
 };
 
-export default LogViewerSkeleton;
+export default LogViewerPageSkeleton;

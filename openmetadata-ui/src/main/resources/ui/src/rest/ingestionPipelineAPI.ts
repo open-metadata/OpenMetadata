@@ -25,7 +25,7 @@ import {
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewerPage/LogsViewerPage.interfaces';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
